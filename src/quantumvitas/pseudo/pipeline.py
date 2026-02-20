@@ -244,14 +244,6 @@ def download_and_install(
         head_path = install_dir / "head.json"
         head_path.write_text(json.dumps(head_data, indent=2))
 
-        # Also write head.json at the library root (for resolution scanning)
-        lib_root_head = libraries_root / info.dir_name / "head.json"
-        lib_root_head.write_text(
-            json.dumps(
-                {"variant": info.variant, "version": info.version}, indent=2
-            )
-        )
-
         result["messages"].append(
             f"[INSTALL] {installed} UPFs → {install_dir}"
         )

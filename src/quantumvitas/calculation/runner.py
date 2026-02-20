@@ -229,29 +229,12 @@ class CalculationRunner:
                     run_ulid=actual_run_ulid,
                 )
             
-            # Log warnings if any
+            # Log warnings if any (non-fatal — continue to engine steps)
             if report and report.warnings:
-                # TODO: Consider logging these warnings somewhere visible
-                pass
-                step_summaries.append(StepResultSummary(
-                    step_ulid="step0",
-                    step_type_spec="custom",
-                    status=StepStatus.FAILED,
-                    working_dir=calculation.raw_dir,
-                    input_file=Path(),
-                    output_file=Path(),
-                    reference_file=None,
-                    message=f"Step0 pseudo preparation failed: {e}",
-                    metrics={},
-                ))
-                # Don't proceed to QE steps if Step0 failed
-                return CalculationResult(
-                    calculation_ulid=calculation.ulid,
-                    status=status,
-                    started=started,
-                    finished=datetime.now(timezone.utc),
-                    step_summaries=step_summaries,
-                )
+                import logging
+                logger = logging.getLogger(__name__)
+                for w in report.warnings:
+                    logger.warning(f"Step0 pseudo warning: {w}")
 
         import logging
         logger = logging.getLogger(__name__)

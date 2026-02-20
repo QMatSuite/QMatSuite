@@ -10,7 +10,7 @@ from quantumvitas.mcp.envelope import make_error, make_response
 def auto_resolve_species_map(
     calc_ulid: str,
     library: str = "sssp",
-    flavor: str = "precision",
+    variant: str = "precision",
 ) -> dict:
     """Automatically resolve and set the species_map for a calculation.
 
@@ -24,7 +24,7 @@ def auto_resolve_species_map(
     Args:
         calc_ulid: ULID of the target calculation.
         library: Pseudo library to use (default: 'sssp').
-        flavor: Library flavor (default: 'precision').
+        variant: Library variant (default: 'precision').
             Use 'efficiency' for smaller cutoffs.
     """
     from quantumvitas.mcp.project import ProjectNotFoundError, get_service
@@ -59,7 +59,7 @@ def auto_resolve_species_map(
     # Attempt auto-resolution
     from quantumvitas.mcp.tools._resource_utils import auto_resolve_species_map_internal
 
-    resolved = auto_resolve_species_map_internal(calc_ulid, svc, library, flavor)
+    resolved = auto_resolve_species_map_internal(calc_ulid, svc, library, variant)
 
     if resolved is None:
         elements = detail.get("structure_elements", [])
@@ -71,7 +71,7 @@ def auto_resolve_species_map(
             ),
             context_hint=(
                 "Ensure the SSSP pseudo library is installed. "
-                "Use download_pseudo_library(flavor='efficiency') to install SSSP. "
+                "Use download_pseudo_library(variant='precision') to install SSSP. "
                 "Internal pseudos are available for: Si, Al, C, H, O, Fe, Cu, Li, He. "
                 f"Or use set_species_map(calc_ulid='{calc_ulid}', ...) to set manually."
             ),
@@ -91,7 +91,7 @@ def auto_resolve_species_map(
             "calc_ulid": calc_ulid,
             "species_map": resolved,
             "library": library,
-            "flavor": flavor,
+            "variant": variant,
         },
         context_hint=(
             f"Species map auto-resolved and applied. "

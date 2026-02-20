@@ -241,7 +241,7 @@ class TestResolutionChain:
             elements=["Si"],
             library="sssp",
             version="1.3.0",
-            flavor="precision",
+            variant="precision",
         )
         result = resolve_project_pseudos(config, request)
         assert "Si" in result.mapping, (
@@ -276,7 +276,7 @@ class TestResolutionChain:
             elements=["C", "Cu"],
             library="sssp",
             version="1.3.0",
-            flavor="precision",
+            variant="precision",
         )
         result = resolve_project_pseudos(config, request)
         assert result.success, f"Resolution failed: {result.errors}"
@@ -317,7 +317,7 @@ class TestResolutionChain:
             elements=elements,
             library="sg15",
             version="2020-02-06",
-            flavor="oncv",
+            variant="oncv",
         )
         result = resolve_project_pseudos(config, request)
         for elem in elements:
@@ -352,7 +352,7 @@ class TestResolutionChain:
             elements=["Si", "O"],
             library="sssp",
             version="1.3.0",
-            flavor="precision",
+            variant="precision",
         )
         result = resolve_project_pseudos(config, request)
         assert result.success
@@ -390,7 +390,7 @@ class TestResolutionChain:
             elements=["Si"],
             library="sssp",
             version="1.3.0",
-            flavor="precision",
+            variant="precision",
         )
 
         # First resolution — copies from library

@@ -848,19 +848,13 @@ class QVDaemon:
                 "errors": ["Store directory not configured"],
             }
 
-        seed_dir = Path(config.get("seed_dir"))
-        store_dir = Path(config.get("store_dir"))
+        version = payload.get("version", "1.3.0")
+        variant = payload.get("variant") or payload.get("flavor", "precision")
 
-        version = payload.get("version")
-        flavor = payload.get("flavor")
-
-        if version and flavor:
-            # Install specific version/flavor
-            result = QVService.Pseudo.install_sssp_from_seed(seed_dir, store_dir, version, flavor)
-            return result
-        else:
-            # Install all available
-            return QVService.Pseudo.install_all_sssp_from_seed(seed_dir, store_dir)
+        result = QVService.Pseudo.download_and_install(
+            library="sssp", variant=variant, version=version,
+        )
+        return result
     
     def _handle_list_installed_sssp(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -909,34 +903,16 @@ class QVDaemon:
         from quantumvitas.api import QVService
         from pathlib import Path
 
-        flavor = payload.get("flavor")
-        if not flavor:
-            raise ValueError("flavor is required ('efficiency' or 'precision')")
-        if flavor not in ("efficiency", "precision"):
-            raise ValueError(f"Invalid flavor: {flavor}. Must be 'efficiency' or 'precision'")
+        variant = payload.get("variant") or payload.get("flavor")
+        if not variant:
+            raise ValueError("variant is required ('efficiency' or 'precision')")
+        if variant not in ("efficiency", "precision"):
+            raise ValueError(f"Invalid variant: {variant}. Must be 'efficiency' or 'precision'")
 
         version = payload.get("version", "1.3.0")
-        force = payload.get("force", False)
 
-        bundle = get_pseudo_status_bundle()
-        config = bundle["config"]
-
-        if not config.get("store_dir"):
-            return {
-                "success": False,
-                "errors": ["Store directory not configured"],
-                "messages": [],
-            }
-
-        store_dir = Path(config.get("store_dir"))
-        seed_dir = Path(config.get("seed_dir")) if config.get("seed_dir") else None
-        result = QVService.Pseudo.download_sssp_library(
-            store_dir=store_dir,
-            flavor=flavor,
-            version=version,
-            force=force,
-            allow_download=config.get("allow_download", False),
-            seed_dir=seed_dir,
+        result = QVService.Pseudo.download_and_install(
+            library="sssp", variant=variant, version=version,
         )
 
         # Add installed libraries to response (refresh after download)
@@ -961,31 +937,20 @@ class QVDaemon:
         from quantumvitas.api import QVService
         from pathlib import Path
 
-        force = payload.get("force", False)
+        results = []
+        for variant in ["precision", "efficiency"]:
+            result = QVService.Pseudo.download_and_install(
+                library="sssp", variant=variant, version="1.3.0",
+            )
+            results.append(result)
 
-        bundle = get_pseudo_status_bundle()
-        config = bundle["config"]
-
-        if not config.get("store_dir"):
-            return {
-                "success": False,
-                "errors": ["Store directory not configured"],
-                "messages": [],
-            }
-
-        store_dir = Path(config.get("store_dir"))
-        seed_dir = Path(config.get("seed_dir")) if config.get("seed_dir") else None
-        result = QVService.Pseudo.download_all_sssp(
-            store_dir=store_dir,
-            force=force,
-            allow_download=config.get("allow_download", False),
-            seed_dir=seed_dir,
-        )
-
-        # Add installed libraries to response (refresh after download)
-        result["installed_libraries"] = get_pseudo_status_bundle()["installed_sssp"]
-
-        return result
+        combined = {
+            "success": all(r.get("success") for r in results),
+            "messages": [msg for r in results for msg in r.get("messages", [])],
+            "errors": [err for r in results for err in r.get("errors", [])],
+            "installed_libraries": get_pseudo_status_bundle()["installed_sssp"],
+        }
+        return combined
     
     def _handle_import_seed_archives(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1000,27 +965,13 @@ class QVDaemon:
         from quantumvitas.api import QVService
         from pathlib import Path
 
-        file_paths = payload.get("file_paths", [])
-        if not file_paths:
-            return {
-                "imported": [],
-                "skipped": [],
-                "errors": ["No files provided"],
-            }
-
-        bundle = get_pseudo_status_bundle()
-        config = bundle["config"]
-        if not config.get("seed_dir"):
-            return {
-                "imported": [],
-                "skipped": [],
-                "errors": ["Seed directory not configured"],
-            }
-
-        seed_dir = Path(config.get("seed_dir"))
-        archive_paths = [Path(p) for p in file_paths]
-
-        return QVService.Pseudo.import_seed_archives(seed_dir, archive_paths)
+        # Seed archive import is no longer supported in the NEW pipeline.
+        # Use download_pseudo_library() / download_and_install() instead.
+        return {
+            "imported": [],
+            "skipped": [],
+            "errors": ["Seed archive import is deprecated. Use download_pseudo_library() instead."],
+        }
     
     def _handle_list_libraries(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1233,109 +1184,30 @@ class QVDaemon:
     
     def _handle_install_pseudo_archive(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Install a pseudopotential archive by asset name.
-        
+        Install a pseudopotential archive by library/variant/version.
+
         Payload:
-            asset_name: str - Archive filename (e.g., "SSSP_1.3.0_PBE_efficiency.tar.gz")
-            force: Optional[bool] - Force re-download even if installed (default: False)
-        
+            library: str - Library key (default: "sssp")
+            variant: str - Variant name (default: "precision")
+            version: str - Version string (default: "1.3.0")
+            asset_name: str - (Legacy) archive filename, ignored in NEW pipeline
+
         Returns:
-            Dict with:
-            - success: bool
-            - messages: List[str]
-            - errors: List[str]
-            - archive_status: Optional[ArchiveStatus dict] - Updated status after install
+            Dict with success, messages, errors.
         """
-        
-        asset_name = payload.get("asset_name")
-        if not asset_name:
-            return {
-                "success": False,
-                "messages": [],
-                "errors": ["asset_name is required"],
-                "archive_status": None,
-            }
-        
-        force = payload.get("force", False)
+        library = payload.get("library", "sssp")
+        variant = payload.get("variant", payload.get("flavor", "precision"))
+        version = payload.get("version", "1.3.0")
 
         try:
-            bundle = get_pseudo_status_bundle()
-            config = bundle["config"]
-
-            # Check if downloads are allowed
-            if not config.get("allow_download", False) and not force:
-                return {
-                    "success": False,
-                    "messages": [],
-                    "errors": ["Network downloads not allowed. Enable 'Allow Network Downloads' in Settings."],
-                    "archive_status": None,
-                }
-
-            # Find archive in manifest
-            manifest_archives = bundle["manifest_archives"]
-            archive = None
-            for arch in manifest_archives:
-                if arch.get("asset_name") == asset_name:
-                    archive = arch
-                    break
-
-            if not archive:
-                return {
-                    "success": False,
-                    "messages": [],
-                    "errors": [f"Archive not found in manifest: {asset_name}"],
-                    "archive_status": None,
-                }
-
-            # Check if already installed (unless force)
-            if not force:
-                if QVService.Pseudo.is_archive_installed(
-                    asset_name=asset_name,
-                    expected_sha256=archive.get("sha256", ""),
-                ):
-                    # Return success with current status from bundle
-                    archive_status = None
-                    for status in bundle["archive_statuses"]:
-                        if status.get("asset_name") == asset_name:
-                            archive_status = status
-                            break
-                    return {
-                        "success": True,
-                        "messages": [f"Archive already installed: {asset_name}"],
-                        "errors": [],
-                        "archive_status": archive_status,
-                    }
-
-            # Install archive
-            if not archive.get("upstream_url"):
-                return {
-                    "success": False,
-                    "messages": [],
-                    "errors": [f"No upstream URL for archive: {asset_name}"],
-                    "archive_status": None,
-                }
-
-            result = QVService.Pseudo.install_archive(
-                asset_url=archive.get("upstream_url", ""),
-                asset_name=archive.get("asset_name", ""),
-                expected_sha256=archive.get("sha256", ""),
-                expected_size=archive.get("size_bytes"),
-                config=config,
+            result = QVService.Pseudo.download_and_install(
+                library=library, variant=variant, version=version,
             )
-
-            # Get updated status (refresh bundle after install)
-            updated_bundle = get_pseudo_status_bundle()
-            archive_status = None
-            for status in updated_bundle["archive_statuses"]:
-                if status.get("asset_name") == asset_name:
-                    archive_status = status
-                    break
-
             return {
                 "success": result.get("success", False),
                 "messages": result.get("messages", []),
                 "errors": result.get("errors", []),
-                "archive_status": archive_status,
+                "archive_status": None,
             }
         except Exception as e:
             return {

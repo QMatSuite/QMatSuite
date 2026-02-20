@@ -175,7 +175,7 @@ class TestPseudoResolution:
                     project_root=Path(tmpdir),
                     elements=["Si"],
                     library="sssp",
-                    flavor="precision",
+                    variant="precision",
                 )
                 result = resolve_project_pseudos(config, request)
                 # May or may not succeed depending on SSSP installation,
@@ -201,7 +201,7 @@ class TestPseudoResolution:
                     project_root=Path(tmpdir),
                     elements=["Uue"],  # Ununennium — won't exist
                     library="sssp",
-                    flavor="precision",
+                    variant="precision",
                 )
                 result = resolve_project_pseudos(config, request)
                 # Should fail gracefully
@@ -229,13 +229,13 @@ class TestDownloadPseudoConfig:
         assert hasattr(config, "store_dir")
         assert hasattr(config, "seed_dir")
 
-    def test_download_sssp_signature(self):
-        """download_sssp_library should accept expected parameters."""
+    def test_download_and_install_signature(self):
+        """pipeline.download_and_install should accept expected parameters."""
         import inspect
-        from quantumvitas.core.pseudo_config import download_sssp_library
+        from quantumvitas.pseudo.pipeline import download_and_install
 
-        sig = inspect.signature(download_sssp_library)
+        sig = inspect.signature(download_and_install)
         param_names = list(sig.parameters.keys())
-        assert "store_dir" in param_names
-        assert "flavor" in param_names
+        assert "library" in param_names
+        assert "variant" in param_names
         assert "version" in param_names

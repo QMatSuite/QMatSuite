@@ -475,22 +475,13 @@ def get_pseudo_status_bundle() -> dict:
         Dict with:
         - config: Current pseudo configuration
         - validation: Validation result
-        - installed_sssp: List of installed SSSP libraries
-        - seed_archives: List of available seed archives
-        - manifest_archives: List of manifest archives
-        - archive_statuses: Installation status of manifest archives
+        - installed_libraries: List of installed library variant statuses
     """
-    from pathlib import Path
     from quantumvitas.core.pseudo_config import (
         load_pseudo_config as _load_pseudo_config,
         validate_pseudo_config as _validate_pseudo_config,
-        list_installed_sssp as _list_installed_sssp,
-        list_seed_archives as _list_seed_archives,
     )
-    from quantumvitas.core.pseudo_installs import (
-        load_manifest_archives as _load_manifest_archives,
-        check_archives_status as _check_archives_status,
-    )
+    from quantumvitas.core.library_manager import get_library_status
 
     # Load config once
     config_obj = _load_pseudo_config()
@@ -500,28 +491,13 @@ def get_pseudo_status_bundle() -> dict:
     validation_result = _validate_pseudo_config(config_obj)
     validation_dict = validation_result.to_dict()
 
-    # Installed libraries
-    store_dir = Path(config_obj.store_dir) if config_obj.store_dir else None
-    installed = []
-    if store_dir and store_dir.exists():
-        libs = _list_installed_sssp(store_dir)
-        installed = [lib.to_dict() if hasattr(lib, 'to_dict') else lib for lib in libs]
-
-    # Seed archives
-    seed_dir = Path(config_obj.seed_dir) if config_obj.seed_dir else None
-    seed_archives = []
-    if seed_dir and seed_dir.exists():
-        archives = _list_seed_archives(seed_dir)
-        seed_archives = [arch.to_dict() if hasattr(arch, 'to_dict') else arch for arch in archives]
-
-    # Manifest archives and their status
-    manifest_archives_raw = _load_manifest_archives()
-    manifest_archives = [arch.to_dict() if hasattr(arch, 'to_dict') else arch for arch in manifest_archives_raw]
-
-    archive_statuses = []
-    if manifest_archives_raw:
-        statuses = _check_archives_status(archives=manifest_archives_raw, config=config_obj)
-        archive_statuses = [s.to_dict() if hasattr(s, 'to_dict') else s for s in statuses]
+    # Installed libraries (NEW layout — three-level walk via library_manager)
+    installed_libraries = []
+    sssp_status = get_library_status("sssp")
+    if sssp_status:
+        installed_libraries = [
+            v.to_dict() for v in sssp_status.variant_statuses if v.installed
+        ]
 
     # Include default dirs for GUI "reset to defaults" feature
     from quantumvitas.core.pseudo_config import PseudoConfig as _PC
@@ -531,10 +507,10 @@ def get_pseudo_status_bundle() -> dict:
     return {
         "config": config_dict,
         "validation": validation_dict,
-        "installed_sssp": installed,
-        "seed_archives": seed_archives,
-        "manifest_archives": manifest_archives,
-        "archive_statuses": archive_statuses,
+        "installed_sssp": installed_libraries,
+        "seed_archives": [],
+        "manifest_archives": [],
+        "archive_statuses": [],
     }
 
 

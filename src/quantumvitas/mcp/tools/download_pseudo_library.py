@@ -21,8 +21,9 @@ def download_pseudo_library(
     pseudopotentials for your calculation.
 
     Args:
-        flavor: Library flavor — 'efficiency' (smaller cutoffs, faster) or
-            'precision' (higher cutoffs, more accurate). Default: 'efficiency'.
+        library: Library identifier (default: 'sssp').
+        variant: Library variant — 'efficiency' (smaller cutoffs, faster) or
+            'precision' (higher cutoffs, more accurate). Default: registry default.
         version: Library version. Default: '1.3.0'.
     """
     try:

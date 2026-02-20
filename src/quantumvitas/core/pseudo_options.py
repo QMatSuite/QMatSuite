@@ -31,10 +31,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from quantumvitas.core.pseudo import get_system_pseudo_dir
 from quantumvitas.core.pseudo_config import load_pseudo_config
-from quantumvitas.core.pseudo_installs import (
-    is_archive_installed,
-    load_manifest_archives,
-)
+from quantumvitas.core.paths import home_pseudo_libraries_dir
 from quantumvitas.core.pseudo_libinfo import (
     compute_sha_family_file,
     load_pseudo_libinfo_bundle,
@@ -46,6 +43,50 @@ from quantumvitas.core.pseudo_provenance import (
     compute_sha256_file,
     parse_element_from_upf_text,
 )
+
+
+def _find_upf_in_libraries(filename: str) -> Path | None:
+    """Find a UPF file by name in installed pseudo libraries (NEW layout)."""
+    libraries_root = home_pseudo_libraries_dir()
+    if not libraries_root.is_dir():
+        return None
+    for lib_dir in libraries_root.iterdir():
+        if not lib_dir.is_dir():
+            continue
+        for variant_dir in lib_dir.iterdir():
+            if not variant_dir.is_dir():
+                continue
+            for version_dir in variant_dir.iterdir():
+                if not version_dir.is_dir():
+                    continue
+                upf_path = version_dir / filename
+                if upf_path.is_file():
+                    return upf_path
+    return None
+
+
+def _find_upf_by_sha256_in_libraries(sha256: str) -> Path | None:
+    """Find a UPF file by SHA256 in installed pseudo libraries (NEW layout)."""
+    libraries_root = home_pseudo_libraries_dir()
+    if not libraries_root.is_dir():
+        return None
+    for lib_dir in libraries_root.iterdir():
+        if not lib_dir.is_dir():
+            continue
+        for variant_dir in lib_dir.iterdir():
+            if not variant_dir.is_dir():
+                continue
+            for version_dir in variant_dir.iterdir():
+                if not version_dir.is_dir():
+                    continue
+                for f in version_dir.iterdir():
+                    if f.suffix.lower() == ".upf" and f.is_file():
+                        try:
+                            if compute_sha256_file(f) == sha256:
+                                return f
+                        except Exception:
+                            continue
+    return None
 
 
 @dataclass
@@ -250,31 +291,26 @@ def get_pseudo_options_for_elements(
         Dict mapping element -> List[PseudoVariant dict] (sha256-keyed)
     """
     from quantumvitas.core.pseudo_config import PseudoConfig
-    from quantumvitas.core.pseudo_installs import check_archive_status
-    
+
     if config is None:
         config = load_pseudo_config()
-    
+
     import logging
     logger = logging.getLogger(__name__)
-    
+
     project_root = Path(project_root).resolve()
     project_pseudo_dir = project_root / "pseudo"
     internal_pseudo_dir = get_system_pseudo_dir()
-    
+
     logger.info(
         f"[PSEUDO_SCAN] Starting scan: project_pseudo_dir={project_pseudo_dir}, "
         f"internal_pseudo_dir={internal_pseudo_dir}, elements={elements}"
     )
-    
+
     # Load bundle and build indices
     bundle = load_pseudo_libinfo_bundle()
     occurrences_index = _build_occurrences_index(bundle)
     files_index = {f.get("sha256"): f for f in bundle.index.get("files", [])}
-    
-    # Load manifest archives for installed status
-    manifest_archives = load_manifest_archives()
-    archive_map = {arch.asset_name: arch for arch in manifest_archives}
     
     # Build variants by element -> sha256 (primary key)
     variants_by_element: Dict[str, Dict[str, PseudoVariant]] = {}
@@ -351,52 +387,19 @@ def get_pseudo_options_for_elements(
                     # Add library chips from occurrences
                     if sha256 in occurrences_index:
                         for occ in occurrences_index[sha256]:
-                            archive_name = occ.get("archive", {}).get("name", "")
-                            archive_sha256 = occ.get("archive", {}).get("sha256", "")
                             library = occ.get("library", {})
-                            
-                            # Find archive in manifest
-                            archive_status = None
-                            for arch in manifest_archives:
-                                if arch.asset_name == archive_name:
-                                    archive_status = arch
-                                    break
-                                if arch.sha256 == archive_sha256:
-                                    archive_status = arch
-                                    break
-                            
-                            if not archive_status:
-                                relative_path = occ.get("archive", {}).get("relative_path", "")
-                                if relative_path:
-                                    for arch in manifest_archives:
-                                        if arch.relative_path == relative_path:
-                                            archive_status = arch
-                                            break
-                            
-                            # Check installed/corrupt status
-                            installed = False
-                            corrupt = False
-                            warning = None
-                            if archive_status:
-                                status = check_archive_status(
-                                    archive_status.asset_name,
-                                    archive_status.sha256,
-                                    config=config,
-                                )
-                                installed = status["installed"] and not status["corrupt"]
-                                corrupt = status["corrupt"]
-                                if corrupt:
-                                    warning = status.get("error") or "Archive corrupt, needs reinstall"
-                            
-                            # Add library chip
+                            path_in_archive = occ.get("path_in_archive", "")
+                            occ_basename = Path(path_in_archive).name if path_in_archive else ""
+
+                            # Check if this file exists in installed libraries
+                            lib_file = _find_upf_in_libraries(occ_basename) if occ_basename else None
+                            installed = lib_file is not None
+
                             label = _format_library_label(occ)
                             lib_source = PseudoSource(
                                 kind="lib",
                                 label=label,
                                 installed=installed,
-                                corrupt=corrupt,
-                                warning=warning,
-                                archive_asset=archive_name,
                                 library_name=library.get("library_name"),
                                 library_version=library.get("library_version"),
                             )
@@ -491,49 +494,19 @@ def get_pseudo_options_for_elements(
             # Add library chips if sha256 matches index
             if sha256 in occurrences_index:
                 for occ in occurrences_index[sha256]:
-                    archive_name = occ.get("archive", {}).get("name", "")
-                    archive_sha256 = occ.get("archive", {}).get("sha256", "")
                     library = occ.get("library", {})
-                    
-                    archive_status = None
-                    for arch in manifest_archives:
-                        if arch.asset_name == archive_name:
-                            archive_status = arch
-                            break
-                        if arch.sha256 == archive_sha256:
-                            archive_status = arch
-                            break
-                    
-                    if not archive_status:
-                        relative_path = occ.get("archive", {}).get("relative_path", "")
-                        if relative_path:
-                            for arch in manifest_archives:
-                                if arch.relative_path == relative_path:
-                                    archive_status = arch
-                                    break
-                    
-                    installed = False
-                    corrupt = False
-                    warning = None
-                    if archive_status:
-                        status = check_archive_status(
-                            archive_status.asset_name,
-                            archive_status.sha256,
-                            config=config,
-                        )
-                        installed = status["installed"] and not status["corrupt"]
-                        corrupt = status["corrupt"]
-                        if corrupt:
-                            warning = status.get("error") or "Archive corrupt, needs reinstall"
-                    
+                    path_in_archive = occ.get("path_in_archive", "")
+                    occ_basename = Path(path_in_archive).name if path_in_archive else ""
+
+                    # Check if file exists in installed libraries
+                    lib_file = _find_upf_in_libraries(occ_basename) if occ_basename else None
+                    installed = lib_file is not None
+
                     label = _format_library_label(occ)
                     lib_source = PseudoSource(
                         kind="lib",
                         label=label,
                         installed=installed,
-                        corrupt=corrupt,
-                        warning=warning,
-                        archive_asset=archive_name,
                         library_name=library.get("library_name"),
                         library_version=library.get("library_version"),
                     )
@@ -568,37 +541,18 @@ def get_pseudo_options_for_elements(
             # Add library chips
             if file_sha256 in occurrences_index:
                 for occ in occurrences_index[file_sha256]:
-                    archive_name = occ.get("archive", {}).get("name", "")
                     library = occ.get("library", {})
-                    
-                    archive_status = None
-                    for arch in manifest_archives:
-                        if arch.asset_name == archive_name:
-                            archive_status = arch
-                            break
-                    
-                    installed = False
-                    corrupt = False
-                    warning = None
-                    if archive_status:
-                        status = check_archive_status(
-                            archive_status.asset_name,
-                            archive_status.sha256,
-                            config=config,
-                        )
-                        installed = status["installed"] and not status["corrupt"]
-                        corrupt = status["corrupt"]
-                        if corrupt:
-                            warning = status.get("error") or "Archive corrupt, needs reinstall"
-                    
+                    path_in_archive = occ.get("path_in_archive", "")
+                    occ_basename = Path(path_in_archive).name if path_in_archive else ""
+
+                    lib_file = _find_upf_in_libraries(occ_basename) if occ_basename else None
+                    installed = lib_file is not None
+
                     label = _format_library_label(occ)
                     lib_source = PseudoSource(
                         kind="lib",
                         label=label,
                         installed=installed,
-                        corrupt=corrupt,
-                        warning=warning,
-                        archive_asset=archive_name,
                         library_name=library.get("library_name"),
                         library_version=library.get("library_version"),
                     )
@@ -751,128 +705,21 @@ def materialize_pseudo_file(
             except Exception:
                 continue
     
-    # 3. Check installed archives
-    # Find which archive(s) contain this sha256
+    # 3. Check installed libraries (NEW layout: three-level walk)
+    lib_file = _find_upf_by_sha256_in_libraries(sha256)
+    if lib_file:
+        result["success"] = True
+        result["file_path"] = str(lib_file)
+        result["source"] = "library"
+        return result
+
+    # If sha256 is in index but not found in installed libraries, mark as needs install
     if sha256 in occurrences_index:
-        from quantumvitas.core.pseudo_installs import (
-            check_archive_status,
-            get_archives_dir,
-            get_pseudo_install_root,
-            load_manifest_archives,
-        )
-        import tarfile
-        import zipfile
-        
-        install_root = get_pseudo_install_root(config)
-        if install_root:
-            archives_dir = get_archives_dir(install_root)
-            manifest_archives = load_manifest_archives()
-            
-            for occ in occurrences_index[sha256]:
-                archive_name = occ.get("archive", {}).get("name", "")
-                path_in_archive = occ.get("path_in_archive", "")
-                
-                # Find archive in manifest
-                archive_status = None
-                for arch in manifest_archives:
-                    if arch.asset_name == archive_name:
-                        archive_status = arch
-                        break
-                
-                if not archive_status:
-                    continue
-                
-                # Check if archive is installed
-                status = check_archive_status(
-                    archive_status.asset_name,
-                    archive_status.sha256,
-                    install_root=install_root,
-                    config=config,
-                )
-                
-                # CRITICAL: Only use archive if installed AND NOT corrupt
-                if status["installed"] and not status["corrupt"]:
-                    # Archive is installed, try to extract the file
-                    archive_path = archives_dir / archive_status.asset_name
-                    try:
-                        # Extract to project/pseudo
-                        project_pseudo_dir.mkdir(parents=True, exist_ok=True)
-                        
-                        basename = preferred_basename or Path(path_in_archive).name
-                        dest_path = project_pseudo_dir / basename
-                        
-                        # Handle tar.gz/tgz/tar
-                        if archive_path.suffixes[-2:] == [".tar", ".gz"] or archive_path.suffix == ".tgz":
-                            with tarfile.open(archive_path, "r:gz") as tar:
-                                member = None
-                                for m in tar.getmembers():
-                                    if m.name == path_in_archive or m.name.endswith(path_in_archive):
-                                        member = m
-                                        break
-                                if member:
-                                    extracted = tar.extractfile(member)
-                                    if extracted:
-                                        dest_path.write_bytes(extracted.read())
-                        # Handle .tar
-                        elif archive_path.suffix == ".tar":
-                            with tarfile.open(archive_path, "r") as tar:
-                                member = None
-                                for m in tar.getmembers():
-                                    if m.name == path_in_archive or m.name.endswith(path_in_archive):
-                                        member = m
-                                        break
-                                if member:
-                                    extracted = tar.extractfile(member)
-                                    if extracted:
-                                        dest_path.write_bytes(extracted.read())
-                        # Handle .zip
-                        elif archive_path.suffix == ".zip":
-                            with zipfile.ZipFile(archive_path, "r") as zipf:
-                                try:
-                                    zipf.extract(path_in_archive, project_pseudo_dir)
-                                    # Move to desired basename if different
-                                    extracted_path = project_pseudo_dir / path_in_archive
-                                    if extracted_path.exists() and extracted_path != dest_path:
-                                        if dest_path.exists():
-                                            dest_path.unlink()
-                                        extracted_path.rename(dest_path)
-                                except KeyError:
-                                    # Try to find by basename
-                                    for name in zipf.namelist():
-                                        if name.endswith(path_in_archive) or name.endswith(basename):
-                                            zipf.extract(name, project_pseudo_dir)
-                                            extracted_path = project_pseudo_dir / name
-                                            if extracted_path.exists() and extracted_path != dest_path:
-                                                if dest_path.exists():
-                                                    dest_path.unlink()
-                                                extracted_path.rename(dest_path)
-                                            break
-                        
-                        # Verify extracted file sha256
-                        if dest_path.exists():
-                            extracted_sha256 = compute_sha256_file(dest_path)
-                            if extracted_sha256 == sha256:
-                                result["success"] = True
-                                result["file_path"] = str(dest_path)
-                                result["source"] = "library"
-                                return result
-                            else:
-                                dest_path.unlink()  # Remove incorrect file
-                    except Exception as e:
-                        result["error"] = f"Failed to extract from archive: {e}"
-                        continue
-                elif status["exists"] and status["corrupt"]:
-                    # Archive exists but corrupt - DO NOT USE IT
-                    result["error"] = (
-                        f"Archive {archive_status.asset_name} exists but failed SHA256 verification. "
-                        f"Reinstall from Settings → Pseudopotentials."
-                    )
-                    result["needs_install"] = True
-                    result["archive_asset"] = archive_status.asset_name
-                else:
-                    # Archive not installed
-                    result["needs_install"] = True
-                    result["archive_asset"] = archive_status.asset_name
+        for occ in occurrences_index[sha256]:
+            archive_name = occ.get("archive", {}).get("name", "")
+            result["needs_install"] = True
+            result["archive_asset"] = archive_name
+            break
     
     # If we get here, materialization failed
     if not result["error"]:

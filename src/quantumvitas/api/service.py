@@ -5504,7 +5504,8 @@ class QVService:
                 from quantumvitas.core.resolution import validate_ulid, resolve_structure
                 from quantumvitas.core.project_utils import load_project_config
                 from quantumvitas.io import read_structure
-                from quantumvitas.core.pseudo_config import PseudoConfig, get_sssp_library_path
+                from quantumvitas.core.pseudo_config import PseudoConfig
+                from quantumvitas.core.paths import home_pseudo_libraries_dir
                 import json
 
                 # Validate ULID
@@ -5558,34 +5559,37 @@ class QVService:
                             available_pseudos.append(file.name)
                 available_pseudos.sort()
 
-                # Check SSSP libraries
+                # Check SSSP libraries (NEW layout)
                 sssp_defaults: dict[str, dict[str, str]] = {}
                 sssp_installed: dict[str, bool] = {"precision": False, "efficiency": False}
                 try:
-                    pseudo_config = PseudoConfig.with_defaults()
-                    store_dir = Path(pseudo_config.store_dir) if pseudo_config.store_dir else None
-
-                    if store_dir:
-                        for flavor in ["precision", "efficiency"]:
-                            lib_base = get_sssp_library_path(store_dir, "1.3.0", flavor)
-                            lib_path = lib_base / "library"
-                            cutoffs_path = lib_base / "cutoffs.json"
-
-                            if lib_path.exists() and any(lib_path.glob("*.upf")) or any(lib_path.glob("*.UPF")):
-                                sssp_installed[flavor] = True
-
-                            if cutoffs_path.exists():
-                                try:
-                                    cutoffs_data = json.loads(cutoffs_path.read_text())
-                                    for species in species_list:
-                                        if species not in sssp_defaults:
-                                            sssp_defaults[species] = {"precision": "", "efficiency": ""}
-                                        element_data = cutoffs_data.get(species, {})
-                                        filename = element_data.get("filename", "")
-                                        if filename and (lib_path / filename).exists():
-                                            sssp_defaults[species][flavor] = filename
-                                except Exception:
-                                    pass
+                    libraries_root = home_pseudo_libraries_dir()
+                    sssp_dir = libraries_root / "SSSP"
+                    if sssp_dir.is_dir():
+                        for variant in ["precision", "efficiency"]:
+                            variant_dir = sssp_dir / variant
+                            if not variant_dir.is_dir():
+                                continue
+                            for version_dir in variant_dir.iterdir():
+                                if not version_dir.is_dir():
+                                    continue
+                                upf_files = [f for f in version_dir.iterdir() if f.suffix.lower() == ".upf"]
+                                if upf_files:
+                                    sssp_installed[variant] = True
+                                # Check cutoffs JSON companion
+                                for cutoffs_candidate in version_dir.glob("*cutoffs*.json"):
+                                    try:
+                                        cutoffs_data = json.loads(cutoffs_candidate.read_text())
+                                        for species in species_list:
+                                            if species not in sssp_defaults:
+                                                sssp_defaults[species] = {"precision": "", "efficiency": ""}
+                                            element_data = cutoffs_data.get(species, {})
+                                            filename = element_data.get("filename", "")
+                                            if filename and (version_dir / filename).exists():
+                                                sssp_defaults[species][variant] = filename
+                                    except Exception:
+                                        pass
+                                break  # Use first version found
                 except Exception:
                     pass
 
@@ -6007,8 +6011,9 @@ class QVService:
                 from quantumvitas.core.models import load_calculation
                 from quantumvitas.core.project_utils import load_project_config
                 from quantumvitas.io import read_structure
-                from quantumvitas.core.pseudo_config import load_pseudo_config, get_sssp_library_path
+                from quantumvitas.core.pseudo_config import load_pseudo_config
                 from quantumvitas.core.pseudo import get_system_pseudo_dir
+                from quantumvitas.core.paths import home_pseudo_libraries_dir
                 import json
 
                 # Validate ULID
@@ -6051,18 +6056,23 @@ class QVService:
                         if f.is_file() and f.suffix.lower() == ".upf"
                     ])
 
-                # Check SSSP libraries
+                # Check SSSP libraries (NEW layout)
                 sssp_defaults: dict[str, dict[str, str]] = {}
                 sssp_installed = {"precision": False, "efficiency": False}
                 try:
-                    pseudo_config = load_pseudo_config()
-                    store_dir = Path(pseudo_config.store_dir) if pseudo_config.store_dir else None
-
-                    if store_dir:
-                        for flavor in ["precision", "efficiency"]:
-                            lib_path = get_sssp_library_path(store_dir, "1.3.0", flavor) / "library"
-                            if lib_path.exists() and list(lib_path.glob("*.upf")):
-                                sssp_installed[flavor] = True
+                    libraries_root = home_pseudo_libraries_dir()
+                    sssp_dir = libraries_root / "SSSP"
+                    if sssp_dir.is_dir():
+                        for variant in ["precision", "efficiency"]:
+                            variant_dir = sssp_dir / variant
+                            if not variant_dir.is_dir():
+                                continue
+                            for version_dir in variant_dir.iterdir():
+                                if not version_dir.is_dir():
+                                    continue
+                                if any(f.suffix.lower() == ".upf" for f in version_dir.iterdir() if f.is_file()):
+                                    sssp_installed[variant] = True
+                                break
                 except Exception:
                     pass
 
@@ -9051,181 +9061,25 @@ class QVService:
             return _compute_store_size()
 
         @staticmethod
-        def is_archive_installed(asset_name: str, expected_sha256: str) -> bool:
-            """
-            Check if a pseudopotential archive is installed.
-
-            Args:
-                asset_name: Archive filename
-                expected_sha256: Expected SHA256 hash
-
-            Returns:
-                True if archive is installed with matching hash
-            """
-            from quantumvitas.core.pseudo_installs import is_archive_installed
-
-            return is_archive_installed(asset_name=asset_name, expected_sha256=expected_sha256)
-
-        @staticmethod
-        def install_archive(
-            asset_url: str,
-            asset_name: str,
-            expected_sha256: str,
-            expected_size: int | None = None,
-            config: dict[str, Any] | None = None,
-        ) -> dict[str, Any]:
-            """
-            Install a pseudopotential archive.
-
-            Args:
-                asset_url: URL to download archive from
-                asset_name: Archive filename
-                expected_sha256: Expected SHA256 hash
-                expected_size: Optional expected file size
-                config: Optional pseudo config dict
-
-            Returns:
-                Dict with success, messages, errors
-            """
-            from quantumvitas.core.pseudo_installs import install_archive as _install_archive
-            from quantumvitas.core.pseudo_config import PseudoConfig, load_pseudo_config
-
-            if config is None:
-                pseudo_config = load_pseudo_config()
-            else:
-                pseudo_config = PseudoConfig.from_dict(config)
-
-            result = _install_archive(
-                asset_url=asset_url,
-                asset_name=asset_name,
-                expected_sha256=expected_sha256,
-                expected_size=expected_size,
-                config=pseudo_config,
-            )
-            return result.to_dict() if hasattr(result, 'to_dict') else result
-
-        @staticmethod
-        def install_sssp_from_seed(
-            seed_dir: Path | str,
-            store_dir: Path | str,
+        def download_and_install(
+            library: str = "sssp",
+            variant: str = "precision",
             version: str = "1.3.0",
-            flavor: str = "efficiency",
         ) -> dict[str, Any]:
             """
-            Install SSSP library from seed to store.
+            Download and install a pseudopotential library via NEW pipeline.
 
             Args:
-                seed_dir: Path to seed directory
-                store_dir: Path to store directory
-                version: SSSP version (default: "1.3.0")
-                flavor: "efficiency" or "precision" (default: "efficiency")
+                library: Library identifier (default: "sssp")
+                variant: Library variant (default: "precision")
+                version: Library version (default: "1.3.0")
 
             Returns:
-                Dict with success, messages, errors, files_installed
+                Dict with success, messages, errors, upf_count
             """
-            from quantumvitas.core.pseudo_config import install_sssp_from_seed as _install_sssp_from_seed
+            from quantumvitas.pseudo.pipeline import download_and_install as _download_and_install
 
-            return _install_sssp_from_seed(Path(seed_dir), Path(store_dir), version, flavor)
-
-        @staticmethod
-        def install_all_sssp_from_seed(
-            seed_dir: Path | str,
-            store_dir: Path | str,
-        ) -> dict[str, Any]:
-            """
-            Install all available SSSP libraries from seed to store.
-
-            Args:
-                seed_dir: Path to seed directory
-                store_dir: Path to store directory
-
-            Returns:
-                Dict with success, installed, skipped, failed, messages
-            """
-            from quantumvitas.core.pseudo_config import install_all_sssp_from_seed as _install_all_sssp_from_seed
-
-            return _install_all_sssp_from_seed(Path(seed_dir), Path(store_dir))
-
-        @staticmethod
-        def download_sssp_library(
-            store_dir: Path | str,
-            flavor: str,
-            version: str = "1.3.0",
-            force: bool = False,
-            allow_download: bool = True,
-            seed_dir: Path | str | None = None,
-        ) -> dict[str, Any]:
-            """
-            Download SSSP library from GitHub release and install into store.
-
-            Args:
-                store_dir: Path to pseudo store directory
-                flavor: "efficiency" or "precision"
-                version: SSSP version (default: "1.3.0")
-                force: If True, download even if allow_download is False
-                allow_download: Global setting
-                seed_dir: Optional seed directory path
-
-            Returns:
-                Dict with success, messages, errors, files_installed
-            """
-            from quantumvitas.core.pseudo_config import download_sssp_library as _download_sssp_library
-
-            return _download_sssp_library(
-                Path(store_dir),
-                flavor,
-                version,
-                force,
-                allow_download,
-                Path(seed_dir) if seed_dir else None,
-            )
-
-        @staticmethod
-        def download_all_sssp(
-            store_dir: Path | str,
-            force: bool = False,
-            allow_download: bool = True,
-            seed_dir: Path | str | None = None,
-        ) -> dict[str, Any]:
-            """
-            Download all supported SSSP libraries from GitHub release.
-
-            Args:
-                store_dir: Path to pseudo store directory
-                force: If True, download even if allow_download is False
-                allow_download: Global setting
-                seed_dir: Optional seed directory path
-
-            Returns:
-                Dict with success, installed, skipped, failed, messages
-            """
-            from quantumvitas.core.pseudo_config import download_all_sssp as _download_all_sssp
-
-            return _download_all_sssp(
-                Path(store_dir),
-                force,
-                allow_download,
-                Path(seed_dir) if seed_dir else None,
-            )
-
-        @staticmethod
-        def import_seed_archives(
-            seed_dir: Path | str,
-            archive_paths: list[Path | str],
-        ) -> dict[str, Any]:
-            """
-            Import seed archives into seed directory.
-
-            Args:
-                seed_dir: Path to seed directory
-                archive_paths: List of paths to archive files to import
-
-            Returns:
-                Dict with success, imported, failed, messages, errors
-            """
-            from quantumvitas.core.pseudo_config import import_seed_archives as _import_seed_archives
-
-            return _import_seed_archives(Path(seed_dir), [Path(p) for p in archive_paths])
+            return _download_and_install(library=library, variant=variant, version=version)
 
     @property
     def pseudo(self) -> Pseudo:
