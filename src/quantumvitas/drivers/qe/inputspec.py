@@ -134,10 +134,31 @@ def _write_qe_text_direct(
 
     kpoints = params.get("kpoints", {})
     if kpoints:
-        mesh = kpoints.get("mesh", kpoints.get("grid", [4, 4, 4]))
-        shift = kpoints.get("shift", [0, 0, 0])
-        lines.append("K_POINTS (automatic)")
-        lines.append(f"  {mesh[0]} {mesh[1]} {mesh[2]}  {shift[0]} {shift[1]} {shift[2]}")
+        kp_option = kpoints.get("option", "").lower() if isinstance(kpoints.get("option"), str) else ""
+        kp_data = kpoints.get("data", [])
+
+        if kp_option == "gamma":
+            lines.append("K_POINTS {gamma}")
+        elif kp_option in ("crystal_b", "crystal_c", "tpiba_b", "tpiba_c") and kp_data:
+            lines.append(f"K_POINTS {{{kp_option}}}")
+            lines.append(f"  {len(kp_data)}")
+            for row in kp_data:
+                if isinstance(row, (list, tuple)) and len(row) >= 4:
+                    lines.append(f"  {row[0]:.10f}  {row[1]:.10f}  {row[2]:.10f}  {int(row[3])}")
+                elif isinstance(row, (list, tuple)) and len(row) >= 3:
+                    lines.append(f"  {row[0]:.10f}  {row[1]:.10f}  {row[2]:.10f}")
+        elif kp_option in ("tpiba", "crystal") and kp_data:
+            lines.append(f"K_POINTS {{{kp_option}}}")
+            lines.append(f"  {len(kp_data)}")
+            for row in kp_data:
+                if isinstance(row, (list, tuple)) and len(row) >= 4:
+                    lines.append(f"  {row[0]:.10f}  {row[1]:.10f}  {row[2]:.10f}  {row[3]:.10f}")
+        else:
+            # automatic (default)
+            mesh = kpoints.get("mesh", kpoints.get("grid", [4, 4, 4]))
+            shift = kpoints.get("shift", [0, 0, 0])
+            lines.append("K_POINTS (automatic)")
+            lines.append(f"  {mesh[0]} {mesh[1]} {mesh[2]}  {shift[0]} {shift[1]} {shift[2]}")
 
     return "\n".join(lines) + "\n"
 

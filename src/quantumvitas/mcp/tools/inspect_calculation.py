@@ -319,12 +319,25 @@ def _merge_cards_into_params(
     if "kpoints" not in params:
         kp = cards.get("K_POINTS", {})
         if kp:
-            data = kp.get("data", [[4, 4, 4, 0, 0, 0]])
-            row = data[0] if data else [4, 4, 4, 0, 0, 0]
-            params["kpoints"] = {
-                "mesh": list(row[:3]),
-                "shift": list(row[3:6]) if len(row) >= 6 else [0, 0, 0],
-            }
+            kp_option = (kp.get("option") or "").lower()
+            kpath_formats = {"crystal_b", "crystal_c", "tpiba_b", "tpiba_c"}
+            explicit_formats = {"tpiba", "crystal"}
+            if kp_option in kpath_formats or kp_option in explicit_formats:
+                # Preserve full card structure for k-path/explicit formats
+                params["kpoints"] = {
+                    "option": kp.get("option"),
+                    "data": kp.get("data", []),
+                }
+            elif kp_option == "gamma":
+                params["kpoints"] = {"option": "gamma"}
+            else:
+                # automatic or unspecified: extract mesh+shift
+                data = kp.get("data", [[4, 4, 4, 0, 0, 0]])
+                row = data[0] if data else [4, 4, 4, 0, 0, 0]
+                params["kpoints"] = {
+                    "mesh": list(row[:3]),
+                    "shift": list(row[3:6]) if len(row) >= 6 else [0, 0, 0],
+                }
 
     # --- nat / ntyp from structure ---
     if structure_info is not None:

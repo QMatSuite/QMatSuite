@@ -786,4 +786,46 @@ BUILTIN_ENTRIES: list[dict] = [
         "created_by": "qmatsuite-builtin",
         "tags": '["workflow_sequence", "comparison", "consistency", "settings"]',
     },
+
+    # =========================================================================
+    # Band structure nbnd/NBANDS guidance (2)
+    # =========================================================================
+    {
+        "grade": "finding",
+        "scope_engine": "qe",
+        "scope_workflow": "bands",
+        "scope_system_type": "*",
+        "scope_method": "dft",
+        "content": (
+            "For band structure calculations, QE default nbnd = n_electrons/2 "
+            "only includes occupied (valence) bands. To see the band gap and "
+            "conduction bands, set nbnd to at least 2 * (n_electrons/2). "
+            "A practical default: nbnd = n_electrons/2 + max(4, n_electrons/4). "
+            "Set via: set_parameters(calc_ulid=..., step=<bandspw_step>, "
+            "params={'SYSTEM': {'nbnd': <value>}})"
+        ),
+        "confidence": "high",
+        "source_type": "builtin",
+        "source_origin": "QE documentation",
+        "created_by": "qmatsuite-builtin",
+        "tags": '["nbnd", "bands", "band_structure", "conduction_bands"]',
+    },
+    {
+        "grade": "finding",
+        "scope_engine": "vasp",
+        "scope_workflow": "bands",
+        "scope_system_type": "*",
+        "scope_method": "dft",
+        "content": (
+            "For VASP band structure calculations, the default NBANDS may not "
+            "include enough empty bands to see conduction bands clearly. "
+            "Set NBANDS to at least 2 * N_occupied for a useful band structure. "
+            "Set via: set_parameters(calc_ulid=..., params={'INCAR': {'NBANDS': <value>}})"
+        ),
+        "confidence": "high",
+        "source_type": "builtin",
+        "source_origin": "VASP documentation",
+        "created_by": "qmatsuite-builtin",
+        "tags": '["nbands", "bands", "band_structure", "conduction_bands"]',
+    },
 ]
