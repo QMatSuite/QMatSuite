@@ -238,17 +238,17 @@ class TestSiBandsCalculationManualKpath:
                 f"STDERR:\n{result.stderr}"
             )
         
-        # Verify the bands output exists; if not, fail with diagnostics
-        bands_gnu = raw_dir / "si.bands.dat.gnu"
-        if not bands_gnu.exists():
+        # Verify the bands output exists; filband is runtime-managed so use glob
+        gnu_matches = list(raw_dir.glob("*.bands.dat.gnu")) + list(raw_dir.glob("*.gnu"))
+        if not gnu_matches:
             raw_files = sorted(p.name for p in raw_dir.glob("*")) if raw_dir.exists() else []
             crash_files = sorted(p.name for p in raw_dir.glob("CRASH*")) if raw_dir.exists() else []
             pytest.fail(
-                "Bands output not found after running manual k-path calculation:\n"
-                f"Expected: {bands_gnu}\n"
+                "Bands output (.gnu file) not found after running manual k-path calculation:\n"
                 f"Files in raw/: {raw_files}\n"
                 f"CRASH files: {crash_files}"
             )
+        bands_gnu = gnu_matches[0]
         
         # Find the bands.x output for symmetry points
         # Multiple naming conventions: *.bands.out, *bandspp*.out

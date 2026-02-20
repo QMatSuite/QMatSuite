@@ -232,7 +232,8 @@ class TestRealRunSiDOS:
 
         assert "2 2 2 0 0 0" in scf_in, scf_in
         assert "4 4 4 0 0 0" in nscf_in, nscf_in
-        assert "fildos = 'si.dos.dat'" in dos_in or "fildos='si.dos.dat'" in dos_in, dos_in
+        # fildos is runtime-managed: derived from input filename stem, not user value
+        assert "fildos" in dos_in.lower(), f"fildos not found in materialized dos input: {dos_in}"
         assert "emin = -9.0" in dos_in or "emin=-9.0" in dos_in, dos_in
         assert "emax = 16.0" in dos_in or "emax=16.0" in dos_in, dos_in
 
