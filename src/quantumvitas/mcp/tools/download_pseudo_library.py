@@ -5,13 +5,12 @@ from __future__ import annotations
 from quantumvitas.mcp.app import mcp
 from quantumvitas.mcp.envelope import make_error, make_response
 
-_VALID_FLAVORS = frozenset({"efficiency", "precision"})
-
 
 @mcp.tool
 def download_pseudo_library(
-    flavor: str = "efficiency",
-    version: str = "1.3.0",
+    library: str = "sssp",
+    variant: str = "",
+    version: str = "latest",
 ) -> dict:
     """Download and install a pseudopotential library from the QMatSuite asset repository.
 
@@ -26,59 +25,43 @@ def download_pseudo_library(
             'precision' (higher cutoffs, more accurate). Default: 'efficiency'.
         version: Library version. Default: '1.3.0'.
     """
-    if flavor not in _VALID_FLAVORS:
-        return make_error(
-            "invalid_flavor",
-            f"Invalid flavor '{flavor}'. Must be one of: {', '.join(sorted(_VALID_FLAVORS))}.",
-            context_hint="Use flavor='efficiency' for faster calculations or 'precision' for higher accuracy.",
-        )
-
     try:
-        from pathlib import Path
+        from quantumvitas.pseudo import PseudoRegistry, download_and_install
 
-        from quantumvitas.core.pseudo_config import (
-            download_sssp_library,
-            load_pseudo_config,
-        )
+        # Validate library name exists in registry
+        try:
+            registry = PseudoRegistry()
+            info = registry.resolve(library, variant, version)
+        except ValueError as exc:
+            available = registry.list_libraries()
+            lib_names = [lib["library_key"] for lib in available]
+            return make_error(
+                "invalid_library",
+                str(exc),
+                context_hint=f"Available libraries: {', '.join(lib_names)}",
+                suggestions=lib_names,
+            )
 
-        config = load_pseudo_config()
-        store_dir = Path(config.store_dir) if config.store_dir else None
-        seed_dir = Path(config.seed_dir) if config.seed_dir else None
-
-        if store_dir is None:
-            # Use default store directory
-            from quantumvitas.core.pseudo_config import PseudoConfig
-
-            default_store = PseudoConfig.get_default_store_dir()
-            if default_store:
-                store_dir = Path(default_store)
-            else:
-                return make_error(
-                    "no_store_dir",
-                    "Could not determine pseudo store directory.",
-                    context_hint="Set store_dir in pseudo config or ensure ~/.qmatsuite/ is writable.",
-                )
-
-        result = download_sssp_library(
-            store_dir=store_dir,
-            flavor=flavor,
+        # Run the pipeline
+        result = download_and_install(
+            library=library,
+            variant=variant,
             version=version,
-            force=True,
-            allow_download=True,
-            seed_dir=seed_dir,
         )
 
         if result.get("success"):
             return make_response(
                 {
-                    "library": "sssp",
-                    "flavor": flavor,
-                    "version": version,
-                    "files_installed": result.get("files_installed", 0),
+                    "library": result["library_key"],
+                    "variant": result["variant"],
+                    "version": result["version"],
+                    "upf_count": result.get("upf_count", 0),
+                    "install_dir": result.get("install_dir", ""),
                     "messages": result.get("messages", []),
                 },
                 context_hint=(
-                    "SSSP library installed. Use auto_resolve_species_map(calc_ulid=...) "
+                    f"{result['library_key']} {result['variant']} installed. "
+                    "Use auto_resolve_species_map(calc_ulid=...) "
                     "to auto-select pseudopotentials for your calculation."
                 ),
             )
@@ -87,10 +70,10 @@ def download_pseudo_library(
             messages = result.get("messages", [])
             return make_error(
                 "download_failed",
-                f"SSSP download failed: {'; '.join(errors) if errors else 'unknown error'}",
+                f"Download failed: {'; '.join(errors) if errors else 'unknown error'}",
                 context_hint=(
                     "Check network connectivity. "
-                    + (f"Messages: {'; '.join(messages)}" if messages else "")
+                    + (f"Progress: {'; '.join(messages)}" if messages else "")
                 ),
             )
 

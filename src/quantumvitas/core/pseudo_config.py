@@ -1446,6 +1446,47 @@ def resolve_project_pseudos(
             if found:
                 continue
         
+        # 3b. Search new library layout: libraries/pseudo/<Library>/head.json
+        if not found and store_dir:
+            libraries_root = Path(store_dir)
+            if libraries_root.is_dir():
+                for lib_dir in libraries_root.iterdir():
+                    if not lib_dir.is_dir():
+                        continue
+                    head_path = lib_dir / "head.json"
+                    if not head_path.exists():
+                        continue
+                    try:
+                        head = json.loads(head_path.read_text())
+                        upf_dir = lib_dir / head["variant"] / head["version"]
+                        if not upf_dir.is_dir():
+                            continue
+                        for pp_file in upf_dir.glob(f"{element}*.UPF"):
+                            dest = project_pseudo_dir / pp_file.name
+                            shutil.copy(pp_file, dest)
+                            result.mapping[element] = pp_file.name
+                            result.messages.append(
+                                f"{element}: Copied from library {lib_dir.name} ({pp_file.name})"
+                            )
+                            found = True
+                            break
+                        if not found:
+                            for pp_file in upf_dir.glob(f"{element}*.upf"):
+                                dest = project_pseudo_dir / pp_file.name
+                                shutil.copy(pp_file, dest)
+                                result.mapping[element] = pp_file.name
+                                result.messages.append(
+                                    f"{element}: Copied from library {lib_dir.name} ({pp_file.name})"
+                                )
+                                found = True
+                                break
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+                    if found:
+                        break
+            if found:
+                continue
+
         # 4. Try to install from seed if library not present
         if seed_dir and not (library_path and library_path.exists()):
             seed_path = get_sssp_seed_path(seed_dir, request.version, request.flavor)

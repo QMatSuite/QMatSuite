@@ -229,38 +229,48 @@ class TestDownloadPseudoLibrary:
         # Tool should be callable
         assert callable(download_pseudo_library.fn)
 
-    def test_invalid_flavor_error(self):
-        """Invalid flavor must return an error."""
+    def test_invalid_library_error(self):
+        """Invalid library must return an error."""
         from quantumvitas.mcp.tools.download_pseudo_library import download_pseudo_library
 
-        result = download_pseudo_library.fn(flavor="invalid_flavor")
+        result = download_pseudo_library.fn(library="nonexistent_library")
         assert result["status"] == "error"
-        assert result["error_type"] == "invalid_flavor"
+        assert result["error_type"] == "invalid_library"
 
     def test_tool_returns_expected_structure(self, monkeypatch):
         """When download succeeds, response has expected keys."""
         from quantumvitas.mcp.tools import download_pseudo_library as mod
 
-        # Mock the download function to avoid network calls
-        def mock_download(store_dir, flavor, version, force, allow_download, seed_dir):
+        # Mock the pipeline to avoid network calls
+        def mock_pipeline(library, variant, version):
             return {
                 "success": True,
-                "files_installed": 42,
+                "library_key": "sssp",
+                "variant": "efficiency",
+                "version": "1.3.0",
+                "upf_count": 42,
+                "install_dir": "/tmp/test",
                 "messages": ["Installed 42 pseudopotentials"],
                 "errors": [],
             }
 
         monkeypatch.setattr(
-            "quantumvitas.core.pseudo_config.download_sssp_library",
-            mock_download,
+            "quantumvitas.pseudo.pipeline.download_and_install",
+            mock_pipeline,
+        )
+        monkeypatch.setattr(
+            "quantumvitas.pseudo.download_and_install",
+            mock_pipeline,
         )
 
-        result = mod.download_pseudo_library.fn(flavor="efficiency")
+        result = mod.download_pseudo_library.fn(
+            library="sssp", variant="efficiency", version="1.3.0"
+        )
         assert result["status"] == "success"
         data = result["data"]
         assert data["library"] == "sssp"
-        assert data["flavor"] == "efficiency"
-        assert data["files_installed"] == 42
+        assert data["variant"] == "efficiency"
+        assert data["upf_count"] == 42
 
 
 # ---------------------------------------------------------------------------
