@@ -157,9 +157,10 @@ def test_add_step_to_calculation_with_defaults(temp_project):
 
     # Verify nscf defaults are present
     assert spec.parameters["CONTROL"]["calculation"] == "nscf"
-    # SYSTEM.occupations should NOT be present by default (only if explicitly set)
-    assert "occupations" not in spec.parameters.get("SYSTEM", {}), \
-        "occupations should not be in SYSTEM by default - only if explicitly set"
+    # SYSTEM.occupations is now set by default (smearing) for safe metal handling
+    assert spec.parameters.get("SYSTEM", {}).get("occupations") == "smearing"
+    assert spec.parameters.get("SYSTEM", {}).get("smearing") == "gaussian"
+    assert spec.parameters.get("SYSTEM", {}).get("degauss") == 0.01
     assert "K_POINTS" in spec.cards
 
 

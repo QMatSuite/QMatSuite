@@ -238,3 +238,97 @@ class TestRenderBundleToAscii:
         text = render_bundle_to_ascii(bundle)
         # xlabel comes from render_meta.axis_labels["x"] = "Iteration"
         assert "Iteration" in text
+
+
+# ===========================================================================
+# plotext renderer tests
+# ===========================================================================
+
+class TestPlotextRenderer:
+    def test_plotext_available(self):
+        """plotext is installed and importable."""
+        import plotext
+        assert plotext is not None
+
+    def test_convergence_renders(self):
+        """Convergence bundle renders via plotext."""
+        from quantumvitas.mcp.renderers.plotext_renderer import (
+            render_bundle_with_plotext,
+        )
+        bundle = _make_convergence_bundle()
+        result = render_bundle_with_plotext(bundle)
+        assert result is not None
+        lines = result.strip().split("\n")
+        assert len(lines) >= 5
+        assert "CONVERGENCE" in result
+
+    def test_dos_renders(self):
+        """DOS bundle renders via plotext."""
+        from quantumvitas.mcp.renderers.plotext_renderer import (
+            render_bundle_with_plotext,
+        )
+        bundle = _make_dos_bundle()
+        result = render_bundle_with_plotext(bundle)
+        assert result is not None
+        lines = result.strip().split("\n")
+        assert len(lines) >= 5
+        assert "DOS" in result
+
+    def test_bands_renders(self):
+        """Bands bundle with 5 series renders without error."""
+        from quantumvitas.mcp.renderers.plotext_renderer import (
+            render_bundle_with_plotext,
+        )
+        bundle = _make_bands_bundle()
+        result = render_bundle_with_plotext(bundle)
+        assert result is not None
+        lines = result.strip().split("\n")
+        assert len(lines) >= 5
+        assert "BANDS" in result
+
+    def test_bands_with_fermi_shift(self):
+        """Bands with reference_energy shifts y-axis label."""
+        from quantumvitas.mcp.renderers.plotext_renderer import (
+            render_bundle_with_plotext,
+        )
+        k_dist = np.linspace(0.0, 1.0, 20)
+        series = [
+            Series1D(
+                x=k_dist, y=-5.0 + 2.0 * k_dist,
+                x_label="k-path", y_label="Energy",
+                x_unit="1/A", y_unit="eV",
+                name="band_0",
+            )
+        ]
+        bundle = CanonicalPrimitiveBundle(
+            object_type="bands",
+            series=series,
+            render_meta=RenderMeta(
+                axis_labels={"x": "k-path", "y": "Energy"},
+                units={"energy": "eV"},
+                reference_energy=2.0,
+                markers=[
+                    Marker(position=0.0, label="Γ", axis="x"),
+                    Marker(position=1.0, label="X", axis="x"),
+                ],
+            ),
+            provenance_meta=ProvenanceMeta(schema_version="1.0", object_type="bands"),
+        )
+        result = render_bundle_with_plotext(bundle)
+        assert "E_F" in result or "E - E_F" in result
+
+    def test_no_ansi_codes(self):
+        """Output should be free of ANSI escape codes."""
+        from quantumvitas.mcp.renderers.plotext_renderer import (
+            render_bundle_with_plotext,
+        )
+        bundle = _make_convergence_bundle()
+        result = render_bundle_with_plotext(bundle)
+        assert "\x1b" not in result
+
+    def test_render_bundle_to_ascii_uses_plotext(self):
+        """render_bundle_to_ascii should use plotext when available."""
+        bundle = _make_convergence_bundle()
+        text = render_bundle_to_ascii(bundle)
+        # plotext produces box-drawing border characters
+        assert "┌" in text or "┐" in text or "└" in text or "┘" in text

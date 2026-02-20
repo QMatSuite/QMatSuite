@@ -828,4 +828,75 @@ BUILTIN_ENTRIES: list[dict] = [
         "created_by": "qmatsuite-builtin",
         "tags": '["nbands", "bands", "band_structure", "conduction_bands"]',
     },
+
+    # =========================================================================
+    # Occupations crash recovery + degauss guidance (3)
+    # =========================================================================
+    {
+        "grade": "principle",
+        "scope_engine": "qe",
+        "scope_workflow": "*",
+        "scope_system_type": "metal",
+        "scope_method": "dft",
+        "content": (
+            "For metallic systems, you MUST use occupations='smearing' with "
+            "smearing='gaussian' (or 'm-p') and degauss=0.01-0.02 Ry. "
+            "Using occupations='fixed' on metals causes numerical instability: "
+            "IEEE floating-point exceptions (DIVIDE_BY_ZERO, INVALID_FLAG), "
+            "SCF non-convergence, or immediate crashes. QMatSuite defaults "
+            "now include occupations='smearing' with degauss=0.01 Ry, which "
+            "is safe for all material types."
+        ),
+        "confidence": "high",
+        "source_type": "builtin",
+        "source_origin": "DFT best practices + demo postmortem",
+        "created_by": "qmatsuite-builtin",
+        "tags": '["occupations", "smearing", "metal", "crash", "IEEE", "floating_point", "degauss", "fixed"]',
+    },
+    {
+        "grade": "finding",
+        "scope_engine": "qe",
+        "scope_workflow": "bands",
+        "scope_system_type": "*",
+        "scope_method": "dft",
+        "content": (
+            "If bandspw (calculation='bands') crashes with IEEE_INVALID_FLAG, "
+            "IEEE_DIVIDE_BY_ZERO, or 'floating invalid operation', the most "
+            "common cause is occupations='fixed' on a metallic system. Fix by "
+            "setting occupations='smearing', smearing='gaussian', degauss=0.01 "
+            "in SYSTEM namelist for BOTH the SCF step and the bandspw step. "
+            "Also ensure nbnd is set high enough to include empty bands "
+            "(nbnd >= 2 * n_electrons/2). "
+            "Set via: set_parameters(calc_ulid=..., step=<step>, "
+            "params={'SYSTEM': {'occupations': 'smearing', 'smearing': "
+            "'gaussian', 'degauss': 0.01}})"
+        ),
+        "confidence": "high",
+        "source_type": "builtin",
+        "source_origin": "Demo postmortem: Al bands crash",
+        "created_by": "qmatsuite-builtin",
+        "tags": '["bandspw", "bands", "IEEE", "crash", "floating_point", "occupations", "smearing", "degauss", "divide_by_zero"]',
+    },
+    {
+        "grade": "observation",
+        "scope_engine": "qe",
+        "scope_workflow": "*",
+        "scope_system_type": "*",
+        "scope_method": "dft",
+        "content": (
+            "degauss=0.01 Ry (~0.14 eV) is safe for all material types. "
+            "For metals with difficult Fermi surfaces (Fe, Ni, transition "
+            "metals), increase to 0.02 Ry. For insulators and semiconductors, "
+            "small degauss has negligible effect on results because the band "
+            "gap is much larger than degauss. Using occupations='smearing' "
+            "with small degauss is universally safer than occupations='fixed' "
+            "and avoids crashes on metals. Check entropy term (smearing "
+            "contrib.) is < 1 meV/atom to verify degauss is appropriate."
+        ),
+        "confidence": "high",
+        "source_type": "builtin",
+        "source_origin": "DFT best practices",
+        "created_by": "qmatsuite-builtin",
+        "tags": '["degauss", "smearing", "occupations", "sigma", "entropy", "metal", "insulator"]',
+    },
 ]

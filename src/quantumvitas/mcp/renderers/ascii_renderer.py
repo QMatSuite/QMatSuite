@@ -63,11 +63,31 @@ def _unicode_bar(value: float, max_val: float, width: int = 40) -> str:
 
 def render_bundle_to_ascii(bundle: CanonicalPrimitiveBundle,
                            width: int = 78, height: int = 16) -> str:
-    """Render any bundle with Series1D data to a 2D terminal chart string."""
-    from quantumvitas.mcp.renderers.terminal_chart import TerminalChart
+    """Render any bundle with Series1D data to a 2D terminal chart string.
 
+    Uses plotext as the primary renderer (higher quality braille/block output).
+    Falls back to the built-in TerminalChart if plotext is unavailable.
+    """
     if not bundle.series:
         return f"=== {bundle.object_type.upper()} ===\n\n(no data)"
+
+    # Try plotext first (primary renderer)
+    try:
+        from quantumvitas.mcp.renderers.plotext_renderer import (
+            render_bundle_with_plotext,
+        )
+        return render_bundle_with_plotext(bundle, width=width, height=height + 2)
+    except Exception:
+        pass
+
+    # Fallback: built-in TerminalChart
+    return _render_with_terminal_chart(bundle, width=width, height=height)
+
+
+def _render_with_terminal_chart(bundle: CanonicalPrimitiveBundle,
+                                width: int = 78, height: int = 16) -> str:
+    """Fallback renderer using the built-in TerminalChart (pure stdlib)."""
+    from quantumvitas.mcp.renderers.terminal_chart import TerminalChart
 
     chart = TerminalChart(width=width, height=height,
                           title=bundle.object_type.upper())
