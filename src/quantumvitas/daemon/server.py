@@ -819,7 +819,7 @@ class QVDaemon:
         
         Payload:
             version: Optional[str] - SSSP version (default: all available)
-            flavor: Optional[str] - SSSP flavor (default: all available)
+            variant: Optional[str] - SSSP variant (default: all available)
             
         Returns:
             success: bool
@@ -849,7 +849,7 @@ class QVDaemon:
             }
 
         version = payload.get("version", "1.3.0")
-        variant = payload.get("variant") or payload.get("flavor", "precision")
+        variant = payload.get("variant", "precision")
 
         result = QVService.Pseudo.download_and_install(
             library="sssp", variant=variant, version=version,
@@ -887,14 +887,14 @@ class QVDaemon:
         Download a specific SSSP library from Materials Cloud.
         
         Payload:
-            flavor: str - "efficiency" or "precision"
+            variant: str - "efficiency" or "precision"
             version: Optional[str] - SSSP version (default: "1.3.0")
             force: Optional[bool] - If True, download even if allow_download is off
             
         Returns:
             success: bool
             version: str
-            flavor: str
+            variant: str
             files_installed: int
             messages: List[str]
             errors: List[str]
@@ -903,7 +903,7 @@ class QVDaemon:
         from quantumvitas.api import QVService
         from pathlib import Path
 
-        variant = payload.get("variant") or payload.get("flavor")
+        variant = payload.get("variant")
         if not variant:
             raise ValueError("variant is required ('efficiency' or 'precision')")
         if variant not in ("efficiency", "precision"):
@@ -1196,7 +1196,7 @@ class QVDaemon:
             Dict with success, messages, errors.
         """
         library = payload.get("library", "sssp")
-        variant = payload.get("variant", payload.get("flavor", "precision"))
+        variant = payload.get("variant", "precision")
         version = payload.get("version", "1.3.0")
 
         try:

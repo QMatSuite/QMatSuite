@@ -474,41 +474,23 @@ def _find_file_in_dir(directory: Path, exact_filename: str | None, element: str)
 
 
 def _scan_installed_libraries(libraries_root: Path) -> list[dict]:
-    """Three-level walk of NEW layout to discover installed libraries.
-
-    Layout: ``<libraries_root>/<dir_name>/<variant>/<version>/head.json``
+    """Discover installed libraries via shared three-level walk.
 
     Returns a list of dicts with keys:
         library_key, variant, version, upf_dir (Path), head (full dict).
     """
-    results: list[dict] = []
-    if not libraries_root.is_dir():
-        return results
+    from quantumvitas.pseudo.layout import iter_installed_libraries
 
-    for lib_dir in sorted(libraries_root.iterdir()):
-        if not lib_dir.is_dir():
-            continue
-        for variant_dir in sorted(lib_dir.iterdir()):
-            if not variant_dir.is_dir():
-                continue
-            for version_dir in sorted(variant_dir.iterdir()):
-                if not version_dir.is_dir():
-                    continue
-                head_path = version_dir / "head.json"
-                if not head_path.exists():
-                    continue
-                try:
-                    head = json.loads(head_path.read_text())
-                    results.append({
-                        "library_key": head.get("library_key", lib_dir.name),
-                        "variant": head.get("variant", variant_dir.name),
-                        "version": head.get("version", version_dir.name),
-                        "upf_dir": version_dir,
-                        "head": head,
-                    })
-                except (json.JSONDecodeError, KeyError):
-                    continue
-    return results
+    return [
+        {
+            "library_key": lib.library_key,
+            "variant": lib.variant,
+            "version": lib.version,
+            "upf_dir": lib.install_dir,
+            "head": lib.head,
+        }
+        for lib in iter_installed_libraries(libraries_root)
+    ]
 
 
 def resolve_project_pseudos(
@@ -552,14 +534,23 @@ def resolve_project_pseudos(
             if cutoffs_path.exists():
                 try:
                     cutoffs_data = json.loads(cutoffs_path.read_text())
-                    for elem_data in cutoffs_data if isinstance(cutoffs_data, list) else []:
-                        if "element" in elem_data:
-                            elem = elem_data["element"]
-                            if elem not in result.cutoffs:
+                    if isinstance(cutoffs_data, dict):
+                        # SSSP JSON: {"Ac": {"filename":..., "cutoff_wfc":40, "cutoff_rho":320}, ...}
+                        for elem, elem_data in cutoffs_data.items():
+                            if isinstance(elem_data, dict) and elem not in result.cutoffs:
                                 result.cutoffs[elem] = {
                                     "ecutwfc": elem_data.get("cutoff_wfc", 0),
                                     "ecutrho": elem_data.get("cutoff_rho", 0),
                                 }
+                    elif isinstance(cutoffs_data, list):
+                        for elem_data in cutoffs_data:
+                            if "element" in elem_data:
+                                elem = elem_data["element"]
+                                if elem not in result.cutoffs:
+                                    result.cutoffs[elem] = {
+                                        "ecutwfc": elem_data.get("cutoff_wfc", 0),
+                                        "ecutrho": elem_data.get("cutoff_rho", 0),
+                                    }
                 except Exception as e:
                     result.warnings.append(f"Failed to load cutoffs from {cutoffs_path}: {e}")
                 break  # found one, stop searching

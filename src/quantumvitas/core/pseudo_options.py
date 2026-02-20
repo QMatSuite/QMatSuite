@@ -47,45 +47,24 @@ from quantumvitas.core.pseudo_provenance import (
 
 def _find_upf_in_libraries(filename: str) -> Path | None:
     """Find a UPF file by name in installed pseudo libraries (NEW layout)."""
-    libraries_root = home_pseudo_libraries_dir()
-    if not libraries_root.is_dir():
-        return None
-    for lib_dir in libraries_root.iterdir():
-        if not lib_dir.is_dir():
-            continue
-        for variant_dir in lib_dir.iterdir():
-            if not variant_dir.is_dir():
-                continue
-            for version_dir in variant_dir.iterdir():
-                if not version_dir.is_dir():
-                    continue
-                upf_path = version_dir / filename
-                if upf_path.is_file():
-                    return upf_path
-    return None
+    from quantumvitas.pseudo.layout import find_upf_in_libraries
+
+    return find_upf_in_libraries(home_pseudo_libraries_dir(), filename)
 
 
 def _find_upf_by_sha256_in_libraries(sha256: str) -> Path | None:
     """Find a UPF file by SHA256 in installed pseudo libraries (NEW layout)."""
+    from quantumvitas.pseudo.layout import iter_installed_libraries
+
     libraries_root = home_pseudo_libraries_dir()
-    if not libraries_root.is_dir():
-        return None
-    for lib_dir in libraries_root.iterdir():
-        if not lib_dir.is_dir():
-            continue
-        for variant_dir in lib_dir.iterdir():
-            if not variant_dir.is_dir():
-                continue
-            for version_dir in variant_dir.iterdir():
-                if not version_dir.is_dir():
+    for lib in iter_installed_libraries(libraries_root):
+        for f in lib.install_dir.iterdir():
+            if f.suffix.lower() == ".upf" and f.is_file():
+                try:
+                    if compute_sha256_file(f) == sha256:
+                        return f
+                except Exception:
                     continue
-                for f in version_dir.iterdir():
-                    if f.suffix.lower() == ".upf" and f.is_file():
-                        try:
-                            if compute_sha256_file(f) == sha256:
-                                return f
-                        except Exception:
-                            continue
     return None
 
 

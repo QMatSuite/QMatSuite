@@ -10,6 +10,13 @@ Public API::
     result = download_and_install(library="sssp", variant="precision")
 """
 
+from quantumvitas.pseudo.layout import (
+    InstalledLibrary,
+    find_installed_library,
+    find_upf_in_libraries,
+    find_upf_in_libraries_casefold,
+    iter_installed_libraries,
+)
 from quantumvitas.pseudo.pipeline import download_and_install
 from quantumvitas.pseudo.registry import (
     ArchiveInfo,
@@ -20,8 +27,13 @@ from quantumvitas.pseudo.registry import (
 
 __all__ = [
     "ArchiveInfo",
+    "InstalledLibrary",
     "PseudoRegistry",
     "archive_install_relpath",
     "download_and_install",
+    "find_installed_library",
+    "find_upf_in_libraries",
+    "find_upf_in_libraries_casefold",
+    "iter_installed_libraries",
     "resolve_element_from_index",
 ]

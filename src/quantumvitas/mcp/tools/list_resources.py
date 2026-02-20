@@ -92,9 +92,6 @@ def list_available_resources(
 
 def _list_qe_resources(elements: list[str] | None) -> dict:
     """List available QE pseudopotentials."""
-    import json
-    from pathlib import Path
-
     from quantumvitas.core.paths import home_pseudo_libraries_dir
     from quantumvitas.mcp.project import ProjectNotFoundError, get_service
 
@@ -107,57 +104,39 @@ def _list_qe_resources(elements: list[str] | None) -> dict:
         # Default to common elements available in internal resources
         elements = ["Si", "Al", "C", "H", "O", "Fe", "Cu", "Li", "He"]
 
-    # Discover installed libraries via three-level walk (NEW layout)
+    # Discover installed libraries via shared utility
     installed_libraries: list[dict] = []
     try:
+        from quantumvitas.pseudo.layout import iter_installed_libraries
         from quantumvitas.pseudo.registry import resolve_element_from_index
 
         libraries_root = home_pseudo_libraries_dir()
-        if libraries_root.is_dir():
-            for lib_dir in sorted(libraries_root.iterdir()):
-                if not lib_dir.is_dir():
-                    continue
-                for variant_dir in sorted(lib_dir.iterdir()):
-                    if not variant_dir.is_dir():
-                        continue
-                    for version_dir in sorted(variant_dir.iterdir()):
-                        if not version_dir.is_dir():
-                            continue
-                        head_path = version_dir / "head.json"
-                        if not head_path.exists():
-                            continue
-                        try:
-                            head = json.loads(head_path.read_text())
-                            lib_key = head.get("library_key", lib_dir.name)
-                            variant = head.get("variant", variant_dir.name)
-                            version = head.get("version", version_dir.name)
-                            upf_count = sum(
-                                1
-                                for f in version_dir.iterdir()
-                                if f.suffix.lower() == ".upf"
-                            )
+        for lib in iter_installed_libraries(libraries_root):
+            upf_count = sum(
+                1
+                for f in lib.install_dir.iterdir()
+                if f.suffix.lower() == ".upf"
+            )
 
-                            # Check which requested elements are available
-                            available_elements: list[str] = []
-                            if lib_key and elements:
-                                for elem in elements:
-                                    fname = resolve_element_from_index(
-                                        lib_key, variant, version, elem
-                                    )
-                                    if fname:
-                                        available_elements.append(elem)
+            # Check which requested elements are available
+            available_elements: list[str] = []
+            if lib.library_key and elements:
+                for elem in elements:
+                    fname = resolve_element_from_index(
+                        lib.library_key, lib.variant, lib.version, elem
+                    )
+                    if fname:
+                        available_elements.append(elem)
 
-                            lib_info: dict = {
-                                "name": lib_dir.name,
-                                "variant": variant,
-                                "version": version,
-                                "upf_count": upf_count,
-                            }
-                            if available_elements:
-                                lib_info["available_elements"] = available_elements
-                            installed_libraries.append(lib_info)
-                        except (json.JSONDecodeError, KeyError, OSError):
-                            continue
+            lib_info: dict = {
+                "name": lib.install_dir.parent.parent.name,
+                "variant": lib.variant,
+                "version": lib.version,
+                "upf_count": upf_count,
+            }
+            if available_elements:
+                lib_info["available_elements"] = available_elements
+            installed_libraries.append(lib_info)
     except Exception:
         pass
 
