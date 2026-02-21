@@ -20,26 +20,26 @@ structures:
     charge: 0
     lattice:
       matrix:
-      - - 2.75
-        - 2.75
+      - - 2.9
+        - 2.9
         - 0.0
       - - 0.0
-        - 2.75
-        - 2.75
-      - - 2.75
+        - 2.9
+        - 2.9
+      - - 2.9
         - 0.0
-        - 2.75
+        - 2.9
       pbc:
       - true
       - true
       - true
-      a: 3.8890872965260113
-      b: 3.8890872965260113
-      c: 3.8890872965260113
+      a: 4.101219330947816
+      b: 4.101219330947816
+      c: 4.101219330947816
       alpha: 59.99999999999999
       beta: 59.99999999999999
       gamma: 59.99999999999999
-      volume: 41.59375
+      volume: 48.778000000000006
     properties: {}
     sites:
     - species:
@@ -65,9 +65,9 @@ structures:
       properties: {}
       label: Si
       xyz:
-      - 1.4300000000000002
-      - 1.4300000000000002
-      - 1.4300000000000002
+      - 1.508
+      - 1.508
+      - 1.508
 calculations:
 - meta:
     ulid: 01KD9DD3JV3S1C9VKNJSHN2TSW
@@ -92,7 +92,7 @@ calculations:
       NumberOfSpecies: 1
       PAO.BasisSize: DZP
       PAO.EnergyShift: 100 meV
-      LatticeConstant: 5.50 Ang
+      LatticeConstant: 5.80 Ang
       AtomicCoordinatesFormat: ScaledCartesian
       kgrid:
       - - 4
@@ -115,13 +115,13 @@ calculations:
       XC.functional: GGA
       XC.authors: PBE
       MD.TypeOfRun: CG
-      MD.NumCGsteps: 20
+      MD.NumCGsteps: 50
       MD.MaxForceTol: 0.02 eV/Ang
       MD.VariableCell: true
       MD.MaxStressTol: 0.5 GPa
       WriteForces: true
       WriteCoorXmol: true
-      WriteMDXmol: true
+      WriteMDXmol: false
       WriteMDhistory: true
       znucl:
         Si: 14
@@ -133,15 +133,31 @@ meta:
   ulid: siesta_si_relax
   title: Silicon variable-cell CG relaxation
   subtitle: relax
+  description: Variable-cell CG relaxation of bulk silicon using GGA-PBE with a DZP NAO basis set; relaxes both atomic positions
+    and the unit cell.
   tags:
   - relax
   - vc_relax
   - periodic
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 4.2
+  multi_engine: false
+  engines_used:
+  - siesta
+  n_steps: 1
+  step_summary: Relax
+  available_analysis:
+  - convergence
+  - trajectory
   required_engine: siesta
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: siesta
   corpus_case_id: si_relax
-  corpus_checksum: 37e2ddc3abafea5063f9ba0a8808f3ec6bcb25728e575e3af0ca73da31e33bdf
+  corpus_checksum: f564ee986e03df788e2a7fdfe74eba2a9aa2e290fba425f118bcd88379ac042b

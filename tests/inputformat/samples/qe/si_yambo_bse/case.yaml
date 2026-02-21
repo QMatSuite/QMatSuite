@@ -1,11 +1,9 @@
 case_id: si_yambo_bse
 engine: qe
 title: Silicon BSE Haydock (QE to Yambo BSE pipeline)
-description: >-
-  Full QE->Yambo composite pipeline for Si BSE optical spectrum.
-  SCF -> NSCF -> yambo_setup (runs p2y internally) -> yambo_bse.
-  BSE with SEX kernel and Haydock iterative solver.
-  The Yambo .in file is parsed by the Yambo engine parser.
+description: Silicon optical absorption spectrum via Bethe-Salpeter equation using
+  the QE→Yambo pipeline, with SEX kernel and Haydock iterative solver for excitonic
+  effects in the optical response.
 workflow_tags:
 - scf
 - nscf
@@ -56,3 +54,17 @@ asset_requirements:
 attribution:
   source: Constructed for QMatSuite, inspired by Yambo tutorials
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: bse-gw
+property_of_interest: absorption
+spin_treatment: nonmagnetic
+estimated_runtime_s: 44.4
+n_steps: 4
+step_summary: SCF → NSCF → Yambo setup → BSE
+available_analysis:
+- convergence
+multi_engine: true
+engines_used:
+- qe
+- yambo

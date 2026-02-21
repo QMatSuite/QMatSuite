@@ -1,0 +1,13 @@
+{
+  "demo_slug": "psi4_h2o_opt",
+  "engine": "psi4",
+  "generated_at": "2026-02-21T01:45:53.627201+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "01399616b0f47e17fbbd8a4553b46318a0b0ff788c0b70ffdeb578c9f921e7ff"
+    }
+  }
+}

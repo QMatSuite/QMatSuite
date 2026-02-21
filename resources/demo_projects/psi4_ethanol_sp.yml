@@ -139,6 +139,7 @@ meta:
   ulid: psi4_ethanol_sp
   title: Ethanol Psi4 Single Point
   subtitle: HF/6-31G* single-point for ethanol
+  description: HF/6-31G* single-point energy calculation on ethanol molecule
   tags:
   - psi4
   - molecular
@@ -148,9 +149,22 @@ meta:
   - tutorial
   recommended_analysis: energy
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: hf
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 4.2
+  multi_engine: false
+  engines_used:
+  - psi4
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   required_engine: psi4
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: psi4
   corpus_case_id: ethanol_sp
-  corpus_checksum: 9ac2ed6d02d94db592073868376781b8d7eca432f50c6341d53c48ca04d61060
+  corpus_checksum: 8fc145ee46901d9a59a5b9a36ad8561a453179935b68bfc190d4a84d98fe45b5

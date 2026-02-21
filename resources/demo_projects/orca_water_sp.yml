@@ -80,15 +80,30 @@ meta:
   ulid: orca_water_sp
   title: Water Single-Point Energy
   subtitle: B3LYP/def2-SVP DFT calculation on water molecule
+  description: B3LYP/def2-TZVP single-point energy for the water molecule with D3BJ dispersion correction and RIJCOSX density
+    fitting.
   tags:
   - scf
   - dft
   - small-molecule
   recommended_analysis: scf
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: dft-b3lyp
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 0.7
+  multi_engine: false
+  engines_used:
+  - orca
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   required_engine: orca
   availability: requires_local_install
   generator_version: 1.0.0
   corpus_engine: orca
   corpus_case_id: water_sp
-  corpus_checksum: 0c6899e5b97792d7f08dbe32606601b5fcb83aa8e22c8e7c5df284b37db42a07
+  corpus_checksum: 2a60476bf517aa026473205e98222ed2ec20769d43d19345aff061828e439062

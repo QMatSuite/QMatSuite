@@ -187,15 +187,32 @@ meta:
   ulid: vasp_si_bands
   title: Silicon diamond band structure
   subtitle: SCF -> Bands
+  description: Band structure of bulk silicon along the G-X-W-K-G-L path computed with ICHARG=11 (non-SCF) using a pre-converged
+    charge density and PBE.
   tags:
   - bands
   - nscf
   recommended_analysis: bands
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: band_structure
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 19.1
+  multi_engine: false
+  engines_used:
+  - vasp
+  n_steps: 2
+  step_summary: SCF → Bands
+  available_analysis:
+  - bands
+  - convergence
+  - field3d
   asset_policy: proprietary
   required_engine: vasp
   availability: requires_local_install
   generator_version: 1.0.0
   corpus_engine: vasp
   corpus_case_id: si_bands
-  corpus_checksum: 712a26d5ac2e1a4af0201511cc2473efce9534f978e70b8cabb73ea7767b1958
+  corpus_checksum: 7e4e8aebc7839874768be17704307367c691dbb2f25b0f49afd172614d431c1b

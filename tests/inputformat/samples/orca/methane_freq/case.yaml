@@ -11,7 +11,8 @@ species:
 - H
 functional: B3LYP
 basis_set: DEF2-TZVP
-description: Vibrational frequency analysis with thermochemistry at 298.15 K
+description: B3LYP/def2-TZVP vibrational frequency analysis for methane, including
+  thermochemistry at 298.15 K.
 demo_eligible: true
 step_type_gen: freq
 step_type_spec: orca_freq
@@ -24,3 +25,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: molecule
+periodicity: molecular
+method: dft-b3lyp
+property_of_interest: vibrational
+spin_treatment: nonmagnetic
+estimated_runtime_s: 1.3
+n_steps: 1
+step_summary: Freq
+available_analysis:
+- convergence

@@ -163,6 +163,8 @@ meta:
   ulid: qe_he_qmcpack_vmc
   title: He atom QE to QMCPACK VMC pipeline
   subtitle: QE SCF -> pw2qmcpack -> QMCPACK VMC
+  description: 'Helium atom VMC total energy calculation using the QE→QMCPACK pipeline: DFT-PBE SCF in a large cubic box generates
+    the trial wavefunction, pw2qmcpack converts it to HDF5, and QMCPACK runs VMC with a Pade Jastrow.'
   tags:
   - qmcpack
   - composite
@@ -171,10 +173,24 @@ meta:
   - atom
   recommended_analysis: energy
   difficulty: intermediate
+  system_class: molecule
+  periodicity: molecular
+  method: vmc-dft
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 54.1
+  multi_engine: true
+  engines_used:
+  - qe
+  - qmcpack
+  n_steps: 3
+  step_summary: SCF → pw2qmcpack → VMC
+  available_analysis:
+  - convergence
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: he_qmcpack_vmc
-  corpus_checksum: fea9b4149d57c51f8e7cc017acf6838464fbcc892f6e50bf6cc7013ccd11f2e9
+  corpus_checksum: 12725e30d9dd48bd44495fd68cd433f3e2615e56edcb8b709df815d29ae504ae

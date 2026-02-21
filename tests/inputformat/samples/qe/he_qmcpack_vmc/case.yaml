@@ -1,11 +1,9 @@
 case_id: he_qmcpack_vmc
 engine: qe
 title: He atom QE to QMCPACK VMC pipeline
-description: >-
-  Minimal QE->QMCPACK composite pipeline for He atom VMC.
-  SCF -> pw2qmcpack -> QMCPACK VMC. All-electron He atom with STO basis
-  and Pade Jastrow. No pseudopotentials needed for the QMC step.
-  The QMCPACK XML input is parsed by the QMCPACK engine parser.
+description: 'Helium atom VMC total energy calculation using the QE→QMCPACK pipeline:
+  DFT-PBE SCF in a large cubic box generates the trial wavefunction, pw2qmcpack converts
+  it to HDF5, and QMCPACK runs VMC with a Pade Jastrow.'
 workflow_tags:
 - scf
 - pw2qmcpack
@@ -52,3 +50,17 @@ asset_requirements:
 attribution:
   source: Constructed for QMatSuite, inspired by QMCPACK tutorials
   license: MIT (QMatSuite)
+system_class: molecule
+periodicity: molecular
+method: vmc-dft
+property_of_interest: total_energy
+spin_treatment: nonmagnetic
+estimated_runtime_s: 54.1
+n_steps: 3
+step_summary: SCF → pw2qmcpack → VMC
+available_analysis:
+- convergence
+multi_engine: true
+engines_used:
+- qe
+- qmcpack

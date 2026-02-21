@@ -23,3 +23,14 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: molecule
+periodicity: molecular
+method: b3lyp
+property_of_interest: geometry
+spin_treatment: nonmagnetic
+estimated_runtime_s: 1.9
+n_steps: 1
+step_summary: Geo-opt
+available_analysis:
+- convergence
+- trajectory

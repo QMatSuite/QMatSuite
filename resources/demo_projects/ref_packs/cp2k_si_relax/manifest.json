@@ -1,17 +1,17 @@
 {
   "demo_slug": "cp2k_si_relax",
   "engine": "cp2k",
-  "generated_at": "2026-02-13T19:41:59.803951+00:00",
+  "generated_at": "2026-02-21T01:45:31.426712+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "d144b42fa443aad13f5d21daf7e718aa4013fc272ef64a1167cd4ee9dca00c75"
+      "sha256": "03f4a69db1ad778dea132c0ef8b4d74308b5a59d9b6ee40028360d69479d4c0b"
     },
     "trajectory": {
       "file": "trajectory.json",
-      "sha256": "edc9e93ee0c90ef6e422d96f73dc28b704d963eae2c3528ab8f41586d6782c21"
+      "sha256": "e663982d87e9db171ea44651c3883599bc7a3fc6236f0f38a3620db5d30c5435"
     }
   }
 }

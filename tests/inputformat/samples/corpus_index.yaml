@@ -737,13 +737,51 @@ entries:
     vendored: true
   exclusion_reason: null
   attribution:
-    source: Constructed for QMatSuite, inspired by QE tutorials
+    source: QE tutorial (tests/data/6_Al_DOS), relaxation step removed per Rule CS3
+    license: MIT (QMatSuite)
+- engine: qe
+  case_id: copper_wannier
+  dir_name: copper_wannier
+  demo_eligible: true
+  demo_slug: qe_copper_wannier
+  runnable: true
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  required_assets:
+  - type: pseudopotential
+    file: Cu.pz-n-van_ak.UPF
+    element: Cu
+    source: resources/pseudo
+    vendored: true
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 6
+    license: MIT (QMatSuite)
+- engine: qe
+  case_id: diamond_wannier
+  dir_name: diamond_wannier
+  demo_eligible: true
+  demo_slug: qe_diamond_wannier
+  runnable: true
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  required_assets:
+  - type: pseudopotential
+    file: C.pz-vbc.UPF
+    element: C
+    source: resources/pseudo
+    vendored: true
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 5
     license: MIT (QMatSuite)
 - engine: qe
   case_id: fe_dos
   dir_name: fe_dos
   demo_eligible: true
-  demo_slug: qe_fe_dos
+  demo_slug: qe_fe_scf
   runnable: true
   asset_policy: redistributable
   required_engine: qe
@@ -775,7 +813,61 @@ entries:
     vendored: true
   exclusion_reason: null
   attribution:
-    source: Constructed for QMatSuite, inspired by QE tutorials
+    source: QE tutorial (tests/data/13_graphene), relaxation step removed per Rule
+      CS3
+    license: MIT (QMatSuite)
+- engine: qe
+  case_id: he_qmcpack_vmc
+  dir_name: he_qmcpack_vmc
+  demo_eligible: true
+  demo_slug: qe_he_qmcpack_vmc
+  runnable: true
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  required_assets:
+  - type: pseudopotential
+    file: He_ONCV_PBE_sr.upf
+    element: He
+    source: resources/pseudo
+    vendored: true
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QMCPACK tutorials
+    license: MIT (QMatSuite)
+- engine: qe
+  case_id: lih_qmcpack_vmc
+  dir_name: lih_qmcpack_vmc
+  demo_eligible: true
+  demo_slug: qe_lih_qmcpack_vmc
+  runnable: true
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  required_assets:
+  - type: pseudopotential
+    file: Li_ONCV_PBE_sr.upf
+    element: Li
+    source: resources/pseudo
+    vendored: true
+  - type: pseudopotential
+    file: H_ONCV_PBE_sr.upf
+    element: H
+    source: resources/pseudo
+    vendored: true
+  - type: pseudopotential
+    file: Li.BFD.xml
+    element: Li
+    source: resources/pseudo
+    vendored: true
+  - type: pseudopotential
+    file: H.BFD.xml
+    element: H
+    source: resources/pseudo
+    vendored: true
+  exclusion_reason: null
+  attribution:
+    source: Constructed for QMatSuite, inspired by QMCPACK tutorials
     license: MIT (QMatSuite)
 - engine: qe
   case_id: nmr_gipaw
@@ -783,7 +875,7 @@ entries:
   demo_eligible: false
   demo_slug: null
   runnable: true
-  asset_policy: redistributable
+  asset_policy: none
   required_engine: qe
   availability: open_source
   required_assets:
@@ -797,7 +889,8 @@ entries:
     element: H
     source: resources/pseudo
     vendored: true
-  exclusion_reason: "Runtime exceeds demo limit (~24 min for GIPAW NMR); Rule CS4"
+  exclusion_reason: Runtime exceeds demo limit (~24 min for GIPAW NMR, ecutwfc=90,
+    12 atoms); Rule CS4
   attribution:
     source: Constructed for QMatSuite, inspired by QE tutorials
     license: MIT (QMatSuite)
@@ -845,7 +938,7 @@ entries:
   demo_eligible: false
   demo_slug: null
   runnable: true
-  asset_policy: redistributable
+  asset_policy: none
   required_engine: qe
   availability: open_source
   required_assets:
@@ -854,7 +947,8 @@ entries:
     element: Si
     source: resources/pseudo
     vendored: true
-  exclusion_reason: null
+  exclusion_reason: EOS scan with multiple SCF at different lattice constants; too
+    complex for single demo
   attribution:
     source: Constructed for QMatSuite, inspired by QE tutorials
     license: MIT (QMatSuite)
@@ -864,7 +958,7 @@ entries:
   demo_eligible: false
   demo_slug: null
   runnable: true
-  asset_policy: redistributable
+  asset_policy: none
   required_engine: qe
   availability: open_source
   required_assets:
@@ -873,7 +967,7 @@ entries:
     element: Si
     source: resources/pseudo
     vendored: true
-  exclusion_reason: null
+  exclusion_reason: CPMD uses cp.x executable, not pw.x; runner only supports pw.x
   attribution:
     source: Constructed for QMatSuite, inspired by QE tutorials
     license: MIT (QMatSuite)
@@ -921,7 +1015,7 @@ entries:
   demo_eligible: false
   demo_slug: null
   runnable: true
-  asset_policy: redistributable
+  asset_policy: none
   required_engine: qe
   availability: open_source
   required_assets:
@@ -930,7 +1024,8 @@ entries:
     element: Si
     source: resources/pseudo
     vendored: true
-  exclusion_reason: null
+  exclusion_reason: Phonon pipeline uses ph.x/q2r.x/matdyn.x executables; runner only
+    supports pw.x
   attribution:
     source: Constructed for QMatSuite, inspired by QE tutorials
     license: MIT (QMatSuite)
@@ -971,87 +1066,6 @@ entries:
   exclusion_reason: null
   attribution:
     source: Constructed for QMatSuite, inspired by QE tutorials
-    license: MIT (QMatSuite)
-- engine: qe
-  case_id: copper_wannier
-  dir_name: copper_wannier
-  demo_eligible: true
-  demo_slug: qe_copper_wannier
-  runnable: true
-  asset_policy: redistributable
-  required_engine: qe
-  availability: open_source
-  required_assets:
-  - type: pseudopotential
-    file: Cu.pz-n-van_ak.UPF
-    element: Cu
-    source: resources/pseudo
-    vendored: false
-  exclusion_reason: null
-  attribution:
-    source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 6
-    license: MIT (QMatSuite)
-- engine: qe
-  case_id: diamond_wannier
-  dir_name: diamond_wannier
-  demo_eligible: true
-  demo_slug: qe_diamond_wannier
-  runnable: true
-  asset_policy: redistributable
-  required_engine: qe
-  availability: open_source
-  required_assets:
-  - type: pseudopotential
-    file: C.pz-vbc.UPF
-    element: C
-    source: resources/pseudo
-    vendored: true
-  exclusion_reason: null
-  attribution:
-    source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 5
-    license: MIT (QMatSuite)
-- engine: qe
-  case_id: he_qmcpack_vmc
-  dir_name: he_qmcpack_vmc
-  demo_eligible: true
-  demo_slug: qe_he_qmcpack_vmc
-  runnable: true
-  asset_policy: redistributable
-  required_engine: qe
-  availability: open_source
-  required_assets:
-  - type: pseudopotential
-    file: He.pbe-kjpaw_psl.1.0.0.UPF
-    element: He
-    source: resources/pseudo
-    vendored: false
-  exclusion_reason: null
-  attribution:
-    source: Constructed for QMatSuite, inspired by QMCPACK tutorials
-    license: MIT (QMatSuite)
-- engine: qe
-  case_id: lih_qmcpack_vmc
-  dir_name: lih_qmcpack_vmc
-  demo_eligible: true
-  demo_slug: qe_lih_qmcpack_vmc
-  runnable: true
-  asset_policy: redistributable
-  required_engine: qe
-  availability: open_source
-  required_assets:
-  - type: pseudopotential
-    file: Li.pbe-s-kjpaw_psl.0.2.1.UPF
-    element: Li
-    source: resources/pseudo
-    vendored: false
-  - type: pseudopotential
-    file: H.pbe-kjpaw_psl.0.1.UPF
-    element: H
-    source: resources/pseudo
-    vendored: false
-  exclusion_reason: null
-  attribution:
-    source: Constructed for QMatSuite, inspired by QMCPACK tutorials
     license: MIT (QMatSuite)
 - engine: qe
   case_id: si_yambo_bse
@@ -1189,7 +1203,8 @@ entries:
   required_engine: qmcpack
   availability: open_source
   required_assets: []
-  exclusion_reason: "Route-2: requires prebaked HDF5 wavefunction from QE; replaced by qe/lih_qmcpack_vmc composite"
+  exclusion_reason: 'Route-2: requires prebaked HDF5 wavefunction from QE; replaced
+    by qe/lih_qmcpack_vmc composite'
   attribution:
     source: Constructed for QMatSuite, inspired by QMCPACK test suite
     license: MIT (QMatSuite)
@@ -1507,7 +1522,8 @@ entries:
   required_engine: w90
   availability: open_source
   required_assets: []
-  exclusion_reason: "Route-2: requires prebaked .amn/.mmn/.eig from QE; replaced by qe/copper_wannier composite"
+  exclusion_reason: 'Route-2: requires prebaked .amn/.mmn/.eig from QE; replaced by
+    qe/copper_wannier composite'
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
@@ -1521,7 +1537,8 @@ entries:
   required_engine: w90
   availability: open_source
   required_assets: []
-  exclusion_reason: "Route-2: requires prebaked .amn/.mmn/.eig from QE; replaced by qe/diamond_wannier composite"
+  exclusion_reason: 'Route-2: requires prebaked .amn/.mmn/.eig from QE; replaced by
+    qe/diamond_wannier composite'
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
@@ -1583,7 +1600,8 @@ entries:
   required_engine: w90
   availability: open_source
   required_assets: []
-  exclusion_reason: "Route-2: requires prebaked .amn/.mmn/.eig from QE; standalone W90 demo"
+  exclusion_reason: 'Route-2: requires prebaked .amn/.mmn/.eig from QE; standalone
+    W90 demo'
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
@@ -1699,7 +1717,8 @@ entries:
   required_engine: yambo
   availability: open_source
   required_assets: []
-  exclusion_reason: "Route-2: requires QE prefix.save/ directory; replaced by qe/si_yambo_bse composite"
+  exclusion_reason: 'Route-2: requires QE prefix.save/ directory; replaced by qe/si_yambo_bse
+    composite'
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
@@ -1713,7 +1732,8 @@ entries:
   required_engine: yambo
   availability: open_source
   required_assets: []
-  exclusion_reason: "Route-2: requires QE prefix.save/ directory; replaced by qe/si_yambo_gw composite"
+  exclusion_reason: 'Route-2: requires QE prefix.save/ directory; replaced by qe/si_yambo_gw
+    composite'
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)
@@ -1727,7 +1747,8 @@ entries:
   required_engine: yambo
   availability: open_source
   required_assets: []
-  exclusion_reason: "Route-2: requires QE prefix.save/ directory; standalone Yambo demo"
+  exclusion_reason: 'Route-2: requires QE prefix.save/ directory; standalone Yambo
+    demo'
   attribution:
     source: Constructed for QMatSuite test coverage
     license: MIT (QMatSuite)

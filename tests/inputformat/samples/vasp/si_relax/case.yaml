@@ -7,7 +7,8 @@ workflow_tags:
 species: &id001
 - Si
 functional: PBE
-description: Si diamond CG relaxation with ISIF=2 (ions only)
+description: Ionic relaxation (IBRION=2, CG) of bulk silicon diamond using PBE with
+  a 4x4x4 Gamma-centred k-mesh; forces converged to 0.01 eV/A.
 demo_eligible: true
 step_type_gen: relax
 step_type_spec: vasp_relax
@@ -26,3 +27,14 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: geometry
+spin_treatment: nonmagnetic
+estimated_runtime_s: 1.6
+n_steps: 1
+step_summary: Relax
+available_analysis:
+- convergence
+- trajectory

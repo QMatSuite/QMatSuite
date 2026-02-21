@@ -53,12 +53,12 @@ class SiestaDriver(BaseEngineDriver):
         AnalysisCapability(
             object_type="trajectory",
             gen_step_sequence=["relax"],
-            evidence_files=["*.ANI"],
+            evidence_files=["*.ANI", "*.MD_CAR"],
         ),
         AnalysisCapability(
             object_type="trajectory",
             gen_step_sequence=["md"],
-            evidence_files=["*.ANI"],
+            evidence_files=["*.ANI", "*.MD_CAR"],
         ),
         AnalysisCapability(
             object_type="field3d",

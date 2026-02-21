@@ -1,7 +1,8 @@
 case_id: si_scf
 engine: gpaw
 title: Silicon GPAW SCF
-description: PBE ground-state calculation for diamond silicon
+description: PBE ground-state SCF calculation for diamond-cubic silicon, computing
+  the total energy and electronic convergence.
 workflow_tags:
 - scf
 - dft
@@ -62,3 +63,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: total_energy
+spin_treatment: nonmagnetic
+estimated_runtime_s: 1.1
+n_steps: 1
+step_summary: SCF
+available_analysis:
+- convergence

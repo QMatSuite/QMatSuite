@@ -118,15 +118,31 @@ meta:
   ulid: cp2k_si_relax
   title: Silicon geometry optimization (BFGS)
   subtitle: relax
+  description: BFGS geometry optimization for Si diamond with force convergence criteria. Tests GEO_OPT section with optimizer/threshold
+    keywords.
   tags:
   - geo_opt
   - periodic
   - relaxation
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 6.0
+  multi_engine: false
+  engines_used:
+  - cp2k
+  n_steps: 1
+  step_summary: Relax
+  available_analysis:
+  - convergence
+  - trajectory
   required_engine: cp2k
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: cp2k
   corpus_case_id: si_relax
-  corpus_checksum: f90d76b7b9aacd1a7fe0c0ff92e0251317d4d0093bede4dc86a3b939f9214b06
+  corpus_checksum: 72aa95fe71b268cd5aa0684873bc02a0390ee6f6b379189f7560abd483fa3378

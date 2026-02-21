@@ -79,6 +79,7 @@ meta:
   ulid: pyscf_water_scf
   title: Water PySCF SCF
   subtitle: B3LYP/cc-pVDZ DFT calculation on water molecule
+  description: B3LYP/cc-pVDZ single-point DFT calculation on water molecule
   tags:
   - pyscf
   - molecular
@@ -88,9 +89,22 @@ meta:
   - tutorial
   recommended_analysis: energy
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: dft-b3lyp
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.5
+  multi_engine: false
+  engines_used:
+  - pyscf
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   required_engine: pyscf
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: pyscf
   corpus_case_id: water_scf
-  corpus_checksum: 4f7b328a8771131c5c8a000c26582eb1ecee1499986ceffbd01d75767a41ea7c
+  corpus_checksum: 03d218ac23dd1f0136d028a16051318d4f9475256f5a08322ae5144287aa078c

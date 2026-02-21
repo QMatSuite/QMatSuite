@@ -19,3 +19,14 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite, inspired by ABINIT tutorials
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-lda
+property_of_interest: band_structure
+spin_treatment: nonmagnetic
+estimated_runtime_s: 2.3
+n_steps: 2
+step_summary: SCF → Bands
+available_analysis:
+- bands
+- convergence

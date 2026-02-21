@@ -75,14 +75,28 @@ meta:
   ulid: xtb_water_opt
   title: Water geometry optimization
   subtitle: relax
+  description: Geometry optimization workflow with xtbopt.xyz output.
   tags:
   - relax
   - gfn2
   recommended_analysis: scf
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: gfn2-xtb
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 0.1
+  multi_engine: false
+  engines_used:
+  - xtb
+  n_steps: 1
+  step_summary: Opt
+  available_analysis:
+  - trajectory
   required_engine: xtb
   availability: bundled
   generator_version: 1.0.0
   corpus_engine: xtb
   corpus_case_id: water_opt
-  corpus_checksum: b8567169d96c1cb43150680bd7641ee10bd2a2b2f88ab8f31748c7104b8e30fb
+  corpus_checksum: cb73c467cff12de47373621a1628c7610061414fe6bc09f5e2515f42dca80b67

@@ -121,6 +121,8 @@ meta:
   ulid: qe_si_scf
   title: 0 Si Scf
   subtitle: SCF
+  description: SCF calculation for silicon crystal using the LDA (PZ) functional. Computes the ground-state total energy of
+    the diamond-cubic Si unit cell.
   tags:
   - scf
   - Si
@@ -129,12 +131,25 @@ meta:
   - beginner
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-lda
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 0.9
+  multi_engine: false
+  engines_used:
+  - qe
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_scf
-  corpus_checksum: 3a4d84ecd4a1ac896f263c01feaf78972ec95701469459f9b15248d55d411e56
+  corpus_checksum: 4098dd8a66d82a76aa0daf272e0d0b97b705f52d3518627eb7e13114ee92fd0c
   reference_artifacts:
     scf: 00_Si_scf.scf.json

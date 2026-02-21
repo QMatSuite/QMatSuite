@@ -69,6 +69,7 @@ meta:
   ulid: pyscf_n2_mp2
   title: N2 PySCF MP2
   subtitle: MP2/cc-pVDZ correlation energy for N2
+  description: MP2/cc-pVDZ correlation energy for nitrogen molecule
   tags:
   - pyscf
   - molecular
@@ -78,9 +79,22 @@ meta:
   - tutorial
   recommended_analysis: energy
   difficulty: intermediate
+  system_class: molecule
+  periodicity: molecular
+  method: mp2
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.6
+  multi_engine: false
+  engines_used:
+  - pyscf
+  n_steps: 1
+  step_summary: MP2
+  available_analysis:
+  - convergence
   required_engine: pyscf
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: pyscf
   corpus_case_id: n2_mp2
-  corpus_checksum: 542cd86ada3a5b9d3fdc6a1a003cbc65b3a787549bd726c2febdb78e6590a705
+  corpus_checksum: 9716fd9892fafbde0a633b35a19311b798e4627482ee5a1882f4767b5040024e

@@ -1,10 +1,13 @@
 case_id: fe_dos
 engine: qe
-title: 08 Fe Dos  2 Noncolinear
-description: SCF
+title: Iron noncollinear SCF
+description: Noncollinear spin-orbit SCF calculation for ferromagnetic BCC iron using
+  DFT-PBE. Demonstrates relativistic noncollinear magnetism with spin oriented in
+  the ab-plane.
 workflow_tags:
 - scf
 - electronic
+- magnetic
 species:
 - Fe
 demo_eligible: true
@@ -12,16 +15,17 @@ step_type_gen: scf
 step_type_spec: qe_scf
 required_engine: qe
 availability: open_source
-demo_slug: qe_fe_dos
+demo_slug: qe_fe_scf
 asset_policy: redistributable
-recommended_analysis: dos
-difficulty: beginner
-subtitle: SCF
+recommended_analysis: convergence
+difficulty: intermediate
+subtitle: Noncollinear SCF for BCC iron
 tags:
-- dos
+- scf
 - Fe
 - PW
 - magnetic
+- noncollinear
 - tutorial
 exclusion_reason: null
 asset_requirements:
@@ -33,3 +37,13 @@ multi_step: false
 attribution:
   source: Constructed for QMatSuite, inspired by QE tutorials
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: magnetism
+spin_treatment: noncollinear
+estimated_runtime_s: 73.1
+n_steps: 1
+step_summary: SCF
+available_analysis:
+- convergence

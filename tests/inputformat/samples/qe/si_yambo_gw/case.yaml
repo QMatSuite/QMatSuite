@@ -1,10 +1,9 @@
 case_id: si_yambo_gw
 engine: qe
 title: Silicon G0W0 (QE to Yambo GW pipeline)
-description: >-
-  Full QE->Yambo composite pipeline for Si G0W0 quasiparticle calculation.
-  SCF -> NSCF -> yambo_setup (runs p2y internally) -> yambo_gw.
-  The Yambo .in file is parsed by the Yambo engine parser.
+description: Silicon G0W0 quasiparticle correction calculation using the QE→Yambo
+  pipeline, computing quasiparticle band energies for Si valence and conduction bands
+  with the plasmon-pole approximation.
 workflow_tags:
 - scf
 - nscf
@@ -55,3 +54,17 @@ asset_requirements:
 attribution:
   source: Constructed for QMatSuite, inspired by Yambo tutorials
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: gw-pbe
+property_of_interest: quasiparticle
+spin_treatment: nonmagnetic
+estimated_runtime_s: 68.6
+n_steps: 4
+step_summary: SCF → NSCF → Yambo setup → GW
+available_analysis:
+- convergence
+multi_engine: true
+engines_used:
+- qe
+- yambo

@@ -102,6 +102,8 @@ meta:
   ulid: gpaw_si_bands
   title: Silicon GPAW Band Structure
   subtitle: PBE band structure for silicon
+  description: PBE band-structure calculation for diamond-cubic silicon, performing an SCF step followed by a non-self-consistent
+    bands step along a high-symmetry k-path.
   tags:
   - gpaw
   - solid
@@ -111,9 +113,23 @@ meta:
   - tutorial
   recommended_analysis: bands
   difficulty: intermediate
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: band_structure
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.2
+  multi_engine: false
+  engines_used:
+  - gpaw
+  n_steps: 2
+  step_summary: SCF → Bands
+  available_analysis:
+  - bands
+  - convergence
   required_engine: gpaw
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: gpaw
   corpus_case_id: si_bands
-  corpus_checksum: dd71ea430fc0a121e2428c4c6ca3f1f11f51abfbdba2babd257635e090e45340
+  corpus_checksum: 319387f438a6c096dd6137c83275ddd87c1cc2f75800ba10acc628352c692369

@@ -20,3 +20,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: molecule
+periodicity: molecular
+method: gfn2-xtb
+property_of_interest: geometry
+spin_treatment: nonmagnetic
+estimated_runtime_s: 0.1
+n_steps: 1
+step_summary: Opt
+available_analysis:
+- trajectory

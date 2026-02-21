@@ -1,7 +1,9 @@
 case_id: si_vc_relax
 engine: qe
 title: 3 Si Vc Relax
-description: VC-Relax
+description: Variable-cell relaxation of silicon using DFT-PBE to optimize both atomic
+  positions and lattice parameters. The cell degree of freedom is constrained to ibrav
+  symmetry (isotropic volume change).
 workflow_tags:
 - relax
 - electronic
@@ -32,3 +34,14 @@ multi_step: false
 attribution:
   source: Constructed for QMatSuite, inspired by QE tutorials
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: geometry
+spin_treatment: nonmagnetic
+estimated_runtime_s: 52.6
+n_steps: 1
+step_summary: vc-Relax
+available_analysis:
+- convergence
+- trajectory

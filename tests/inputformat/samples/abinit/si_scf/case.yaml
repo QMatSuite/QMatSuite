@@ -19,3 +19,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite, inspired by ABINIT tutorials
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-lda
+property_of_interest: total_energy
+spin_treatment: nonmagnetic
+estimated_runtime_s: 0.7
+n_steps: 1
+step_summary: SCF
+available_analysis:
+- convergence

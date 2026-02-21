@@ -150,15 +150,30 @@ meta:
   ulid: lammps_peptide_nvt
   title: Peptide NVT with CHARMM
   subtitle: md
+  description: NVT molecular dynamics of a solvated 5-mer peptide using the CHARMM force field with PPPM electrostatics and
+    SHAKE constraints, running 300 timesteps.
   tags:
   - md
   - nvt
   - biomolecular
   recommended_analysis: trajectory
   difficulty: beginner
+  system_class: molecule
+  periodicity: periodic
+  method: charmm
+  property_of_interest: trajectory
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 2.2
+  multi_engine: false
+  engines_used:
+  - lammps
+  n_steps: 1
+  step_summary: NVT MD
+  available_analysis:
+  - trajectory
   required_engine: lammps
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: lammps
   corpus_case_id: peptide_nvt
-  corpus_checksum: 7d6583c54e3c2086a558a83fe3b535764ea643b8b186da6dcd872bb1daba88e3
+  corpus_checksum: 61e3f4168c68556b8d31e776bd2e3ba131b1004e43a2dac187bcb26a7eb658ab

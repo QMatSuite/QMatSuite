@@ -4,7 +4,8 @@ engine: lammps
 workflow_tags:
 - md
 - nve
-description: Basic NVE molecular dynamics of LJ melt, lattice-create (no data file)
+description: NVE molecular dynamics of a 3-D Lennard-Jones fluid (argon-like, lattice-created
+  FCC box) running 250 timesteps to sample a molten state.
 demo_eligible: true
 step_type_gen: md
 step_type_spec: lammps_md
@@ -17,3 +18,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite, inspired by LAMMPS examples
   license: MIT (QMatSuite)
+system_class: fluid
+periodicity: periodic
+method: lj
+property_of_interest: trajectory
+spin_treatment: nonmagnetic
+estimated_runtime_s: 0.7
+n_steps: 1
+step_summary: NVE MD
+available_analysis:
+- trajectory

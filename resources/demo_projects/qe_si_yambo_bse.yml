@@ -209,6 +209,8 @@ meta:
   ulid: qe_si_yambo_bse
   title: Silicon BSE Haydock (QE to Yambo BSE pipeline)
   subtitle: QE SCF -> NSCF -> Yambo BSE
+  description: Silicon optical absorption spectrum via Bethe-Salpeter equation using the QE→Yambo pipeline, with SEX kernel
+    and Haydock iterative solver for excitonic effects in the optical response.
   tags:
   - yambo
   - composite
@@ -217,10 +219,24 @@ meta:
   - optics
   recommended_analysis: energy
   difficulty: advanced
+  system_class: crystal
+  periodicity: periodic
+  method: bse-gw
+  property_of_interest: absorption
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 44.4
+  multi_engine: true
+  engines_used:
+  - qe
+  - yambo
+  n_steps: 4
+  step_summary: SCF → NSCF → Yambo setup → BSE
+  available_analysis:
+  - convergence
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_yambo_bse
-  corpus_checksum: 7710c269a4f49b72323827ffbd55d3fadc2dc6be40b0f23b6f2fbf995ab3ae8b
+  corpus_checksum: c077933b8a12921e8e1eb40e860b36d9f10cd3fc890370a2750317cbb51b9107

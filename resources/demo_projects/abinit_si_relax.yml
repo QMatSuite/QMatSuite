@@ -115,14 +115,29 @@ meta:
   ulid: abinit_si_relax
   title: Silicon ionic and cell relaxation
   subtitle: relax
+  description: Relaxation of 2-atom diamond silicon from a compressed lattice using BFGS with isotropic cell optimization.
   tags:
   - relax
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-lda
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.6
+  multi_engine: false
+  engines_used:
+  - abinit
+  n_steps: 1
+  step_summary: Relax
+  available_analysis:
+  - convergence
+  - trajectory
   asset_policy: redistributable
   required_engine: abinit
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: abinit
   corpus_case_id: si_relax
-  corpus_checksum: 5abae317cf9403ba5491b3bc2563a005ad94ea3a2da00adde7dc03ae0bd5bc62
+  corpus_checksum: d0d533f68ea12b81f50bfd6178000a2adfc13782b2284801d37e215a5fe6b2a0

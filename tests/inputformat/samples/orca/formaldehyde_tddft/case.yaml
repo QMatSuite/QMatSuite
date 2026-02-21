@@ -1,7 +1,8 @@
 case_id: formaldehyde_tddft
 engine: orca
 title: Formaldehyde ORCA TDDFT
-description: SCF + TDDFT excited states calculation on formaldehyde
+description: B3LYP/def2-SVP TDDFT calculation for formaldehyde computing 5 excited
+  states via the Tamm-Dancoff approximation.
 workflow_tags:
 - scf
 - tddft
@@ -45,3 +46,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: molecule
+periodicity: molecular
+method: tddft-b3lyp
+property_of_interest: absorption
+spin_treatment: nonmagnetic
+estimated_runtime_s: 2.2
+n_steps: 1
+step_summary: TDDFT
+available_analysis:
+- convergence

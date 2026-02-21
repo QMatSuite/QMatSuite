@@ -1,13 +1,13 @@
 {
   "demo_slug": "xtb_water_opt",
   "engine": "xtb",
-  "generated_at": "2026-02-13T19:51:52.615466+00:00",
+  "generated_at": "2026-02-21T01:55:25.063905+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "trajectory": {
       "file": "trajectory.json",
-      "sha256": "77206766c007c659a14357327104e29d9da35844e956c976de747ec98afe616b"
+      "sha256": "3ba09b19affe73ec35bbc14601ec6efa170abd9de9e55d2bad0ac83088be0318"
     }
   }
 }

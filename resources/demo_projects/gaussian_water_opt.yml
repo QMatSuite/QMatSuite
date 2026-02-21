@@ -84,15 +84,30 @@ meta:
   ulid: gaussian_water_opt
   title: Water B3LYP Geometry Optimization
   subtitle: relax
+  description: B3LYP/6-31G* geometry optimization on water; covers Opt keyword
   tags:
   - relax
   - dft
   - small-molecule
   recommended_analysis: scf
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: b3lyp
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.9
+  multi_engine: false
+  engines_used:
+  - gaussian
+  n_steps: 1
+  step_summary: Geo-opt
+  available_analysis:
+  - convergence
+  - trajectory
   required_engine: gaussian
   availability: requires_local_install
   generator_version: 1.0.0
   corpus_engine: gaussian
   corpus_case_id: water_b3lyp_opt
-  corpus_checksum: e32d97f7654e43ad68b312af75365e9782c47f79a1f0b43cd2f661a22c0a6c6c
+  corpus_checksum: f1992d3ac799aa4e5a9fe8a81825ec4d08297022f446020e277afa5f26f052f2

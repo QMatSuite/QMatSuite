@@ -8,7 +8,8 @@ workflow_tags:
 species:
 - Si
 functional: PBE
-description: Variable-cell CG relaxation for bulk silicon.
+description: Variable-cell CG relaxation of bulk silicon using GGA-PBE with a DZP
+  NAO basis set; relaxes both atomic positions and the unit cell.
 demo_eligible: true
 step_type_gen: relax
 step_type_spec: siesta_relax
@@ -21,3 +22,14 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: geometry
+spin_treatment: nonmagnetic
+estimated_runtime_s: 4.2
+n_steps: 1
+step_summary: Relax
+available_analysis:
+- convergence
+- trajectory

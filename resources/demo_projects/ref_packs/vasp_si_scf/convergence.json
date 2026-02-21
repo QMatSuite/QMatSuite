@@ -27,10 +27,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "convergence",
-    "run_ulid": "01KHC8XBHY591BCTJ84FRJ2KWG",
-    "calc_ulid": "01KHC8XBFH4ZVJ31DZZHWMRJPZ",
+    "run_ulid": "01KHYYG1TMCHTK6JDCK26T2N1Z",
+    "calc_ulid": "01KHYYG1R6WG8SZS8RHQ8TF9FY",
     "step_ulids": [
-      "01KHC8XBFH4ZVJ31DZZHWMRJQ0"
+      "01KHYYG1R6WG8SZS8RHQ8TF9FZ"
     ],
     "gen_steps": [
       "scf"
@@ -38,9 +38,9 @@
     "engine_name": "vasp",
     "source_files": [
       {
-        "path": "raw/01KHC8XBFH4ZVJ31DZZHWMRJQ0/OSZICAR",
+        "path": "raw/01KHYYG1R6WG8SZS8RHQ8TF9FZ/OSZICAR",
         "size_bytes": 1018,
-        "mtime": 1771012273.2098107
+        "mtime": 1771638885.6707847
       }
     ],
     "parser_name": "vasp_convergence",
@@ -63,13 +63,13 @@
         10.0
       ],
       "y": [
-        6.21650719134,
+        6.21650719133,
         -5.20663017919,
-        -5.59009731675,
-        -5.59304859051,
-        -5.59305121934,
+        -5.59009731674,
+        -5.59304859048,
+        -5.59305121932,
         -5.42885472864,
-        -5.37807590338,
+        -5.37807590339,
         -5.37884557634,
         -5.37932826319,
         -5.37928919809
@@ -140,13 +140,13 @@
       10
     ],
     "scf_energy": [
-      6.21650719134,
+      6.21650719133,
       -5.20663017919,
-      -5.59009731675,
-      -5.59304859051,
-      -5.59305121934,
+      -5.59009731674,
+      -5.59304859048,
+      -5.59305121932,
       -5.42885472864,
-      -5.37807590338,
+      -5.37807590339,
       -5.37884557634,
       -5.37932826319,
       -5.37928919809

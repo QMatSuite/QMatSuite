@@ -90,6 +90,7 @@ meta:
   ulid: gpaw_al_scf
   title: Aluminum GPAW SCF
   subtitle: PBE ground-state calculation for aluminum
+  description: PBE ground-state SCF calculation for FCC aluminum, computing the total energy and electronic convergence.
   tags:
   - gpaw
   - metal
@@ -99,9 +100,22 @@ meta:
   - tutorial
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.0
+  multi_engine: false
+  engines_used:
+  - gpaw
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   required_engine: gpaw
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: gpaw
   corpus_case_id: al_scf
-  corpus_checksum: 4fd10ffbf564a0139580fbd47d768439f8065aa7e190b4483305d72b4fe1ebc2
+  corpus_checksum: 259c777528ebb56a09d10923aa6cacfd97c78317969b869fbab5d6ee0d31a8ed

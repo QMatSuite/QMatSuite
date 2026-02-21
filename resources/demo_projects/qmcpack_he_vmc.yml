@@ -98,15 +98,29 @@ meta:
   ulid: qmcpack_he_vmc
   title: He atom VMC with STO basis
   subtitle: vmc
+  description: 'Simplest QMCPACK case: He atom VMC with STO basis and Pade Jastrow. No external assets.'
   tags:
   - vmc
   - all-electron
   - atom
   recommended_analysis: energy
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: vmc-hf
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 0.7
+  multi_engine: false
+  engines_used:
+  - qmcpack
+  n_steps: 1
+  step_summary: VMC
+  available_analysis:
+  - convergence
   required_engine: qmcpack
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qmcpack
   corpus_case_id: he_vmc_sto
-  corpus_checksum: 18666f75dd8d9291e5470d83330c65ddc63415202d4637bfb6d7ae6e3f1e70f4
+  corpus_checksum: 65421fe56621b98452fd430102b6b662831a4e8718947338505d9515a214f677

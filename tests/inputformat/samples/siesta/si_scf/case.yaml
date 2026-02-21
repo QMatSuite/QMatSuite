@@ -7,7 +7,8 @@ workflow_tags:
 species:
 - Si
 functional: PBE
-description: Reference bulk Si SCF with Monkhorst-Pack k-grid.
+description: Bulk silicon diamond-structure SCF calculation using the GGA-PBE functional
+  with a DZP NAO basis set and a 4x4x4 Monkhorst-Pack k-grid.
 demo_eligible: true
 step_type_gen: scf
 step_type_spec: siesta_scf
@@ -20,3 +21,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: total_energy
+spin_treatment: nonmagnetic
+estimated_runtime_s: 4.3
+n_steps: 1
+step_summary: SCF
+available_analysis:
+- convergence

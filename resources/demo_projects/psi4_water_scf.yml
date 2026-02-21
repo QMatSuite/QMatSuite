@@ -79,6 +79,7 @@ meta:
   ulid: psi4_water_scf
   title: Water Psi4 SCF
   subtitle: HF/cc-pVDZ calculation on water molecule
+  description: HF/cc-pVDZ single-point calculation on water molecule
   tags:
   - psi4
   - molecular
@@ -88,9 +89,22 @@ meta:
   - tutorial
   recommended_analysis: energy
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: hf
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.8
+  multi_engine: false
+  engines_used:
+  - psi4
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   required_engine: psi4
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: psi4
   corpus_case_id: water_scf
-  corpus_checksum: 53e1b4070f5047db9544491310bb748e50773cf777b27501bc025fa15645d0e9
+  corpus_checksum: ddef787f300ba51ddd16d938b1f7232103897e445035dbf2f02ba68ac715b869

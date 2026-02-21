@@ -8,7 +8,8 @@ workflow_tags:
 species: &id001
 - Fe
 functional: PBE
-description: Fe BCC with ISPIN=2 and initial MAGMOM=3.0 per atom
+description: Spin-polarised SCF of ferromagnetic BCC iron using ISPIN=2 with initial
+  MAGMOM=3.0 per atom, Methfessel-Paxton smearing, and an 8x8x8 k-mesh.
 demo_eligible: true
 step_type_gen: scf
 step_type_spec: vasp_scf
@@ -27,3 +28,14 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: magnetism
+spin_treatment: collinear
+estimated_runtime_s: 1.2
+n_steps: 1
+step_summary: SCF
+available_analysis:
+- convergence
+- field3d

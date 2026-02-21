@@ -26,10 +26,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "trajectory",
-    "run_ulid": "01KHC8CJ5P2CWVBASAB38R4ZCM",
-    "calc_ulid": "01KHC8CJ3QK1ASJH11PDX91BZN",
+    "run_ulid": "01KHYXZ8YM9NZK9NFYP2927ZFH",
+    "calc_ulid": "01KHYXZ8WH11QQNC12S5N8KARY",
     "step_ulids": [
-      "01KHC8CJ3QK1ASJH11PDX91BZP"
+      "01KHYXZ8WH11QQNC12S5N8KARZ"
     ],
     "gen_steps": [
       "relax"
@@ -37,9 +37,9 @@
     "engine_name": "gaussian",
     "source_files": [
       {
-        "path": "raw/01KHC8CJ3QK1ASJH11PDX91BZP/output.log",
-        "size_bytes": 76412,
-        "mtime": 1771011723.2322905
+        "path": "raw/01KHYXZ8WH11QQNC12S5N8KARZ/output.log",
+        "size_bytes": 75403,
+        "mtime": 1771638336.2638311
       }
     ],
     "parser_name": "gaussian_trajectory",

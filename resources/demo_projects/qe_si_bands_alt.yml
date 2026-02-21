@@ -165,6 +165,8 @@ meta:
   ulid: qe_si_bands_alt
   title: 7 Si Bandstructure
   subtitle: SCF → NSCF → Bands → Bands
+  description: 'Band structure calculation for silicon using DFT-PBE with SSSP precision pseudopotentials. Runs a 4-step workflow:
+    SCF, NSCF, bands.x k-path calculation, and bands.x post-processing.'
   tags:
   - bands
   - Si
@@ -172,10 +174,24 @@ meta:
   - tutorial
   recommended_analysis: bands
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: band_structure
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 9.5
+  multi_engine: false
+  engines_used:
+  - qe
+  n_steps: 4
+  step_summary: SCF → NSCF → Bands → BandsPP
+  available_analysis:
+  - bands
+  - convergence
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_bands_alt
-  corpus_checksum: 001eef48f9ca1eed76cc8ca5aea9174523fa6aacbb4b3cae39b398cda2ae1d78
+  corpus_checksum: c9454c3dc522d0ca02b42bd29c6ea4d45c76c045cefdb8176701088ccc1c74f8

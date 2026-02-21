@@ -1,13 +1,13 @@
 {
   "demo_slug": "siesta_si_bands",
   "engine": "siesta",
-  "generated_at": "2026-02-13T19:50:38.929204+00:00",
+  "generated_at": "2026-02-21T01:54:11.104585+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "bands": {
       "file": "bands.json",
-      "sha256": "26d3c335fe19f9701dbef4391e89897a1d63df08a78de4d13e816f97d39fe33c"
+      "sha256": "086d30eefd88450b78f9e08fe9e3f940e1cbae00c353bfdd3174a505ded1ef0d"
     }
   }
 }

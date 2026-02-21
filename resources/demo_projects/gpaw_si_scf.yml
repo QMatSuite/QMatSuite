@@ -100,6 +100,7 @@ meta:
   ulid: gpaw_si_scf
   title: Silicon GPAW SCF
   subtitle: PBE ground-state calculation for silicon
+  description: PBE ground-state SCF calculation for diamond-cubic silicon, computing the total energy and electronic convergence.
   tags:
   - gpaw
   - solid
@@ -109,9 +110,22 @@ meta:
   - tutorial
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.1
+  multi_engine: false
+  engines_used:
+  - gpaw
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   required_engine: gpaw
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: gpaw
   corpus_case_id: si_scf
-  corpus_checksum: acc7a7a269e88b8f404e11b6567630087bfe17f6ed86ffe7c0f015d8522f5ba9
+  corpus_checksum: 3045e3ff58ded15609d4413481a3edffb615378320b38b20bb27a519463209dd

@@ -21,10 +21,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "dos",
-    "run_ulid": "01KHC8X76KJGQ4FZ7KZ98N4HTE",
-    "calc_ulid": "01KHC8X73W2PN59QAQ1ENFACZB",
+    "run_ulid": "01KHYYFXMWAHN75N5GP1V8RR5D",
+    "calc_ulid": "01KHYYFXHK5AXJVZ56P605FH99",
     "step_ulids": [
-      "01KHC8X73W2PN59QAQ1ENFACZD"
+      "01KHYYFXHK5AXJVZ56P605FH9B"
     ],
     "gen_steps": [
       "dos"
@@ -32,14 +32,14 @@
     "engine_name": "vasp",
     "source_files": [
       {
-        "path": "raw/01KHC8X73W2PN59QAQ1ENFACZD/DOSCAR",
+        "path": "raw/01KHYYFXHK5AXJVZ56P605FH9B/DOSCAR",
         "size_bytes": 11075,
-        "mtime": 1771012269.8265183
+        "mtime": 1771638882.3991299
       },
       {
-        "path": "raw/01KHC8X73W2PN59QAQ1ENFACZD/vasprun.xml",
+        "path": "raw/01KHYYFXHK5AXJVZ56P605FH9B/vasprun.xml",
         "size_bytes": 48506,
-        "mtime": 1771012269.824033
+        "mtime": 1771638882.396502
       }
     ],
     "parser_name": "vasp_dos",

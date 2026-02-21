@@ -1,7 +1,7 @@
 version: 1
 project:
   meta:
-    ulid: 01KM0BSP48N2MBDEFT15W5FNSS
+    ulid: 01KD3S95CSZFS9K61ZXVZ33Y9D
     name: 08_Fe_DOS
     slug: 08_fe_dos
     path: .
@@ -9,7 +9,7 @@ project:
   settings: {}
 structures:
 - meta:
-    ulid: 01K728YRR1ZB1H3WMX8EKEYN1Y
+    ulid: 01KS1Y4AKT646Q8WG742PFGVXC
     name: fe.scf_noncollin
     slug: fe-scf_noncollin
     path: structures/fe-scf_noncollin.json
@@ -57,7 +57,7 @@ structures:
       - 0.0
 calculations:
 - meta:
-    ulid: 01KZDHQV8G0Y2NPPQN152CSF00
+    ulid: 01K5H8BP1CAJFT0WENG1SD9WAV
     name: Fe Dos  2 Noncolinear
     slug: fe-dos-2-noncolinear
     path: calculations/fe-dos-2-noncolinear
@@ -71,7 +71,7 @@ calculations:
       slug: fe-scf_noncollin
       path: fe.scf_noncollin.step.yaml
       kind: step
-      ulid: 01KH5D8J7DNY56HX6YANSKY3Z6
+      ulid: 01KHXJMA6EFG1D7A5K4C8TNXH6
     parameters:
       CONTROL:
         calculation: scf
@@ -116,23 +116,39 @@ pseudo:
   files:
   - Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
 meta:
-  ulid: qe_fe_dos
-  title: 08 Fe Dos  2 Noncolinear
-  subtitle: SCF
+  ulid: qe_fe_scf
+  title: Iron noncollinear SCF
+  subtitle: Noncollinear SCF for BCC iron
+  description: Noncollinear spin-orbit SCF calculation for ferromagnetic BCC iron using DFT-PBE. Demonstrates relativistic
+    noncollinear magnetism with spin oriented in the ab-plane.
   tags:
-  - dos
+  - scf
   - Fe
   - PW
   - magnetic
+  - noncollinear
   - tutorial
-  recommended_analysis: dos
-  difficulty: beginner
+  recommended_analysis: convergence
+  difficulty: intermediate
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: magnetism
+  spin_treatment: noncollinear
+  estimated_runtime_s: 73.1
+  multi_engine: false
+  engines_used:
+  - qe
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: fe_dos
-  corpus_checksum: 3282d3d9b13919baba100bff35cacef9788e2a9a507a479af3ba14dcd4bf2ea7
+  corpus_checksum: 930abc281fd6a0fe4980cfccb20aabc5cec15327d33090e180aceeb1181d98a8
   reference_artifacts:
     scf: 08_Fe_DOS.scf.json

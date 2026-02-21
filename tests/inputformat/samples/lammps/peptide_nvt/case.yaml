@@ -5,7 +5,8 @@ workflow_tags:
 - md
 - nvt
 - biomolecular
-description: Full atom_style peptide with kspace, shake, bonded styles, read_data
+description: NVT molecular dynamics of a solvated 5-mer peptide using the CHARMM force
+  field with PPPM electrostatics and SHAKE constraints, running 300 timesteps.
 demo_eligible: true
 demo_slug: lammps_peptide_nvt
 step_type_gen: md
@@ -17,3 +18,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite, inspired by LAMMPS examples
   license: MIT (QMatSuite)
+system_class: molecule
+periodicity: periodic
+method: charmm
+property_of_interest: trajectory
+spin_treatment: nonmagnetic
+estimated_runtime_s: 2.2
+n_steps: 1
+step_summary: NVT MD
+available_analysis:
+- trajectory

@@ -123,16 +123,32 @@ meta:
   ulid: vasp_fe_magnetic
   title: Iron BCC spin-polarised SCF
   subtitle: scf
+  description: Spin-polarised SCF of ferromagnetic BCC iron using ISPIN=2 with initial MAGMOM=3.0 per atom, Methfessel-Paxton
+    smearing, and an 8x8x8 k-mesh.
   tags:
   - scf
   - magnetic
   - spin
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: magnetism
+  spin_treatment: collinear
+  estimated_runtime_s: 1.2
+  multi_engine: false
+  engines_used:
+  - vasp
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
+  - field3d
   asset_policy: proprietary
   required_engine: vasp
   availability: requires_local_install
   generator_version: 1.0.0
   corpus_engine: vasp
   corpus_case_id: fe_magnetic
-  corpus_checksum: 4c6964c00dba35e6bd35137c48270ba70d582a25adbc0b5db5d3def09827c1cd
+  corpus_checksum: 19c3d2c24f9637e362f206f012e16e5a59d18def64f256a8e8ae2f11704fdbb0

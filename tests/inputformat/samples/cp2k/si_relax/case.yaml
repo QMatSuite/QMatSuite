@@ -21,3 +21,14 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite, inspired by CP2K examples
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: geometry
+spin_treatment: nonmagnetic
+estimated_runtime_s: 6.0
+n_steps: 1
+step_summary: Relax
+available_analysis:
+- convergence
+- trajectory

@@ -1,7 +1,8 @@
 case_id: si_bands
 engine: qe
 title: Silicon band structure
-description: SCF → NSCF → Bands
+description: 'Band structure calculation for silicon using DFT-PBE. Runs a 4-step
+  workflow: SCF, NSCF on a dense k-grid, bands.x k-path calculation, and bands.x post-processing.'
 workflow_tags:
 - scf
 - nscf
@@ -53,3 +54,14 @@ steps:
 attribution:
   source: Constructed for QMatSuite, inspired by QE tutorials
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: band_structure
+spin_treatment: nonmagnetic
+estimated_runtime_s: 50.5
+n_steps: 4
+step_summary: SCF → NSCF → Bands → BandsPW
+available_analysis:
+- bands
+- convergence
