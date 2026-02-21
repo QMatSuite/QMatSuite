@@ -260,16 +260,35 @@ class TestSSPPrecisionDownload:
         assert any("Already installed" in m for m in result["messages"])
 
     def test_no_orphan_temp_dirs(self):
-        """No pseudo_dl_ or pseudo_ext_ temp dirs should remain."""
+        """Pipeline cleanup should not leave pseudo_dl_ or pseudo_ext_ temp dirs.
+
+        Uses a before/after snapshot so concurrent downloads on other
+        parallel test workers don't cause false positives.
+        """
         from quantumvitas.core.paths import tmp_downloads_dir
+        from quantumvitas.pseudo.pipeline import download_and_install
 
         dl_dir = tmp_downloads_dir()
-        orphans = [
-            d
-            for d in dl_dir.iterdir()
-            if d.is_dir() and (d.name.startswith("pseudo_dl_") or d.name.startswith("pseudo_ext_"))
-        ]
-        assert len(orphans) == 0, f"Orphan temp dirs: {[d.name for d in orphans]}"
+
+        def _snapshot() -> set[str]:
+            return {
+                d.name
+                for d in dl_dir.iterdir()
+                if d.is_dir()
+                and (d.name.startswith("pseudo_dl_") or d.name.startswith("pseudo_ext_"))
+            }
+
+        before = _snapshot()
+
+        # Run an idempotent install (already installed → fast)
+        result = download_and_install(
+            library="sssp", variant="precision", version="1.3.0"
+        )
+        assert result["success"]
+
+        after = _snapshot()
+        new_orphans = after - before
+        assert len(new_orphans) == 0, f"Orphan temp dirs left by this run: {new_orphans}"
 
 
 @pytest.mark.skipif(
