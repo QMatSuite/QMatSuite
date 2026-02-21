@@ -47,9 +47,10 @@ OCCUPATIONS_SCHEME_VARIANT = ParamSpaceVariant(
     dimension="occupations_scheme",
     space=OCCUPATIONS_SCHEME_SPACE,
     applies_to_step_types=frozenset({
-        "scf", "nscf", "relax", "md",
-        # Note: bandspw excluded (uses kpath, not occupations)
-        # VC is a parameter, not a separate gen step
+        "scf", "nscf", "bandspw", "relax", "md",
+        # All pw.x step types share the same parameter space.
+        # bandspw needs occupations/smearing for consistent Fermi level with SCF.
+        # custom excluded: users opting for custom set all parameters manually.
     }),
 )
 
