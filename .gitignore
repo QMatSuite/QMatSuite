@@ -25,6 +25,9 @@ wheels/
 ENV/
 env/
 
+# MCP config (user-specific; .mcp.json.example is tracked)
+.mcp.json
+
 # IDE
 .vscode/
 .idea/

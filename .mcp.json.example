@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "qmatsuite": {
+      "type": "stdio",
+      "command": ".venv/bin/python",
+      "args": ["-m", "quantumvitas.mcp.server"],
+      "instructions": "QMatSuite is a computational materials science workflow manager supporting 15 simulation engines (QE, VASP, ORCA, ABINIT, CP2K, Gaussian, LAMMPS, Siesta, xTB, GPAW, Psi4, PySCF, QMCPACK, Yambo, Wannier90).\n\nDecision Hierarchy for new calculations:\n1. FIRST: call init_project() (idempotent, safe to repeat every session)\n2. search_demos() to find a pre-configured demo matching the request\n3. If demo found: load_demo() then run_calculation() (fastest path — structure is auto-imported)\n4. If no demo: import_structure() + create_calculation() + get_presets()/apply_preset() for QE, or search_parameters()/set_parameters() for other engines\n5. ALWAYS before running: inspect_calculation(dry_run=True) to catch blocking errors via preflight checks\n6. On failure: read suggested_fixes in the error return; use search_knowledge() for recovery guidance\n\nKey rules:\n- For pseudopotential engines (QE, ABINIT, Siesta, VASP): call auto_resolve_species_map() after create_calculation()\n- For molecular codes (ORCA, Gaussian, PySCF, xTB, GPAW): no species_map needed\n- Presets (get_presets/apply_preset) are QE-focused; other engines use search_parameters + set_parameters directly\n- plot_analysis() returns ASCII plots + PNG paths; never request raw data arrays\n- After relax: use promote_structure() to extract the relaxed geometry for downstream calculations\n- get_demo_results() previews pre-computed results without loading — use it to evaluate before committing to load_demo()"
+    }
+  }
+}

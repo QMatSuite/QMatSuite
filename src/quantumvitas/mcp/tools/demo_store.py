@@ -197,14 +197,16 @@ def search_demos(
             if (d.get("property_of_interest") or "").lower() != property_of_interest.lower():
                 continue
 
-        # Text query: search title + subtitle + description + name + tags
+        # Text query: search title + subtitle + description + name + tags + step_summary + method
         if query_lower:
             title = (d.get("title") or "").lower()
             subtitle = (d.get("subtitle") or "").lower()
             desc = (d.get("description") or "").lower()
             name = (d.get("name") or "").lower()
             tags_text = " ".join(d.get("tags", [])).lower()
-            searchable = f"{title} {subtitle} {desc} {name} {tags_text}"
+            step_summary = (d.get("step_summary") or "").lower()
+            method_text = (d.get("method") or "").lower()
+            searchable = f"{title} {subtitle} {desc} {name} {tags_text} {step_summary} {method_text}"
             if query_lower not in searchable:
                 continue
 
@@ -311,8 +313,10 @@ def load_demo(demo_id: str, name: str = "") -> dict:
     """Load a demo calculation into the current project.
 
     Imports the demo's structure and creates a calculation with the demo's
-    engine, workflow steps, and parameters. Works within the current project
-    — no project context switching.
+    engine, workflow steps, and parameters.  The demo's structure is
+    automatically imported into the project — no separate import_structure
+    call needed.  Works within the current project — no project context
+    switching.
 
     Args:
         demo_id: Demo identifier (e.g. 'qe_si_scf', 'vasp_si_relax').

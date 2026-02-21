@@ -39,11 +39,13 @@ def search_parameters(
             "type": doc.type,
             "default": doc.default,
             "category": doc.category,
-            "description": doc.description[:200] if doc.description else "",
+            "description": doc.description[:400] if doc.description else "",
             "relevance_score": round(score, 3),
         }
         if doc.section:
             entry["section"] = doc.section
+        if doc.enum:
+            entry["enum"] = doc.enum
         results_out.append(entry)
 
     return make_response(

@@ -19,7 +19,7 @@ from typing import Any
 class TagDoc:
     """A single parameter/tag document in the search index."""
 
-    __slots__ = ("engine", "tag_name", "type", "default", "category", "section", "description", "tokens")
+    __slots__ = ("engine", "tag_name", "type", "default", "category", "section", "description", "enum", "tokens")
 
     def __init__(
         self,
@@ -30,6 +30,7 @@ class TagDoc:
         category: str | None,
         description: str | None,
         section: str | None = None,
+        enum: list | None = None,
     ):
         self.engine = engine
         self.tag_name = tag_name
@@ -38,8 +39,10 @@ class TagDoc:
         self.category = category or ""
         self.section = section or ""
         self.description = description or ""
-        # Pre-tokenize for BM25
-        text = f"{tag_name} {self.description} {self.category}".lower()
+        self.enum = enum
+        # Pre-tokenize for BM25 (include enum values for discoverability)
+        enum_text = " ".join(str(v) for v in enum) if enum else ""
+        text = f"{tag_name} {self.description} {self.category} {enum_text}".lower()
         self.tokens = _tokenize(text)
 
 
@@ -146,6 +149,7 @@ def _load_all_tag_docs() -> list[TagDoc]:
                     category=namelist,
                     description=p.get("description"),
                     section=namelist,
+                    enum=p.get("enum"),
                 ))
     except Exception:
         pass
@@ -167,6 +171,7 @@ def _load_all_tag_docs() -> list[TagDoc]:
                     category=info.get("category", ""),
                     description=info.get("description"),
                     section=info.get("section", ""),
+                    enum=info.get("enum"),
                 ))
         except Exception:
             pass
@@ -190,11 +195,14 @@ def _load_all_tag_docs() -> list[TagDoc]:
                     category=info.get("category", ""),
                     description=info.get("description"),
                     section=section_label,
+                    enum=info.get("enum"),
                 ))
             # Block parameters (ORCA %block...end sections)
             for block_name, block_info in data.get("blocks", {}).items():
                 block_section = f"block:{block_name}"
                 for param_name, param_info in block_info.get("parameters", {}).items():
+                    # ORCA uses "values" for enums in block params
+                    block_enum = param_info.get("enum") or param_info.get("values")
                     docs.append(TagDoc(
                         engine=eng,
                         tag_name=param_name,
@@ -203,6 +211,7 @@ def _load_all_tag_docs() -> list[TagDoc]:
                         category=block_name,
                         description=param_info.get("description"),
                         section=block_section,
+                        enum=block_enum if isinstance(block_enum, list) else None,
                     ))
         except Exception:
             pass
@@ -223,6 +232,7 @@ def _load_all_tag_docs() -> list[TagDoc]:
                     default=info.get("default"),
                     category=info.get("category", ""),
                     description=info.get("description"),
+                    enum=info.get("enum"),
                 ))
         except Exception:
             pass

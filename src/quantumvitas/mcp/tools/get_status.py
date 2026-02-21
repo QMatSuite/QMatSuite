@@ -8,11 +8,10 @@ from quantumvitas.mcp.envelope import make_error, make_response
 
 @mcp.tool
 def get_status(calc_ulid: str) -> dict:
-    """Get the run status of a calculation.
+    """Check the run state of all steps in a calculation.
 
-    Reports the historical run state: whether each step has been
-    executed and what the outcome was.  Since execution is synchronous,
-    this tool is mainly useful for checking past runs.
+    Use after run_calculation to verify completion or diagnose failure.
+    Reports whether each step has been executed and what the outcome was.
 
     Args:
         calc_ulid: ULID of the target calculation.
