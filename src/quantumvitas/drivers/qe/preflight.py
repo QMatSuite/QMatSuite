@@ -347,4 +347,46 @@ class QEPreflightChecker:
                 suggestion="Check pseudopotential cutoff recommendations.",
             ))
 
+        # A7: PARAM_WRONG_SECTION — check parameters are in the correct namelist
+        issues.extend(_check_param_sections(step_params))
+
         return issues
+
+
+def _check_param_sections(step_params: dict[str, Any]) -> list[PreflightIssue]:
+    """Check that QE pw.x parameters are placed in the correct namelist.
+
+    Returns advisory-level issues for misplaced parameters. Unknown
+    parameters (not in metadata) are silently skipped — they may be
+    valid in a newer QE version.
+    """
+    from quantumvitas.drivers.qe.param_registry import (
+        get_qe_param_namelist,
+        get_pw_namelists,
+    )
+
+    issues: list[PreflightIssue] = []
+    pw_namelists = get_pw_namelists()
+
+    for current_nl, section_data in step_params.items():
+        if current_nl not in pw_namelists:
+            continue
+        if not isinstance(section_data, dict):
+            continue
+        for param_name in section_data:
+            expected_nl = get_qe_param_namelist(param_name)
+            if expected_nl is None:
+                continue  # Unknown param — skip silently
+            if expected_nl != current_nl:
+                issues.append(PreflightIssue(
+                    code="PARAM_WRONG_SECTION",
+                    severity="warning",
+                    message=(
+                        f"'{param_name}' is in &{current_nl} but QE expects it in "
+                        f"&{expected_nl}. pw.x may crash or silently ignore this parameter."
+                    ),
+                    parameter=f"{current_nl}.{param_name}",
+                    suggestion=f"Move '{param_name}' from {current_nl} to {expected_nl}.",
+                ))
+
+    return issues
