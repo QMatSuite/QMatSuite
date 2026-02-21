@@ -2481,26 +2481,48 @@ class QVService:
                     "already_exists": True,
                 }
 
-            # Find output file
-            base_output = raw_dir / CalculationFileNaming.output_filename(step_gen, working_dir=None)
-            if base_output.exists():
-                output_file = base_output
+            # Detect engine from step_type_spec (e.g. "xtb_relax" → "xtb")
+            from quantumvitas.workflow.step_type_convert import prefix_from as _prefix_from
+            engine_from_spec = (
+                _prefix_from(str(step_type_spec))
+                if step_type_spec and "_" in str(step_type_spec)
+                else ""
+            )
+
+            if engine_from_spec == "xtb":
+                # xTB relax: optimized geometry is in xtbopt.xyz.
+                # xTB recipe uses WorkdirPolicy.ISOLATED: working dir is raw/<step_ulid>/
+                from quantumvitas.io.structure_io import read_structure as _read_structure
+                xtbopt_path = raw_dir / step_ulid / "xtbopt.xyz"
+                # Also try directly in raw_dir for non-isolated layouts
+                if not xtbopt_path.exists():
+                    xtbopt_path = raw_dir / "xtbopt.xyz"
+                if not xtbopt_path.exists():
+                    raise FileNotFoundError(
+                        f"xTB optimized geometry not found for step: "
+                        f"{raw_dir / step_ulid / 'xtbopt.xyz'}. "
+                        f"Run the xTB relax calculation first."
+                    )
+                structure = _read_structure(xtbopt_path)
             else:
-                output_filename = CalculationFileNaming.output_filename(step_gen, working_dir=raw_dir)
-                output_file = raw_dir / output_filename
+                # QE and other engines: find relax.out (or equivalent) and parse geometry
+                base_output = raw_dir / CalculationFileNaming.output_filename(step_gen, working_dir=None)
+                if base_output.exists():
+                    output_file = base_output
+                else:
+                    output_filename = CalculationFileNaming.output_filename(step_gen, working_dir=raw_dir)
+                    output_file = raw_dir / output_filename
 
-            if not output_file.exists():
-                raise FileNotFoundError(
-                    f"Output file not found for step '{step_selector}': {output_file}. "
-                    f"Step may not have completed successfully."
-                )
+                if not output_file.exists():
+                    raise FileNotFoundError(
+                        f"Output file not found for step: {output_file}. "
+                        f"Run the calculation first."
+                    )
 
-            # Parse final geometry
-            output_text = output_file.read_text()
-            snapshot, species = read_final_geometry_from_output_text(output_text)
-
-            # Convert to structure
-            structure = structure_from_qe_geometry_snapshot(snapshot, species)
+                # Parse final geometry (QE-specific)
+                output_text = output_file.read_text()
+                snapshot, species = read_final_geometry_from_output_text(output_text)
+                structure = structure_from_qe_geometry_snapshot(snapshot, species)
 
             # Generate structure name/slug
             structures = config.setdefault("structures", [])

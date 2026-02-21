@@ -110,6 +110,8 @@ class SCFResult:
             "calculation_type": self.calculation_type,
             "total_cpu_time_s": self.total_cpu_time,
             "total_wall_time_s": self.total_wall_time,
+            "total_magnetization": self.total_magnetization,
+            "absolute_magnetization": self.absolute_magnetization,
             "units": {
                 "energy": "Ry",
                 "fermi": "eV",
@@ -148,7 +150,9 @@ def parse_scf_output_text(text: str) -> SCFResult:
     calculation_type = None
     total_cpu = None
     total_wall = None
-    
+    total_magnetization = None
+    absolute_magnetization = None
+
     # Patterns
     iter_pattern = re.compile(r"iteration\s+#\s*(\d+)\s+ecut=\s*[\d.]+\s*Ry\s+beta=\s*[\d.]+")
     energy_pattern = re.compile(r"total energy\s*=\s*([-\d.]+)\s*Ry")
@@ -164,6 +168,8 @@ def parse_scf_output_text(text: str) -> SCFResult:
     ecutrho_pattern = re.compile(r"charge density cutoff\s*=\s*([-\d.]+)\s*Ry")
     calc_pattern = re.compile(r"calculation\s*=\s*'?(\w+)'?", re.IGNORECASE)
     time_pattern = re.compile(r"PWSCF\s*:\s*([\d.hms ]+)\s*CPU\s+([\d.hms ]+)\s*WALL")
+    total_mag_pattern = re.compile(r"total magnetization\s*=\s*([-\d.]+)\s*Bohr", re.IGNORECASE)
+    abs_mag_pattern = re.compile(r"absolute magnetization\s*=\s*([-\d.]+)\s*Bohr", re.IGNORECASE)
     # Detect new SCF cycle (for relax/md)
     new_scf_pattern = re.compile(r"Self-consistent Calculation|BFGS Geometry Optimization")
     
@@ -289,11 +295,21 @@ def parse_scf_output_text(text: str) -> SCFResult:
                 calculation_type = calc_match.group(1)
                 continue
         
+        # Check for magnetization (use last occurrence — correct for relax/md multi-cycle)
+        mag_match = total_mag_pattern.search(stripped)
+        if mag_match:
+            total_magnetization = float(mag_match.group(1))
+            continue
+        abs_mag_match = abs_mag_pattern.search(stripped)
+        if abs_mag_match:
+            absolute_magnetization = float(abs_mag_match.group(1))
+            continue
+
         # Check for JOB DONE
         if "JOB DONE" in stripped:
             converged = True
             continue
-        
+
         # Check for timing (use last occurrence)
         time_match = time_pattern.search(stripped)
         if time_match:
@@ -334,6 +350,8 @@ def parse_scf_output_text(text: str) -> SCFResult:
         calculation_type=calculation_type,
         total_cpu_time=total_cpu,
         total_wall_time=total_wall,
+        total_magnetization=total_magnetization,
+        absolute_magnetization=absolute_magnetization,
     )
 
 
