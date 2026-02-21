@@ -8378,7 +8378,7 @@ class QVService:
     @staticmethod
     def generate_kpath(
         structure: Any,  # pymatgen Structure
-        points_per_segment: int = 20,
+        points_per_segment: int = 10,
         path_type: str = "hinuma",
     ) -> Any:  # KPathResult
         """

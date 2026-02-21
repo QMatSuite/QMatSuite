@@ -144,7 +144,7 @@ class KPathResult:
 
 def generate_kpath(
     structure: "PMGStructure",
-    points_per_segment: int = 20,
+    points_per_segment: int = 10,
     path_type: str = "hinuma",
 ) -> KPathResult:
     """

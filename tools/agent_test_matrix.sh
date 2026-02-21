@@ -2,9 +2,19 @@
 # QMatSuite MCP Agent Test Matrix
 #
 # Spawns 9 Claude Code CLI agents against QMatSuite MCP, each performing a
-# different materials science calculation. Every run creates a unique directory.
-# Task dirs live in /tmp (outside the repo) so init_project() creates fresh
-# per-task projects instead of finding the repo's project.qv.yml.
+# different materials science calculation.  Agents receive ONLY a simple
+# task prompt and .mcp.json — no preconditioning about resources, paths,
+# or tool usage.  The MCP server instructions in .mcp.json are the sole
+# guide.
+#
+# Phases:
+#   0  Walk-up guard + wipe pseudo libraries + seed cache
+#   1  Agent 0 (GaAs SCF, sequential) — forces cold SSSP download
+#   2  Agents 1-8 in parallel
+#   3  Summary with pass/fail gates
+#
+# Every run creates a unique directory under <repo>/.tmp/agent_mcp_test/.
+# Never overwrites previous runs.
 #
 # Usage: bash tools/agent_test_matrix.sh
 
@@ -13,38 +23,91 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_PYTHON="$REPO_ROOT/.venv/bin/python"
 
+# ---- Paths (from src/quantumvitas/core/paths.py) ----
+
+PSEUDO_LIB="$REPO_ROOT/.qmatsuite/libraries/pseudo"
+SEED_DIR="$REPO_ROOT/.qmatsuite/seeds/pseudo"
+SSSP_LIB="$PSEUDO_LIB/SSSP"
+
 # ---- Prerequisites ----
 
-[[ -f "$VENV_PYTHON" ]] || { echo "ERROR: .venv/bin/python not found" >&2; exit 1; }
-command -v claude &>/dev/null || { echo "ERROR: 'claude' not in PATH" >&2; exit 1; }
+[[ -f "$VENV_PYTHON" ]] || { echo "ABORT: .venv/bin/python not found" >&2; exit 1; }
+command -v claude &>/dev/null || { echo "ABORT: 'claude' CLI not in PATH" >&2; exit 1; }
 
-# ---- Run directory (in /tmp for project isolation) ----
+# ---- Gate: no project.qv.yml in walk-up path from .tmp to / ----
+#
+# If a project.qv.yml exists anywhere above the task directories, the MCP
+# server's init_project() will attach to it instead of creating a fresh
+# project.  Abort early if found.
+
+_walk="$REPO_ROOT/.tmp"
+while [[ "$_walk" != "/" && "$_walk" != "." ]]; do
+    if [[ -f "$_walk/project.qv.yml" ]]; then
+        echo "ABORT: project.qv.yml found at $_walk" >&2
+        echo "  Agents will attach to this project instead of creating fresh ones." >&2
+        echo "  Fix: rm $_walk/project.qv.yml" >&2
+        exit 1
+    fi
+    _walk="$(dirname "$_walk")"
+done
+if [[ -f "/project.qv.yml" ]]; then
+    echo "ABORT: project.qv.yml found at /" >&2; exit 1
+fi
+# Also check inside .tmp/agent_mcp_test/ at intermediate levels (stale from old runs)
+if [[ -d "$REPO_ROOT/.tmp/agent_mcp_test" ]]; then
+    _stale="$(find "$REPO_ROOT/.tmp/agent_mcp_test" -maxdepth 2 -name project.qv.yml \
+              ! -path "*/task_*/project.qv.yml" 2>/dev/null || true)"
+    if [[ -n "$_stale" ]]; then
+        echo "ABORT: stale project.qv.yml in .tmp/agent_mcp_test/ (not inside a task dir):" >&2
+        echo "$_stale" >&2
+        exit 1
+    fi
+fi
+unset _walk _stale
+echo "GATE PASS: no project.qv.yml in walk-up path"
+
+# ---- Run directory ----
 
 RUN_ID="run_$(date +%Y%m%d_%H%M%S)"
-RUN_DIR="/tmp/qmatsuite_tests/$RUN_ID"
+RUN_DIR="$REPO_ROOT/.tmp/agent_mcp_test/$RUN_ID"
 TRACES_DIR="$RUN_DIR/traces"
 mkdir -p "$TRACES_DIR"
 
+echo ""
 echo "=========================================="
 echo "  QMatSuite MCP Agent Test Matrix"
-echo "  Run ID: $RUN_ID"
-echo "  Dir:    $RUN_DIR"
+echo "  Run ID : $RUN_ID"
+echo "  Run Dir: $RUN_DIR"
 echo "=========================================="
 
-# ---- Clean SSSP (force fresh download in Task 0) ----
-# Paths from src/quantumvitas/core/paths.py:
-#   .qmatsuite/libraries/pseudo/SSSP/ — installed UPF files
-#   .qmatsuite/seeds/pseudo/          — download archives
+# ============================================================
+# PHASE 0: Wipe pseudo libraries + seed cache
+# ============================================================
 
-PSEUDO_LIB_SSSP="$REPO_ROOT/.qmatsuite/libraries/pseudo/SSSP"
 echo ""
-echo "=== Cleaning SSSP for fresh download ==="
-rm -rf "$PSEUDO_LIB_SSSP" "$REPO_ROOT/.qmatsuite/seeds/pseudo"
-echo "  Done."
+echo "=== Phase 0: Wipe pseudo libraries and seed cache ==="
+echo "  Deleting: $PSEUDO_LIB"
+echo "  Deleting: $SEED_DIR"
 
-# ---- Helper: create task dir with .mcp.json ----
-# Copies .mcp.json.example with command set to absolute venv python path.
+rm -rf "$PSEUDO_LIB"
+rm -rf "$SEED_DIR"
 
+# Assert deletion succeeded
+if [[ -d "$PSEUDO_LIB" ]]; then
+    echo "GATE FAIL: $PSEUDO_LIB still exists after deletion" >&2
+    exit 1
+fi
+if [[ -d "$SEED_DIR" ]]; then
+    echo "GATE FAIL: $SEED_DIR still exists after deletion" >&2
+    exit 1
+fi
+echo "GATE PASS: pseudo libraries and seed cache wiped"
+
+# ============================================================
+# Helpers
+# ============================================================
+
+# Create task dir with .mcp.json (absolute python path, instructions from example)
 setup_task() {
     local task_dir="$1"
     mkdir -p "$task_dir"
@@ -58,50 +121,68 @@ task_dir.joinpath(".mcp.json").write_text(json.dumps(config, indent=2))
 PYEOF
 }
 
-# ---- Helper: run one agent ----
-
+# Run one agent.  Prompt is the ONLY input — no preconditioning.
 run_agent() {
     local tnum="$1"
     local task_dir="$2"
     local task_prompt="$3"
     local trace_file="$TRACES_DIR/task_${tnum}.log"
 
-    echo "[task_${tnum}] Starting..."
+    echo "[task_${tnum}] Starting — $(basename "$task_dir")"
     (
         cd "$task_dir"
-        unset CLAUDECODE CLAUDE_CODE_ENTRYPOINT
+        unset CLAUDECODE CLAUDE_CODE_ENTRYPOINT 2>/dev/null || true
         claude -p \
             --dangerously-skip-permissions \
             --output-format stream-json --verbose \
-            "You are testing QMatSuite MCP tools. Complete the task below.
-You MUST write a WORKLOG.md in the current directory documenting every tool call, every decision, and the final outcome.
-
-Task: $task_prompt"
+            "$task_prompt"
     ) > "$trace_file" 2>&1 || true
-    local lines; lines="$(wc -l < "$trace_file" 2>/dev/null || echo 0)"
-    echo "[task_${tnum}] Done. Trace: $lines lines"
+
+    local lines
+    lines="$(wc -l < "$trace_file" 2>/dev/null || echo 0)"
+    echo "[task_${tnum}] Done (trace: ${lines// /} lines)"
 }
 
-# ---- Task 0: Cold Start (sequential, must succeed before parallel phase) ----
+# ============================================================
+# PHASE 1: Agent 0 — Na BCC SCF (sequential, cold SSSP download smoke test)
+# ============================================================
+#
+# Na BCC is the fastest possible smoke test: 1 valence electron, BCC
+# structure, small basis (ecutwfc ~30 Ry), converges in ~5 SCF iterations.
+# Na is NOT in the bundled internal pseudo resources, so the agent MUST
+# call download_pseudo_library (cold SSSP download) before it can run.
 
 echo ""
-echo "=== Task 0: Cold Start (Sequential) ==="
-T0_DIR="$RUN_DIR/task_00_si_scf_cold"
+echo "=== Phase 1: Agent 0 — Na BCC SCF (cold SSSP smoke test) ==="
+
+T0_DIR="$RUN_DIR/task_00_na_scf"
 setup_task "$T0_DIR"
 run_agent "00" "$T0_DIR" \
-    "Calculate the total energy of bulk silicon using Quantum ESPRESSO."
+    "Calculate the total energy of BCC sodium using Quantum ESPRESSO."
 
-if [[ ! -d "$PSEUDO_LIB_SSSP" ]]; then
-    echo ""
-    echo "ERROR: Task 0 did not download SSSP. Check $TRACES_DIR/task_00.log" >&2
+# Gate: SSSP must now be downloaded
+if [[ ! -d "$SSSP_LIB" ]]; then
+    echo "GATE FAIL: SSSP library not found at $SSSP_LIB after agent 0" >&2
+    echo "  Agent must download SSSP to run QE calculations." >&2
+    echo "  Check: $TRACES_DIR/task_00.log" >&2
     exit 1
 fi
-echo "  SSSP verified: ✓"
+echo "GATE PASS: SSSP library present at $SSSP_LIB"
 
-# ---- Tasks 1-8: Parallel ----
+# Gate: agent 0 must have created a project
+if [[ ! -f "$T0_DIR/project.qv.yml" ]]; then
+    echo "GATE FAIL: agent 0 (na_scf) did not create project.qv.yml in $T0_DIR" >&2
+    echo "  Check: $TRACES_DIR/task_00.log" >&2
+    exit 1
+fi
+echo "GATE PASS: agent 0 created project"
+
+# ============================================================
+# PHASE 2: Agents 1-9 (parallel)
+# ============================================================
 
 echo ""
-echo "=== Tasks 1-8: Parallel Calculations ==="
+echo "=== Phase 2: Agents 1-8 (parallel) ==="
 
 _launch() {
     local tnum="$1" tname="$2" tprompt="$3"
@@ -110,72 +191,111 @@ _launch() {
     run_agent "$tnum" "$task_dir" "$tprompt" &
 }
 
-_launch "01" "task_01_si_bands_demo" \
-    "Calculate the electronic band structure of silicon using Quantum ESPRESSO. Show me the band gap and plot the bands."
+_launch "01" "task_01_si_scf" \
+    "Calculate the total energy of bulk silicon using Quantum ESPRESSO."
 
-_launch "02" "task_02_si_dos_demo" \
-    "Calculate the density of states of silicon using Quantum ESPRESSO. Plot the DOS."
+_launch "02" "task_02_si_bands" \
+    "Calculate the electronic band structure of silicon using Quantum ESPRESSO."
 
-_launch "03" "task_03_si_relax_bands" \
-    "First relax the silicon crystal structure using Quantum ESPRESSO, then calculate its band structure using the relaxed geometry."
+_launch "03" "task_03_si_dos" \
+    "Calculate the density of states of silicon using Quantum ESPRESSO."
 
-_launch "04" "task_04_al_scf_scratch" \
-    "Calculate the total energy of aluminum (FCC structure) using Quantum ESPRESSO. Use a high-quality preset if available."
+_launch "04" "task_04_si_relax_bands" \
+    "Relax the silicon crystal structure using Quantum ESPRESSO, then calculate its band structure on the relaxed geometry."
 
-_launch "05" "task_05_gaas_bands" \
-    "Calculate the band structure of GaAs (zincblende structure) using Quantum ESPRESSO with PBE functional."
+_launch "05" "task_05_al_scf" \
+    "Calculate the total energy of FCC aluminum using Quantum ESPRESSO."
 
 _launch "06" "task_06_fe_magnetic" \
-    "Calculate the magnetic moment of BCC iron using Quantum ESPRESSO. This is a ferromagnetic metal."
+    "Calculate the magnetic moment of BCC iron using Quantum ESPRESSO."
 
 _launch "07" "task_07_bad_config" \
-    "Calculate the total energy of silicon using Quantum ESPRESSO. Set ecutwfc to 5 Ry and use fixed occupations."
+    "Calculate the total energy of silicon using Quantum ESPRESSO with ecutwfc = 5 Ry and fixed occupations."
 
 _launch "08" "task_08_water_xtb" \
-    "Optimize the geometry of a water molecule using xTB with the GFN2 method."
+    "Optimize the geometry of a water molecule using xTB."
 
 wait
-echo "  All parallel tasks complete."
+echo "  All parallel agents complete."
 
-# ---- Summary ----
+# ============================================================
+# PHASE 3: Summary and gates
+# ============================================================
+
+echo ""
+echo "=== Phase 3: Summary ==="
+
+PASS=0
+FAIL=0
+
+ALL_TASKS=(
+    "00:task_00_na_scf"
+    "01:task_01_si_scf"
+    "02:task_02_si_bands"
+    "03:task_03_si_dos"
+    "04:task_04_si_relax_bands"
+    "05:task_05_al_scf"
+    "06:task_06_fe_magnetic"
+    "07:task_07_bad_config"
+    "08:task_08_water_xtb"
+)
 
 _check() {
     local tnum="$1" tname="$2"
     local tdir="$RUN_DIR/$tname"
-    local wlog; wlog="$(test -f "$tdir/WORKLOG.md" && echo ✓ || echo ✗)"
-    local proj; proj="$(test -f "$tdir/project.qv.yml" && echo ✓ || echo ✗)"
-    local lines; lines="$(wc -l < "$TRACES_DIR/task_${tnum}.log" 2>/dev/null || echo 0)"
-    printf "Task %s (%-22s): WORKLOG=%-2s  PROJECT=%-2s  TRACE=%s lines\n" \
-        "$tnum" "$tname" "$wlog" "$proj" "$lines"
+    local wlog proj lines status
+
+    wlog="$(test -f "$tdir/WORKLOG.md" && echo "✓" || echo "✗")"
+    proj="$(test -f "$tdir/project.qv.yml" && echo "✓" || echo "✗")"
+    lines="$(wc -l < "$TRACES_DIR/task_${tnum}.log" 2>/dev/null || echo 0)"
+    lines="${lines// /}"
+
+    if [[ "$proj" == "✓" ]]; then
+        status="PASS"; ((PASS++)) || true
+    else
+        status="FAIL"; ((FAIL++)) || true
+    fi
+
+    printf "[%s] Task %s  %-26s  WORKLOG=%s  PROJECT=%s  TRACE=%s lines\n" \
+        "$status" "$tnum" "$tname" "$wlog" "$proj" "$lines"
 }
 
 SUMMARY_FILE="$RUN_DIR/SUMMARY.txt"
 {
 echo "=== Agent Test Matrix Results ==="
-echo "Run ID: $RUN_ID"
+echo "Run ID:  $RUN_ID"
 echo "Run Dir: $RUN_DIR"
-echo "Date: $(date)"
+echo "Date:    $(date)"
 echo ""
-_check "00" "task_00_si_scf_cold"
-_check "01" "task_01_si_bands_demo"
-_check "02" "task_02_si_dos_demo"
-_check "03" "task_03_si_relax_bands"
-_check "04" "task_04_al_scf_scratch"
-_check "05" "task_05_gaas_bands"
-_check "06" "task_06_fe_magnetic"
-_check "07" "task_07_bad_config"
-_check "08" "task_08_water_xtb"
-echo ""
-echo "SSSP downloaded: $(test -d "$PSEUDO_LIB_SSSP" && echo ✓ || echo ✗)"
-wcount=0; pcount=0
-for n in task_00_si_scf_cold task_01_si_bands_demo task_02_si_dos_demo \
-         task_03_si_relax_bands task_04_al_scf_scratch task_05_gaas_bands \
-         task_06_fe_magnetic task_07_bad_config task_08_water_xtb; do
-    test -f "$RUN_DIR/$n/WORKLOG.md" && ((wcount++)) || true
-    test -f "$RUN_DIR/$n/project.qv.yml" && ((pcount++)) || true
+
+for entry in "${ALL_TASKS[@]}"; do
+    _check "${entry%%:*}" "${entry#*:}"
 done
+
+echo ""
+echo "SSSP downloaded: $(test -d "$SSSP_LIB" && echo "✓" || echo "✗")"
+
+wcount=0
+pcount=$PASS
+for entry in "${ALL_TASKS[@]}"; do
+    tname="${entry#*:}"
+    test -f "$RUN_DIR/$tname/WORKLOG.md" && ((wcount++)) || true
+done
+
 echo "Tasks with worklog: $wcount/9"
 echo "Tasks with project: $pcount/9"
-} | tee "$SUMMARY_FILE"
 echo ""
+if [[ $FAIL -gt 0 ]]; then
+    echo "OVERALL: FAIL ($FAIL task(s) without project)"
+else
+    echo "OVERALL: PASS (all 9 tasks created projects)"
+fi
+} | tee "$SUMMARY_FILE"
+
+echo ""
+echo "All artifacts staged at: $RUN_DIR"
 echo "Summary: $SUMMARY_FILE"
+
+if [[ $FAIL -gt 0 ]]; then
+    exit 1
+fi
