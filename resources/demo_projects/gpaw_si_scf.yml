@@ -99,7 +99,7 @@ calculations:
 meta:
   ulid: gpaw_si_scf
   title: Silicon GPAW SCF
-  subtitle: PBE ground-state calculation for silicon
+  subtitle: Diamond-cubic Si total energy with PBE plane-wave mode on a 4x4x4 k-grid
   description: PBE ground-state SCF calculation for diamond-cubic silicon, computing the total energy and electronic convergence.
   tags:
   - gpaw
@@ -128,4 +128,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: gpaw
   corpus_case_id: si_scf
-  corpus_checksum: 3045e3ff58ded15609d4413481a3edffb615378320b38b20bb27a519463209dd
+  corpus_checksum: 8117583d15b8a3f094e6da53a402dbbd1aea5c982def47f11058fa84da91d0aa

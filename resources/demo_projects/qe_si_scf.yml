@@ -120,7 +120,7 @@ pseudo:
 meta:
   ulid: qe_si_scf
   title: 0 Si Scf
-  subtitle: SCF
+  subtitle: LDA ground-state total energy for diamond-cubic silicon
   description: SCF calculation for silicon crystal using the LDA (PZ) functional. Computes the ground-state total energy of
     the diamond-cubic Si unit cell.
   tags:
@@ -150,6 +150,6 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_scf
-  corpus_checksum: 4098dd8a66d82a76aa0daf272e0d0b97b705f52d3518627eb7e13114ee92fd0c
+  corpus_checksum: f0bc8d9c2de16e967d698ccc76ab94fe623ef0869c750c1cea87e64fafe05409
   reference_artifacts:
     scf: 00_Si_scf.scf.json

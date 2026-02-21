@@ -23,7 +23,7 @@ demo_slug: orca_formaldehyde_tddft
 asset_policy: none
 recommended_analysis: excited_states
 difficulty: intermediate
-subtitle: SCF + TDDFT excited states calculation
+subtitle: "B3LYP/def2-SVP Tamm-Dancoff TDDFT for 5 excited states of formaldehyde"
 tags:
 - orca
 - molecular

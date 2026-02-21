@@ -89,7 +89,7 @@ calculations:
 meta:
   ulid: gpaw_al_scf
   title: Aluminum GPAW SCF
-  subtitle: PBE ground-state calculation for aluminum
+  subtitle: FCC aluminum total energy with PBE plane-wave mode and Fermi-Dirac smearing
   description: PBE ground-state SCF calculation for FCC aluminum, computing the total energy and electronic convergence.
   tags:
   - gpaw
@@ -118,4 +118,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: gpaw
   corpus_case_id: al_scf
-  corpus_checksum: 259c777528ebb56a09d10923aa6cacfd97c78317969b869fbab5d6ee0d31a8ed
+  corpus_checksum: 65afc43e2e3654e3db66dc16b73affa1a6113c6bcbe4fb5cafa7e2bc0b36b2af

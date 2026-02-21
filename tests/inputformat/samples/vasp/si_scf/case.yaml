@@ -1,5 +1,7 @@
 case_id: si_scf
 title: Silicon diamond SCF
+subtitle: Bulk Si total energy with PBE PAW on a 4x4x4 Gamma-centred k-mesh
+difficulty: beginner
 engine: vasp
 workflow_tags:
 - scf

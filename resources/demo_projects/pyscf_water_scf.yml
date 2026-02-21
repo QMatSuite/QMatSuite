@@ -78,7 +78,7 @@ calculations:
 meta:
   ulid: pyscf_water_scf
   title: Water PySCF SCF
-  subtitle: B3LYP/cc-pVDZ DFT calculation on water molecule
+  subtitle: Water total energy via B3LYP hybrid DFT with cc-pVDZ basis in PySCF
   description: B3LYP/cc-pVDZ single-point DFT calculation on water molecule
   tags:
   - pyscf
@@ -107,4 +107,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: pyscf
   corpus_case_id: water_scf
-  corpus_checksum: 03d218ac23dd1f0136d028a16051318d4f9475256f5a08322ae5144287aa078c
+  corpus_checksum: 96afcd0475ec91ba76ac4dd457063d14d5eb78c628d139229dbce00df6e21d47

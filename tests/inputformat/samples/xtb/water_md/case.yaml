@@ -1,5 +1,7 @@
 case_id: water_md
 title: Water molecular dynamics
+subtitle: GFN2-xTB molecular dynamics of water using xcontrol $md block (~38 s runtime)
+difficulty: intermediate
 engine: xtb
 workflow_tags:
 - md

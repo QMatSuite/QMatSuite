@@ -87,6 +87,12 @@ def _summarize_bundle(object_type: str, bundle: dict) -> dict:
 
     if ot == "trajectory":
         energy_arr = arrays.get("energy", [])
+        if not energy_arr:
+            # Trajectory bundles store energy in series (not arrays)
+            for s in series:
+                if (s.get("name") or "").lower() in ("total energy", "energy"):
+                    energy_arr = s.get("y", [])
+                    break
         return {
             "trajectory_type": extra.get("trajectory_type"),
             "n_frames": extra.get("n_frames"),

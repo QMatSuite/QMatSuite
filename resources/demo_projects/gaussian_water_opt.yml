@@ -83,7 +83,7 @@ calculations:
 meta:
   ulid: gaussian_water_opt
   title: Water B3LYP Geometry Optimization
-  subtitle: relax
+  subtitle: B3LYP/6-31G* geometry optimization of the water molecule
   description: B3LYP/6-31G* geometry optimization on water; covers Opt keyword
   tags:
   - relax
@@ -110,4 +110,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: gaussian
   corpus_case_id: water_b3lyp_opt
-  corpus_checksum: f1992d3ac799aa4e5a9fe8a81825ec4d08297022f446020e277afa5f26f052f2
+  corpus_checksum: b0120d9ee18082a7bf894aa780d2bb12c285ca74013a507a83af37e4833ad6bc

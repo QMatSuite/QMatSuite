@@ -17,7 +17,7 @@ demo_slug: qe_si_scf
 asset_policy: redistributable
 recommended_analysis: scf
 difficulty: beginner
-subtitle: SCF
+subtitle: LDA ground-state total energy for diamond-cubic silicon
 tags:
 - scf
 - Si

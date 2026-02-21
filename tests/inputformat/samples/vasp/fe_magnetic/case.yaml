@@ -1,5 +1,7 @@
 case_id: fe_magnetic
 title: Iron BCC spin-polarised SCF
+subtitle: Collinear spin-polarized SCF of ferromagnetic BCC Fe with ISPIN=2 and MAGMOM=3.0
+difficulty: intermediate
 engine: vasp
 workflow_tags:
 - scf

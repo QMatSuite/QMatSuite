@@ -1,5 +1,7 @@
 case_id: water_hf_sp
 title: Water HF Single-Point
+subtitle: "Hartree-Fock total energy of H2O with minimal STO-3G basis"
+difficulty: beginner
 engine: gaussian
 workflow_tags:
 - scf

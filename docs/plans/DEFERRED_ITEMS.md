@@ -64,3 +64,28 @@ Collected from `docs/history/worklogs/MCP_STAGE*` worklogs during Stage 11 QA au
 - **Source**: MCP_STAGE2_WORKLOG.md (line 96)
 - Requires structure access for precision recommendations
 - **Fix**: Wire structure into preview_compilation for adaptive precision advice
+
+---
+
+## Demo Store Audit Additions
+
+### D1: Corpus-level subtitle/difficulty validation gate
+- **Source**: WORKLOG_DEMO_AUDIT.md
+- **Priority**: Low
+- Add a gate test that verifies every `demo_eligible: true` case.yaml has non-empty `subtitle` and `difficulty` fields
+- Prevents regression when new demos are added
+
+### D2: Text-search upgrade for search_demos
+- **Source**: WORKLOG_DEMO_AUDIT.md
+- **Priority**: Medium
+- Current text search is substring-only. Consider BM25 or fuzzy matching for better recall (e.g. "iron" matching "Fe" demos)
+
+### D3: Demo runtime benchmarking
+- **Source**: WORKLOG_DEMO_AUDIT.md
+- **Priority**: Low
+- `estimated_runtime_s` values are manual estimates. A CI job could run each demo on a reference machine and record actual runtimes
+
+### D4: Ref pack staleness detection
+- **Source**: WORKLOG_DEMO_AUDIT.md
+- **Priority**: Medium
+- If demo input parameters change but ref pack isn't regenerated, results become stale. Add manifest checksum comparison to warn

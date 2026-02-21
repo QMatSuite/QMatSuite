@@ -50,7 +50,7 @@ inline_structure:
   - - 0.0
     - 0.0
     - 0.0
-subtitle: PBE ground-state calculation for aluminum
+subtitle: FCC aluminum total energy with PBE plane-wave mode and Fermi-Dirac smearing
 tags:
 - gpaw
 - metal

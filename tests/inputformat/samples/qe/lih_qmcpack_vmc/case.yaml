@@ -22,7 +22,7 @@ availability: open_source
 asset_policy: redistributable
 recommended_analysis: energy
 difficulty: advanced
-subtitle: QE SCF -> pw2qmcpack -> QMCPACK VMC
+subtitle: Solid-state LiH VMC energy via QE-to-QMCPACK pipeline with BFD pseudopotentials
 tags:
 - qmcpack
 - composite

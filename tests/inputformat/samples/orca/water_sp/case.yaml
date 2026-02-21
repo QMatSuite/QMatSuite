@@ -1,5 +1,7 @@
 case_id: water_sp
 title: Water Single-Point Energy
+subtitle: "B3LYP/def2-TZVP energy with D3BJ dispersion and RIJCOSX acceleration"
+difficulty: beginner
 engine: orca
 workflow_tags:
 - scf

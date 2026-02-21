@@ -132,7 +132,7 @@ calculations:
 meta:
   ulid: siesta_si_relax
   title: Silicon variable-cell CG relaxation
-  subtitle: relax
+  subtitle: Variable-cell CG relaxation of Si with PBE and DZP NAO basis set
   description: Variable-cell CG relaxation of bulk silicon using GGA-PBE with a DZP NAO basis set; relaxes both atomic positions
     and the unit cell.
   tags:
@@ -140,7 +140,7 @@ meta:
   - vc_relax
   - periodic
   recommended_analysis: scf
-  difficulty: beginner
+  difficulty: intermediate
   system_class: crystal
   periodicity: periodic
   method: dft-pbe
@@ -160,4 +160,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: siesta
   corpus_case_id: si_relax
-  corpus_checksum: f564ee986e03df788e2a7fdfe74eba2a9aa2e290fba425f118bcd88379ac042b
+  corpus_checksum: 3ffbf0f530361d745091439d9299e4ff7b569e697ce05820d20cd8fc3661893e

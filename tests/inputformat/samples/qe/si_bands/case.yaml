@@ -19,8 +19,8 @@ availability: open_source
 demo_slug: si_bands_demo
 asset_policy: redistributable
 recommended_analysis: bands
-difficulty: beginner
-subtitle: SCF → NSCF → Bands
+difficulty: intermediate
+subtitle: "PBE band structure along L-\u0393-X-U-\u0393 for diamond Si"
 tags:
 - bands
 - Si

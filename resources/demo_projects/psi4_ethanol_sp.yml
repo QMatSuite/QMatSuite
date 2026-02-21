@@ -138,7 +138,7 @@ calculations:
 meta:
   ulid: psi4_ethanol_sp
   title: Ethanol Psi4 Single Point
-  subtitle: HF/6-31G* single-point for ethanol
+  subtitle: Hartree-Fock single-point energy of ethanol (C2H6O) with 6-31G* basis
   description: HF/6-31G* single-point energy calculation on ethanol molecule
   tags:
   - psi4
@@ -167,4 +167,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: psi4
   corpus_case_id: ethanol_sp
-  corpus_checksum: 8fc145ee46901d9a59a5b9a36ad8561a453179935b68bfc190d4a84d98fe45b5
+  corpus_checksum: fa438d2379ba379a02c03a26a2f04dbdb12ce150a9d43c34b156c007d73aa251

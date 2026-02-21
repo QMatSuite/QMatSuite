@@ -114,7 +114,7 @@ calculations:
 meta:
   ulid: abinit_si_relax
   title: Silicon ionic and cell relaxation
-  subtitle: relax
+  subtitle: BFGS relaxation of compressed diamond Si with isotropic cell optimization
   description: Relaxation of 2-atom diamond silicon from a compressed lattice using BFGS with isotropic cell optimization.
   tags:
   - relax
@@ -140,4 +140,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: abinit
   corpus_case_id: si_relax
-  corpus_checksum: d0d533f68ea12b81f50bfd6178000a2adfc13782b2284801d37e215a5fe6b2a0
+  corpus_checksum: 7d25fd0bf88ee1fbe8d5626a52c69e952c459e536c8a1bdf6090de7117bac64b

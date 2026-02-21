@@ -22,8 +22,8 @@ required_engine: qe
 availability: open_source
 asset_policy: redistributable
 recommended_analysis: scf
-difficulty: intermediate
-subtitle: QE SCF -> NSCF -> W90 Disentangle + Wannierize
+difficulty: advanced
+subtitle: Wannier-interpolated bands for Cu d+sp via QE-to-Wannier90 with disentanglement
 tags:
 - wannier90
 - composite

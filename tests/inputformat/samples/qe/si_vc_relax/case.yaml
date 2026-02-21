@@ -17,8 +17,8 @@ availability: open_source
 demo_slug: qe_si_vc_relax
 asset_policy: redistributable
 recommended_analysis: scf
-difficulty: beginner
-subtitle: VC-Relax
+difficulty: intermediate
+subtitle: PBE variable-cell relaxation of Si optimizing lattice and atomic positions
 tags:
 - relax
 - Si

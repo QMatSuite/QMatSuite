@@ -161,7 +161,7 @@ pseudo:
 meta:
   ulid: si_dos_demo
   title: Silicon density of states
-  subtitle: SCF → NSCF → DOS
+  subtitle: PBE density of states for diamond Si with tetrahedron integration
   description: 'Density of states calculation for silicon using DFT-PBE with SSSP precision pseudopotentials. Runs a 3-step
     workflow: SCF, NSCF on a dense k-grid with tetrahedra occupation, and dos.x post-processing.'
   tags:
@@ -171,7 +171,7 @@ meta:
   - tutorial
   - beginner
   recommended_analysis: dos
-  difficulty: beginner
+  difficulty: intermediate
   system_class: crystal
   periodicity: periodic
   method: dft-pbe
@@ -192,7 +192,7 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_dos
-  corpus_checksum: 3a394e93492ff0c2306cf2f357410671b525b99c536049b4c2c48d161434ea48
+  corpus_checksum: 1944dd00251ce1088f131c64a42974cdeb8d32c696d073cf9ba07eeabdc85592
   reference_artifacts:
     dos: si_dos_demo.dos.json
     scf: si_dos_demo.scf.json

@@ -20,8 +20,8 @@ required_engine: qe
 availability: open_source
 asset_policy: redistributable
 recommended_analysis: energy
-difficulty: intermediate
-subtitle: QE SCF -> pw2qmcpack -> QMCPACK VMC
+difficulty: advanced
+subtitle: All-electron He atom VMC energy via QE-to-QMCPACK pipeline with Pade Jastrow
 tags:
 - qmcpack
 - composite

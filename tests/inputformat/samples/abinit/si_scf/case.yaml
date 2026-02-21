@@ -1,5 +1,7 @@
 case_id: si_scf
 title: Silicon SCF ground state
+subtitle: "Diamond Si total energy with LDA, ecut 10 Ha, and 4x4x4 k-mesh"
+difficulty: beginner
 engine: abinit
 workflow_tags:
 - scf

@@ -19,8 +19,8 @@ availability: open_source
 demo_slug: qe_al_dos
 asset_policy: redistributable
 recommended_analysis: dos
-difficulty: beginner
-subtitle: SCF → NSCF → DOS
+difficulty: intermediate
+subtitle: PBE density of states for FCC aluminum with Gaussian smearing
 tags:
 - dos
 - Al

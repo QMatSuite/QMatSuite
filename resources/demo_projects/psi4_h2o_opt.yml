@@ -79,7 +79,7 @@ calculations:
 meta:
   ulid: psi4_h2o_opt
   title: Water Psi4 Geometry Optimization
-  subtitle: B3LYP/cc-pVDZ geometry optimization on water
+  subtitle: Water geometry optimization using B3LYP/cc-pVDZ to find equilibrium structure
   description: B3LYP/cc-pVDZ geometry optimization on water molecule
   tags:
   - psi4
@@ -108,4 +108,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: psi4
   corpus_case_id: h2o_opt
-  corpus_checksum: 743ab5718d7bdd9c6653aa08b2c27ab471733295beae7d0f67ff57dd524fa154
+  corpus_checksum: f1451f9c47a3c11b768d83c65d07c38ba2dc56f9313319e9d51a449b40fe453f

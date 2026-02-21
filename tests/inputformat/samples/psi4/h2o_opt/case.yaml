@@ -43,7 +43,7 @@ inline_structure:
   - - 0.0
     - -0.75695
     - -0.4692
-subtitle: B3LYP/cc-pVDZ geometry optimization on water
+subtitle: Water geometry optimization using B3LYP/cc-pVDZ to find equilibrium structure
 tags:
 - psi4
 - molecular

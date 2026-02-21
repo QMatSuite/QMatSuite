@@ -305,6 +305,13 @@ def test_get_demo_results_trajectory_summary():
     assert "trajectory_type" in summary
     assert summary["n_frames"] is not None
     assert summary["n_frames"] > 1, "Trajectory should have >1 frame"
+    # Energy should be extracted from series fallback (not arrays)
+    assert summary["initial_energy_eV"] is not None, \
+        "Trajectory energy should not be None (series fallback)"
+    assert summary["final_energy_eV"] is not None, \
+        "Trajectory final energy should not be None (series fallback)"
+    assert isinstance(summary["initial_energy_eV"], (int, float))
+    assert isinstance(summary["final_energy_eV"], (int, float))
 
 
 def test_get_demo_results_returns_engine_field():

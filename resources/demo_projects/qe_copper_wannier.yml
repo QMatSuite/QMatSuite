@@ -945,7 +945,7 @@ pseudo:
 meta:
   ulid: qe_copper_wannier
   title: Copper Wannier functions with disentanglement (QE to W90 pipeline)
-  subtitle: QE SCF -> NSCF -> W90 Disentangle + Wannierize
+  subtitle: Wannier-interpolated bands for Cu d+sp via QE-to-Wannier90 with disentanglement
   description: Copper FCC Wannier function construction with disentanglement using the QE→Wannier90 pipeline, computing Wannier-interpolated
     band structure for the Cu d and sp bands via W90 Tutorial Example 6.
   tags:
@@ -955,7 +955,7 @@ meta:
   - disentanglement
   - tutorial
   recommended_analysis: scf
-  difficulty: intermediate
+  difficulty: advanced
   system_class: crystal
   periodicity: periodic
   method: dft-pbe
@@ -976,4 +976,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: copper_wannier
-  corpus_checksum: 3ca2436d7f1cc793bd6ea2b0c3aa001f1b6fde35239c27ea944823cff330bf9e
+  corpus_checksum: c90fa81331364e4202d0494afa9f9425385afac3fb8aba63ce7b7aebc074ae27

@@ -140,14 +140,14 @@ calculations:
 meta:
   ulid: lammps_lj_melt
   title: 3D LJ melt NVE
-  subtitle: md
+  subtitle: Argon-like LJ fluid NVE dynamics on a lattice-created FCC box (250 steps)
   description: NVE molecular dynamics of a 3-D Lennard-Jones fluid (argon-like, lattice-created FCC box) running 250 timesteps
     to sample a molten state.
   tags:
   - md
   - nve
   recommended_analysis: trajectory
-  difficulty: beginner
+  difficulty: intermediate
   system_class: fluid
   periodicity: periodic
   method: lj
@@ -166,4 +166,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: lammps
   corpus_case_id: melt_lj_nve
-  corpus_checksum: 0aa9545f79b126b1e753473034c6779a97c0e014d647025d0ca9a1c0183678e3
+  corpus_checksum: 8e543b954ed649ff11abb9e159876bbdd61a3404c58ff1b6b144bc7241c353d5

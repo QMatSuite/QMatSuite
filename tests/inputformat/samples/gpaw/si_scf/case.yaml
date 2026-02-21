@@ -51,7 +51,7 @@ inline_structure:
   - - 0.25
     - 0.25
     - 0.25
-subtitle: PBE ground-state calculation for silicon
+subtitle: Diamond-cubic Si total energy with PBE plane-wave mode on a 4x4x4 k-grid
 tags:
 - gpaw
 - solid

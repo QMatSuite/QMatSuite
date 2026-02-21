@@ -149,7 +149,7 @@ pseudo:
 meta:
   ulid: qe_graphene_bands
   title: Graphene Band Structure
-  subtitle: SCF → Bands → Bands
+  subtitle: PBE band structure along Γ-K-M-Γ for graphene showing the Dirac cone
   description: Graphene DFT-PBE band structure calculation along high-symmetry k-path G-K-M-G, revealing the characteristic
     Dirac cone at the K point. Runs vc-relax (excluded), SCF, bands calculation, and bands post-processing.
   tags:
@@ -159,7 +159,7 @@ meta:
   - PW
   - tutorial
   recommended_analysis: bands
-  difficulty: beginner
+  difficulty: intermediate
   system_class: crystal
   periodicity: periodic
   method: dft-pbe
@@ -180,4 +180,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: graphene_bands
-  corpus_checksum: b932ff48d0db17c7d2121e5339fb2816adba5af62594d78c8cfbce59daa38d24
+  corpus_checksum: fe18dda745c29bbc7e7c9a4db65544d89d143e80490e6323c5ea8ee0f4e9f470

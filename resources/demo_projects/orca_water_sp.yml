@@ -79,7 +79,7 @@ calculations:
 meta:
   ulid: orca_water_sp
   title: Water Single-Point Energy
-  subtitle: B3LYP/def2-SVP DFT calculation on water molecule
+  subtitle: B3LYP/def2-TZVP energy with D3BJ dispersion and RIJCOSX acceleration
   description: B3LYP/def2-TZVP single-point energy for the water molecule with D3BJ dispersion correction and RIJCOSX density
     fitting.
   tags:
@@ -106,4 +106,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: orca
   corpus_case_id: water_sp
-  corpus_checksum: 2a60476bf517aa026473205e98222ed2ec20769d43d19345aff061828e439062
+  corpus_checksum: 382b45cf8a25fc7258eed941dff0929fa9dc3f71fa2c96ad55c2e02c2e087195

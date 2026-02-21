@@ -1,5 +1,7 @@
 case_id: h2_ae_vmc
 title: H2 molecule VMC with Gaussian LCAO basis
+subtitle: All-electron VMC of H2 using cc-pVTZ LCAO basis with Bspline Jastrow factors
+difficulty: advanced
 engine: qmcpack
 workflow_tags:
 - vmc

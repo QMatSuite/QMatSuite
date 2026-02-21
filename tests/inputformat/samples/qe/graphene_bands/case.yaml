@@ -19,8 +19,8 @@ availability: open_source
 demo_slug: qe_graphene_bands
 asset_policy: redistributable
 recommended_analysis: bands
-difficulty: beginner
-subtitle: SCF → Bands → Bands
+difficulty: intermediate
+subtitle: "PBE band structure along \u0393-K-M-\u0393 for graphene showing the Dirac cone"
 tags:
 - bands
 - graphene

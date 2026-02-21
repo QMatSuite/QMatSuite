@@ -94,7 +94,7 @@ calculations:
 meta:
   ulid: gaussian_formaldehyde_tddft
   title: Formaldehyde TDDFT Excited States
-  subtitle: td
+  subtitle: B3LYP/STO-3G excited-state absorption spectrum (3 states) for CH2O
   description: B3LYP/STO-3G TD=(NStates=3); covers TDDFT keyword with options parsing
   tags:
   - td
@@ -102,7 +102,7 @@ meta:
   - excited-states
   - small-molecule
   recommended_analysis: scf
-  difficulty: beginner
+  difficulty: intermediate
   system_class: molecule
   periodicity: molecular
   method: tddft-b3lyp
@@ -121,4 +121,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: gaussian
   corpus_case_id: formaldehyde_tddft
-  corpus_checksum: 4ade4a099b281702251c3df26c7d990c9cfb0c4d99ce95d56bd0066369d4dcf9
+  corpus_checksum: ebc7019d857ebc146db95e6a9ecd05f062307f886d22068f359eb8543d11a9d9

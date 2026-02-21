@@ -53,7 +53,7 @@ inline_structure:
   - - 0.25
     - 0.25
     - 0.25
-subtitle: PBE band structure for silicon
+subtitle: Diamond-Si PBE band structure via SCF then non-self-consistent k-path sampling
 tags:
 - gpaw
 - solid

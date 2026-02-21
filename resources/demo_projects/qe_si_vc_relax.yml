@@ -126,7 +126,7 @@ pseudo:
 meta:
   ulid: qe_si_vc_relax
   title: 3 Si Vc Relax
-  subtitle: VC-Relax
+  subtitle: PBE variable-cell relaxation of Si optimizing lattice and atomic positions
   description: Variable-cell relaxation of silicon using DFT-PBE to optimize both atomic positions and lattice parameters.
     The cell degree of freedom is constrained to ibrav symmetry (isotropic volume change).
   tags:
@@ -135,7 +135,7 @@ meta:
   - PW
   - tutorial
   recommended_analysis: scf
-  difficulty: beginner
+  difficulty: intermediate
   system_class: crystal
   periodicity: periodic
   method: dft-pbe
@@ -156,5 +156,5 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_vc_relax
-  corpus_checksum: b40a4f97d37f5a8cdc027e72eed7752892ddf8c72616027f460055a164577fb2
+  corpus_checksum: 3a5c21ffe715c523d3c48f1344892b1fc1c8f419d2f569ac11b36e56fd785dc8
   reference_artifacts: null

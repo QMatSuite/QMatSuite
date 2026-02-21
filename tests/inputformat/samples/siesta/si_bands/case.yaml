@@ -1,5 +1,7 @@
 case_id: si_bands
 title: Silicon band-structure path
+subtitle: Si band structure along Gamma-X-W-L-Gamma using PBE with DZP NAO basis
+difficulty: intermediate
 engine: siesta
 workflow_tags:
 - bands

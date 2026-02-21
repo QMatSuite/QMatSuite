@@ -1,5 +1,7 @@
 case_id: caffeine_grad
 title: Caffeine gradient
+subtitle: GFN2-xTB energy and gradient for caffeine (C8H10N4O2), a medium-sized organic molecule
+difficulty: beginner
 engine: xtb
 workflow_tags:
 - gradient

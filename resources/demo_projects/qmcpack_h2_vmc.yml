@@ -146,7 +146,7 @@ calculations:
 meta:
   ulid: qmcpack_h2_vmc
   title: H2 molecule VMC with Gaussian LCAO basis
-  subtitle: vmc
+  subtitle: All-electron VMC of H2 using cc-pVTZ LCAO basis with Bspline Jastrow factors
   description: H2 molecule all-electron VMC with Gaussian LCAO basis (cc-pVTZ), Bspline J1+J2 Jastrow, open boundary conditions.
   tags:
   - vmc
@@ -154,7 +154,7 @@ meta:
   - molecule
   - gaussian-basis
   recommended_analysis: scf
-  difficulty: beginner
+  difficulty: advanced
   system_class: molecule
   periodicity: molecular
   method: vmc-hf
@@ -173,4 +173,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qmcpack
   corpus_case_id: h2_ae_vmc
-  corpus_checksum: 81f9e2f09cbb9210c34ae99071e7084923e9fd26b0d4fd409ae772e2e0aaf95f
+  corpus_checksum: 11c8488338257a95553698e99485d89d257e75fa8179772767fd7055f218513c

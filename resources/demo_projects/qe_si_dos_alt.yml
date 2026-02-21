@@ -142,7 +142,7 @@ pseudo:
 meta:
   ulid: qe_si_dos_alt
   title: 4 Si Dos
-  subtitle: SCF → NSCF → DOS
+  subtitle: PBE density of states for Si with tetrahedron k-sampling
   description: 'Density of states calculation for silicon using DFT-PBE with SSSP precision pseudopotentials. Runs a 3-step
     workflow: SCF, NSCF with tetrahedra k-sampling, and dos.x post-processing.'
   tags:
@@ -172,4 +172,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_dos_alt
-  corpus_checksum: 87de7d516e8c28313d12641c6f61032ed7e0a3ffa79afce518de70c84963d9a5
+  corpus_checksum: 0715ae6cabbd03065ad30e8512a63f5b01959cc82fb4c2fd48f501282a91d832

@@ -1,5 +1,7 @@
 case_id: formaldehyde_tddft
 title: Formaldehyde TDDFT Excited States
+subtitle: "B3LYP/STO-3G excited-state absorption spectrum (3 states) for CH2O"
+difficulty: intermediate
 engine: gaussian
 workflow_tags:
 - td

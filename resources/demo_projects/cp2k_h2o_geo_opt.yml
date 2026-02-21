@@ -126,7 +126,7 @@ calculations:
 meta:
   ulid: cp2k_h2o_geo_opt
   title: Water molecule geometry optimization
-  subtitle: relax
+  subtitle: Conjugate-gradient optimization of H2O with PBE/DZVP (long runtime ~170s)
   description: CG geometry optimization for water with PBE/DZVP. Tests MOTION/GEO_OPT section. Validated against real CP2K
     2026.1 run.
   tags:
@@ -134,7 +134,7 @@ meta:
   - relaxation
   - molecule
   recommended_analysis: scf
-  difficulty: beginner
+  difficulty: intermediate
   system_class: molecule
   periodicity: molecular
   method: dft-pbe
@@ -154,4 +154,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: cp2k
   corpus_case_id: h2o_geo_opt
-  corpus_checksum: b44026686846bfa0c3b0714f35a619f465206694ea64b27f87e2ecd9e2635a14
+  corpus_checksum: ceeaf8bd2d4aa1299adcdf49e0ffbdbf5ea3aa5fcf1ac01194448dae9d622436

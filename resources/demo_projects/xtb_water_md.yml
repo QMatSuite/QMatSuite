@@ -80,13 +80,13 @@ calculations:
 meta:
   ulid: xtb_water_md
   title: Water molecular dynamics
-  subtitle: md
+  subtitle: GFN2-xTB molecular dynamics of water using xcontrol $md block (~38 s runtime)
   description: Short MD using xcontrol $md block.
   tags:
   - md
   - xcontrol
   recommended_analysis: trajectory
-  difficulty: beginner
+  difficulty: intermediate
   system_class: molecule
   periodicity: molecular
   method: gfn2-xtb
@@ -105,4 +105,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: xtb
   corpus_case_id: water_md
-  corpus_checksum: 1664a55f1780e9a314270d8eb609e241b891a1cb7eb02a63b4ea0ad832c7365e
+  corpus_checksum: 45945aad4ec5fba8e9cbf5af390d23277131ef08e791e38d322428aeb6523405
