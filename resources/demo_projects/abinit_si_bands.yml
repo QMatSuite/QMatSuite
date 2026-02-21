@@ -136,14 +136,14 @@ calculations:
 meta:
   ulid: abinit_si_bands
   title: Silicon band structure
-  subtitle: nscf
+  subtitle: Two-dataset Si band structure along L-Γ-X-K-Γ path with LDA pseudopotentials
   description: 'Two-dataset calculation for silicon band structure: SCF on uniform grid followed by NSCF along L-Gamma-X-K-Gamma
     high-symmetry path.'
   tags:
   - bands
   - multi_dataset
   recommended_analysis: scf
-  difficulty: beginner
+  difficulty: intermediate
   system_class: crystal
   periodicity: periodic
   method: dft-lda
@@ -164,4 +164,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: abinit
   corpus_case_id: si_bands
-  corpus_checksum: 4a8d9ab7c354633142f30311a53db77921483a7be961c86968d35a38b77fad20
+  corpus_checksum: ff926638fd4cbcd405ddf45250056c4a1d04c15f8208efa58d1b6d4a74b26589

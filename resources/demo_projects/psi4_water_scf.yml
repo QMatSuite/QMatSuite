@@ -78,7 +78,7 @@ calculations:
 meta:
   ulid: psi4_water_scf
   title: Water Psi4 SCF
-  subtitle: HF/cc-pVDZ calculation on water molecule
+  subtitle: Hartree-Fock total energy of water with cc-pVDZ correlation-consistent basis
   description: HF/cc-pVDZ single-point calculation on water molecule
   tags:
   - psi4
@@ -107,4 +107,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: psi4
   corpus_case_id: water_scf
-  corpus_checksum: ddef787f300ba51ddd16d938b1f7232103897e445035dbf2f02ba68ac715b869
+  corpus_checksum: 7f0cb032bdc187794f56000de8b508a093873ebaa9e2cc8870cd501c2ed00425

@@ -1,5 +1,7 @@
 case_id: h2o_energy
 title: Water molecule single-point energy
+subtitle: "PBE/DZVP single-point energy for H2O in a cubic box using GPW method"
+difficulty: beginner
 engine: cp2k
 workflow_tags:
 - scf

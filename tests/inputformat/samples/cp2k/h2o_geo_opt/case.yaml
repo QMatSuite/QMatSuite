@@ -1,5 +1,7 @@
 case_id: h2o_geo_opt
 title: Water molecule geometry optimization
+subtitle: "Conjugate-gradient optimization of H2O with PBE/DZVP (long runtime ~170s)"
+difficulty: intermediate
 engine: cp2k
 workflow_tags:
 - geo_opt

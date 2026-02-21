@@ -36,7 +36,7 @@ inline_structure:
   - - 0.0
     - 0.0
     - 1.0977
-subtitle: MP2/cc-pVDZ correlation energy for N2
+subtitle: Post-Hartree-Fock MP2 correlation energy for N2 with cc-pVDZ basis
 tags:
 - pyscf
 - molecular

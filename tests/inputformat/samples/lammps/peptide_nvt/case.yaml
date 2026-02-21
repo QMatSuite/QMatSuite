@@ -1,5 +1,7 @@
 case_id: peptide_nvt
 title: Peptide NVT with CHARMM
+subtitle: "Solvated 5-mer peptide NVT dynamics with CHARMM FF, PPPM, and SHAKE"
+difficulty: intermediate
 engine: lammps
 workflow_tags:
 - md

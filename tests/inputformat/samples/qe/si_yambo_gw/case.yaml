@@ -22,7 +22,7 @@ availability: open_source
 asset_policy: redistributable
 recommended_analysis: energy
 difficulty: advanced
-subtitle: QE SCF -> NSCF -> Yambo G0W0
+subtitle: Si G0W0 quasiparticle band corrections using QE-to-Yambo pipeline
 tags:
 - yambo
 - composite

@@ -122,7 +122,7 @@ calculations:
 meta:
   ulid: vasp_si_scf
   title: Silicon diamond SCF
-  subtitle: scf
+  subtitle: Bulk Si total energy with PBE PAW on a 4x4x4 Gamma-centred k-mesh
   description: Bulk silicon diamond-structure SCF calculation using PBE (default GGA) with a 4x4x4 Gamma-centred k-mesh and
     Gaussian smearing.
   tags:
@@ -150,4 +150,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: vasp
   corpus_case_id: si_scf
-  corpus_checksum: dd5ed11c3de5f831bdb0c2e38b9e89abf8aae715e010ce8f8ba432b620e42f4e
+  corpus_checksum: 6543ee21806fc7b5be51f3809eb6595e11937c6dbc8f21298a5cbf9466cb35cc

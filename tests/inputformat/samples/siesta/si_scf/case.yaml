@@ -1,5 +1,7 @@
 case_id: si_scf
 title: Silicon bulk SCF
+subtitle: Bulk Si ground-state energy with PBE, DZP NAO basis, and 4x4x4 Monkhorst-Pack grid
+difficulty: beginner
 engine: siesta
 workflow_tags:
 - scf

@@ -117,7 +117,7 @@ calculations:
 meta:
   ulid: cp2k_si_relax
   title: Silicon geometry optimization (BFGS)
-  subtitle: relax
+  subtitle: Periodic diamond Si relaxation with PBE and force-convergence thresholds
   description: BFGS geometry optimization for Si diamond with force convergence criteria. Tests GEO_OPT section with optimizer/threshold
     keywords.
   tags:
@@ -125,7 +125,7 @@ meta:
   - periodic
   - relaxation
   recommended_analysis: scf
-  difficulty: beginner
+  difficulty: intermediate
   system_class: crystal
   periodicity: periodic
   method: dft-pbe
@@ -145,4 +145,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: cp2k
   corpus_case_id: si_relax
-  corpus_checksum: 72aa95fe71b268cd5aa0684873bc02a0390ee6f6b379189f7560abd483fa3378
+  corpus_checksum: 107ab8dc9842e43ce076d4a606a122ba22b91135c5899193b19c657a2bd73004

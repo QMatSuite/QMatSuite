@@ -42,7 +42,7 @@ inline_structure:
   - - 0.0
     - -0.75695
     - -0.4692
-subtitle: B3LYP/cc-pVDZ DFT calculation on water molecule
+subtitle: Water total energy via B3LYP hybrid DFT with cc-pVDZ basis in PySCF
 tags:
 - pyscf
 - molecular

@@ -18,8 +18,8 @@ availability: open_source
 demo_slug: qe_fe_scf
 asset_policy: redistributable
 recommended_analysis: convergence
-difficulty: intermediate
-subtitle: Noncollinear SCF for BCC iron
+difficulty: advanced
+subtitle: Noncollinear spin-orbit PBE SCF for ferromagnetic BCC iron
 tags:
 - scf
 - Fe

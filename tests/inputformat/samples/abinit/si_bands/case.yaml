@@ -1,5 +1,7 @@
 case_id: si_bands
 title: Silicon band structure
+subtitle: "Two-dataset Si band structure along L-\u0393-X-K-\u0393 path with LDA pseudopotentials"
+difficulty: intermediate
 engine: abinit
 workflow_tags:
 - bands

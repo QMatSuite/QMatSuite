@@ -1,5 +1,7 @@
 case_id: si_relax
 title: Silicon variable-cell CG relaxation
+subtitle: Variable-cell CG relaxation of Si with PBE and DZP NAO basis set
+difficulty: intermediate
 engine: siesta
 workflow_tags:
 - relax

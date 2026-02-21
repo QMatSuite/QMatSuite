@@ -1,5 +1,7 @@
 case_id: minimize_2d_lj
 title: 2D LJ melt + minimize
+subtitle: "2D Lennard-Jones cluster: NVE sampling followed by CG energy minimization"
+difficulty: intermediate
 engine: lammps
 workflow_tags:
 - md

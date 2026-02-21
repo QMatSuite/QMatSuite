@@ -1,5 +1,7 @@
 case_id: he_vmc_sto
 title: He atom VMC with STO basis
+subtitle: Simplest QMC example -- He atom VMC with STO basis and Pade Jastrow, no external assets
+difficulty: advanced
 engine: qmcpack
 workflow_tags:
 - vmc

@@ -99,7 +99,7 @@ calculations:
 meta:
   ulid: orca_methane_freq
   title: Methane Vibrational Frequencies
-  subtitle: SCF + numerical frequency calculation
+  subtitle: B3LYP/def2-TZVP vibrational modes and thermochemistry of CH4 at 298 K
   description: B3LYP/def2-TZVP vibrational frequency analysis for methane, including thermochemistry at 298.15 K.
   tags:
   - freq
@@ -126,4 +126,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: orca
   corpus_case_id: methane_freq
-  corpus_checksum: 60a305dd49e8a33506faa8f42e45857d3912f4e2989ed70e0868aecd941f081d
+  corpus_checksum: 4db34324c6482637f09ad2cb83d940f828ae3ff868e1bc0fa3d0c0cc23f5d277

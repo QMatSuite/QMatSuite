@@ -20,7 +20,7 @@ demo_slug: qe_si_dos_alt
 asset_policy: redistributable
 recommended_analysis: dos
 difficulty: beginner
-subtitle: SCF → NSCF → DOS
+subtitle: PBE density of states for Si with tetrahedron k-sampling
 tags:
 - dos
 - Si

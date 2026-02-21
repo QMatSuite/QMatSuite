@@ -125,7 +125,7 @@ calculations:
 meta:
   ulid: siesta_si_scf
   title: Silicon bulk SCF
-  subtitle: scf
+  subtitle: Bulk Si ground-state energy with PBE, DZP NAO basis, and 4x4x4 Monkhorst-Pack grid
   description: Bulk silicon diamond-structure SCF calculation using the GGA-PBE functional with a DZP NAO basis set and a
     4x4x4 Monkhorst-Pack k-grid.
   tags:
@@ -151,4 +151,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: siesta
   corpus_case_id: si_scf
-  corpus_checksum: 96c45f7029c4a7335589b81ce34f520c6050b26ea43b67283865487e5784bf56
+  corpus_checksum: 6a66aab845798bd94d20fc48ac9a93203758e4e621c7066ced5ece4066a12fdc

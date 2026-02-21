@@ -41,7 +41,7 @@ inline_structure:
   - - 0.0
     - -0.75695
     - -0.4692
-subtitle: HF/cc-pVDZ calculation on water molecule
+subtitle: Hartree-Fock total energy of water with cc-pVDZ correlation-consistent basis
 tags:
 - psi4
 - molecular

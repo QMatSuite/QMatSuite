@@ -1,5 +1,7 @@
 case_id: si_relax
 title: Silicon ionic and cell relaxation
+subtitle: "BFGS relaxation of compressed diamond Si with isotropic cell optimization"
+difficulty: beginner
 engine: abinit
 workflow_tags:
 - relax

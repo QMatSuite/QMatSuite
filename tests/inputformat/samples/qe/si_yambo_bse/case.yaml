@@ -22,7 +22,7 @@ availability: open_source
 asset_policy: redistributable
 recommended_analysis: energy
 difficulty: advanced
-subtitle: QE SCF -> NSCF -> Yambo BSE
+subtitle: Si optical absorption via Bethe-Salpeter equation using QE-to-Yambo pipeline
 tags:
 - yambo
 - composite

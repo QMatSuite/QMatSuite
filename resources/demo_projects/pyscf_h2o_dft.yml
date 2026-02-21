@@ -78,7 +78,7 @@ calculations:
 meta:
   ulid: pyscf_h2o_dft
   title: Water PySCF PBE DFT
-  subtitle: PBE/cc-pVDZ DFT calculation on water molecule
+  subtitle: Water total energy via PBE DFT with cc-pVDZ basis in PySCF
   description: PBE/cc-pVDZ DFT single-point calculation on water molecule
   tags:
   - pyscf
@@ -107,4 +107,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: pyscf
   corpus_case_id: h2o_dft
-  corpus_checksum: 2b416d327832a828e663e49551c8657175dfbc12cea7b10f60edd84627f7b25b
+  corpus_checksum: 1eb03d57a63f6fbe60bf68ef578aa1d82688562d0f1431814b1364cfe1d382d8

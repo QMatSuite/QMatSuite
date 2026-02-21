@@ -1,5 +1,7 @@
 case_id: melt_lj_nve
 title: 3D LJ melt NVE
+subtitle: "Argon-like LJ fluid NVE dynamics on a lattice-created FCC box (250 steps)"
+difficulty: intermediate
 engine: lammps
 workflow_tags:
 - md

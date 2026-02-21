@@ -118,7 +118,7 @@ pseudo:
 meta:
   ulid: qe_fe_scf
   title: Iron noncollinear SCF
-  subtitle: Noncollinear SCF for BCC iron
+  subtitle: Noncollinear spin-orbit PBE SCF for ferromagnetic BCC iron
   description: Noncollinear spin-orbit SCF calculation for ferromagnetic BCC iron using DFT-PBE. Demonstrates relativistic
     noncollinear magnetism with spin oriented in the ab-plane.
   tags:
@@ -129,7 +129,7 @@ meta:
   - noncollinear
   - tutorial
   recommended_analysis: convergence
-  difficulty: intermediate
+  difficulty: advanced
   system_class: crystal
   periodicity: periodic
   method: dft-pbe
@@ -149,6 +149,6 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: fe_dos
-  corpus_checksum: 930abc281fd6a0fe4980cfccb20aabc5cec15327d33090e180aceeb1181d98a8
+  corpus_checksum: 405f9a59977666a56323c2a53247fa3787e2237f6c551b626063dda719f4dd40
   reference_artifacts:
     scf: 08_Fe_DOS.scf.json

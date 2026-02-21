@@ -1,5 +1,7 @@
 case_id: methane_freq
 title: Methane Vibrational Frequencies
+subtitle: "B3LYP/def2-TZVP vibrational modes and thermochemistry of CH4 at 298 K"
+difficulty: intermediate
 engine: orca
 workflow_tags:
 - freq

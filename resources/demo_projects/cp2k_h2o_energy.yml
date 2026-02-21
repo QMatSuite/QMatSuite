@@ -122,7 +122,7 @@ calculations:
 meta:
   ulid: cp2k_h2o_energy
   title: Water molecule single-point energy
-  subtitle: scf
+  subtitle: PBE/DZVP single-point energy for H2O in a cubic box using GPW method
   description: 'Basic PBE/DZVP single-point energy for water molecule in cubic box. Validated against real CP2K 2026.1 run:
     E = -17.2197 Ha.'
   tags:
@@ -149,4 +149,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: cp2k
   corpus_case_id: h2o_energy
-  corpus_checksum: c3af4b33f0988bfe5a42fd43171a59e5498633ab67a5dcd371bde459f7ac5597
+  corpus_checksum: 06a864fb4f7cfae91c98a8c6b35bd050988441ee85af6833ec1da5e7b7d67f21

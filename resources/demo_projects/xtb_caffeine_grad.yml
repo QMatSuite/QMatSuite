@@ -284,7 +284,7 @@ calculations:
 meta:
   ulid: xtb_caffeine_grad
   title: Caffeine gradient
-  subtitle: relax
+  subtitle: GFN2-xTB energy and gradient for caffeine (C8H10N4O2), a medium-sized organic molecule
   description: Gradient workflow with energy/gradient artifacts.
   tags:
   - gradient
@@ -309,4 +309,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: xtb
   corpus_case_id: caffeine_grad
-  corpus_checksum: 20463daf1c91fd35ac32e7196379ef88afdd7aff87f53ecb06c573e97718b2e9
+  corpus_checksum: cfc7a4f70d0f585dd909d56e9d875adc3511e49450e19b79327cfa3b50856546

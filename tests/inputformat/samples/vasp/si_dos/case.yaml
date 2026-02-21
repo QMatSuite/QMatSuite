@@ -18,7 +18,8 @@ required_engine: vasp
 availability: requires_local_install
 asset_policy: proprietary
 recommended_analysis: dos
-subtitle: SCF → DOS
+subtitle: Si total and projected DOS via SCF then tetrahedron-method NSCF on dense k-mesh
+difficulty: intermediate
 required_assets:
 - type: potcar
   species:

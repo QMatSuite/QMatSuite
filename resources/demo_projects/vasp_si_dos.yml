@@ -107,7 +107,7 @@ calculations:
 meta:
   ulid: vasp_si_dos
   title: Silicon diamond density of states
-  subtitle: SCF → DOS
+  subtitle: Si total and projected DOS via SCF then tetrahedron-method NSCF on dense k-mesh
   description: Density of states for bulk silicon computed with ICHARG=11, LORBIT=11, and the tetrahedron method (ISMEAR=-5)
     on a dense 8x8x8 k-mesh.
   tags:
@@ -115,7 +115,7 @@ meta:
   - dos
   - nscf
   recommended_analysis: dos
-  difficulty: beginner
+  difficulty: intermediate
   system_class: crystal
   periodicity: periodic
   method: dft-pbe
@@ -137,4 +137,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: vasp
   corpus_case_id: si_dos
-  corpus_checksum: 699e20269d5b85985726d6a10a17d86d5120e68ed1d22a030d93d66d2e61ce84
+  corpus_checksum: 0e4c11115fd26cc78a4a33612cad87c3c10373c8054900df259b77c36f470618

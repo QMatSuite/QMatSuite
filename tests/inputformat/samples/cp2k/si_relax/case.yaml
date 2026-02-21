@@ -1,5 +1,7 @@
 case_id: si_relax
 title: Silicon geometry optimization (BFGS)
+subtitle: "Periodic diamond Si relaxation with PBE and force-convergence thresholds"
+difficulty: intermediate
 engine: cp2k
 workflow_tags:
 - geo_opt

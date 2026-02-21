@@ -82,7 +82,7 @@ calculations:
 meta:
   ulid: gaussian_water_hf
   title: Water HF Single-Point
-  subtitle: scf
+  subtitle: Hartree-Fock total energy of H2O with minimal STO-3G basis
   description: HF/STO-3G single-point energy on water; minimal basis baseline
   tags:
   - scf
@@ -108,4 +108,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: gaussian
   corpus_case_id: water_hf_sp
-  corpus_checksum: 7297d011cee4fabe08ac8e7240c1fdf547e4e2be631f94097717976d5249304f
+  corpus_checksum: 30c77feafd34e4defb23cae3d959210f43aa9bed3f3617c6979bd1bf4ae0b76f

@@ -66,7 +66,7 @@ inline_structure:
   - - 2.127
     - -0.0399
     - 1.4023
-subtitle: HF/6-31G* single-point for ethanol
+subtitle: Hartree-Fock single-point energy of ethanol (C2H6O) with 6-31G* basis
 tags:
 - psi4
 - molecular

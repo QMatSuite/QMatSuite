@@ -21,8 +21,8 @@ required_engine: qe
 availability: open_source
 asset_policy: redistributable
 recommended_analysis: scf
-difficulty: intermediate
-subtitle: QE SCF -> NSCF -> W90 Wannierize
+difficulty: advanced
+subtitle: Maximally-localized sp3 Wannier functions for diamond via QE-to-Wannier90 pipeline
 tags:
 - wannier90
 - composite

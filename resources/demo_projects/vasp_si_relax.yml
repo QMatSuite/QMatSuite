@@ -121,7 +121,7 @@ calculations:
 meta:
   ulid: vasp_si_relax
   title: Silicon diamond ionic relaxation
-  subtitle: relax
+  subtitle: CG ionic relaxation of bulk Si with PBE, converging forces to 0.01 eV/A
   description: Ionic relaxation (IBRION=2, CG) of bulk silicon diamond using PBE with a 4x4x4 Gamma-centred k-mesh; forces
     converged to 0.01 eV/A.
   tags:
@@ -149,4 +149,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: vasp
   corpus_case_id: si_relax
-  corpus_checksum: 14882128a36f91437487156c0cbfb92fca45174b59752a900fa061aeec02272e
+  corpus_checksum: 891e40b8fc2f715f92ee97e260bc227f18278c9375abf0e1f10576aa79e4bfcd

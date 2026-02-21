@@ -112,7 +112,7 @@ calculations:
 meta:
   ulid: orca_formaldehyde_tddft
   title: Formaldehyde ORCA TDDFT
-  subtitle: SCF + TDDFT excited states calculation
+  subtitle: B3LYP/def2-SVP Tamm-Dancoff TDDFT for 5 excited states of formaldehyde
   description: B3LYP/def2-SVP TDDFT calculation for formaldehyde computing 5 excited states via the Tamm-Dancoff approximation.
   tags:
   - orca
@@ -142,4 +142,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: orca
   corpus_case_id: formaldehyde_tddft
-  corpus_checksum: 7f183a54148055610526cc46995a66dcc188ef008529fe94466c7b05315cb50f
+  corpus_checksum: fe46b2cb46bedb89a6144f92ed44c3decd54bfdad729e633ace54f7a408eac92

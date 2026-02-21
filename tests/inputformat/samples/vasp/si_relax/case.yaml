@@ -1,5 +1,7 @@
 case_id: si_relax
 title: Silicon diamond ionic relaxation
+subtitle: CG ionic relaxation of bulk Si with PBE, converging forces to 0.01 eV/A
+difficulty: beginner
 engine: vasp
 workflow_tags:
 - relax

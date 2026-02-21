@@ -74,7 +74,7 @@ calculations:
 meta:
   ulid: xtb_water_opt
   title: Water geometry optimization
-  subtitle: relax
+  subtitle: GFN2-xTB geometry optimization of water to equilibrium structure
   description: Geometry optimization workflow with xtbopt.xyz output.
   tags:
   - relax
@@ -99,4 +99,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: xtb
   corpus_case_id: water_opt
-  corpus_checksum: cb73c467cff12de47373621a1628c7610061414fe6bc09f5e2515f42dca80b67
+  corpus_checksum: 1b0ba9c745e171df1956a556b589e61569ab86be3757d3ec16ea3e4f74b6ef36

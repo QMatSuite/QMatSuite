@@ -150,14 +150,14 @@ calculations:
 meta:
   ulid: siesta_si_bands
   title: Silicon band-structure path
-  subtitle: bands
+  subtitle: Si band structure along Gamma-X-W-L-Gamma using PBE with DZP NAO basis
   description: Band structure of bulk silicon along the Gamma-X-W-L-Gamma path computed in a single Siesta run using GGA-PBE
     with BandLines and a DZP NAO basis.
   tags:
   - bands
   - periodic
   recommended_analysis: scf
-  difficulty: beginner
+  difficulty: intermediate
   system_class: crystal
   periodicity: periodic
   method: dft-pbe
@@ -176,4 +176,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: siesta
   corpus_case_id: si_bands
-  corpus_checksum: 58606faa9a8a540342c05514ec283af72ab4d1e2717ef6e56b4d0e6a98b3d6b5
+  corpus_checksum: 358f24b0675504d313b8600a0ca101850022d560a38fb4a6ef7cd7e7b1d0956d

@@ -1,5 +1,7 @@
 case_id: water_b3lyp_opt
 title: Water B3LYP Geometry Optimization
+subtitle: "B3LYP/6-31G* geometry optimization of the water molecule"
+difficulty: beginner
 engine: gaussian
 workflow_tags:
 - relax

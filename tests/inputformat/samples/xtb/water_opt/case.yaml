@@ -1,5 +1,7 @@
 case_id: water_opt
 title: Water geometry optimization
+subtitle: GFN2-xTB geometry optimization of water to equilibrium structure
+difficulty: beginner
 engine: xtb
 workflow_tags:
 - relax

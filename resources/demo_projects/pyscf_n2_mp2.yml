@@ -68,7 +68,7 @@ calculations:
 meta:
   ulid: pyscf_n2_mp2
   title: N2 PySCF MP2
-  subtitle: MP2/cc-pVDZ correlation energy for N2
+  subtitle: Post-Hartree-Fock MP2 correlation energy for N2 with cc-pVDZ basis
   description: MP2/cc-pVDZ correlation energy for nitrogen molecule
   tags:
   - pyscf
@@ -97,4 +97,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: pyscf
   corpus_case_id: n2_mp2
-  corpus_checksum: 9716fd9892fafbde0a633b35a19311b798e4627482ee5a1882f4767b5040024e
+  corpus_checksum: 4c6308955f0676a7fa6202344498086fbf862e1728ebd3a5eefd1b4ca474df5d

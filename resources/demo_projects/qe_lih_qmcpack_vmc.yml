@@ -212,7 +212,7 @@ pseudo:
 meta:
   ulid: qe_lih_qmcpack_vmc
   title: LiH solid QE to QMCPACK VMC pipeline
-  subtitle: QE SCF -> pw2qmcpack -> QMCPACK VMC
+  subtitle: Solid-state LiH VMC energy via QE-to-QMCPACK pipeline with BFD pseudopotentials
   description: 'LiH solid-state VMC total energy calculation using the QE→QMCPACK pipeline: DFT-PBE SCF produces the trial
     wavefunction, pw2qmcpack converts it to HDF5, and QMCPACK runs VMC sampling with BFD pseudopotentials.'
   tags:
@@ -243,4 +243,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: lih_qmcpack_vmc
-  corpus_checksum: c1b66aebc5a19ddfaa5c973345df7b50fe782a93d68174351bec91265204e05e
+  corpus_checksum: 28a169316c506ce25a9ff9c24561236ef26e8c079ffc92ea2b641be8aff6cbf7
