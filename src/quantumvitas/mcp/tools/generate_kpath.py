@@ -9,7 +9,7 @@ from quantumvitas.mcp.envelope import make_error, make_response
 @mcp.tool
 def generate_kpath(
     structure_selector: str,
-    points_per_segment: int = 20,
+    points_per_segment: int = 10,
     path_type: str = "hinuma",
 ) -> dict:
     """Generate a high-symmetry k-path for band structure calculations.
@@ -20,7 +20,7 @@ def generate_kpath(
 
     Args:
         structure_selector: Name or ULID of an already-imported structure.
-        points_per_segment: Number of k-points per path segment (default 20).
+        points_per_segment: Number of k-points per path segment (default 10).
         path_type: Path convention — ``"hinuma"`` (default) or
             ``"setyawan_curtarolo"``.
     """
