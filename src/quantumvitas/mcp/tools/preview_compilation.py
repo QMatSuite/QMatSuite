@@ -114,5 +114,9 @@ def preview_compilation(engine: str, workflow: str, presets: dict) -> dict:
 
     return make_response(
         result_data,
-        context_hint="To commit, call create_calculation + apply_preset.",
+        context_hint=(
+            "To apply these presets to an existing calculation, call "
+            "apply_preset(calc_ulid=..., presets=...). "
+            "To create a new calculation, call create_calculation() first."
+        ),
     )

@@ -89,3 +89,28 @@ Collected from `docs/history/worklogs/MCP_STAGE*` worklogs during Stage 11 QA au
 - **Source**: WORKLOG_DEMO_AUDIT.md
 - **Priority**: Medium
 - If demo input parameters change but ref pack isn't regenerated, results become stale. Add manifest checksum comparison to warn
+
+---
+
+## Agent Information Systems Audit (2026-02-21)
+
+**Source**: `docs/history/reviews/AGENT_INFORMATION_SYSTEMS_AUDIT.md`
+
+### P1 — Next PR (test matrix will validate priority)
+
+- [ ] Expand builtin.db from 20 to 50+ entries, especially non-QE engine-specific error recovery (ORCA, CP2K, ABINIT, LAMMPS, Siesta each need 3-5 entries)
+- [ ] VASP preflight rules (5-8 rules: ISMEAR+IBRION check, ENCUT<ENMAX, MAGMOM missing for ISPIN=2, etc.)
+- [ ] Error enrichment for ENGINE_CRASH and UNKNOWN_FAILURE (add basic suggested_fixes: check binary, check disk, expose stderr)
+
+### P2 — After test matrix results
+
+- [ ] QE parameter metadata upstream curation (enum values for `cell_dofree`, `mixing_mode`, `diagonalization`, `ion_dynamics` — these have null enum but list values in description text)
+- [ ] Run progress visibility (real-time step completion reporting during long calculations)
+- [ ] Preflight severity grouping in inspect_calculation output (blocking vs advisory separation)
+- [ ] Proactive knowledge injection in create_calculation (design section 7.8 — query knowledge base by engine+system_type, inject top-3 relevant entries)
+
+### P3 — Phase 2+
+
+- [ ] Preflight for ORCA, CP2K, ABINIT
+- [ ] Knowledge pack system (downloadable .db files)
+- [ ] Auto-invoke search_knowledge on error (include top match in error return without manual agent call)
