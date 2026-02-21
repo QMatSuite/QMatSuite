@@ -20,7 +20,8 @@ Collected from `docs/history/worklogs/MCP_STAGE*` worklogs during Stage 11 QA au
 - **Source**: Engine integration audit
 - QE, VASP, ORCA, ABINIT, CP2K, W90 output parsers are not auto-discovered via registry chain
 - Currently works via direct import in tool code (e.g. `QEOutputParser()`)
-- **Fix**: Wire parser registration into DriverRegistry so get_results_summary can be engine-agnostic
+- **Partial fix** (2026-02-21): `get_results_summary` and `run_calculation` now use `find_parser_for_raw()` from the parser registry with `import quantumvitas.drivers` to trigger registration. This makes them engine-agnostic without modifying DriverRegistry itself.
+- **Remaining**: Wire parser registration into DriverRegistry startup for systemic coverage
 
 ### CP2K recipes.py circular import
 - **Source**: MCP_STAGE8_WORKLOG.md, CP2K Phase B1
@@ -95,6 +96,24 @@ Collected from `docs/history/worklogs/MCP_STAGE*` worklogs during Stage 11 QA au
 ## Agent Information Systems Audit (2026-02-21)
 
 **Source**: `docs/history/reviews/AGENT_INFORMATION_SYSTEMS_AUDIT.md`
+
+### Agent Test Matrix Round 1 fixes (2026-02-21)
+
+Items fixed in this round:
+- [x] BUG-1: `apply_preset` returns success when steps_updated=0
+- [x] BUG-2: `promote_structure` missing "minimize" + stale vc-relax refs
+- [x] BUG-3: `get_results_summary` only uses QE parser → now engine-agnostic
+- [x] BUG-4: `quick_run` missing error enrichment on failure
+- [x] BUG-5: `get_status` never detects failures
+- [x] GAP-1: Magnetization in QESCFDigest + results summary
+- [x] GAP-3: New `list_calculations` MCP tool
+- [x] GAP-5/6/7: `.mcp.json.example` instructions expanded
+- [x] GAP-8: `load_demo` context_hint now mentions species_map status
+- [x] Demo ecutwfc: qe_si_scf 20 Ry → 30 Ry
+
+Remaining items from test matrix (deferred):
+- [ ] Demo ecutwfc validation gate test (systemic: all QE demos should have ecutwfc >= 25 Ry)
+- [ ] GAP-4: history service query for failed runs (currently only queries success)
 
 ### P1 — Next PR (test matrix will validate priority)
 

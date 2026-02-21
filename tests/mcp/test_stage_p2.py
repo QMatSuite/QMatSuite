@@ -368,8 +368,8 @@ class TestInspectResourceStatus:
 class TestToolCount:
     """Test that all 27 tools are registered."""
 
-    def test_31_tools(self):
-        """Verify 31 tools registered (27 P4 + 2 Phase 2A + 1 generate_kpath + 1 cleanup_project)."""
+    def test_32_tools(self):
+        """Verify 32 tools registered (27 P4 + 2 Phase 2A + 1 generate_kpath + 1 cleanup_project + 1 list_calculations)."""
         from quantumvitas.mcp import server  # noqa: F401
         from quantumvitas.mcp.app import mcp
 
@@ -378,8 +378,8 @@ class TestToolCount:
             tools = loop.run_until_complete(mcp.get_tools())
         finally:
             loop.close()
-        assert len(tools) == 31, (
-            f"Expected 31 tools, got {len(tools)}: {sorted(tools.keys())}"
+        assert len(tools) == 32, (
+            f"Expected 32 tools, got {len(tools)}: {sorted(tools.keys())}"
         )
 
         # Verify P2 tools

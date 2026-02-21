@@ -6,7 +6,7 @@ from quantumvitas.mcp.app import mcp
 from quantumvitas.mcp.envelope import make_error, make_response
 
 # Step type gens that produce relaxed structures.
-_RELAX_GEN_TYPES = frozenset({"relax"})
+_RELAX_GEN_TYPES = frozenset({"relax", "minimize"})
 
 
 @mcp.tool
@@ -62,7 +62,7 @@ def promote_structure(
                 "no_relax_step",
                 f"No relax step found in this calculation. "
                 f"Steps: {gen_types}. "
-                f"promote_structure requires a relax/vc-relax step.",
+                f"promote_structure requires a relax/minimize step.",
                 context_hint=(
                     "Create a calculation with workflow='relax' and run it first."
                 ),
@@ -107,7 +107,7 @@ def promote_structure(
         return make_error(
             "not_relax_step",
             str(exc),
-            context_hint="Only completed relax/vc-relax steps can be promoted.",
+            context_hint="Only completed relax/minimize steps can be promoted.",
         )
     except FileNotFoundError as exc:
         return make_error(

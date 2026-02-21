@@ -190,8 +190,8 @@ class TestContextHints:
         # Either auto-resolved (mentions "auto-resolved") or manual (mentions "set_species_map")
         assert "species_map" in hint.lower() or "auto-resolved" in hint.lower()
 
-    def test_tool_count_31(self):
-        """Verify 31 tools registered (27 P4 + 2 Phase 2A + 1 generate_kpath + 1 cleanup_project)."""
+    def test_tool_count_32(self):
+        """Verify 32 tools registered (27 P4 + 2 Phase 2A + 1 generate_kpath + 1 cleanup_project + 1 list_calculations)."""
         from quantumvitas.mcp import server  # noqa: F401 — triggers registration
         from quantumvitas.mcp.app import mcp
 
@@ -200,8 +200,8 @@ class TestContextHints:
             tools = loop.run_until_complete(mcp.get_tools())
         finally:
             loop.close()
-        assert len(tools) == 31, (
-            f"Expected 31 tools, got {len(tools)}: {sorted(tools.keys())}"
+        assert len(tools) == 32, (
+            f"Expected 32 tools, got {len(tools)}: {sorted(tools.keys())}"
         )
 
         # Verify the P1 tools exist

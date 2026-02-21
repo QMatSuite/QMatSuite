@@ -45,18 +45,49 @@ def apply_preset(calc_ulid: str, presets: dict) -> dict:
             return make_error("not_found", f"Calculation '{calc_ulid}' not found: {msg}")
         return make_error("preset_failed", msg)
 
+    steps_updated = result.get("steps_updated", 0)
+    step_results = result.get("step_results", [])
+
+    payload = {
+        "calc_ulid": calc_ulid,
+        "presets_applied": presets,
+        "status": result.get("status", "applied"),
+        "steps_updated": steps_updated,
+        "steps_skipped": result.get("steps_skipped", 0),
+        "step_results": step_results,
+        "dimension_states": result.get("dimension_states", {}),
+    }
+
+    # If no steps were updated and there are actual errors (not just skips),
+    # report as error. Skipped non-receiver steps are normal for some dimensions.
+    if steps_updated == 0:
+        has_errors = any(
+            sr.get("status") == "error" for sr in step_results
+        )
+        if has_errors:
+            return make_error(
+                "preset_partial_failure",
+                f"Presets were not applied to any step. "
+                f"{len(step_results)} step(s) processed, 0 updated.",
+                context_hint=(
+                    f"Check that the preset dimensions are valid for this engine. "
+                    f"Use get_presets(engine='...', workflow='...') to see available options."
+                ),
+                diagnostics=[{"step_results": step_results}],
+            )
+
+    warnings = None
+    if steps_updated == 0:
+        warnings = [
+            "No steps were updated by these presets. "
+            "The preset dimensions may not apply to this step type."
+        ]
+
     return make_response(
-        {
-            "calc_ulid": calc_ulid,
-            "presets_applied": presets,
-            "status": result.get("status", "applied"),
-            "steps_updated": result.get("steps_updated", 0),
-            "steps_skipped": result.get("steps_skipped", 0),
-            "step_results": result.get("step_results", []),
-            "dimension_states": result.get("dimension_states", {}),
-        },
+        payload,
         context_hint=(
             f"Use set_parameters(calc_ulid='{calc_ulid}', params=...) to override specific values, "
             f"or inspect_calculation(calc_ulid='{calc_ulid}') to review."
         ),
+        warnings=warnings,
     )

@@ -349,9 +349,11 @@ def load_demo(demo_id: str, name: str = "") -> dict:
             f"Demo '{demo_id}' loaded. "
             f"Structure '{structure_ulid}' is now in your project library — "
             f"you do NOT need to import a structure separately. "
+            f"Species map is pre-configured from the demo — no need to call "
+            f"set_species_map or auto_resolve_species_map. "
             f"Calculation '{calc_ulid}' is configured with {n_steps} step(s). "
-            f"Use run_calculation(calc_ulid='{calc_ulid}') to execute, or "
-            f"inspect_calculation(calc_ulid='{calc_ulid}') to review parameters. "
+            f"Use inspect_calculation(calc_ulid='{calc_ulid}', dry_run=True) for preflight checks, "
+            f"then run_calculation(calc_ulid='{calc_ulid}') to execute. "
             f"To use a different material with the same workflow, use create_calculation() instead."
         ),
     )

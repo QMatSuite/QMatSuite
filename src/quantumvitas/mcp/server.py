@@ -26,6 +26,7 @@ import quantumvitas.mcp.tools.set_species_map  # noqa: F401, E402
 import quantumvitas.mcp.tools.set_parameters  # noqa: F401, E402
 import quantumvitas.mcp.tools.apply_preset  # noqa: F401, E402
 import quantumvitas.mcp.tools.inspect_calculation  # noqa: F401, E402
+import quantumvitas.mcp.tools.list_calculations   # noqa: F401, E402
 import quantumvitas.mcp.tools.preview_compilation  # noqa: F401, E402
 
 # Stage 3: execution tools

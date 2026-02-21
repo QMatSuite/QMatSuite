@@ -136,6 +136,26 @@ def quick_run(
     try:
         result_dto = svc.run.run_calculation(calc_ulid)
     except Exception as exc:
+        # Attempt error enrichment like run_calculation.py
+        try:
+            detail = svc.calculation.get_detail(calc_ulid)
+            digest = _try_parse_digest(detail)
+            from quantumvitas.mcp.error_enrichment import enrich_run_error
+
+            # Build a minimal result_dto-like object for enrichment
+            enriched = enrich_run_error(
+                calc_ulid=calc_ulid,
+                result_dto=type("_", (), {
+                    "steps": [],
+                    "exit_code": getattr(exc, "exit_code", None),
+                })(),
+                digest=digest,
+                engine=engine,
+                workflow=workflow,
+            )
+            return enriched
+        except Exception:
+            pass
         return make_error(
             "execution_failed",
             f"Calculation run failed: {exc}",
@@ -154,25 +174,119 @@ def quick_run(
             "step_type_gen": s.step_type_gen,
             "step_type_spec": s.step_type_spec,
             "status": s.status or "unknown",
+            "message": s.message,
         })
 
-    hint = (
-        f"Use get_results_summary(calc_ulid='{result_dto.calc_ulid}') "
-        "to see results."
-    )
-    if workflow in {"relax", "vc-relax", "vc_relax"}:
-        hint += (
-            f" For the relaxed geometry, use promote_structure(calc_ulid='{result_dto.calc_ulid}') "
-            "to extract and register it as a new structure."
+    status = result_dto.status
+    payload: dict = {
+        "calc_ulid": result_dto.calc_ulid,
+        "run_ulid": result_dto.run_ulid,
+        "status": status,
+        "engine": engine,
+        "workflow": workflow,
+        "steps": steps_out,
+    }
+
+    # --- Parse digest for convergence check ---
+    try:
+        detail = svc.calculation.get_detail(calc_ulid)
+        digest = _try_parse_digest(detail)
+    except Exception:
+        digest = None
+
+    if status == "completed":
+        # Check for "completed but not converged"
+        if digest and digest.get("total_energy_ry") is None and digest.get("n_iterations", 0) > 0:
+            try:
+                from quantumvitas.mcp.error_enrichment import enrich_run_error
+
+                digest["converged"] = False
+                enriched = enrich_run_error(
+                    calc_ulid=calc_ulid,
+                    result_dto=result_dto,
+                    digest=digest,
+                    engine=engine,
+                    workflow=workflow,
+                )
+                enriched["data"] = payload
+                return enriched
+            except Exception:
+                pass
+
+        hint = (
+            f"Use get_results_summary(calc_ulid='{result_dto.calc_ulid}') "
+            "to see results."
         )
-    return make_response(
-        {
-            "calc_ulid": result_dto.calc_ulid,
-            "run_ulid": result_dto.run_ulid,
-            "status": result_dto.status,
-            "engine": engine,
-            "workflow": workflow,
-            "steps": steps_out,
-        },
-        context_hint=hint,
-    )
+        if workflow in {"relax", "minimize"}:
+            hint += (
+                f" For the relaxed geometry, use promote_structure(calc_ulid='{result_dto.calc_ulid}') "
+                "to extract and register it as a new structure."
+            )
+        return make_response(payload, context_hint=hint)
+
+    # --- Failed: enrich with diagnostics + suggested_fixes ---
+    try:
+        from quantumvitas.mcp.error_enrichment import enrich_run_error
+
+        enriched = enrich_run_error(
+            calc_ulid=calc_ulid,
+            result_dto=result_dto,
+            digest=digest,
+            engine=engine,
+            workflow=workflow,
+        )
+        enriched["data"] = payload
+        return enriched
+    except Exception:
+        return make_response(
+            payload,
+            context_hint="Check step messages for failure details.",
+            warnings=["Calculation did not complete successfully."],
+            status="error",
+        )
+
+
+def _try_parse_digest(detail: dict) -> dict | None:
+    """Attempt to parse engine output for the first step's digest."""
+    from pathlib import Path
+
+    calc_dir = detail.get("absolute_path")
+    if not calc_dir:
+        return None
+
+    calc_path = Path(calc_dir)
+    steps = detail.get("steps", [])
+    if not steps:
+        return None
+
+    step_info = steps[0]
+    step_slug = step_info.get("slug") or step_info.get("name", "")
+
+    candidates = [
+        calc_path / "raw" / step_slug,
+        calc_path / "raw",
+    ]
+    for candidate in candidates:
+        if candidate.is_dir():
+            try:
+                import quantumvitas.drivers  # noqa: F401
+                from quantumvitas.parsers.registry import find_parser_for_raw
+
+                parser_cls = find_parser_for_raw(candidate, "scf_digest")
+                if parser_cls is not None:
+                    parser = parser_cls()
+                    digest = parser.parse(candidate)
+                    return digest.to_dict() if hasattr(digest, "to_dict") else digest
+            except Exception:
+                pass
+
+            try:
+                from quantumvitas.drivers.qe.parsers.output import QEOutputParser
+
+                parser = QEOutputParser()
+                if parser.can_parse(candidate):
+                    return parser.parse(candidate).to_dict()
+            except Exception:
+                pass
+
+    return None
