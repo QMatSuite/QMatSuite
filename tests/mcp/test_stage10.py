@@ -150,7 +150,7 @@ class TestGetDemoResults:
         assert len(result["data"]["available_types"]) > 0
 
     def test_get_specific_result(self):
-        """Load a specific object_type from a ref pack."""
+        """Load a specific object_type from a ref pack (compact summary, no raw arrays)."""
         demo_id = self._find_demo_with_ref_pack()
         from quantumvitas.demo_store.ref_packs import list_ref_pack_types
         from quantumvitas.mcp.tools.demo_store import get_demo_results
@@ -160,7 +160,9 @@ class TestGetDemoResults:
         result = get_demo_results.fn(demo_id=demo_id, object_type=types[0])
         assert result["status"] == "success"
         assert result["data"]["object_type"] == types[0]
-        assert "data" in result["data"]
+        # Compact summary is returned (no raw arrays)
+        assert "summary" in result["data"]
+        assert "data" not in result["data"]
 
     def test_invalid_demo_id(self):
         """Nonexistent demo → error."""

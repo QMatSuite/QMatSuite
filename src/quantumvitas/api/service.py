@@ -8616,7 +8616,19 @@ class QVService:
                     "recommended_use": demo_meta.get("recommended_use", ""),
                     "recommended_analysis": demo_meta.get("recommended_analysis"),
                     "difficulty": demo_meta.get("difficulty"),
-                    "estimated_runtime_scf": demo_meta.get("estimated_runtime_scf"),
+                    # estimated_runtime_s: wall-time seconds from audit (canonical name)
+                    "estimated_runtime_s": demo_meta.get("estimated_runtime_s"),
+                    # New enriched metadata fields
+                    "system_class": demo_meta.get("system_class", ""),
+                    "periodicity": demo_meta.get("periodicity", ""),
+                    "method": demo_meta.get("method", ""),
+                    "property_of_interest": demo_meta.get("property_of_interest", ""),
+                    "spin_treatment": demo_meta.get("spin_treatment", ""),
+                    "multi_engine": demo_meta.get("multi_engine", False),
+                    "engines_used": demo_meta.get("engines_used", []),
+                    "n_steps": demo_meta.get("n_steps"),
+                    "step_summary": demo_meta.get("step_summary", ""),
+                    "available_analysis": demo_meta.get("available_analysis", []),
                 })
             except Exception:
                 # Skip invalid snapshots
