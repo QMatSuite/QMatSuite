@@ -116,14 +116,16 @@ def _find_raw_dir(detail: dict, step_idx: int):
     if step_idx < len(steps):
         step_info = steps[step_idx]
         step_slug = step_info.get("slug") or step_info.get("name", "")
+        step_ulid = step_info.get("step_ulid") or step_info.get("ulid", "")
 
-        # Try common patterns
+        # Try common patterns, including ULID-based subdirs (xTB ISOLATED workdir policy)
         candidates = [
             calc_path / "raw" / step_slug,
+            calc_path / "raw" / step_ulid,  # xTB: raw/<step_ulid>/
             calc_path / "raw",
         ]
         for candidate in candidates:
-            if candidate.is_dir():
+            if candidate and candidate.is_dir():
                 return candidate
 
     return None
@@ -171,7 +173,12 @@ def _build_summary(
     - VASP, xTB, LAMMPS: total_energy_ev (eV)
     - ORCA, Gaussian, QMCPACK: total_energy_ha (Hartree)
     """
-    # Resolve total energy to eV from whichever unit the digest provides
+    # Resolve total energy to eV from whichever unit the digest provides.
+    # Handle multiple engine naming conventions:
+    #   QE:   total_energy_ry  (Rydberg)
+    #   VASP: total_energy_ev  (eV)
+    #   ORCA/Gaussian/QMCPACK: total_energy_ha  (Hartree)
+    #   xTB:  final_energy_eV or final_energy_Ha  (xTB-specific names from XTBDigest.to_dict())
     total_energy_ev = digest.get("total_energy_ev")
     total_energy_ry = digest.get("total_energy_ry")
     total_energy_ha = digest.get("total_energy_ha")
@@ -181,18 +188,43 @@ def _build_summary(
             total_energy_ev = total_energy_ry * _RY_TO_EV
         elif total_energy_ha is not None:
             total_energy_ev = total_energy_ha * _HA_TO_EV
+        else:
+            # xTB: final_energy_eV (note capital E, V — exact field name from XTBDigest)
+            xtb_ev = digest.get("final_energy_eV")
+            if xtb_ev is not None:
+                total_energy_ev = xtb_ev
+            else:
+                xtb_ha = digest.get("final_energy_Ha")
+                if xtb_ha is not None:
+                    total_energy_ev = xtb_ha * _HA_TO_EV
+
+    # Convergence: xTB uses 'success' (single-point) and 'converged_geometry' (opt)
+    converged = digest.get("converged", False)
+    if not converged:
+        converged = bool(
+            digest.get("success", False) or digest.get("converged_geometry", False)
+        )
+
+    # Iteration count: xTB uses 'n_opt_cycles' for geometry optimization cycles
+    n_iterations = digest.get("n_iterations") or digest.get("n_opt_cycles") or 0
+
+    # Wall time: xTB uses 'wall_time_s'
+    wall_time = digest.get("total_wall_time_s") or digest.get("wall_time_s")
+
+    # Fermi energy: xTB uses 'homo_lumo_gap_eV' (not an energy level, but best proxy)
+    fermi_ev = digest.get("fermi_energy_ev")
 
     summary: dict = {
         "step_index": step_idx,
         "step_type_gen": step_type_gen,
         "run_ulid": run_ulid,
-        "converged": digest.get("converged", False),
+        "converged": converged,
         "total_energy_eV": total_energy_ev,
         "total_energy_ry": total_energy_ry,
-        "fermi_energy_eV": digest.get("fermi_energy_ev"),
+        "fermi_energy_eV": fermi_ev,
         "band_gap_eV": digest.get("band_gap_ev"),
-        "n_iterations": digest.get("n_iterations", 0),
-        "wall_time_seconds": digest.get("total_wall_time_s"),
+        "n_iterations": n_iterations,
+        "wall_time_seconds": wall_time,
     }
 
     # Include magnetization if present (GAP-1)

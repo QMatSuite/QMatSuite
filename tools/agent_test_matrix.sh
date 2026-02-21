@@ -182,7 +182,7 @@ echo "GATE PASS: agent 0 created project"
 # ============================================================
 
 echo ""
-echo "=== Phase 2: Agents 1-8 (parallel) ==="
+echo "=== Phase 2: Agents 1-16 (parallel) ==="
 
 _launch() {
     local tnum="$1" tname="$2" tprompt="$3"
@@ -215,6 +215,32 @@ _launch "07" "task_07_bad_config" \
 _launch "08" "task_08_water_xtb" \
     "Optimize the geometry of a water molecule using xTB."
 
+# New tasks (09-16) — Round 3 expansion
+
+_launch "09" "task_09_fe_magnetization_check" \
+    "Calculate the magnetic moment of BCC iron using Quantum ESPRESSO. After the calculation completes, call get_results_summary and confirm that total_magnetization is present in the response."
+
+_launch "10" "task_10_xtb_promote" \
+    "Optimize the geometry of a water molecule using xTB, then call promote_structure to register the optimized geometry as a new structure in the project. Finally call get_results_summary to verify the energy is reported."
+
+_launch "11" "task_11_si_vc_relax" \
+    "Relax the silicon crystal structure AND optimize the unit cell using Quantum ESPRESSO by setting CONTROL.calculation='vc-relax' in the parameters. After the relax completes, call promote_structure to extract the relaxed geometry."
+
+_launch "12" "task_12_orca_water" \
+    "Calculate the total energy of a water molecule using ORCA with the HF/STO-3G method. If ORCA is not available, report the error diagnostics returned by the MCP tool."
+
+_launch "13" "task_13_failing_scf" \
+    "Calculate the total energy of silicon using Quantum ESPRESSO, but intentionally set ecutwfc=1.0 Ry and electron_maxstep=2. This will fail or produce wrong results — report what error diagnostics the system returns."
+
+_launch "14" "task_14_al_dos" \
+    "Calculate the density of states of FCC aluminum using Quantum ESPRESSO. Do NOT use a pre-built demo — build the calculation from scratch."
+
+_launch "15" "task_15_mg_hcp_scf" \
+    "Calculate the total energy of HCP magnesium using Quantum ESPRESSO. Magnesium has a hexagonal close-packed structure (space group P6_3/mmc, a=3.21 Angstrom, c=5.21 Angstrom, 2 atoms in the unit cell)."
+
+_launch "16" "task_16_si_convergence" \
+    "Perform a plane-wave cutoff convergence study for silicon using Quantum ESPRESSO: run two separate SCF calculations with ecutwfc=20 Ry and ecutwfc=40 Ry. Compare the total energies from get_results_summary for each and report the energy difference to assess convergence."
+
 wait
 echo "  All parallel agents complete."
 
@@ -238,6 +264,14 @@ ALL_TASKS=(
     "06:task_06_fe_magnetic"
     "07:task_07_bad_config"
     "08:task_08_water_xtb"
+    "09:task_09_fe_magnetization_check"
+    "10:task_10_xtb_promote"
+    "11:task_11_si_vc_relax"
+    "12:task_12_orca_water"
+    "13:task_13_failing_scf"
+    "14:task_14_al_dos"
+    "15:task_15_mg_hcp_scf"
+    "16:task_16_si_convergence"
 )
 
 _check() {
@@ -282,13 +316,13 @@ for entry in "${ALL_TASKS[@]}"; do
     test -f "$RUN_DIR/$tname/WORKLOG.md" && ((wcount++)) || true
 done
 
-echo "Tasks with worklog: $wcount/9"
-echo "Tasks with project: $pcount/9"
+echo "Tasks with worklog: $wcount/17"
+echo "Tasks with project: $pcount/17"
 echo ""
 if [[ $FAIL -gt 0 ]]; then
     echo "OVERALL: FAIL ($FAIL task(s) without project)"
 else
-    echo "OVERALL: PASS (all 9 tasks created projects)"
+    echo "OVERALL: PASS (all 17 tasks created projects)"
 fi
 } | tee "$SUMMARY_FILE"
 
