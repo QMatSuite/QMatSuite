@@ -33,7 +33,7 @@ def search_parameters(
 
     results_out: list[dict] = []
     for doc, score in hits:
-        results_out.append({
+        entry: dict = {
             "engine": doc.engine,
             "tag_name": doc.tag_name,
             "type": doc.type,
@@ -41,7 +41,10 @@ def search_parameters(
             "category": doc.category,
             "description": doc.description[:200] if doc.description else "",
             "relevance_score": round(score, 3),
-        })
+        }
+        if doc.section:
+            entry["section"] = doc.section
+        results_out.append(entry)
 
     return make_response(
         {
@@ -52,7 +55,10 @@ def search_parameters(
             "total_results": len(results_out),
         },
         context_hint=(
-            "Use these parameters with set_parameters(calc_ulid, params=...) to configure a calculation, "
-            "or refine with engine='...' or category='...'."
+            "Use these parameters with set_parameters(calc_ulid, params=...) to configure a calculation. "
+            "For QE, nest parameters under their namelist section "
+            "(e.g. {\"ELECTRONS\": {\"diago_full_acc\": true}}). "
+            "The 'section' field indicates the correct nesting for engines that require it. "
+            "For ORCA, 'keyword_line' means the ! line, 'block:scf' means the %scf block."
         ),
     )

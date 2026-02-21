@@ -19,7 +19,7 @@ from typing import Any
 class TagDoc:
     """A single parameter/tag document in the search index."""
 
-    __slots__ = ("engine", "tag_name", "type", "default", "category", "description", "tokens")
+    __slots__ = ("engine", "tag_name", "type", "default", "category", "section", "description", "tokens")
 
     def __init__(
         self,
@@ -29,12 +29,14 @@ class TagDoc:
         default: Any,
         category: str | None,
         description: str | None,
+        section: str | None = None,
     ):
         self.engine = engine
         self.tag_name = tag_name
         self.type = type_ or ""
         self.default = str(default) if default is not None else ""
         self.category = category or ""
+        self.section = section or ""
         self.description = description or ""
         # Pre-tokenize for BM25
         text = f"{tag_name} {self.description} {self.category}".lower()
@@ -135,13 +137,15 @@ def _load_all_tag_docs() -> list[TagDoc]:
         )
         for mod in list_supported_modules():
             for p in _iter_params(mod):
+                namelist = p.get("namelist", "")
                 docs.append(TagDoc(
                     engine="qe",
                     tag_name=p.get("name", ""),
                     type_=p.get("type"),
                     default=p.get("default"),
-                    category=p.get("namelist", ""),
+                    category=namelist,
                     description=p.get("description"),
+                    section=namelist,
                 ))
     except Exception:
         pass
@@ -162,6 +166,7 @@ def _load_all_tag_docs() -> list[TagDoc]:
                     default=info.get("default"),
                     category=info.get("category", ""),
                     description=info.get("description"),
+                    section=info.get("section", ""),
                 ))
         except Exception:
             pass
@@ -174,6 +179,8 @@ def _load_all_tag_docs() -> list[TagDoc]:
                 fromlist=["safe_load_metadata"],
             )
             data = meta_mod.safe_load_metadata()
+            # Keywords (! line for ORCA, # route for Gaussian)
+            section_label = "keyword_line" if eng == "orca" else "route"
             for name, info in data.get("keywords", {}).items():
                 docs.append(TagDoc(
                     engine=eng,
@@ -182,7 +189,21 @@ def _load_all_tag_docs() -> list[TagDoc]:
                     default=info.get("default"),
                     category=info.get("category", ""),
                     description=info.get("description"),
+                    section=section_label,
                 ))
+            # Block parameters (ORCA %block...end sections)
+            for block_name, block_info in data.get("blocks", {}).items():
+                block_section = f"block:{block_name}"
+                for param_name, param_info in block_info.get("parameters", {}).items():
+                    docs.append(TagDoc(
+                        engine=eng,
+                        tag_name=param_name,
+                        type_=param_info.get("type"),
+                        default=param_info.get("default"),
+                        category=block_name,
+                        description=param_info.get("description"),
+                        section=block_section,
+                    ))
         except Exception:
             pass
 
