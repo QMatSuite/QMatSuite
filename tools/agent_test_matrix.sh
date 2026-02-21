@@ -9,7 +9,7 @@
 #
 # Phases:
 #   0  Walk-up guard + wipe pseudo libraries + seed cache
-#   1  Agent 0 (GaAs SCF, sequential) — forces cold SSSP download
+#   1  Agent 0 (Na BCC SCF, sequential) — forces cold SSSP download
 #   2  Agents 1-8 in parallel
 #   3  Summary with pass/fail gates
 #
