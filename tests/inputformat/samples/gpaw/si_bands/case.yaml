@@ -1,8 +1,8 @@
 case_id: si_bands
 engine: gpaw
 title: Silicon GPAW Band Structure
-description: PBE band structure calculation for diamond silicon along high-symmetry
-  path
+description: PBE band-structure calculation for diamond-cubic silicon, performing
+  an SCF step followed by a non-self-consistent bands step along a high-symmetry k-path.
 workflow_tags:
 - bands
 - dft
@@ -65,3 +65,14 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: band_structure
+spin_treatment: nonmagnetic
+estimated_runtime_s: 1.2
+n_steps: 2
+step_summary: SCF → Bands
+available_analysis:
+- bands
+- convergence

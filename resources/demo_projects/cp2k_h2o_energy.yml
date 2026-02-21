@@ -123,15 +123,30 @@ meta:
   ulid: cp2k_h2o_energy
   title: Water molecule single-point energy
   subtitle: scf
+  description: 'Basic PBE/DZVP single-point energy for water molecule in cubic box. Validated against real CP2K 2026.1 run:
+    E = -17.2197 Ha.'
   tags:
   - scf
   - energy
   - molecule
   recommended_analysis: scf
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: dft-pbe
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 9.1
+  multi_engine: false
+  engines_used:
+  - cp2k
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   required_engine: cp2k
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: cp2k
   corpus_case_id: h2o_energy
-  corpus_checksum: df3055ad7e857ac551971b0865792a84e585e0e461d5bf4ee47efb3db1ef308a
+  corpus_checksum: c3af4b33f0988bfe5a42fd43171a59e5498633ab67a5dcd371bde459f7ac5597

@@ -22,3 +22,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite, inspired by CP2K examples
   license: MIT (QMatSuite)
+system_class: molecule
+periodicity: molecular
+method: dft-pbe
+property_of_interest: total_energy
+spin_treatment: nonmagnetic
+estimated_runtime_s: 9.1
+n_steps: 1
+step_summary: SCF
+available_analysis:
+- convergence

@@ -32,7 +32,8 @@ OLD_TO_NEW_SLUG = {
     "04_Si_DOS": "qe_si_dos_alt",
     "06_Al_DOS": "qe_al_dos",
     "07_Si_bandStructure": "qe_si_bands_alt",
-    "08_Fe_DOS": "qe_fe_dos",
+    "08_Fe_DOS": "qe_fe_scf",
+    "qe_fe_dos": "qe_fe_scf",
     "09_Si_phonon": "qe_si_phonon",
     "12_NMR_gipaw": "qe_nmr_gipaw",
     "13_graphene": "qe_graphene_bands",
@@ -136,19 +137,32 @@ def generate_demo_from_existing(
 
     # Update gallery metadata
     tags = case_data.get("tags", case_data.get("workflow_tags", []))
+    existing_meta = existing.get("meta", {})
     meta = {
         "ulid": demo_slug,
-        "title": case_data.get("title", existing.get("meta", {}).get("title", demo_slug)),
-        "subtitle": case_data.get("subtitle", existing.get("meta", {}).get("subtitle", "")),
+        "title": case_data.get("title", existing_meta.get("title", demo_slug)),
+        "subtitle": case_data.get("subtitle", existing_meta.get("subtitle", "")),
+        "description": case_data.get("description", existing_meta.get("description", "")),
         "tags": tags,
         "recommended_analysis": case_data.get(
             "recommended_analysis",
-            existing.get("meta", {}).get("recommended_analysis", "scf"),
+            existing_meta.get("recommended_analysis", "scf"),
         ),
         "difficulty": case_data.get(
             "difficulty",
-            existing.get("meta", {}).get("difficulty", "beginner"),
+            existing_meta.get("difficulty", "beginner"),
         ),
+        "system_class": case_data.get("system_class", existing_meta.get("system_class", "")),
+        "periodicity": case_data.get("periodicity", existing_meta.get("periodicity", "")),
+        "method": case_data.get("method", existing_meta.get("method", "")),
+        "property_of_interest": case_data.get("property_of_interest", existing_meta.get("property_of_interest", "")),
+        "spin_treatment": case_data.get("spin_treatment", existing_meta.get("spin_treatment", "nonmagnetic")),
+        "estimated_runtime_s": case_data.get("estimated_runtime_s", existing_meta.get("estimated_runtime_s")),
+        "multi_engine": case_data.get("multi_engine", existing_meta.get("multi_engine", False)),
+        "engines_used": case_data.get("engines_used", existing_meta.get("engines_used", [case_data.get("engine", "")])),
+        "n_steps": case_data.get("n_steps", existing_meta.get("n_steps")),
+        "step_summary": case_data.get("step_summary", existing_meta.get("step_summary", "")),
+        "available_analysis": case_data.get("available_analysis", existing_meta.get("available_analysis", [])),
     }
 
     # Asset and engine info
@@ -165,7 +179,6 @@ def generate_demo_from_existing(
     meta["corpus_checksum"] = _compute_dir_checksum(case_dir)
 
     # Preserve reference_artifacts from existing demo
-    existing_meta = existing.get("meta", {})
     if "reference_artifacts" in existing_meta:
         meta["reference_artifacts"] = existing_meta["reference_artifacts"]
 
@@ -287,6 +300,7 @@ def main():
         "methane_orca_freq.yml",
         "si_bands_vasp_demo.yml",
         "water_pyscf_scf.yml",
+        "qe_fe_dos.yml",
     }
 
     if not dry_run:

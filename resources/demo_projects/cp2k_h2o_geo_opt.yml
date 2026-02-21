@@ -127,15 +127,31 @@ meta:
   ulid: cp2k_h2o_geo_opt
   title: Water molecule geometry optimization
   subtitle: relax
+  description: CG geometry optimization for water with PBE/DZVP. Tests MOTION/GEO_OPT section. Validated against real CP2K
+    2026.1 run.
   tags:
   - geo_opt
   - relaxation
   - molecule
   recommended_analysis: scf
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: dft-pbe
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 171.8
+  multi_engine: false
+  engines_used:
+  - cp2k
+  n_steps: 1
+  step_summary: Geo-opt
+  available_analysis:
+  - convergence
+  - trajectory
   required_engine: cp2k
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: cp2k
   corpus_case_id: h2o_geo_opt
-  corpus_checksum: 7b4518acadede50963a0d37f7457f9ad08145afe85ef1709ce7b510e7fe0ce96
+  corpus_checksum: b44026686846bfa0c3b0714f35a619f465206694ea64b27f87e2ecd9e2635a14

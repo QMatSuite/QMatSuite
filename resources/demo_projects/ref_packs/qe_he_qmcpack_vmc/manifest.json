@@ -1,13 +1,13 @@
 {
   "demo_slug": "qe_he_qmcpack_vmc",
   "engine": "qe",
-  "generated_at": "2026-02-13T19:45:45.335353+00:00",
+  "generated_at": "2026-02-21T01:49:18.278978+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "4eab021814cb4dae785aad829f7f7057d2ea36d95b059c493f8e049cd6ad9c1b"
+      "sha256": "c18943036695148810a231bc1ed53bb753550febaa27d83ba12ffe1b16a96679"
     }
   }
 }

@@ -26,10 +26,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "trajectory",
-    "run_ulid": "01KHC8YKET2WH828STAFRWFGMQ",
-    "calc_ulid": "01KHC8YKCTZ7EQK391KAWYXJJ3",
+    "run_ulid": "01KHYYH9P40ZK8D3YYF2E8K5EQ",
+    "calc_ulid": "01KHYYH9M2F2ZG7F6SZ6HFJZVZ",
     "step_ulids": [
-      "01KHC8YKCTZ7EQK391KAWYXJJ4"
+      "01KHYYH9M2F2ZG7F6SZ6HFJZW0"
     ],
     "gen_steps": [
       "relax"
@@ -37,9 +37,9 @@
     "engine_name": "xtb",
     "source_files": [
       {
-        "path": "raw/01KHC8YKCTZ7EQK391KAWYXJJ4/xtbopt.log",
+        "path": "raw/01KHYYH9M2F2ZG7F6SZ6HFJZW0/xtbopt.log",
         "size_bytes": 1216,
-        "mtime": 1771012312.599776
+        "mtime": 1771638925.0490992
       }
     ],
     "parser_name": "xtb_trajectory",

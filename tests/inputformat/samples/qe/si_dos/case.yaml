@@ -1,7 +1,9 @@
 case_id: si_dos
 engine: qe
 title: Silicon density of states
-description: SCF → NSCF → DOS
+description: 'Density of states calculation for silicon using DFT-PBE with SSSP precision
+  pseudopotentials. Runs a 3-step workflow: SCF, NSCF on a dense k-grid with tetrahedra
+  occupation, and dos.x post-processing.'
 workflow_tags:
 - scf
 - nscf
@@ -48,3 +50,14 @@ steps:
 attribution:
   source: Constructed for QMatSuite, inspired by QE tutorials
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: dos
+spin_treatment: nonmagnetic
+estimated_runtime_s: 49.0
+n_steps: 3
+step_summary: SCF → NSCF → DOS
+available_analysis:
+- convergence
+- dos

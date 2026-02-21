@@ -122,15 +122,31 @@ meta:
   ulid: vasp_si_relax
   title: Silicon diamond ionic relaxation
   subtitle: relax
+  description: Ionic relaxation (IBRION=2, CG) of bulk silicon diamond using PBE with a 4x4x4 Gamma-centred k-mesh; forces
+    converged to 0.01 eV/A.
   tags:
   - relax
   - ionic
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.6
+  multi_engine: false
+  engines_used:
+  - vasp
+  n_steps: 1
+  step_summary: Relax
+  available_analysis:
+  - convergence
+  - trajectory
   asset_policy: proprietary
   required_engine: vasp
   availability: requires_local_install
   generator_version: 1.0.0
   corpus_engine: vasp
   corpus_case_id: si_relax
-  corpus_checksum: dd0c9b7f35f75fe07d44af8801bd4e81434cfcfa1c7f33a58a167da619ca9c14
+  corpus_checksum: 14882128a36f91437487156c0cbfb92fca45174b59752a900fa061aeec02272e

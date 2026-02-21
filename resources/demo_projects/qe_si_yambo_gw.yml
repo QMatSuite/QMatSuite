@@ -206,6 +206,8 @@ meta:
   ulid: qe_si_yambo_gw
   title: Silicon G0W0 (QE to Yambo GW pipeline)
   subtitle: QE SCF -> NSCF -> Yambo G0W0
+  description: Silicon G0W0 quasiparticle correction calculation using the QE→Yambo pipeline, computing quasiparticle band
+    energies for Si valence and conduction bands with the plasmon-pole approximation.
   tags:
   - yambo
   - composite
@@ -214,10 +216,24 @@ meta:
   - quasiparticle
   recommended_analysis: energy
   difficulty: advanced
+  system_class: crystal
+  periodicity: periodic
+  method: gw-pbe
+  property_of_interest: quasiparticle
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 68.6
+  multi_engine: true
+  engines_used:
+  - qe
+  - yambo
+  n_steps: 4
+  step_summary: SCF → NSCF → Yambo setup → GW
+  available_analysis:
+  - convergence
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_yambo_gw
-  corpus_checksum: b0dda43c98333d6e14a98ae530ac68bcdca850092d1b44e10343f0aee0d16caf
+  corpus_checksum: 5b33696f376e1f4323f85bce3c7a90ba8dc100abc63babcf5116729ef198861e

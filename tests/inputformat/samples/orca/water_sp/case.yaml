@@ -10,8 +10,8 @@ species:
 - H
 functional: B3LYP
 basis_set: DEF2-TZVP
-description: B3LYP/def2-TZVP single-point energy for water with D3BJ dispersion and
-  RIJCOSX
+description: B3LYP/def2-TZVP single-point energy for the water molecule with D3BJ
+  dispersion correction and RIJCOSX density fitting.
 demo_eligible: true
 step_type_gen: scf
 step_type_spec: orca_scf
@@ -24,3 +24,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: molecule
+periodicity: molecular
+method: dft-b3lyp
+property_of_interest: total_energy
+spin_treatment: nonmagnetic
+estimated_runtime_s: 0.7
+n_steps: 1
+step_summary: SCF
+available_analysis:
+- convergence

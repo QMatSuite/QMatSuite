@@ -8,7 +8,8 @@ workflow_tags:
 species:
 - Si
 functional: PBE
-description: SCF → DOS with tetrahedron method (ISMEAR=-5) and fine k-mesh
+description: Density of states for bulk silicon computed with ICHARG=11, LORBIT=11,
+  and the tetrahedron method (ISMEAR=-5) on a dense 8x8x8 k-mesh.
 demo_eligible: true
 demo_slug: vasp_si_dos
 step_type_gen: scf
@@ -37,3 +38,15 @@ steps:
 attribution:
   source: Constructed for QMatSuite test coverage
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: dos
+spin_treatment: nonmagnetic
+estimated_runtime_s: 2.7
+n_steps: 2
+step_summary: SCF → DOS
+available_analysis:
+- convergence
+- dos
+- field3d

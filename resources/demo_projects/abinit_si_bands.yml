@@ -137,15 +137,31 @@ meta:
   ulid: abinit_si_bands
   title: Silicon band structure
   subtitle: nscf
+  description: 'Two-dataset calculation for silicon band structure: SCF on uniform grid followed by NSCF along L-Gamma-X-K-Gamma
+    high-symmetry path.'
   tags:
   - bands
   - multi_dataset
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-lda
+  property_of_interest: band_structure
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 2.3
+  multi_engine: false
+  engines_used:
+  - abinit
+  n_steps: 2
+  step_summary: SCF → Bands
+  available_analysis:
+  - bands
+  - convergence
   asset_policy: redistributable
   required_engine: abinit
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: abinit
   corpus_case_id: si_bands
-  corpus_checksum: 148cc39b0ccebe85c564fdfff5f644338000bfd116ffdf48dd7b3ee79ea6c33b
+  corpus_checksum: 4a8d9ab7c354633142f30311a53db77921483a7be961c86968d35a38b77fad20

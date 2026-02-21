@@ -213,6 +213,8 @@ meta:
   ulid: qe_lih_qmcpack_vmc
   title: LiH solid QE to QMCPACK VMC pipeline
   subtitle: QE SCF -> pw2qmcpack -> QMCPACK VMC
+  description: 'LiH solid-state VMC total energy calculation using the QE→QMCPACK pipeline: DFT-PBE SCF produces the trial
+    wavefunction, pw2qmcpack converts it to HDF5, and QMCPACK runs VMC sampling with BFD pseudopotentials.'
   tags:
   - qmcpack
   - composite
@@ -221,10 +223,24 @@ meta:
   - solid
   recommended_analysis: energy
   difficulty: advanced
+  system_class: crystal
+  periodicity: periodic
+  method: vmc-dft
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 2.1
+  multi_engine: true
+  engines_used:
+  - qe
+  - qmcpack
+  n_steps: 3
+  step_summary: SCF → pw2qmcpack → VMC
+  available_analysis:
+  - convergence
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: lih_qmcpack_vmc
-  corpus_checksum: 9f9b0763f61cc48b08d53b91872904d7d3d99f7d2f753fe1b9fbfa0fa8459117
+  corpus_checksum: c1b66aebc5a19ddfaa5c973345df7b50fe782a93d68174351bec91265204e05e

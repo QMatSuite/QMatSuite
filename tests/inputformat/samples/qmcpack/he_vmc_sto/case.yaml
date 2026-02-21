@@ -21,3 +21,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite, inspired by QMCPACK test suite
   license: MIT (QMatSuite)
+system_class: molecule
+periodicity: molecular
+method: vmc-hf
+property_of_interest: total_energy
+spin_treatment: nonmagnetic
+estimated_runtime_s: 0.7
+n_steps: 1
+step_summary: VMC
+available_analysis:
+- convergence

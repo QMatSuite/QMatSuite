@@ -137,6 +137,8 @@ meta:
   ulid: qe_al_dos
   title: Al DOS
   subtitle: SCF → NSCF → DOS
+  description: 'Density of states calculation for FCC aluminum metal using DFT-PBE with Gaussian smearing. Runs a 4-step workflow:
+    vc-relax to find equilibrium lattice, SCF, dense-k NSCF, and dos.x post-processing.'
   tags:
   - dos
   - Al
@@ -145,10 +147,24 @@ meta:
   - tutorial
   recommended_analysis: dos
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: dos
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 6.9
+  multi_engine: false
+  engines_used:
+  - qe
+  n_steps: 4
+  step_summary: vc-Relax → SCF → NSCF → DOS
+  available_analysis:
+  - convergence
+  - dos
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: al_dos
-  corpus_checksum: e0e456affdf8081516e60c5f84eaf9837e52eac42d764fb82d192711f088bc1a
+  corpus_checksum: 247ed871f932d8a1637c7dac3f64205da79b58d9e9bec91a1e6321dd3de74009

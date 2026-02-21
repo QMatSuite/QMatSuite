@@ -10,23 +10,27 @@
       "x": "",
       "y": "eV"
     },
-    "series_labels": [],
+    "series_labels": [
+      "SCF Energy",
+      "SCF dE",
+      "Ionic Energy"
+    ],
     "reference_energy": null,
     "reference_position": null,
     "markers": [],
     "extra": {
-      "n_ionic_steps": 0,
-      "converged": false,
+      "n_ionic_steps": 1,
+      "converged": true,
       "algorithm": "Davidson"
     }
   },
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "convergence",
-    "run_ulid": "01KHC8S6FN4PJ27RBGSR6ABK4V",
-    "calc_ulid": "01KHC8S67KCJ4X83G7X0MW63A8",
+    "run_ulid": "01KHYYBW807M4PGGYPAHC71BBB",
+    "calc_ulid": "01KHYYBW04QD3W8HFZNBZFEYPH",
     "step_ulids": [
-      "01KHC8S67KCJ4X83G7X0MW63A9"
+      "01KHYYBW04QD3W8HFZNBZFEYPJ"
     ],
     "gen_steps": [
       "scf"
@@ -34,25 +38,94 @@
     "engine_name": "qe",
     "source_files": [
       {
-        "path": "raw/bandspw.out",
-        "size_bytes": 25976,
-        "mtime": 1771012174.4409435
+        "path": "raw/scf.out",
+        "size_bytes": 14899,
+        "mtime": 1771638754.8461635
       }
     ],
     "parser_name": "qe_convergence",
     "parser_version": "1.0",
-    "warnings": [
-      "No SCF steps found in output."
-    ],
+    "warnings": [],
     "manifest_snapshot": null
   },
-  "series": [],
+  "series": [
+    {
+      "x": [
+        1.0,
+        2.0,
+        3.0,
+        4.0
+      ],
+      "y": [
+        -310.71811979064023,
+        -310.74463089186116,
+        -310.7465003140963,
+        -310.7466095678121
+      ],
+      "x_label": "SCF Step",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "SCF Energy"
+    },
+    {
+      "x": [
+        1.0,
+        2.0,
+        3.0,
+        4.0
+      ],
+      "y": [
+        -310.71811979064023,
+        -0.026511101220933142,
+        -0.0018694222351314238,
+        -0.00010925371577741316
+      ],
+      "x_label": "SCF Step",
+      "y_label": "dE",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "SCF dE"
+    },
+    {
+      "x": [
+        1.0
+      ],
+      "y": [
+        -310.7466129692354
+      ],
+      "x_label": "Ionic Step",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "Ionic Energy"
+    }
+  ],
   "geometry_frames": null,
   "arrays": {
-    "scf_step": [],
-    "scf_energy": [],
-    "scf_de": [],
-    "ionic_step": [],
-    "ionic_energy": []
+    "scf_step": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "scf_energy": [
+      -310.71811979064023,
+      -310.74463089186116,
+      -310.7465003140963,
+      -310.7466095678121
+    ],
+    "scf_de": [
+      -310.71811979064023,
+      -0.026511101220933142,
+      -0.0018694222351314238,
+      -0.00010925371577741316
+    ],
+    "ionic_step": [
+      1
+    ],
+    "ionic_energy": [
+      -310.7466129692354
+    ]
   }
 }

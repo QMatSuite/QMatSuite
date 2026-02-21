@@ -126,14 +126,29 @@ meta:
   ulid: siesta_si_scf
   title: Silicon bulk SCF
   subtitle: scf
+  description: Bulk silicon diamond-structure SCF calculation using the GGA-PBE functional with a DZP NAO basis set and a
+    4x4x4 Monkhorst-Pack k-grid.
   tags:
   - scf
   - periodic
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 4.3
+  multi_engine: false
+  engines_used:
+  - siesta
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   required_engine: siesta
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: siesta
   corpus_case_id: si_scf
-  corpus_checksum: 35f48799fc1e3ec67b40aba35ab862c0bcf09d149a6f8fc3e40762413fc9055a
+  corpus_checksum: 96c45f7029c4a7335589b81ce34f520c6050b26ea43b67283865487e5784bf56

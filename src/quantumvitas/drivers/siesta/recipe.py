@@ -54,7 +54,9 @@ class SiestaRecipe(BaseRecipe):
             job_id = f"step_{idx:02d}"
 
             step_type = step.step_type_spec
-            spec = registry.get(str(step_type)) if step_type else None
+            # Look up by step_type_spec (e.g., "siesta_relax") using _spec_to_obj,
+            # since registry.get() looks up by step_type_gen (e.g., "relax").
+            spec = registry._spec_to_obj.get(str(step_type)) if step_type else None
 
             if spec:
                 gen_type = spec.step_type_gen

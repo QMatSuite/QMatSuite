@@ -1,0 +1,13 @@
+{
+  "demo_slug": "gaussian_formaldehyde_tddft",
+  "engine": "gaussian",
+  "generated_at": "2026-02-21T01:45:33.843580+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "f13d22ae19854c19f0df659433894253d40ff4926c4ac8af986f54c2cdcc1707"
+    }
+  }
+}

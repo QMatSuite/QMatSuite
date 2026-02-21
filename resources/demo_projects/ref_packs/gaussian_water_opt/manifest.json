@@ -1,17 +1,17 @@
 {
   "demo_slug": "gaussian_water_opt",
   "engine": "gaussian",
-  "generated_at": "2026-02-13T19:42:03.254936+00:00",
+  "generated_at": "2026-02-21T01:45:36.285465+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "ef109f7ea9455e1264a59bb0337448f8504427c6e2bf6a40a68432626b326390"
+      "sha256": "3d512d18b0f10b84682b5acc469b7a95a9dd4adae9246efd78bf4de9cdbf6be5"
     },
     "trajectory": {
       "file": "trajectory.json",
-      "sha256": "e4f501f8393839fc961c3a6de050008a50ab6b6151217da115ef31d5b476d274"
+      "sha256": "25935ce71f0682c2fa7612c5ad4ab4e2cf1a4810991c6d3daa36ebc7b45bd630"
     }
   }
 }

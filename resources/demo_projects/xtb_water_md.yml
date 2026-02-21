@@ -81,14 +81,28 @@ meta:
   ulid: xtb_water_md
   title: Water molecular dynamics
   subtitle: md
+  description: Short MD using xcontrol $md block.
   tags:
   - md
   - xcontrol
   recommended_analysis: trajectory
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: gfn2-xtb
+  property_of_interest: trajectory
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 38.1
+  multi_engine: false
+  engines_used:
+  - xtb
+  n_steps: 1
+  step_summary: MD
+  available_analysis:
+  - trajectory
   required_engine: xtb
   availability: bundled
   generator_version: 1.0.0
   corpus_engine: xtb
   corpus_case_id: water_md
-  corpus_checksum: 3c96152c131df1fa79335be7d9fbfedf19b1d886102b8338fe5728046d6dbd26
+  corpus_checksum: 1664a55f1780e9a314270d8eb609e241b891a1cb7eb02a63b4ea0ad832c7365e

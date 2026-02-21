@@ -267,8 +267,8 @@ def _configure_step_params(
         "PAO.BasisSize", "PAO.EnergyShift", "MeshCutoff",
         "MaxSCFIterations", "DM.MixingWeight", "DM.Tolerance",
         "SolutionMethod", "XC.functional", "XC.authors",
-        "WriteForces", "WriteCoorXmol", "DM.UseSaveDM",
-        "kgrid", "ProjectedDensityOfStates", "BandLines",
+        "WriteForces", "WriteCoorXmol", "WriteMDXmol", "WriteMDhistory",
+        "DM.UseSaveDM", "kgrid", "ProjectedDensityOfStates", "BandLines",
         "BandLinesScale",
     ]
     for key in fdf_keys:

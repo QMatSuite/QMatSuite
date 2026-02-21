@@ -162,6 +162,8 @@ meta:
   ulid: si_dos_demo
   title: Silicon density of states
   subtitle: SCF → NSCF → DOS
+  description: 'Density of states calculation for silicon using DFT-PBE with SSSP precision pseudopotentials. Runs a 3-step
+    workflow: SCF, NSCF on a dense k-grid with tetrahedra occupation, and dos.x post-processing.'
   tags:
   - dos
   - Si
@@ -170,13 +172,27 @@ meta:
   - beginner
   recommended_analysis: dos
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: dos
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 49.0
+  multi_engine: false
+  engines_used:
+  - qe
+  n_steps: 3
+  step_summary: SCF → NSCF → DOS
+  available_analysis:
+  - convergence
+  - dos
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_dos
-  corpus_checksum: 71ba004ba73bdbe0f6a018df8ab423ebc93eb1d4c33249b75341b2d0c4a5b2a9
+  corpus_checksum: 3a394e93492ff0c2306cf2f357410671b525b99c536049b4c2c48d161434ea48
   reference_artifacts:
     dos: si_dos_demo.dos.json
     scf: si_dos_demo.scf.json

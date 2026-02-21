@@ -1,7 +1,9 @@
 case_id: graphene_bands
 engine: qe
 title: Graphene Band Structure
-description: SCF → Bands → Bands post-processing for graphene
+description: Graphene DFT-PBE band structure calculation along high-symmetry k-path
+  G-K-M-G, revealing the characteristic Dirac cone at the K point. Runs vc-relax (excluded),
+  SCF, bands calculation, and bands post-processing.
 workflow_tags:
 - scf
 - bandspw
@@ -48,3 +50,14 @@ steps:
 attribution:
   source: QE tutorial (tests/data/13_graphene), relaxation step removed per Rule CS3
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: band_structure
+spin_treatment: nonmagnetic
+estimated_runtime_s: 27.5
+n_steps: 3
+step_summary: SCF → Bands → Bands PP
+available_analysis:
+- bands
+- convergence

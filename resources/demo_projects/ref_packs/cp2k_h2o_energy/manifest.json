@@ -1,13 +1,13 @@
 {
   "demo_slug": "cp2k_h2o_energy",
   "engine": "cp2k",
-  "generated_at": "2026-02-13T19:39:05.850291+00:00",
+  "generated_at": "2026-02-21T01:42:33.585479+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "fb2cef8bd94f9797a9c660aef8725ef600f8efab62af7bfacd5067a4314e1e8e"
+      "sha256": "69c4eec90f16f50546065c53c050f5097ee834424eec76f4097a01b3f5ccb985"
     }
   }
 }

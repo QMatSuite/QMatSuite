@@ -1,12 +1,9 @@
 case_id: copper_wannier
 engine: qe
 title: Copper Wannier functions with disentanglement (QE to W90 pipeline)
-description: >-
-  Full QE->Wannier90 composite pipeline for copper with disentanglement.
-  SCF -> NSCF -> wannier90 -pp -> pw2wannier90 -> wannier90.
-  Based on Wannier90 Tutorial Example 6. Tests disentanglement parameters
-  (dis_win_max, dis_froz_max, dis_num_iter) and kpoint_path for band
-  interpolation. The .win file is PARSED by the W90 engine parser.
+description: Copper FCC Wannier function construction with disentanglement using the
+  QE→Wannier90 pipeline, computing Wannier-interpolated band structure for the Cu
+  d and sp bands via W90 Tutorial Example 6.
 workflow_tags:
 - scf
 - nscf
@@ -63,3 +60,17 @@ asset_requirements:
 attribution:
   source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 6
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: band_structure
+spin_treatment: nonmagnetic
+estimated_runtime_s: 29.6
+n_steps: 5
+step_summary: SCF → NSCF → W90 prep → pw2wannier → Wannierize
+available_analysis:
+- convergence
+multi_engine: true
+engines_used:
+- qe
+- w90

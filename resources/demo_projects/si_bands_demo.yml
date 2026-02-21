@@ -208,6 +208,8 @@ meta:
   ulid: si_bands_demo
   title: Silicon band structure
   subtitle: SCF → NSCF → Bands
+  description: 'Band structure calculation for silicon using DFT-PBE. Runs a 4-step workflow: SCF, NSCF on a dense k-grid,
+    bands.x k-path calculation, and bands.x post-processing.'
   tags:
   - bands
   - Si
@@ -216,13 +218,27 @@ meta:
   - beginner
   recommended_analysis: bands
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: band_structure
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 50.5
+  multi_engine: false
+  engines_used:
+  - qe
+  n_steps: 4
+  step_summary: SCF → NSCF → Bands → BandsPW
+  available_analysis:
+  - bands
+  - convergence
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_bands
-  corpus_checksum: 68360eec0698a68d54abb17f201d4f3c439046943f9ce5be5a8ce97a216bc8ef
+  corpus_checksum: aaeeed1ce2de9e4c3783ebbdbbc18945c9efefc0856744af4324df13006511a6
   reference_artifacts:
     bands: si_bands_demo.bands.json
     scf: si_bands_demo.scf.json

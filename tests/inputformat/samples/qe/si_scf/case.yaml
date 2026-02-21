@@ -1,7 +1,8 @@
 case_id: si_scf
 engine: qe
 title: 0 Si Scf
-description: SCF
+description: SCF calculation for silicon crystal using the LDA (PZ) functional. Computes
+  the ground-state total energy of the diamond-cubic Si unit cell.
 workflow_tags:
 - scf
 - electronic
@@ -33,3 +34,13 @@ multi_step: false
 attribution:
   source: Constructed for QMatSuite, inspired by QE tutorials
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-lda
+property_of_interest: total_energy
+spin_treatment: nonmagnetic
+estimated_runtime_s: 0.9
+n_steps: 1
+step_summary: SCF
+available_analysis:
+- convergence

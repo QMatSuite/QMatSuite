@@ -123,15 +123,31 @@ meta:
   ulid: vasp_si_scf
   title: Silicon diamond SCF
   subtitle: scf
+  description: Bulk silicon diamond-structure SCF calculation using PBE (default GGA) with a 4x4x4 Gamma-centred k-mesh and
+    Gaussian smearing.
   tags:
   - scf
   - electronic
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.7
+  multi_engine: false
+  engines_used:
+  - vasp
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
+  - field3d
   asset_policy: proprietary
   required_engine: vasp
   availability: requires_local_install
   generator_version: 1.0.0
   corpus_engine: vasp
   corpus_case_id: si_scf
-  corpus_checksum: 36dce7feae863468293238e12a20057a761bb2ff1af4f3748a744881d266381b
+  corpus_checksum: dd5ed11c3de5f831bdb0c2e38b9e89abf8aae715e010ce8f8ba432b620e42f4e

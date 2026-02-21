@@ -109,14 +109,28 @@ meta:
   ulid: abinit_si_scf
   title: Silicon SCF ground state
   subtitle: scf
+  description: Basic SCF calculation for 2-atom diamond silicon in FCC primitive cell with ecut 10 Ha and 4x4x4 k-mesh.
   tags:
   - scf
   recommended_analysis: scf
   difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-lda
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 0.7
+  multi_engine: false
+  engines_used:
+  - abinit
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   asset_policy: redistributable
   required_engine: abinit
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: abinit
   corpus_case_id: si_scf
-  corpus_checksum: 73ee6555f1e4cb88d03e88a6e86f4f13da70ba3e871b10dac281db6726c7ea23
+  corpus_checksum: 6199238a43d440a57539594e82b304695a8f63d66c4b9cf3cf112de71e095ca7

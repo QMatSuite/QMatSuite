@@ -851,6 +851,8 @@ meta:
   ulid: qe_diamond_wannier
   title: Diamond sp3 Wannier functions (QE to W90 pipeline)
   subtitle: QE SCF -> NSCF -> W90 Wannierize
+  description: Diamond sp3 Wannier function construction using the QE→Wannier90 pipeline, generating maximally-localized Wannier
+    functions from the four valence bands via W90 Tutorial Example 5.
   tags:
   - wannier90
   - composite
@@ -859,10 +861,24 @@ meta:
   - tutorial
   recommended_analysis: scf
   difficulty: intermediate
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: band_structure
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 6.6
+  multi_engine: true
+  engines_used:
+  - qe
+  - w90
+  n_steps: 5
+  step_summary: SCF → NSCF → W90 prep → pw2wannier → Wannierize
+  available_analysis:
+  - convergence
   asset_policy: redistributable
   required_engine: qe
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: diamond_wannier
-  corpus_checksum: f915aca255604276cda3f043ef7ddac58ed0804a05af6a1dd691211a3628cad1
+  corpus_checksum: e85c5ce1f517dd9d85cbb830fcad7dccc3199973a2e8126314e093533cca3e6b

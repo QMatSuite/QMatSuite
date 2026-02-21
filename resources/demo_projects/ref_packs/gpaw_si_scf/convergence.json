@@ -27,10 +27,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "convergence",
-    "run_ulid": "01KHC8CPGQQC0QPWP7G2FJKESD",
-    "calc_ulid": "01KHC8CPEK6RPC64M193334T8C",
+    "run_ulid": "01KHYXZCYNDA60SHM9FEMFPR5X",
+    "calc_ulid": "01KHYXZCWGMC2Y90MH63267Z0X",
     "step_ulids": [
-      "01KHC8CPEK6RPC64M193334T8D"
+      "01KHYXZCWGMC2Y90MH63267Z0Y"
     ],
     "gen_steps": [
       "scf"
@@ -40,7 +40,7 @@
       {
         "path": "raw/scf.txt",
         "size_bytes": 10939,
-        "mtime": 1771011726.8182292
+        "mtime": 1771638339.5252597
       }
     ],
     "parser_name": "gpaw_convergence",

@@ -100,6 +100,7 @@ meta:
   ulid: orca_methane_freq
   title: Methane Vibrational Frequencies
   subtitle: SCF + numerical frequency calculation
+  description: B3LYP/def2-TZVP vibrational frequency analysis for methane, including thermochemistry at 298.15 K.
   tags:
   - freq
   - frequencies
@@ -107,9 +108,22 @@ meta:
   - dft
   recommended_analysis: energy
   difficulty: intermediate
+  system_class: molecule
+  periodicity: molecular
+  method: dft-b3lyp
+  property_of_interest: vibrational
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.3
+  multi_engine: false
+  engines_used:
+  - orca
+  n_steps: 1
+  step_summary: Freq
+  available_analysis:
+  - convergence
   required_engine: orca
   availability: requires_local_install
   generator_version: 1.0.0
   corpus_engine: orca
   corpus_case_id: methane_freq
-  corpus_checksum: 1f5d001e175cc2404b64432e7c70e37908f0a572b5d422080cef1b77a200ea05
+  corpus_checksum: 60a305dd49e8a33506faa8f42e45857d3912f4e2989ed70e0868aecd941f081d

@@ -95,6 +95,7 @@ meta:
   ulid: gaussian_formaldehyde_tddft
   title: Formaldehyde TDDFT Excited States
   subtitle: td
+  description: B3LYP/STO-3G TD=(NStates=3); covers TDDFT keyword with options parsing
   tags:
   - td
   - dft
@@ -102,9 +103,22 @@ meta:
   - small-molecule
   recommended_analysis: scf
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: tddft-b3lyp
+  property_of_interest: absorption
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 2.4
+  multi_engine: false
+  engines_used:
+  - gaussian
+  n_steps: 1
+  step_summary: TD-DFT
+  available_analysis:
+  - convergence
   required_engine: gaussian
   availability: requires_local_install
   generator_version: 1.0.0
   corpus_engine: gaussian
   corpus_case_id: formaldehyde_tddft
-  corpus_checksum: 04c9c1b7b6af63e20c204848b37c1d7d472a7bfa275a8dfe43ca28513b7fb0a4
+  corpus_checksum: 4ade4a099b281702251c3df26c7d990c9cfb0c4d99ce95d56bd0066369d4dcf9

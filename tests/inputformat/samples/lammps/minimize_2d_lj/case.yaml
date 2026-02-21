@@ -5,7 +5,8 @@ workflow_tags:
 - md
 - minimize
 - 2d
-description: 2D LJ melt NVE followed by energy minimization, multi-phase
+description: 2-D Lennard-Jones cluster NVE run followed by conjugate-gradient energy
+  minimization to find the locally optimal geometry.
 demo_eligible: true
 step_type_gen: minimize
 step_type_spec: lammps_minimize
@@ -18,3 +19,13 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite, inspired by LAMMPS examples
   license: MIT (QMatSuite)
+system_class: cluster
+periodicity: periodic
+method: lj
+property_of_interest: geometry
+spin_treatment: nonmagnetic
+estimated_runtime_s: 0.3
+n_steps: 1
+step_summary: Minimize
+available_analysis:
+- trajectory

@@ -169,15 +169,30 @@ meta:
   ulid: lammps_lj_minimize
   title: 2D LJ melt + minimize
   subtitle: minimize
+  description: 2-D Lennard-Jones cluster NVE run followed by conjugate-gradient energy minimization to find the locally optimal
+    geometry.
   tags:
   - md
   - minimize
   - 2d
   recommended_analysis: scf
   difficulty: beginner
+  system_class: cluster
+  periodicity: periodic
+  method: lj
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 0.3
+  multi_engine: false
+  engines_used:
+  - lammps
+  n_steps: 1
+  step_summary: Minimize
+  available_analysis:
+  - trajectory
   required_engine: lammps
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: lammps
   corpus_case_id: minimize_2d_lj
-  corpus_checksum: c04104bfc2075f45cac23b0b1b5afcdf035e2bf33c43215eb9d3f1c6cb86bdde
+  corpus_checksum: 9572985450f9fb2084dea65098cb292e50e254d8cc7b4e87ec0ba440bea9c018

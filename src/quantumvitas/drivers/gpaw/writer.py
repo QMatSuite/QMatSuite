@@ -45,6 +45,8 @@ def write_gpaw_script(
 
     if gen_type == "bandspw" and restart_from:
         _write_bands_script(lines, params, restart_from, txt_file, gpw_file)
+    elif gen_type == "bandspw" and not restart_from:
+        _write_combined_scf_bands_script(lines, params, structure_file, txt_file)
     elif gen_type == "dos" and restart_from:
         _write_dos_script(lines, params, restart_from)
     else:
@@ -95,6 +97,91 @@ def _write_bands_script(
     lines.append("}")
     lines.append("with open('results.json', 'w') as f:")
     lines.append("    json.dump(results, f, indent=2)")
+
+
+def _write_combined_scf_bands_script(
+    lines: list[str],
+    params: dict[str, Any],
+    structure_file: str,
+    txt_file: str,
+) -> None:
+    """Generate a single-step SCF + band structure script.
+
+    Used when gen_type == "bandspw" and no prior SCF restart file exists.
+    The script:
+      1. Runs SCF on the k-point mesh, saves scf.gpw
+      2. Loads scf.gpw → fixed_density() along the band path
+      3. Writes bandstructure.json
+    """
+    mode = params.get("mode", "pw")
+    ecut = params.get("ecut", 400.0)
+    xc = params.get("xc", "PBE")
+    kpts = params.get("kpts", {"size": [8, 8, 8]})
+    convergence = params.get("convergence")
+    maxiter = params.get("maxiter", 333)
+    occ_width = params.get("occupations_width", 0.1)
+    kpath = params.get("kpath", "GXWK")
+    kpath_npoints = params.get("kpath_npoints", 60)
+    bands_nbands = params.get("bands_nbands")
+
+    if mode == "pw":
+        mode_str = f"PW({ecut})"
+    elif mode == "lcao":
+        mode_str = "'lcao'"
+    else:
+        mode_str = "'fd'"
+
+    lines.append("from gpaw import GPAW, PW, FermiDirac")
+    lines.append("")
+    lines.append(f"with open('{structure_file}') as _sf:")
+    lines.append("    _struct = json.load(_sf)")
+    lines.append("atoms = Atoms(symbols=_struct['symbols'], positions=_struct['positions'],")
+    lines.append("              cell=_struct.get('cell'), pbc=_struct.get('pbc', [True, True, True]))")
+    lines.append("")
+
+    calc_args = [f"    mode={mode_str},", f"    xc='{xc}',"]
+    if kpts:
+        calc_args.append(f"    kpts={kpts},")
+    if convergence:
+        calc_args.append(f"    convergence={convergence},")
+    calc_args.append(f"    occupations=FermiDirac({occ_width}),")
+    calc_args.append(f"    maxiter={maxiter},")
+    calc_args.append(f"    txt='{txt_file}',")
+    calc_args.append("    symmetry={'point_group': False},")
+
+    lines.append("# Step 1: SCF on coarse k-mesh")
+    lines.append("calc = GPAW(")
+    lines.extend(calc_args)
+    lines.append(")")
+    lines.append("atoms.calc = calc")
+    lines.append("atoms.get_potential_energy()")
+    lines.append("calc.write('scf.gpw')")
+    lines.append("")
+
+    fd_args = []
+    if bands_nbands:
+        fd_args.append(f"    nbands={bands_nbands},")
+    fd_args.append("    symmetry='off',")
+    fd_args.append(f"    kpts={{'path': '{kpath}', 'npoints': {kpath_npoints}}},")
+    fd_args.append(f"    txt='bandspw_bands.txt',")
+
+    lines.append("# Step 2: Band structure on high-symmetry k-path")
+    lines.append("calc_bs = GPAW('scf.gpw').fixed_density(")
+    lines.extend(fd_args)
+    lines.append(")")
+    lines.append("bs = calc_bs.band_structure()")
+    lines.append("bs.write('bandstructure.json')")
+    lines.append("")
+    lines.append("results = {")
+    lines.append("    'reference_eV': float(bs.reference),")
+    lines.append("    'energies_shape': list(bs.energies.shape),")
+    lines.append("    'fermi_level_eV': float(calc_bs.get_fermi_level()),")
+    lines.append("}")
+    lines.append("with open('results.json', 'w') as f:")
+    lines.append("    json.dump(results, f, indent=2)")
+    lines.append("")
+    lines.append("print(f'Band structure done. Shape: {bs.energies.shape}')")
+    lines.append("print('Done.')")
 
 
 def _write_dos_script(

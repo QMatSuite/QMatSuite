@@ -1,13 +1,13 @@
 {
   "demo_slug": "qe_copper_wannier",
   "engine": "qe",
-  "generated_at": "2026-02-13T19:43:02.843125+00:00",
+  "generated_at": "2026-02-21T01:46:36.929235+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "89dedfdac57a7964f4991e1ad186ab418e10a1d6c8545ccd6c3fe6dd66b57fd7"
+      "sha256": "a462d11420cc77ab2b05ef4864616220551c1203c6f2f91648dcfb53163ee786"
     }
   }
 }

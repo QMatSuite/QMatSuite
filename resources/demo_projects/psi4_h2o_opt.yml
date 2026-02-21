@@ -80,6 +80,7 @@ meta:
   ulid: psi4_h2o_opt
   title: Water Psi4 Geometry Optimization
   subtitle: B3LYP/cc-pVDZ geometry optimization on water
+  description: B3LYP/cc-pVDZ geometry optimization on water molecule
   tags:
   - psi4
   - molecular
@@ -89,9 +90,22 @@ meta:
   - tutorial
   recommended_analysis: energy
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: dft-b3lyp
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 2.4
+  multi_engine: false
+  engines_used:
+  - psi4
+  n_steps: 1
+  step_summary: Opt
+  available_analysis:
+  - convergence
   required_engine: psi4
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: psi4
   corpus_case_id: h2o_opt
-  corpus_checksum: 739e9c768e2f53ead6867324d35f308c9af9bf5076b85a49875ad2e4db2a2e19
+  corpus_checksum: 743ab5718d7bdd9c6653aa08b2c27ab471733295beae7d0f67ff57dd524fa154

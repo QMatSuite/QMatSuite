@@ -1,0 +1,13 @@
+{
+  "demo_slug": "pyscf_n2_mp2",
+  "engine": "pyscf",
+  "generated_at": "2026-02-21T01:45:58.851244+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "ba7cbe481e2080933e7c1aebca4209aa57f8e10d198ea7a3c7c617b8a744fd23"
+    }
+  }
+}

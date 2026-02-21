@@ -25,10 +25,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "convergence",
-    "run_ulid": "01KHC8CTR3NPYEC5WXVSBWK0CB",
-    "calc_ulid": "01KHC8CTN0MJ1VB31SEMHQNQMY",
+    "run_ulid": "01KHYXZH6GMK4WVC4DCZFX5C4P",
+    "calc_ulid": "01KHYXZH3H5CAKBTZ0DZS5XMS9",
     "step_ulids": [
-      "01KHC8CTN0MJ1VB31SEMHQNQMZ"
+      "01KHYXZH3H5CAKBTZ0DZS5XMSA"
     ],
     "gen_steps": [
       "scf"
@@ -36,9 +36,9 @@
     "engine_name": "orca",
     "source_files": [
       {
-        "path": "raw/scf_HQNQMZ/chain01_orca_scf.out",
+        "path": "raw/scf_S5XMSA/chain01_orca_scf.out",
         "size_bytes": 51611,
-        "mtime": 1771011732.258762
+        "mtime": 1771638344.902843
       }
     ],
     "parser_name": "orca_convergence",

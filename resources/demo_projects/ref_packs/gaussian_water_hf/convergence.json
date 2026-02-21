@@ -27,10 +27,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "convergence",
-    "run_ulid": "01KHC8CHNSX6G08CWCCNWDM2MT",
-    "calc_ulid": "01KHC8CHKT0K2CEG56MGRQB8TZ",
+    "run_ulid": "01KHYXZ8EXK817SV3C2K7G4C57",
+    "calc_ulid": "01KHYXZ8CSWY1X91N4VT9S1ANW",
     "step_ulids": [
-      "01KHC8CHKT0K2CEG56MGRQB8V0"
+      "01KHYXZ8CSWY1X91N4VT9S1ANX"
     ],
     "gen_steps": [
       "scf"
@@ -38,9 +38,9 @@
     "engine_name": "gaussian",
     "source_files": [
       {
-        "path": "raw/01KHC8CHKT0K2CEG56MGRQB8V0/output.log",
-        "size_bytes": 19334,
-        "mtime": 1771011721.3142245
+        "path": "raw/01KHYXZ8CSWY1X91N4VT9S1ANX/output.log",
+        "size_bytes": 19361,
+        "mtime": 1771638334.3275454
       }
     ],
     "parser_name": "gaussian_convergence",

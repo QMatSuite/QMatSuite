@@ -1,11 +1,9 @@
 case_id: lih_qmcpack_vmc
 engine: qe
 title: LiH solid QE to QMCPACK VMC pipeline
-description: >-
-  Full QE->QMCPACK composite pipeline for LiH solid VMC.
-  SCF -> pw2qmcpack -> QMCPACK VMC. The QE SCF produces the DFT wavefunction,
-  pw2qmcpack converts it to HDF5 format, and QMCPACK runs VMC sampling.
-  The QMCPACK XML input is parsed by the QMCPACK engine parser.
+description: 'LiH solid-state VMC total energy calculation using the QE→QMCPACK pipeline:
+  DFT-PBE SCF produces the trial wavefunction, pw2qmcpack converts it to HDF5, and
+  QMCPACK runs VMC sampling with BFD pseudopotentials.'
 workflow_tags:
 - scf
 - pw2qmcpack
@@ -64,3 +62,17 @@ asset_requirements:
 attribution:
   source: Constructed for QMatSuite, inspired by QMCPACK tutorials
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: vmc-dft
+property_of_interest: total_energy
+spin_treatment: nonmagnetic
+estimated_runtime_s: 2.1
+n_steps: 3
+step_summary: SCF → pw2qmcpack → VMC
+available_analysis:
+- convergence
+multi_engine: true
+engines_used:
+- qe
+- qmcpack

@@ -1,13 +1,13 @@
 {
   "demo_slug": "qe_si_yambo_gw",
   "engine": "qe",
-  "generated_at": "2026-02-13T19:48:52.468842+00:00",
+  "generated_at": "2026-02-21T01:52:24.451502+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "convergence": {
       "file": "convergence.json",
-      "sha256": "2746d985d408abcb208267557635294eb8b415ae4708dee23ab07370c88ad10f"
+      "sha256": "f91c6695fe3f59c81f2c8e1c418746ef1b30033e9538ece7ab392125d47a3699"
     }
   }
 }

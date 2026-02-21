@@ -79,6 +79,7 @@ meta:
   ulid: pyscf_h2o_dft
   title: Water PySCF PBE DFT
   subtitle: PBE/cc-pVDZ DFT calculation on water molecule
+  description: PBE/cc-pVDZ DFT single-point calculation on water molecule
   tags:
   - pyscf
   - molecular
@@ -88,9 +89,22 @@ meta:
   - tutorial
   recommended_analysis: energy
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: dft-pbe
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.8
+  multi_engine: false
+  engines_used:
+  - pyscf
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
   required_engine: pyscf
   availability: open_source
   generator_version: 1.0.0
   corpus_engine: pyscf
   corpus_case_id: h2o_dft
-  corpus_checksum: f635edbf9ec511be6f0c3db5d55358d47032d2a7862522bcfcbcc91de21af0db
+  corpus_checksum: 2b416d327832a828e663e49551c8657175dfbc12cea7b10f60edd84627f7b25b

@@ -1,17 +1,17 @@
 {
   "generator_version": "1.0.0",
-  "generated_at": "2026-02-12T21:28:27Z",
+  "generated_at": "2026-02-21T03:16:56Z",
   "corpus_root": "tests/inputformat/samples",
-  "corpus_index_checksum": "b32069aaf831754fe7f2014e2dfb1423b1ce5b8736904bac5d2efc4255411cb5",
+  "corpus_index_checksum": "ec2f11f7d81090c54867dccd9c347c40fb63a90452e8f3155e631ae2c66c1f54",
   "demos": {
     "abinit_si_bands": {
       "engine": "abinit",
       "case_id": "si_bands",
       "dir_name": "si_bands",
       "corpus_path": "tests/inputformat/samples/abinit/si_bands",
-      "corpus_checksum": "148cc39b0ccebe85c564fdfff5f644338000bfd116ffdf48dd7b3ee79ea6c33b",
+      "corpus_checksum": "4a8d9ab7c354633142f30311a53db77921483a7be961c86968d35a38b77fad20",
       "output_file": "resources/demo_projects/abinit_si_bands.yml",
-      "output_checksum": "11be0ca5a54decd967fda4d053e936f8d9637e798ca92d26512c59ab052819af",
+      "output_checksum": "7574c48c5701f86240494781ded02d8632e28419dae405f2b4b1808869c713a7",
       "asset_policy": "redistributable"
     },
     "abinit_si_relax": {
@@ -19,9 +19,9 @@
       "case_id": "si_relax",
       "dir_name": "si_relax",
       "corpus_path": "tests/inputformat/samples/abinit/si_relax",
-      "corpus_checksum": "5abae317cf9403ba5491b3bc2563a005ad94ea3a2da00adde7dc03ae0bd5bc62",
+      "corpus_checksum": "d0d533f68ea12b81f50bfd6178000a2adfc13782b2284801d37e215a5fe6b2a0",
       "output_file": "resources/demo_projects/abinit_si_relax.yml",
-      "output_checksum": "84b57ae986b0dd245c13803b1c0cfc6a6ae53bd4909a3e5d46220632dd30b277",
+      "output_checksum": "5846aa0f7e39d7abd2e52d84338d0928716e5b53d2323cdd20ba4e88b158aaa5",
       "asset_policy": "redistributable"
     },
     "abinit_si_scf": {
@@ -29,9 +29,9 @@
       "case_id": "si_scf",
       "dir_name": "si_scf",
       "corpus_path": "tests/inputformat/samples/abinit/si_scf",
-      "corpus_checksum": "73ee6555f1e4cb88d03e88a6e86f4f13da70ba3e871b10dac281db6726c7ea23",
+      "corpus_checksum": "6199238a43d440a57539594e82b304695a8f63d66c4b9cf3cf112de71e095ca7",
       "output_file": "resources/demo_projects/abinit_si_scf.yml",
-      "output_checksum": "be6356cc9e92a2fd10789aa8c670b976a2c6742107b90a5033af936fe8dc44ff",
+      "output_checksum": "040e0fcb412c28634851517bd5b31f60e9d87e17e74031fdb93a004bc7fa6a2c",
       "asset_policy": "redistributable"
     },
     "cp2k_h2o_energy": {
@@ -39,9 +39,9 @@
       "case_id": "h2o_energy",
       "dir_name": "h2o_energy",
       "corpus_path": "tests/inputformat/samples/cp2k/h2o_energy",
-      "corpus_checksum": "df3055ad7e857ac551971b0865792a84e585e0e461d5bf4ee47efb3db1ef308a",
+      "corpus_checksum": "c3af4b33f0988bfe5a42fd43171a59e5498633ab67a5dcd371bde459f7ac5597",
       "output_file": "resources/demo_projects/cp2k_h2o_energy.yml",
-      "output_checksum": "13a0c179fcb725cfe598f3765c0ca6d04cd0354df978481100a16a4e1cda5737",
+      "output_checksum": "c54f85150ee81717bb507ef2c70ff25b73df0f5a68c24c68e7f704a89a2651fb",
       "asset_policy": "none"
     },
     "cp2k_h2o_geo_opt": {
@@ -49,9 +49,9 @@
       "case_id": "h2o_geo_opt",
       "dir_name": "h2o_geo_opt",
       "corpus_path": "tests/inputformat/samples/cp2k/h2o_geo_opt",
-      "corpus_checksum": "7b4518acadede50963a0d37f7457f9ad08145afe85ef1709ce7b510e7fe0ce96",
+      "corpus_checksum": "b44026686846bfa0c3b0714f35a619f465206694ea64b27f87e2ecd9e2635a14",
       "output_file": "resources/demo_projects/cp2k_h2o_geo_opt.yml",
-      "output_checksum": "02aaa760b6ec249252fa101761995baf3cbb715028f6417ecd6e050b2121ccdd",
+      "output_checksum": "6026805563e5ae42a21b4bfea65726b33168c0cd99f0025c71633882cf2e80d5",
       "asset_policy": "none"
     },
     "cp2k_si_relax": {
@@ -59,9 +59,9 @@
       "case_id": "si_relax",
       "dir_name": "si_relax",
       "corpus_path": "tests/inputformat/samples/cp2k/si_relax",
-      "corpus_checksum": "f90d76b7b9aacd1a7fe0c0ff92e0251317d4d0093bede4dc86a3b939f9214b06",
+      "corpus_checksum": "72aa95fe71b268cd5aa0684873bc02a0390ee6f6b379189f7560abd483fa3378",
       "output_file": "resources/demo_projects/cp2k_si_relax.yml",
-      "output_checksum": "6b63b356b905abb54cb9c8aee86be252afe772532e85f4fe5124e5a18e55b0f6",
+      "output_checksum": "378e9a40bd00900ba9350f9862ef15efd3745687447e7cdaa261c78b7e7cb82f",
       "asset_policy": "none"
     },
     "gaussian_formaldehyde_tddft": {
@@ -69,9 +69,9 @@
       "case_id": "formaldehyde_tddft",
       "dir_name": "formaldehyde_tddft",
       "corpus_path": "tests/inputformat/samples/gaussian/formaldehyde_tddft",
-      "corpus_checksum": "04c9c1b7b6af63e20c204848b37c1d7d472a7bfa275a8dfe43ca28513b7fb0a4",
+      "corpus_checksum": "4ade4a099b281702251c3df26c7d990c9cfb0c4d99ce95d56bd0066369d4dcf9",
       "output_file": "resources/demo_projects/gaussian_formaldehyde_tddft.yml",
-      "output_checksum": "83be6ec9ff96cb1cb763884ad7e0e7a1e71a567f760767f8e4bc4228a32a9340",
+      "output_checksum": "a622f374e94e646696552b749ee25a460f1f3acf6396072628c3ca828b807741",
       "asset_policy": "none"
     },
     "gaussian_water_opt": {
@@ -79,9 +79,9 @@
       "case_id": "water_b3lyp_opt",
       "dir_name": "water_b3lyp_opt",
       "corpus_path": "tests/inputformat/samples/gaussian/water_b3lyp_opt",
-      "corpus_checksum": "e32d97f7654e43ad68b312af75365e9782c47f79a1f0b43cd2f661a22c0a6c6c",
+      "corpus_checksum": "f1992d3ac799aa4e5a9fe8a81825ec4d08297022f446020e277afa5f26f052f2",
       "output_file": "resources/demo_projects/gaussian_water_opt.yml",
-      "output_checksum": "b63fc01aff5248d214dd89758f08286500d52f8385d582f800846289051c0071",
+      "output_checksum": "bfe39d759eae663d79ad489aebda834449d6fd50fd9232b6ee3f2f807e96b66d",
       "asset_policy": "none"
     },
     "gaussian_water_hf": {
@@ -89,9 +89,9 @@
       "case_id": "water_hf_sp",
       "dir_name": "water_hf_sp",
       "corpus_path": "tests/inputformat/samples/gaussian/water_hf_sp",
-      "corpus_checksum": "014c98eaaffa4076988d5eba210a3e5a054f289b6021808aaf3bbf9018c6d267",
+      "corpus_checksum": "7297d011cee4fabe08ac8e7240c1fdf547e4e2be631f94097717976d5249304f",
       "output_file": "resources/demo_projects/gaussian_water_hf.yml",
-      "output_checksum": "4573a160e618d3e2e0048f7c89ad303350f4f5de69ae7bd9fd4247e90df94f07",
+      "output_checksum": "672aeaf4440a047338ce5684bb2e88cb9e282930227f532b05e0b957b193b585",
       "asset_policy": "none"
     },
     "gpaw_al_scf": {
@@ -99,9 +99,9 @@
       "case_id": "al_scf",
       "dir_name": "al_scf",
       "corpus_path": "tests/inputformat/samples/gpaw/al_scf",
-      "corpus_checksum": "4fd10ffbf564a0139580fbd47d768439f8065aa7e190b4483305d72b4fe1ebc2",
+      "corpus_checksum": "259c777528ebb56a09d10923aa6cacfd97c78317969b869fbab5d6ee0d31a8ed",
       "output_file": "resources/demo_projects/gpaw_al_scf.yml",
-      "output_checksum": "70f6581c0e49bb4aefa1461c6cdd47eb81d505335560875b42c7d870f8ba3fec",
+      "output_checksum": "eb25a744c77fc16c4b3d2aaf7f18caf9326281c51fa56c9b4775d4e8e088af80",
       "asset_policy": "none"
     },
     "gpaw_si_bands": {
@@ -109,9 +109,9 @@
       "case_id": "si_bands",
       "dir_name": "si_bands",
       "corpus_path": "tests/inputformat/samples/gpaw/si_bands",
-      "corpus_checksum": "dd71ea430fc0a121e2428c4c6ca3f1f11f51abfbdba2babd257635e090e45340",
+      "corpus_checksum": "319387f438a6c096dd6137c83275ddd87c1cc2f75800ba10acc628352c692369",
       "output_file": "resources/demo_projects/gpaw_si_bands.yml",
-      "output_checksum": "332f49de7ed4cd0182930c783e164ef739875e6710bfa1cf3e741cdee0edbcfa",
+      "output_checksum": "94c301623bcd9b9db21ee8c08c60044d1a41430bc0530ced32dac706655b0661",
       "asset_policy": "none"
     },
     "gpaw_si_scf": {
@@ -119,9 +119,9 @@
       "case_id": "si_scf",
       "dir_name": "si_scf",
       "corpus_path": "tests/inputformat/samples/gpaw/si_scf",
-      "corpus_checksum": "acc7a7a269e88b8f404e11b6567630087bfe17f6ed86ffe7c0f015d8522f5ba9",
+      "corpus_checksum": "3045e3ff58ded15609d4413481a3edffb615378320b38b20bb27a519463209dd",
       "output_file": "resources/demo_projects/gpaw_si_scf.yml",
-      "output_checksum": "3885de2130c5dfb3e50e39a93b24a8d12e22c242992d99e6ff411790afdd9447",
+      "output_checksum": "79af340cb80a587ffeca52d2343d180300ca8efca699c166cd4b368867ff99ab",
       "asset_policy": "none"
     },
     "lammps_lj_melt": {
@@ -129,9 +129,9 @@
       "case_id": "melt_lj_nve",
       "dir_name": "melt_lj_nve",
       "corpus_path": "tests/inputformat/samples/lammps/melt_lj_nve",
-      "corpus_checksum": "dcfa7419f43ce3615e227bd705933668fa5424f1e1078516ca6e766499c0cbfe",
+      "corpus_checksum": "0aa9545f79b126b1e753473034c6779a97c0e014d647025d0ca9a1c0183678e3",
       "output_file": "resources/demo_projects/lammps_lj_melt.yml",
-      "output_checksum": "06c3889f3c8fb8a2bf8fa5d9d4a6286d17697f5efe4bd6d03624ca1163688a6d",
+      "output_checksum": "3ae8dcdc1487a29cad6cf83e1012422a17cf784c8fbef777261d4fe3090d7b0f",
       "asset_policy": "none"
     },
     "lammps_lj_minimize": {
@@ -139,9 +139,9 @@
       "case_id": "minimize_2d_lj",
       "dir_name": "minimize_2d_lj",
       "corpus_path": "tests/inputformat/samples/lammps/minimize_2d_lj",
-      "corpus_checksum": "c04104bfc2075f45cac23b0b1b5afcdf035e2bf33c43215eb9d3f1c6cb86bdde",
+      "corpus_checksum": "9572985450f9fb2084dea65098cb292e50e254d8cc7b4e87ec0ba440bea9c018",
       "output_file": "resources/demo_projects/lammps_lj_minimize.yml",
-      "output_checksum": "e4f5a4549620b432021c9939ba47c42d7eede63a7c1bf5b02854511e3e3b6449",
+      "output_checksum": "51334bcb0598fe3526d175284af58f107de43d3bf24843716fb393e2957c1541",
       "asset_policy": "none"
     },
     "lammps_peptide_nvt": {
@@ -149,9 +149,9 @@
       "case_id": "peptide_nvt",
       "dir_name": "peptide_nvt",
       "corpus_path": "tests/inputformat/samples/lammps/peptide_nvt",
-      "corpus_checksum": "7d6583c54e3c2086a558a83fe3b535764ea643b8b186da6dcd872bb1daba88e3",
+      "corpus_checksum": "61e3f4168c68556b8d31e776bd2e3ba131b1004e43a2dac187bcb26a7eb658ab",
       "output_file": "resources/demo_projects/lammps_peptide_nvt.yml",
-      "output_checksum": "290668110e4a7476ad669eedde426afa6122cf35eab18004b0047811adc50f21",
+      "output_checksum": "1b7178fc7b8ba94ab1009e1a44ad126892463bd1f1fcb80d456621835e0158fd",
       "asset_policy": "none"
     },
     "orca_formaldehyde_tddft": {
@@ -159,9 +159,9 @@
       "case_id": "formaldehyde_tddft",
       "dir_name": "formaldehyde_tddft",
       "corpus_path": "tests/inputformat/samples/orca/formaldehyde_tddft",
-      "corpus_checksum": "f6899090019d6a1ec19cead3b457ef5ead9cb129757676d9b2f9e5e405fa4f2b",
+      "corpus_checksum": "7f183a54148055610526cc46995a66dcc188ef008529fe94466c7b05315cb50f",
       "output_file": "resources/demo_projects/orca_formaldehyde_tddft.yml",
-      "output_checksum": "a3b97be0dbf90da67599af1404379c390f7812e3d09bf88358cbe6abf31bb50b",
+      "output_checksum": "ef176da89c92154f2dbda89da9ce75c7a590d54f8da04d1e646cebc85fe0074e",
       "asset_policy": "none"
     },
     "orca_methane_freq": {
@@ -169,9 +169,9 @@
       "case_id": "methane_freq",
       "dir_name": "methane_freq",
       "corpus_path": "tests/inputformat/samples/orca/methane_freq",
-      "corpus_checksum": "1f5d001e175cc2404b64432e7c70e37908f0a572b5d422080cef1b77a200ea05",
+      "corpus_checksum": "60a305dd49e8a33506faa8f42e45857d3912f4e2989ed70e0868aecd941f081d",
       "output_file": "resources/demo_projects/orca_methane_freq.yml",
-      "output_checksum": "f3afc0c243b04ce8587e85bd73e8a67050bc6b6f6dccfbc39b03e27369fe44ae",
+      "output_checksum": "1f08c50ba9fd9d857a00fdbf449bc1045e052486946d8d5c21d381c780325ccd",
       "asset_policy": "none"
     },
     "orca_water_sp": {
@@ -179,9 +179,9 @@
       "case_id": "water_sp",
       "dir_name": "water_sp",
       "corpus_path": "tests/inputformat/samples/orca/water_sp",
-      "corpus_checksum": "0c6899e5b97792d7f08dbe32606601b5fcb83aa8e22c8e7c5df284b37db42a07",
+      "corpus_checksum": "2a60476bf517aa026473205e98222ed2ec20769d43d19345aff061828e439062",
       "output_file": "resources/demo_projects/orca_water_sp.yml",
-      "output_checksum": "1f90cd3ffa9f03a1090d31e8367ab6c5c92d3c31d11497aa48d43922b44dffb5",
+      "output_checksum": "2d8eae661678d8ec8264421c91c5502088b4460822e47add512f9b415b1310c1",
       "asset_policy": "none"
     },
     "psi4_ethanol_sp": {
@@ -189,9 +189,9 @@
       "case_id": "ethanol_sp",
       "dir_name": "ethanol_sp",
       "corpus_path": "tests/inputformat/samples/psi4/ethanol_sp",
-      "corpus_checksum": "9ac2ed6d02d94db592073868376781b8d7eca432f50c6341d53c48ca04d61060",
+      "corpus_checksum": "8fc145ee46901d9a59a5b9a36ad8561a453179935b68bfc190d4a84d98fe45b5",
       "output_file": "resources/demo_projects/psi4_ethanol_sp.yml",
-      "output_checksum": "1c10549790d423f1c6f3808ff926d6662ae18e20347994483af79a1bd24dcc27",
+      "output_checksum": "7b136a075bd360aaecdd28b9659aeee92c0c4c2694ceb2d956379254cc8fec0f",
       "asset_policy": "none"
     },
     "psi4_h2o_opt": {
@@ -199,9 +199,9 @@
       "case_id": "h2o_opt",
       "dir_name": "h2o_opt",
       "corpus_path": "tests/inputformat/samples/psi4/h2o_opt",
-      "corpus_checksum": "739e9c768e2f53ead6867324d35f308c9af9bf5076b85a49875ad2e4db2a2e19",
+      "corpus_checksum": "743ab5718d7bdd9c6653aa08b2c27ab471733295beae7d0f67ff57dd524fa154",
       "output_file": "resources/demo_projects/psi4_h2o_opt.yml",
-      "output_checksum": "886f49d5a49e063e7c0ed753bdfa2e5174843a5614a04f4cd834821d5a8b72eb",
+      "output_checksum": "e36d1a65bb44d42eba7499d999aeb36c6cebcfd512c2423b586e90ea64181a61",
       "asset_policy": "none"
     },
     "psi4_water_scf": {
@@ -209,9 +209,9 @@
       "case_id": "water_scf",
       "dir_name": "water_scf",
       "corpus_path": "tests/inputformat/samples/psi4/water_scf",
-      "corpus_checksum": "53e1b4070f5047db9544491310bb748e50773cf777b27501bc025fa15645d0e9",
+      "corpus_checksum": "ddef787f300ba51ddd16d938b1f7232103897e445035dbf2f02ba68ac715b869",
       "output_file": "resources/demo_projects/psi4_water_scf.yml",
-      "output_checksum": "6dfeaab08f31f5787fc4df51547cd4a639ceffefda22aa04185a1a63f02cd24c",
+      "output_checksum": "70429f3a4dd0e819393975a78532e83621df25472022b76238802f92f27da721",
       "asset_policy": "none"
     },
     "pyscf_h2o_dft": {
@@ -219,9 +219,9 @@
       "case_id": "h2o_dft",
       "dir_name": "h2o_dft",
       "corpus_path": "tests/inputformat/samples/pyscf/h2o_dft",
-      "corpus_checksum": "f635edbf9ec511be6f0c3db5d55358d47032d2a7862522bcfcbcc91de21af0db",
+      "corpus_checksum": "2b416d327832a828e663e49551c8657175dfbc12cea7b10f60edd84627f7b25b",
       "output_file": "resources/demo_projects/pyscf_h2o_dft.yml",
-      "output_checksum": "ed68b3b1411abdc42bca7886a072a1b3dd44624f01434faf6afd44717eb2484b",
+      "output_checksum": "59b6417e5aaa12431d3e26463ba9181259207a3e3a2bc304081b30f1931a1f1d",
       "asset_policy": "none"
     },
     "pyscf_n2_mp2": {
@@ -229,9 +229,9 @@
       "case_id": "n2_mp2",
       "dir_name": "n2_mp2",
       "corpus_path": "tests/inputformat/samples/pyscf/n2_mp2",
-      "corpus_checksum": "542cd86ada3a5b9d3fdc6a1a003cbc65b3a787549bd726c2febdb78e6590a705",
+      "corpus_checksum": "9716fd9892fafbde0a633b35a19311b798e4627482ee5a1882f4767b5040024e",
       "output_file": "resources/demo_projects/pyscf_n2_mp2.yml",
-      "output_checksum": "a5a29d1950bc16decb70f16a745b4ad34d8d5c7283b435a911bddb595b278faf",
+      "output_checksum": "3fbd0b35a08a6ecbfcdfe7e0cba068232cefc91dacbe8d915ce02f91656eba7d",
       "asset_policy": "none"
     },
     "pyscf_water_scf": {
@@ -239,9 +239,9 @@
       "case_id": "water_scf",
       "dir_name": "water_scf",
       "corpus_path": "tests/inputformat/samples/pyscf/water_scf",
-      "corpus_checksum": "4f7b328a8771131c5c8a000c26582eb1ecee1499986ceffbd01d75767a41ea7c",
+      "corpus_checksum": "03d218ac23dd1f0136d028a16051318d4f9475256f5a08322ae5144287aa078c",
       "output_file": "resources/demo_projects/pyscf_water_scf.yml",
-      "output_checksum": "3627c386c69904265f7a0444080f38e8acffae38ad8f7aaf5545f4341bd6d767",
+      "output_checksum": "d45684b58e5bc4819b574d9f7311a2d4140343f47577bb2f1776d5cea4ea4e90",
       "asset_policy": "none"
     },
     "qe_al_dos": {
@@ -249,89 +249,9 @@
       "case_id": "al_dos",
       "dir_name": "al_dos",
       "corpus_path": "tests/inputformat/samples/qe/al_dos",
-      "corpus_checksum": "e0e456affdf8081516e60c5f84eaf9837e52eac42d764fb82d192711f088bc1a",
+      "corpus_checksum": "247ed871f932d8a1637c7dac3f64205da79b58d9e9bec91a1e6321dd3de74009",
       "output_file": "resources/demo_projects/qe_al_dos.yml",
-      "output_checksum": "1308cb0ddbf1b0e001a904822c8b7e80f52afe056f0c7bf222268152f0170528",
-      "asset_policy": "redistributable"
-    },
-    "qe_fe_dos": {
-      "engine": "qe",
-      "case_id": "fe_dos",
-      "dir_name": "fe_dos",
-      "corpus_path": "tests/inputformat/samples/qe/fe_dos",
-      "corpus_checksum": "3282d3d9b13919baba100bff35cacef9788e2a9a507a479af3ba14dcd4bf2ea7",
-      "output_file": "resources/demo_projects/qe_fe_dos.yml",
-      "output_checksum": "31fb55849b1a7f81434d8d4da81c385d8e5ac7ae6e650852d8293ced5e06bd14",
-      "asset_policy": "redistributable"
-    },
-    "qe_graphene_bands": {
-      "engine": "qe",
-      "case_id": "graphene_bands",
-      "dir_name": "graphene_bands",
-      "corpus_path": "tests/inputformat/samples/qe/graphene_bands",
-      "corpus_checksum": "57cacde406e31ed6652f33ee017872704fb68ad7ac5e31734fc1740926da71a7",
-      "output_file": "resources/demo_projects/qe_graphene_bands.yml",
-      "output_checksum": "882b938a059747a51196c1aec2412f2951da46ebe98a8b3fa2b96801fd933e4b",
-      "asset_policy": "redistributable"
-    },
-    "si_bands_demo": {
-      "engine": "qe",
-      "case_id": "si_bands",
-      "dir_name": "si_bands",
-      "corpus_path": "tests/inputformat/samples/qe/si_bands",
-      "corpus_checksum": "68360eec0698a68d54abb17f201d4f3c439046943f9ce5be5a8ce97a216bc8ef",
-      "output_file": "resources/demo_projects/si_bands_demo.yml",
-      "output_checksum": "03bb1c5c7a18c7071440005e8259b2b3c5ff71fe0735753d1d4b051b3e6ef4f2",
-      "asset_policy": "redistributable"
-    },
-    "qe_si_bands_alt": {
-      "engine": "qe",
-      "case_id": "si_bands_alt",
-      "dir_name": "si_bands_alt",
-      "corpus_path": "tests/inputformat/samples/qe/si_bands_alt",
-      "corpus_checksum": "001eef48f9ca1eed76cc8ca5aea9174523fa6aacbb4b3cae39b398cda2ae1d78",
-      "output_file": "resources/demo_projects/qe_si_bands_alt.yml",
-      "output_checksum": "778ee649c3c13e002914d3c747800f95bc009c6503c94f8c83c63cbf74a94096",
-      "asset_policy": "redistributable"
-    },
-    "si_dos_demo": {
-      "engine": "qe",
-      "case_id": "si_dos",
-      "dir_name": "si_dos",
-      "corpus_path": "tests/inputformat/samples/qe/si_dos",
-      "corpus_checksum": "71ba004ba73bdbe0f6a018df8ab423ebc93eb1d4c33249b75341b2d0c4a5b2a9",
-      "output_file": "resources/demo_projects/si_dos_demo.yml",
-      "output_checksum": "4ca81feb484aa7336a150f688086e4ee573a5ec14f584db5d3fdf662f63683db",
-      "asset_policy": "redistributable"
-    },
-    "qe_si_dos_alt": {
-      "engine": "qe",
-      "case_id": "si_dos_alt",
-      "dir_name": "si_dos_alt",
-      "corpus_path": "tests/inputformat/samples/qe/si_dos_alt",
-      "corpus_checksum": "b744aed662cbc791dbabad60c1169290e21258d0cbdf475802e0f4b3fd9631d8",
-      "output_file": "resources/demo_projects/qe_si_dos_alt.yml",
-      "output_checksum": "a6d5334c089b9f96b9f6d7b9ad1a400a0e12e7fb2d5e861fa2c19bbecb46ec95",
-      "asset_policy": "redistributable"
-    },
-    "qe_si_scf": {
-      "engine": "qe",
-      "case_id": "si_scf",
-      "dir_name": "si_scf",
-      "corpus_path": "tests/inputformat/samples/qe/si_scf",
-      "corpus_checksum": "3a4d84ecd4a1ac896f263c01feaf78972ec95701469459f9b15248d55d411e56",
-      "output_file": "resources/demo_projects/qe_si_scf.yml",
-      "output_checksum": "565614388b78c217f21920b2040e1ca660b6d0c0c52f154be68377d06f26b423",
-      "asset_policy": "redistributable"
-    },
-    "qe_si_vc_relax": {
-      "engine": "qe",
-      "case_id": "si_vc_relax",
-      "dir_name": "si_vc_relax",
-      "corpus_path": "tests/inputformat/samples/qe/si_vc_relax",
-      "corpus_checksum": "5053dc7f782f24c65643e916576a1986646b786e49f0a94208e56374a16cc1b0",
-      "output_file": "resources/demo_projects/qe_si_vc_relax.yml",
-      "output_checksum": "759f359d45cfb8938e3b3c5ad03cf897a53a419844eab7c29492d7fc244ccce0",
+      "output_checksum": "50cc136bce4c77b504912ed3e64ca929facdb6d09e404f1039d022489b72fbef",
       "asset_policy": "redistributable"
     },
     "qe_copper_wannier": {
@@ -339,9 +259,9 @@
       "case_id": "copper_wannier",
       "dir_name": "copper_wannier",
       "corpus_path": "tests/inputformat/samples/qe/copper_wannier",
-      "corpus_checksum": "200080d6fcc7b8021cf5973a97592d50ec600c839c1eed26ff82dd88d51600d8",
+      "corpus_checksum": "3ca2436d7f1cc793bd6ea2b0c3aa001f1b6fde35239c27ea944823cff330bf9e",
       "output_file": "resources/demo_projects/qe_copper_wannier.yml",
-      "output_checksum": "18daffc6bab449cfb8e77d864131b49901f3dce83c0ab255cd3db11f5f31084f",
+      "output_checksum": "a553966caec3fcebbe0a7e946e3ea4b5301f60fba7f5238bbe1cecfeb6df0906",
       "asset_policy": "redistributable"
     },
     "qe_diamond_wannier": {
@@ -349,9 +269,29 @@
       "case_id": "diamond_wannier",
       "dir_name": "diamond_wannier",
       "corpus_path": "tests/inputformat/samples/qe/diamond_wannier",
-      "corpus_checksum": "f915aca255604276cda3f043ef7ddac58ed0804a05af6a1dd691211a3628cad1",
+      "corpus_checksum": "e85c5ce1f517dd9d85cbb830fcad7dccc3199973a2e8126314e093533cca3e6b",
       "output_file": "resources/demo_projects/qe_diamond_wannier.yml",
-      "output_checksum": "c5ed1dfe3dc8be448835ca364443a0a002f38b56f975207d37c674ae114a1192",
+      "output_checksum": "50d843e7877a1a5463d632f960f5fbb28e76223eb4bf80290634d984d4c55090",
+      "asset_policy": "redistributable"
+    },
+    "qe_fe_scf": {
+      "engine": "qe",
+      "case_id": "fe_dos",
+      "dir_name": "fe_dos",
+      "corpus_path": "tests/inputformat/samples/qe/fe_dos",
+      "corpus_checksum": "930abc281fd6a0fe4980cfccb20aabc5cec15327d33090e180aceeb1181d98a8",
+      "output_file": "resources/demo_projects/qe_fe_scf.yml",
+      "output_checksum": "a2f3ae8f0e300709ad19873c1d6156d15559239d898cdd63102d4eb0ca5f7c38",
+      "asset_policy": "redistributable"
+    },
+    "qe_graphene_bands": {
+      "engine": "qe",
+      "case_id": "graphene_bands",
+      "dir_name": "graphene_bands",
+      "corpus_path": "tests/inputformat/samples/qe/graphene_bands",
+      "corpus_checksum": "b932ff48d0db17c7d2121e5339fb2816adba5af62594d78c8cfbce59daa38d24",
+      "output_file": "resources/demo_projects/qe_graphene_bands.yml",
+      "output_checksum": "92700175bbd2f78729614f5eb3baba6faa8ed210586d9cb443107a4092ab45df",
       "asset_policy": "redistributable"
     },
     "qe_he_qmcpack_vmc": {
@@ -359,9 +299,9 @@
       "case_id": "he_qmcpack_vmc",
       "dir_name": "he_qmcpack_vmc",
       "corpus_path": "tests/inputformat/samples/qe/he_qmcpack_vmc",
-      "corpus_checksum": "fea9b4149d57c51f8e7cc017acf6838464fbcc892f6e50bf6cc7013ccd11f2e9",
+      "corpus_checksum": "12725e30d9dd48bd44495fd68cd433f3e2615e56edcb8b709df815d29ae504ae",
       "output_file": "resources/demo_projects/qe_he_qmcpack_vmc.yml",
-      "output_checksum": "498b7304afa868ca643e7187a108fc41a9d538422da5e9b1a63d464cc9211fe7",
+      "output_checksum": "05aa79766bb6b0f0a0c650d5e6cac17bdb9da8f7481f86d855e4a330c19f8555",
       "asset_policy": "redistributable"
     },
     "qe_lih_qmcpack_vmc": {
@@ -369,9 +309,69 @@
       "case_id": "lih_qmcpack_vmc",
       "dir_name": "lih_qmcpack_vmc",
       "corpus_path": "tests/inputformat/samples/qe/lih_qmcpack_vmc",
-      "corpus_checksum": "9f9b0763f61cc48b08d53b91872904d7d3d99f7d2f753fe1b9fbfa0fa8459117",
+      "corpus_checksum": "c1b66aebc5a19ddfaa5c973345df7b50fe782a93d68174351bec91265204e05e",
       "output_file": "resources/demo_projects/qe_lih_qmcpack_vmc.yml",
-      "output_checksum": "8b32760af245ba941a667ad220956dead632cdf63dd31288b37e216639e97fdf",
+      "output_checksum": "4e933180aa855197dd004189c6f49f4f7e66ca6f8b01a01b75c6327e8fc5414d",
+      "asset_policy": "redistributable"
+    },
+    "si_bands_demo": {
+      "engine": "qe",
+      "case_id": "si_bands",
+      "dir_name": "si_bands",
+      "corpus_path": "tests/inputformat/samples/qe/si_bands",
+      "corpus_checksum": "aaeeed1ce2de9e4c3783ebbdbbc18945c9efefc0856744af4324df13006511a6",
+      "output_file": "resources/demo_projects/si_bands_demo.yml",
+      "output_checksum": "8c3da082ce997fc29952b49827564a6f9fa4a77f311e90511f0c05ee9e858d17",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_bands_alt": {
+      "engine": "qe",
+      "case_id": "si_bands_alt",
+      "dir_name": "si_bands_alt",
+      "corpus_path": "tests/inputformat/samples/qe/si_bands_alt",
+      "corpus_checksum": "c9454c3dc522d0ca02b42bd29c6ea4d45c76c045cefdb8176701088ccc1c74f8",
+      "output_file": "resources/demo_projects/qe_si_bands_alt.yml",
+      "output_checksum": "2f0bfe21c354307c5465ffe3a1239dd43241760c033205a07c16859a88fa6659",
+      "asset_policy": "redistributable"
+    },
+    "si_dos_demo": {
+      "engine": "qe",
+      "case_id": "si_dos",
+      "dir_name": "si_dos",
+      "corpus_path": "tests/inputformat/samples/qe/si_dos",
+      "corpus_checksum": "3a394e93492ff0c2306cf2f357410671b525b99c536049b4c2c48d161434ea48",
+      "output_file": "resources/demo_projects/si_dos_demo.yml",
+      "output_checksum": "2b9c8db690cfe40c4cc61f23eba4b4371f15893cb589aecdee499b98763488fd",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_dos_alt": {
+      "engine": "qe",
+      "case_id": "si_dos_alt",
+      "dir_name": "si_dos_alt",
+      "corpus_path": "tests/inputformat/samples/qe/si_dos_alt",
+      "corpus_checksum": "87de7d516e8c28313d12641c6f61032ed7e0a3ffa79afce518de70c84963d9a5",
+      "output_file": "resources/demo_projects/qe_si_dos_alt.yml",
+      "output_checksum": "9d52664fcf9a0ab7f37b526ca1272f141e842c6edbaf69f551de449f05befd1a",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_scf": {
+      "engine": "qe",
+      "case_id": "si_scf",
+      "dir_name": "si_scf",
+      "corpus_path": "tests/inputformat/samples/qe/si_scf",
+      "corpus_checksum": "4098dd8a66d82a76aa0daf272e0d0b97b705f52d3518627eb7e13114ee92fd0c",
+      "output_file": "resources/demo_projects/qe_si_scf.yml",
+      "output_checksum": "36042d43289871f1f6d1111b27522e35a45169d969f2ac6fc4a550cf08a97f29",
+      "asset_policy": "redistributable"
+    },
+    "qe_si_vc_relax": {
+      "engine": "qe",
+      "case_id": "si_vc_relax",
+      "dir_name": "si_vc_relax",
+      "corpus_path": "tests/inputformat/samples/qe/si_vc_relax",
+      "corpus_checksum": "b40a4f97d37f5a8cdc027e72eed7752892ddf8c72616027f460055a164577fb2",
+      "output_file": "resources/demo_projects/qe_si_vc_relax.yml",
+      "output_checksum": "6d8beb496a48f2ebda2f2fa779b80c306219d56328419102590a83ae6c7f3ec9",
       "asset_policy": "redistributable"
     },
     "qe_si_yambo_bse": {
@@ -379,9 +379,9 @@
       "case_id": "si_yambo_bse",
       "dir_name": "si_yambo_bse",
       "corpus_path": "tests/inputformat/samples/qe/si_yambo_bse",
-      "corpus_checksum": "7710c269a4f49b72323827ffbd55d3fadc2dc6be40b0f23b6f2fbf995ab3ae8b",
+      "corpus_checksum": "c077933b8a12921e8e1eb40e860b36d9f10cd3fc890370a2750317cbb51b9107",
       "output_file": "resources/demo_projects/qe_si_yambo_bse.yml",
-      "output_checksum": "edc5c982ecf3361db54ee86369fad5b56eebab7f596f57bd934ce99f7c3a85a4",
+      "output_checksum": "e20bd1810d6165f51ef130e23f27fdc6262df8f4c3d8f12c5234b17941a33c1d",
       "asset_policy": "redistributable"
     },
     "qe_si_yambo_gw": {
@@ -389,9 +389,9 @@
       "case_id": "si_yambo_gw",
       "dir_name": "si_yambo_gw",
       "corpus_path": "tests/inputformat/samples/qe/si_yambo_gw",
-      "corpus_checksum": "b0dda43c98333d6e14a98ae530ac68bcdca850092d1b44e10343f0aee0d16caf",
+      "corpus_checksum": "5b33696f376e1f4323f85bce3c7a90ba8dc100abc63babcf5116729ef198861e",
       "output_file": "resources/demo_projects/qe_si_yambo_gw.yml",
-      "output_checksum": "2b28fd1f083e71a34a632d92812f40514d0e39479b16d4fd65ee371de0156628",
+      "output_checksum": "c4e88a71719c8008ce37758a7760cb6b99f63040380f3e8dd5f70893c91a3f79",
       "asset_policy": "redistributable"
     },
     "qmcpack_h2_vmc": {
@@ -399,9 +399,9 @@
       "case_id": "h2_ae_vmc",
       "dir_name": "h2_ae_vmc",
       "corpus_path": "tests/inputformat/samples/qmcpack/h2_ae_vmc",
-      "corpus_checksum": "43586b3a81edbeb474da4a55dad78e90a5649f683cafe7112a29ac8305f6eb98",
+      "corpus_checksum": "81f9e2f09cbb9210c34ae99071e7084923e9fd26b0d4fd409ae772e2e0aaf95f",
       "output_file": "resources/demo_projects/qmcpack_h2_vmc.yml",
-      "output_checksum": "641ba8980ccabd3970f48ec72c39fa3758f972bfe7933c2e0157be015238036e",
+      "output_checksum": "feb8c3cba14386c80d813690c6407bf927d625fa4692bf22c88da4356099e508",
       "asset_policy": "none"
     },
     "qmcpack_he_vmc": {
@@ -409,9 +409,9 @@
       "case_id": "he_vmc_sto",
       "dir_name": "he_vmc_sto",
       "corpus_path": "tests/inputformat/samples/qmcpack/he_vmc_sto",
-      "corpus_checksum": "18666f75dd8d9291e5470d83330c65ddc63415202d4637bfb6d7ae6e3f1e70f4",
+      "corpus_checksum": "65421fe56621b98452fd430102b6b662831a4e8718947338505d9515a214f677",
       "output_file": "resources/demo_projects/qmcpack_he_vmc.yml",
-      "output_checksum": "91b3a3c8b4d0c557db64c712dd58aec68ff433f9eefd30b0c5d7615ce75f0716",
+      "output_checksum": "ee0029dffd6da06e31673ebc47c75bd615d4001eb58fa8d9e17fb6faf111db7f",
       "asset_policy": "none"
     },
     "siesta_si_bands": {
@@ -419,9 +419,9 @@
       "case_id": "si_bands",
       "dir_name": "si_bands",
       "corpus_path": "tests/inputformat/samples/siesta/si_bands",
-      "corpus_checksum": "e3a72baa1fcc30d1f8d8ba38d81c9d7ebee6ae0f8a4177d2260e36d127e0a831",
+      "corpus_checksum": "58606faa9a8a540342c05514ec283af72ab4d1e2717ef6e56b4d0e6a98b3d6b5",
       "output_file": "resources/demo_projects/siesta_si_bands.yml",
-      "output_checksum": "bb0987a3012512a05110fa1ad36ee2707c2b82a512691787392f13d76eb6ec10",
+      "output_checksum": "c255c97592ef3ab95b4dfdbea8fa26deb3a14dbecda2cbd39cae7d1e43d43048",
       "asset_policy": "none"
     },
     "siesta_si_relax": {
@@ -429,9 +429,9 @@
       "case_id": "si_relax",
       "dir_name": "si_relax",
       "corpus_path": "tests/inputformat/samples/siesta/si_relax",
-      "corpus_checksum": "37e2ddc3abafea5063f9ba0a8808f3ec6bcb25728e575e3af0ca73da31e33bdf",
+      "corpus_checksum": "f564ee986e03df788e2a7fdfe74eba2a9aa2e290fba425f118bcd88379ac042b",
       "output_file": "resources/demo_projects/siesta_si_relax.yml",
-      "output_checksum": "2094116f6c78368a866ee6c62f2a39a78f2e1b4611b0c1d43e8f7cd72fd49af7",
+      "output_checksum": "5766f771ee163e4d35e6d5ba7c2fd73e7cf8641c22544eff926a1c14889c8088",
       "asset_policy": "none"
     },
     "siesta_si_scf": {
@@ -439,9 +439,9 @@
       "case_id": "si_scf",
       "dir_name": "si_scf",
       "corpus_path": "tests/inputformat/samples/siesta/si_scf",
-      "corpus_checksum": "35f48799fc1e3ec67b40aba35ab862c0bcf09d149a6f8fc3e40762413fc9055a",
+      "corpus_checksum": "96c45f7029c4a7335589b81ce34f520c6050b26ea43b67283865487e5784bf56",
       "output_file": "resources/demo_projects/siesta_si_scf.yml",
-      "output_checksum": "69a1bf94eda3234021bd3c0edea5de37215061cc0b248d42f32349e5d7c78571",
+      "output_checksum": "c95186d6fe8a6f458a151f9f06858e3d4a62a32ac1cf1e5dadd2d5f5f866c30d",
       "asset_policy": "none"
     },
     "vasp_fe_magnetic": {
@@ -449,9 +449,9 @@
       "case_id": "fe_magnetic",
       "dir_name": "fe_magnetic",
       "corpus_path": "tests/inputformat/samples/vasp/fe_magnetic",
-      "corpus_checksum": "4c6964c00dba35e6bd35137c48270ba70d582a25adbc0b5db5d3def09827c1cd",
+      "corpus_checksum": "19c3d2c24f9637e362f206f012e16e5a59d18def64f256a8e8ae2f11704fdbb0",
       "output_file": "resources/demo_projects/vasp_fe_magnetic.yml",
-      "output_checksum": "66e4ec2415057b648b7338b25ae924b9d0507d747e1ca08db3d2bd774ad8aec2",
+      "output_checksum": "002bb0cf324877d75d6f17360c67bf97272c3f1c4495a87474c7254c0ee8071e",
       "asset_policy": "proprietary"
     },
     "vasp_si_bands": {
@@ -459,9 +459,9 @@
       "case_id": "si_bands",
       "dir_name": "si_bands",
       "corpus_path": "tests/inputformat/samples/vasp/si_bands",
-      "corpus_checksum": "712a26d5ac2e1a4af0201511cc2473efce9534f978e70b8cabb73ea7767b1958",
+      "corpus_checksum": "7e4e8aebc7839874768be17704307367c691dbb2f25b0f49afd172614d431c1b",
       "output_file": "resources/demo_projects/vasp_si_bands.yml",
-      "output_checksum": "878f6003972285db24d87568e4581e12d5a0d510177ae15afc98a9418d11a6cc",
+      "output_checksum": "8bc9d3159cee1bf86ace086d5328c4d5c839feea5d6063a5b1b184484842549f",
       "asset_policy": "proprietary"
     },
     "vasp_si_dos": {
@@ -469,9 +469,9 @@
       "case_id": "si_dos",
       "dir_name": "si_dos",
       "corpus_path": "tests/inputformat/samples/vasp/si_dos",
-      "corpus_checksum": "e7a8bdab8831107c30ceba2688632ccf3106fb87797aae79d0f69fb905757fd3",
+      "corpus_checksum": "699e20269d5b85985726d6a10a17d86d5120e68ed1d22a030d93d66d2e61ce84",
       "output_file": "resources/demo_projects/vasp_si_dos.yml",
-      "output_checksum": "bb763aafbc6b32404b696b7a1eacbf77c66f4c2012140580c5e764881ec695e7",
+      "output_checksum": "61aee2b31603b60f909016e897699a44ecf3e61d4e361ada9a92a74c93fc1f9d",
       "asset_policy": "proprietary"
     },
     "vasp_si_relax": {
@@ -479,9 +479,9 @@
       "case_id": "si_relax",
       "dir_name": "si_relax",
       "corpus_path": "tests/inputformat/samples/vasp/si_relax",
-      "corpus_checksum": "dd0c9b7f35f75fe07d44af8801bd4e81434cfcfa1c7f33a58a167da619ca9c14",
+      "corpus_checksum": "14882128a36f91437487156c0cbfb92fca45174b59752a900fa061aeec02272e",
       "output_file": "resources/demo_projects/vasp_si_relax.yml",
-      "output_checksum": "24d90ba165e522d239b8423601da61dd3cf156fb01cb98c10c7f33eea48888d7",
+      "output_checksum": "225b04f16970b4e847955d780dfd350e4cdf2a87bc124e2b024c3a1fced482e6",
       "asset_policy": "proprietary"
     },
     "vasp_si_scf": {
@@ -489,9 +489,9 @@
       "case_id": "si_scf",
       "dir_name": "si_scf",
       "corpus_path": "tests/inputformat/samples/vasp/si_scf",
-      "corpus_checksum": "36dce7feae863468293238e12a20057a761bb2ff1af4f3748a744881d266381b",
+      "corpus_checksum": "dd5ed11c3de5f831bdb0c2e38b9e89abf8aae715e010ce8f8ba432b620e42f4e",
       "output_file": "resources/demo_projects/vasp_si_scf.yml",
-      "output_checksum": "c6d57755134d565a47c4b7a3a3b0f79a9638ffd25f19cc0f98805d1a9d9c17a6",
+      "output_checksum": "68b2ba636f85f8a35c3c1344d07409928d3760363ebcbcc4b91da6e717217698",
       "asset_policy": "proprietary"
     },
     "xtb_caffeine_grad": {
@@ -499,9 +499,9 @@
       "case_id": "caffeine_grad",
       "dir_name": "caffeine_grad",
       "corpus_path": "tests/inputformat/samples/xtb/caffeine_grad",
-      "corpus_checksum": "de6a2ebfd4b63d6628657cda625ee864ad66b956abda60cc577c99855ffe13b1",
+      "corpus_checksum": "20463daf1c91fd35ac32e7196379ef88afdd7aff87f53ecb06c573e97718b2e9",
       "output_file": "resources/demo_projects/xtb_caffeine_grad.yml",
-      "output_checksum": "ad0e5160aaec478ec5d050fe402b3db7b4637fdd168e67501213a07ac69c0ea9",
+      "output_checksum": "b40539bb8fba6d2067010303109208a4da5cfa2375c7244b30d136bb665b8571",
       "asset_policy": "none"
     },
     "xtb_water_md": {
@@ -509,9 +509,9 @@
       "case_id": "water_md",
       "dir_name": "water_md",
       "corpus_path": "tests/inputformat/samples/xtb/water_md",
-      "corpus_checksum": "3c96152c131df1fa79335be7d9fbfedf19b1d886102b8338fe5728046d6dbd26",
+      "corpus_checksum": "1664a55f1780e9a314270d8eb609e241b891a1cb7eb02a63b4ea0ad832c7365e",
       "output_file": "resources/demo_projects/xtb_water_md.yml",
-      "output_checksum": "6491cef7b5fe43bd0f0fd472bcd8407300fe83db9b0a0edc4849da0b80095f3e",
+      "output_checksum": "b41c28527a7ddff69f37e3d9244f221f92aba45b74ca59ebb64e10923563982c",
       "asset_policy": "none"
     },
     "xtb_water_opt": {
@@ -519,9 +519,9 @@
       "case_id": "water_opt",
       "dir_name": "water_opt",
       "corpus_path": "tests/inputformat/samples/xtb/water_opt",
-      "corpus_checksum": "b8567169d96c1cb43150680bd7641ee10bd2a2b2f88ab8f31748c7104b8e30fb",
+      "corpus_checksum": "cb73c467cff12de47373621a1628c7610061414fe6bc09f5e2515f42dca80b67",
       "output_file": "resources/demo_projects/xtb_water_opt.yml",
-      "output_checksum": "17e4d9822855bccc428e17c28b33b06cc0641fb22ae4f3397f6a86a22a93b376",
+      "output_checksum": "32e0ffd05b6e548b06a5e1eec03412d2dc39ad6fc2e4e99e84be826b2e61870a",
       "asset_policy": "none"
     }
   }

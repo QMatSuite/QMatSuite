@@ -1,11 +1,9 @@
 case_id: diamond_wannier
 engine: qe
 title: Diamond sp3 Wannier functions (QE to W90 pipeline)
-description: >-
-  Full QE->Wannier90 composite pipeline for diamond sp3 Wannier functions.
-  SCF -> NSCF -> wannier90 -pp -> pw2wannier90 -> wannier90.
-  Based on Wannier90 Tutorial Example 5. The .win file is PARSED by the W90
-  engine parser into YAML params (not staged as raw file).
+description: Diamond sp3 Wannier function construction using the QE→Wannier90 pipeline,
+  generating maximally-localized Wannier functions from the four valence bands via
+  W90 Tutorial Example 5.
 workflow_tags:
 - scf
 - nscf
@@ -61,3 +59,17 @@ asset_requirements:
 attribution:
   source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 5
   license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: dft-pbe
+property_of_interest: band_structure
+spin_treatment: nonmagnetic
+estimated_runtime_s: 6.6
+n_steps: 5
+step_summary: SCF → NSCF → W90 prep → pw2wannier → Wannierize
+available_analysis:
+- convergence
+multi_engine: true
+engines_used:
+- qe
+- w90

@@ -285,14 +285,28 @@ meta:
   ulid: xtb_caffeine_grad
   title: Caffeine gradient
   subtitle: relax
+  description: Gradient workflow with energy/gradient artifacts.
   tags:
   - gradient
   - medium_molecule
   recommended_analysis: scf
   difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: gfn2-xtb
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.1
+  multi_engine: false
+  engines_used:
+  - xtb
+  n_steps: 1
+  step_summary: Grad
+  available_analysis:
+  - trajectory
   required_engine: xtb
   availability: bundled
   generator_version: 1.0.0
   corpus_engine: xtb
   corpus_case_id: caffeine_grad
-  corpus_checksum: de6a2ebfd4b63d6628657cda625ee864ad66b956abda60cc577c99855ffe13b1
+  corpus_checksum: 20463daf1c91fd35ac32e7196379ef88afdd7aff87f53ecb06c573e97718b2e9

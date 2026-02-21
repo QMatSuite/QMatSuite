@@ -21,3 +21,14 @@ exclusion_reason: null
 attribution:
   source: Constructed for QMatSuite, inspired by CP2K examples
   license: MIT (QMatSuite)
+system_class: molecule
+periodicity: molecular
+method: dft-pbe
+property_of_interest: geometry
+spin_treatment: nonmagnetic
+estimated_runtime_s: 171.8
+n_steps: 1
+step_summary: Geo-opt
+available_analysis:
+- convergence
+- trajectory
