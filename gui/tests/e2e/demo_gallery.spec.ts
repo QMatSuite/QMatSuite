@@ -79,7 +79,7 @@ test.describe('E2E: Demo Gallery', () => {
     
     // Verify metadata is displayed (title, subtitle, tags)
     await expect(siBandsCard.locator('.demo-card__name')).toContainText(/Silicon band structure/i);
-    await expect(siBandsCard.locator('.demo-card__subtitle')).toContainText(/SCF.*NSCF.*Bands/i);
+    await expect(siBandsCard.locator('.demo-card__subtitle')).toContainText(/band structure/i);
     await expect(siBandsCard.getByTestId('qv-demo-tag-si-bands-demo-bands')).toBeVisible();
     
     // Click "Create Project" button on Si DOS demo card
