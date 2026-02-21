@@ -157,11 +157,11 @@ def run_calculation(calc_ulid: str, run_mode: str = "incremental") -> dict:
 
 def _is_relax_workflow(workflow: str) -> bool:
     """Check if the workflow involves structural relaxation."""
-    return workflow in {"relax", "vc-relax", "vc_relax"}
+    return workflow in {"relax", "minimize"}
 
 
 def _try_parse_digest(detail: dict) -> dict | None:
-    """Attempt to parse QE output for the first step's digest."""
+    """Attempt to parse engine output for the first step's digest."""
     from pathlib import Path
 
     calc_dir = detail.get("absolute_path")
@@ -182,6 +182,20 @@ def _try_parse_digest(detail: dict) -> dict | None:
     ]
     for candidate in candidates:
         if candidate.is_dir():
+            # Try engine-agnostic parser registry first
+            try:
+                import quantumvitas.drivers  # noqa: F401
+                from quantumvitas.parsers.registry import find_parser_for_raw
+
+                parser_cls = find_parser_for_raw(candidate, "scf_digest")
+                if parser_cls is not None:
+                    parser = parser_cls()
+                    digest = parser.parse(candidate)
+                    return digest.to_dict() if hasattr(digest, "to_dict") else digest
+            except Exception:
+                pass
+
+            # Fallback: QE parser directly
             try:
                 from quantumvitas.drivers.qe.parsers.output import QEOutputParser
 

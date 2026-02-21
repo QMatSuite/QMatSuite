@@ -5,8 +5,9 @@ from __future__ import annotations
 from quantumvitas.mcp.app import mcp
 from quantumvitas.mcp.envelope import make_error, make_response
 
-# Ry -> eV conversion factor
+# Unit conversion factors
 _RY_TO_EV = 13.605693123
+_HA_TO_EV = 27.211386245988
 
 
 @mcp.tool
@@ -92,7 +93,7 @@ def get_results_summary(calc_ulid: str, step: int = -1) -> dict:
     summary = _build_summary(digest_data, step_idx, step_type_gen, run_ulid)
 
     hint = f"Use inspect_calculation(calc_ulid='{calc_ulid}') for parameter details."
-    if step_type_gen in {"relax", "vc-relax", "vc_relax"}:
+    if step_type_gen in {"relax", "minimize"}:
         hint += (
             f" Use promote_structure(calc_ulid='{calc_ulid}') to extract "
             "the relaxed geometry as a new structure."
@@ -129,7 +130,22 @@ def _find_raw_dir(detail: dict, step_idx: int):
 
 
 def _parse_direct(raw_dir):
-    """Direct parse via QEOutputParser."""
+    """Direct parse via engine-agnostic parser registry."""
+    try:
+        # Trigger driver registration so all parsers are available
+        import quantumvitas.drivers  # noqa: F401
+
+        from quantumvitas.parsers.registry import find_parser_for_raw
+
+        parser_cls = find_parser_for_raw(raw_dir, "scf_digest")
+        if parser_cls is not None:
+            parser = parser_cls()
+            digest = parser.parse(raw_dir)
+            return digest.to_dict() if hasattr(digest, "to_dict") else digest
+    except Exception:
+        pass
+
+    # Fallback: try QE parser directly (in case registry lookup failed)
     try:
         from quantumvitas.drivers.qe.parsers.output import QEOutputParser
 
@@ -148,13 +164,25 @@ def _build_summary(
     step_type_gen: str | None,
     run_ulid: str | None,
 ) -> dict:
-    """Build the compact MCP-friendly results dict."""
-    total_energy_ry = digest.get("total_energy_ry")
-    total_energy_ev = None
-    if total_energy_ry is not None:
-        total_energy_ev = total_energy_ry * _RY_TO_EV
+    """Build the compact MCP-friendly results dict.
 
-    return {
+    Handles multiple energy unit conventions:
+    - QE: total_energy_ry (Rydberg)
+    - VASP, xTB, LAMMPS: total_energy_ev (eV)
+    - ORCA, Gaussian, QMCPACK: total_energy_ha (Hartree)
+    """
+    # Resolve total energy to eV from whichever unit the digest provides
+    total_energy_ev = digest.get("total_energy_ev")
+    total_energy_ry = digest.get("total_energy_ry")
+    total_energy_ha = digest.get("total_energy_ha")
+
+    if total_energy_ev is None:
+        if total_energy_ry is not None:
+            total_energy_ev = total_energy_ry * _RY_TO_EV
+        elif total_energy_ha is not None:
+            total_energy_ev = total_energy_ha * _HA_TO_EV
+
+    summary: dict = {
         "step_index": step_idx,
         "step_type_gen": step_type_gen,
         "run_ulid": run_ulid,
@@ -166,3 +194,13 @@ def _build_summary(
         "n_iterations": digest.get("n_iterations", 0),
         "wall_time_seconds": digest.get("total_wall_time_s"),
     }
+
+    # Include magnetization if present (GAP-1)
+    total_mag = digest.get("total_magnetization")
+    abs_mag = digest.get("absolute_magnetization")
+    if total_mag is not None:
+        summary["total_magnetization"] = total_mag
+    if abs_mag is not None:
+        summary["absolute_magnetization"] = abs_mag
+
+    return summary

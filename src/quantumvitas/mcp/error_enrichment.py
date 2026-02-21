@@ -95,7 +95,7 @@ def _classify_error(
 
         # SCF not converged: ran but didn't converge
         if not converged and n_iterations > 0:
-            if workflow in ("relax", "vc-relax"):
+            if workflow in ("relax", "minimize"):
                 diagnostics["workflow"] = workflow
                 return "IONIC_NOT_CONVERGED", "recoverable", diagnostics
             return "SCF_NOT_CONVERGED", "recoverable", diagnostics

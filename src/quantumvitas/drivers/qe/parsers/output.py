@@ -21,6 +21,8 @@ class QESCFDigest:
     lumo_ev: Optional[float] = None
     band_gap_ev: Optional[float] = None
     n_iterations: int = 0
+    total_magnetization: Optional[float] = None
+    absolute_magnetization: Optional[float] = None
     total_cpu_time_s: Optional[float] = None
     total_wall_time_s: Optional[float] = None
 
@@ -52,6 +54,8 @@ class QEOutputParser:
             lumo_ev=getattr(result, "lumo", None),
             band_gap_ev=getattr(result, "band_gap", None),
             n_iterations=len(getattr(result, "iterations", []) or []),
+            total_magnetization=getattr(result, "total_magnetization", None),
+            absolute_magnetization=getattr(result, "absolute_magnetization", None),
             total_cpu_time_s=getattr(result, "total_cpu_time", None),
             total_wall_time_s=getattr(result, "total_wall_time", None),
         )

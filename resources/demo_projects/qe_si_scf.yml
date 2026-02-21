@@ -89,7 +89,7 @@ calculations:
       CONTROL:
         calculation: scf
       SYSTEM:
-        ecutwfc: 20.0
+        ecutwfc: 30.0
     input_name: si.scf.in
     cards:
       K_POINTS:

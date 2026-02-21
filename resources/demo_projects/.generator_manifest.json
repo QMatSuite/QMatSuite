@@ -361,7 +361,7 @@
       "corpus_path": "tests/inputformat/samples/qe/si_scf",
       "corpus_checksum": "f0bc8d9c2de16e967d698ccc76ab94fe623ef0869c750c1cea87e64fafe05409",
       "output_file": "resources/demo_projects/qe_si_scf.yml",
-      "output_checksum": "b96d26cbbe0126bd7aaa61e51d1926e7a69cf3092cb295346ae135a1fdd20ef9",
+      "output_checksum": "5c69d56378d2ad5d7b67ae339474dba1527b37184905e1c57bdef398d5369aee",
       "asset_policy": "redistributable"
     },
     "qe_si_vc_relax": {
