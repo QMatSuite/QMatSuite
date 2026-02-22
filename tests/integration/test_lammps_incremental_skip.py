@@ -23,6 +23,7 @@ from quantumvitas.core.yaml_io import save_yaml_doc
 from quantumvitas.core.yamldoc import CalcDoc, StepDoc
 from quantumvitas.core.models import load_calculation
 from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from quantumvitas.core.resources import get_resources_dir
 from quantumvitas.calculation.hash_utils import compute_step_sha, compute_potential_assets_sha
 from quantumvitas.calculation.manifest import load_manifest, ManifestStepEntry
 
@@ -250,8 +251,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file from resources
-    repo_root = Path(__file__).parent.parent.parent
-    potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
+    potential_src = get_resources_dir() / "lammps" / "potentials" / "Cu_u3.eam"
     if not potential_src.exists():
         pytest.skip(f"Potential file not found: {potential_src}")
     
@@ -410,4 +410,3 @@ def test_external_potential_file_content_affects_skip(external_potential_project
     # Verify new potential_assets_sha is recorded
     assert step_entry2.pseudo_set_sha == new_potential_sha, \
         "Manifest should record new potential_assets_sha"
-

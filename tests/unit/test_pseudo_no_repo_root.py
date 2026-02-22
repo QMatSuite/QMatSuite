@@ -11,6 +11,7 @@ import pytest
 from pathlib import Path
 import shutil
 from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+from quantumvitas.core.resources import get_resources_dir
 
 
 def test_repo_root_pseudo_never_created():
@@ -25,7 +26,7 @@ def test_repo_root_pseudo_never_created():
         pytest.skip("Cannot find quantumvitas repo root")
     
     root_pseudo = repo_root / "pseudo"
-    resources_pseudo = repo_root / "resources" / "pseudo"
+    resources_pseudo = get_resources_dir() / "pseudo"
     
     # Clean up any leftover from previous runs (conftest should do this, but be safe)
     if root_pseudo.exists():
@@ -42,4 +43,3 @@ def test_repo_root_pseudo_never_created():
     assert resources_pseudo.exists(), (
         f"resources/pseudo should exist at {resources_pseudo} (it's tracked in git)"
     )
-

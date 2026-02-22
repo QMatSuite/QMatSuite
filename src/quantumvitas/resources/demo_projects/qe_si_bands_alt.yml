@@ -1,0 +1,197 @@
+version: 1
+project:
+  meta:
+    ulid: 01KYGMF3NACQG8XPJ1GEFT7VNK
+    name: 7 Si Bandstructure
+    slug: 7-si-bandstructure
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KFMPMA2PJM8PDM1TSEK8Q00W
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7546079563238743
+        - 0.0
+        - 2.7546079563238743
+      - - 0.0
+        - 2.7546079563238743
+        - 2.7546079563238743
+      - - -2.7546079563238743
+        - 2.7546079563238743
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8956039308540573
+      b: 3.8956039308540573
+      c: 3.8956039308540573
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 41.80318656269414
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3773039781619372
+      - 1.3773039781619374
+      - 1.3773039781619374
+calculations:
+- meta:
+    ulid: 01KJNEXGX0XCZT74X40QN4BN7B
+    name: 7 Si Bandstructure
+    slug: 7-si-bandstructure
+    path: calculations/7-si-bandstructure
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: qe
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/7-si-bandstructure/steps/scf.step.yaml
+      kind: step
+      ulid: 01KV669ENV5TXB763G0KMCDE0W
+    parameters:
+      CONTROL:
+        calculation: scf
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 10.410909236
+        nat: 2
+        ntyp: 1
+        ecutwfc: 40
+        ecutrho: 320
+        nbnd: 8
+      ELECTRONS:
+        conv_thr: 1.0e-08
+    step_type_spec: qe_scf
+  - meta:
+      name: nscf
+      slug: nscf
+      path: calculations/7-si-bandstructure/steps/nscf.step.yaml
+      kind: step
+      ulid: 01K78F7T2BJKMX05HYZNC7BBDH
+    parameters:
+      CONTROL:
+        calculation: nscf
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 10.410909236
+        nat: 2
+        ntyp: 1
+        ecutwfc: 40
+        ecutrho: 320
+        occupations: tetrahedra
+        nbnd: 8
+      ELECTRONS:
+        conv_thr: 1.0e-08
+    step_type_spec: qe_nscf
+  - meta:
+      name: bandspw
+      slug: bandspw
+      path: calculations/7-si-bandstructure/steps/bandspw.step.yaml
+      kind: step
+      ulid: 01KNM27XQK6N50WATCYHJNYK4T
+    parameters:
+      CONTROL:
+        calculation: bands
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 10.410909236
+        nat: 2
+        ntyp: 1
+        ecutwfc: 40
+        ecutrho: 320
+        nbnd: 8
+      ELECTRONS:
+        conv_thr: 1.0e-08
+    step_type_spec: qe_bandspw
+  - meta:
+      name: bands
+      slug: bands
+      path: calculations/7-si-bandstructure/steps/bands.step.yaml
+      kind: step
+      ulid: 01KNV5672F5552PEBNMA06EXW6
+    parameters:
+      BANDS:
+        filband: si.bands.dat
+    step_type_spec: qe_bands
+  structure_ulid: 01KFMPMA2PJM8PDM1TSEK8Q00W
+  species_map:
+    Si:
+      pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+pseudo:
+  directory: pseudo
+  files:
+  - Si.pbe-n-rrkjus_psl.1.0.0.UPF
+meta:
+  ulid: qe_si_bands_alt
+  title: 7 Si Bandstructure
+  subtitle: PBE band structure along L-Γ-X-U-Γ for Si with SSSP precision pseudos
+  description: 'Band structure calculation for silicon using DFT-PBE with SSSP precision pseudopotentials. Runs a 4-step workflow:
+    SCF, NSCF, bands.x k-path calculation, and bands.x post-processing.'
+  tags:
+  - bands
+  - Si
+  - PW
+  - tutorial
+  recommended_analysis: bands
+  difficulty: intermediate
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: band_structure
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 9.5
+  multi_engine: false
+  engines_used:
+  - qe
+  n_steps: 4
+  step_summary: SCF → NSCF → Bands → BandsPP
+  available_analysis:
+  - bands
+  - convergence
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qe
+  corpus_case_id: si_bands_alt
+  corpus_checksum: a2aaae00d5d2051ca0523f4673096a0716a2c272b90ccb3b55fc47089bd13468

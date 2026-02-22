@@ -1,0 +1,93 @@
+{
+  "converged": true,
+  "iterations": [
+    {
+      "iteration": 1,
+      "total_energy_ry": -1.98632393,
+      "scf_accuracy_ry": 0.00995808,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 2,
+      "total_energy_ry": -1.98637165,
+      "scf_accuracy_ry": 0.00072823,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 3,
+      "total_energy_ry": -1.98641348,
+      "scf_accuracy_ry": 6.84e-06,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 4,
+      "total_energy_ry": -1.98641559,
+      "scf_accuracy_ry": 3.2e-07,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 5,
+      "total_energy_ry": -1.98641555,
+      "scf_accuracy_ry": 8.5e-07,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 6,
+      "total_energy_ry": -1.98641563,
+      "scf_accuracy_ry": 1.3e-07,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 7,
+      "total_energy_ry": -1.98641563,
+      "scf_accuracy_ry": 3e-08,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 8,
+      "total_energy_ry": -1.98641564,
+      "scf_accuracy_ry": 2e-08,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 9,
+      "total_energy_ry": -1.98641564,
+      "scf_accuracy_ry": 8e-08,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    },
+    {
+      "iteration": 10,
+      "total_energy_ry": -1.98641564,
+      "scf_accuracy_ry": 1e-08,
+      "cpu_time_s": null,
+      "wall_time_s": null
+    }
+  ],
+  "total_energy_ry": -1.98641564,
+  "fermi_energy_ev": -7.4155,
+  "homo_ev": -7.4155,
+  "lumo_ev": null,
+  "band_gap_ev": null,
+  "n_electrons": 2.0,
+  "n_kpoints": 1,
+  "n_bands": 1,
+  "ecutwfc_ry": 30.0,
+  "ecutrho_ry": 120.0,
+  "calculation_type": null,
+  "total_cpu_time_s": 4.02,
+  "total_wall_time_s": 4.13,
+  "units": {
+    "energy": "Ry",
+    "fermi": "eV",
+    "time": "s"
+  }
+}

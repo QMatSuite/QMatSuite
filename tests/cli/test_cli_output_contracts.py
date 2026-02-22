@@ -14,6 +14,7 @@ from typer.testing import CliRunner
 from pathlib import Path
 
 from quantumvitas.cli.main import app
+from quantumvitas.core.resources import get_resources_dir
 from tests.utils.calculation_projects import create_calculation_project
 
 
@@ -31,7 +32,7 @@ def cli_si_dos_project(ci_test_data_dir: Path, project_root_path: Path) -> Path:
         calculation_id="si_dos",
         steps=steps,
         source_dir=ci_test_data_dir / "4_Si_DOS",
-        pseudo_src=project_root_path / "resources" / "pseudo",
+        pseudo_src=get_resources_dir() / "pseudo",
     )
 
 
@@ -59,4 +60,3 @@ class TestRunCalculationOutputContract:
         # Ensure "COMPLETED" is NOT in the output (legacy mapping should prevent this)
         assert "status: COMPLETED" not in result.output, \
             "CLI should output 'SUCCESS' not 'COMPLETED' for completed calculations"
-

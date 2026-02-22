@@ -1,0 +1,242 @@
+version: 1
+project:
+  meta:
+    ulid: 01KPPJKD2YXMB9Z04RGDVDJWN4
+    name: Silicon BSE Haydock (QE to Yambo BSE pipeline)
+    slug: silicon-bse-haydock-qe-to-yambo-bse-pipeline
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K3035GEZEAP8GZ6FNN7PAPHE
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7146790920196002
+        - 0.0
+        - 2.7146790920196002
+      - - 0.0
+        - 2.7146790920196002
+        - 2.7146790920196002
+      - - -2.7146790920196002
+        - 2.7146790920196002
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.839135989424798
+      b: 3.839135989424798
+      c: 3.839135989424798
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 40.01156051794264
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.25
+      - 0.25
+      - 0.25
+      properties: {}
+      label: Si
+      xyz:
+      - -1.3573395460098001
+      - 1.3573395460098001
+      - 1.3573395460098001
+calculations:
+- meta:
+    ulid: 01KNJ3XN0FBTC7AE2XKG76M05Y
+    name: Silicon BSE Haydock (QE to Yambo BSE pipeline)
+    slug: silicon-bse-haydock-qe-to-yambo-bse-pipeline
+    path: calculations/silicon-bse-haydock-qe-to-yambo-bse-pipeline
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: qe
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/silicon-bse-haydock-qe-to-yambo-bse-pipeline/steps/scf.step.yaml
+      kind: step
+      ulid: 01KTQR2J0HG1JAC7BG134Z9XNZ
+    parameters:
+      CONTROL:
+        calculation: scf
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 10.26
+        nat: 2
+        ntyp: 1
+        ecutwfc: 30.0
+      ELECTRONS:
+        conv_thr: 1.0e-10
+    step_type_spec: qe_scf
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '4'
+          - '4'
+          - '4'
+          - '0'
+          - '0'
+          - '0'
+  - meta:
+      name: nscf
+      slug: nscf
+      path: calculations/silicon-bse-haydock-qe-to-yambo-bse-pipeline/steps/nscf.step.yaml
+      kind: step
+      ulid: 01KHC6CX20JR9SJ96Y4PPM1NJ8
+    parameters:
+      CONTROL:
+        calculation: nscf
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 10.26
+        nat: 2
+        ntyp: 1
+        ecutwfc: 30.0
+        nbnd: 30
+        nosym: true
+        noinv: true
+      ELECTRONS:
+        conv_thr: 1.0e-10
+    step_type_spec: qe_nscf
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '4'
+          - '4'
+          - '4'
+          - '0'
+          - '0'
+          - '0'
+  - meta:
+      name: setup
+      slug: setup
+      path: calculations/silicon-bse-haydock-qe-to-yambo-bse-pipeline/steps/setup.step.yaml
+      kind: step
+      ulid: 01KZ6AFK27GGPJFKTPAJAZY9KA
+    parameters: {}
+    step_type_spec: yambo_setup
+  - meta:
+      name: bse
+      slug: bse
+      path: calculations/silicon-bse-haydock-qe-to-yambo-bse-pipeline/steps/bse.step.yaml
+      kind: step
+      ulid: 01KDYC5S5NVEG96TVMMCG0PQSF
+    parameters:
+      Chimod: HARTREE
+      BSEmod: resonant
+      BSSmod: h
+      BSKmod: HARTREE
+      BndsRnXs:
+      - 1
+      - 8
+      NGsBlkXs:
+        value: 1
+        unit: RL
+      BSENGexx:
+        value: 51
+        unit: RL
+      BSENGBlk:
+        value: 1
+        unit: RL
+      BSEBands:
+      - 3
+      - 6
+      BEnRange:
+      - 0.0
+      - 10.0
+      - eV
+      BDmRange:
+      - 0.1
+      - 0.1
+      - eV
+      BEnSteps: 200
+      LongDrXs:
+      - 1.0
+      - 0.0
+      - 0.0
+      BSSProp: abs
+      BSSHayTrs: -0.02
+      runlevels:
+      - optics
+      - bss
+      - bse
+      - em1s
+      - dipoles
+    step_type_spec: yambo_bse
+  structure_ulid: 01K3035GEZEAP8GZ6FNN7PAPHE
+  species_map:
+    Si:
+      pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+pseudo:
+  directory: pseudo
+  files:
+  - Si.pbe-n-rrkjus_psl.1.0.0.UPF
+meta:
+  ulid: qe_si_yambo_bse
+  title: Silicon BSE Haydock (QE to Yambo BSE pipeline)
+  subtitle: Si optical absorption via Bethe-Salpeter equation using QE-to-Yambo pipeline
+  description: Silicon optical absorption spectrum via Bethe-Salpeter equation using the QE→Yambo pipeline, with SEX kernel
+    and Haydock iterative solver for excitonic effects in the optical response.
+  tags:
+  - yambo
+  - composite
+  - Si
+  - bse
+  - optics
+  recommended_analysis: energy
+  difficulty: advanced
+  system_class: crystal
+  periodicity: periodic
+  method: bse-gw
+  property_of_interest: absorption
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 44.4
+  multi_engine: true
+  engines_used:
+  - qe
+  - yambo
+  n_steps: 4
+  step_summary: SCF → NSCF → Yambo setup → BSE
+  available_analysis:
+  - convergence
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qe
+  corpus_case_id: si_yambo_bse
+  corpus_checksum: f25064a4d956cb0a5ffbfa621e6bd2e66b99090fa65e4b373f73e3df99d924f0

@@ -44,27 +44,47 @@ __all__ = [
     "build_structure_vis_payload",  # Pure transformation: Structure -> visualization payload
 ]
 
-import matplotlib
-matplotlib.use("Agg")  # Headless-safe backend
-
 import numpy as np
+from functools import lru_cache
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Set, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 from itertools import product
 import logging
 import os
 from collections import defaultdict
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from pymatgen.core import Structure as PMGStructure
-from pymatgen.core.periodic_table import Element
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure
+    from mpl_toolkits.mplot3d import Axes3D
+    from pymatgen.core import Structure as PMGStructure
+else:
+    Figure = Any
+    Axes3D = Any
+    PMGStructure = Any
 
 from quantumvitas.analysis.atomic_radii import get_radii_map, get_element_radius as get_radii_element_radius
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _get_matplotlib_modules():
+    """Lazy-load matplotlib and configure the headless backend once."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    return matplotlib, plt
+
+
+@lru_cache(maxsize=1)
+def _get_spacegroup_analyzer_cls():
+    """Lazy-load pymatgen symmetry analyzer."""
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer as _SpacegroupAnalyzer
+
+    return _SpacegroupAnalyzer
 
 
 # =============================================================================
@@ -1108,7 +1128,8 @@ def get_conventional_cell(
         ValueError: If symmetry analysis fails
     """
     try:
-        analyzer = SpacegroupAnalyzer(structure)
+        analyzer_cls = _get_spacegroup_analyzer_cls()
+        analyzer = analyzer_cls(structure)
         conventional = analyzer.get_conventional_standard_structure()
         return conventional
     except Exception as e:
@@ -1583,7 +1604,7 @@ def plot_structure_3d(
     options: Optional[StructurePlotOptions] = None,
     ax: Optional[Axes3D] = None,
     structure_canon: Optional[PMGStructure] = None,
-) -> Tuple[plt.Figure, Axes3D]:
+) -> Tuple[Figure, Axes3D]:
     """
     Create a 3D ball-and-stick plot of a crystal structure.
     
@@ -1607,6 +1628,8 @@ def plot_structure_3d(
     # Normalize supercell and create supercell if requested
     supercell_scaling = _normalize_supercell(options.supercell)
     plot_structure = make_supercell(structure_canon, supercell_scaling)
+
+    _, plt = _get_matplotlib_modules()
     
     # Create figure if needed
     if ax is None:
@@ -1887,9 +1910,9 @@ def visualize_structure(
         result.output_path = output_path
     
     # Show if requested
+    matplotlib, plt = _get_matplotlib_modules()
     if show:
         try:
-            import matplotlib
             if matplotlib.get_backend().lower() != 'agg':
                 plt.show()
             else:

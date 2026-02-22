@@ -1,0 +1,32 @@
+Interatomic Potential Attribution
+=================================
+
+This directory contains interatomic potential files for LAMMPS demos.
+All files are redistributable under their respective licenses.
+
+Cu_u3.eam — Copper EAM potential
+---------------------------------
+File: Cu_u3.eam
+Format: LAMMPS EAM (setfl)
+Source: NIST Interatomic Potentials Repository
+URL: https://www.ctcms.nist.gov/potentials/
+Citation: S.M. Foiles, M.I. Baskes, and M.S. Daw, "Embedded-atom-method
+  functions for the fcc metals Cu, Ag, Au, Ni, Pd, Pt, and their alloys",
+  Phys. Rev. B 33, 7983 (1986). DOI: 10.1103/PhysRevB.33.7983
+Contributor: Stephen Foiles (foiles@sandia.gov), 2007-06-11
+License: Public domain (NIST)
+
+SiC.tersoff — Silicon Carbide Tersoff potential
+------------------------------------------------
+File: SiC.tersoff
+Format: LAMMPS Tersoff
+Source: LAMMPS distribution (potentials directory)
+URL: https://github.com/lammps/lammps/tree/develop/potentials
+Citation: J. Tersoff, "New empirical approach for the structure and energy
+  of covalent systems", Phys. Rev. B 37, 6991 (1988).
+  DOI: 10.1103/PhysRevB.37.6991
+Contributor: Aidan Thompson (athomps@sandia.gov), 2007-10-25
+License: GPL-2.0 (part of LAMMPS distribution)
+
+No modifications have been made to any potential files.
+All files are used as distributed by their original sources.

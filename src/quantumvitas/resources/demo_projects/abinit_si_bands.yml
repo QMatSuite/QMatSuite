@@ -1,0 +1,167 @@
+version: 1
+project:
+  meta:
+    ulid: 01KPD4MSC4TYYG8QQRTZ3C36YV
+    name: Silicon band structure
+    slug: silicon-band-structure
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KQQ74BTEP350STKWZQB6FZ4K
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 0.0
+        - 2.7155021579921947
+        - 2.7155021579921947
+      - - 2.7155021579921947
+        - 0.0
+        - 2.7155021579921947
+      - - 2.7155021579921947
+        - 2.7155021579921947
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8402999804859688
+      b: 3.8402999804859688
+      c: 3.8402999804859688
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 40.0479649752589
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.25
+      - 0.25
+      - 0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3577510789960974
+      - 1.3577510789960974
+      - 1.3577510789960974
+calculations:
+- meta:
+    ulid: 01K0X0JM0G9Q9B4YE6Y8XXCK4E
+    name: Silicon band structure
+    slug: silicon-band-structure
+    path: calculations/silicon-band-structure
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: abinit
+  steps:
+  - meta:
+      name: nscf
+      slug: nscf
+      path: calculations/silicon-band-structure/steps/nscf.step.yaml
+      kind: step
+      ulid: 01KS1P22N2RFJP9K5WMNSHT847
+    parameters:
+      ndtset: 2
+      ecut: 10
+      nstep: 30
+      chksymbreak: 0
+      toldfe1: 1.0e-08
+      ngkpt1:
+      - 4
+      - 4
+      - 4
+      nshiftk1: 1
+      shiftk1:
+      - 0.5
+      - 0.5
+      - 0.5
+      prtden1: 1
+      iscf2: -2
+      getden2: 1
+      tolwfr2: 1.0e-12
+      nband2: 8
+      kptopt2: -4
+      ndivk2:
+      - 10
+      - 10
+      - 10
+      - 10
+      kptbounds2:
+      - 0.5
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.5
+      - 0.5
+      - 0.375
+      - 0.375
+      - 0.75
+      - 0.0
+      - 0.0
+      - 0.0
+      pp_dirpath: ./pseudos
+      pseudos: Si.psp8
+      znucl:
+        Si: 14
+    step_type_spec: abinit_nscf
+  structure_ulid: 01KQQ74BTEP350STKWZQB6FZ4K
+meta:
+  ulid: abinit_si_bands
+  title: Silicon band structure
+  subtitle: Two-dataset Si band structure along L-Γ-X-K-Γ path with LDA pseudopotentials
+  description: 'Two-dataset calculation for silicon band structure: SCF on uniform grid followed by NSCF along L-Gamma-X-K-Gamma
+    high-symmetry path.'
+  tags:
+  - bands
+  - multi_dataset
+  recommended_analysis: scf
+  difficulty: intermediate
+  system_class: crystal
+  periodicity: periodic
+  method: dft-lda
+  property_of_interest: band_structure
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 2.3
+  multi_engine: false
+  engines_used:
+  - abinit
+  n_steps: 2
+  step_summary: SCF → Bands
+  available_analysis:
+  - bands
+  - convergence
+  asset_policy: redistributable
+  required_engine: abinit
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: abinit
+  corpus_case_id: si_bands
+  corpus_checksum: ff926638fd4cbcd405ddf45250056c4a1d04c15f8208efa58d1b6d4a74b26589

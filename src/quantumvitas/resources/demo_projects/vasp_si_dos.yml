@@ -1,0 +1,140 @@
+version: 1
+project:
+  meta:
+    ulid: 01KVS2F5RW3BWXD66AP4SGBJYZ
+    name: Silicon diamond density of states
+    slug: silicon-diamond-density-of-states
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KJZAJHQ7JXTS29H6TBS1PH3Y
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 5.4309
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 5.4309
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 5.4309
+      pbc:
+      - true
+      - true
+      - true
+      a: 5.4309
+      b: 5.4309
+      c: 5.4309
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 160.18262942562907
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.25
+      - 0.25
+      - 0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.357725
+      - 1.357725
+      - 1.357725
+calculations:
+- meta:
+    ulid: 01KRRYKC5RPEV9N90VKGRYG6FM
+    name: Silicon diamond density of states
+    slug: silicon-diamond-density-of-states
+    path: calculations/silicon-diamond-density-of-states
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: vasp
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/silicon-diamond-density-of-states/steps/scf.step.yaml
+      kind: step
+      ulid: 01KY3T34YRM40JQ7NM5PP8QW12
+    parameters: {}
+    step_type_spec: vasp_scf
+  - meta:
+      name: dos
+      slug: dos
+      path: calculations/silicon-diamond-density-of-states/steps/dos.step.yaml
+      kind: step
+      ulid: 01KM28V8QG5C3GWYHPRFGQ38GT
+    parameters: {}
+    step_type_spec: vasp_dos
+  structure_ulid: 01KJZAJHQ7JXTS29H6TBS1PH3Y
+  species_map:
+    Si:
+      mass: 28.086
+      pseudo: Si
+      pseudopot: Si
+      pseudo_basename: Si
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+meta:
+  ulid: vasp_si_dos
+  title: Silicon diamond density of states
+  subtitle: Si total and projected DOS via SCF then tetrahedron-method NSCF on dense k-mesh
+  description: Density of states for bulk silicon computed with ICHARG=11, LORBIT=11, and the tetrahedron method (ISMEAR=-5)
+    on a dense 8x8x8 k-mesh.
+  tags:
+  - scf
+  - dos
+  - nscf
+  recommended_analysis: dos
+  difficulty: intermediate
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: dos
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 2.7
+  multi_engine: false
+  engines_used:
+  - vasp
+  n_steps: 2
+  step_summary: SCF → DOS
+  available_analysis:
+  - convergence
+  - dos
+  - field3d
+  asset_policy: proprietary
+  required_engine: vasp
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: vasp
+  corpus_case_id: si_dos
+  corpus_checksum: 0e4c11115fd26cc78a4a33612cad87c3c10373c8054900df259b77c36f470618

@@ -429,34 +429,15 @@ def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
             
             # Try multiple locations for pseudo files
             project_pseudo_dir = project_root / "pseudo"
-            
-            # Try to find resources/pseudo directory
-            # Method 1: Try to find repo root and check resources/pseudo
-            repo_root = project_root
             resources_pseudo_dir = None
-            while repo_root != repo_root.parent:
-                candidate_resources = repo_root / "resources" / "pseudo"
+            try:
+                from quantumvitas.core.resources import get_resources_dir
+
+                candidate_resources = get_resources_dir() / "pseudo"
                 if candidate_resources.exists():
                     resources_pseudo_dir = candidate_resources
-                    break
-                # Check for repo markers
-                if (repo_root / "pyproject.toml").exists() or (repo_root / "project.qv.yml").exists():
-                    candidate_resources = repo_root / "resources" / "pseudo"
-                    if candidate_resources.exists():
-                        resources_pseudo_dir = candidate_resources
-                    break
-                repo_root = repo_root.parent
-            
-            # Method 2: Try using get_resources_dir if available
-            if not resources_pseudo_dir:
-                try:
-                    from quantumvitas.core.resources import get_resources_dir
-                    resources_base = get_resources_dir()
-                    candidate_resources = resources_base / "pseudo"
-                    if candidate_resources.exists():
-                        resources_pseudo_dir = candidate_resources
-                except (ImportError, AttributeError):
-                    pass
+            except (ImportError, AttributeError):
+                pass
             
             for element, entry in calc_species_map.items():
                 if not isinstance(entry, dict):
@@ -868,4 +849,3 @@ def materialize_project_from_snapshot(
         # Pseudo materialization happens at run time via the runner.
     
     return project_dir
-

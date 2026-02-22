@@ -1,0 +1,126 @@
+version: 1
+project:
+  meta:
+    ulid: 01KKFWN6SVXP92WBNV6H36KNTK
+    name: He atom VMC with STO basis
+    slug: he-atom-vmc-with-sto-basis
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K1BA7CESBBMSSRS6WYD871B5
+    name: He
+    slug: he
+    path: structures/he.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: He
+      species:
+      - element: He
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: He
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KJZCCJ8T4T2WHBXBQKPRA154
+    name: He atom VMC with STO basis
+    slug: he-atom-vmc-with-sto-basis
+    path: calculations/he-atom-vmc-with-sto-basis
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: qmcpack
+  steps:
+  - meta:
+      name: vmc
+      slug: vmc
+      path: calculations/he-atom-vmc-with-sto-basis/steps/vmc.step.yaml
+      kind: step
+      ulid: 01KKAYSF7S32H3E9WJJ25AX567
+    parameters:
+      qmc_project_id: He
+      series: '0'
+      driver_version: batch
+      electrons:
+        u: 1
+        d: 1
+      _wavefunction_xml: "<wavefunction name=\"psi0\" target=\"e\">\n   <jastrow name=\"Jee\" type=\"Two-Body\" function=\"\
+        pade\">\n      <correlation speciesA=\"u\" speciesB=\"d\">\n        <var id=\"jud_b\" name=\"B\">0.821683</var>\n\
+        \      </correlation>\n    </jastrow>\n    <determinantset type=\"MO\" key=\"STO\" transform=\"no\" source=\"ion0\"\
+        >\n      <basisset>\n        <atomicBasisSet type=\"STO\" elementType=\"He\">\n          <basisGroup rid=\"R0\" n=\"\
+        1\" l=\"0\" m=\"0\" type=\"Slater\">\n             <radfunc exponent=\"2.0\" />\n          </basisGroup>\n       \
+        \ </atomicBasisSet>\n      </basisset>\n      <slaterdeterminant>\n        <determinant id=\"updet\" spin=\"1\" size=\"\
+        1\" />\n        <determinant id=\"downdet\" spin=\"-1\" size=\"1\" />\n      </slaterdeterminant>\n    </determinantset>\n\
+        \  </wavefunction>\n  "
+      wavefunction:
+        name: psi0
+        target: e
+        determinantset:
+          type: MO
+          key: STO
+          source: ion0
+          transform: 'no'
+        jastrow:
+        - name: Jee
+          type: Two-Body
+          function: pade
+      _hamiltonian_xml: "<hamiltonian name=\"h0\" type=\"generic\" target=\"e\">\n    <pairpot name=\"ElecElec\" type=\"coulomb\"\
+        \ source=\"e\" target=\"e\" />\n    <pairpot name=\"Coulomb\" type=\"coulomb\" source=\"ion0\" target=\"e\" />\n \
+        \ </hamiltonian>\n  "
+      hamiltonian:
+        name: h0
+        pairpots:
+        - name: ElecElec
+          type: coulomb
+        - name: Coulomb
+          type: coulomb
+      qmc:
+      - method: vmc
+        target: e
+        blocks: '100'
+        steps: '50'
+        warmupsteps: '50'
+        timestep: '0.1'
+    step_type_spec: qmcpack_vmc
+  structure_ulid: 01K1BA7CESBBMSSRS6WYD871B5
+meta:
+  ulid: qmcpack_he_vmc
+  title: He atom VMC with STO basis
+  subtitle: Simplest QMC example -- He atom VMC with STO basis and Pade Jastrow, no external assets
+  description: 'Simplest QMCPACK case: He atom VMC with STO basis and Pade Jastrow. No external assets.'
+  tags:
+  - vmc
+  - all-electron
+  - atom
+  recommended_analysis: energy
+  difficulty: advanced
+  system_class: molecule
+  periodicity: molecular
+  method: vmc-hf
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 0.7
+  multi_engine: false
+  engines_used:
+  - qmcpack
+  n_steps: 1
+  step_summary: VMC
+  available_analysis:
+  - convergence
+  required_engine: qmcpack
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qmcpack
+  corpus_case_id: he_vmc_sto
+  corpus_checksum: 223c54d69a259cc706aed1722a0a950b51981bc7e8986c131a46571536fe3da4

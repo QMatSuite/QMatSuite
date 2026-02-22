@@ -1,0 +1,17 @@
+{
+  "demo_slug": "vasp_fe_magnetic",
+  "engine": "vasp",
+  "generated_at": "2026-02-21T01:54:20.712443+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "112c60eecf7fc3cd4579dbfee8a2d8d0f71da8bbde014e309060ce9823d95246"
+    },
+    "field3d": {
+      "file": "field3d.json",
+      "sha256": "681002e602ed0d332d74364fc1d989a9cd27b80ddfe96c6bbe7b34907ecfce57"
+    }
+  }
+}

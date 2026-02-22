@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from quantumvitas.core.pseudo_libinfo import load_pseudo_libinfo_bundle
+from quantumvitas.core.resources import get_resources_dir
 
 
 def test_load_pseudo_libinfo_bundle() -> None:
@@ -21,11 +22,7 @@ def test_load_pseudo_libinfo_bundle() -> None:
     2. bundle.index["schema_version"] exists
     3. Computed manifest sha matches (implicitly by loader not raising)
     """
-    # Find repo root
-    repo_root = Path(__file__).parent.parent.parent
-    
-    # Load bundle
-    bundle = load_pseudo_libinfo_bundle(repo_root=repo_root)
+    bundle = load_pseudo_libinfo_bundle()
     
     # Verify bundle structure
     assert bundle.tag is not None
@@ -35,7 +32,7 @@ def test_load_pseudo_libinfo_bundle() -> None:
     assert isinstance(bundle.sha256sums, dict)
     
     # Verify tag matches CURRENT file
-    current_file = repo_root / "resources" / "pseudo_libinfo" / "CURRENT"
+    current_file = get_resources_dir() / "pseudo_libinfo" / "CURRENT"
     if current_file.exists():
         current_tag = current_file.read_text(encoding="utf-8").strip()
         assert bundle.tag == current_tag, f"Bundle tag {bundle.tag} should match CURRENT {current_tag}"
@@ -60,10 +57,8 @@ def test_load_pseudo_libinfo_bundle() -> None:
 
 def test_load_pseudo_libinfo_bundle_caching() -> None:
     """Test that load_pseudo_libinfo_bundle() is cached (returns same object)."""
-    repo_root = Path(__file__).parent.parent.parent
-    
-    bundle1 = load_pseudo_libinfo_bundle(repo_root=repo_root)
-    bundle2 = load_pseudo_libinfo_bundle(repo_root=repo_root)
+    bundle1 = load_pseudo_libinfo_bundle()
+    bundle2 = load_pseudo_libinfo_bundle()
     
     # Should return same object due to lru_cache
     assert bundle1 is bundle2
@@ -90,8 +85,7 @@ def test_load_pseudo_libinfo_bundle_missing_bundle_raises() -> None:
 
 def test_load_pseudo_libinfo_bundle_validates_sha_family() -> None:
     """Test that bundle loader validates sha_family presence in index entries."""
-    repo_root = Path(__file__).parent.parent.parent
-    bundle = load_pseudo_libinfo_bundle(repo_root=repo_root)
+    bundle = load_pseudo_libinfo_bundle()
     
     # Verify all files have sha_family
     files = bundle.index.get("files", [])
@@ -109,8 +103,7 @@ def test_load_pseudo_libinfo_bundle_validates_sha_family() -> None:
 
 def test_load_pseudo_libinfo_bundle_validates_sha_family() -> None:
     """Test that bundle loader validates sha_family presence in index entries."""
-    repo_root = Path(__file__).parent.parent.parent
-    bundle = load_pseudo_libinfo_bundle(repo_root=repo_root)
+    bundle = load_pseudo_libinfo_bundle()
     
     # Verify all files have sha_family
     files = bundle.index.get("files", [])
@@ -124,4 +117,3 @@ def test_load_pseudo_libinfo_bundle_validates_sha_family() -> None:
         # Verify no legacy sha_token fields
         assert "sha_token" not in file_entry, "File entry must not contain legacy sha_token"
         assert "pseudo_sha_token" not in file_entry, "File entry must not contain legacy pseudo_sha_token"
-

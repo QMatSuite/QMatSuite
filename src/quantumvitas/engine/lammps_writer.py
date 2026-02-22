@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 def get_template_dir() -> Path:
     """Get LAMMPS template directory."""
-    import quantumvitas
-    pkg_path = Path(quantumvitas.__file__).parent.parent.parent  # Go up to repo root
-    return pkg_path / "resources" / "calculation_templates" / "lammps"
+    from quantumvitas.core.public import get_resources_dir
+
+    return get_resources_dir() / "calculation_templates" / "lammps"
 
 
 def render_lammps_template(
@@ -153,4 +153,3 @@ def build_template_context(
     context["restart_frequency"] = params.get("restart_frequency", 10000)
     
     return context
-

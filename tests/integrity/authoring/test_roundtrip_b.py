@@ -21,8 +21,9 @@ from quantumvitas.demo_store.roundtrip import (
     categorize_diff,
     verify_roundtrip_equivalence,
 )
+from quantumvitas.core.resources import get_resources_dir
 
-DEMO_DIR = Path(__file__).resolve().parents[3] / "resources" / "demo_projects"
+DEMO_DIR = get_resources_dir() / "demo_projects"
 
 
 def _load_demo(path: Path) -> dict:

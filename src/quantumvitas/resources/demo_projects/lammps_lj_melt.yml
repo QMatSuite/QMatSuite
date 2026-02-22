@@ -1,0 +1,169 @@
+version: 1
+project:
+  meta:
+    ulid: 01KABBH37QCMWRV0EW4DY2D5RX
+    name: 3D LJ melt NVE
+    slug: 3d-lj-melt-nve
+    path: .
+    kind: project
+  settings: {}
+structures: []
+calculations:
+- meta:
+    ulid: 01KZ1SXPKZTCRS1VKSQQ5FZD0S
+    name: 3D LJ melt NVE
+    slug: 3d-lj-melt-nve
+    path: calculations/3d-lj-melt-nve
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: lammps
+  steps:
+  - meta:
+      name: md
+      slug: md
+      path: calculations/3d-lj-melt-nve/steps/md.step.yaml
+      kind: step
+      ulid: 01K3TF1GKD73AHYQ90ZNCVJC75
+    parameters:
+      units: lj
+      atom_style: atomic
+      lattice: fcc 0.8442
+      velocity: all create 3.0 87287 loop geom
+      pair_style: lj/cut 2.5
+      neighbor: 0.3 bin
+      neigh_modify: every 20 delay 0 check no
+      thermo: 50
+      run: 250
+      pair_coeff:
+      - 1 1 1.0 1.0 2.5
+      masses:
+      - 1 1.0
+      fixes:
+      - fix_id: '1'
+        group: all
+        style: nve
+        args: ''
+      _commands:
+      - cmd: units
+        args:
+        - lj
+      - cmd: atom_style
+        args:
+        - atomic
+      - cmd: lattice
+        args:
+        - fcc
+        - '0.8442'
+      - cmd: region
+        args:
+        - box
+        - block
+        - '0'
+        - '10'
+        - '0'
+        - '10'
+        - '0'
+        - '10'
+      - cmd: create_box
+        args:
+        - '1'
+        - box
+      - cmd: create_atoms
+        args:
+        - '1'
+        - box
+      - cmd: mass
+        args:
+        - '1'
+        - '1.0'
+      - cmd: velocity
+        args:
+        - all
+        - create
+        - '3.0'
+        - '87287'
+        - loop
+        - geom
+      - cmd: pair_style
+        args:
+        - lj/cut
+        - '2.5'
+      - cmd: pair_coeff
+        args:
+        - '1'
+        - '1'
+        - '1.0'
+        - '1.0'
+        - '2.5'
+      - cmd: neighbor
+        args:
+        - '0.3'
+        - bin
+      - cmd: neigh_modify
+        args:
+        - every
+        - '20'
+        - delay
+        - '0'
+        - check
+        - 'no'
+      - cmd: fix
+        args:
+        - '1'
+        - all
+        - nve
+      - cmd: dump
+        args:
+        - '1'
+        - all
+        - custom
+        - '50'
+        - dump.lammpstrj
+        - id
+        - type
+        - x
+        - y
+        - z
+        - vx
+        - vy
+        - vz
+      - cmd: thermo
+        args:
+        - '50'
+      - cmd: run
+        args:
+        - '250'
+      _variables: {}
+      _includes: []
+    step_type_spec: lammps_md
+meta:
+  ulid: lammps_lj_melt
+  title: 3D LJ melt NVE
+  subtitle: Argon-like LJ fluid NVE dynamics on a lattice-created FCC box (250 steps)
+  description: NVE molecular dynamics of a 3-D Lennard-Jones fluid (argon-like, lattice-created FCC box) running 250 timesteps
+    to sample a molten state.
+  tags:
+  - md
+  - nve
+  recommended_analysis: trajectory
+  difficulty: intermediate
+  system_class: fluid
+  periodicity: periodic
+  method: lj
+  property_of_interest: trajectory
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 0.7
+  multi_engine: false
+  engines_used:
+  - lammps
+  n_steps: 1
+  step_summary: NVE MD
+  available_analysis:
+  - trajectory
+  required_engine: lammps
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: lammps
+  corpus_case_id: melt_lj_nve
+  corpus_checksum: 8e543b954ed649ff11abb9e159876bbdd61a3404c58ff1b6b144bc7241c353d5

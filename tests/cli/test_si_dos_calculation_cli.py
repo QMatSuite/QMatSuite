@@ -8,6 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from quantumvitas.cli.main import app as cli_app
+from quantumvitas.core.resources import get_resources_dir
 from tests.utils.calculation_projects import create_calculation_project
 
 pytestmark = pytest.mark.qe_cli
@@ -31,7 +32,7 @@ def cli_si_dos_project(ci_test_data_dir: Path, project_root_path: Path, tmp_path
         calculation_id="si_dos",
         steps=steps,
         source_dir=ci_test_data_dir / "4_Si_DOS",
-        pseudo_src=project_root_path / "resources" / "pseudo",
+        pseudo_src=get_resources_dir() / "pseudo",
     )
 
 
@@ -47,4 +48,3 @@ def test_cli_run_calculation(cli_si_dos_project: Path):
     assert "step_type_spec: qe_scf" in result.output
     assert "step_type_spec: qe_nscf" in result.output
     assert "step_type_spec: qe_dos" in result.output
-

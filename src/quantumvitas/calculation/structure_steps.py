@@ -3,10 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, Union
-
 from typing import TYPE_CHECKING
-
-from pymatgen.core import Structure as PMGStructure, Molecule as PMGMolecule
 
 from quantumvitas.core.public import ResourceMeta, ensure_relative_path, meta_from_name
 from quantumvitas.io import QEInputGenerator, read_structure
@@ -23,6 +20,7 @@ from quantumvitas.calculation.input_runner import (
 )
 
 if TYPE_CHECKING:
+    from pymatgen.core import Structure as PMGStructure, Molecule as PMGMolecule
     from quantumvitas.project.model import Project
 
 
@@ -1692,13 +1690,9 @@ def _stage_companion_resources(
         return
 
     prp = Path(project_root).resolve()
-    # Search candidate directories for the pseudo files.
-    # Include the repo resources/pseudo/ dir (found via the package install path)
-    # so that companion-engine pseudos (e.g., BFD XMLs) that are not in the
-    # project pseudo/ dir can still be located.
+    # Search candidate directories for pseudo files.
     candidate_dirs = [
-        prp / "pseudo",              # project pseudo dir (demo runtime)
-        prp / "resources" / "pseudo", # repo resources dir (development)
+        prp / "pseudo",  # project pseudo dir (demo runtime)
     ]
     try:
         from quantumvitas.core.public import get_resources_dir
@@ -1744,7 +1738,6 @@ def _inject_species_zval(
     if project_root:
         prp = Path(project_root).resolve()
         candidate_dirs.append(prp / "pseudo")
-        candidate_dirs.append(prp / "resources" / "pseudo")
     try:
         from quantumvitas.core.public import get_resources_dir
         repo_pseudo = get_resources_dir() / "pseudo"

@@ -13,8 +13,9 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).parent.parent.parent
-DEMO_DIR = REPO_ROOT / "resources" / "demo_projects"
+from quantumvitas.core.resources import get_resources_dir
+
+DEMO_DIR = get_resources_dir() / "demo_projects"
 MANIFEST_PATH = DEMO_DIR / ".generator_manifest.json"
 
 

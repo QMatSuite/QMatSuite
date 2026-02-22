@@ -16,7 +16,9 @@ import json
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
+
+from quantumvitas.core.resources import get_resources_dir
 
 
 @dataclass
@@ -28,22 +30,6 @@ class PseudoLibInfoBundle:
     index: dict
     manifest: dict
     sha256sums: Dict[str, str]  # filename -> sha256
-
-
-def _find_repo_root() -> Optional[Path]:
-    """
-    Find the quantumvitas root directory (containing src/quantumvitas and pyproject.toml).
-    
-    This is only used to locate installed codebase resources, not user project roots.
-    
-    Returns None if not found.
-    """
-    current = Path(__file__).parent
-    while current != current.parent:
-        if (current / "pyproject.toml").exists() and (current / "src" / "quantumvitas").exists():
-            return current
-        current = current.parent
-    return None
 
 
 def _compute_sha256(file_path: Path) -> str:
@@ -142,16 +128,19 @@ def load_pseudo_libinfo_bundle(repo_root: Path | None = None) -> PseudoLibInfoBu
     Raises:
         RuntimeError: If bundle cannot be found, files are missing, or checksums don't match
     """
-    if repo_root is None:
-        repo_root = _find_repo_root()
-        if repo_root is None:
-            raise RuntimeError(
-                "Could not find repository root. "
-                "Cannot locate resources/pseudo_libinfo/ bundle."
-            )
-    
-    repo_root = Path(repo_root)
-    pseudo_libinfo_root = repo_root / "resources" / "pseudo_libinfo"
+    if repo_root is not None:
+        root = Path(repo_root)
+        candidates = [
+            root / "resources" / "pseudo_libinfo",
+            root / "src" / "quantumvitas" / "resources" / "pseudo_libinfo",
+            root / "pseudo_libinfo",
+        ]
+        pseudo_libinfo_root = next(
+            (candidate for candidate in candidates if candidate.exists()),
+            candidates[0],
+        )
+    else:
+        pseudo_libinfo_root = get_resources_dir() / "pseudo_libinfo"
     
     if not pseudo_libinfo_root.exists():
         raise RuntimeError(
@@ -321,4 +310,3 @@ def load_pseudo_libinfo_bundle(repo_root: Path | None = None) -> PseudoLibInfoBu
         manifest=manifest_data,
         sha256sums=sha256sums,
     )
-

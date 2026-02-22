@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional
 
-from pymatgen.core import Lattice
-from pymatgen.core import Structure as PMGStructure
+if TYPE_CHECKING:
+    from pymatgen.core import Lattice
+    from pymatgen.core import Structure as PMGStructure
 
 from quantumvitas.drivers.qe.io.model import QECard, QECardType, QEInput
 
@@ -74,6 +75,8 @@ def structure_from_qe_input(qe_input: QEInput) -> PMGStructure:
                 raise ValueError("ATOMIC_POSITIONS alat specified but a is undefined.")
             scale_factor = alat_ang
         coords = [[scale_factor * value for value in row] for row in coords]
+
+    from pymatgen.core import Structure as PMGStructure
 
     structure = PMGStructure(
         lattice,
@@ -146,6 +149,8 @@ def _lattice_from_cell_card(
     elif option not in {"angstrom", ""}:
         raise ValueError(f"Unsupported CELL_PARAMETERS unit '{option}'")
 
+    from pymatgen.core import Lattice
+
     return Lattice(data)
 
 
@@ -156,6 +161,8 @@ def _lattice_from_ibrav(system: Dict[str, Any]) -> Lattice:
 
     params = _extract_ibrav_parameters(system)
     vectors = _ibrav_vectors(ibrav, params)
+    from pymatgen.core import Lattice
+
     return Lattice(vectors)
 
 
@@ -365,4 +372,3 @@ def _ibrav_vectors(ibrav: int, params: Dict[str, float]) -> List[List[float]]:
         ) ** 0.5 / sin_gamma
         return [v1, v2, vec(v3x, v3y, v3z)]
     raise ValueError(f"ibrav {ibrav} is not supported.")
-

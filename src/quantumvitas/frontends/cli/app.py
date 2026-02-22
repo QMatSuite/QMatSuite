@@ -18,7 +18,6 @@ from typing import Any, Dict, List, Optional, Sequence, TYPE_CHECKING
 import yaml
 
 import typer
-from pymatgen.core import Structure as PMGStructure
 
 # TODO: All core/calculation/analysis/io imports must be removed
 # These should be accessed through QVService API
@@ -4780,4 +4779,3 @@ def _execute_step_spec(
 
 if __name__ == "__main__":
     main()
-

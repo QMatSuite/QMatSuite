@@ -1,0 +1,21 @@
+{
+  "energy": -75.98503445,
+  "energy_unit": "Hartree",
+  "converged": true,
+  "n_electrons": 10,
+  "n_atoms": 3,
+  "method": "rhf",
+  "basis": "6-31g",
+  "homo_index": 4,
+  "lumo_index": 5,
+  "homo_energy": -0.497,
+  "lumo_energy": 0.211,
+  "gap": 0.708,
+  "gap_ev": 19.27,
+  "dipole_moment": [
+    0.0,
+    0.0,
+    0.78
+  ],
+  "dipole_moment_unit": "Debye"
+}

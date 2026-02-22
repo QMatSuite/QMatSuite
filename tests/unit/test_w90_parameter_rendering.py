@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import pytest
 
+from quantumvitas.core.resources import get_resources_dir
+
 
 class TestW90ParameterStructure:
     """Test that W90 step parameters are correctly structured."""
@@ -24,7 +26,7 @@ class TestW90ParameterStructure:
         """Verify diamond demo w90_wannier step has flat parameters."""
         import yaml
 
-        demo_file = project_root_path / "resources" / "demo_projects" / "qe_diamond_wannier.yml"
+        demo_file = get_resources_dir() / "demo_projects" / "qe_diamond_wannier.yml"
         if not demo_file.exists():
             pytest.skip("Diamond Wannier demo not found")
 
@@ -56,7 +58,7 @@ class TestW90ParameterStructure:
         """Verify diamond demo wannier_plot is a boolean, not iterated as string."""
         import yaml
 
-        demo_file = project_root_path / "resources" / "demo_projects" / "qe_diamond_wannier.yml"
+        demo_file = get_resources_dir() / "demo_projects" / "qe_diamond_wannier.yml"
         if not demo_file.exists():
             pytest.skip("Diamond Wannier demo not found")
 
@@ -161,4 +163,3 @@ class TestParameterIterationSafety:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

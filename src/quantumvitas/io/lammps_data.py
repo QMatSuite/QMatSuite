@@ -7,10 +7,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
-from pymatgen.core import Structure, Molecule
+
+if TYPE_CHECKING:
+    from pymatgen.core import Structure, Molecule
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,8 @@ def write_lammps_data(
         ValueError: If structure is not periodic (Molecule without PBC info)
         ValueError: If atom_style not supported
     """
+    from pymatgen.core import Structure
+
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     
@@ -395,8 +399,9 @@ def read_lammps_data(data_path: Path) -> Structure:
         raise ValueError(f"Mismatch: expected {n_atoms} atoms, found {len(positions)}")
     
     # Create structure
-    from pymatgen.core import Lattice
+    from pymatgen.core import Lattice, Structure
     lattice = Lattice(cell)
+    from pymatgen.core import Structure
     structure = Structure(
         lattice=lattice,
         species=species,
@@ -405,4 +410,3 @@ def read_lammps_data(data_path: Path) -> Structure:
     )
     
     return structure
-

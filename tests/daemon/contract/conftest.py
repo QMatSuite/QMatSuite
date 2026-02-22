@@ -17,6 +17,7 @@ from typing import Any
 import pytest
 
 from quantumvitas.api import QVService
+from quantumvitas.core.resources import get_resources_dir
 from quantumvitas.daemon.server import QVDaemon, RPCRequest
 
 
@@ -185,7 +186,7 @@ def demo_project_with_run(tmp_path: Path) -> tuple[Path, str, str, str | None]:
         run_ulid may be None if history data is not available
     """
     # Try to import qe_si_scf demo ref_pack
-    demo_pack_path = Path(__file__).parent.parent.parent.parent / "resources" / "demo_projects" / "ref_packs" / "qe_si_scf"
+    demo_pack_path = get_resources_dir() / "demo_projects" / "ref_packs" / "qe_si_scf"
 
     if not demo_pack_path.exists():
         pytest.skip("qe_si_scf demo ref_pack not available")

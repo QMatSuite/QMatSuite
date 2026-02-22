@@ -35,7 +35,7 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 
 # Directories to scan for YAML/JSON resources
 RESOURCE_DIRS = [
-    REPO_ROOT / "resources",
+    REPO_ROOT / "src" / "quantumvitas" / "resources",
     REPO_ROOT / "tests" / "fixtures",
     REPO_ROOT / "tests" / "data",
 ]
@@ -51,7 +51,7 @@ ALLOWLIST_PATTERNS = [
     # External schema files
     "tests/fixtures/external_*",
     # Third-party vendored data
-    "resources/third_party/*",
+    "src/quantumvitas/resources/third_party/*",
     # _vault is legacy archive (explicitly preserved for reference)
     "src/quantumvitas/_vault/*",
 ]

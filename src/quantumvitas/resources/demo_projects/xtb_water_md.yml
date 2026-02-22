@@ -1,0 +1,108 @@
+version: 1
+project:
+  meta:
+    ulid: 01KZ2H3Q4XPXG28VJ36Z8VXVXV
+    name: Water molecular dynamics
+    slug: water-molecular-dynamics
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KDJEANX47TV7B0AY7H6M5DQP
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.11737
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.469483
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.469483
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KZYWZP20D404A3EVBET6DSGW
+    name: Water molecular dynamics
+    slug: water-molecular-dynamics
+    path: calculations/water-molecular-dynamics
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: xtb
+  steps:
+  - meta:
+      name: md
+      slug: md
+      path: calculations/water-molecular-dynamics/steps/md.step.yaml
+      kind: step
+      ulid: 01KMC67QBCXYZ7AKFF0BVNJ0P2
+    parameters:
+      xcontrol:
+        md:
+          temp: 300
+          time: 0.02
+          step: 1.0
+          dump: 5.0
+    step_type_spec: xtb_md
+  structure_ulid: 01KDJEANX47TV7B0AY7H6M5DQP
+meta:
+  ulid: xtb_water_md
+  title: Water molecular dynamics
+  subtitle: GFN2-xTB molecular dynamics of water using xcontrol $md block (~38 s runtime)
+  description: Short MD using xcontrol $md block.
+  tags:
+  - md
+  - xcontrol
+  recommended_analysis: trajectory
+  difficulty: intermediate
+  system_class: molecule
+  periodicity: molecular
+  method: gfn2-xtb
+  property_of_interest: trajectory
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 38.1
+  multi_engine: false
+  engines_used:
+  - xtb
+  n_steps: 1
+  step_summary: MD
+  available_analysis:
+  - trajectory
+  required_engine: xtb
+  availability: bundled
+  generator_version: 1.0.0
+  corpus_engine: xtb
+  corpus_case_id: water_md
+  corpus_checksum: 45945aad4ec5fba8e9cbf5af390d23277131ef08e791e38d322428aeb6523405

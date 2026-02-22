@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 try:
     import requests
@@ -18,15 +18,16 @@ try:
 except ImportError:
     REQUESTS_AVAILABLE = False
 
-from pymatgen.core import Composition, Structure as PMGStructure
-from pymatgen.core.periodic_table import Element
-
 # PR3: COD MySQL fallback removed - use COD OPTIMADE instead
 
 # Import CandidateSummary from cache module to avoid duplication
 from quantumvitas.io.online_cache import CandidateSummary
 
 logger = logging.getLogger(__name__)
+
+
+if TYPE_CHECKING:
+    from pymatgen.core import Structure as PMGStructure
 
 
 # OPTIMADE endpoints (try in order until one succeeds)
@@ -90,6 +91,8 @@ def reduce_formula(formula: str) -> str:
     Handles case-insensitive input by normalizing first.
     """
     try:
+        from pymatgen.core import Composition
+
         # Normalize case first
         normalized = normalize_formula(formula)
         comp = Composition(normalized)
@@ -269,6 +272,8 @@ def fetch_structure_from_optimade(
         return None, None
     
     try:
+        from pymatgen.core import Lattice, Structure as PMGStructure
+
         # Request full structure data including coordinates
         url = f"{base_url}/v1/structures/{entry_id}"
         # Don't specify response_fields - get all available fields
@@ -351,7 +356,6 @@ def fetch_structure_from_optimade(
             site_species.append(element_symbol)
         
         # Build structure
-        from pymatgen.core import Lattice
         import numpy as np
         
         # Validate lattice is invertible

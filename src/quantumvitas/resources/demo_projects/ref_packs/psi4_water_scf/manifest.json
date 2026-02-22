@@ -1,0 +1,13 @@
+{
+  "demo_slug": "psi4_water_scf",
+  "engine": "psi4",
+  "generated_at": "2026-02-21T01:45:55.398591+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "15699fd8a2e115b9f2370bf27f7c5a4080d7cfa08154e74817f4046acf0ffe12"
+    }
+  }
+}

@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from quantumvitas.core.pseudo_libinfo import load_pseudo_libinfo_bundle
+from quantumvitas.core.resources import get_resources_dir
 
 
 def test_pseudo_libinfo_bundle_loads_successfully() -> None:
@@ -54,10 +55,8 @@ def test_pseudo_libinfo_sha256sums_verification_enforced(tmp_path: Path) -> None
     5. Assert it raises with clear error about checksum mismatch
     """
     # Find repo root
-    repo_root = Path(__file__).parent.parent.parent
-    
     # Copy bundle structure to tmp
-    src_bundle_root = repo_root / "resources" / "pseudo_libinfo"
+    src_bundle_root = get_resources_dir() / "pseudo_libinfo"
     tmp_bundle_root = tmp_path / "resources" / "pseudo_libinfo"
     
     # Read CURRENT to get tag
@@ -126,4 +125,3 @@ def test_manifest_sha_matches_index_declaration() -> None:
         f"  Computed from file: {computed_sha256}\n"
         f"If this fails, the manifest was edited without updating the index declaration."
     )
-

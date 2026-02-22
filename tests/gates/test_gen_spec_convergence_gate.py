@@ -120,7 +120,7 @@ class TestYamlSpecOnly:
     """YAML files must not contain step_type_gen."""
 
     def test_no_step_type_gen_in_demo_yaml(self):
-        count = rg_count(r"step_type_gen:", "resources/demo_projects/")
+        count = rg_count(r"step_type_gen:", "src/quantumvitas/resources/demo_projects/")
         assert count == 0, "Demo YAML files contain step_type_gen"
 
     # Golden fixtures removed — test_no_bare_step_type_in_golden deleted
@@ -201,4 +201,3 @@ class TestMetaIdProhibited:
             "\n".join(f"  - {v}" for v in actual_violations[:10]) +
             ("\n  ... and more" if len(actual_violations) > 10 else "")
         )
-

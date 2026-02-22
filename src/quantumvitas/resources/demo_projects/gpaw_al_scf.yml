@@ -1,0 +1,121 @@
+version: 1
+project:
+  meta:
+    ulid: 01KFHD701ZWNRKZ22NZZ65XTPJ
+    name: Aluminum GPAW SCF
+    slug: aluminum-gpaw-scf
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KVWCB6VMJJ7226MMAYYDYRGB
+    name: Al
+    slug: al
+    path: structures/al.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 0.0
+        - 2.025
+        - 2.025
+      - - 2.025
+        - 0.0
+        - 2.025
+      - - 2.025
+        - 2.025
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.8637824638055176
+      b: 2.8637824638055176
+      c: 2.8637824638055176
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 16.60753125
+    properties: {}
+    sites:
+    - species:
+      - element: Al
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Al
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+calculations:
+- meta:
+    ulid: 01KVGPPNWXXRACVKZBEBJX87ZB
+    name: Aluminum GPAW SCF
+    slug: aluminum-gpaw-scf
+    path: calculations/aluminum-gpaw-scf
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: gpaw
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/aluminum-gpaw-scf/steps/scf.step.yaml
+      kind: step
+      ulid: 01KPV05E7ND44WXARQYQPDK5VG
+    parameters:
+      xc: PBE
+      mode: pw
+      ecut: 300
+      kpts:
+        size:
+        - 8
+        - 8
+        - 8
+      occupations:
+        name: fermi-dirac
+        width: 0.1
+    step_type_spec: gpaw_scf
+  structure_ulid: 01KVWCB6VMJJ7226MMAYYDYRGB
+meta:
+  ulid: gpaw_al_scf
+  title: Aluminum GPAW SCF
+  subtitle: FCC aluminum total energy with PBE plane-wave mode and Fermi-Dirac smearing
+  description: PBE ground-state SCF calculation for FCC aluminum, computing the total energy and electronic convergence.
+  tags:
+  - gpaw
+  - metal
+  - scf
+  - dft
+  - Al
+  - tutorial
+  recommended_analysis: scf
+  difficulty: beginner
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.0
+  multi_engine: false
+  engines_used:
+  - gpaw
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
+  required_engine: gpaw
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: gpaw
+  corpus_case_id: al_scf
+  corpus_checksum: 65afc43e2e3654e3db66dc16b73affa1a6113c6bcbe4fb5cafa7e2bc0b36b2af

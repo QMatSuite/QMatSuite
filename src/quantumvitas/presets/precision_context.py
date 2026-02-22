@@ -13,9 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Any, Optional
-
-from pymatgen.core import Structure as PMGStructure
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from quantumvitas.core.models import CalculationModel, load_calculation
 from quantumvitas.core.resolution import (
@@ -26,6 +24,9 @@ from quantumvitas.core.resolution import (
 from quantumvitas.core.project_utils import load_project_config
 from quantumvitas.io.structure_io import read_structure
 from quantumvitas.presets.precision import get_pseudo_index
+
+if TYPE_CHECKING:
+    from pymatgen.core import Structure as PMGStructure
 
 
 class PrecisionContextError(Exception):
@@ -163,4 +164,3 @@ def resolve_precision_context(
         calculation_dir=calculation_dir,
         project_root=project_root,
     )
-

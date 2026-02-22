@@ -1,0 +1,113 @@
+version: 1
+project:
+  meta:
+    ulid: 01KAXA0J7P182YDNHXKCTD63Q5
+    name: Water B3LYP Geometry Optimization
+    slug: water-b3lyp-geometry-optimization
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KNZG514VC0SKT86T7C9A5ENK
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.117499
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.469996
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.469996
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KVRZX1WZXAAERBR9F6ZZBKFG
+    name: Water B3LYP Geometry Optimization
+    slug: water-b3lyp-geometry-optimization
+    path: calculations/water-b3lyp-geometry-optimization
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: gaussian
+  steps:
+  - meta:
+      name: relax
+      slug: relax
+      path: calculations/water-b3lyp-geometry-optimization/steps/relax.step.yaml
+      kind: step
+      ulid: 01K25JYQ4HHWHYRR2BA4B8KD19
+    parameters:
+      mem: 500MB
+      nproc: 1
+      chk_name: water_opt.chk
+      method: B3LYP
+      basis: 6-31G*
+      gen_type: relax
+      title: Water geometry optimization
+      charge: 0
+      multiplicity: 1
+    step_type_spec: gaussian_relax
+  structure_ulid: 01KNZG514VC0SKT86T7C9A5ENK
+meta:
+  ulid: gaussian_water_opt
+  title: Water B3LYP Geometry Optimization
+  subtitle: B3LYP/6-31G* geometry optimization of the water molecule
+  description: B3LYP/6-31G* geometry optimization on water; covers Opt keyword
+  tags:
+  - relax
+  - dft
+  - small-molecule
+  recommended_analysis: scf
+  difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: b3lyp
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.9
+  multi_engine: false
+  engines_used:
+  - gaussian
+  n_steps: 1
+  step_summary: Geo-opt
+  available_analysis:
+  - convergence
+  - trajectory
+  required_engine: gaussian
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: gaussian
+  corpus_case_id: water_b3lyp_opt
+  corpus_checksum: b0120d9ee18082a7bf894aa780d2bb12c285ca74013a507a83af37e4833ad6bc

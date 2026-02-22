@@ -1,0 +1,111 @@
+version: 1
+project:
+  meta:
+    ulid: 01KKVP7MFXKP0803ZSMT3H97QN
+    name: Water Psi4 Geometry Optimization
+    slug: water-psi4-geometry-optimization
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K7C54YTBWFWVC555RYFNBNH4
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.1173
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01K4D69YNHWE0NVE30S269PA28
+    name: Water Psi4 Geometry Optimization
+    slug: water-psi4-geometry-optimization
+    path: calculations/water-psi4-geometry-optimization
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: psi4
+  steps:
+  - meta:
+      name: relax
+      slug: relax
+      path: calculations/water-psi4-geometry-optimization/steps/relax.step.yaml
+      kind: step
+      ulid: 01KQ7KWXCFGEM455RV2A92WF7Q
+    parameters:
+      method: b3lyp
+      basis: cc-pVDZ
+      charge: 0
+      spin: 0
+      task: optimize
+    step_type_spec: psi4_relax
+  structure_ulid: 01K7C54YTBWFWVC555RYFNBNH4
+meta:
+  ulid: psi4_h2o_opt
+  title: Water Psi4 Geometry Optimization
+  subtitle: Water geometry optimization using B3LYP/cc-pVDZ to find equilibrium structure
+  description: B3LYP/cc-pVDZ geometry optimization on water molecule
+  tags:
+  - psi4
+  - molecular
+  - relax
+  - dft
+  - water
+  - tutorial
+  recommended_analysis: energy
+  difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: dft-b3lyp
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 2.4
+  multi_engine: false
+  engines_used:
+  - psi4
+  n_steps: 1
+  step_summary: Opt
+  available_analysis:
+  - convergence
+  required_engine: psi4
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: psi4
+  corpus_case_id: h2o_opt
+  corpus_checksum: f1451f9c47a3c11b768d83c65d07c38ba2dc56f9313319e9d51a449b40fe453f

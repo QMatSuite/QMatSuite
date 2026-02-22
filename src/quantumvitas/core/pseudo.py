@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import List, Optional, Dict
 
 from quantumvitas.io import QEInputParser, QECardType
+from quantumvitas.core.resources import get_resources_dir
 from quantumvitas.core.engines.qe_pseudopotentials import (
     download_pseudopotential,
     _find_quantumvitas_root,
@@ -311,11 +312,7 @@ def ensure_qe_pseudos(
     
     # Resolve system pseudo directory if not provided
     if system_pseudo_dir is None:
-        qv_root = _find_quantumvitas_root()
-        if qv_root:
-            system_pseudo_dir = qv_root / "resources" / "pseudo"
-        else:
-            system_pseudo_dir = None
+        system_pseudo_dir = get_system_pseudo_dir()
     
     # Build additional search directories list
     search_dirs: List[Path] = []
@@ -484,8 +481,11 @@ def get_system_pseudo_dir() -> Optional[Path]:
     Returns:
         Path to quantumvitas resources/pseudo, or None if quantumvitas root not found
     """
+    # Respect _find_quantumvitas_root() as the availability gate so tests can
+    # intentionally disable bundled lookup by monkeypatching this resolver.
     qv_root = _find_quantumvitas_root()
-    if qv_root:
-        return qv_root / "resources" / "pseudo"
-    return None
+    if qv_root is None:
+        return None
 
+    bundled_pseudo_dir = get_resources_dir() / "pseudo"
+    return bundled_pseudo_dir if bundled_pseudo_dir.exists() else None

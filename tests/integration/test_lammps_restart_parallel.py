@@ -19,6 +19,7 @@ from quantumvitas.core.yaml_io import save_yaml_doc
 from quantumvitas.core.yamldoc import CalcDoc
 from quantumvitas.core.models import load_calculation
 from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from quantumvitas.core.resources import get_resources_dir
 
 
 def configure_step(project_root, calculation_selector, step_selector, parameters):
@@ -76,8 +77,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
-    repo_root = Path(__file__).parent.parent.parent
-    potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
+    potential_src = get_resources_dir() / "lammps" / "potentials" / "Cu_u3.eam"
     if not potential_src.exists():
         pytest.skip(f"Potential file not found: {potential_src}")
     
@@ -190,4 +190,3 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     md_log = (md_dir / "log.lammps").read_text()
     assert "ERROR" not in relax_log.upper(), "Relax log should not contain ERROR"
     assert "ERROR" not in md_log.upper(), "MD log should not contain ERROR"
-

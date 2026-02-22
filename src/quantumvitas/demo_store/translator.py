@@ -164,7 +164,7 @@ def _resolve_pseudo_info(
     engine: str,
     species: List[str],
     case_data: Dict[str, Any],
-    repo_root: Path,
+    _repo_root: Path,
 ) -> tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
     """
     Resolve pseudopotential info for the snapshot.
@@ -179,7 +179,9 @@ def _resolve_pseudo_info(
     if not pseudo_reqs:
         return None, None
 
-    pseudo_dir = repo_root / "resources" / "pseudo"
+    from quantumvitas.core.resources import get_resources_dir
+
+    pseudo_dir = get_resources_dir() / "pseudo"
     pseudo_files = []
     species_map = {}
 

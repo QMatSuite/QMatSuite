@@ -1,0 +1,21 @@
+{
+  "demo_slug": "vasp_si_dos",
+  "engine": "vasp",
+  "generated_at": "2026-02-21T01:54:42.486736+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "dos": {
+      "file": "dos.json",
+      "sha256": "00e604ca455a954e28a747ff20718a3e0e654cd04dd16eb9b1c15f850a33a255"
+    },
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "1b52b328365c52fd7c5a531725d1881bede974444c918ac0f8a1b8a7d6a42d69"
+    },
+    "field3d": {
+      "file": "field3d.json",
+      "sha256": "24426e91079c97e38411749edf0df87a5c11eaf25e54e16c7523053b11e9ae84"
+    }
+  }
+}

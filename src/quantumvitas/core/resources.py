@@ -14,20 +14,35 @@ from typing import Literal, Optional, Sequence
 
 import ulid
 
-# Find resources directory relative to this file's location
-# resources/ is at the root of the repo, not in src/
-_PACKAGE_ROOT = Path(__file__).parent.parent.parent.parent  # src/quantumvitas/core -> root
-RESOURCES_DIR = _PACKAGE_ROOT / "resources"
+# Packaged location (pip/non-editable installs):
+#   <site-packages>/quantumvitas/resources
+_PACKAGE_DIR = Path(__file__).resolve().parents[1]  # .../quantumvitas
+_PACKAGED_RESOURCES_DIR = _PACKAGE_DIR / "resources"
 
 
 def get_resources_dir() -> Path:
     """
     Get the path to the resources directory.
-    
+
     Returns:
-        Path to resources/ directory at repo root
+        Path to runtime resources directory.
     """
-    return RESOURCES_DIR
+    # SSOT: resources always live under the quantumvitas package.
+    # In editable dev mode this resolves to src/quantumvitas/resources.
+    # In installed mode this resolves to site-packages/quantumvitas/resources.
+    if _PACKAGED_RESOURCES_DIR.is_dir():
+        return _PACKAGED_RESOURCES_DIR
+
+    # Last-resort fallback for zipped/abstract import loaders.
+    try:
+        import importlib.resources as _res
+
+        return Path(str(_res.files("quantumvitas.resources")))
+    except Exception:
+        return _PACKAGED_RESOURCES_DIR
+
+
+RESOURCES_DIR = get_resources_dir()
 
 ResourceKind = Literal["project", "calculation", "step", "structure"]
 
@@ -301,4 +316,3 @@ def generate_unique_name_and_slug(
             return attempt, slug_candidate
         attempt = f"{base_name} {suffix}"
         suffix += 1
-

@@ -1,0 +1,218 @@
+version: 1
+project:
+  meta:
+    ulid: 01KQ1CFJK38NGE1J96NK5JCGPE
+    name: Silicon diamond band structure
+    slug: silicon-diamond-band-structure
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KCBWQ3N0WFS47P1HV0E5QC4Q
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7546079563238743
+        - 0.0
+        - 2.7546079563238743
+      - - 0.0
+        - 2.7546079563238743
+        - 2.7546079563238743
+      - - -2.7546079563238743
+        - 2.7546079563238743
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8956039308540573
+      b: 3.8956039308540573
+      c: 3.8956039308540573
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 41.803186562694144
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - -0.25
+      - 0.75
+      - -0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3773039781619372
+      - 1.3773039781619374
+      - 1.3773039781619374
+calculations:
+- meta:
+    ulid: 01KJM84NDZMSVGHSW990AXZ23B
+    name: Silicon diamond band structure
+    slug: silicon-diamond-band-structure
+    path: calculations/silicon-diamond-band-structure
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: vasp
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/silicon-diamond-band-structure/steps/scf.step.yaml
+      kind: step
+      ulid: 01KE3JF65W0SAM6DCGECB2HGBB
+    parameters:
+      engine_params:
+        vasp:
+          incar:
+            SYSTEM: Si diamond SCF
+            ENCUT: 300
+            ISMEAR: 0
+            SIGMA: 0.05
+            PREC: Accurate
+            IBRION: -1
+            NSW: 0
+            LWAVE: true
+            LCHARG: true
+          kpoints:
+            mode: automatic
+            mesh:
+            - 8
+            - 8
+            - 8
+            shift:
+            - 0
+            - 0
+            - 0
+          potcar_type: PBE
+    step_type_spec: vasp_scf
+  - meta:
+      name: bandspw
+      slug: bandspw
+      path: calculations/silicon-diamond-band-structure/steps/bandspw.step.yaml
+      kind: step
+      ulid: 01KA6FEDC21BCYYBTFMC09D534
+    parameters:
+      engine_params:
+        vasp:
+          incar:
+            SYSTEM: Si diamond band structure
+            ENCUT: 300
+            ICHARG: 11
+            ISMEAR: 0
+            SIGMA: 0.05
+            NBANDS: 16
+            LORBIT: 11
+            PREC: Accurate
+            IBRION: -1
+            NSW: 0
+            LWAVE: false
+            LCHARG: false
+          kpoints:
+            mode: line
+            npoints: 40
+            path:
+            - - - 0.0
+                - 0.0
+                - 0.0
+              - - 0.5
+                - 0.0
+                - 0.5
+            - - - 0.5
+                - 0.0
+                - 0.5
+              - - 0.5
+                - 0.25
+                - 0.75
+            - - - 0.5
+                - 0.25
+                - 0.75
+              - - 0.375
+                - 0.375
+                - 0.75
+            - - - 0.375
+                - 0.375
+                - 0.75
+              - - 0.0
+                - 0.0
+                - 0.0
+            - - - 0.0
+                - 0.0
+                - 0.0
+              - - 0.5
+                - 0.5
+                - 0.5
+            labels:
+              '[0.0, 0.0, 0.0]': G
+              '[0.5, 0.0, 0.5]': X
+              '[0.5, 0.25, 0.75]': W
+              '[0.375, 0.375, 0.75]': K
+              '[0.5, 0.5, 0.5]': L
+          potcar_type: PBE
+    step_type_spec: vasp_bandspw
+  structure_ulid: 01KCBWQ3N0WFS47P1HV0E5QC4Q
+  species_map:
+    Si:
+      mass: 28.0855
+      pseudo: Si
+      pseudopot: Si
+      pseudo_basename: Si
+      pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
+      pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
+meta:
+  ulid: vasp_si_bands
+  title: Silicon diamond band structure
+  subtitle: Si band structure along G-X-W-K-G-L via SCF then ICHARG=11 non-SCF pass
+  description: Band structure of bulk silicon along the G-X-W-K-G-L path computed with ICHARG=11 (non-SCF) using a pre-converged
+    charge density and PBE.
+  tags:
+  - bands
+  - nscf
+  recommended_analysis: bands
+  difficulty: intermediate
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: band_structure
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 19.1
+  multi_engine: false
+  engines_used:
+  - vasp
+  n_steps: 2
+  step_summary: SCF → Bands
+  available_analysis:
+  - bands
+  - convergence
+  - field3d
+  asset_policy: proprietary
+  required_engine: vasp
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: vasp
+  corpus_case_id: si_bands
+  corpus_checksum: a901d5cda2dce24f2e96b0b8ad919fd9f8dd3bec938be97db996facd43311a37

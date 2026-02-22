@@ -1,0 +1,13 @@
+{
+  "demo_slug": "abinit_si_scf",
+  "engine": "abinit",
+  "generated_at": "2026-02-21T01:42:24.526864+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "787c6c3245625a13d9e7faa3ea410be94a96f11a527f52ff6233755b61165a52"
+    }
+  }
+}

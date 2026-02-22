@@ -11,11 +11,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
-
-from pymatgen.core import Element
-from pymatgen.core import Lattice
-from pymatgen.core import Structure as PMGStructure, Molecule as PMGMolecule
+from typing import Any, Dict, Iterable, List, Optional, Tuple, TYPE_CHECKING
 
 from quantumvitas.core.resources import ResourceMeta
 # QE-specific imports moved to drivers/qe/io/
@@ -45,6 +41,9 @@ WRAP_TOL = 1e-4
 STRUCTURE_META_KEY = "__qv_meta__"
 STRUCTURE_DATA_KEY = "structure"
 
+if TYPE_CHECKING:
+    from pymatgen.core import Structure as PMGStructure, Molecule as PMGMolecule
+
 
 def read_structure(filepath: Path, format: Optional[str] = None) -> PMGStructure | PMGMolecule:
     """
@@ -60,6 +59,8 @@ def read_structure(filepath: Path, format: Optional[str] = None) -> PMGStructure
     Returns:
         pymatgen Structure or Molecule object
     """
+    from pymatgen.core import Structure as PMGStructure, Molecule as PMGMolecule
+
     filepath = Path(filepath)
     if format is None:
         format = detect_format(filepath)
@@ -208,7 +209,7 @@ def qe_input_from_structure(structure: PMGStructure) -> QEInput:
     # ATOMIC_SPECIES: element symbol, atomic mass, pseudo file name (placeholder).
     # Use obvious placeholder to indicate missing configuration (not a real file)
     from quantumvitas.core.pseudo import make_missing_pseudo_placeholder
-    species: List[Element] = unique_species
+    species = unique_species
     atomic_species_data: List[list] = []
     for el in species:
         mass = float(el.atomic_mass)
@@ -371,5 +372,4 @@ def qe_input_has_explicit_structure(qe_input: QEInput) -> bool:
     
     # No explicit structure information found
     return False
-
 

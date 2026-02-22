@@ -1,0 +1,110 @@
+version: 1
+project:
+  meta:
+    ulid: 01K0KZ1QMW3NX996CWKRJM43YV
+    name: Water PySCF SCF
+    slug: water-pyscf-scf
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KBKRDD8NQ77W9VZK7M9W8AZH
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.1173
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KP1R1E7XHMWVVPZDBT8X823C
+    name: Water PySCF SCF
+    slug: water-pyscf-scf
+    path: calculations/water-pyscf-scf
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: pyscf
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/water-pyscf-scf/steps/scf.step.yaml
+      kind: step
+      ulid: 01KZNM9STYBAPJY4T27Q192TF7
+    parameters:
+      functional: B3LYP
+      basis: cc-pVDZ
+      charge: 0
+      spin: 0
+    step_type_spec: pyscf_scf
+  structure_ulid: 01KBKRDD8NQ77W9VZK7M9W8AZH
+meta:
+  ulid: pyscf_water_scf
+  title: Water PySCF SCF
+  subtitle: Water total energy via B3LYP hybrid DFT with cc-pVDZ basis in PySCF
+  description: B3LYP/cc-pVDZ single-point DFT calculation on water molecule
+  tags:
+  - pyscf
+  - molecular
+  - scf
+  - dft
+  - water
+  - tutorial
+  recommended_analysis: energy
+  difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: dft-b3lyp
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.5
+  multi_engine: false
+  engines_used:
+  - pyscf
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
+  required_engine: pyscf
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: pyscf
+  corpus_case_id: water_scf
+  corpus_checksum: 96afcd0475ec91ba76ac4dd457063d14d5eb78c628d139229dbce00df6e21d47

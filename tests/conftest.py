@@ -12,6 +12,8 @@ import traceback
 
 import pytest
 
+from quantumvitas.core.resources import get_resources_dir
+
 
 def pytest_ignore_collect(collection_path, config):
     """C4: Integrity tests must NOT run under default pytest invocation.
@@ -109,7 +111,7 @@ def trap_repo_pseudo_creation():
                     repo_root / ".pytest_cache",
                     repo_root / "htmlcov",
                     repo_root / ".venv",  # Virtual environment
-                    repo_root / "resources" / "pseudo",  # Repo-internal pseudo library (read-only, should exist)
+                    get_resources_dir() / "pseudo",  # Bundled pseudo library (read-only)
                 ]
                 # Check if it's in an allowed directory
                 is_allowed = any(
@@ -124,7 +126,7 @@ def trap_repo_pseudo_creation():
                     stack = ''.join(traceback.format_stack())
                     raise RuntimeError(
                         f"BUG: {operation_name} attempted to create directory under repo_root at {target_path} (resolved: {resolved}).\n"
-                        f"Tests should only write to tmp directories. Allowed: .tmp/, .qmatsuite/, .pytest_cache/, htmlcov/, .venv/, resources/pseudo/\n"
+                        f"Tests should only write to tmp directories. Allowed: .tmp/, .qmatsuite/, .pytest_cache/, htmlcov/, .venv/, src/quantumvitas/resources/pseudo/\n"
                         f"Stack trace:\n{stack}"
                     )
         except (ValueError, OSError):
