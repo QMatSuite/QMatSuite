@@ -32,6 +32,8 @@ def get_minimal_payload(method_name: str, project_root: Path | None = None, tmp_
         "list_jobs": {},
         # M4: Generic engine RPCs
         "list_engine_families": {},
+        # Step 3: engine install management
+        "engine.list_installable": {},
         # Additional stateless/near-stateless methods
         "detect_qe": {"search_paths": []},  # Empty list uses default PATH search
     }

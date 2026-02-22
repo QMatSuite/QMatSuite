@@ -87,6 +87,7 @@ def get_method_categories() -> dict[str, list[str]]:
             # Generic engine RPCs (replace former QE-specific RPCs)
             "list_engine_families", "list_step_palette", "list_engine_ui_parameters",
             "list_engine_parameter_metadata", "set_engine_family",
+            "engine.install", "engine.uninstall", "engine.list_installable",
         ],
         "pseudo_config": [
             "get_pseudo_config", "set_pseudo_config", "validate_pseudo_config",
