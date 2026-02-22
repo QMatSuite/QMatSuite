@@ -392,3 +392,17 @@ Result:
 Status:
 - Step 3 code and test changes are fully green on the mandatory full parallel suite.
 - Prior two failures (legacy test key assertion + uncategorized new RPC methods) are resolved.
+
+### Post-green smoke checks (after full suite)
+Commands:
+- `source .venv/bin/activate && qv engine list`
+- `source .venv/bin/activate && qv engine list --installed-only`
+- `source .venv/bin/activate && python -c "from quantumvitas.api.engines import list_installable_engines; ..."`
+
+Observed:
+- CLI list renders real per-engine detection (not all-true behavior).
+- `--installed-only` filters correctly.
+- `list_installable_engines()` returns 15 engines with expected manual-only set including commercial/manual paths.
+
+Milestone commit created:
+- `1381acce` — Step 3 micromamba install management + API/daemon/CLI wiring + tests.
