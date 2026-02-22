@@ -1,0 +1,90 @@
+name: Release to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g., 1.0.1)"
+        required: true
+        type: string
+      target:
+        description: "Target PyPI index"
+        required: true
+        type: choice
+        options:
+          - testpypi
+          - pypi
+        default: testpypi
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+
+      - name: Verify workflow version matches pyproject.toml
+        run: |
+          python - <<'PY'
+          import pathlib
+          import tomllib
+
+          pyproject = pathlib.Path("pyproject.toml")
+          data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+          expected = str(data["project"]["version"]).strip()
+          requested = "${{ inputs.version }}".strip()
+          if expected != requested:
+              raise SystemExit(
+                  f"Version mismatch: workflow input={requested!r} "
+                  f"but pyproject.toml has {expected!r}"
+              )
+          print(f"Version check passed: {expected}")
+          PY
+
+      - name: Build distributions
+        run: |
+          rm -rf dist build
+          python -m build
+          python -m twine check dist/*
+
+      - name: Verify wheel in clean environment
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/qv-verify
+          python -m venv /tmp/qv-verify
+          /tmp/qv-verify/bin/python -m pip install --upgrade pip
+          /tmp/qv-verify/bin/pip install dist/*.whl
+          /tmp/qv-verify/bin/python -c "import quantumvitas, importlib.metadata as m; print('quantumvitas:', m.version('quantumvitas'))"
+          /tmp/qv-verify/bin/python -c "from quantumvitas.daemon.server import main; print('daemon OK')"
+          /tmp/qv-verify/bin/qv --help >/tmp/qv_help.txt
+          head -n 5 /tmp/qv_help.txt
+          /tmp/qv-verify/bin/python -c "from quantumvitas.mcp.server import create_server; print('MCP OK')"
+
+      - name: Upload to TestPyPI
+        if: ${{ inputs.target == 'testpypi' }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TESTPYPI_API_TOKEN }}
+        run: |
+          python -m twine upload --repository testpypi --skip-existing dist/*
+
+      - name: Upload to PyPI
+        if: ${{ inputs.target == 'pypi' }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m twine upload --skip-existing dist/*
