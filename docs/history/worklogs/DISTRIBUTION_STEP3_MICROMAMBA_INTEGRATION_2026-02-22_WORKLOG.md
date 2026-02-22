@@ -406,3 +406,131 @@ Observed:
 
 Milestone commit created:
 - `1381acce` — Step 3 micromamba install management + API/daemon/CLI wiring + tests.
+
+## Incident Investigation: repo-root `CRASH` + `input_tmp.in` artifacts (2026-02-22)
+
+### Trigger and evidence
+- User reported unexpected files at repo root:
+  - `<repo_root>/CRASH`
+  - `<repo_root>/input_tmp.in`
+- File metadata observed:
+  - both created `2026-02-22 12:50:11`
+- `CRASH` content:
+  - QE error: `Error in routine read_namelists (2): could not find namelist &control`
+- `input_tmp.in` content:
+  - empty file
+
+### Timeline correlation
+- `coverage.xml` from mandatory full pytest rerun was written at `12:49:25`.
+- Artifact creation occurred ~46s later at `12:50:11`.
+- That interval corresponds to post-pytest manual smoke commands (`qv engine list`), not code edit operations.
+
+### Deep root-cause analysis
+1. `qv engine list` calls API `list_engines()`.
+2. `list_engines()` calls `EngineRegistry().discover(persist=False)`.
+3. `discover()` verifies installations and runs version probes.
+4. QE metadata uses version probe command `pw.x --version`.
+5. On this QE build (`q-e-qe-7.5`), `pw.x --version` does not behave as a pure version command:
+   - starts runtime banner,
+   - waits/reads stdin,
+   - on EOF/invalid input emits `CRASH` (and often `input_tmp.in`) in process CWD.
+
+### Reproduction performed
+- Direct binary run in isolated temp dir:
+  - `pw.x --version` created `CRASH` + `input_tmp.in` in that dir.
+- CLI reproduction:
+  - running `qv engine list` from an empty temp dir created `CRASH` + `input_tmp.in` there.
+- This confirms pollution source is version probing path, not direct file writes in repo code.
+
+### Runtime-safety design decision
+Requirements from user feedback:
+- Must be dev + distribution safe.
+- Must not assume repo `.tmp` exists in distribution.
+- Must avoid hangs when user runs commands from interactive shells.
+
+Chosen design:
+- Introduce a shared safe probe runner for version commands.
+- Execute probes in a temporary subdirectory under `tmp_probe_dir()` (which already maps correctly in dev/electron/pip contexts via `get_cache_dir()` chain).
+- Force `stdin=subprocess.DEVNULL` to avoid interactive hangs on binaries that block on stdin.
+- Keep timeout limits and parse version from stdout/stderr even on non-zero return code.
+- Use temporary directories so transient files (`CRASH`, `input_tmp.in`, etc.) are isolated and auto-cleaned.
+
+### Code changes implemented for fix
+- Added shared helper module:
+  - `src/quantumvitas/core/engines/version_probe.py`
+  - function: `run_version_probe(command, timeout=...)`
+- Updated version-probe callsites to use safe helper:
+  - `src/quantumvitas/core/engines/engine_registry.py`
+  - `src/quantumvitas/core/engines/engine_installer.py`
+
+### Regression tests added
+- `tests/unit/test_engine_registry_distribution.py`
+  - `test_version_probe_does_not_pollute_caller_cwd`
+- `tests/unit/test_engine_installer.py`
+  - `test_installer_version_probe_does_not_pollute_caller_cwd`
+
+Both tests use a fake executable that attempts to create `input_tmp.in` and `CRASH`; assertions verify caller CWD remains clean.
+
+### Expected behavior after fix
+- `qv engine list` / engine discovery/verification no longer creates QE crash artifacts in caller CWD.
+- In distribution mode, probe scratch path resolves under app cache (`get_cache_dir()`), not repo paths.
+- Interactive CLI use will not hang on version probes waiting for stdin.
+
+### Validation after probe isolation fix
+
+Focused test command:
+- `source .venv/bin/activate && python -m pytest tests/unit/test_engine_registry_distribution.py tests/unit/test_engine_installer.py tests/unit/test_api_engine_registry.py tests/cli/test_engine_commands.py -q --tb=short`
+
+Result:
+- `24 passed`
+
+Manual runtime reproduction checks:
+1. Temp-cwd CLI check:
+   - command: `(cd /tmp/<tmpdir> && qv engine list)`
+   - observed: output correct, and temp dir remained empty (no `CRASH`, no `input_tmp.in`).
+2. Repo-root stability check:
+   - ran `qv engine list` from repo root and compared mtimes for existing `CRASH`/`input_tmp.in`.
+   - observed: mtimes unchanged; no new writes.
+
+Conclusion:
+- Version probing now isolates side effects to app-mapped temporary probe paths.
+- Caller CWD (repo root, arbitrary user launch dir, temp dirs) is no longer polluted by QE probe artifacts.
+- Stdin-hang risk for interactive invocations is mitigated by explicit `stdin=DEVNULL` in probe execution.
+
+### Mandatory full-suite rerun (post-version-probe hardening) and gate fallout
+Command (strict):
+- `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+
+Result:
+- Exit code: `1`
+- Runtime: `375.46s` (~6m15s)
+- Summary: `1 failed, 6496 passed, 4 skipped`
+- Failure:
+  - `tests/gates/test_no_sensitive_paths.py::TestNoSensitivePaths::test_no_sensitive_identifiers`
+  - Cause: this worklog accidentally included two absolute user path strings.
+
+Remediation done immediately:
+- Sanitized absolute paths in this worklog to repo-relative placeholders (`<repo_root>/...`).
+- Removed repo-root runtime artifacts after the final rerun per instruction:
+  - deleted `CRASH`
+  - deleted `input_tmp.in`
+
+Next action:
+- Re-run the mandatory strict full suite once after this redaction fix.
+
+### Mandatory full-suite rerun after redaction fix (strict)
+Command:
+- `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+- Output captured in: `.tmp/pytest_full_latest.log`
+
+Result:
+- Exit code: `0`
+- Runtime: `364.57s` (~6m04s)
+- Summary: `6497 passed, 4 skipped, 979 warnings`
+
+Post-run state checks:
+- Repo-root QE crash artifacts are absent (`CRASH`, `input_tmp.in` not present).
+- Sensitive-path gate is green after worklog redaction.
+
+Continuation status:
+- Resumed and completed the previously blocked Step 3 closure flow after resolving the unexpected `CRASH` artifact incident.

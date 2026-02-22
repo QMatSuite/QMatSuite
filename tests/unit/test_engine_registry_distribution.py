@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -228,3 +229,31 @@ def test_get_active_binary_handles_windows_suffix_variant(
     resolved = registry.get_active_binary("qe", binary_name="pw.x")
     assert resolved is not None
     assert resolved.name in {"pw.exe", "pw.x", "pw.x.exe"}
+
+
+def test_version_probe_does_not_pollute_caller_cwd(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    home = tmp_path / "home"
+    monkeypatch.setenv("QMATSUITE_HOME", str(home))
+
+    bin_dir = tmp_path / "bin"
+    _make_executable(
+        bin_dir / "xtb",
+        "touch input_tmp.in CRASH\necho 'xtb version 6.7.1'",
+    )
+
+    caller_cwd = tmp_path / "caller"
+    caller_cwd.mkdir(parents=True, exist_ok=True)
+    previous_cwd = Path.cwd()
+    os.chdir(caller_cwd)
+    try:
+        registry = EngineRegistry(registry_path=tmp_path / "engines.json")
+        version = registry._detect_binary_version("xtb", bin_dir, "xtb")
+    finally:
+        os.chdir(previous_cwd)
+
+    assert version == "6.7.1"
+    assert not (caller_cwd / "input_tmp.in").exists()
+    assert not (caller_cwd / "CRASH").exists()

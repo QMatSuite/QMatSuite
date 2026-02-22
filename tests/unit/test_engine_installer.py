@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -149,3 +150,29 @@ def test_list_installable_engines_flags_manual_only() -> None:
     items = {row["engine"]: row for row in engine_installer.list_installable_engines()}
     assert items["xtb"]["manual_only"] is False
     assert items["vasp"]["manual_only"] is True
+
+
+def test_installer_version_probe_does_not_pollute_caller_cwd(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    home = tmp_path / "home"
+    monkeypatch.setenv("QMATSUITE_HOME", str(home))
+
+    binary = _make_executable(
+        tmp_path / "bin" / "xtb",
+        "touch input_tmp.in CRASH\necho 'xtb version 6.7.1'",
+    )
+
+    caller_cwd = tmp_path / "caller"
+    caller_cwd.mkdir(parents=True, exist_ok=True)
+    previous_cwd = Path.cwd()
+    os.chdir(caller_cwd)
+    try:
+        version = engine_installer._detect_binary_version("xtb", binary)
+    finally:
+        os.chdir(previous_cwd)
+
+    assert version == "6.7.1"
+    assert not (caller_cwd / "input_tmp.in").exists()
+    assert not (caller_cwd / "CRASH").exists()

@@ -6,7 +6,6 @@ import json
 import logging
 import re
 import shutil
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -14,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from quantumvitas.core.paths import get_app_data_dir, home_config_dir, home_engines_dir
 
 from .engine_meta import ENGINE_META, get_detection_binaries, get_platform_primary_binary
+from .version_probe import run_version_probe
 
 logger = logging.getLogger(__name__)
 
@@ -551,14 +551,8 @@ class EngineRegistry:
 
         command = list(version_command)
         command[0] = str(resolved_binary)
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-        except Exception:
+        result = run_version_probe(command, timeout=10)
+        if result is None:
             return None
 
         output = (result.stdout or "") + "\n" + (result.stderr or "")

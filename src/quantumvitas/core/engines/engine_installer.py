@@ -27,6 +27,7 @@ from quantumvitas.core.paths import get_app_data_dir
 from .engine_meta import ENGINE_META, get_detection_binaries
 from .engine_registry import EngineRegistry
 from .micromamba import create_env, remove_env
+from .version_probe import run_version_probe
 
 logger = logging.getLogger(__name__)
 
@@ -140,15 +141,8 @@ def _detect_binary_version(engine_family: str, resolved_binary: Path) -> Optiona
 
     command = list(version_command)
     command[0] = str(resolved_binary)
-    try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            timeout=15,
-            check=False,
-        )
-    except Exception:
+    result = run_version_probe(command, timeout=15)
+    if result is None:
         return None
 
     output = ((result.stdout or "") + "\n" + (result.stderr or "")).strip()
