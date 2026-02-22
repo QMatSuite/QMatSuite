@@ -1,0 +1,979 @@
+version: 1
+project:
+  meta:
+    ulid: 01KN1172Z6DHHZDTDBEW9D31PT
+    name: Copper Wannier functions with disentanglement (QE to W90 pipeline)
+    slug: copper-wannier-functions-with-disentanglement-qe-to-w90-pipeline
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KQ0Y988WRCMDFJBB8RTNCSBY
+    name: Cu
+    slug: cu
+    path: structures/cu.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -1.8050234664481202
+        - 0.0
+        - 1.8050234664481202
+      - - 0.0
+        - 1.8050234664481202
+        - 1.8050234664481202
+      - - -1.8050234664481202
+        - 1.8050234664481202
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.552688666652629
+      b: 2.552688666652629
+      c: 2.552688666652629
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 11.761928981611645
+    properties: {}
+    sites:
+    - species:
+      - element: Cu
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Cu
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+calculations:
+- meta:
+    ulid: 01KY9J0692S4K7M7BAPASHJAZP
+    name: Copper Wannier functions with disentanglement (QE to W90 pipeline)
+    slug: copper-wannier-functions-with-disentanglement-qe-to-w90-pipeline
+    path: calculations/copper-wannier-functions-with-disentanglement-qe-to-w90-pipeline
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: qe
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/copper-wannier-functions-with-disentanglement-qe-to-w90-pipeline/steps/scf.step.yaml
+      kind: step
+      ulid: 01K1A1S0WWREFXA2TFEE26AQS0
+    parameters:
+      CONTROL:
+        calculation: scf
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 6.822
+        nat: 1
+        ntyp: 1
+        ecutwfc: 30.0
+        occupations: smearing
+        smearing: cold
+        degauss: 0.02
+      ELECTRONS:
+        diagonalization: cg
+        conv_thr: 1.0e-09
+        mixing_beta: 0.7
+    step_type_spec: qe_scf
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '16'
+          - '16'
+          - '16'
+          - '0'
+          - '0'
+          - '0'
+  - meta:
+      name: nscf
+      slug: nscf
+      path: calculations/copper-wannier-functions-with-disentanglement-qe-to-w90-pipeline/steps/nscf.step.yaml
+      kind: step
+      ulid: 01KQHE701SQA24R0G0W3XM9RNY
+    parameters:
+      CONTROL:
+        calculation: nscf
+      SYSTEM:
+        ibrav: 2
+        celldm(1): 6.822
+        nat: 1
+        ntyp: 1
+        ecutwfc: 30.0
+        occupations: smearing
+        smearing: cold
+        degauss: 0.02
+        nosym: true
+        nbnd: 12
+      ELECTRONS:
+        conv_thr: 1.0e-09
+        diagonalization: cg
+    step_type_spec: qe_nscf
+    cards:
+      K_POINTS:
+        option: crystal
+        data:
+        - - 64
+        - - '0.0000'
+          - '0.0000'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.2500'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.5000'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.7500'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.0000'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.2500'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.5000'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.7500'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.0000'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.2500'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.5000'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.7500'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.0000'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.2500'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.5000'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.7500'
+          - '0.0000'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.0000'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.2500'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.5000'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.7500'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.0000'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.2500'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.5000'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.7500'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.0000'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.2500'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.5000'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.7500'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.0000'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.2500'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.5000'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.7500'
+          - '0.2500'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.0000'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.2500'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.5000'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.7500'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.0000'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.2500'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.5000'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.7500'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.0000'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.2500'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.5000'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.7500'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.0000'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.2500'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.5000'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.7500'
+          - '0.5000'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.0000'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.2500'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.5000'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.0000'
+          - '0.7500'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.0000'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.2500'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.5000'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.2500'
+          - '0.7500'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.0000'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.2500'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.5000'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.5000'
+          - '0.7500'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.0000'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.2500'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.5000'
+          - '0.7500'
+          - '0.0156250'
+        - - '0.7500'
+          - '0.7500'
+          - '0.7500'
+          - '0.0156250'
+  - meta:
+      name: wannierprep
+      slug: wannierprep
+      path: calculations/copper-wannier-functions-with-disentanglement-qe-to-w90-pipeline/steps/wannierprep.step.yaml
+      kind: step
+      ulid: 01KSX9W0453S80Y5JBYX1N0R1S
+    parameters:
+      num_bands: 12
+      num_wann: 7
+      num_iter: 200
+      dis_win_max: 38.0
+      dis_froz_max: 13.0
+      dis_num_iter: 50
+      dis_mix_ratio: 1.0
+      kpoint_path:
+      - start_label: G
+        start:
+        - 0.0
+        - 0.0
+        - 0.0
+        end_label: X
+        end:
+        - 0.5
+        - 0.5
+        - 0.0
+      - start_label: X
+        start:
+        - 0.5
+        - 0.5
+        - 0.0
+        end_label: W
+        end:
+        - 0.5
+        - 0.75
+        - 0.25
+      - start_label: W
+        start:
+        - 0.5
+        - 0.75
+        - 0.25
+        end_label: L
+        end:
+        - 0.0
+        - 0.5
+        - 0.0
+      - start_label: L
+        start:
+        - 0.0
+        - 0.5
+        - 0.0
+        end_label: G
+        end:
+        - 0.0
+        - 0.0
+        - 0.0
+      - start_label: G
+        start:
+        - 0.0
+        - 0.0
+        - 0.0
+        end_label: K
+        end:
+        - 0.0
+        - 0.5
+        - -0.5
+      projections:
+      - Cu:d
+      - f=0.25,0.25,0.25:s
+      - f=-0.25,-0.25,-0.25:s
+      mp_grid:
+      - 4
+      - 4
+      - 4
+      kpoints:
+        points:
+        - - 0.0
+          - 0.0
+          - 0.0
+        - - 0.0
+          - 0.25
+          - 0.0
+        - - 0.0
+          - 0.5
+          - 0.0
+        - - 0.0
+          - 0.75
+          - 0.0
+        - - 0.25
+          - 0.0
+          - 0.0
+        - - 0.25
+          - 0.25
+          - 0.0
+        - - 0.25
+          - 0.5
+          - 0.0
+        - - 0.25
+          - 0.75
+          - 0.0
+        - - 0.5
+          - 0.0
+          - 0.0
+        - - 0.5
+          - 0.25
+          - 0.0
+        - - 0.5
+          - 0.5
+          - 0.0
+        - - 0.5
+          - 0.75
+          - 0.0
+        - - 0.75
+          - 0.0
+          - 0.0
+        - - 0.75
+          - 0.25
+          - 0.0
+        - - 0.75
+          - 0.5
+          - 0.0
+        - - 0.75
+          - 0.75
+          - 0.0
+        - - 0.0
+          - 0.0
+          - 0.25
+        - - 0.0
+          - 0.25
+          - 0.25
+        - - 0.0
+          - 0.5
+          - 0.25
+        - - 0.0
+          - 0.75
+          - 0.25
+        - - 0.25
+          - 0.0
+          - 0.25
+        - - 0.25
+          - 0.25
+          - 0.25
+        - - 0.25
+          - 0.5
+          - 0.25
+        - - 0.25
+          - 0.75
+          - 0.25
+        - - 0.5
+          - 0.0
+          - 0.25
+        - - 0.5
+          - 0.25
+          - 0.25
+        - - 0.5
+          - 0.5
+          - 0.25
+        - - 0.5
+          - 0.75
+          - 0.25
+        - - 0.75
+          - 0.0
+          - 0.25
+        - - 0.75
+          - 0.25
+          - 0.25
+        - - 0.75
+          - 0.5
+          - 0.25
+        - - 0.75
+          - 0.75
+          - 0.25
+        - - 0.0
+          - 0.0
+          - 0.5
+        - - 0.0
+          - 0.25
+          - 0.5
+        - - 0.0
+          - 0.5
+          - 0.5
+        - - 0.0
+          - 0.75
+          - 0.5
+        - - 0.25
+          - 0.0
+          - 0.5
+        - - 0.25
+          - 0.25
+          - 0.5
+        - - 0.25
+          - 0.5
+          - 0.5
+        - - 0.25
+          - 0.75
+          - 0.5
+        - - 0.5
+          - 0.0
+          - 0.5
+        - - 0.5
+          - 0.25
+          - 0.5
+        - - 0.5
+          - 0.5
+          - 0.5
+        - - 0.5
+          - 0.75
+          - 0.5
+        - - 0.75
+          - 0.0
+          - 0.5
+        - - 0.75
+          - 0.25
+          - 0.5
+        - - 0.75
+          - 0.5
+          - 0.5
+        - - 0.75
+          - 0.75
+          - 0.5
+        - - 0.0
+          - 0.0
+          - 0.75
+        - - 0.0
+          - 0.25
+          - 0.75
+        - - 0.0
+          - 0.5
+          - 0.75
+        - - 0.0
+          - 0.75
+          - 0.75
+        - - 0.25
+          - 0.0
+          - 0.75
+        - - 0.25
+          - 0.25
+          - 0.75
+        - - 0.25
+          - 0.5
+          - 0.75
+        - - 0.25
+          - 0.75
+          - 0.75
+        - - 0.5
+          - 0.0
+          - 0.75
+        - - 0.5
+          - 0.25
+          - 0.75
+        - - 0.5
+          - 0.5
+          - 0.75
+        - - 0.5
+          - 0.75
+          - 0.75
+        - - 0.75
+          - 0.0
+          - 0.75
+        - - 0.75
+          - 0.25
+          - 0.75
+        - - 0.75
+          - 0.5
+          - 0.75
+        - - 0.75
+          - 0.75
+          - 0.75
+    step_type_spec: w90_wannierprep
+  - meta:
+      name: pw2wannier
+      slug: pw2wannier
+      path: calculations/copper-wannier-functions-with-disentanglement-qe-to-w90-pipeline/steps/pw2wannier.step.yaml
+      kind: step
+      ulid: 01KMSQVDY2B8WDAYBHQ43H4061
+    parameters:
+      INPUTPP:
+        seedname: copper
+        spin_component: none
+    step_type_spec: qe_pw2wannier
+  - meta:
+      name: wannier
+      slug: wannier
+      path: calculations/copper-wannier-functions-with-disentanglement-qe-to-w90-pipeline/steps/wannier.step.yaml
+      kind: step
+      ulid: 01K9YJHRXRD1SM5MVHDSAPCDWR
+    parameters:
+      num_bands: 12
+      num_wann: 7
+      num_iter: 200
+      dis_win_max: 38.0
+      dis_froz_max: 13.0
+      dis_num_iter: 50
+      dis_mix_ratio: 1.0
+      kpoint_path:
+      - start_label: G
+        start:
+        - 0.0
+        - 0.0
+        - 0.0
+        end_label: X
+        end:
+        - 0.5
+        - 0.5
+        - 0.0
+      - start_label: X
+        start:
+        - 0.5
+        - 0.5
+        - 0.0
+        end_label: W
+        end:
+        - 0.5
+        - 0.75
+        - 0.25
+      - start_label: W
+        start:
+        - 0.5
+        - 0.75
+        - 0.25
+        end_label: L
+        end:
+        - 0.0
+        - 0.5
+        - 0.0
+      - start_label: L
+        start:
+        - 0.0
+        - 0.5
+        - 0.0
+        end_label: G
+        end:
+        - 0.0
+        - 0.0
+        - 0.0
+      - start_label: G
+        start:
+        - 0.0
+        - 0.0
+        - 0.0
+        end_label: K
+        end:
+        - 0.0
+        - 0.5
+        - -0.5
+      projections:
+      - Cu:d
+      - f=0.25,0.25,0.25:s
+      - f=-0.25,-0.25,-0.25:s
+      mp_grid:
+      - 4
+      - 4
+      - 4
+      kpoints:
+        points:
+        - - 0.0
+          - 0.0
+          - 0.0
+        - - 0.0
+          - 0.25
+          - 0.0
+        - - 0.0
+          - 0.5
+          - 0.0
+        - - 0.0
+          - 0.75
+          - 0.0
+        - - 0.25
+          - 0.0
+          - 0.0
+        - - 0.25
+          - 0.25
+          - 0.0
+        - - 0.25
+          - 0.5
+          - 0.0
+        - - 0.25
+          - 0.75
+          - 0.0
+        - - 0.5
+          - 0.0
+          - 0.0
+        - - 0.5
+          - 0.25
+          - 0.0
+        - - 0.5
+          - 0.5
+          - 0.0
+        - - 0.5
+          - 0.75
+          - 0.0
+        - - 0.75
+          - 0.0
+          - 0.0
+        - - 0.75
+          - 0.25
+          - 0.0
+        - - 0.75
+          - 0.5
+          - 0.0
+        - - 0.75
+          - 0.75
+          - 0.0
+        - - 0.0
+          - 0.0
+          - 0.25
+        - - 0.0
+          - 0.25
+          - 0.25
+        - - 0.0
+          - 0.5
+          - 0.25
+        - - 0.0
+          - 0.75
+          - 0.25
+        - - 0.25
+          - 0.0
+          - 0.25
+        - - 0.25
+          - 0.25
+          - 0.25
+        - - 0.25
+          - 0.5
+          - 0.25
+        - - 0.25
+          - 0.75
+          - 0.25
+        - - 0.5
+          - 0.0
+          - 0.25
+        - - 0.5
+          - 0.25
+          - 0.25
+        - - 0.5
+          - 0.5
+          - 0.25
+        - - 0.5
+          - 0.75
+          - 0.25
+        - - 0.75
+          - 0.0
+          - 0.25
+        - - 0.75
+          - 0.25
+          - 0.25
+        - - 0.75
+          - 0.5
+          - 0.25
+        - - 0.75
+          - 0.75
+          - 0.25
+        - - 0.0
+          - 0.0
+          - 0.5
+        - - 0.0
+          - 0.25
+          - 0.5
+        - - 0.0
+          - 0.5
+          - 0.5
+        - - 0.0
+          - 0.75
+          - 0.5
+        - - 0.25
+          - 0.0
+          - 0.5
+        - - 0.25
+          - 0.25
+          - 0.5
+        - - 0.25
+          - 0.5
+          - 0.5
+        - - 0.25
+          - 0.75
+          - 0.5
+        - - 0.5
+          - 0.0
+          - 0.5
+        - - 0.5
+          - 0.25
+          - 0.5
+        - - 0.5
+          - 0.5
+          - 0.5
+        - - 0.5
+          - 0.75
+          - 0.5
+        - - 0.75
+          - 0.0
+          - 0.5
+        - - 0.75
+          - 0.25
+          - 0.5
+        - - 0.75
+          - 0.5
+          - 0.5
+        - - 0.75
+          - 0.75
+          - 0.5
+        - - 0.0
+          - 0.0
+          - 0.75
+        - - 0.0
+          - 0.25
+          - 0.75
+        - - 0.0
+          - 0.5
+          - 0.75
+        - - 0.0
+          - 0.75
+          - 0.75
+        - - 0.25
+          - 0.0
+          - 0.75
+        - - 0.25
+          - 0.25
+          - 0.75
+        - - 0.25
+          - 0.5
+          - 0.75
+        - - 0.25
+          - 0.75
+          - 0.75
+        - - 0.5
+          - 0.0
+          - 0.75
+        - - 0.5
+          - 0.25
+          - 0.75
+        - - 0.5
+          - 0.5
+          - 0.75
+        - - 0.5
+          - 0.75
+          - 0.75
+        - - 0.75
+          - 0.0
+          - 0.75
+        - - 0.75
+          - 0.25
+          - 0.75
+        - - 0.75
+          - 0.5
+          - 0.75
+        - - 0.75
+          - 0.75
+          - 0.75
+    step_type_spec: w90_wannier
+  structure_ulid: 01KQ0Y988WRCMDFJBB8RTNCSBY
+  species_map:
+    Cu:
+      pseudopot: Cu.pz-n-van_ak.UPF
+      pseudo_basename: Cu.pz-n-van_ak.UPF
+      pseudo_sha256: 1da627eb28b875756f294c4201d7937c9905588a5f5c51ea562e314f266bb2ca
+      pseudo_sha_family: de1aa1c318431ac01818be83d52292c276b90b49e1119b99a731c0452cdd2cbb
+pseudo:
+  directory: pseudo
+  files:
+  - Cu.pz-n-van_ak.UPF
+meta:
+  ulid: qe_copper_wannier
+  title: Copper Wannier functions with disentanglement (QE to W90 pipeline)
+  subtitle: Wannier-interpolated bands for Cu d+sp via QE-to-Wannier90 with disentanglement
+  description: Copper FCC Wannier function construction with disentanglement using the QE→Wannier90 pipeline, computing Wannier-interpolated
+    band structure for the Cu d and sp bands via W90 Tutorial Example 6.
+  tags:
+  - wannier90
+  - composite
+  - Cu
+  - disentanglement
+  - tutorial
+  recommended_analysis: scf
+  difficulty: advanced
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: band_structure
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 29.6
+  multi_engine: true
+  engines_used:
+  - qe
+  - w90
+  n_steps: 5
+  step_summary: SCF → NSCF → W90 prep → pw2wannier → Wannierize
+  available_analysis:
+  - convergence
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qe
+  corpus_case_id: copper_wannier
+  corpus_checksum: c90fa81331364e4202d0494afa9f9425385afac3fb8aba63ce7b7aebc074ae27

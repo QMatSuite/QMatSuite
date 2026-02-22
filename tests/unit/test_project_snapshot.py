@@ -15,6 +15,7 @@ import yaml
 
 from quantumvitas.api import QVService
 from quantumvitas.core.models import load_project, load_structure_model, load_calculation
+from quantumvitas.core.resources import get_resources_dir
 from quantumvitas.project.snapshot import (
     ProjectSnapshot,
     export_project_to_snapshot,
@@ -519,8 +520,7 @@ class TestDemoProjectSnapshots:
     
     def test_load_si_bands_demo_snapshot(self):
         """Test loading si_bands_demo.yml snapshot."""
-        repo_root = Path(__file__).parent.parent.parent
-        snapshot_path = repo_root / "resources" / "demo_projects" / "si_bands_demo.yml"
+        snapshot_path = get_resources_dir() / "demo_projects" / "si_bands_demo.yml"
         
         if not snapshot_path.exists():
             pytest.skip(f"Demo snapshot not found: {snapshot_path}")
@@ -554,8 +554,7 @@ class TestDemoProjectSnapshots:
     
     def test_load_si_dos_demo_snapshot(self):
         """Test loading si_dos_demo.yml snapshot."""
-        repo_root = Path(__file__).parent.parent.parent
-        snapshot_path = repo_root / "resources" / "demo_projects" / "si_dos_demo.yml"
+        snapshot_path = get_resources_dir() / "demo_projects" / "si_dos_demo.yml"
         
         if not snapshot_path.exists():
             pytest.skip(f"Demo snapshot not found: {snapshot_path}")
@@ -693,10 +692,8 @@ class TestSnapshotEdgeCases:
     
     def test_materialize_demo_snapshots(self, temp_dir: Path):
         """Test materializing both demo snapshots."""
-        repo_root = Path(__file__).parent.parent.parent
-        
         for demo_name in ["si_bands_demo", "si_dos_demo"]:
-            snapshot_path = repo_root / "resources" / "demo_projects" / f"{demo_name}.yml"
+            snapshot_path = get_resources_dir() / "demo_projects" / f"{demo_name}.yml"
             
             if not snapshot_path.exists():
                 pytest.skip(f"Demo snapshot not found: {snapshot_path}")
@@ -719,4 +716,3 @@ class TestSnapshotEdgeCases:
             project_model = load_project(project_root)
             assert len(project_model.structures) >= 1
             assert len(project_model.calculations) >= 1
-

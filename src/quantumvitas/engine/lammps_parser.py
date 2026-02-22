@@ -9,7 +9,6 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from pymatgen.core import Structure
 
 logger = logging.getLogger(__name__)
 
@@ -371,4 +370,3 @@ def build_trajectory_from_parsed(
             "n_frames": len(trajectory_frames),
         },
     }
-

@@ -1,0 +1,163 @@
+version: 1
+project:
+  meta:
+    ulid: 01KC96D94EBAAQNRW8A5Y74RT6
+    name: Silicon variable-cell CG relaxation
+    slug: silicon-variable-cell-cg-relaxation
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KCPGJKT70DQFZVJAJ80BHWMA
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 2.9
+        - 2.9
+        - 0.0
+      - - 0.0
+        - 2.9
+        - 2.9
+      - - 2.9
+        - 0.0
+        - 2.9
+      pbc:
+      - true
+      - true
+      - true
+      a: 4.101219330947816
+      b: 4.101219330947816
+      c: 4.101219330947816
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 48.778000000000006
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.26
+      - 0.26
+      - 0.26
+      properties: {}
+      label: Si
+      xyz:
+      - 1.508
+      - 1.508
+      - 1.508
+calculations:
+- meta:
+    ulid: 01KD9DD3JV3S1C9VKNJSHN2TSW
+    name: Silicon variable-cell CG relaxation
+    slug: silicon-variable-cell-cg-relaxation
+    path: calculations/silicon-variable-cell-cg-relaxation
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: siesta
+  steps:
+  - meta:
+      name: relax
+      slug: relax
+      path: calculations/silicon-variable-cell-cg-relaxation/steps/relax.step.yaml
+      kind: step
+      ulid: 01KPSEXW1ZARC3KCK6XBHWV0RM
+    parameters:
+      SystemName: Silicon bulk relaxation
+      SystemLabel: si_relax
+      NumberOfAtoms: 2
+      NumberOfSpecies: 1
+      PAO.BasisSize: DZP
+      PAO.EnergyShift: 100 meV
+      LatticeConstant: 5.80 Ang
+      AtomicCoordinatesFormat: ScaledCartesian
+      kgrid:
+      - - 4
+        - 0
+        - 0
+        - 0.5
+      - - 0
+        - 4
+        - 0
+        - 0.5
+      - - 0
+        - 0
+        - 4
+        - 0.5
+      MeshCutoff: 200.0 Ry
+      MaxSCFIterations: 100
+      DM.MixingWeight: 0.3
+      DM.Tolerance: 0.0001
+      SolutionMethod: diagon
+      XC.functional: GGA
+      XC.authors: PBE
+      MD.TypeOfRun: CG
+      MD.NumCGsteps: 50
+      MD.MaxForceTol: 0.02 eV/Ang
+      MD.VariableCell: true
+      MD.MaxStressTol: 0.5 GPa
+      WriteForces: true
+      WriteCoorXmol: true
+      WriteMDXmol: false
+      WriteMDhistory: true
+      znucl:
+        Si: 14
+      system_name: Silicon bulk relaxation
+      system_label: si_relax
+    step_type_spec: siesta_relax
+  structure_ulid: 01KCPGJKT70DQFZVJAJ80BHWMA
+meta:
+  ulid: siesta_si_relax
+  title: Silicon variable-cell CG relaxation
+  subtitle: Variable-cell CG relaxation of Si with PBE and DZP NAO basis set
+  description: Variable-cell CG relaxation of bulk silicon using GGA-PBE with a DZP NAO basis set; relaxes both atomic positions
+    and the unit cell.
+  tags:
+  - relax
+  - vc_relax
+  - periodic
+  recommended_analysis: scf
+  difficulty: intermediate
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 4.2
+  multi_engine: false
+  engines_used:
+  - siesta
+  n_steps: 1
+  step_summary: Relax
+  available_analysis:
+  - convergence
+  - trajectory
+  required_engine: siesta
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: siesta
+  corpus_case_id: si_relax
+  corpus_checksum: 3ffbf0f530361d745091439d9299e4ff7b569e697ce05820d20cd8fc3661893e

@@ -19,6 +19,7 @@ from quantumvitas.core.yaml_io import save_yaml_doc
 from quantumvitas.core.yamldoc import CalcDoc
 from quantumvitas.core.models import load_calculation
 from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from quantumvitas.core.resources import get_resources_dir
 
 
 @pytest.fixture
@@ -59,7 +60,7 @@ def eam_md_project(tmp_path: Path):
     potential_src = Path(__file__).parent.parent / "data" / "lammps" / "eam_md" / "potentials" / "Cu_u3.eam"
     if not potential_src.exists():
         # Try resources directory
-        potential_src = Path(__file__).parent.parent.parent.parent / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
+        potential_src = get_resources_dir() / "lammps" / "potentials" / "Cu_u3.eam"
     
     if potential_src.exists():
         potentials_dir = project_root / "potentials"

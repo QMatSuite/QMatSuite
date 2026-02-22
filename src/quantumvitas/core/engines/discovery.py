@@ -221,8 +221,20 @@ def _search_bundled(
         engine_dirs.append(probe.bundled_under)
 
     search_bases: List[Path] = []
+
+    # If a project_root is explicitly provided, search only that root.
+    # This keeps discovery deterministic in tests that pass isolated tmp roots.
     if project_root:
         search_bases.append(project_root / ".qmatsuite" / "engines")
+    else:
+        # No explicit project root: use managed app-data engines location.
+        try:
+            from quantumvitas.core.paths import home_engines_dir
+
+            managed_base = home_engines_dir()
+            search_bases.append(managed_base)
+        except Exception:
+            pass
 
     for base in search_bases:
         for engine_dir_name in engine_dirs:

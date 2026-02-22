@@ -2,202 +2,231 @@
 QMatSuite path utilities.
 
 This module provides centralized path resolution for QMatSuite data directories
-according to CONSTITUTION_ZH.md section 9.
-
-All paths are relative to the repository root in dev/CI stage.
+across development, pip-installed, and Electron-bundled environments.
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import sys
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Cache for repo root to avoid repeated lookups
+# Cache for repo root lookup to avoid repeated filesystem walks
 _repo_root_cache: Optional[Path] = None
+_repo_root_checked = False
 
 
-def get_repo_root() -> Path:
-    """
-    Get the QMatSuite repository root directory.
-    
-    The repo root is identified by the presence of:
-    - pyproject.toml
-    - src/quantumvitas/
-    
-    Returns:
-        Path to repository root
-        
-    Raises:
-        RuntimeError: If repository root cannot be found
-    """
+def _ensure_dir(path: Path) -> Path:
+    """Create a directory (and parents) if it does not exist."""
+    resolved = path.expanduser()
+    resolved.mkdir(parents=True, exist_ok=True)
+    return resolved
+
+
+def _try_find_repo_root() -> Optional[Path]:
+    """Best-effort repo root discovery for dev mode."""
     global _repo_root_cache
-    
-    if _repo_root_cache is not None:
+    global _repo_root_checked
+
+    if _repo_root_checked:
         return _repo_root_cache
-    
-    # Start from this file and walk up
-    current = Path(__file__).parent
-    while current != current.parent:
+
+    current = Path(__file__).resolve().parent
+    for _ in range(12):
         if (current / "pyproject.toml").exists() and (current / "src" / "quantumvitas").exists():
             _repo_root_cache = current.resolve()
+            _repo_root_checked = True
             return _repo_root_cache
-        current = current.parent
-    
-    raise RuntimeError(
-        "Could not find QMatSuite repository root. "
-        "Expected to find pyproject.toml and src/quantumvitas/ in parent directories."
-    )
+        parent = current.parent
+        if parent == current:
+            break
+        current = parent
+
+    _repo_root_cache = None
+    _repo_root_checked = True
+    return None
+
+
+def get_repo_root() -> Optional[Path]:
+    """
+    Get the QMatSuite repository root directory in dev mode.
+
+    Returns:
+        Path to repository root when running from a source checkout,
+        otherwise ``None``.
+    """
+    return _try_find_repo_root()
+
+
+def _is_electron_bundle() -> bool:
+    """Return True when running inside the Electron-distributed runtime."""
+    return os.environ.get("QMATSUITE_ELECTRON") == "1"
+
+
+def _electron_app_data_dir() -> Path:
+    """Resolve platform app-data directory for Electron distribution."""
+    if sys.platform == "darwin":
+        return _ensure_dir(Path.home() / "Library" / "Application Support" / "QMatSuite")
+    if sys.platform == "win32":
+        local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+        return _ensure_dir(Path(local_app_data) / "QMatSuite")
+
+    xdg_data_home = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
+    return _ensure_dir(Path(xdg_data_home) / "qmatsuite")
+
+
+def _electron_cache_dir() -> Path:
+    """Resolve platform cache directory for Electron distribution."""
+    if sys.platform == "darwin":
+        return _ensure_dir(Path.home() / "Library" / "Caches" / "QMatSuite")
+    if sys.platform == "win32":
+        local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+        return _ensure_dir(Path(local_app_data) / "QMatSuite" / "cache")
+
+    xdg_cache_home = os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))
+    return _ensure_dir(Path(xdg_cache_home) / "qmatsuite")
+
+
+def get_app_data_dir() -> Path:
+    """
+    Resolve the QMatSuite app data directory.
+
+    Resolution order:
+    1. ``QMATSUITE_HOME``
+    2. Dev mode (repo checkout): ``<repo_root>/.qmatsuite``
+    3. Electron mode (``QMATSUITE_ELECTRON=1``): platform app-data directory
+    4. Fallback: ``~/.qmatsuite``
+    """
+    env_home = os.environ.get("QMATSUITE_HOME")
+    if env_home:
+        return _ensure_dir(Path(env_home))
+
+    repo_root = _try_find_repo_root()
+    if repo_root is not None:
+        return _ensure_dir(repo_root / ".qmatsuite")
+
+    if _is_electron_bundle():
+        return _electron_app_data_dir()
+
+    return _ensure_dir(Path.home() / ".qmatsuite")
+
+
+def get_cache_dir() -> Path:
+    """
+    Resolve the QMatSuite cache/scratch directory.
+
+    Resolution order:
+    1. ``QMATSUITE_CACHE``
+    2. Dev mode (repo checkout): ``<repo_root>/.tmp``
+    3. Electron mode (``QMATSUITE_ELECTRON=1``): platform cache directory
+    4. Fallback: ``<app_data_dir>/.tmp``
+    """
+    env_cache = os.environ.get("QMATSUITE_CACHE")
+    if env_cache:
+        return _ensure_dir(Path(env_cache))
+
+    repo_root = _try_find_repo_root()
+    if repo_root is not None:
+        return _ensure_dir(repo_root / ".tmp")
+
+    if _is_electron_bundle():
+        return _electron_cache_dir()
+
+    return _ensure_dir(get_app_data_dir() / ".tmp")
+
+
+def get_tmp_dir() -> Path:
+    """Backward-compatible alias for cache/scratch root."""
+    return get_cache_dir()
 
 
 def get_qmatsuite_home_root() -> Path:
-    """
-    Get the QMatSuite home root directory (.qmatsuite/).
-    
-    This is the persistent, migratable, reproducible assets directory.
-    
-    Returns:
-        Path to .qmatsuite/ directory (created if needed)
-    """
-    root = get_repo_root()
-    home = root / ".qmatsuite"
-    home.mkdir(parents=True, exist_ok=True)
-    return home
+    """Backward-compatible alias for app data root."""
+    return get_app_data_dir()
 
 
 def get_qmatsuite_tmp_root() -> Path:
-    """
-    Get the QMatSuite temporary root directory (.tmp/).
-    
-    This is the scratch directory that can be deleted anytime.
-    
-    Returns:
-        Path to .tmp/ directory (created if needed)
-    """
-    root = get_repo_root()
-    tmp = root / ".tmp"
-    tmp.mkdir(parents=True, exist_ok=True)
-    return tmp
+    """Backward-compatible alias for cache/scratch root."""
+    return get_cache_dir()
 
 
 # Home directory helpers (persistent assets)
 def home_config_dir() -> Path:
-    """Get .qmatsuite/config/ directory."""
-    home = get_qmatsuite_home_root()
-    config_dir = home / "config"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    return config_dir
+    """Get app-data config directory."""
+    return _ensure_dir(get_app_data_dir() / "config")
 
 
 def home_engines_dir() -> Path:
-    """Get .qmatsuite/engines/ directory."""
-    home = get_qmatsuite_home_root()
-    engines_dir = home / "engines"
-    engines_dir.mkdir(parents=True, exist_ok=True)
-    return engines_dir
+    """Get app-data engines directory."""
+    return _ensure_dir(get_app_data_dir() / "engines")
 
 
 def home_seeds_dir() -> Path:
-    """Get .qmatsuite/seeds/ directory."""
-    home = get_qmatsuite_home_root()
-    seeds_dir = home / "seeds"
-    seeds_dir.mkdir(parents=True, exist_ok=True)
-    return seeds_dir
+    """Get app-data seeds directory."""
+    return _ensure_dir(get_app_data_dir() / "seeds")
 
 
 def home_libraries_dir() -> Path:
-    """Get .qmatsuite/libraries/ directory."""
-    home = get_qmatsuite_home_root()
-    libraries_dir = home / "libraries"
-    libraries_dir.mkdir(parents=True, exist_ok=True)
-    return libraries_dir
+    """Get app-data libraries directory."""
+    return _ensure_dir(get_app_data_dir() / "libraries")
 
 
 def home_logs_dir() -> Path:
-    """Get .qmatsuite/logs/ directory."""
-    home = get_qmatsuite_home_root()
-    logs_dir = home / "logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    return logs_dir
+    """Get app-data logs directory."""
+    return _ensure_dir(get_app_data_dir() / "logs")
 
 
 # QE-specific subdirectories
 def home_qe_engines_dir() -> Path:
-    """Get .qmatsuite/engines/qe/ directory."""
-    engines = home_engines_dir()
-    qe_dir = engines / "qe"
-    qe_dir.mkdir(parents=True, exist_ok=True)
-    return qe_dir
+    """Get app-data QE engines directory."""
+    return _ensure_dir(home_engines_dir() / "qe")
 
 
 def home_qe_seeds_dir() -> Path:
-    """Get .qmatsuite/seeds/qe/ directory."""
-    seeds = home_seeds_dir()
-    qe_dir = seeds / "qe"
-    qe_dir.mkdir(parents=True, exist_ok=True)
-    return qe_dir
+    """Get app-data QE seeds directory."""
+    return _ensure_dir(home_seeds_dir() / "qe")
 
 
 def home_pseudo_libraries_dir() -> Path:
-    """Get .qmatsuite/libraries/pseudo/ directory."""
-    libraries = home_libraries_dir()
-    pseudo_dir = libraries / "pseudo"
-    pseudo_dir.mkdir(parents=True, exist_ok=True)
-    return pseudo_dir
+    """Get app-data pseudo libraries directory."""
+    return _ensure_dir(home_libraries_dir() / "pseudo")
 
 
 def home_pseudo_seeds_dir() -> Path:
-    """Get .qmatsuite/seeds/pseudo/ directory."""
-    seeds = home_seeds_dir()
-    pseudo_dir = seeds / "pseudo"
-    pseudo_dir.mkdir(parents=True, exist_ok=True)
-    return pseudo_dir
+    """Get app-data pseudo seeds directory."""
+    return _ensure_dir(home_seeds_dir() / "pseudo")
 
 
 # Temporary directory helpers (scratch space)
 def tmp_runs_dir() -> Path:
-    """Get .tmp/runs/ directory."""
-    tmp = get_qmatsuite_tmp_root()
-    runs_dir = tmp / "runs"
-    runs_dir.mkdir(parents=True, exist_ok=True)
-    return runs_dir
+    """Get cache runs directory."""
+    return _ensure_dir(get_cache_dir() / "runs")
 
 
 def tmp_downloads_dir() -> Path:
-    """Get .tmp/downloads/ directory."""
-    tmp = get_qmatsuite_tmp_root()
-    downloads_dir = tmp / "downloads"
-    downloads_dir.mkdir(parents=True, exist_ok=True)
-    return downloads_dir
+    """Get cache downloads directory."""
+    return _ensure_dir(get_cache_dir() / "downloads")
 
 
 def tmp_unpack_dir() -> Path:
-    """Get .tmp/unpack/ directory."""
-    tmp = get_qmatsuite_tmp_root()
-    unpack_dir = tmp / "unpack"
-    unpack_dir.mkdir(parents=True, exist_ok=True)
-    return unpack_dir
+    """Get cache unpack directory."""
+    return _ensure_dir(get_cache_dir() / "unpack")
 
 
 def tmp_probe_dir() -> Path:
-    """Get .tmp/probe/ directory."""
-    tmp = get_qmatsuite_tmp_root()
-    probe_dir = tmp / "probe"
-    probe_dir.mkdir(parents=True, exist_ok=True)
-    return probe_dir
+    """Get cache probe directory."""
+    return _ensure_dir(get_cache_dir() / "probe")
 
 
 def tmp_locks_dir() -> Path:
-    """Get .tmp/locks/ directory."""
-    tmp = get_qmatsuite_tmp_root()
-    locks_dir = tmp / "locks"
-    locks_dir.mkdir(parents=True, exist_ok=True)
-    return locks_dir
+    """Get cache locks directory."""
+    return _ensure_dir(get_cache_dir() / "locks")
 
 
 def get_settings_json_path() -> Path:
-    """Get path to .qmatsuite/config/settings.json."""
+    """Get path to settings.json in app-data config directory."""
     return home_config_dir() / "settings.json"
-

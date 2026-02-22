@@ -7,8 +7,6 @@ import os
 from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
-from pymatgen.core import Structure
-
 from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
 from quantumvitas.core.public import StepResult
 from quantumvitas.engine.base import Engine, EngineConfig
@@ -28,6 +26,7 @@ from quantumvitas.io.structure_io import read_structure
 if TYPE_CHECKING:
     from quantumvitas.calculation.calculation import Calculation
     from quantumvitas.calculation.step import Step
+    from pymatgen.core import Structure
 
 logger = logging.getLogger(__name__)
 
@@ -264,8 +263,10 @@ class LammpsEngine(Engine):
         structure_ref = calculation.project.get_structure(structure_ulid)
         structure_path = structure_ref.resolve_path(calculation.project.root)
         structure = read_structure(structure_path)
-        
+
         # Convert to pymatgen Structure if needed
+        from pymatgen.core import Structure
+
         if not isinstance(structure, Structure):
             if hasattr(structure, "as_dict"):
                 structure = Structure.from_dict(structure.as_dict())
@@ -311,12 +312,14 @@ class LammpsEngine(Engine):
             return
 
         # Try to find and stage each referenced file
-        repo_root = Path(__file__).resolve().parents[3]  # src/quantumvitas/engine/file -> repo root
+        from quantumvitas.core.public import get_resources_dir
+
+        resources_dir = get_resources_dir()
         search_dirs = [
             project_root,
             project_root / "potentials",
             project_root / "lammps" / "potentials",
-            repo_root / "resources" / "lammps" / "potentials",
+            resources_dir / "lammps" / "potentials",
         ]
 
         for filename in referenced_files:
@@ -650,4 +653,3 @@ class LammpsEngine(Engine):
             output_file=log_path if log_path.exists() else None,
             return_code=result.returncode,
         )
-

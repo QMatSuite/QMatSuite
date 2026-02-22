@@ -9,7 +9,6 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
 from quantumvitas.core.public import StepResult
-from pymatgen.core import Structure
 from quantumvitas.io.structure_io import read_structure
 from quantumvitas.engine.base import Engine, EngineConfig
 from quantumvitas.engine.vasp_writer import (
@@ -22,6 +21,7 @@ from quantumvitas.engine.vasp_writer import (
 if TYPE_CHECKING:
     from quantumvitas.calculation.calculation import Calculation
     from quantumvitas.calculation.step import Step
+    from pymatgen.core import Structure
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +87,8 @@ class VaspEngine(Engine):
         structure = read_structure(structure_path)
 
         # Convert to pymatgen Structure if needed
+        from pymatgen.core import Structure
+
         if not isinstance(structure, Structure):
             # Assume structure has as_dict() or similar
             if hasattr(structure, "as_dict"):
@@ -279,4 +281,3 @@ class VaspEngine(Engine):
             )
         finally:
             os.chdir(old_cwd)
-

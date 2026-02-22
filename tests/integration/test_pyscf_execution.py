@@ -13,6 +13,8 @@ import json
 import pytest
 from pathlib import Path
 
+from quantumvitas.core.resources import get_resources_dir
+
 
 def _pyscf_available() -> bool:
     """Check if PySCF is installed with actual functionality.
@@ -265,8 +267,7 @@ class TestPySCFDemoExecution:
         from quantumvitas.engine.pyscf_engine import PySCFEngine
 
         # Load demo project
-        repo_root = Path(__file__).parent.parent.parent
-        demo_path = repo_root / "resources" / "demo_projects" / "pyscf_water_scf.yml"
+        demo_path = get_resources_dir() / "demo_projects" / "pyscf_water_scf.yml"
 
         if not demo_path.exists():
             pytest.skip("Demo project not found")
@@ -375,4 +376,3 @@ class TestPySCFEdgeCases:
         assert result.parsed_output is not None
         # Note: Depending on PySCF version, this might still converge in 1 cycle
         # for simple molecules, so we just check the result structure is valid
-

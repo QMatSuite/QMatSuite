@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from quantumvitas.core.resources import get_resources_dir
+
 
 def run_qv(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
     """Run qv CLI command."""
@@ -82,7 +84,7 @@ K_POINTS (automatic)
     assert project_dir.exists(), f"Project not created at {project_dir}"
     
     # Copy only the Si pseudopotential (not all pseudopotentials)
-    pseudo_src = project_root_path / "resources" / "pseudo"
+    pseudo_src = get_resources_dir() / "pseudo"
     pseudo_dst = project_dir / "pseudo"
     pseudo_dst.mkdir(parents=True, exist_ok=True)
     

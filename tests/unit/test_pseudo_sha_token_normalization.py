@@ -16,6 +16,7 @@ from quantumvitas.core.pseudo_libinfo import (
     compute_sha_family_file,
     compute_sha_family_text,
 )
+from quantumvitas.core.resources import get_resources_dir
 
 
 def test_whitespace_only_change(tmp_path: Path) -> None:
@@ -27,8 +28,7 @@ def test_whitespace_only_change(tmp_path: Path) -> None:
     2. sha_family(orig_text) == sha_family(modified_ws_text)  (normalized hash same)
     """
     # Find a pseudo file from resources/pseudo/
-    repo_root = Path(__file__).parent.parent.parent
-    pseudo_dir = repo_root / "resources" / "pseudo"
+    pseudo_dir = get_resources_dir() / "pseudo"
     
     # Find first .UPF or .upf file
     pseudo_file = None
@@ -87,8 +87,7 @@ def test_lf_to_crlf_change(tmp_path: Path) -> None:
     2. sha_family(orig_text) == sha_family(crlf_text)  (normalized hash same)
     """
     # Find a pseudo file from resources/pseudo/
-    repo_root = Path(__file__).parent.parent.parent
-    pseudo_dir = repo_root / "resources" / "pseudo"
+    pseudo_dir = get_resources_dir() / "pseudo"
     
     # Find first .UPF or .upf file
     pseudo_file = None
@@ -226,4 +225,3 @@ def test_sha256_bytes_helper() -> None:
     # Should be deterministic
     sha2562 = compute_sha256_bytes(data)
     assert sha256 == sha2562
-

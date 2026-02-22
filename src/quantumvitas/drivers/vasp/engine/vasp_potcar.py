@@ -21,10 +21,24 @@ POTCAR_LIBRARY_DIRS: Dict[str, str] = {
 
 
 def _format_path_for_error(path: Path) -> str:
-    """Format a path for error messages, using relative path from repo root if possible."""
-    # Try to get repo root and make path relative
+    """Format a path for error messages using app-data/repo-relative paths when possible."""
+    # Prefer app-data-relative paths (works for dev, pip, and Electron modes).
+    try:
+        from quantumvitas.core.paths import get_app_data_dir
+
+        app_data_dir = get_app_data_dir()
+        try:
+            rel_path = path.resolve().relative_to(app_data_dir.resolve())
+            return str(Path(".qmatsuite") / rel_path)
+        except (ValueError, RuntimeError):
+            pass
+    except ImportError:
+        pass
+
+    # Fall back to repo-root-relative paths when available.
     try:
         from quantumvitas.core.engines.discovery import _find_repo_root
+
         repo_root = _find_repo_root()
         if repo_root is not None:
             try:
@@ -33,18 +47,6 @@ def _format_path_for_error(path: Path) -> str:
             except (ValueError, RuntimeError):
                 pass
     except ImportError:
-        pass
-    
-    # Fallback: try paths.get_repo_root()
-    try:
-        from quantumvitas.core.paths import get_repo_root
-        repo_root = get_repo_root()
-        try:
-            rel_path = path.resolve().relative_to(repo_root.resolve())
-            return str(rel_path)
-        except (ValueError, RuntimeError):
-            pass
-    except (ImportError, RuntimeError):
         pass
     
     # Last resort: return just the path name or a generic message
@@ -58,7 +60,7 @@ def get_default_potcar_root() -> Optional[Path]:
 
     Search order:
         1. ``VASP_PP_PATH`` environment variable
-        2. Project-local ``.qmatsuite/engines/vasp/`` (via centralized repo root)
+        2. Managed app-data ``<app_data_dir>/engines/vasp/``
         3. Project-local ``.qmatsuite/engines/vasp/`` (walked up from CWD)
     """
     # Check env var first
@@ -68,15 +70,13 @@ def get_default_potcar_root() -> Optional[Path]:
         if p.is_dir():
             return p
 
-    # Project-local via centralized repo root detection
-    # (handles test environments where CWD is a tmpdir)
+    # Managed app-data location (dev mode resolves to <repo>/.qmatsuite).
     try:
-        from quantumvitas.core.engines.discovery import _find_repo_root
-        repo_root = _find_repo_root()
-        if repo_root:
-            candidate = repo_root / ".qmatsuite" / "engines" / "vasp"
-            if candidate.is_dir():
-                return candidate
+        from quantumvitas.core.paths import home_engines_dir
+
+        candidate = home_engines_dir() / "vasp"
+        if candidate.is_dir():
+            return candidate
     except ImportError:
         pass
 
@@ -130,7 +130,7 @@ def stage_potcar(
     if root is None:
         raise FileNotFoundError(
             "No POTCAR library found. Set VASP_PP_PATH or place POTCARs "
-            "in <repo_root>/.qmatsuite/engines/vasp/"
+            "in <app_data_dir>/engines/vasp/"
         )
 
     lib_dir = root / POTCAR_LIBRARY_DIRS[functional]

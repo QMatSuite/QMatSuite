@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 from quantumvitas.api import QVService
+from quantumvitas.core.resources import get_resources_dir
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -427,16 +428,7 @@ class TestRealSCFSmoke:
 
     def test_tl_not_in_bundled_resources(self):
         """Precondition: Tl is NOT in resources/pseudo/."""
-        # Walk up to find repo root
-        current = Path(__file__).parent
-        while current != current.parent:
-            if (current / "pyproject.toml").exists():
-                break
-            current = current.parent
-        else:
-            pytest.skip("Could not find repo root")
-
-        internal_pseudo = current / "resources" / "pseudo"
+        internal_pseudo = get_resources_dir() / "pseudo"
         if not internal_pseudo.is_dir():
             return  # No internal resources — precondition trivially true
 

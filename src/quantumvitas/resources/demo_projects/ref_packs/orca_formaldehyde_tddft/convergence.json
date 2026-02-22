@@ -1,0 +1,78 @@
+{
+  "bundle_kind": "canonical",
+  "object_type": "convergence",
+  "render_meta": {
+    "axis_labels": {
+      "x": "Step",
+      "y": "Energy"
+    },
+    "units": {
+      "x": "",
+      "y": "eV"
+    },
+    "series_labels": [
+      "Ionic Energy"
+    ],
+    "reference_energy": null,
+    "reference_position": null,
+    "markers": [],
+    "extra": {
+      "n_ionic_steps": 1,
+      "converged": true,
+      "algorithm": "ORCA-SCF"
+    }
+  },
+  "provenance_meta": {
+    "schema_version": "1.0",
+    "object_type": "convergence",
+    "run_ulid": "01KHYXZH6GMK4WVC4DCZFX5C4P",
+    "calc_ulid": "01KHYXZH3H5CAKBTZ0DZS5XMS9",
+    "step_ulids": [
+      "01KHYXZH3H5CAKBTZ0DZS5XMSA"
+    ],
+    "gen_steps": [
+      "scf"
+    ],
+    "engine_name": "orca",
+    "source_files": [
+      {
+        "path": "raw/scf_S5XMSA/chain01_orca_scf.out",
+        "size_bytes": 51611,
+        "mtime": 1771638344.902843
+      }
+    ],
+    "parser_name": "orca_convergence",
+    "parser_version": "1.0",
+    "warnings": [
+      "No SCF steps found in ORCA output."
+    ],
+    "manifest_snapshot": null
+  },
+  "series": [
+    {
+      "x": [
+        1.0
+      ],
+      "y": [
+        -3111.784040514696
+      ],
+      "x_label": "Ionic Step",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "Ionic Energy"
+    }
+  ],
+  "geometry_frames": null,
+  "arrays": {
+    "scf_step": [],
+    "scf_energy": [],
+    "scf_de": [],
+    "ionic_step": [
+      1
+    ],
+    "ionic_energy": [
+      -3111.784040514696
+    ]
+  }
+}

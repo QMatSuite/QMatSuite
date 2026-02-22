@@ -13,17 +13,15 @@ They are designed to work with non-GUI backends for headless environments.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple, Union
 
-import matplotlib
-# Use non-GUI backend by default for headless compatibility
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
 import numpy as np
 
 from .parsers import BandStructureData, DOSData, SCFResult
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 
 # =============================================================================
@@ -58,7 +56,19 @@ DEFAULT_STYLE = {
 
 def apply_style():
     """Apply default plotting style."""
+    plt = _get_pyplot()
     plt.rcParams.update(DEFAULT_STYLE)
+
+
+def _get_pyplot():
+    """Import matplotlib lazily to avoid startup cost for non-plotting paths."""
+    import matplotlib
+
+    # Use non-GUI backend by default for headless compatibility.
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    return plt
 
 
 # =============================================================================
@@ -95,6 +105,7 @@ def plot_dos(
     Returns:
         (Figure, Axes) tuple
     """
+    plt = _get_pyplot()
     apply_style()
     
     if ax is None:
@@ -167,6 +178,7 @@ def plot_dos_comparison(
     Returns:
         (Figure, Axes) tuple
     """
+    plt = _get_pyplot()
     apply_style()
     
     if ax is None:
@@ -222,6 +234,7 @@ def plot_bands(
     Returns:
         (Figure, Axes) tuple
     """
+    plt = _get_pyplot()
     apply_style()
     
     if ax is None:
@@ -297,6 +310,7 @@ def plot_bands_comparison(
     Returns:
         (Figure, Axes) tuple
     """
+    plt = _get_pyplot()
     apply_style()
     
     if ax is None:
@@ -348,6 +362,7 @@ def plot_band_with_dos(
     Returns:
         (Figure, (band_axes, dos_axes)) tuple
     """
+    plt = _get_pyplot()
     apply_style()
     
     # Create figure with gridspec for unequal widths
@@ -411,6 +426,7 @@ def plot_scf_convergence(
     Returns:
         (Figure, Axes) tuple
     """
+    plt = _get_pyplot()
     apply_style()
     
     if not scf_result.iterations:
@@ -509,4 +525,3 @@ def save_figure(
         saved_paths.append(path)
     
     return saved_paths
-

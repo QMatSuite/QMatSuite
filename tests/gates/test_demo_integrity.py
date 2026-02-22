@@ -8,8 +8,9 @@ Every demo snapshot must have:
 import yaml
 from pathlib import Path
 import pytest
+from quantumvitas.core.resources import get_resources_dir
 
-DEMO_DIR = Path(__file__).parent.parent.parent / "resources" / "demo_projects"
+DEMO_DIR = get_resources_dir() / "demo_projects"
 
 
 def _load_demo(path: Path) -> dict:
@@ -72,6 +73,5 @@ def test_demo_step_type_spec_matches_engine_family():
                     )
 
     assert not violations, f"EF6 violation — step_type_spec/engine_family mismatch:\n" + "\n".join(violations)
-
 
 

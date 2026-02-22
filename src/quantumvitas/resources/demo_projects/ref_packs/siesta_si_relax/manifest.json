@@ -1,0 +1,17 @@
+{
+  "demo_slug": "siesta_si_relax",
+  "engine": "siesta",
+  "generated_at": "2026-02-21T03:19:08.416228+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "ecfa3875e4dd10dc884b88a439bdcae011708b6ad8950b271177646fab674d67"
+    },
+    "trajectory": {
+      "file": "trajectory.json",
+      "sha256": "0d29b72d15d569cf54dd120aa1aa4e108f5bbc423ad36aa81a29211349e15947"
+    }
+  }
+}

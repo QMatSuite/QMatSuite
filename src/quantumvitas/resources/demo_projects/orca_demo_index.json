@@ -1,0 +1,53 @@
+{
+  "generated_at": "1768356974.1733453",
+  "total_demos": 3,
+  "demos": [
+    {
+      "title": "Water ORCA SCF Single Point",
+      "yaml_file": "water_orca_scf.yml",
+      "readme_file": "water_orca_scf_README.md",
+      "tags": [
+        "orca",
+        "molecular",
+        "scf",
+        "dft",
+        "water",
+        "tutorial"
+      ],
+      "difficulty": "beginner",
+      "ulid": "water_orca_scf"
+    },
+    {
+      "title": "Formaldehyde ORCA TDDFT",
+      "yaml_file": "formaldehyde_orca_tddft.yml",
+      "readme_file": "formaldehyde_orca_tddft_README.md",
+      "tags": [
+        "orca",
+        "molecular",
+        "scf",
+        "tddft",
+        "excited_states",
+        "formaldehyde",
+        "tutorial"
+      ],
+      "difficulty": "intermediate",
+      "ulid": "formaldehyde_orca_tddft"
+    },
+    {
+      "title": "Methane ORCA Frequency",
+      "yaml_file": "methane_orca_freq.yml",
+      "readme_file": "methane_orca_freq_README.md",
+      "tags": [
+        "orca",
+        "molecular",
+        "scf",
+        "frequency",
+        "vibrational",
+        "methane",
+        "tutorial"
+      ],
+      "difficulty": "intermediate",
+      "ulid": "methane_orca_freq"
+    }
+  ]
+}

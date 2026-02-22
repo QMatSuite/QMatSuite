@@ -8,14 +8,22 @@ Called at import/read/parse time.
 from __future__ import annotations
 
 import numpy as np
-from pymatgen.core import Structure as PMGStructure
-from pymatgen.core import Molecule as PMGMolecule
-from typing import Union
+from typing import TYPE_CHECKING
 
-from quantumvitas.analysis.structure_viz import canonicalize_structure_in_place
+if TYPE_CHECKING:
+    from pymatgen.core import Molecule as PMGMolecule
+    from pymatgen.core import Structure as PMGStructure
 
 
-def canonicalize_structure_like_in_place(obj: Union[PMGStructure, PMGMolecule]) -> None:
+def _get_pymatgen_types() -> tuple[type, type]:
+    """Load pymatgen classes lazily to avoid heavy startup imports."""
+    from pymatgen.core import Molecule as _PMGMolecule
+    from pymatgen.core import Structure as _PMGStructure
+
+    return _PMGStructure, _PMGMolecule
+
+
+def canonicalize_structure_like_in_place(obj: object) -> None:
     """
     Canonicalize a structure-like object in place.
     
@@ -28,14 +36,17 @@ def canonicalize_structure_like_in_place(obj: Union[PMGStructure, PMGMolecule]) 
     Args:
         obj: pymatgen Structure or Molecule (modified in place)
     """
+    PMGStructure, PMGMolecule = _get_pymatgen_types()
     if isinstance(obj, PMGMolecule):
         _canonicalize_molecule_in_place(obj)
     elif isinstance(obj, PMGStructure):
+        from quantumvitas.analysis.structure_viz import canonicalize_structure_in_place
+
         canonicalize_structure_in_place(obj)  # existing function
     # else: pass silently for other types (or raise TypeError if strict)
 
 
-def _canonicalize_molecule_in_place(molecule: PMGMolecule) -> None:
+def _canonicalize_molecule_in_place(molecule: object) -> None:
     """
     Canonicalize a Molecule by centering at origin (COG shift).
     
@@ -55,4 +66,3 @@ def _canonicalize_molecule_in_place(molecule: PMGMolecule) -> None:
     # Shift all sites by -COG using translate_sites
     # translate_sites takes indices and a vector, translates all specified sites
     molecule.translate_sites(list(range(len(molecule))), -cog)
-

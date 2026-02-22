@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from quantumvitas.core.resources import get_resources_dir
 from quantumvitas.engine.registry import create_default_registry
 from quantumvitas.project.model import Project
 from quantumvitas.calculation.runner import CalculationRunner
@@ -40,7 +41,7 @@ def si_dos_project(project_root_path: Path, si_dos_dir: Path) -> Path:
         calculation_id="si_dos",
         steps=steps,
         source_dir=si_dos_dir,
-        pseudo_src=project_root_path / "resources" / "pseudo",
+        pseudo_src=get_resources_dir() / "pseudo",
     )
 
 

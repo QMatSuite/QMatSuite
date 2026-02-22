@@ -1,0 +1,13 @@
+{
+  "demo_slug": "gaussian_water_hf",
+  "engine": "gaussian",
+  "generated_at": "2026-02-21T01:45:34.346633+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "ac8dcf86aed09a3abc23daf1bf459085f91a12f99ce9840b5b544b08edfe5b52"
+    }
+  }
+}

@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
 import numpy as np
-from pymatgen.core import Structure, Lattice
 
 if TYPE_CHECKING:
+    from pymatgen.core import Lattice
     from pymatgen.core import Structure as PMGStructure
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class CP2KTrajectory:
         source_file: Path to source XYZ file
         has_cell_evolution: Whether cell varies over trajectory
     """
-    frames: List[Structure]
+    frames: List["PMGStructure"]
     energies: List[float]
     iterations: List[int]
     times: Optional[List[float]] = None
@@ -278,6 +278,8 @@ def parse_cp2k_trajectory(
         temperatures = [d["temp_K"] for d in ener_data]
 
     # Build structures with cell info
+    from pymatgen.core import Lattice, Structure
+
     structures = []
     for i, frame in enumerate(frames):
         if cells and i < len(cells):
@@ -310,7 +312,7 @@ def extract_final_structure(
     xyz_path: Path,
     cell_path: Optional[Path] = None,
     initial_structure: Optional["PMGStructure"] = None,
-) -> Structure:
+) -> "PMGStructure":
     """
     Extract final (last) frame from CP2K trajectory XYZ file.
 
@@ -328,4 +330,3 @@ def extract_final_structure(
         initial_structure=initial_structure,
     )
     return trajectory.frames[-1]
-

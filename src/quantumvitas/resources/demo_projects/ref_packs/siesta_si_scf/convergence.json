@@ -1,0 +1,145 @@
+{
+  "bundle_kind": "canonical",
+  "object_type": "convergence",
+  "render_meta": {
+    "axis_labels": {
+      "x": "Step",
+      "y": "Energy"
+    },
+    "units": {
+      "x": "",
+      "y": "eV"
+    },
+    "series_labels": [
+      "SCF Energy",
+      "SCF dE",
+      "Ionic Energy"
+    ],
+    "reference_energy": null,
+    "reference_position": null,
+    "markers": [],
+    "extra": {
+      "n_ionic_steps": 1,
+      "converged": true,
+      "algorithm": ""
+    }
+  },
+  "provenance_meta": {
+    "schema_version": "1.0",
+    "object_type": "convergence",
+    "run_ulid": "01KHYYF5P6JSS4QSJ742BD4VAK",
+    "calc_ulid": "01KHYYF5KRQV0WQAE0F6S3ZTSN",
+    "step_ulids": [
+      "01KHYYF5KRQV0WQAE0F6S3ZTSP"
+    ],
+    "gen_steps": [
+      "scf"
+    ],
+    "engine_name": "siesta",
+    "source_files": [
+      {
+        "path": "raw/01KHYYF5KRQV0WQAE0F6S3ZTSP/siesta_scf.out",
+        "size_bytes": 25762,
+        "mtime": 1771638859.5103579
+      }
+    ],
+    "parser_name": "siesta_convergence",
+    "parser_version": "1.0",
+    "warnings": [],
+    "manifest_snapshot": null
+  },
+  "series": [
+    {
+      "x": [
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0
+      ],
+      "y": [
+        -230.027501,
+        -230.032616,
+        -230.036104,
+        -230.036106,
+        -230.036109,
+        -230.036109
+      ],
+      "x_label": "SCF Step",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "SCF Energy"
+    },
+    {
+      "x": [
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0
+      ],
+      "y": [
+        -230.027501,
+        -0.0051149999999893225,
+        -0.0034880000000043765,
+        -1.9999999949504854e-06,
+        -3.0000000208474376e-06,
+        0.0
+      ],
+      "x_label": "SCF Step",
+      "y_label": "dE",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "SCF dE"
+    },
+    {
+      "x": [
+        1.0
+      ],
+      "y": [
+        -230.0361
+      ],
+      "x_label": "Ionic Step",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "Ionic Energy"
+    }
+  ],
+  "geometry_frames": null,
+  "arrays": {
+    "scf_step": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "scf_energy": [
+      -230.027501,
+      -230.032616,
+      -230.036104,
+      -230.036106,
+      -230.036109,
+      -230.036109
+    ],
+    "scf_de": [
+      -230.027501,
+      -0.0051149999999893225,
+      -0.0034880000000043765,
+      -1.9999999949504854e-06,
+      -3.0000000208474376e-06,
+      0.0
+    ],
+    "ionic_step": [
+      1
+    ],
+    "ionic_energy": [
+      -230.0361
+    ]
+  }
+}

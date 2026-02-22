@@ -6,13 +6,14 @@ Generates Gaussian .gjf input files from pymatgen structures.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
-from pymatgen.core import Molecule, Structure
+if TYPE_CHECKING:
+    from pymatgen.core import Molecule, Structure
 
 
 def write_gaussian_input(
-    structure: Union[Molecule, Structure],
+    structure: Union["Molecule", "Structure"],
     output_path: Path,
     gen_type: str,
     method: str = "HF",
@@ -81,7 +82,9 @@ def write_gaussian_input(
     lines.append(f"{charge} {multiplicity}")
 
     # Atom coordinates
-    if isinstance(structure, Molecule):
+    from pymatgen.core import Molecule as PMGMolecule
+
+    if isinstance(structure, PMGMolecule):
         for site in structure:
             symbol = site.specie.symbol
             x, y, z = site.coords

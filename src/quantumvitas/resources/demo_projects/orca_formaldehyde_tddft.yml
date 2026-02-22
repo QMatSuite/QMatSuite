@@ -1,0 +1,145 @@
+version: 1
+project:
+  meta:
+    ulid: 01K7FTDAWRDPCSZAGQVG31WWE9
+    name: Formaldehyde ORCA TDDFT
+    slug: formaldehyde-orca-tddft
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KTV01SX430V23GDFBXV45VX9
+    name: CHO
+    slug: cho
+    path: structures/cho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: C
+      species:
+      - element: C
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: C
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 1.2
+      - 0.0
+      - 0.0
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -0.6
+      - 0.9238
+      - 0.0
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - -0.6
+      - -0.9238
+      - 0.0
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KGJQBC329B6VM2W5MK2WSZP7
+    name: Formaldehyde ORCA TDDFT
+    slug: formaldehyde-orca-tddft
+    path: calculations/formaldehyde-orca-tddft
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: orca
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/formaldehyde-orca-tddft/steps/scf.step.yaml
+      kind: step
+      ulid: 01KBGFEBTF8MDRV4J9B6GKJ0XC
+    parameters:
+      blocks:
+        tddft:
+          NRoots: 5
+          TDA: true
+      charge: 0
+      multiplicity: 1
+      method: B3LYP
+      basis: def2-SVP
+      keywords:
+      - TightSCF
+    step_type_spec: orca_scf
+  - meta:
+      name: td
+      slug: td
+      path: calculations/formaldehyde-orca-tddft/steps/td.step.yaml
+      kind: step
+      ulid: 01K0MED9ZNABBC3R247PZBVBQY
+    parameters:
+      blocks:
+        tddft:
+          NRoots: 5
+          TDA: true
+      charge: 0
+      multiplicity: 1
+      method: B3LYP
+      basis: def2-SVP
+      keywords:
+      - TightSCF
+    step_type_spec: orca_td
+  structure_ulid: 01KTV01SX430V23GDFBXV45VX9
+meta:
+  ulid: orca_formaldehyde_tddft
+  title: Formaldehyde ORCA TDDFT
+  subtitle: B3LYP/def2-SVP Tamm-Dancoff TDDFT for 5 excited states of formaldehyde
+  description: B3LYP/def2-SVP TDDFT calculation for formaldehyde computing 5 excited states via the Tamm-Dancoff approximation.
+  tags:
+  - orca
+  - molecular
+  - scf
+  - tddft
+  - excited_states
+  - formaldehyde
+  - tutorial
+  recommended_analysis: excited_states
+  difficulty: intermediate
+  system_class: molecule
+  periodicity: molecular
+  method: tddft-b3lyp
+  property_of_interest: absorption
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 2.2
+  multi_engine: false
+  engines_used:
+  - orca
+  n_steps: 1
+  step_summary: TDDFT
+  available_analysis:
+  - convergence
+  required_engine: orca
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: orca
+  corpus_case_id: formaldehyde_tddft
+  corpus_checksum: fe46b2cb46bedb89a6144f92ed44c3decd54bfdad729e633ace54f7a408eac92

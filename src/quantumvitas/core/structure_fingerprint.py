@@ -17,21 +17,25 @@ from __future__ import annotations
 
 import hashlib
 import math
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple, Union
 
 import numpy as np
-from pymatgen.core import Structure as PMGStructure
-from pymatgen.core import Molecule as PMGMolecule
-from typing import Union
 
-from quantumvitas.analysis.structure_viz import (
-    WRAP_TOL,
-    canonicalize_frac_coords,
-)
+if TYPE_CHECKING:
+    from pymatgen.core import Structure as PMGStructure
+    from pymatgen.core import Molecule as PMGMolecule
+
+
+def _get_pymatgen_types():
+    """Lazy-load pymatgen classes used for runtime isinstance checks."""
+    from pymatgen.core import Structure as PMGStructure
+    from pymatgen.core import Molecule as PMGMolecule
+
+    return PMGStructure, PMGMolecule
 
 
 def structure_fingerprint(
-    structure: Union[PMGStructure, PMGMolecule],
+    structure: Union["PMGStructure", "PMGMolecule"],
     tol: float = 1e-5,
 ) -> str:
     """
@@ -105,7 +109,7 @@ DEFAULT_FINGERPRINT_TOL_ANG = 1e-3  # Default tolerance in Angstrom
 
 
 def structure_like_fingerprint(
-    obj: Union[PMGStructure, PMGMolecule],
+    obj: Union["PMGStructure", "PMGMolecule"],
     tol_ang: float = DEFAULT_FINGERPRINT_TOL_ANG,
 ) -> str:
     """
@@ -135,6 +139,8 @@ def structure_like_fingerprint(
     Raises:
         TypeError: If obj is neither Structure nor Molecule
     """
+    PMGStructure, PMGMolecule = _get_pymatgen_types()
+
     if isinstance(obj, PMGMolecule):
         return _fingerprint_molecule(obj, tol_ang)
     elif isinstance(obj, PMGStructure):
@@ -145,7 +151,7 @@ def structure_like_fingerprint(
         )
 
 
-def _fingerprint_pbc_structure(structure: PMGStructure, tol_ang: float) -> str:
+def _fingerprint_pbc_structure(structure: "PMGStructure", tol_ang: float) -> str:
     """
     Fingerprint for PBC Structure.
     
@@ -213,7 +219,7 @@ def _fingerprint_pbc_structure(structure: PMGStructure, tol_ang: float) -> str:
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
 
-def _fingerprint_molecule(molecule: PMGMolecule, tol_ang: float) -> str:
+def _fingerprint_molecule(molecule: "PMGMolecule", tol_ang: float) -> str:
     """
     Fingerprint for Molecule.
     
@@ -261,4 +267,3 @@ def _fingerprint_molecule(molecule: PMGMolecule, tol_ang: float) -> str:
     # Hash
     payload = "|".join(payload_parts)
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()
-

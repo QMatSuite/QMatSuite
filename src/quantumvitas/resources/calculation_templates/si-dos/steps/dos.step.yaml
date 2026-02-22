@@ -1,0 +1,16 @@
+meta:
+  ulid: 01KB9K4N11RGJTEMFF3BHQ69ME
+  name: dos
+  slug: dos
+  path: calculations/si-dos/steps/dos.step.yaml
+  kind: step
+structure: si
+step_type_spec: dos
+parent_calculation_id: 01KB9JA6JSMH7XFZ1AK917TV6J
+parameters:
+  DOS:
+    emax: 16.0
+    emin: -9.0
+    fildos: si.dos.dat
+    outdir: ./outdir/
+    prefix: si

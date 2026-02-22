@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional, List, Set, Dict
 
 from quantumvitas.core.pseudo_config import get_ssl_context
+from quantumvitas.core.resources import get_resources_dir
 from quantumvitas.io import QEInputParser, QECardType
 
 
@@ -208,18 +209,9 @@ class PseudoManager:
 
 
 def _find_quantumvitas_root() -> Optional[Path]:
-    """
-    Find the quantumvitas root directory (containing src/quantumvitas).
-    
-    Returns None if not found.
-    """
-    # Try to find from this file's location
-    current = Path(__file__).parent
-    while current != current.parent:
-        if (current / "src" / "quantumvitas").exists():
-            return current
-        current = current.parent
-    return None
+    """Find quantumvitas root via the canonical pseudo_config resolver."""
+    from quantumvitas.core.pseudo_config import (
+        _find_quantumvitas_root as _find_root,
+    )
 
-
-
+    return _find_root()

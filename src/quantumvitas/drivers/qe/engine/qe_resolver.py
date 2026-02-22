@@ -10,11 +10,9 @@ Two-state model:
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 
-from quantumvitas.core.paths import get_repo_root
 from quantumvitas.core.settings import load_settings
 
 # Import home_qe_engines_dir - allow tests to monkeypatch via re-export module
@@ -87,7 +85,6 @@ def find_internal_qe_bin_dir() -> Optional[Path]:
     Returns:
         Path to selected internal QE bin directory, or None if none found
     """
-    repo_root = get_repo_root()
     engines_base = home_qe_engines_dir()
     
     if not engines_base.exists():
@@ -208,4 +205,3 @@ def resolve_qe_bin_dir(settings=None) -> Path:
         "No internal QE found under .qmatsuite/engines/qe/**/bin.\n"
         "Install internal QE or set qe.bin_dir to an external QE bin directory in Settings."
     )
-

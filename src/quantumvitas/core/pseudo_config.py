@@ -29,6 +29,7 @@ from quantumvitas.core.paths import (
     home_pseudo_libraries_dir,
     home_pseudo_seeds_dir,
 )
+from quantumvitas.core.resources import get_resources_dir
 
 logger = logging.getLogger(__name__)
 
@@ -56,34 +57,30 @@ GITHUB_RELEASE_BASE_URL = f"https://github.com/{GITHUB_REPO_OWNER}/{GITHUB_REPO_
 
 
 def _find_quantumvitas_root() -> Optional[Path]:
-    """Find the quantumvitas package root for bundled resources.
+    """Find quantumvitas root.
 
-    Uses importlib.resources (Python 3.9+) to locate the installed package,
-    with a dev-mode fallback that walks up from __file__.
-
-    Returns None if not found.
+    Returns repo root in dev checkouts (directory with pyproject.toml + src/quantumvitas),
+    and falls back to package root in installed environments.
     """
-    # 1. importlib.resources (works in wheel installs)
+    search_starts = [Path(__file__).resolve(), Path.cwd().resolve()]
+
+    for start in search_starts:
+        current = start if start.is_dir() else start.parent
+        for _ in range(24):  # safety cap
+            if (
+                (current / "pyproject.toml").is_file()
+                and (current / "src" / "quantumvitas").is_dir()
+            ):
+                return current
+            parent = current.parent
+            if parent == current:
+                break
+            current = parent
+
     try:
-        import importlib.resources as _res
-
-        pkg_anchor = _res.files("quantumvitas")
-        # pkg_anchor is the quantumvitas package dir.
-        # resources/pseudo lives two levels up: <repo>/resources/pseudo
-        pkg_path = Path(str(pkg_anchor))
-        repo_root = pkg_path.parent.parent  # src/../ -> repo root
-        if (repo_root / "resources" / "pseudo").exists():
-            return repo_root
+        return get_resources_dir().parent
     except Exception:
-        pass
-
-    # 2. Dev-mode fallback: walk up from __file__
-    current = Path(__file__).parent
-    while current != current.parent:
-        if (current / "src" / "quantumvitas").exists():
-            return current
-        current = current.parent
-    return None
+        return None
 
 
 @dataclass
@@ -247,17 +244,13 @@ def validate_pseudo_config(config: PseudoConfig) -> ValidationResult:
     """
     result = ValidationResult()
 
-    # Check resources/pseudo (always should exist)
-    repo_root = _find_quantumvitas_root()
-    if repo_root:
-        repo_pseudo = repo_root / "resources" / "pseudo"
-        result.repo_pseudo_exists = repo_pseudo.exists()
-        if result.repo_pseudo_exists:
-            result.messages.append(f"Repo pseudo dir: {repo_pseudo}")
-        else:
-            result.warnings.append(f"Repo pseudo dir not found: {repo_pseudo}")
+    # Check bundled resources/pseudo.
+    repo_pseudo = get_resources_dir() / "pseudo"
+    result.repo_pseudo_exists = repo_pseudo.exists()
+    if result.repo_pseudo_exists:
+        result.messages.append(f"Bundled pseudo dir: {repo_pseudo}")
     else:
-        result.warnings.append("Could not find quantumvitas repo root")
+        result.warnings.append(f"Bundled pseudo dir not found: {repo_pseudo}")
 
     # Check store_dir
     if config.store_dir:
@@ -517,8 +510,7 @@ def resolve_project_pseudos(
     project_pseudo_dir = request.project_root / "pseudo"
     result.project_pseudo_dir = str(project_pseudo_dir)
 
-    repo_root = _find_quantumvitas_root()
-    repo_pseudo_dir = repo_root / "resources" / "pseudo" if repo_root else None
+    repo_pseudo_dir = get_resources_dir() / "pseudo"
 
     libraries_root = home_pseudo_libraries_dir()
 

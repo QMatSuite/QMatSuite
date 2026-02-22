@@ -1,0 +1,13 @@
+{
+  "demo_slug": "qe_fe_scf",
+  "engine": "qe",
+  "generated_at": "2026-02-21T03:18:42.269846+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "ed70c587c398a2c6092c8cc3959989e081f1b1aab766ebdc9ff699199e6e0a49"
+    }
+  }
+}

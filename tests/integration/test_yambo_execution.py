@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 
 from quantumvitas.core.engines.discovery import discover_engine, is_engine_available
+from quantumvitas.core.resources import get_resources_dir
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -128,7 +129,7 @@ def _find_si_oncv_pseudo() -> Path:
     explicit_paths = [
         _REPO_ROOT / "docs" / "engines" / "yambo"
         / "smoke_si_nc" / "pseudo" / "Si_ONCV_PBE-1.2.upf",
-        _REPO_ROOT / "resources" / "pseudo" / "Si_ONCV_PBE-1.2.upf",
+        get_resources_dir() / "pseudo" / "Si_ONCV_PBE-1.2.upf",
     ]
     for p in explicit_paths:
         if p.exists():
@@ -136,7 +137,7 @@ def _find_si_oncv_pseudo() -> Path:
 
     # Search for any Si_ONCV_PBE-*.upf in known locations
     search_dirs = [
-        _REPO_ROOT / "resources" / "pseudo",
+        get_resources_dir() / "pseudo",
         _REPO_ROOT / ".qmatsuite" / "engines" / "qe",
         Path.home() / ".qmatsuite" / "pseudo",
     ]

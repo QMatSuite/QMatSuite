@@ -12,7 +12,7 @@ import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 try:
     import msgpack
@@ -21,11 +21,12 @@ except ImportError:
     MSGPACK_AVAILABLE = False
     import pickle
 
-from pymatgen.core import Structure as PMGStructure
-
-
 # TTL: 30 days in seconds
 CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
+
+
+if TYPE_CHECKING:
+    from pymatgen.core import Structure as PMGStructure
 
 
 @dataclass
@@ -158,6 +159,8 @@ class OnlineStructureCache:
     
     def _deserialize_structure(self, data: bytes) -> PMGStructure:
         """Deserialize structure from binary."""
+        from pymatgen.core import Structure as PMGStructure
+
         if MSGPACK_AVAILABLE:
             structure_dict = msgpack.unpackb(data, raw=False)
         else:

@@ -14,12 +14,10 @@ from typing import Any, Dict, List, Optional, Set
 
 
 
-from quantumvitas.core.resources import generate_resource_id as generate_ulid
-
-# Find resources directory relative to this file's location
-# resources/ is at the root of the repo, not in src/
-_PACKAGE_ROOT = Path(__file__).parent.parent.parent.parent  # src/quantumvitas/core -> root
-RESOURCES_DIR = _PACKAGE_ROOT / "resources"
+from quantumvitas.core.resources import (
+    generate_resource_id as generate_ulid,
+    get_resources_dir,
+)
 
 
 def get_template_path(category: str, name: str) -> Optional[Path]:
@@ -36,9 +34,11 @@ def get_template_path(category: str, name: str) -> Optional[Path]:
     Returns:
         Path to template or None if not found
     """
+    resources_root = get_resources_dir()
+
     if category == "calculation":
         # Only read from resources/ (no fallback)
-        resources_dir = RESOURCES_DIR / "calculation_templates" / name
+        resources_dir = resources_root / "calculation_templates" / name
         if resources_dir.exists() and resources_dir.is_dir():
             return resources_dir
         return None
@@ -64,7 +64,7 @@ def list_calculation_templates() -> List[Dict[str, Any]]:
         - n_steps: Number of steps
         - step_types: List of step types
     """
-    template_dir = RESOURCES_DIR / "calculation_templates"
+    template_dir = get_resources_dir() / "calculation_templates"
     if not template_dir.exists():
         return []
     
@@ -111,7 +111,7 @@ def list_structure_library() -> List[str]:
     Returns:
         List of structure names (without .json extension)
     """
-    struct_dir = RESOURCES_DIR / "structure_library"
+    struct_dir = get_resources_dir() / "structure_library"
     if not struct_dir.exists():
         return []
     
@@ -130,7 +130,7 @@ def get_structure_library_path(name: str) -> Optional[Path]:
     Returns:
         Path to structure JSON or None if not found
     """
-    struct_dir = RESOURCES_DIR / "structure_library"
+    struct_dir = get_resources_dir() / "structure_library"
     path = struct_dir / f"{name}.json"
     return path if path.exists() else None
 
@@ -445,6 +445,5 @@ def copy_calculation_template(
         calculation_ulid=calculation_ulid,
         engine_family=engine_family,
     )
-
 
 

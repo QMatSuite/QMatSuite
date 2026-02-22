@@ -18,16 +18,28 @@ def _search_qmatsuite_engines(binary_name: str, engine_subdir: str) -> Path | No
     """Search .qmatsuite/engines/<engine_subdir>/*/bin/<binary_name>."""
     search_roots = []
 
-    # Project-local via centralized repo root detection
+    # Primary: managed app-data engines root (dev + distribution aware).
+    try:
+        from quantumvitas.core.paths import home_engines_dir
+
+        managed_candidate = home_engines_dir() / engine_subdir
+        if managed_candidate not in search_roots:
+            search_roots.append(managed_candidate)
+    except Exception:
+        pass
+
+    # Legacy project-local via centralized repo root detection.
     try:
         from quantumvitas.core.engines.discovery import _find_repo_root
         repo_root = _find_repo_root()
         if repo_root:
-            search_roots.append(repo_root / ".qmatsuite" / "engines" / engine_subdir)
+            repo_candidate = repo_root / ".qmatsuite" / "engines" / engine_subdir
+            if repo_candidate not in search_roots:
+                search_roots.append(repo_candidate)
     except ImportError:
         pass
 
-    # CWD-relative
+    # CWD-relative fallback.
     cwd_candidate = Path.cwd() / ".qmatsuite" / "engines" / engine_subdir
     if cwd_candidate not in search_roots:
         search_roots.append(cwd_candidate)

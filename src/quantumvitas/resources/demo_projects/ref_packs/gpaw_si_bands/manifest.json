@@ -1,0 +1,17 @@
+{
+  "demo_slug": "gpaw_si_bands",
+  "engine": "gpaw",
+  "generated_at": "2026-02-21T03:17:25.851035+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "f244dcb089250f7fe96d6169b71b4d970d6852c536ad42e5ecffb62da195e34a"
+    },
+    "bands": {
+      "file": "bands.json",
+      "sha256": "f850947700df5d5b7bb5a4f1844b550fee002120e86a69868691c9b9b31d6a17"
+    }
+  }
+}

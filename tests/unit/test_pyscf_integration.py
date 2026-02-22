@@ -11,6 +11,8 @@ Tests cover:
 import pytest
 from pathlib import Path
 
+from quantumvitas.core.resources import get_resources_dir
+
 
 def _pyscf_importable() -> bool:
     """Check if PySCF can be imported with actual functionality.
@@ -449,8 +451,7 @@ class TestPySCFDemoProject:
         """Demo project YAML exists."""
         from pathlib import Path
         
-        repo_root = Path(__file__).parent.parent.parent
-        demo_path = repo_root / "resources" / "demo_projects" / "pyscf_water_scf.yml"
+        demo_path = get_resources_dir() / "demo_projects" / "pyscf_water_scf.yml"
 
         assert demo_path.exists(), f"Demo not found at {demo_path}"
 
@@ -459,8 +460,7 @@ class TestPySCFDemoProject:
         import yaml
         from pathlib import Path
 
-        repo_root = Path(__file__).parent.parent.parent
-        demo_path = repo_root / "resources" / "demo_projects" / "pyscf_water_scf.yml"
+        demo_path = get_resources_dir() / "demo_projects" / "pyscf_water_scf.yml"
         
         with open(demo_path) as f:
             demo = yaml.safe_load(f)

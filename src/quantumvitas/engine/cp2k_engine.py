@@ -16,10 +16,10 @@ from quantumvitas.core.engines.cp2k_resolver import (
     get_cp2k_data_dir,
 )
 from quantumvitas.engine.base import Engine, EngineConfig
-from pymatgen.core import Structure
 
 if TYPE_CHECKING:
     from quantumvitas.calculation.calculation import Calculation
+    from pymatgen.core import Structure
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +104,6 @@ class Cp2kEngine(Engine):
         """
         from quantumvitas.engine.cp2k_writer import write_cp2k_input
         from quantumvitas.io.structure_io import read_structure
-        from pymatgen.core import Structure
-
         working_dir.mkdir(parents=True, exist_ok=True)
 
         # Get structure from calculation
@@ -121,9 +119,10 @@ class Cp2kEngine(Engine):
             output_path=input_path,
         )
 
-    def _get_structure(self, calculation: "Calculation") -> Optional[Structure]:
+    def _get_structure(self, calculation: "Calculation") -> Optional["Structure"]:
         """Get structure from calculation."""
         from quantumvitas.io.structure_io import read_structure
+        from pymatgen.core import Structure
         
         structure_ulid = calculation.structure_ulid
         if structure_ulid is None:
@@ -290,4 +289,3 @@ class Cp2kEngine(Engine):
             return "PROGRAM ENDED" in content or "Total wall" in content
 
         return True  # Default: trust return code
-

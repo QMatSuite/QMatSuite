@@ -7,9 +7,10 @@ import logging
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-from pymatgen.core import Structure
+if TYPE_CHECKING:
+    from pymatgen.core import Structure
 
 logger = logging.getLogger(__name__)
 
@@ -259,4 +260,3 @@ def validate_custom_script_assets(step_params: dict) -> None:
                 "custom_script mode requires explicit assets.required_files. "
                 "Specify which potential/asset files the script needs."
             )
-

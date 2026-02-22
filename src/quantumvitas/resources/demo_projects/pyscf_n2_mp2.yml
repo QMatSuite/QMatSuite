@@ -1,0 +1,100 @@
+version: 1
+project:
+  meta:
+    ulid: 01K1ATVDKSJ470ZQ4CK7NBVTWS
+    name: N2 PySCF MP2
+    slug: n2-pyscf-mp2
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KBVMY7W8BEGHZ3MC46V2P5XG
+    name: N
+    slug: n
+    path: structures/n.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: N
+      species:
+      - element: N
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: N
+    - name: N
+      species:
+      - element: N
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 1.0977
+      properties: {}
+      label: N
+    properties: {}
+calculations:
+- meta:
+    ulid: 01K3BAPQWXSV2CNBX9DTZEWX17
+    name: N2 PySCF MP2
+    slug: n2-pyscf-mp2
+    path: calculations/n2-pyscf-mp2
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: pyscf
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/n2-pyscf-mp2/steps/scf.step.yaml
+      kind: step
+      ulid: 01K4ME3RA84W5W6FNNPR4K6Q0F
+    parameters:
+      method: mp2
+      basis: cc-pVDZ
+      charge: 0
+      spin: 0
+    step_type_spec: pyscf_scf
+  structure_ulid: 01KBVMY7W8BEGHZ3MC46V2P5XG
+meta:
+  ulid: pyscf_n2_mp2
+  title: N2 PySCF MP2
+  subtitle: Post-Hartree-Fock MP2 correlation energy for N2 with cc-pVDZ basis
+  description: MP2/cc-pVDZ correlation energy for nitrogen molecule
+  tags:
+  - pyscf
+  - molecular
+  - mp2
+  - correlation
+  - nitrogen
+  - tutorial
+  recommended_analysis: energy
+  difficulty: intermediate
+  system_class: molecule
+  periodicity: molecular
+  method: mp2
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 1.6
+  multi_engine: false
+  engines_used:
+  - pyscf
+  n_steps: 1
+  step_summary: MP2
+  available_analysis:
+  - convergence
+  required_engine: pyscf
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: pyscf
+  corpus_case_id: n2_mp2
+  corpus_checksum: 4c6308955f0676a7fa6202344498086fbf862e1728ebd3a5eefd1b4ca474df5d

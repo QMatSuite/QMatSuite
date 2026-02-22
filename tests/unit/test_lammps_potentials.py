@@ -4,6 +4,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
+from quantumvitas.core.resources import get_resources_dir
 from quantumvitas.engine.lammps_potentials import (
     stage_potentials,
     compute_potential_digest,
@@ -18,7 +19,7 @@ class TestPotentialStaging:
     def test_compute_potential_digest(self):
         """Test potential digest computation."""
         test_files = [
-            ("test.eam", Path(__file__).parent.parent.parent / "resources" / "lammps" / "potentials" / "Cu_u3.eam"),
+            ("test.eam", get_resources_dir() / "lammps" / "potentials" / "Cu_u3.eam"),
         ]
         staged = [(name, path) for name, path in test_files if path.exists()]
         
@@ -81,4 +82,3 @@ class TestPotentialStaging:
             })
         
         print("✓ Custom script validation works")
-

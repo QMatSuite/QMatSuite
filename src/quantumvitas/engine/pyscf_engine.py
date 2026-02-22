@@ -48,6 +48,9 @@ class PySCFEngine(Engine):
     """
     
     name = "pyscf"
+    _PROBE_TIMEOUT_SECONDS = 90
+    _PROBE_RETRY_COUNT = 2
+    _shared_probe_cache: Optional[Dict[str, Any]] = None
     
     def __init__(self, config: Optional[EngineConfig] = None):
         """
@@ -81,6 +84,12 @@ class PySCFEngine(Engine):
         """
         if self._probe_cache is not None:
             return self._probe_cache
+
+        # Reuse a successful probe result across engine instances in the same
+        # process to avoid repeated heavyweight imports under xdist load.
+        if self.__class__._shared_probe_cache is not None:
+            self._probe_cache = dict(self.__class__._shared_probe_cache)
+            return self._probe_cache
         
         # Windows check
         if sys.platform == "win32":
@@ -92,45 +101,51 @@ class PySCFEngine(Engine):
                     "Use WSL (Windows Subsystem for Linux) or Docker."
                 ),
             }
+            self.__class__._shared_probe_cache = dict(self._probe_cache)
             return self._probe_cache
-        
-        # Try to import PySCF via subprocess
-        try:
-            result = subprocess.run(
-                [sys.executable, "-c", "import pyscf; print(pyscf.__version__)"],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            if result.returncode == 0:
-                version = result.stdout.strip()
-                self._probe_cache = {
-                    "available": True,
-                    "version": version,
-                    "reason": None,
-                }
-            else:
-                self._probe_cache = {
-                    "available": False,
-                    "version": None,
-                    "reason": (
-                        f"PySCF import failed. Install with: pip install pyscf\n"
-                        f"Error: {result.stderr.strip()}"
-                    ),
-                }
-        except subprocess.TimeoutExpired:
-            self._probe_cache = {
-                "available": False,
-                "version": None,
-                "reason": "PySCF import timed out",
-            }
-        except Exception as e:
-            self._probe_cache = {
-                "available": False,
-                "version": None,
-                "reason": f"Failed to check PySCF availability: {e}",
-            }
-        
+
+        probe_failure_reason: Optional[str] = None
+
+        # Try to import PySCF via subprocess. Under heavy CI/test parallelism
+        # this can be slow, so allow one retry before reporting unavailable.
+        for attempt in range(1, self._PROBE_RETRY_COUNT + 1):
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-c", "import pyscf; print(pyscf.__version__)"],
+                    capture_output=True,
+                    text=True,
+                    timeout=self._PROBE_TIMEOUT_SECONDS,
+                )
+                if result.returncode == 0:
+                    version = result.stdout.strip()
+                    self._probe_cache = {
+                        "available": True,
+                        "version": version,
+                        "reason": None,
+                    }
+                    self.__class__._shared_probe_cache = dict(self._probe_cache)
+                    return self._probe_cache
+
+                probe_failure_reason = (
+                    f"PySCF import failed. Install with: pip install pyscf\n"
+                    f"Error: {result.stderr.strip()}"
+                )
+                break
+            except subprocess.TimeoutExpired:
+                probe_failure_reason = (
+                    f"PySCF import timed out after {self._PROBE_TIMEOUT_SECONDS}s"
+                )
+                if attempt < self._PROBE_RETRY_COUNT:
+                    continue
+            except Exception as e:
+                probe_failure_reason = f"Failed to check PySCF availability: {e}"
+                break
+
+        self._probe_cache = {
+            "available": False,
+            "version": None,
+            "reason": probe_failure_reason or "PySCF not available",
+        }
         return self._probe_cache
     
     @property

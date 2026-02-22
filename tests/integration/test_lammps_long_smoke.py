@@ -26,6 +26,7 @@ from quantumvitas.core.yaml_io import save_yaml_doc
 from quantumvitas.core.yamldoc import CalcDoc
 from quantumvitas.core.models import load_calculation
 from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from quantumvitas.core.resources import get_resources_dir
 
 
 def configure_step(project_root, calculation_selector, step_selector, parameters):
@@ -240,7 +241,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
-    potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
+    potential_src = get_resources_dir() / "lammps" / "potentials" / "Cu_u3.eam"
     if not potential_src.exists():
         pytest.skip(f"Potential file not found: {potential_src}")
     
@@ -369,7 +370,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
-    potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
+    potential_src = get_resources_dir() / "lammps" / "potentials" / "Cu_u3.eam"
     if not potential_src.exists():
         pytest.skip(f"Potential file not found: {potential_src}")
     
@@ -556,7 +557,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
-    potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
+    potential_src = get_resources_dir() / "lammps" / "potentials" / "Cu_u3.eam"
     if not potential_src.exists():
         pytest.skip(f"Potential file not found: {potential_src}")
     
@@ -817,4 +818,3 @@ def test_workflow_d_restart(restart_project, lammps_binary):
             for line in md1_log.splitlines()[-30:]:
                 print(f"    {line}")
         assert "ERROR" not in md1_log.upper(), "D4: MD1 log should not contain ERROR"
-

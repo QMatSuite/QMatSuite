@@ -18,7 +18,6 @@ from typing import Any, Dict, List, Optional, Sequence, TYPE_CHECKING
 import yaml
 
 import typer
-from pymatgen.core import Structure as PMGStructure
 
 # Analysis modules no longer imported directly (migrated to QVService/api)
 # ResourceMeta removed - use dict[str, Any] for type hints

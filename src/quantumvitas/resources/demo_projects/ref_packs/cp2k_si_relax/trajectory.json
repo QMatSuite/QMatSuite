@@ -1,0 +1,167 @@
+{
+  "bundle_kind": "canonical",
+  "object_type": "trajectory",
+  "render_meta": {
+    "axis_labels": {
+      "x": "Iteration",
+      "y": "Observable"
+    },
+    "units": {
+      "x": "",
+      "y": ""
+    },
+    "series_labels": [
+      "Total Energy"
+    ],
+    "reference_energy": null,
+    "reference_position": null,
+    "markers": [],
+    "extra": {
+      "trajectory_type": "relax",
+      "n_frames": 2,
+      "n_atoms": 2,
+      "n_images": null
+    }
+  },
+  "provenance_meta": {
+    "schema_version": "1.0",
+    "object_type": "trajectory",
+    "run_ulid": "01KHYXZ06RTPP7J5PQH2TKMSDT",
+    "calc_ulid": "01KHYXZ04AYDVW0BH4C6Q2E461",
+    "step_ulids": [
+      "01KHYXZ04AYDVW0BH4C6Q2E462"
+    ],
+    "gen_steps": [
+      "relax"
+    ],
+    "engine_name": "cp2k",
+    "source_files": [
+      {
+        "path": "raw/01KHYXZ04AYDVW0BH4C6Q2E462/cp2k_calc-pos-1.xyz",
+        "size_bytes": 358,
+        "mtime": 1771638331.3711224
+      },
+      {
+        "path": "raw/01KHYXZ04AYDVW0BH4C6Q2E462/cp2k_calc-1.cell",
+        "size_bytes": 452,
+        "mtime": 1771638330.7201374
+      }
+    ],
+    "parser_name": "cp2k_trajectory",
+    "parser_version": "1.0",
+    "warnings": [],
+    "manifest_snapshot": null
+  },
+  "series": [
+    {
+      "x": [
+        0,
+        1
+      ],
+      "y": [
+        -197.21546519302095,
+        -197.21546519302095
+      ],
+      "x_label": "Iteration",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "Total Energy"
+    }
+  ],
+  "geometry_frames": {
+    "frames": [
+      {
+        "positions": [
+          [
+            2e-10,
+            2e-10,
+            2e-10
+          ],
+          [
+            1.3575000001,
+            1.3575000001,
+            1.3575000001
+          ]
+        ],
+        "species": [
+          "Si",
+          "Si"
+        ],
+        "cell": [
+          [
+            0.0,
+            2.715,
+            2.715
+          ],
+          [
+            2.715,
+            0.0,
+            2.715
+          ],
+          [
+            2.715,
+            2.715,
+            0.0
+          ]
+        ],
+        "pbc": [
+          true,
+          true,
+          true
+        ],
+        "forces": null,
+        "velocities": null
+      },
+      {
+        "positions": [
+          [
+            2e-10,
+            2e-10,
+            2e-10
+          ],
+          [
+            1.3575000001,
+            1.3575000001,
+            1.3575000001
+          ]
+        ],
+        "species": [
+          "Si",
+          "Si"
+        ],
+        "cell": [
+          [
+            0.0,
+            2.715,
+            2.715
+          ],
+          [
+            2.715,
+            0.0,
+            2.715
+          ],
+          [
+            2.715,
+            2.715,
+            0.0
+          ]
+        ],
+        "pbc": [
+          true,
+          true,
+          true
+        ],
+        "forces": null,
+        "velocities": null
+      }
+    ],
+    "time": null,
+    "iteration": [
+      0,
+      1
+    ],
+    "image_indices": null
+  },
+  "arrays": {}
+}

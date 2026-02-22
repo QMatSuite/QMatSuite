@@ -1,0 +1,154 @@
+version: 1
+project:
+  meta:
+    ulid: 01KD3S95CSZFS9K61ZXVZ33Y9D
+    name: 08_Fe_DOS
+    slug: 08_fe_dos
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KS1Y4AKT646Q8WG742PFGVXC
+    name: fe.scf_noncollin
+    slug: fe-scf_noncollin
+    path: structures/fe-scf_noncollin.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 1.3482862124071955
+        - 1.3482862124071955
+        - 1.3482862124071955
+      - - -1.3482862124071955
+        - 1.3482862124071955
+        - 1.3482862124071955
+      - - -1.3482862124071955
+        - -1.3482862124071955
+        - 1.3482862124071955
+      pbc:
+      - true
+      - true
+      - true
+      a: 2.3353002230338658
+      b: 2.3353002230338658
+      c: 2.3353002230338658
+      alpha: 70.52877936550931
+      beta: 109.47122063449069
+      gamma: 70.52877936550931
+      volume: 9.804067025711518
+    properties: {}
+    sites:
+    - species:
+      - element: Fe
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Fe
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+calculations:
+- meta:
+    ulid: 01K5H8BP1CAJFT0WENG1SD9WAV
+    name: Fe Dos  2 Noncolinear
+    slug: fe-dos-2-noncolinear
+    path: calculations/fe-dos-2-noncolinear
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: qe
+  steps:
+  - meta:
+      name: fe.scf_noncollin
+      slug: fe-scf_noncollin
+      path: fe.scf_noncollin.step.yaml
+      kind: step
+      ulid: 01KHXJMA6EFG1D7A5K4C8TNXH6
+    parameters:
+      CONTROL:
+        calculation: scf
+      SYSTEM:
+        ecutwfc: 40
+        ecutrho: 320
+        occupations: smearing
+        smearing: marzari-vanderbilt
+        degauss: 0.02
+        noncolin: true
+        starting_magnetization(1): 0.1
+        angle1(1): 90.0
+        angle2(1): 0.0
+      ELECTRONS:
+        conv_thr: 1.0e-08
+        mixing_beta: 0.3
+    input_name: fe.scf_noncollin.in
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '10'
+          - '10'
+          - '10'
+          - '0'
+          - '0'
+          - '0'
+    species_overrides:
+      Fe:
+        mass: 55.845
+    step_type_spec: qe_scf
+  structure_ulid: 01KE2M0MTHTSNFD07R9QXG12T0
+  species_map:
+    Fe:
+      mass: 55.845
+      pseudopot: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
+      pseudo_sha256: 9bd9be733c96fa58b1b3ae483036107f9cd2ad7f0301c0ec627472293734590b
+      pseudo_sha_family: 4c30fff62c550a80fede9d7d222be39000fa3e460d4a66388e6c7ad9cb5a505f
+      pseudo_basename: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
+pseudo:
+  directory: pseudo
+  files:
+  - Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
+meta:
+  ulid: qe_fe_scf
+  title: Iron noncollinear SCF
+  subtitle: Noncollinear spin-orbit PBE SCF for ferromagnetic BCC iron
+  description: Noncollinear spin-orbit SCF calculation for ferromagnetic BCC iron using DFT-PBE. Demonstrates relativistic
+    noncollinear magnetism with spin oriented in the ab-plane.
+  tags:
+  - scf
+  - Fe
+  - PW
+  - magnetic
+  - noncollinear
+  - tutorial
+  recommended_analysis: convergence
+  difficulty: advanced
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: magnetism
+  spin_treatment: noncollinear
+  estimated_runtime_s: 73.1
+  multi_engine: false
+  engines_used:
+  - qe
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
+  asset_policy: redistributable
+  required_engine: qe
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: qe
+  corpus_case_id: fe_dos
+  corpus_checksum: 405f9a59977666a56323c2a53247fa3787e2237f6c551b626063dda719f4dd40
+  reference_artifacts:
+    scf: 08_Fe_DOS.scf.json

@@ -6,10 +6,9 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
-from pymatgen.core import Structure
-
 if TYPE_CHECKING:
     from quantumvitas.calculation.structure_steps import StructureStepSpec
+    from pymatgen.core import Structure
 
 logger = logging.getLogger(__name__)
 
@@ -440,4 +439,3 @@ def _write_print_section(f, step_type_spec: str, params: Dict[str, Any]) -> None
         f.write("    &END ENERGY\n")
 
     f.write("  &END PRINT\n")
-

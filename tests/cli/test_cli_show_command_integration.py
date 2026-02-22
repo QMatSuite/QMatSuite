@@ -9,7 +9,7 @@ import yaml
 from typer.testing import CliRunner
 
 from quantumvitas.cli.main import app
-from quantumvitas.core.resources import slugify
+from quantumvitas.core.resources import get_resources_dir, slugify
 from quantumvitas.core.engines.base import EngineConfig
 from quantumvitas.core.engines.qe import QuantumEspressoEngine
 from quantumvitas.core.engines.qe_calculation import StepResult
@@ -99,7 +99,7 @@ def test_cli_show_command_executes_against_references(
     )
     assert result.exit_code == 0, result.stdout
 
-    pseudo_src = project_root_path / "resources" / "pseudo"
+    pseudo_src = get_resources_dir() / "pseudo"
     if pseudo_src.exists():
         shutil.copytree(pseudo_src, project_root / "pseudo", dirs_exist_ok=True)
 

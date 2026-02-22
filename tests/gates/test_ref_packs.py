@@ -13,8 +13,9 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-REF_PACKS_DIR = REPO_ROOT / "resources" / "demo_projects" / "ref_packs"
+from quantumvitas.core.resources import get_resources_dir
+
+REF_PACKS_DIR = get_resources_dir() / "demo_projects" / "ref_packs"
 
 
 def _sha256(path: Path) -> str:

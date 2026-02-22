@@ -34,7 +34,7 @@ def temp_project():
 def temp_system_pseudo():
     """Create a temporary system pseudo directory."""
     tmpdir = tempfile.mkdtemp()
-    pseudo_dir = Path(tmpdir) / "resources" / "pseudo"
+    pseudo_dir = Path(tmpdir) / "bundled" / "pseudo"
     pseudo_dir.mkdir(parents=True)
     
     yield pseudo_dir
@@ -276,4 +276,3 @@ def test_apply_species_overrides_pseudo_basename(temp_project):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

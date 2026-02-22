@@ -2,7 +2,7 @@
 
 Resolves the path to the ORCA binary following priority:
 1. Environment variable QMATSUITE_ORCA_BIN
-2. Bundled ORCA in <repo_root>/.qmatsuite/engines/orca/
+2. Managed engines under <app_data>/engines/orca/
 """
 from __future__ import annotations
 
@@ -10,21 +10,6 @@ import os
 from pathlib import Path
 from typing import Optional
 
-
-# Bundled ORCA location patterns (checked in order)
-# The actual directory name includes version and architecture
-BUNDLED_ORCA_BASES: list[Path] = []
-
-# Add repo-relative path via centralized repo root detection
-try:
-    from quantumvitas.core.engines.discovery import _find_repo_root
-    _repo_root = _find_repo_root()
-    if _repo_root:
-        _repo_orca = _repo_root / ".qmatsuite" / "engines" / "orca"
-        if _repo_orca.exists():
-            BUNDLED_ORCA_BASES.append(_repo_orca)
-except Exception:
-    pass
 
 # Known bundled ORCA versions (ordered by preference - newest first)
 BUNDLED_VERSIONS = [
@@ -34,13 +19,42 @@ BUNDLED_VERSIONS = [
 ]
 
 
+def _bundled_orca_bases() -> list[Path]:
+    """Return candidate managed ORCA roots in search priority order."""
+    bases: list[Path] = []
+
+    # Primary: managed app-data engines root (dev + distribution aware).
+    try:
+        from quantumvitas.core.paths import home_engines_dir
+
+        managed = home_engines_dir() / "orca"
+        if managed.exists():
+            bases.append(managed)
+    except Exception:
+        pass
+
+    # Legacy fallback: repo-local .qmatsuite/engines/orca.
+    try:
+        from quantumvitas.core.engines.discovery import _find_repo_root
+
+        repo_root = _find_repo_root()
+        if repo_root:
+            repo_orca = repo_root / ".qmatsuite" / "engines" / "orca"
+            if repo_orca.exists() and repo_orca not in bases:
+                bases.append(repo_orca)
+    except Exception:
+        pass
+
+    return bases
+
+
 def resolve_orca_bin() -> Path:
     """
     Resolve ORCA binary path.
 
     Resolution order:
     1. QMATSUITE_ORCA_BIN environment variable
-    2. Bundled ORCA in <repo_root>/.qmatsuite/engines/orca/
+    2. Managed ORCA in <app_data>/engines/orca/
 
     Returns:
         Path to ORCA binary
@@ -58,7 +72,7 @@ def resolve_orca_bin() -> Path:
 
     # 2. Check bundled locations (multiple bases)
     checked_locations = []
-    for bundled_base in BUNDLED_ORCA_BASES:
+    for bundled_base in _bundled_orca_bases():
         checked_locations.append(str(bundled_base))
 
         # First check known versions

@@ -14,6 +14,31 @@ Step type conversion functions (thin facades over kernel SSOT):
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from quantumvitas.analysis.structure_viz import DisplayModeParams
+    from quantumvitas.io.online_cache import CandidateSummary, OnlineStructureCache
+
+
+def __getattr__(name: str) -> Any:
+    """Lazily resolve heavyweight re-exported symbols on first access."""
+    if name == "DisplayModeParams":
+        from quantumvitas.analysis.structure_viz import DisplayModeParams as _DisplayModeParams
+
+        return _DisplayModeParams
+    if name in {"OnlineStructureCache", "CandidateSummary"}:
+        from quantumvitas.io.online_cache import (
+            CandidateSummary as _CandidateSummary,
+            OnlineStructureCache as _OnlineStructureCache,
+        )
+
+        reexports = {
+            "OnlineStructureCache": _OnlineStructureCache,
+            "CandidateSummary": _CandidateSummary,
+        }
+        return reexports[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # =============================================================================
@@ -554,8 +579,7 @@ def set_pseudo_config(
 # Visualization utilities (re-exports from analysis layer)
 # =============================================================================
 
-# Re-export DisplayModeParams directly for type hints and direct construction
-from quantumvitas.analysis.structure_viz import DisplayModeParams  # noqa: E402, F401
+# DisplayModeParams is re-exported lazily via module __getattr__
 
 
 def build_structure_vis_payload(
@@ -585,9 +609,8 @@ def build_structure_vis_payload(
     return _build_structure_vis_payload(structure, params, structure_meta)
 
 
-# Re-export OnlineStructureCache and CandidateSummary for daemon use (PR0 temporary)
+# OnlineStructureCache and CandidateSummary are re-exported lazily via module __getattr__
 # TODO (PR6): Remove these re-exports when caching logic moves into API facade
-from quantumvitas.io.online_cache import OnlineStructureCache, CandidateSummary  # noqa: E402, F401
 
 
 # =============================================================================
@@ -2708,4 +2731,3 @@ def snapshot_project_dag(index) -> dict:
             }
 
     return snapshot
-

@@ -1,0 +1,109 @@
+version: 1
+project:
+  meta:
+    ulid: 01KSATV5KXSYM10D4FP56J6HCQ
+    name: Water ORCA SCF Single Point
+    slug: water-orca-scf
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KJBP7ATT960F3YZ1E2NB7E51
+    name: H2O
+    slug: h2o
+    path: structures/h2o.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Molecule
+    charge: 0
+    spin_multiplicity: 1
+    sites:
+    - name: O
+      species:
+      - element: O
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.1173
+      properties: {}
+      label: O
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - 0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    - name: H
+      species:
+      - element: H
+        occu: 1
+      xyz:
+      - 0.0
+      - -0.75695
+      - -0.4692
+      properties: {}
+      label: H
+    properties: {}
+calculations:
+- meta:
+    ulid: 01KY5XG9Z2E64Z00APJ0JD51VJ
+    name: H2O B3LYP Single Point
+    slug: h2o-b3lyp-single-point
+    path: calculations/h2o-b3lyp-single-point
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  structure_ulid: 01KJBP7ATT960F3YZ1E2NB7E51
+  structure_kind: molecule
+  engine_family: orca
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/h2o-b3lyp-single-point/steps/scf.step.yaml
+      kind: step
+      ulid: 01K9P0KX581AT3J4BCHCPH4E32
+    parameters:
+      functional: B3LYP
+      basis: def2-SVP
+      charge: 0
+      spin: 0
+    step_type_spec: orca_scf
+meta:
+  ulid: orca_water_sp
+  title: Water Single-Point Energy
+  subtitle: B3LYP/def2-TZVP energy with D3BJ dispersion and RIJCOSX acceleration
+  description: B3LYP/def2-TZVP single-point energy for the water molecule with D3BJ dispersion correction and RIJCOSX density
+    fitting.
+  tags:
+  - scf
+  - dft
+  - small-molecule
+  recommended_analysis: scf
+  difficulty: beginner
+  system_class: molecule
+  periodicity: molecular
+  method: dft-b3lyp
+  property_of_interest: total_energy
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 0.7
+  multi_engine: false
+  engines_used:
+  - orca
+  n_steps: 1
+  step_summary: SCF
+  available_analysis:
+  - convergence
+  required_engine: orca
+  availability: requires_local_install
+  generator_version: 1.0.0
+  corpus_engine: orca
+  corpus_case_id: water_sp
+  corpus_checksum: 382b45cf8a25fc7258eed941dff0929fa9dc3f71fa2c96ad55c2e02c2e087195

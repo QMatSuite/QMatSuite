@@ -16,6 +16,7 @@ from quantumvitas.core.pseudo_provenance import (
     resolve_pseudo_provenance,
 )
 from quantumvitas.core.pseudo_libinfo import compute_sha_family_text
+from quantumvitas.core.resources import get_resources_dir
 
 
 def test_provenance_matches_internal_resources_pseudo_by_sha256_or_token(
@@ -33,11 +34,8 @@ def test_provenance_matches_internal_resources_pseudo_by_sha256_or_token(
       - match_kind is in {"sha256","sha_family","none"}
       - element parsing works
     """
-    # Find repo root
-    repo_root = Path(__file__).parent.parent.parent
-    
     # Find a pseudo file from resources/pseudo/
-    pseudo_dir = repo_root / "resources" / "pseudo"
+    pseudo_dir = get_resources_dir() / "pseudo"
     
     # Find first .UPF or .upf file
     pseudo_file = None
@@ -57,7 +55,7 @@ def test_provenance_matches_internal_resources_pseudo_by_sha256_or_token(
     proj_pseudo_file.write_bytes(pseudo_file.read_bytes())
     
     # Resolve provenance
-    result = resolve_pseudo_provenance(proj_pseudo_file, repo_root=repo_root)
+    result = resolve_pseudo_provenance(proj_pseudo_file, repo_root=get_resources_dir().parent)
     
     # Assertions
     assert result.sha256 is not None
@@ -90,11 +88,8 @@ def test_sha_family_whitespace_invariance(tmp_path: Path) -> None:
       - sha256 changes (bytes changed)
       - sha_family stays the same (whitespace is stripped)
     """
-    # Find repo root
-    repo_root = Path(__file__).parent.parent.parent
-    
     # Find a pseudo file
-    pseudo_dir = repo_root / "resources" / "pseudo"
+    pseudo_dir = get_resources_dir() / "pseudo"
     pseudo_file = None
     for ext in [".UPF", ".upf"]:
         candidates = list(pseudo_dir.glob(f"*{ext}"))
@@ -192,8 +187,7 @@ def test_parse_element_from_upf_text() -> None:
 
 def test_resolve_pseudo_provenance_with_real_file(tmp_path: Path) -> None:
     """Test resolve_pseudo_provenance with a real pseudo file."""
-    repo_root = Path(__file__).parent.parent.parent
-    pseudo_dir = repo_root / "resources" / "pseudo"
+    pseudo_dir = get_resources_dir() / "pseudo"
     
     # Find a pseudo file
     pseudo_file = None
@@ -211,7 +205,7 @@ def test_resolve_pseudo_provenance_with_real_file(tmp_path: Path) -> None:
     test_file.write_bytes(pseudo_file.read_bytes())
     
     # Resolve
-    result = resolve_pseudo_provenance(test_file, repo_root=repo_root)
+    result = resolve_pseudo_provenance(test_file, repo_root=get_resources_dir().parent)
     
     # Basic assertions
     assert result.path == str(test_file)
@@ -221,4 +215,3 @@ def test_resolve_pseudo_provenance_with_real_file(tmp_path: Path) -> None:
     assert result.match_kind in {"sha256", "sha_family", "none"}
     assert isinstance(result.matches, list)
     assert isinstance(result.warnings, list)
-

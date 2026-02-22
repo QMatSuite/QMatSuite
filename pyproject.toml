@@ -13,12 +13,10 @@ requires-python = ">=3.9"
 dependencies = [
     "numpy",
     "scipy",
-    "ase",
     "matplotlib",
     "plotext>=5.2",
     "PyYAML",
     "typer>=0.12",
-    "beautifulsoup4>=4.12",
     "pymatgen>=2024.0.0",
     "ulid-py>=1.1",
     "msgpack>=1.0.0",
@@ -26,6 +24,7 @@ dependencies = [
     "certifi>=2023.7.22",
     "portalocker>=2.8,<3",
     "jinja2>=3.0.0",
+    "fastmcp>=2,<3",
 ]
 
 [project.optional-dependencies]
@@ -34,21 +33,17 @@ dev = [
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.0.0"
 ]
-# PySCF for molecular quantum chemistry calculations
-pyscf = [
-    "pyscf>=2.0.0"
-]
 # Materials Project native API (optional, requires API key)
 mp-api = [
     "mp-api>=0.30.0"
 ]
-# MCP server (Model Context Protocol)
+# MCP server extra retained for backwards compatibility.
+# fastmcp is now a core dependency.
 mcp = [
     "fastmcp>=2,<3"
 ]
 # All optional dependencies
 all = [
-    "pyscf>=2.0.0",
     "mp-api>=0.30.0",
     "fastmcp>=2,<3"
 ]
@@ -60,7 +55,11 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-"quantumvitas" = ["data/*.json"]
+"quantumvitas" = [
+    "data/*.json",
+    "drivers/**/data/*.json",
+    "resources/**/*",
+]
 
 [project.scripts]
 qv = "quantumvitas.cli:app"

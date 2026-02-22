@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 
+from quantumvitas.core.resources import get_resources_dir
 from quantumvitas.workflow.registry import StepTypeRegistry
 from quantumvitas.io.wannier90_input import (
     Wannier90Input,
@@ -270,8 +271,7 @@ class TestDemoGeneration:
     @pytest.fixture
     def demo_path(self):
         """Path to the generated demo."""
-        repo_root = Path(__file__).parent.parent.parent
-        return repo_root / "resources" / "demo_projects" / "qe_diamond_wannier.yml"
+        return get_resources_dir() / "demo_projects" / "qe_diamond_wannier.yml"
 
     def test_demo_file_exists(self, demo_path):
         """Test that demo file was generated."""
@@ -324,4 +324,3 @@ class TestDemoGeneration:
         # Flat W90 parameters (not nested in namelists)
         assert "num_wann" in params
         assert isinstance(params["num_wann"], int)
-

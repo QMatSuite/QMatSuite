@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from pymatgen.core import Structure
+from typing import TYPE_CHECKING, Any, Dict
 
 from quantumvitas.io.structure_io import write_structure
 from quantumvitas.core.engines.vasp_resolver import get_potcar_dir
+
+if TYPE_CHECKING:
+    from pymatgen.core import Structure
 
 
 def write_poscar(structure: Structure, path: Path) -> None:
@@ -155,7 +157,6 @@ def write_potcar(
     
     # Concatenate and write
     path.write_bytes(b"".join(potcar_parts))
-
 
 
 

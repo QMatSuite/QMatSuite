@@ -1,0 +1,24 @@
+meta:
+  ulid: 01KBSIBANDSCALCULATION00001
+  name: si-bands
+  slug: si-bands
+  path: calculations/si-bands
+  kind: calculation
+  description: Silicon band structure calculation (SCF -> NSCF -> Bands -> bands.x)
+structure: si
+mode: normal
+working_dir: raw
+steps:
+- step_ulid: scf
+  step_type_spec: scf
+  step_file: steps/scf.step.yaml
+- step_ulid: nscf
+  step_type_spec: nscf
+  step_file: steps/nscf.step.yaml
+- step_ulid: bands
+  step_type_spec: qe_bandspw
+  step_file: steps/bands.step.yaml
+- step_ulid: bands-pp
+  step_type_spec: bands
+  step_file: steps/bands-pp.step.yaml
+

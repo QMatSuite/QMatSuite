@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 
 from quantumvitas.core.engines.discovery import discover_engine, is_engine_available
+from quantumvitas.core.resources import get_resources_dir
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -142,7 +143,7 @@ def _find_si_psp() -> Path:
 
     # Check standard locations
     search_dirs = [
-        _REPO_ROOT / "resources" / "pseudo",
+        get_resources_dir() / "pseudo",
         Path.home() / ".qmatsuite" / "pseudo",
         Path.home() / ".abinit" / "pseudo",
         # Homebrew install location

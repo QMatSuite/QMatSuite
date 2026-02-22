@@ -11,10 +11,11 @@ import pytest
 from pathlib import Path
 import yaml
 
+from quantumvitas.core.resources import get_resources_dir
+
 
 # Repo root for finding demo projects
-REPO_ROOT = Path(__file__).parent.parent.parent
-DEMO_PROJECTS_DIR = REPO_ROOT / "resources" / "demo_projects"
+DEMO_PROJECTS_DIR = get_resources_dir() / "demo_projects"
 
 
 def get_all_demo_yamls():
@@ -238,4 +239,3 @@ def test_calculation_species_map_complete(demo_file: Path):
             f"Invalid species_map in demos:\n" +
             "\n".join(f"  - {v}" for v in violations)
         )
-

@@ -1,0 +1,148 @@
+version: 1
+project:
+  meta:
+    ulid: 01KPSRK1HAF12RF9F35PQXE3QY
+    name: Silicon geometry optimization (BFGS)
+    slug: silicon-geometry-optimization-bfgs
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KVW53X0K7JSE5SQP6Y6K1VRV
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 0.0
+        - 2.715
+        - 2.715
+      - - 2.715
+        - 0.0
+        - 2.715
+      - - 2.715
+        - 2.715
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.839589821842953
+      b: 3.839589821842953
+      c: 3.839589821842953
+      alpha: 60.00000000000001
+      beta: 60.00000000000001
+      gamma: 60.00000000000001
+      volume: 40.02575174999998
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.25
+      - 0.25
+      - 0.25
+      properties: {}
+      label: Si
+      xyz:
+      - 1.3575
+      - 1.3575
+      - 1.3575
+calculations:
+- meta:
+    ulid: 01KMH0ZZPG535BFD1HV4B7GGMQ
+    name: Silicon geometry optimization (BFGS)
+    slug: silicon-geometry-optimization-bfgs
+    path: calculations/silicon-geometry-optimization-bfgs
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: cp2k
+  steps:
+  - meta:
+      name: relax
+      slug: relax
+      path: calculations/silicon-geometry-optimization-bfgs/steps/relax.step.yaml
+      kind: step
+      ulid: 01KZX0KCSXH69WBJ0BRXKD7444
+    parameters:
+      GLOBAL:
+        PROJECT: si_relax
+        RUN_TYPE: GEO_OPT
+      FORCE_EVAL:
+        METHOD: Quickstep
+        DFT:
+          BASIS_SET_FILE_NAME: BASIS_MOLOPT
+          POTENTIAL_FILE_NAME: GTH_POTENTIALS
+          MGRID:
+            CUTOFF: 300
+          SCF:
+            MAX_SCF: 100
+            EPS_SCF: 1.0e-06
+          XC:
+            XC_FUNCTIONAL:
+              _DEFAULT_KEYWORD: PBE
+        KIND:
+          BASIS_SET: DZVP-MOLOPT-SR-GTH
+          POTENTIAL: GTH-PBE-q4
+          _DEFAULT_KEYWORD: Si
+      MOTION:
+        GEO_OPT:
+          MAX_ITER: 100
+          OPTIMIZER: BFGS
+          MAX_FORCE: 0.00045
+          RMS_FORCE: 0.0003
+    step_type_spec: cp2k_relax
+  structure_ulid: 01KVW53X0K7JSE5SQP6Y6K1VRV
+meta:
+  ulid: cp2k_si_relax
+  title: Silicon geometry optimization (BFGS)
+  subtitle: Periodic diamond Si relaxation with PBE and force-convergence thresholds
+  description: BFGS geometry optimization for Si diamond with force convergence criteria. Tests GEO_OPT section with optimizer/threshold
+    keywords.
+  tags:
+  - geo_opt
+  - periodic
+  - relaxation
+  recommended_analysis: scf
+  difficulty: intermediate
+  system_class: crystal
+  periodicity: periodic
+  method: dft-pbe
+  property_of_interest: geometry
+  spin_treatment: nonmagnetic
+  estimated_runtime_s: 6.0
+  multi_engine: false
+  engines_used:
+  - cp2k
+  n_steps: 1
+  step_summary: Relax
+  available_analysis:
+  - convergence
+  - trajectory
+  required_engine: cp2k
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: cp2k
+  corpus_case_id: si_relax
+  corpus_checksum: 107ab8dc9842e43ce076d4a606a122ba22b91135c5899193b19c657a2bd73004
