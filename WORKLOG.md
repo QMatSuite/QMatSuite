@@ -1,7 +1,7 @@
 # Distribution Step 1 Worklog
 
 Date: 2026-02-22
-Repo: /Users/hh7465/QMatSuite
+Repo: <repo_root>
 
 ## Session Scope
 Implement Distribution Step 1 foundation only:
@@ -118,3 +118,13 @@ Out of scope (explicitly not touched): engine registry (`engines.json` implement
 - Added detailed forensic and fix notes to:
   - `docs/history/worklogs/DISTRIBUTION_STEP1_FOUNDATION_2026-02-22_WORKLOG.md`
 - Latest section: "2026-02-22 (Full-suite failure triage and root-cause fixes)".
+
+## 2026-02-22 (continuation)
+
+- Re-ran mandatory full suite in venv with xdist loadfile mode:
+  - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+  - Result: `6451 passed, 4 skipped` (green).
+- Verified old top-level `resources/` is absent and no runtime `repo_root / "resources"` resolution remains.
+- Performed wording cleanup in pseudo/demo/metadata callsite comments/docstrings to avoid future confusion around old path references.
+- Ran focused sanity tests after wording cleanup:
+  - `3 passed`.

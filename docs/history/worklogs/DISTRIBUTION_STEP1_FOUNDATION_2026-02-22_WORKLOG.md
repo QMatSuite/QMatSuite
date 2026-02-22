@@ -145,12 +145,12 @@
 - Keep a detailed retrospective-quality worklog in `docs/history/worklogs` with failures, attempted approaches, and decision rationale.
 - `fastmcp` must remain in core dependencies; no optional behavior-gating for MCP availability.
 - Resource single source of truth must be `src/quantumvitas/resources/` only.
-- Top-level `/Users/hh7465/QMatSuite/resources/` must be removed only after content parity + callsite migration verification.
+- Top-level `<repo_root>/resources/` must be removed only after content parity + callsite migration verification.
 
 ### State found at resume
 - The tree already contained both:
-  - `/Users/hh7465/QMatSuite/resources/`
-  - `/Users/hh7465/QMatSuite/src/quantumvitas/resources/`
+  - `<repo_root>/resources/`
+  - `<repo_root>/src/quantumvitas/resources/`
 - Parity check from prior step:
   - root_count=316
   - pkg_count=314
@@ -179,7 +179,7 @@
 ### Execution plan from this point
 1. Patch runtime source callsites first (resource resolution SSOT).
 2. Patch tests in batches, replacing direct `repo_root / "resources"` style paths with resolver-based paths.
-3. Remove top-level `/Users/hh7465/QMatSuite/resources/`.
+3. Remove top-level `<repo_root>/resources/`.
 4. Run the required full test command once after migration batch.
 5. Record pass/fail details and any residual issues.
 
@@ -370,3 +370,214 @@ Patched to use `get_resources_dir()` where resources are read:
 
 ### Next action
 - Re-run full suite with required command and wait for completion before proceeding.
+
+## 2026-02-22 (Pseudo/Demo/Metadata special-care migration + old resources decommission)
+
+### User directive focus for this segment
+- Treat pseudo/demo/metadata pipelines as special-critical and validate deeply.
+- Migrate all remaining dev tooling to the SSOT resource root:
+  - `src/quantumvitas/resources/`
+- Verify no remaining runtime/tool callsites rely on top-level repo `resources/`.
+- Delete `<repo_root>/resources` after migration verification.
+- Run required full pytest command and commit milestone if green.
+
+### Deep callsite audit done before final deletion
+
+#### Runtime callsite sweep (pseudo/demo/metadata)
+Commands run:
+- `rg -n "root\s*/\s*\"resources\"|repo_root\s*/\s*\"resources\"|REPO_ROOT\s*/\s*\"resources\"|project_root\s*/\s*\"resources\"|Path\(__file__\).*\"resources\"" src/quantumvitas --glob '*.py'`
+- `rg -n "get_resources_dir\(|pseudo_libinfo|demo_projects|resources/pseudo|resources/demo_projects" src/quantumvitas/core src/quantumvitas/pseudo src/quantumvitas/demo_store src/quantumvitas/project src/quantumvitas/drivers --glob '*.py'`
+
+Findings:
+- Functional pseudo registry lookup still had an upward walk pattern via `current / "resources" / "pseudo_libinfo"` in `src/quantumvitas/pseudo/registry.py`.
+- Pseudo libinfo loader (`src/quantumvitas/core/pseudo_libinfo.py`) had multi-candidate root handling that could include `root/resources/pseudo_libinfo` when `repo_root` is explicitly passed.
+- Demo/ref-pack runtime loading already uses `get_resources_dir()` and is distribution-safe.
+
+#### Tools callsite sweep
+Command run:
+- `rg -n "repo_root\s*/\s*\"resources\"|REPO_ROOT\s*/\s*\"resources\"|Path\(__file__\).*\"resources\"|\brepo/resources\b|resources/demo_projects|resources/pseudo|resources/qe_docs_raw|\bresources/pseudo_libinfo\b" tools --glob '*.py' --glob '*.sh' --glob '*.md'`
+
+Findings:
+- Multiple dev scripts/docs still pointed to old top-level `resources/` paths.
+- These were migrated to `src/quantumvitas/resources` (details below).
+
+### Changes applied (with rationale)
+
+#### Runtime pseudo/demo/metadata
+1. `src/quantumvitas/pseudo/registry.py`
+- Replaced upward repo/resource search with package-resource resolution:
+  - now loads from `get_resources_dir() / "pseudo_libinfo"`
+- Why:
+  - eliminates dependence on top-level repo `resources/` layout
+  - aligns runtime resolution with installed package behavior.
+
+2. `src/quantumvitas/core/pseudo_libinfo.py`
+- Tightened `repo_root` handling:
+  - repo-root case prefers `root/src/quantumvitas/resources/pseudo_libinfo`
+  - non-repo roots still support package/test layouts (`root/resources/pseudo_libinfo`, etc.)
+- Why:
+  - avoids accidental fallback to deprecated repo-top-level `resources/` when a real repo root is passed,
+  - preserves package-root/test-root compatibility required by existing callsites/tests.
+
+3. `src/quantumvitas/demo_store/manifest.py`
+- Updated generated metadata `output_file` to `src/quantumvitas/resources/demo_projects/...`.
+
+4. Documentation/comment accuracy updates to reduce operator confusion:
+- `src/quantumvitas/demo_store/__init__.py`
+- `src/quantumvitas/demo_store/ref_packs.py`
+- `src/quantumvitas/core/pseudo_runtime.py`
+- `src/quantumvitas/core/pseudo_libinfo.py`
+
+#### Dev tools/scripts migration to SSOT resources
+5. `tools/purge_demos.sh`
+- switched to `src/quantumvitas/resources/demo_projects` and added missing-dir guard.
+
+6. `tools/snapshot_qe_docs.py`
+- default output now `src/quantumvitas/resources/qe_docs_raw`.
+
+7. `tools/build_pseudo_libinfo_bundle.py`
+- installation target moved to `src/quantumvitas/resources/pseudo_libinfo/<tag>/`.
+
+8. `tools/import_tutorial_datasets.py`
+- introduced `get_resources_root(repo_root)` and replaced old `repo_root/resources/...` usage.
+- output/pseudo directories now under `src/quantumvitas/resources/...`.
+- updated internal comments/docs accordingly.
+
+9. `tools/run_lammps_long_smoke.py`
+- centralized constants for repo/resources/test-data roots.
+- potential file lookup now from `src/quantumvitas/resources/lammps/potentials`.
+
+10. `tools/test_silicon_wannier90_demo_logging.py`
+- demo lookup now uses `get_resources_dir()/demo_projects`.
+- added robust candidate fallback list to avoid hard fail on renamed demo IDs.
+
+11. Demo-store generation tooling:
+- `tools/demo_store/generate_all.py`
+- `tools/demo_store/generate_ref_packs.py`
+- `tools/demo_store/generate_ref_packs_realrun.py`
+- `tools/demo_store/create_qe_corpus.py`
+- `tools/demo_store/augment_corpus.py`
+- `tools/demo_store/generate_corpus_index.py`
+
+All migrated to SSOT resource paths and updated metadata source strings where applicable.
+
+12. Tooling docs update:
+- `tools/README_import_tutorials.md`
+
+### Issues encountered + handling
+1. Potential ambiguity between “old repo resources path” and “package root resources path”
+- Problem:
+  - `root/resources/...` can mean deprecated repo-top-level layout OR valid package-root layout depending on `root`.
+- Handling:
+  - In `load_pseudo_libinfo_bundle(repo_root=...)`, added repo-root detection to avoid deprecated lookup when `repo_root` is an actual checkout root.
+  - Kept package/test compatibility for non-repo roots.
+
+2. Legacy demo filename drift in debug script
+- Problem:
+  - `tools/test_silicon_wannier90_demo_logging.py` pointed at `silicon_wannier90_demo.yml`, not always present.
+- Handling:
+  - Added ordered fallback candidates (`silicon_wannier90_demo.yml`, `qe_w90_silicon.yml`, `qe_silicon_wannier.yml`, `qe_diamond_wannier.yml`, `qe_copper_wannier.yml`).
+
+### Current verification state (before final full suite)
+- Migration patch set is applied and staged in working tree (not committed yet).
+- Next required actions in this session:
+  1. Run targeted pseudo/demo/metadata tests for quick confidence.
+  2. Delete `<repo_root>/resources`.
+  3. Run required full suite command:
+     `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+  4. If green, commit milestone.
+
+### Post-migration validation before full suite
+
+#### Targeted pseudo/demo/metadata suite (pre-deletion)
+Command:
+- `source .venv/bin/activate && python -m pytest tests/unit/test_pseudo_libinfo_loader.py tests/unit/test_pseudo_libinfo_bundle_integrity.py tests/unit/test_pseudo_no_repo_root.py tests/unit/test_pseudo_provenance.py tests/mcp/test_stage10.py tests/gates/test_demo_generated.py -v --tb=short`
+
+Result:
+- `205 passed, 28 warnings` in `26.36s`
+
+#### Resource SSOT parity check + deletion
+- Compared old vs new resource trees:
+  - old files: 316
+  - new files: 314
+  - differences only:
+    - old-only: `.DS_Store` files
+    - new-only: `src/quantumvitas/resources/__init__.py`
+- Deleted old top-level resources folder:
+  - `rm -rf <repo_root>/resources`
+  - verified absent (`resources_missing`).
+
+#### Post-deletion smoke slice
+Command:
+- `source .venv/bin/activate && python -m pytest tests/unit/test_pseudo_no_repo_root.py tests/unit/test_pseudo_libinfo_loader.py::test_load_pseudo_libinfo_bundle tests/mcp/test_stage10.py::TestSearchDemos::test_search_all_returns_demos tests/gates/test_demo_generated.py -v --tb=short`
+
+Result:
+- `7 passed` in `7.91s`
+
+Interpretation:
+- Pseudo lookup, bundled libinfo loading, demo discovery, and demo manifest integrity all work after removing `<repo_root>/resources`.
+
+### Next required gate
+- Run mandatory full suite command and wait for completion:
+  - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+
+### Retest after gate fixes (2026-02-22, post-compact continuation)
+
+Command:
+- `source .venv/bin/activate && python -m pytest tests/gates/test_corpus_index.py::test_redistributable_assets_present tests/gates/test_no_sensitive_paths.py::TestNoSensitivePaths::test_no_sensitive_identifiers -v --tb=short`
+
+Result:
+- `2 passed` in `10.30s`
+
+Notes:
+- Confirms both previously failing gates are fixed after:
+  - corpus source path migration to `src/quantumvitas/resources/pseudo`
+  - sensitive-path sanitization in active worklogs
+- Next action: rerun the required full suite command and wait for completion before further edits.
+
+### Mandatory full-suite rerun (post deletion + gate fixes)
+
+Command (required by user rule):
+- `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+
+Result:
+- `6451 passed, 4 skipped, 968 warnings` in `386.59s` (`0:06:26`)
+- Exit code: `0`
+
+Notes:
+- This validates the repo after deleting top-level `<repo_root>/resources` and migrating pseudo/demo/metadata references.
+- Accepted non-fatal noise: expected integration warnings (e.g., `optimade` live/network variability class and mark/deprecation warnings), no hard failures.
+
+### Post-full-run path audit (pseudo/demo/metadata + tools)
+
+Checks:
+- `if [ -d resources ]; then echo resources_exists; else echo resources_missing; fi` -> `resources_missing`
+- `rg -n "repo_root\\s*/\\s*['\" ]resources|REPO_ROOT\\s*/\\s*['\" ]resources|get_repo_root\\(\\)\\s*/\\s*['\" ]resources" src/quantumvitas --glob '*.py'` -> no matches
+- Broad `resources/` grep in `src/quantumvitas`, `tools`, `tests` shows remaining occurrences are either:
+  - explicit new SSOT path strings (`src/quantumvitas/resources/...`), or
+  - human-facing comments/docstrings/messages (no repo-top-level path resolution code).
+
+Conclusion:
+- No active runtime/tool code path depends on deleted top-level `<repo_root>/resources`.
+- Runtime SSOT for bundled assets is `src/quantumvitas/resources/`.
+
+### Wording cleanup (clarify migrated resource layout)
+
+Updated comments/docstrings to remove old top-level `resources/` wording ambiguity:
+- `tests/daemon/contract/conftest.py`
+- `tests/daemon/contract/test_realrun_si_scf.py`
+- `tests/mcp/test_stage10.py`
+- `tests/unit/test_pseudo_no_repo_root.py`
+- `tests/gates/test_no_legacy_identity_fields.py`
+- `src/quantumvitas/api/service.py`
+
+### Sanity tests after wording updates
+
+Command:
+- `source .venv/bin/activate && python -m pytest tests/unit/test_pseudo_no_repo_root.py tests/mcp/test_stage10.py::TestSearchDemos::test_search_all_returns_demos tests/gates/test_no_legacy_identity_fields.py::TestNoLegacyIdentityFields::test_no_forbidden_keys_in_yaml_json_resources -v --tb=short`
+
+Result:
+- `3 passed` in `11.63s`
+
+Interpretation:
+- Pseudo invariant, demo discovery, and resource-gate scan remain green after final clarity edits.

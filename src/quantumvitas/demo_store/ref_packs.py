@@ -2,7 +2,7 @@
 Reference pack loader for demo projects.
 
 Ref packs are pre-computed analysis bundles stored as JSON files in
-resources/demo_projects/ref_packs/<demo_slug>/. Each ref pack contains
+src/quantumvitas/resources/demo_projects/ref_packs/<demo_slug>/. Each ref pack contains
 a manifest.json and one or more analysis JSON files (bands.json, dos.json,
 convergence.json, etc.).
 

@@ -8,10 +8,10 @@ The importer:
 1. Scans `tests/data/` for folders matching pattern `0_*` through `19_*`
 2. For each dataset, finds `.in` files in execution order
 3. Extracts structure and parameters from inputs
-4. Maps pseudopotentials from `resources/pseudo/` directory
+4. Maps pseudopotentials from `src/quantumvitas/resources/pseudo/` directory
 5. Creates calculation structure using QMatSuite APIs
 6. Validates by round-tripping (parse -> export -> compare)
-7. Generates demo snapshots in `resources/demo_projects/` with naming `00_*` to `19_*`
+7. Generates demo snapshots in `src/quantumvitas/resources/demo_projects/` with naming `00_*` to `19_*`
 8. Extracts reference artifacts from output files (`.scf.json`, `.dos.json`, `.bands.json`)
 9. Verifies consistency of generated demos
 
@@ -58,21 +58,21 @@ python tools/import_tutorial_datasets.py --clean --verify
 
 - Python 3.8+
 - All dependencies from `requirements.txt` installed
-- Pseudopotentials available in `resources/pseudo/` directory (missing ones will be automatically downloaded to `repo/resources/pseudo/`)
+- Pseudopotentials available in `src/quantumvitas/resources/pseudo/` directory (missing ones will be automatically downloaded to `repo/src/quantumvitas/resources/pseudo/`)
 
 ## Output
 
 The tool creates:
 
-1. **Demo snapshots** in `resources/demo_projects/`:
+1. **Demo snapshots** in `src/quantumvitas/resources/demo_projects/`:
    - Each demo is a single `.yml` file (e.g., `00_Si_scf.yml`, `04_Si_DOS.yml`)
    - Matches the structure of existing demos (`si_dos_demo.yml`, `si_bands_demo.yml`)
    - Contains complete project snapshot with structures, calculations, steps
    - Includes reference artifacts (`.scf.json`, `.dos.json`, `.bands.json`) if available
 
 2. **Reports**:
-   - `resources/demo_projects/import_report.json` - Machine-readable summary
-   - `resources/demo_projects/import_report.md` - Human-readable summary
+   - `src/quantumvitas/resources/demo_projects/import_report.json` - Machine-readable summary
+   - `src/quantumvitas/resources/demo_projects/import_report.md` - Human-readable summary
 
 ## Demo Structure
 
@@ -187,12 +187,12 @@ This ensures generated demos match the structure of manually created projects.
 The importer handles pseudopotentials automatically:
 
 1. **During Import**: 
-   - Searches for pseudos in dataset folder, `tests/data/`, and `resources/pseudo/` directory
-   - If not found, attempts to download from QE repository to `repo/resources/pseudo/`
+   - Searches for pseudos in dataset folder, `tests/data/`, and `src/quantumvitas/resources/pseudo/` directory
+   - If not found, attempts to download from QE repository to `repo/src/quantumvitas/resources/pseudo/`
    - Reports failures if download also fails (404 errors)
 
 2. **During Demo Expansion** (when materializing from snapshot):
-   - Copies pseudos from `repo/resources/pseudo/` to `project/pseudo/`
+   - Copies pseudos from `repo/src/quantumvitas/resources/pseudo/` to `project/pseudo/`
    - Falls back to download if not in repo
    - QE execution always uses `project/pseudo/` as `pseudo_dir`
 
@@ -208,4 +208,3 @@ The importer handles pseudopotentials automatically:
 - Naming uses zero-padded numbers (`00_*` through `19_*`) matching source folders
 - Reference artifacts are extracted from `reference_out/` directories when available
 - Improved step type recognition uses multiple heuristics for better accuracy
-

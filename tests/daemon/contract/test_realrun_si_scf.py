@@ -49,7 +49,7 @@ class TestRealRunSiSCF:
         assert calc_ulid is not None, f"No calc ULID in response: {calc_response}"
 
         # --- User action 2: Select pseudopotential for Si ---
-        # The runner auto-stages from <repo_root>/resources/pseudo/ at run time.
+        # The runner auto-stages from bundled src/quantumvitas/resources/pseudo/ at run time.
         # The user just picks the filename via the GUI species-map selector.
         send_request(daemon, "update_calculation_species_map", {
             "project_root": str(project_root),

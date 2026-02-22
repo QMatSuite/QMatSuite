@@ -8,7 +8,7 @@ as JSON ref packs.
 
 Usage: python tools/demo_store/generate_ref_packs.py [--dry-run]
 
-Ref packs are stored at resources/demo_projects/ref_packs/<demo_slug>/.
+Ref packs are stored at src/quantumvitas/resources/demo_projects/ref_packs/<demo_slug>/.
 See DEMO_STORE_SPEC.md §S10.
 """
 
@@ -25,8 +25,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 TESTS_DATA = REPO_ROOT / "tests" / "data"
-REF_PACKS_DIR = REPO_ROOT / "resources" / "demo_projects" / "ref_packs"
-DEMO_PROJECTS_DIR = REPO_ROOT / "resources" / "demo_projects"
+RESOURCES_DIR = REPO_ROOT / "src" / "quantumvitas" / "resources"
+REF_PACKS_DIR = RESOURCES_DIR / "demo_projects" / "ref_packs"
+DEMO_PROJECTS_DIR = RESOURCES_DIR / "demo_projects"
 GENERATOR_VERSION = "2.0.0"
 
 # ---------------------------------------------------------------------------

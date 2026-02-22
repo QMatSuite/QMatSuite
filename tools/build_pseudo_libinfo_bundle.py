@@ -4,7 +4,7 @@ Download and install pseudo library identification metadata bundle.
 
 This script downloads PSEUDO_FILE_INDEX.json and MANIFEST_PSEUDO_SEED.json
 from a GitHub release, verifies checksums, and installs them into
-resources/pseudo_libinfo/<tag>/ with a CURRENT pointer file.
+src/quantumvitas/resources/pseudo_libinfo/<tag>/ with a CURRENT pointer file.
 
 Usage:
     python tools/build_pseudo_libinfo_bundle.py --tag assets-2025-12-26
@@ -83,6 +83,7 @@ def main() -> int:
     
     tag = args.tag
     repo_root = find_repo_root()
+    resources_root = repo_root / "src" / "quantumvitas" / "resources"
     
     # URLs
     base_url = f"https://github.com/QMatSuite/qmatsuite-assets/releases/download/{tag}"
@@ -91,11 +92,12 @@ def main() -> int:
     
     # Directories
     temp_download_dir = repo_root / "temp" / "pseudo_libinfo_download" / tag
-    bundle_dir = repo_root / "resources" / "pseudo_libinfo" / tag
-    current_file = repo_root / "resources" / "pseudo_libinfo" / "CURRENT"
+    bundle_dir = resources_root / "pseudo_libinfo" / tag
+    current_file = resources_root / "pseudo_libinfo" / "CURRENT"
     
     print(f"Downloading pseudo libinfo bundle for tag: {tag}")
     print(f"Repository root: {repo_root}")
+    print(f"Resources root: {resources_root}")
     print(f"Bundle directory: {bundle_dir}")
     
     # Download files to temp directory
@@ -237,4 +239,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

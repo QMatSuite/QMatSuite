@@ -336,7 +336,7 @@ def qe_project_with_si(tmp_path: Path, qe_available) -> tuple[Path, str]:
     structure_ulid = structure_resolved.meta.ulid
 
     # NOTE: Pseudopotentials are NOT manually copied here.
-    # The runner auto-stages from <repo_root>/resources/pseudo/ during run.
+    # The runner auto-stages from bundled src/quantumvitas/resources/pseudo/ during run.
     # The test must set species_map via RPC (update_calculation_species_map)
     # to tell the runner which pseudo file to use — just like a real user would.
 

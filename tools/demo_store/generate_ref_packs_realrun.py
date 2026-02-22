@@ -38,7 +38,8 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-REF_PACKS_DIR = REPO_ROOT / "resources" / "demo_projects" / "ref_packs"
+RESOURCES_DIR = REPO_ROOT / "src" / "quantumvitas" / "resources"
+REF_PACKS_DIR = RESOURCES_DIR / "demo_projects" / "ref_packs"
 WORK_DIR = REPO_ROOT / ".tmp" / "refpack_runs"
 GENERATOR_VERSION = "3.0.0"
 
@@ -80,7 +81,7 @@ def _discover_demos() -> list[dict[str, str]]:
     """Discover all demo slugs and their engines from demo YAML files."""
     import yaml
 
-    demo_dir = REPO_ROOT / "resources" / "demo_projects"
+    demo_dir = RESOURCES_DIR / "demo_projects"
     demos = []
     for yml in sorted(demo_dir.glob("*.yml")):
         slug = yml.stem

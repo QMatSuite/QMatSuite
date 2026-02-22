@@ -2,7 +2,7 @@
 Regression test: Ensure repo_root/pseudo is never created by tests or runtime.
 
 This test ensures that the invariant is maintained:
-- Internal pseudo library is ONLY at resources/pseudo/
+- Internal pseudo library is ONLY at src/quantumvitas/resources/pseudo/
 - Repo-root pseudo/ must never be created
 - Tests must use tmp directories, never repo_root as project_root
 """
@@ -39,7 +39,7 @@ def test_repo_root_pseudo_never_created():
         f"The conftest.py trap should have caught any creation attempts."
     )
     
-    # Assert: resources pseudo should exist (it's tracked in git)
+    # Assert: bundled pseudo directory should exist (it's tracked in git)
     assert resources_pseudo.exists(), (
-        f"resources/pseudo should exist at {resources_pseudo} (it's tracked in git)"
+        f"Bundled pseudo directory should exist at {resources_pseudo} (it's tracked in git)"
     )

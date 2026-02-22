@@ -7,7 +7,7 @@ and the generator manifest.
 
 Usage: python tools/demo_store/generate_all.py [--dry-run]
 
-This is the SINGLE WRITER for resources/demo_projects/ (Rule T1).
+This is the SINGLE WRITER for src/quantumvitas/resources/demo_projects/ (Rule T1).
 """
 
 from __future__ import annotations
@@ -23,7 +23,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 CORPUS_ROOT = REPO_ROOT / "tests" / "inputformat" / "samples"
-DEMO_DIR = REPO_ROOT / "resources" / "demo_projects"
+RESOURCES_DIR = REPO_ROOT / "src" / "quantumvitas" / "resources"
+DEMO_DIR = RESOURCES_DIR / "demo_projects"
 
 # Mapping: old demo filename stem -> new demo_slug
 OLD_TO_NEW_SLUG = {
@@ -278,7 +279,7 @@ def main():
                 "dir_name": dir_name,
                 "corpus_path": f"tests/inputformat/samples/{engine}/{dir_name}",
                 "corpus_checksum": _compute_dir_checksum(case_dir),
-                "output_file": f"resources/demo_projects/{demo_slug}.yml",
+                "output_file": f"src/quantumvitas/resources/demo_projects/{demo_slug}.yml",
                 "output_checksum": _compute_file_checksum(output_path) if not dry_run else "",
                 "asset_policy": entry.get("asset_policy", "none"),
             }

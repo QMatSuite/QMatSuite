@@ -286,7 +286,7 @@ def augment_case_yaml(case_dir: Path, engine: str) -> dict:
             if pseudo_files:
                 data["asset_requirements"] = {
                     "pseudopotentials": [
-                        {"file": p.name, "element": p.stem.split(".")[0], "source": "resources/pseudo"}
+                        {"file": p.name, "element": p.stem.split(".")[0], "source": "src/quantumvitas/resources/pseudo"}
                         for p in pseudo_files
                     ]
                 }

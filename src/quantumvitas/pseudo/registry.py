@@ -1,7 +1,7 @@
 """Pseudopotential library registry — maps vendored manifest to downloadable archives.
 
-Loads ``resources/pseudo_libinfo/{CURRENT}/MANIFEST_PSEUDO_SEED.json`` and
-provides lookup by ``(library_key, variant, version)`` triple.
+Loads ``quantumvitas/resources/pseudo_libinfo/{CURRENT}/MANIFEST_PSEUDO_SEED.json``
+and provides lookup by ``(library_key, variant, version)`` triple.
 """
 
 from __future__ import annotations
@@ -11,6 +11,8 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from quantumvitas.core.resources import get_resources_dir
 
 logger = logging.getLogger(__name__)
 
@@ -58,21 +60,16 @@ _DEFAULT_VARIANTS: dict[str, str] = {
 
 def _find_manifest_path() -> Path:
     """Find the vendored manifest JSON on disk."""
-    # Walk up from this file to repo root
-    current = Path(__file__).resolve().parent
-    while current != current.parent:
-        resources = current / "resources" / "pseudo_libinfo"
-        if resources.is_dir():
-            current_file = resources / "CURRENT"
-            if current_file.exists():
-                tag = current_file.read_text().strip()
-                manifest = resources / tag / "MANIFEST_PSEUDO_SEED.json"
-                if manifest.exists():
-                    return manifest
-        current = current.parent
+    resources = get_resources_dir() / "pseudo_libinfo"
+    current_file = resources / "CURRENT"
+    if current_file.exists():
+        tag = current_file.read_text().strip()
+        manifest = resources / tag / "MANIFEST_PSEUDO_SEED.json"
+        if manifest.exists():
+            return manifest
     raise FileNotFoundError(
         "Could not find vendored MANIFEST_PSEUDO_SEED.json. "
-        "Expected resources/pseudo_libinfo/{CURRENT}/MANIFEST_PSEUDO_SEED.json"
+        f"Expected {resources}/{{CURRENT}}/MANIFEST_PSEUDO_SEED.json"
     )
 
 
@@ -140,20 +137,16 @@ _element_index: dict[tuple[str, str, str, str], str] | None = None
 
 def _find_file_index_path() -> Path:
     """Find the vendored PSEUDO_FILE_INDEX.json on disk."""
-    current = Path(__file__).resolve().parent
-    while current != current.parent:
-        resources = current / "resources" / "pseudo_libinfo"
-        if resources.is_dir():
-            current_file = resources / "CURRENT"
-            if current_file.exists():
-                tag = current_file.read_text().strip()
-                index_path = resources / tag / "PSEUDO_FILE_INDEX.json"
-                if index_path.exists():
-                    return index_path
-        current = current.parent
+    resources = get_resources_dir() / "pseudo_libinfo"
+    current_file = resources / "CURRENT"
+    if current_file.exists():
+        tag = current_file.read_text().strip()
+        index_path = resources / tag / "PSEUDO_FILE_INDEX.json"
+        if index_path.exists():
+            return index_path
     raise FileNotFoundError(
         "Could not find vendored PSEUDO_FILE_INDEX.json. "
-        "Expected resources/pseudo_libinfo/{CURRENT}/PSEUDO_FILE_INDEX.json"
+        f"Expected {resources}/{{CURRENT}}/PSEUDO_FILE_INDEX.json"
     )
 
 

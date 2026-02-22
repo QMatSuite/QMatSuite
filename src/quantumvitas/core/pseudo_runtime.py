@@ -5,7 +5,7 @@ This module is the ONLY place allowed to mutate project/pseudo.
 All filesystem operations that touch project/pseudo must happen here, during Step0.
 
 Constitution rules:
-- Only 3 sources: internal (repo/resources/pseudo), lib (.qmatsuite/libraries/pseudo/...), project (project/pseudo)
+- Only 3 sources: internal (quantumvitas/resources/pseudo), lib (.qmatsuite/libraries/pseudo/...), project (project/pseudo)
 - QE runtime only reads project/pseudo
 - sha_family is primary for physical equivalence
 - sha256 is strict bytes identity
@@ -34,7 +34,7 @@ from quantumvitas.core.paths import home_pseudo_libraries_dir
 class PseudoSourceKind(str, Enum):
     """The three allowed pseudo sources per constitution."""
     PROJECT = "project"  # project/pseudo
-    INTERNAL = "internal"  # repo/resources/pseudo
+    INTERNAL = "internal"  # quantumvitas/resources/pseudo
     LIB = "lib"  # .qmatsuite/libraries/pseudo/... (installed libraries)
 
 
@@ -123,7 +123,7 @@ def _resolve_internal_source_path(
     """
     Resolve an internal source path for a given element/basename/sha_family.
     
-    Searches repo/resources/pseudo for matching pseudo.
+    Searches quantumvitas/resources/pseudo for matching pseudo.
     
     Returns:
         Path to source file if found, None otherwise
@@ -650,4 +650,3 @@ def refresh_calc_pseudo_records_after_step0(
     # Save updated species_map (atomic records only)
     # Note: pseudo_set_sha is derived and stored only in manifest, not in calc.yaml
     save_calculation(wf_model, calculation_yaml)
-

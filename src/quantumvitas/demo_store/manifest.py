@@ -42,7 +42,7 @@ def read_manifest(demo_dir: Path) -> Dict[str, Any]:
     Read the generator manifest.
 
     Args:
-        demo_dir: Path to resources/demo_projects/
+        demo_dir: Path to src/quantumvitas/resources/demo_projects/
 
     Returns:
         Parsed manifest dict, or empty structure if not found.
@@ -69,7 +69,7 @@ def write_manifest(
     Write the generator manifest.
 
     Args:
-        demo_dir: Path to resources/demo_projects/
+        demo_dir: Path to src/quantumvitas/resources/demo_projects/
         demos: Dict mapping demo_slug -> demo metadata.
         corpus_index_checksum: SHA-256 of corpus_index.yaml.
 
@@ -118,7 +118,7 @@ def build_demo_manifest_entry(
         "dir_name": dir_name,
         "corpus_path": f"tests/inputformat/samples/{engine}/{dir_name}",
         "corpus_checksum": _compute_dir_checksum(corpus_dir),
-        "output_file": f"resources/demo_projects/{output_file.name}",
+        "output_file": f"src/quantumvitas/resources/demo_projects/{output_file.name}",
         "output_checksum": _compute_file_checksum(output_file),
         "asset_policy": asset_policy,
     }

@@ -47,17 +47,17 @@ asset_requirements:
   pseudopotentials:
   - file: Li_ONCV_PBE_sr.upf
     element: Li
-    source: resources/pseudo
+    source: src/quantumvitas/resources/pseudo
   - file: H_ONCV_PBE_sr.upf
     element: H
-    source: resources/pseudo
+    source: src/quantumvitas/resources/pseudo
   - file: Li.BFD.xml
     element: Li
-    source: resources/pseudo
+    source: src/quantumvitas/resources/pseudo
     for_engine: qmcpack
   - file: H.BFD.xml
     element: H
-    source: resources/pseudo
+    source: src/quantumvitas/resources/pseudo
     for_engine: qmcpack
 attribution:
   source: Constructed for QMatSuite, inspired by QMCPACK tutorials

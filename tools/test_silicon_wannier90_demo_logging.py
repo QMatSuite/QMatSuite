@@ -31,12 +31,28 @@ logging.basicConfig(
 
 from quantumvitas.project.snapshot import ProjectSnapshot
 from quantumvitas.project.snapshot import materialize_project_from_snapshot
+from quantumvitas.core.resources import get_resources_dir
 import yaml
 
-# Load demo
-demo_file = repo_root / "resources" / "demo_projects" / "silicon_wannier90_demo.yml"
-if not demo_file.exists():
-    print(f"ERROR: Demo file not found: {demo_file}")
+# Load demo (prefer legacy silicon demo name, then current wannier demos)
+demo_dir = get_resources_dir() / "demo_projects"
+demo_candidates = [
+    "silicon_wannier90_demo.yml",
+    "qe_w90_silicon.yml",
+    "qe_silicon_wannier.yml",
+    "qe_diamond_wannier.yml",
+    "qe_copper_wannier.yml",
+]
+demo_file = None
+for demo_name in demo_candidates:
+    candidate = demo_dir / demo_name
+    if candidate.exists():
+        demo_file = candidate
+        break
+
+if demo_file is None:
+    print(f"ERROR: No wannier demo file found in {demo_dir}")
+    print(f"Tried: {', '.join(demo_candidates)}")
     sys.exit(1)
 
 print("=" * 80)
@@ -119,4 +135,3 @@ with tempfile.TemporaryDirectory() as tmpdir:
 print("\n" + "=" * 80)
 print("Done. Check logs above for diagnostic information.")
 print("=" * 80)
-
