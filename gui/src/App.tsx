@@ -55,8 +55,37 @@ import type {
   QVResponse,
   JobSubmitResult,
   PreflightCheckResult,
+  RuntimeSetupStatus,
+  UpdaterState,
 } from './types';
 import './App.css';
+
+const ENGINE_DISPLAY_NAMES: Record<string, string> = {
+  qe: 'Quantum ESPRESSO',
+  vasp: 'VASP',
+  xtb: 'xTB',
+  lammps: 'LAMMPS',
+  orca: 'ORCA',
+  gaussian: 'Gaussian',
+  abinit: 'ABINIT',
+  cp2k: 'CP2K',
+  siesta: 'Siesta',
+  w90: 'Wannier90',
+  yambo: 'Yambo',
+  qmcpack: 'QMCPACK',
+  pyscf: 'PySCF',
+  psi4: 'Psi4',
+  gpaw: 'GPAW',
+};
+
+type MissingEngineGuidanceState = {
+  engineFamily: string;
+  message: string;
+  installJobId: string | null;
+  installStatus: string;
+  installError: string | null;
+  installed: boolean;
+};
 
 function App() {
   // Project root path state (persisted in localStorage)
@@ -154,6 +183,10 @@ function App() {
   // Toast/notification state for job submissions
   const [jobNotification, setJobNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [missingEngineGuidance, setMissingEngineGuidance] = useState<MissingEngineGuidanceState | null>(null);
+  const [runtimeSetupStatus, setRuntimeSetupStatus] = useState<RuntimeSetupStatus | null>(null);
+  const [updaterState, setUpdaterState] = useState<UpdaterState | null>(null);
+  const [updaterDismissed, setUpdaterDismissed] = useState(false);
   
   // App settings (persisted in localStorage)
   const [appSettings, setAppSettings] = useState<{ 
@@ -186,6 +219,36 @@ function App() {
   // Hooks
   const qv = useQVClient();
   const daemonStatus = useDaemonStatus();
+
+  useEffect(() => {
+    if (!window.qv) return;
+    let cancelled = false;
+
+    void window.qv.getRuntimeSetupStatus().then((status) => {
+      if (!cancelled) setRuntimeSetupStatus(status);
+    }).catch(() => {
+      // Runtime status channel is best-effort.
+    });
+
+    void window.qv.getUpdaterState().then((status) => {
+      if (!cancelled) setUpdaterState(status);
+    }).catch(() => {
+      // Updater state channel is best-effort.
+    });
+
+    const unsubRuntime = window.qv.onRuntimeSetupStatus((status) => {
+      if (!cancelled) setRuntimeSetupStatus(status);
+    });
+    const unsubUpdater = window.qv.onUpdaterState((status) => {
+      if (!cancelled) setUpdaterState(status);
+    });
+
+    return () => {
+      cancelled = true;
+      unsubRuntime();
+      unsubUpdater();
+    };
+  }, []);
   
   // ==========================================================================
   // Job Counts Polling
@@ -219,6 +282,70 @@ function App() {
         clearTimeout(notificationTimeoutRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (!updaterState) return;
+    if (updaterState.state === 'available' || updaterState.state === 'downloading' || updaterState.state === 'downloaded') {
+      setUpdaterDismissed(false);
+    }
+  }, [updaterState?.state, updaterState?.version]);
+
+  const handleCheckForUpdates = useCallback(async () => {
+    if (!window.qv?.checkForUpdates) return;
+    const response = await window.qv.checkForUpdates();
+    if (!response.ok && response.message) {
+      showNotification(response.message, 'error');
+    }
+  }, [showNotification]);
+
+  const handleDownloadUpdate = useCallback(async () => {
+    if (!window.qv?.downloadUpdate) return;
+    const response = await window.qv.downloadUpdate();
+    if (!response.ok) {
+      showNotification(response.message || 'Failed to start update download', 'error');
+    }
+  }, [showNotification]);
+
+  const handleInstallDownloadedUpdate = useCallback(async () => {
+    if (!window.qv?.quitAndInstallUpdate) return;
+    const response = await window.qv.quitAndInstallUpdate();
+    if (!response.ok) {
+      showNotification(response.message || 'Failed to install update', 'error');
+    }
+  }, [showNotification]);
+
+  const inferMissingEngineFamily = useCallback((message: string): string | null => {
+    const normalized = (message || '').toLowerCase();
+    if (
+      normalized.includes('quantum espresso') ||
+      normalized.includes('pw.x') ||
+      normalized.includes('qe')
+    ) {
+      return 'qe';
+    }
+    for (const family of Object.keys(ENGINE_DISPLAY_NAMES)) {
+      if (normalized.includes(family)) {
+        return family;
+      }
+    }
+    return null;
+  }, []);
+
+  const openMissingEngineGuidance = useCallback((engineFamily: string, message: string) => {
+    setMissingEngineGuidance({
+      engineFamily,
+      message,
+      installJobId: null,
+      installStatus: '',
+      installError: null,
+      installed: false,
+    });
+    setActiveCalcTab('overview');
+  }, []);
+
+  const clearMissingEngineGuidance = useCallback(() => {
+    setMissingEngineGuidance(null);
   }, []);
   
   // ==========================================================================
@@ -1299,6 +1426,7 @@ function App() {
     didAutoSelectCalculationRef.current = true;
     setSelectedCalculationDetail(null);
     setSelectedStepId(null);
+    clearMissingEngineGuidance();
     // DO NOT change activeCalcTab - user stays in current tab
     
     // Fire and forget async detail fetch
@@ -1359,7 +1487,7 @@ function App() {
         setSelectedCalculationDetail(null);
       }
     })();
-  }, [projectRoot, qv]);
+  }, [projectRoot, qv, clearMissingEngineGuidance]);
   
   // Reset auto-select flags when switching views or project changes
   useEffect(() => {
@@ -1737,8 +1865,140 @@ function App() {
       // Don't show error - calculation might still be syncing, user can manually select it
     }
   }, [qv, projectRoot, fetchCalculations, refreshSummary, handleSelectCalculation]);
+
+  useEffect(() => {
+    if (!missingEngineGuidance?.installJobId) return;
+    let cancelled = false;
+
+    const pollInstallStatus = async () => {
+      const statusResponse = await qv.call('get_job_status', { job_id: missingEngineGuidance.installJobId! });
+      if (cancelled) return;
+      if (!statusResponse.ok || !statusResponse.data) {
+        setMissingEngineGuidance((prev) => prev ? {
+          ...prev,
+          installError: statusResponse.error?.message || 'Failed to poll install status',
+          installJobId: null,
+        } : prev);
+        return;
+      }
+
+      const statusData = statusResponse.data;
+      if (!statusData) {
+        setMissingEngineGuidance((prev) => prev ? {
+          ...prev,
+          installError: 'Missing install status payload',
+          installJobId: null,
+        } : prev);
+        return;
+      }
+
+      const status = statusData.status;
+      const installStatus = statusData.last_log_line || status;
+
+      if (status === 'pending' || status === 'running') {
+        setMissingEngineGuidance((prev) => prev ? {
+          ...prev,
+          installStatus,
+          installError: null,
+        } : prev);
+        return;
+      }
+
+      if (status === 'completed') {
+        setMissingEngineGuidance((prev) => prev ? {
+          ...prev,
+          installJobId: null,
+          installStatus: 'Installed successfully',
+          installError: null,
+          installed: true,
+        } : prev);
+        return;
+      }
+
+      setMissingEngineGuidance((prev) => prev ? {
+        ...prev,
+        installJobId: null,
+        installError: statusData.error || installStatus || 'Engine install failed',
+      } : prev);
+    };
+
+    const timer = setInterval(() => {
+      void pollInstallStatus();
+    }, 2000);
+    void pollInstallStatus();
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [missingEngineGuidance?.installJobId, qv]);
+
+  const handleInstallMissingEngine = useCallback(async () => {
+    if (!missingEngineGuidance) return;
+    const engineFamily = missingEngineGuidance.engineFamily;
+    const response = await qv.installEngine(engineFamily, { async: true, source: 'auto' });
+    if (!response.ok) {
+      setMissingEngineGuidance((prev) => prev ? {
+        ...prev,
+        installError: response.error?.message || 'Failed to start engine install',
+      } : prev);
+      return;
+    }
+
+    const jobId = response.data?.job_id || null;
+    if (!jobId) {
+      setMissingEngineGuidance((prev) => prev ? {
+        ...prev,
+        installed: true,
+        installStatus: 'Installed successfully',
+        installError: null,
+      } : prev);
+      return;
+    }
+
+    setMissingEngineGuidance((prev) => prev ? {
+      ...prev,
+      installJobId: jobId,
+      installStatus: 'Install queued...',
+      installError: null,
+    } : prev);
+  }, [missingEngineGuidance, qv]);
+
+  const handleConfigureMissingEnginePath = useCallback(async () => {
+    if (!missingEngineGuidance) return;
+    if (!window.qv?.openDirectory) {
+      setMissingEngineGuidance((prev) => prev ? {
+        ...prev,
+        installError: 'Path picker is unavailable',
+      } : prev);
+      return;
+    }
+    const selectedPath = await window.qv.openDirectory();
+    if (!selectedPath) return;
+
+    const response = await qv.registerEnginePath(missingEngineGuidance.engineFamily, selectedPath, {
+      source: 'user_path',
+    });
+    if (!response.ok) {
+      setMissingEngineGuidance((prev) => prev ? {
+        ...prev,
+        installError: response.error?.message || 'Failed to register engine path',
+      } : prev);
+      return;
+    }
+
+    setMissingEngineGuidance((prev) => prev ? {
+      ...prev,
+      installed: true,
+      installStatus: 'Path configured',
+      installError: null,
+      installJobId: null,
+    } : prev);
+  }, [missingEngineGuidance, qv]);
   
   const handleRunCalculation = useCallback(async (calculation: CalculationInfo, runMode: 'incremental' | 'full' = 'incremental') => {
+    const selectedEngineFamily = selectedCalculationDetail?.engine_family || null;
+
     // Perform preflight checks first
     const preflightResponse = await qv.call('preflight_check', {
       project_root: projectRoot,
@@ -1749,9 +2009,13 @@ function App() {
       const preflight = preflightResponse.data as PreflightCheckResult;
       
       if (!preflight.ok) {
-        // Show preflight errors
         const errorMsg = preflight.errors.join('; ') || 'Pre-flight check failed';
-        showNotification(`Cannot run calculation: ${errorMsg}`, 'error');
+        const inferred = selectedEngineFamily || inferMissingEngineFamily(errorMsg);
+        if (inferred) {
+          openMissingEngineGuidance(inferred, errorMsg);
+        } else {
+          showNotification(`Cannot run calculation: ${errorMsg}`, 'error');
+        }
         return;
       }
       
@@ -1783,6 +2047,7 @@ function App() {
       const result = response.data as JobSubmitResult;
       const shortId = result.job_id.slice(0, 8);
       showNotification(`Job #${shortId} started: ${result.target_name}`, 'success');
+      clearMissingEngineGuidance();
       
       // Auto-switch to Run & Logs tab after successful submission
       setActiveCalcTab('run');
@@ -1796,6 +2061,13 @@ function App() {
           'Calculation is currently running. Please wait for the current run to complete or stop it first.',
           'error'
         );
+      } else if (error?.code === 'ENGINE_NOT_INSTALLED' || inferMissingEngineFamily(error?.message || '')) {
+        const inferred = selectedEngineFamily || inferMissingEngineFamily(error?.message || '');
+        if (inferred) {
+          openMissingEngineGuidance(inferred, error?.message || 'Engine is not installed');
+        } else {
+          showNotification(`Failed to start job: ${error?.message || 'Unknown error'}`, 'error');
+        }
       } else {
         showNotification(`Failed to start job: ${error?.message || 'Unknown error'}`, 'error');
       }
@@ -1803,7 +2075,15 @@ function App() {
     }
     
     setDebugResult(response as QVResponse);
-  }, [qv, projectRoot, showNotification]);
+  }, [
+    qv,
+    projectRoot,
+    showNotification,
+    selectedCalculationDetail,
+    inferMissingEngineFamily,
+    openMissingEngineGuidance,
+    clearMissingEngineGuidance,
+  ]);
   
   const handleGoToJobs = useCallback(() => {
     setCurrentView('jobs');
@@ -2409,6 +2689,69 @@ function App() {
               
               {/* Tab Content */}
               <div className="calculations-workspace-content">
+                {missingEngineGuidance && (
+                  <div className="missing-engine-panel" data-testid="qv-missing-engine-panel">
+                    <div className="missing-engine-panel__title">
+                      {ENGINE_DISPLAY_NAMES[missingEngineGuidance.engineFamily] || missingEngineGuidance.engineFamily} is not installed
+                    </div>
+                    <div className="missing-engine-panel__message">
+                      {missingEngineGuidance.message}
+                    </div>
+                    {missingEngineGuidance.installStatus && (
+                      <div className="missing-engine-panel__status">
+                        {missingEngineGuidance.installStatus}
+                      </div>
+                    )}
+                    {missingEngineGuidance.installError && (
+                      <div className="missing-engine-panel__error">
+                        {missingEngineGuidance.installError}
+                      </div>
+                    )}
+                    <div className="missing-engine-panel__actions">
+                      {!missingEngineGuidance.installed && (
+                        <button
+                          className="settings-btn"
+                          onClick={() => void handleInstallMissingEngine()}
+                          disabled={!!missingEngineGuidance.installJobId}
+                          data-testid="qv-missing-engine-install"
+                        >
+                          {missingEngineGuidance.installJobId ? 'Installing...' : `Install ${ENGINE_DISPLAY_NAMES[missingEngineGuidance.engineFamily] || missingEngineGuidance.engineFamily}`}
+                        </button>
+                      )}
+                      <button
+                        className="settings-btn"
+                        onClick={() => void handleConfigureMissingEnginePath()}
+                        data-testid="qv-missing-engine-configure-path"
+                      >
+                        Configure Path
+                      </button>
+                      <button
+                        className="settings-btn"
+                        onClick={() => setCurrentView('settings')}
+                        data-testid="qv-missing-engine-open-manager"
+                      >
+                        Open Engine Manager
+                      </button>
+                      {missingEngineGuidance.installed && selectedCalculationSummary && (
+                        <button
+                          className="settings-btn settings-btn--primary"
+                          onClick={() => void handleRunCalculation(selectedCalculationSummary, 'incremental')}
+                          data-testid="qv-missing-engine-run-again"
+                        >
+                          Run Again
+                        </button>
+                      )}
+                      <button
+                        className="settings-btn settings-btn--sm"
+                        onClick={() => clearMissingEngineGuidance()}
+                        data-testid="qv-missing-engine-dismiss"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {activeCalcTab === 'overview' && (
                   <CalculationOverviewTab
                     calculationSummary={selectedCalculationSummary}
@@ -2509,6 +2852,14 @@ function App() {
         return null;
     }
   };
+
+  const runtimeStage = runtimeSetupStatus?.stage ?? 'idle';
+  const showRuntimeSetupOverlay = runtimeStage !== 'idle' && runtimeStage !== 'ready';
+  const showUpdaterBanner = Boolean(
+    updaterState &&
+    !updaterDismissed &&
+    ['available', 'downloading', 'downloaded', 'error'].includes(updaterState.state),
+  );
   
   return (
     <>
@@ -2556,6 +2907,72 @@ function App() {
               </button>
             </div>
           )}
+
+          {showUpdaterBanner && updaterState && (
+            <div className="updater-banner" data-testid="qv-updater-banner">
+              <div className="updater-banner__content">
+                <div className="updater-banner__title">
+                  {updaterState.state === 'error'
+                    ? 'Update check failed'
+                    : updaterState.state === 'downloaded'
+                      ? `Update ${updaterState.version || ''} is ready`
+                      : `Update available${updaterState.version ? `: v${updaterState.version}` : ''}`}
+                </div>
+                {updaterState.message && (
+                  <div className="updater-banner__message">{updaterState.message}</div>
+                )}
+                {updaterState.state === 'downloading' && (
+                  <div className="updater-banner__progress-wrap">
+                    <div className="updater-banner__progress-track">
+                      <div
+                        className="updater-banner__progress-fill"
+                        style={{ width: `${Math.max(0, Math.min(100, updaterState.progress || 0))}%` }}
+                      />
+                    </div>
+                    <span className="updater-banner__progress-text">
+                      {(updaterState.progress || 0).toFixed(0)}%
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="updater-banner__actions">
+                {updaterState.state === 'available' && (
+                  <button
+                    className="settings-btn settings-btn--sm"
+                    onClick={() => void handleDownloadUpdate()}
+                    data-testid="qv-updater-download"
+                  >
+                    Download
+                  </button>
+                )}
+                {updaterState.state === 'error' && (
+                  <button
+                    className="settings-btn settings-btn--sm"
+                    onClick={() => void handleCheckForUpdates()}
+                    data-testid="qv-updater-retry"
+                  >
+                    Retry
+                  </button>
+                )}
+                {updaterState.state === 'downloaded' && (
+                  <button
+                    className="settings-btn settings-btn--primary settings-btn--sm"
+                    onClick={() => void handleInstallDownloadedUpdate()}
+                    data-testid="qv-updater-restart"
+                  >
+                    Restart Now
+                  </button>
+                )}
+                <button
+                  className="settings-btn settings-btn--sm"
+                  onClick={() => setUpdaterDismissed(true)}
+                  data-testid="qv-updater-later"
+                >
+                  Later
+                </button>
+              </div>
+            </div>
+          )}
           
           {/* Header */}
           <div className="app-header">
@@ -2570,6 +2987,12 @@ function App() {
               {currentView === 'dev-volume' && 'Volume Viewer (DEV)'}
             </h2>
             <div className="app-header__actions">
+              <button
+                className="app-header__toggle"
+                onClick={() => void handleCheckForUpdates()}
+              >
+                Check Updates
+              </button>
               <button
                 className="app-header__toggle"
                 onClick={() => setShowDebugFooter(!showDebugFooter)}
@@ -2590,6 +3013,36 @@ function App() {
           </div>
         </div>
       </AppShell>
+
+      {showRuntimeSetupOverlay && runtimeSetupStatus && (
+        <div className="runtime-setup-overlay" data-testid="qv-runtime-setup-overlay">
+          <div className="runtime-setup-overlay__card">
+            <h2 className="runtime-setup-overlay__title">Setting up QMatSuite...</h2>
+            <p className="runtime-setup-overlay__message">{runtimeSetupStatus.message}</p>
+            <div className="runtime-setup-overlay__progress-track" role="progressbar" aria-valuenow={runtimeSetupStatus.progress}>
+              <div
+                className="runtime-setup-overlay__progress-fill"
+                style={{ width: `${Math.max(0, Math.min(100, runtimeSetupStatus.progress || 0))}%` }}
+              />
+            </div>
+            <div className="runtime-setup-overlay__progress-text">
+              {(runtimeSetupStatus.progress || 0).toFixed(0)}%
+            </div>
+            {runtimeSetupStatus.stage === 'error' && (
+              <div className="runtime-setup-overlay__error" data-testid="qv-runtime-setup-error">
+                <p>{runtimeSetupStatus.error || 'Runtime setup failed.'}</p>
+                <a
+                  href="https://github.com/QMatSuite/QMatSuite/issues"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Report Issue
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       
       {/* Dialogs */}
       <CreateProjectDialog

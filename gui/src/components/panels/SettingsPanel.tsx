@@ -14,7 +14,14 @@ import { useQVClient, useQVLogs } from '../../hooks/useQVClient';
 import { LibrariesPanel } from './LibrariesPanel';
 import { PseudoArchivesPanel } from '../settings/PseudoArchivesPanel';
 import { JournalHistoryPanel } from '../settings/JournalHistoryPanel';
-import type { QEDetectionResult, EnvironmentInfo, EngineFamilyInfo } from '../../types/qv';
+import type {
+  QEDetectionResult,
+  EnvironmentInfo,
+  EngineFamilyInfo,
+  EngineStatusEntry,
+  EngineInstallation,
+  InstallableEngineEntry,
+} from '../../types/qv';
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
 
@@ -326,6 +333,399 @@ function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSection
   );
 }
 
+interface EngineManagementSectionProps {
+  qv: ReturnType<typeof useQVClient>;
+  engineDisplayNames: Record<string, string>;
+}
+
+function formatEngineSourceLabel(source: string | null | undefined): string {
+  switch ((source || '').toLowerCase()) {
+    case 'bundled':
+      return 'bundled';
+    case 'micromamba':
+      return 'conda-forge';
+    case 'github_release':
+      return 'github release';
+    case 'system_path':
+      return 'system PATH';
+    case 'user_path':
+      return 'user path';
+    case 'user_venv':
+      return 'user venv';
+    case 'fallback':
+      return 'fallback';
+    default:
+      return source || 'unknown';
+  }
+}
+
+function isInstallationUninstallable(installation: EngineInstallation | null | undefined): boolean {
+  const source = (installation?.source || '').toLowerCase();
+  return source === 'micromamba' || source === 'github_release';
+}
+
+function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSectionProps) {
+  const [engineRows, setEngineRows] = useState<EngineStatusEntry[]>([]);
+  const [installableRows, setInstallableRows] = useState<InstallableEngineEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingJobs, setPendingJobs] = useState<
+    Record<string, { jobId: string; action: 'install' | 'uninstall'; message: string }>
+  >({});
+  const [rowNotices, setRowNotices] = useState<Record<string, { tone: 'ok' | 'error'; text: string }>>({});
+
+  const refreshEngineData = useCallback(async () => {
+    if (!qv?.state.isConnected) return;
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [listResp, installableResp] = await Promise.all([
+        qv.listEngines(false),
+        qv.listInstallableEngines(),
+      ]);
+
+      if (!listResp.ok) {
+        throw new Error(listResp.error?.message || 'Failed to list engines');
+      }
+      if (!installableResp.ok) {
+        throw new Error(installableResp.error?.message || 'Failed to list installable engines');
+      }
+
+      setEngineRows(listResp.data?.engines || []);
+      setInstallableRows(installableResp.data?.engines || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to refresh engine manager');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [qv]);
+
+  useEffect(() => {
+    if (!qv?.state.isConnected) return;
+    refreshEngineData();
+  }, [qv, qv?.state.isConnected, refreshEngineData]);
+
+  useEffect(() => {
+    if (!qv?.state.isConnected || Object.keys(pendingJobs).length === 0) return;
+
+    let cancelled = false;
+
+    const pollJobs = async () => {
+      const entries = Object.entries(pendingJobs);
+      if (entries.length === 0) return;
+
+      const nextJobs: Record<string, { jobId: string; action: 'install' | 'uninstall'; message: string }> = {
+        ...pendingJobs,
+      };
+      let needsRefresh = false;
+      const notices: Record<string, { tone: 'ok' | 'error'; text: string }> = {};
+
+      for (const [engine, jobMeta] of entries) {
+        const statusResp = await qv.call('get_job_status', { job_id: jobMeta.jobId });
+        if (!statusResp.ok || !statusResp.data) {
+          notices[engine] = {
+            tone: 'error',
+            text: `Failed to poll ${jobMeta.action} status`,
+          };
+          delete nextJobs[engine];
+          continue;
+        }
+
+        const status = statusResp.data.status;
+        const line = statusResp.data.last_log_line || statusResp.data.error || '';
+        if (status === 'pending' || status === 'running') {
+          nextJobs[engine] = {
+            ...jobMeta,
+            message: line || `${jobMeta.action} in progress...`,
+          };
+          continue;
+        }
+
+        delete nextJobs[engine];
+        needsRefresh = true;
+        notices[engine] = status === 'completed'
+          ? { tone: 'ok', text: `${jobMeta.action} completed` }
+          : { tone: 'error', text: line || `${jobMeta.action} failed` };
+      }
+
+      if (cancelled) return;
+      setPendingJobs(nextJobs);
+      setRowNotices((prev) => ({ ...prev, ...notices }));
+      if (needsRefresh) {
+        await refreshEngineData();
+      }
+    };
+
+    const timer = setInterval(() => {
+      void pollJobs();
+    }, 2000);
+    void pollJobs();
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [pendingJobs, qv, refreshEngineData]);
+
+  const installableMap = new Map(installableRows.map((row) => [row.engine, row]));
+  const rowMap = new Map(engineRows.map((row) => [row.engine, row]));
+  const allEngines = Array.from(new Set([...rowMap.keys(), ...installableMap.keys()])).sort();
+
+  const handleInstall = useCallback(async (engine: string) => {
+    setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Starting install...' } }));
+    const response = await qv.installEngine(engine, { async: true, source: 'auto' });
+    if (!response.ok) {
+      setRowNotices((prev) => ({
+        ...prev,
+        [engine]: { tone: 'error', text: response.error?.message || 'Install failed to start' },
+      }));
+      return;
+    }
+
+    const jobId = response.data?.job_id;
+    if (jobId) {
+      setPendingJobs((prev) => ({
+        ...prev,
+        [engine]: { jobId, action: 'install', message: 'Install queued...' },
+      }));
+      return;
+    }
+
+    setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Install completed' } }));
+    await refreshEngineData();
+  }, [qv, refreshEngineData]);
+
+  const handleUninstall = useCallback(async (engine: string, installationId: string) => {
+    if (!window.confirm(`Uninstall ${engine} (${installationId})?`)) return;
+    setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Starting uninstall...' } }));
+    const response = await qv.uninstallEngine(engine, { installationId, async: true });
+    if (!response.ok) {
+      setRowNotices((prev) => ({
+        ...prev,
+        [engine]: { tone: 'error', text: response.error?.message || 'Uninstall failed to start' },
+      }));
+      return;
+    }
+
+    const jobId = response.data?.job_id;
+    if (jobId) {
+      setPendingJobs((prev) => ({
+        ...prev,
+        [engine]: { jobId, action: 'uninstall', message: 'Uninstall queued...' },
+      }));
+      return;
+    }
+
+    setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Uninstall completed' } }));
+    await refreshEngineData();
+  }, [qv, refreshEngineData]);
+
+  const handleVerify = useCallback(async (engine: string) => {
+    const response = await qv.verifyEngine(engine);
+    if (!response.ok) {
+      setRowNotices((prev) => ({
+        ...prev,
+        [engine]: { tone: 'error', text: response.error?.message || 'Verification failed' },
+      }));
+      return;
+    }
+    setRowNotices((prev) => ({
+      ...prev,
+      [engine]: {
+        tone: response.data?.ok ? 'ok' : 'error',
+        text: response.data?.message || (response.data?.ok ? 'OK' : 'Verification failed'),
+      },
+    }));
+  }, [qv]);
+
+  const handleSetActive = useCallback(async (engine: string, installationId: string) => {
+    const response = await qv.setActiveEngineInstallation(engine, installationId);
+    if (!response.ok || !response.data?.active) {
+      setRowNotices((prev) => ({
+        ...prev,
+        [engine]: { tone: 'error', text: response.error?.message || response.data?.message || 'Failed to set active installation' },
+      }));
+      return;
+    }
+    setRowNotices((prev) => ({
+      ...prev,
+      [engine]: { tone: 'ok', text: `Active installation set to ${installationId}` },
+    }));
+    await refreshEngineData();
+  }, [qv, refreshEngineData]);
+
+  const handleConfigurePath = useCallback(async (engine: string) => {
+    if (!window.qv?.openDirectory) {
+      setRowNotices((prev) => ({
+        ...prev,
+        [engine]: { tone: 'error', text: 'Path picker is unavailable in this environment' },
+      }));
+      return;
+    }
+
+    const selectedPath = await window.qv.openDirectory();
+    if (!selectedPath) return;
+
+    const response = await qv.registerEnginePath(engine, selectedPath, { source: 'user_path' });
+    if (!response.ok) {
+      setRowNotices((prev) => ({
+        ...prev,
+        [engine]: { tone: 'error', text: response.error?.message || 'Failed to register path' },
+      }));
+      return;
+    }
+    setRowNotices((prev) => ({
+      ...prev,
+      [engine]: { tone: 'ok', text: `Registered path: ${selectedPath}` },
+    }));
+    await refreshEngineData();
+  }, [qv, refreshEngineData]);
+
+  return (
+    <div className="settings-section" data-testid="qv-engine-manager-section">
+      <div className="settings-section__header">
+        <h3 className="settings-section__title">
+          <span className="settings-icon">🧩</span>
+          Engine Management
+        </h3>
+        <button
+          className="settings-btn settings-btn--sm"
+          onClick={() => void refreshEngineData()}
+          disabled={isLoading}
+          data-testid="qv-engine-manager-refresh"
+        >
+          {isLoading ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+
+      <div className="settings-section__content">
+        {error && (
+          <div className="settings-error" style={{ marginBottom: '1rem' }}>
+            <span className="error-icon">⚠️</span>
+            <span className="error-text">{error}</span>
+          </div>
+        )}
+
+        {allEngines.length === 0 ? (
+          <p className="settings-empty">No engines discovered yet.</p>
+        ) : (
+          <div className="engine-manager-list">
+            {allEngines.map((engine) => {
+              const row = rowMap.get(engine);
+              const installable = installableMap.get(engine);
+              const displayName = engineDisplayNames[engine] || installable?.display_name || engine.toUpperCase();
+              const active = row?.active || null;
+              const isInstalled = !!row?.installed;
+              const statusText = isInstalled
+                ? `Installed${active?.version ? ` (v${active.version})` : ''}`
+                : 'Not installed';
+              const sourceText = row?.active_source ? formatEngineSourceLabel(row.active_source) : '—';
+              const pending = pendingJobs[engine];
+              const notice = rowNotices[engine];
+              const hasInstallMethod = !!(installable && installable.install_methods.length > 0);
+              const manualOnly = !!installable?.manual_only;
+              const activeInstallId = row?.active_installation_id || '';
+              const installations = row?.installations || [];
+              const canUninstall = isInstallationUninstallable(active);
+
+              return (
+                <div
+                  key={engine}
+                  className="engine-manager-row"
+                  data-testid={`qv-engine-row-${engine}`}
+                >
+                  <div className="engine-manager-row__main">
+                    <div className="engine-manager-row__title">{displayName}</div>
+                    <div className="engine-manager-row__meta">
+                      <span>{statusText}</span>
+                      <span>Source: {sourceText}</span>
+                      {manualOnly && <span>Manual path engine</span>}
+                    </div>
+                    {pending && (
+                      <div className="engine-manager-row__progress" data-testid={`qv-engine-progress-${engine}`}>
+                        {pending.message}
+                      </div>
+                    )}
+                    {notice && (
+                      <div
+                        className={`engine-manager-row__notice engine-manager-row__notice--${notice.tone}`}
+                        data-testid={`qv-engine-notice-${engine}`}
+                      >
+                        {notice.text}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="engine-manager-row__actions">
+                    {installations.length > 1 && (
+                      <select
+                        className="settings-select"
+                        value={activeInstallId}
+                        onChange={(e) => void handleSetActive(engine, e.target.value)}
+                        disabled={!!pending}
+                        data-testid={`qv-engine-active-select-${engine}`}
+                      >
+                        {installations.map((inst) => (
+                          <option key={inst.id} value={inst.id}>
+                            {inst.id}{inst.version ? ` (v${inst.version})` : ''}{inst.stale ? ' [stale]' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {!isInstalled && hasInstallMethod && (
+                      <button
+                        className="settings-btn"
+                        onClick={() => void handleInstall(engine)}
+                        disabled={!!pending}
+                        data-testid={`qv-engine-install-${engine}`}
+                      >
+                        {pending?.action === 'install' ? 'Installing...' : 'Install'}
+                      </button>
+                    )}
+
+                    <button
+                      className="settings-btn"
+                      onClick={() => void handleConfigurePath(engine)}
+                      disabled={!!pending}
+                      data-testid={`qv-engine-configure-path-${engine}`}
+                    >
+                      Configure Path
+                    </button>
+
+                    {isInstalled && (
+                      <button
+                        className="settings-btn settings-btn--sm"
+                        onClick={() => void handleVerify(engine)}
+                        disabled={!!pending}
+                        data-testid={`qv-engine-verify-${engine}`}
+                      >
+                        Verify
+                      </button>
+                    )}
+
+                    {isInstalled && canUninstall && active?.id && (
+                      <button
+                        className="settings-btn settings-btn--danger"
+                        onClick={() => void handleUninstall(engine, active.id)}
+                        disabled={!!pending}
+                        data-testid={`qv-engine-uninstall-${engine}`}
+                      >
+                        {pending?.action === 'uninstall' ? 'Uninstalling...' : 'Uninstall'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export interface AppSettings {
   theme: 'dark' | 'light';
   autoAnalysis: boolean;
@@ -576,6 +976,9 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   
   // Compute visible logs for rendering
   const visibleLogs = getVisibleLogLines(logs, showPollingLogs);
+  const engineDisplayNames = Object.fromEntries(
+    engineFamilies.map((engine) => [engine.engine_family, engine.display_name])
+  );
   
   if (isLoading) {
     return (
@@ -589,6 +992,8 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   return (
     <div className="settings-panel">
       <div className="settings-scroll-container">
+        <EngineManagementSection qv={qv} engineDisplayNames={engineDisplayNames} />
+
         {/* Engine Detection Sections */}
         {engineFamilies.map((engine) => (
           <div key={engine.engine_family} className="settings-section">

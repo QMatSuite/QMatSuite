@@ -18,6 +18,20 @@ export interface DaemonStatus {
   projectRoot: string | null;
 }
 
+export interface RuntimeSetupStatus {
+  stage: 'idle' | 'checking' | 'extracting' | 'verifying' | 'ready' | 'error';
+  progress: number;
+  message: string;
+  error: string | null;
+}
+
+export interface UpdaterState {
+  state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+  version: string | null;
+  progress: number;
+  message: string | null;
+}
+
 // =============================================================================
 // Response Types
 // =============================================================================
@@ -425,6 +439,39 @@ export interface EngineFamilyInfo {
   supported_gen_steps: string[];
 }
 
+export interface EngineInstallation {
+  id: string;
+  source: string;
+  version?: string | null;
+  path?: string | null;
+  python_executable?: string | null;
+  conda_env?: string | null;
+  env_vars?: Record<string, string>;
+  required_binaries?: string[];
+  stale?: boolean;
+  verified?: string | null;
+  variant?: string | null;
+}
+
+export interface EngineStatusEntry {
+  engine: string;
+  installed: boolean;
+  active_installation_id: string | null;
+  active_source: string | null;
+  active: EngineInstallation | null;
+  installations: EngineInstallation[];
+}
+
+export interface InstallableEngineEntry {
+  engine: string;
+  display_name: string;
+  engine_type: 'binary' | 'python';
+  install_methods: string[];
+  conda_package: string | null;
+  conda_channel: string | null;
+  manual_only: boolean;
+}
+
 export interface StepPaletteEntry {
   gen: string;
   spec: string;
@@ -729,6 +776,112 @@ export interface QVCommandMap {
   list_engine_families: {
     payload: Record<string, never>;
     result: { engines: EngineFamilyInfo[] };
+  };
+  "engine.list": {
+    payload: {
+      installed_only?: boolean;
+    };
+    result: {
+      engines: EngineStatusEntry[];
+      count: number;
+      installed_only: boolean;
+    };
+  };
+  "engine.verify": {
+    payload: {
+      engine_family: string;
+    };
+    result: {
+      engine: string;
+      ok: boolean;
+      message: string;
+    };
+  };
+  "engine.set_active": {
+    payload: {
+      engine_family: string;
+      installation_id?: string;
+    };
+    result: {
+      engine: string;
+      installation_id: string;
+      active: boolean;
+      message: string;
+    };
+  };
+  "engine.register_path": {
+    payload: {
+      engine_family: string;
+      path: string;
+      source?: string;
+      env_vars?: Record<string, string>;
+    };
+    result: {
+      engine: string;
+      installation: EngineInstallation;
+    };
+  };
+  "engine.path": {
+    payload: {
+      engine_family: string;
+      path: string;
+      source?: string;
+      env_vars?: Record<string, string>;
+    };
+    result: {
+      engine: string;
+      installation: EngineInstallation;
+    };
+  };
+  "engine.unregister": {
+    payload: {
+      engine_family: string;
+      installation_id?: string;
+    };
+    result: {
+      engine: string;
+      installation_id: string;
+      removed: boolean;
+      message: string;
+    };
+  };
+  "engine.install": {
+    payload: {
+      engine_family: string;
+      version?: string;
+      source?: string;
+      async?: boolean;
+    };
+    result: {
+      job_id?: string;
+      status?: JobStatus | string;
+      target_name?: string;
+      engine?: string;
+      source?: string;
+      installation?: EngineInstallation;
+    };
+  };
+  "engine.uninstall": {
+    payload: {
+      engine_family: string;
+      installation_id?: string;
+      async?: boolean;
+    };
+    result: {
+      job_id?: string;
+      status?: JobStatus | string;
+      target_name?: string;
+      engine?: string;
+      installation_id?: string;
+      removed?: boolean;
+    };
+  };
+  "engine.list_installable": {
+    payload: Record<string, never>;
+    result: {
+      engines: InstallableEngineEntry[];
+      count: number;
+    };
   };
   list_step_palette: {
     payload: { engine_family: string | null };
@@ -2053,6 +2206,33 @@ export interface QVApi {
    * Get detailed daemon status
    */
   getDaemonStatus: () => Promise<DaemonStatus>;
+
+  /**
+   * Get runtime setup status.
+   */
+  getRuntimeSetupStatus: () => Promise<RuntimeSetupStatus>;
+
+  /**
+   * Subscribe to runtime setup status updates.
+   */
+  onRuntimeSetupStatus: (callback: (status: RuntimeSetupStatus) => void) => () => void;
+
+  /**
+   * Get updater status.
+   */
+  getUpdaterState: () => Promise<UpdaterState>;
+
+  /**
+   * Subscribe to updater status updates.
+   */
+  onUpdaterState: (callback: (status: UpdaterState) => void) => () => void;
+
+  /**
+   * Trigger update check and optional download/install actions.
+   */
+  checkForUpdates: () => Promise<{ ok: boolean; message?: string }>;
+  downloadUpdate: () => Promise<{ ok: boolean; message?: string }>;
+  quitAndInstallUpdate: () => Promise<{ ok: boolean; message?: string }>;
   
   /**
    * Subscribe to daemon status changes
@@ -2091,6 +2271,22 @@ export interface QVApi {
    * Reveal a file or folder in the native file manager (Finder/Explorer)
    */
   revealPath: (targetPath: string) => Promise<boolean>;
+
+  /**
+   * Set updater state in E2E test mode.
+   */
+  setE2EUpdaterState?: (state: Partial<UpdaterState>) => Promise<void>;
+
+  /**
+   * Set or clear mocked RPC responses in E2E test mode.
+   */
+  setE2ERpcMock?: (
+    method: string,
+    payload: { ok: boolean; data?: unknown; error?: { code: string; message: string } } |
+      Array<{ ok: boolean; data?: unknown; error?: { code: string; message: string } }> |
+      null
+  ) => Promise<void>;
+  clearE2ERpcMocks?: () => Promise<void>;
 }
 
 // =============================================================================
