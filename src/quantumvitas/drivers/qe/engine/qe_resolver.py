@@ -38,6 +38,29 @@ def home_qe_engines_dir():
 logger = logging.getLogger(__name__)
 
 
+def _resolve_qe_bin_dir_from_registry() -> Optional[Path]:
+    """Resolve QE bin directory from unified engines.json registry if available."""
+    try:
+        from quantumvitas.core.engines.engine_registry import EngineRegistry
+
+        registry = EngineRegistry()
+        registry.load()
+        active = registry.get_active("qe")
+        if not active:
+            return None
+
+        active_path = active.get("path")
+        if not active_path:
+            return None
+
+        bin_dir = Path(str(active_path)).expanduser().resolve()
+        validate_qe_bin_dir(bin_dir)
+        return bin_dir
+    except Exception as exc:
+        logger.debug("QE registry lookup failed; falling back to legacy resolver: %s", exc)
+        return None
+
+
 def validate_qe_bin_dir(bin_dir: Path) -> None:
     """
     Validate that a QE bin directory contains pw executable.
@@ -166,6 +189,15 @@ def resolve_qe_bin_dir(settings=None) -> Path:
     Raises:
         RuntimeError: If no valid QE bin directory can be resolved
     """
+    # New path: use active installation in engines.json when available.
+    registry_bin_dir = _resolve_qe_bin_dir_from_registry()
+    if registry_bin_dir is not None:
+        logger.info(
+            "[QE_STATE] source=engine_registry qe_bin_dir=%s mode=registry",
+            registry_bin_dir,
+        )
+        return registry_bin_dir
+
     if settings is None:
         settings = load_settings()
     

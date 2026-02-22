@@ -36,6 +36,15 @@ def _find_step_by_ulid(
 
 def _find_siesta_executable() -> str:
     """Find the siesta executable path."""
+    try:
+        from quantumvitas.core.engines.engine_registry import resolve_active_binary
+
+        resolved = resolve_active_binary("siesta", binary_name="siesta")
+        if resolved and resolved.is_file():
+            return str(resolved)
+    except Exception:
+        pass
+
     found = shutil.which("siesta")
     if found:
         return found

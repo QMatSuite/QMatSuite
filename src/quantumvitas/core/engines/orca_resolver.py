@@ -62,6 +62,16 @@ def resolve_orca_bin() -> Path:
     Raises:
         RuntimeError: If ORCA cannot be found
     """
+    # 0. Active engines.json registry entry
+    try:
+        from quantumvitas.core.engines.engine_registry import resolve_active_binary
+
+        registry_bin = resolve_active_binary("orca", binary_name="orca")
+        if registry_bin and registry_bin.is_file():
+            return registry_bin
+    except Exception:
+        pass
+
     # 1. Check environment variable
     env_bin = os.environ.get("QMATSUITE_ORCA_BIN")
     if env_bin:

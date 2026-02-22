@@ -70,6 +70,16 @@ def resolve_qmcpack_bin() -> Path:
     Raises:
         FileNotFoundError: No QMCPACK binary found
     """
+    # 0. Active engines.json registry entry
+    try:
+        from quantumvitas.core.engines.engine_registry import resolve_active_binary
+
+        registry_bin = resolve_active_binary("qmcpack", binary_name="qmcpack")
+        if registry_bin and registry_bin.is_file():
+            return registry_bin
+    except Exception:
+        pass
+
     # 1. Check environment variable
     env_bin = os.environ.get("QMATS_QMCPACK_BIN")
     if env_bin:
@@ -137,6 +147,16 @@ def resolve_pw2qmcpack_bin() -> Path:
     Raises:
         FileNotFoundError: No pw2qmcpack.x binary found
     """
+    # 0. If QE has an active registry installation, prefer companion binary there.
+    try:
+        from quantumvitas.core.engines.engine_registry import resolve_active_binary
+
+        registry_bin = resolve_active_binary("qe", binary_name="pw2qmcpack.x")
+        if registry_bin and registry_bin.is_file():
+            return registry_bin
+    except Exception:
+        pass
+
     # 1. Check environment variable
     env_bin = os.environ.get("QMATS_PW2QMCPACK_BIN")
     if env_bin:

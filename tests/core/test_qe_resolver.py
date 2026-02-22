@@ -192,6 +192,42 @@ def test_resolve_qe_bin_dir_internal(tmp_path):
         qe_resolver.home_qe_engines_dir = original_func
 
 
+def test_resolve_qe_bin_dir_registry_active(tmp_path, monkeypatch):
+    """Registry active installation should take precedence when present."""
+    app_home = tmp_path / "app-home"
+    bin_dir = app_home / "engines" / "qe" / "bundled-7.5" / "bin"
+    bin_dir.mkdir(parents=True)
+    (bin_dir / "pw.x").write_text("#!/bin/sh\necho ok\n")
+    (bin_dir / "pw.x").chmod(0o755)
+
+    config_dir = app_home / "config"
+    config_dir.mkdir(parents=True)
+    engines_json = {
+        "schema_version": 1,
+        "engines": {
+            "qe": {
+                "installations": [
+                    {
+                        "id": "bundled-7.5",
+                        "source": "bundled",
+                        "path": str(bin_dir),
+                        "required_binaries": ["pw.x"],
+                        "env_vars": {},
+                    }
+                ],
+                "active": "bundled-7.5",
+            }
+        },
+    }
+    (config_dir / "engines.json").write_text(json.dumps(engines_json))
+
+    monkeypatch.setenv("QMATSUITE_HOME", str(app_home))
+    settings = QMatSuiteSettings(qe=QEConfig(bin_dir=None))
+
+    result = resolve_qe_bin_dir(settings)
+    assert result == bin_dir.resolve()
+
+
 def test_resolve_qe_bin_dir_no_qe():
     """Test resolution fails when no QE is available."""
     settings = QMatSuiteSettings(qe=QEConfig(bin_dir=None))
@@ -261,4 +297,3 @@ def test_bin_dir_contract_no_double_bin(tmp_path):
     bands_path = engine.find_executable("bands.x")
     assert bands_path is not None
     assert bands_path == bin_dir / "bands.x" or bands_path == (bin_dir / "bands.x").resolve()
-

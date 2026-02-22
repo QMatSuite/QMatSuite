@@ -20,6 +20,16 @@ def find_cp2k_executable() -> Optional[Path]:
     Returns:
         Path to executable, or None if not found.
     """
+    # 0. Active engines.json registry entry
+    try:
+        from quantumvitas.core.engines.engine_registry import resolve_active_binary
+
+        registry_bin = resolve_active_binary("cp2k", binary_name="cp2k.ssmp")
+        if registry_bin and registry_bin.exists():
+            return registry_bin
+    except Exception:
+        pass
+
     # 1. Environment variable
     env_path = os.environ.get("CP2K_EXECUTABLE")
     if env_path:
@@ -89,4 +99,3 @@ def get_cp2k_data_dir() -> Optional[Path]:
         return linux_std
 
     return None
-

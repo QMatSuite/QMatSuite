@@ -76,8 +76,19 @@ class XTBRecipe(BaseRecipe):
             if hasattr(step, "params") and step.params:
                 params = dict(step.params)
 
+            executable = "xtb"
+            try:
+                from quantumvitas.core.engines.engine_registry import resolve_active_binary
+
+                resolved = resolve_active_binary("xtb", binary_name="xtb")
+                if resolved and resolved.is_file():
+                    executable = str(resolved)
+            except Exception:
+                pass
+
             _runtype_map = {"relax": "opt", "md": "md", "grad": "grad", "hess": "hess"}
             cmd = build_xtb_command(
+                executable=executable,
                 runtype=_runtype_map.get(gen_type, "sp"),
                 gfn_level=params.get("gfn_level", 2),
                 opt_level=params.get("opt_level"),

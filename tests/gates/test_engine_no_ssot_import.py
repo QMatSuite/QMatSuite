@@ -37,8 +37,8 @@ IMPORT_ALLOWLIST: set[str] = set()
 # Allowlist for yaml.safe_load calls: "relative_path:line_number"
 # These are known violations scheduled for removal in PR-K4.
 YAML_LOAD_ALLOWLIST: set[str] = {
-    "engine/pyscf_engine.py:638",
-    "engine/pyscf_engine.py:765",
+    "engine/pyscf_engine.py:652",
+    "engine/pyscf_engine.py:779",
     "engine/orca_engine.py:669",
     "engine/orca_engine.py:684",
     "engine/psi4_engine.py:435",

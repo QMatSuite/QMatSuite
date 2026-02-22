@@ -28,14 +28,27 @@ class GpawEngine(Engine):
     def supported_presets(self) -> List[str]:
         return ["precision"]
 
+    def _get_gpaw_python(self) -> str:
+        """Resolve Python executable for GPAW runner (registry first)."""
+        try:
+            from quantumvitas.core.public import resolve_active_python
+
+            registry_python = resolve_active_python("gpaw")
+            if registry_python:
+                return str(registry_python)
+        except Exception:
+            pass
+        return sys.executable
+
     def probe(self) -> Dict[str, Any]:
         """Check if GPAW is available without importing it."""
         if self._probe_cache is not None:
             return self._probe_cache
 
         try:
+            gpaw_python = self._get_gpaw_python()
             result = subprocess.run(
-                [sys.executable, "-c", "import gpaw; print(gpaw.__version__)"],
+                [gpaw_python, "-c", "import gpaw; print(gpaw.__version__)"],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -84,7 +97,7 @@ class GpawEngine(Engine):
             gen_type = step_type.replace("gpaw_", "") if step_type.startswith("gpaw_") else "scf"
             script_name = f"{gen_type}.py"
 
-        cmd = [sys.executable, script_name]
+        cmd = [self._get_gpaw_python(), script_name]
 
         result = subprocess.run(
             cmd,
