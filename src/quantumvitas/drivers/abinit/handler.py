@@ -37,6 +37,15 @@ def _find_step_by_ulid(
 
 def _resolve_abinit_bin(binary_name: str = "abinit") -> Optional[str]:
     """Resolve abinit binary using centralized discovery."""
+    try:
+        from quantumvitas.core.engines.engine_registry import resolve_active_binary
+
+        resolved = resolve_active_binary("abinit", binary_name=binary_name)
+        if resolved and resolved.is_file():
+            return str(resolved)
+    except Exception:
+        pass
+
     from quantumvitas.core.engines.discovery import discover_engine
 
     result = discover_engine("abinit")
@@ -293,5 +302,4 @@ def _write_abinit_input(
     fragment = {"params": params, "structure": structure_dict}
     text = write_abinit_text(fragment)
     output_path.write_text(text)
-
 

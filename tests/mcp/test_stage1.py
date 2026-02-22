@@ -51,7 +51,7 @@ def test_list_engines_entry_shape():
     assert isinstance(vasp["capabilities"], list)
     assert vasp["parameter_count"] > 0
     assert vasp["syntax_family"] != "unknown"
-    assert vasp["installed"] is True
+    assert isinstance(vasp["installed"], bool)
 
 
 def test_list_engines_qe_parameter_count():

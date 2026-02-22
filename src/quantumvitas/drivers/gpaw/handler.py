@@ -122,9 +122,19 @@ def gpaw_step_handler(
 
     # Execute the script
     timeout = context.get("timeout", 3600)
+    python_exe = sys.executable
+    try:
+        from quantumvitas.core.engines.engine_registry import resolve_active_python
+
+        resolved_py = resolve_active_python("gpaw")
+        if resolved_py and resolved_py.is_file():
+            python_exe = str(resolved_py)
+    except Exception:
+        pass
+
     try:
         result = subprocess.run(
-            [sys.executable, script_name],
+            [python_exe, script_name],
             cwd=str(working_dir),
             capture_output=True,
             text=True,

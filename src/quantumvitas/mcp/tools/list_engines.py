@@ -83,16 +83,23 @@ def list_engines(installed_only: bool = False) -> dict:
     capabilities, parameter count, and syntax family.
 
     Args:
-        installed_only: Reserved for future use. Currently all registered
-            engines are returned.
+        installed_only: If True, return only engines detected as installed.
     """
     import quantumvitas.drivers  # noqa: F401 — trigger registration
     from quantumvitas.core.driver_registry import DriverRegistry
+    from quantumvitas.api.engines import list_engines as api_list_engines
 
+    installed_map = {
+        item["engine"]: bool(item.get("installed"))
+        for item in api_list_engines(installed_only=False)
+    }
     engines_out: list[dict] = []
     for family in sorted(DriverRegistry.get_all_engines()):
         driver = DriverRegistry.get_driver(family)
         gen_steps = sorted(driver.SUPPORTED_GEN_STEPS) if hasattr(driver, "SUPPORTED_GEN_STEPS") else []
+        installed = bool(installed_map.get(family, False))
+        if installed_only and not installed:
+            continue
         engines_out.append({
             "engine": family,
             "display_name": driver.display_name,
@@ -100,7 +107,7 @@ def list_engines(installed_only: bool = False) -> dict:
             "capabilities": sorted(driver.get_capabilities()),
             "parameter_count": _count_parameters(family),
             "syntax_family": _SYNTAX_FAMILIES.get(family, "unknown"),
-            "installed": True,
+            "installed": installed,
         })
 
     return make_response(

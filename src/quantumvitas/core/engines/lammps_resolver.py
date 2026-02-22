@@ -16,6 +16,20 @@ from pathlib import Path
 from shutil import which
 
 
+def _get_registry_lammps_bin(variant: str) -> Path | None:
+    """Resolve LAMMPS executable from active engines.json installation."""
+    try:
+        from quantumvitas.core.engines.engine_registry import resolve_active_binary
+
+        preferred = "lmp_mpi" if variant == "mpi" else "lmp"
+        resolved = resolve_active_binary("lammps", binary_name=preferred)
+        if resolved and resolved.is_file():
+            return resolved
+    except Exception:
+        return None
+    return None
+
+
 def resolve_lammps_bin(variant: str = "serial") -> Path:
     """
     Resolve LAMMPS binary path.
@@ -37,6 +51,10 @@ def resolve_lammps_bin(variant: str = "serial") -> Path:
     Raises:
         FileNotFoundError: No LAMMPS binary found
     """
+    registry_bin = _get_registry_lammps_bin(variant)
+    if registry_bin is not None:
+        return registry_bin
+
     # 1. Check environment variable
     env_bin = os.environ.get("QMATS_LAMMPS_BIN")
     if env_bin:
@@ -113,4 +131,3 @@ def resolve_lammps_bin(variant: str = "serial") -> Path:
         + "\n".join(f"  - {loc}" for loc in checked_locations) +
         f"\nInstall LAMMPS or set QMATS_LAMMPS_BIN to the lmp binary path."
     )
-

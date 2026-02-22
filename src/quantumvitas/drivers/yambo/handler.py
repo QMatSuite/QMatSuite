@@ -37,6 +37,15 @@ def _find_step_by_ulid(
 
 def _resolve_yambo_bin(binary_name: str = "yambo") -> Optional[str]:
     """Resolve yambo binary using centralized discovery."""
+    try:
+        from quantumvitas.core.engines.engine_registry import resolve_active_binary
+
+        resolved = resolve_active_binary("yambo", binary_name=binary_name)
+        if resolved and resolved.is_file():
+            return str(resolved)
+    except Exception:
+        pass
+
     from quantumvitas.core.engines.discovery import discover_engine
 
     result = discover_engine("yambo")

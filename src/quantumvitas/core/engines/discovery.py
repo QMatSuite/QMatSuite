@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from quantumvitas.core.engines.engine_meta import ENGINE_META, get_detection_binaries
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -64,90 +66,42 @@ class EngineDiscoveryResult:
 # Static probe registry (one entry per engine)
 # ---------------------------------------------------------------------------
 
+_DISCOVERY_ENV_VARS: Dict[str, List[str]] = {
+    "qe": ["QE_HOME"],
+    "vasp": ["VASP_HOME", "QMATS_VASP_STD_BIN"],
+    "cp2k": ["CP2K_EXECUTABLE", "CP2K_HOME", "CP2K_BIN"],
+    "lammps": ["QMATS_LAMMPS_BIN"],
+    "orca": ["ORCA_HOME", "QMATSUITE_ORCA_BIN"],
+    "qmcpack": ["QMATS_QMCPACK_BIN"],
+    "w90": ["W90_HOME"],
+    "yambo": ["YAMBO_HOME"],
+    "abinit": ["ABINIT_HOME", "ABI_HOME"],
+    "gaussian": ["g16root", "g09root", "g03root", "GAUSS_EXEDIR"],
+}
+
+_DISCOVERY_BREW_NAMES: Dict[str, str] = {
+    "cp2k": "cp2k",
+    "lammps": "lammps",
+    "abinit": "abinit",
+}
+
+
+def _build_probe(engine_name: str) -> EngineProbe:
+    meta = ENGINE_META[engine_name]
+    return EngineProbe(
+        engine_name=engine_name,
+        binary_names=get_detection_binaries(engine_name),
+        python_module=meta.get("python_import"),
+        env_vars=_DISCOVERY_ENV_VARS.get(engine_name, []),
+        brew_name=_DISCOVERY_BREW_NAMES.get(engine_name),
+        conda_package=meta.get("conda_package"),
+        bundled_under="qe" if engine_name == "w90" else None,
+    )
+
+
 _ENGINE_PROBES: Dict[str, EngineProbe] = {
-    "qe": EngineProbe(
-        engine_name="qe",
-        binary_names=["pw.x"],
-        env_vars=["QE_HOME"],
-    ),
-    "vasp": EngineProbe(
-        engine_name="vasp",
-        binary_names=["vasp_std", "vasp_gam", "vasp_ncl"],
-        env_vars=["VASP_HOME"],
-    ),
-    "cp2k": EngineProbe(
-        engine_name="cp2k",
-        binary_names=[
-            "cp2k.psmp",
-            "cp2k.popt",
-            "cp2k.ssmp",
-            "cp2k.sopt",
-            "cp2k",
-        ],
-        env_vars=["CP2K_EXECUTABLE", "CP2K_HOME", "CP2K_BIN"],
-        brew_name="cp2k",
-    ),
-    "lammps": EngineProbe(
-        engine_name="lammps",
-        binary_names=["lmp_serial", "lmp_mpi", "lmp"],
-        env_vars=["QMATS_LAMMPS_BIN"],
-        brew_name="lammps",
-    ),
-    "orca": EngineProbe(
-        engine_name="orca",
-        binary_names=["orca"],
-        env_vars=["ORCA_HOME"],
-    ),
-    "qmcpack": EngineProbe(
-        engine_name="qmcpack",
-        binary_names=["qmcpack"],
-        env_vars=["QMATS_QMCPACK_BIN"],
-    ),
-    "pyscf": EngineProbe(
-        engine_name="pyscf",
-        python_module="pyscf",
-    ),
-    "psi4": EngineProbe(
-        engine_name="psi4",
-        python_module="psi4",
-        conda_package="psi4",
-    ),
-    "gpaw": EngineProbe(
-        engine_name="gpaw",
-        python_module="gpaw",
-    ),
-    "w90": EngineProbe(
-        engine_name="w90",
-        binary_names=["wannier90.x", "wannier90"],
-        env_vars=["W90_HOME"],
-        bundled_under="qe",  # wannier90.x ships inside QE: .qmatsuite/engines/qe/*/bin/
-    ),
-    "siesta": EngineProbe(
-        engine_name="siesta",
-        binary_names=["siesta"],
-        conda_package="siesta",
-    ),
-    "xtb": EngineProbe(
-        engine_name="xtb",
-        binary_names=["xtb"],
-        conda_package="xtb",
-    ),
-    "yambo": EngineProbe(
-        engine_name="yambo",
-        binary_names=["yambo", "p2y", "ypp"],
-        env_vars=["YAMBO_HOME"],
-    ),
-    "abinit": EngineProbe(
-        engine_name="abinit",
-        binary_names=["abinit"],
-        env_vars=["ABINIT_HOME", "ABI_HOME"],
-        brew_name="abinit",
-    ),
-    "gaussian": EngineProbe(
-        engine_name="gaussian",
-        binary_names=["g16", "g09", "g03"],
-        env_vars=["g16root", "g09root", "g03root", "GAUSS_EXEDIR"],
-    ),
+    name: _build_probe(name)
+    for name in ENGINE_META
 }
 
 # Shell profile files to parse (in priority order)
@@ -277,6 +231,63 @@ def _search_bundled(
                             executable_path=candidate,
                             source="bundled",
                         )
+    return None
+
+
+def _search_registry_active(
+    probe: EngineProbe,
+) -> Optional[EngineDiscoveryResult]:
+    """Tier 0: Check active installation from engines.json registry."""
+    try:
+        from quantumvitas.core.engines.engine_registry import EngineRegistry
+
+        registry = EngineRegistry()
+        registry.load()
+        active = registry.get_active(probe.engine_name)
+        if not active:
+            return None
+
+        source = str(active.get("source") or "registry")
+
+        if probe.python_module:
+            pyexe = registry.get_active_python(probe.engine_name)
+            if not pyexe:
+                return None
+            try:
+                result = subprocess.run(
+                    [
+                        str(pyexe),
+                        "-c",
+                        f"import {probe.python_module}; print({probe.python_module}.__version__)",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                )
+            except Exception:
+                return None
+            if result.returncode != 0:
+                return None
+            version = (result.stdout or "").strip() or None
+            return EngineDiscoveryResult(
+                engine_name=probe.engine_name,
+                available=True,
+                executable_path=pyexe,
+                version=version,
+                source=source,
+            )
+
+        for binary_name in probe.binary_names:
+            exe = registry.get_active_binary(probe.engine_name, binary_name=binary_name)
+            if exe:
+                return EngineDiscoveryResult(
+                    engine_name=probe.engine_name,
+                    available=True,
+                    executable_path=exe,
+                    source=source,
+                )
+    except Exception:
+        return None
     return None
 
 
@@ -611,11 +622,13 @@ def discover_engine(
     if require_current_python and probe.python_module:
         # Only check current Python — skip conda and other external tiers
         search_tiers = [
+            ("registry", lambda: _search_registry_active(probe)),
             ("python_import", lambda: _search_python_import(probe)),
         ]
     else:
         # Full search — all tiers
         search_tiers = [
+            ("registry", lambda: _search_registry_active(probe)),
             ("bundled", lambda: _search_bundled(probe, project_root)),
             ("python_import", lambda: _search_python_import(probe)),
             ("conda", lambda: _search_conda(probe)),

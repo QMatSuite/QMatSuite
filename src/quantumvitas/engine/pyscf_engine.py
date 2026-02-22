@@ -71,6 +71,19 @@ class PySCFEngine(Engine):
             List of supported preset dimensions: qc_precision
         """
         return ["qc_precision"]
+
+    def _get_pyscf_python(self) -> str:
+        """Resolve Python executable for PySCF runner (registry first)."""
+        try:
+            from quantumvitas.core.public import resolve_active_python
+
+            registry_python = resolve_active_python("pyscf")
+            if registry_python:
+                return str(registry_python)
+        except Exception:
+            pass
+
+        return sys.executable
     
     def probe(self) -> Dict[str, Any]:
         """
@@ -110,8 +123,9 @@ class PySCFEngine(Engine):
         # this can be slow, so allow one retry before reporting unavailable.
         for attempt in range(1, self._PROBE_RETRY_COUNT + 1):
             try:
+                pyscf_python = self._get_pyscf_python()
                 result = subprocess.run(
-                    [sys.executable, "-c", "import pyscf; print(pyscf.__version__)"],
+                    [pyscf_python, "-c", "import pyscf; print(pyscf.__version__)"],
                     capture_output=True,
                     text=True,
                     timeout=self._PROBE_TIMEOUT_SECONDS,
@@ -169,7 +183,7 @@ class PySCFEngine(Engine):
         # Dev-mode: use current Python interpreter
         # Phase 3C: Use pyscf package (not pyscf.runner) to support chain execution
         # Future: check for managed bundle first
-        return [sys.executable, "-m", "quantumvitas.engines.pyscf"]
+        return [self._get_pyscf_python(), "-m", "quantumvitas.engines.pyscf"]
     
     def run_step(self, step_or_input, working_dir: Path | None = None) -> StepResult:
         """

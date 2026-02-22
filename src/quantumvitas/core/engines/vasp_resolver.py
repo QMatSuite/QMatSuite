@@ -13,6 +13,20 @@ from typing import Optional
 from shutil import which
 
 
+def _get_registry_vasp_bin(variant: str) -> Optional[Path]:
+    """Resolve VASP binary from active engines.json installation."""
+    try:
+        from quantumvitas.core.engines.engine_registry import resolve_active_binary
+
+        preferred = f"vasp_{variant}"
+        resolved = resolve_active_binary("vasp", binary_name=preferred)
+        if resolved and resolved.is_file():
+            return resolved
+    except Exception:
+        return None
+    return None
+
+
 def _get_repo_root() -> Optional[Path]:
     """Best-effort repo root lookup (test seam friendly)."""
     try:
@@ -57,6 +71,10 @@ def resolve_vasp_bin(variant: str = "std") -> Path:
     Raises:
         RuntimeError: If VASP cannot be found
     """
+    registry_bin = _get_registry_vasp_bin(variant)
+    if registry_bin is not None:
+        return registry_bin
+
     # 1. Check environment variable
     env_var = f"QMATS_VASP_{variant.upper()}_BIN"
     env_bin = os.environ.get(env_var)

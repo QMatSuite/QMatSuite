@@ -50,6 +50,8 @@ from quantumvitas.core.pseudo import (
 from quantumvitas.core.provenance import update_provenance_after_step
 # Debug
 from quantumvitas.core.debug import is_resolution_debug_enabled
+# Engine registry
+from quantumvitas.core.engines.engine_registry import resolve_active_python
 
 
 # Lazy imports — these modules trigger analysis/calculation cycles at import time

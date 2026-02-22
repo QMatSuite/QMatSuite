@@ -57,6 +57,7 @@ def write_xyz_from_pymatgen(
 
 
 def build_xtb_command(
+    executable: str = "xtb",
     input_file: str = "input.xyz",
     runtype: str = "opt",
     gfn_level: int = 2,
@@ -89,9 +90,9 @@ def build_xtb_command(
         extra_flags: Additional command-line flags
 
     Returns:
-        List of command-line arguments (including "xtb" as first element)
+        List of command-line arguments (including resolved xTB executable)
     """
-    cmd = ["xtb", input_file]
+    cmd = [executable, input_file]
 
     # Method
     if gfn_level == -1:
