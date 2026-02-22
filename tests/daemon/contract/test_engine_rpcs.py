@@ -110,3 +110,104 @@ class TestEngineInstallManagement:
         )
         assert response["job_id"] == "job-uninstall-1"
         assert response["status"] == "pending"
+
+
+class TestEngineRegistryRPCs:
+    """Contract tests for registry-backed generic engine RPC endpoints."""
+
+    def test_engine_list_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "quantumvitas.api.engines.list_engines",
+            lambda installed_only=False: [
+                {"engine": "qe", "installed": True, "active_source": "bundled", "installations": []},
+                {"engine": "xtb", "installed": False, "active_source": None, "installations": []},
+            ],
+        )
+
+        response = send_request(daemon, "engine.list", {"installed_only": False})
+        assert response["count"] == 2
+        assert response["engines"][0]["engine"] == "qe"
+        assert response["installed_only"] is False
+
+    def test_engine_verify_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("quantumvitas.api.engines.verify_engine", lambda family: (True, f"{family}:OK"))
+
+        response = send_request(daemon, "engine.verify", {"engine_family": "qe"})
+        assert response["engine"] == "qe"
+        assert response["ok"] is True
+        assert response["message"] == "qe:OK"
+
+    def test_engine_set_active_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, str] = {}
+
+        def fake_set_active(engine_family: str, installation_id: str) -> bool:
+            captured["engine_family"] = engine_family
+            captured["installation_id"] = installation_id
+            return True
+
+        monkeypatch.setattr("quantumvitas.api.engines.set_active_engine", fake_set_active)
+
+        response = send_request(
+            daemon,
+            "engine.set_active",
+            {"engine_family": "qe", "installation_id": "bundled-7.5"},
+        )
+        assert response["active"] is True
+        assert captured == {"engine_family": "qe", "installation_id": "bundled-7.5"}
+
+    def test_engine_set_active_missing_id_returns_false(self, daemon: QVDaemon):
+        response = send_request(
+            daemon,
+            "engine.set_active",
+            {"engine_family": "qe"},
+        )
+        assert response["active"] is False
+        assert "required" in response["message"]
+
+    def test_engine_register_path_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register(engine_family: str, path: str, source: str, env_vars=None):
+            captured["engine_family"] = engine_family
+            captured["path"] = path
+            captured["source"] = source
+            captured["env_vars"] = env_vars
+            return {"id": "user-test", "source": source, "path": path}
+
+        monkeypatch.setattr("quantumvitas.api.engines.register_engine", fake_register)
+
+        response = send_request(
+            daemon,
+            "engine.register_path",
+            {
+                "engine_family": "vasp",
+                "path": "/opt/vasp/bin",
+                "source": "user_path",
+                "env_vars": {"VASP_PP_PATH": "/opt/vasp/potpaw"},
+            },
+        )
+        assert response["engine"] == "vasp"
+        assert response["installation"]["source"] == "user_path"
+        assert response["installation"]["path"] == "/opt/vasp/bin"
+        assert captured["engine_family"] == "vasp"
+        assert captured["path"] == "/opt/vasp/bin"
+        assert captured["source"] == "user_path"
+
+    def test_engine_unregister_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("quantumvitas.api.engines.unregister_engine", lambda family, inst: True)
+
+        response = send_request(
+            daemon,
+            "engine.unregister",
+            {"engine_family": "qe", "installation_id": "bundled-7.5"},
+        )
+        assert response["removed"] is True
+
+    def test_engine_unregister_missing_id_returns_false(self, daemon: QVDaemon):
+        response = send_request(
+            daemon,
+            "engine.unregister",
+            {"engine_family": "qe"},
+        )
+        assert response["removed"] is False
+        assert "required" in response["message"]

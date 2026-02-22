@@ -31,6 +31,8 @@ EXEMPT_METHODS: dict[str, str] = {
     # Engine installation endpoints mutate local runtime environments and may require network
     "engine.install": "Mutates micromamba/runtime state and may require network/package solver; nondeterministic in contract crawler",
     "engine.uninstall": "Mutates local engine install state; requires deterministic preinstalled installation setup not provided by crawler",
+    "engine.register_path": "Mutates per-user engine registry and requires deterministic filesystem layout for valid engine binaries/venvs",
+    "engine.path": "Alias of engine.register_path; same mutation and filesystem prerequisite constraints",
 }
 
 

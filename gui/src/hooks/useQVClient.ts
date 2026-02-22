@@ -52,6 +52,24 @@ export interface QVClient {
   rebuildProjectRegistry: (projectRoot: string) => Promise<QVResponse<QVResult<'rebuild_project_registry'>>>;
   listJobs: (filter?: { status?: JobStatus; job_type?: string }) => Promise<QVResponse<{ jobs: JobSummary[]; count: number }>>;
   listEngineFamilies: () => Promise<QVResponse<QVResult<'list_engine_families'>>>;
+  listEngines: (installedOnly?: boolean) => Promise<QVResponse<QVResult<'engine.list'>>>;
+  listInstallableEngines: () => Promise<QVResponse<QVResult<'engine.list_installable'>>>;
+  installEngine: (
+    engineFamily: string,
+    options?: { version?: string; source?: string; async?: boolean }
+  ) => Promise<QVResponse<QVResult<'engine.install'>>>;
+  uninstallEngine: (
+    engineFamily: string,
+    options?: { installationId?: string; async?: boolean }
+  ) => Promise<QVResponse<QVResult<'engine.uninstall'>>>;
+  verifyEngine: (engineFamily: string) => Promise<QVResponse<QVResult<'engine.verify'>>>;
+  setActiveEngineInstallation: (engineFamily: string, installationId: string) => Promise<QVResponse<QVResult<'engine.set_active'>>>;
+  registerEnginePath: (
+    engineFamily: string,
+    installPath: string,
+    options?: { source?: string; envVars?: Record<string, string> }
+  ) => Promise<QVResponse<QVResult<'engine.register_path'>>>;
+  unregisterEngine: (engineFamily: string, installationId: string) => Promise<QVResponse<QVResult<'engine.unregister'>>>;
   listStepPalette: (engineFamily: string | null) => Promise<QVResponse<QVResult<'list_step_palette'>>>;
   setEngineFamily: (projectRoot: string, calculation: string, engineFamily: string) => Promise<QVResponse<QVResult<'set_engine_family'>>>;
   listEngineUiParameters: (engineFamily: string, stepTypeGen: string) => Promise<QVResponse<QVResult<'list_engine_ui_parameters'>>>;
@@ -387,6 +405,76 @@ export function useQVClient(): QVClient {
     [call]
   );
 
+  const listEngines = useCallback(
+    (installedOnly: boolean = false) => call('engine.list', { installed_only: installedOnly }),
+    [call]
+  );
+
+  const listInstallableEngines = useCallback(
+    () => call('engine.list_installable', {}),
+    [call]
+  );
+
+  const installEngine = useCallback(
+    (
+      engineFamily: string,
+      options: { version?: string; source?: string; async?: boolean } = {}
+    ) => call('engine.install', {
+      engine_family: engineFamily,
+      version: options.version,
+      source: options.source,
+      async: options.async,
+    }),
+    [call]
+  );
+
+  const uninstallEngine = useCallback(
+    (
+      engineFamily: string,
+      options: { installationId?: string; async?: boolean } = {}
+    ) => call('engine.uninstall', {
+      engine_family: engineFamily,
+      installation_id: options.installationId,
+      async: options.async,
+    }),
+    [call]
+  );
+
+  const verifyEngine = useCallback(
+    (engineFamily: string) => call('engine.verify', { engine_family: engineFamily }),
+    [call]
+  );
+
+  const setActiveEngineInstallation = useCallback(
+    (engineFamily: string, installationId: string) => call('engine.set_active', {
+      engine_family: engineFamily,
+      installation_id: installationId,
+    }),
+    [call]
+  );
+
+  const registerEnginePath = useCallback(
+    (
+      engineFamily: string,
+      installPath: string,
+      options: { source?: string; envVars?: Record<string, string> } = {}
+    ) => call('engine.register_path', {
+      engine_family: engineFamily,
+      path: installPath,
+      source: options.source,
+      env_vars: options.envVars,
+    }),
+    [call]
+  );
+
+  const unregisterEngine = useCallback(
+    (engineFamily: string, installationId: string) => call('engine.unregister', {
+      engine_family: engineFamily,
+      installation_id: installationId,
+    }),
+    [call]
+  );
+
   const listStepPalette = useCallback(
     (engineFamily: string | null) => call('list_step_palette', { engine_family: engineFamily }),
     [call]
@@ -615,6 +703,14 @@ export function useQVClient(): QVClient {
     rebuildProjectRegistry,
     listJobs,
     listEngineFamilies,
+    listEngines,
+    listInstallableEngines,
+    installEngine,
+    uninstallEngine,
+    verifyEngine,
+    setActiveEngineInstallation,
+    registerEnginePath,
+    unregisterEngine,
     listStepPalette,
     setEngineFamily,
     listEngineUiParameters,

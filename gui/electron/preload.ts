@@ -38,11 +38,27 @@ interface QVResponse<T = Record<string, unknown>> {
   };
 }
 
+type E2ERpcMockResponse = Omit<QVResponse, 'id'>;
+
 interface DaemonStatus {
   connected: boolean;
   startupError: string | null;
   pythonPath: string | null;
   projectRoot: string | null;
+}
+
+interface RuntimeSetupStatus {
+  stage: 'idle' | 'checking' | 'extracting' | 'verifying' | 'ready' | 'error';
+  progress: number;
+  message: string;
+  error: string | null;
+}
+
+interface UpdaterState {
+  state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+  version: string | null;
+  progress: number;
+  message: string | null;
 }
 
 /**
@@ -137,6 +153,67 @@ const qvApi = {
   getDaemonStatus: async (): Promise<DaemonStatus> => {
     return ipcRenderer.invoke('qv-daemon-status');
   },
+
+  /**
+   * Get runtime setup status from main process.
+   */
+  getRuntimeSetupStatus: async (): Promise<RuntimeSetupStatus> => {
+    return ipcRenderer.invoke('qv-runtime-setup-status');
+  },
+
+  /**
+   * Subscribe to runtime setup status updates.
+   */
+  onRuntimeSetupStatus: (callback: (status: RuntimeSetupStatus) => void): (() => void) => {
+    const handler = (_event: IpcRendererEvent, status: RuntimeSetupStatus) => {
+      callback(status);
+    };
+    ipcRenderer.on('runtime-setup-status', handler);
+    return () => {
+      ipcRenderer.removeListener('runtime-setup-status', handler);
+    };
+  },
+
+  /**
+   * Get updater status from main process.
+   */
+  getUpdaterState: async (): Promise<UpdaterState> => {
+    return ipcRenderer.invoke('qv-updater-state');
+  },
+
+  /**
+   * Subscribe to updater state updates.
+   */
+  onUpdaterState: (callback: (status: UpdaterState) => void): (() => void) => {
+    const handler = (_event: IpcRendererEvent, status: UpdaterState) => {
+      callback(status);
+    };
+    ipcRenderer.on('updater-state', handler);
+    return () => {
+      ipcRenderer.removeListener('updater-state', handler);
+    };
+  },
+
+  /**
+   * Trigger an explicit update check.
+   */
+  checkForUpdates: async (): Promise<{ ok: boolean; message?: string }> => {
+    return ipcRenderer.invoke('qv-check-for-updates');
+  },
+
+  /**
+   * Start downloading the currently available update.
+   */
+  downloadUpdate: async (): Promise<{ ok: boolean; message?: string }> => {
+    return ipcRenderer.invoke('qv-download-update');
+  },
+
+  /**
+   * Restart app and install a downloaded update.
+   */
+  quitAndInstallUpdate: async (): Promise<{ ok: boolean; message?: string }> => {
+    return ipcRenderer.invoke('qv-quit-and-install-update');
+  },
   
   /**
    * Subscribe to daemon status changes
@@ -210,6 +287,30 @@ const qvApi = {
    */
   setE2ETestDirectory: async (directory: string): Promise<void> => {
     return ipcRenderer.invoke('qv-set-e2e-test-directory', directory);
+  },
+
+  /**
+   * Mock daemon RPC responses in E2E mode.
+   */
+  setE2ERpcMock: async (
+    method: string,
+    payload: E2ERpcMockResponse | E2ERpcMockResponse[] | null,
+  ): Promise<void> => {
+    return ipcRenderer.invoke('qv-set-e2e-rpc-mock', method, payload);
+  },
+
+  /**
+   * Clear all E2E RPC mocks.
+   */
+  clearE2ERpcMocks: async (): Promise<void> => {
+    return ipcRenderer.invoke('qv-clear-e2e-rpc-mocks');
+  },
+
+  /**
+   * Set updater state in E2E mode.
+   */
+  setE2EUpdaterState: async (state: Partial<UpdaterState>): Promise<void> => {
+    return ipcRenderer.invoke('qv-e2e-set-updater-state', state);
   },
   
   /**

@@ -154,3 +154,240 @@ Repo: <repo_root>
   - Runtime: `380.50s` (`0:06:20`)
 - Notes:
   - Full output captured at `/tmp/qv-step5-task0-full-pytest.log` for post-run greps and evidence reuse.
+
+## Deep context map before Step 5 implementation edits
+
+### Daemon/API reality check (as of this checkpoint)
+- Daemon exposes only three install-management RPCs:
+  - `engine.install`
+  - `engine.uninstall`
+  - `engine.list_installable`
+- API layer already has broader operations required by GUI manager:
+  - `list_engines(installed_only=False)`
+  - `verify_engine(engine_family)`
+  - `set_active_engine(engine_family, installation_id)`
+  - `register_engine(engine_family, path, source, env_vars)`
+  - `unregister_engine(engine_family, installation_id)`
+- Gap: daemon wrappers for those API functions are missing, so GUI cannot use them yet.
+
+### Electron main process map
+- `gui/electron/main.ts` currently:
+  - `findPythonPath()` = env override -> `.venv/venv` -> system `python` fallback
+  - no runtime location check (`<app_data>/runtime/...`)
+  - daemon spawn env does not set `QMATSUITE_ELECTRON=1`
+  - no runtime extraction flow from `runtime.tar.zst`
+  - no updater integration
+- IPC channels exist for daemon request bridge, file pickers, logs, path reveal; none for runtime-setup progress or updater state/actions.
+
+### Renderer/UI map
+- Settings (`SettingsPanel.tsx`) is QE-centric and generic-family informational only; no unified engine manager controls.
+- Run flow in `App.tsx` does preflight and falls back to toast; no inline missing-engine remediation panel.
+- Existing UI architecture supports this cleanly:
+  - `useQVClient` typed calls already used for all backend operations
+  - top-level App handles run orchestration and tab switch decisions
+
+### E2E and contract impact map
+- Adding daemon RPC method names changes introspection inventory used by contract crawler tests.
+- If new RPCs are stateful/mutating, we must either:
+  - supply deterministic minimal payload behavior that returns data without raising, or
+  - add recipe/exemption updates to avoid coverage failures.
+- Playwright suite is single-worker sequential by design; new E2E should avoid real installs and use UI-triggered behavior that can run against normal daemon state.
+
+## Implementation plan for remaining Step 5 tasks
+1. Daemon/API bridge expansion (backend-safe first)
+   - Add daemon handlers + registry entries for:
+     - `engine.list`
+     - `engine.verify`
+     - `engine.set_active`
+     - `engine.register_path` (plus alias `engine.path`)
+     - `engine.unregister`
+   - Ensure handlers return structured non-throwing responses where practical for deterministic contract crawling.
+   - Update daemon contract tests + contract crawler payload/introspection coverage as needed.
+
+2. Electron runtime integration
+   - Add Electron-side `getAppDataDir()` matching Python `_electron_app_data_dir()` semantics.
+   - Update `findPythonPath()` chain to include runtime env priority.
+   - Add first-launch runtime extraction flow:
+     - detect runtime tarball in resources
+     - extract to `<app_data>/runtime`
+     - verify import with extracted python
+     - publish progress/error events to renderer
+   - Ensure daemon spawn injects `QMATSUITE_ELECTRON=1`.
+
+3. GUI engine manager + run-time remediation
+   - Add top Settings section “Engine Management” with actions:
+     - install/uninstall
+     - configure path (commercial engines)
+     - set active installation
+     - verify
+   - Poll `get_job_status` for install/uninstall progress.
+   - In run flow, add inline missing-engine panel when preflight/run indicates engine missing; no first-launch popup.
+
+4. Auto-updater integration
+   - Add `electron-updater` dependency and main-process wiring.
+   - Add renderer notification/banner with download + restart actions.
+   - Add `electron-builder.json5` publish block and production app metadata.
+
+5. Verification
+   - Python targeted tests for modified backend contract surfaces.
+   - GUI/electron checks (`npm run build` / targeted Playwright, then full Playwright if feasible).
+   - Strict full pytest once implementation stabilizes:
+     - `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+
+
+## Incremental implementation log (continuously updated)
+
+### 2026-02-22 — session continuation checkpoint
+- Resumed from partially completed Step 5 state with uncommitted edits in:
+  - `gui/electron/main.ts`
+  - `gui/electron/preload.ts`
+  - renderer files (`App.tsx`, `SettingsPanel.tsx`, `useQVClient.ts`, `qv.ts`, CSS)
+  - daemon RPC expansion and related contract tests.
+- Confirmed targeted backend tests were green before continuing Electron integration:
+  - `tests/daemon/contract/test_engine_rpcs.py`
+  - `tests/contract_crawler/test_coverage.py`
+  - previous run result: `18 passed`.
+
+### Problem encountered: runtime/updater code existed but was not wired
+- What I found:
+  - `main.ts` already contained helper functions for runtime extraction and updater state structs.
+  - Startup path still did `spawnDaemon()` immediately and never called `ensureRuntimeReady()`.
+  - No IPC contract existed for runtime/updater state or updater actions.
+  - Daemon child env still missed `QMATSUITE_ELECTRON=1`.
+- Consequence:
+  - Runtime setup UI would never receive true setup states.
+  - Packaged-lite first launch could fail silently or race.
+  - Updater UI could not be implemented end-to-end.
+
+### Fix applied in `gui/electron/main.ts`
+- Added updater enable policy and setup:
+  - `isUpdaterEnabled()` with dev/test gating.
+  - `configureAutoUpdater()` attaching handlers for checking/available/not-available/download-progress/downloaded/error.
+- Added daemon child env flag:
+  - `QMATSUITE_ELECTRON=1` in `spawnDaemon()` env.
+- Added IPC endpoints:
+  - `qv-runtime-setup-status`
+  - `qv-updater-state`
+  - `qv-check-for-updates`
+  - `qv-download-update`
+  - `qv-quit-and-install-update`
+  - `qv-e2e-set-updater-state` (test-mode helper only)
+- Updated renderer event bootstrapping:
+  - `did-finish-load` now pushes `daemon-status`, `runtime-setup-status`, and `updater-state` snapshots.
+- Reworked app startup order:
+  1. `configureAutoUpdater()`
+  2. `createWindow()`
+  3. async bootstrap: `ensureRuntimeReady()` -> `spawnDaemon()` -> silent startup `checkForUpdates()`
+- Decision made:
+  - In packaged mode, runtime extraction/verification failure blocks daemon start and surfaces error state.
+  - In development mode, runtime failure/non-availability falls back to dev/system Python.
+
+### Fix applied in `gui/electron/preload.ts`
+- Added type mirror interfaces:
+  - `RuntimeSetupStatus`
+  - `UpdaterState`
+- Added bridge APIs:
+  - `getRuntimeSetupStatus()`, `onRuntimeSetupStatus()`
+  - `getUpdaterState()`, `onUpdaterState()`
+  - `checkForUpdates()`, `downloadUpdate()`, `quitAndInstallUpdate()`
+  - `setE2EUpdaterState()` (for E2E simulation)
+
+### Fix applied in renderer types (`gui/src/types/qv.ts`)
+- Added exported renderer-side types:
+  - `RuntimeSetupStatus`
+  - `UpdaterState`
+- Extended `QVApi` contract with all runtime/updater bridge methods.
+
+### In-progress renderer wiring (`gui/src/App.tsx`)
+- Added state hooks:
+  - `runtimeSetupStatus`
+  - `updaterState`
+  - `updaterDismissed`
+- Added subscription/init effect:
+  - fetch initial status snapshots via preload
+  - subscribe to runtime/updater events for live state updates
+- Pending next edits:
+  - render runtime setup full-screen overlay with error/report path
+  - render updater banner/actions
+  - connect updater action handlers to preload methods
+
+### Open risks tracked now
+- `electron-updater` dependency still needs to be added to `gui/package.json` before build/typecheck.
+- Need to ensure `App.tsx` UI additions do not break existing layout/E2E selectors.
+- After renderer + preload + main finalize, run targeted GUI build first, then required full strict pytest command once.
+
+### Additional progress update (same session)
+- Renderer wiring progressed:
+  - `gui/src/App.tsx`
+    - Added live subscriptions for `runtime-setup-status` and `updater-state`.
+    - Added updater action handlers (`check`, `download`, `restart/install`).
+    - Added updater banner UI with progress and action buttons.
+    - Added runtime setup full-screen overlay with progress + error panel and "Report Issue" link.
+  - `gui/src/App.css`
+    - Added styles for updater banner and runtime setup overlay, including mobile behavior.
+- Packaging metadata updates:
+  - `gui/package.json`
+    - Added runtime dependency `electron-updater`.
+  - `gui/electron-builder.json5`
+    - Replaced placeholders with production identity:
+      - `appId: com.qmatsuite.app`
+      - `productName: QMatSuite`
+      - GitHub publish provider (`QMatSuite/QMatSuite`)
+- Issue noted:
+  - No dedicated app icon files currently tracked in repo; builder config intentionally avoids hardcoded icon path to prevent immediate build break.
+  - Follow-up for branded icon assets remains required in installer/signing step.
+
+### Build/typecheck checkpoint
+- Installed GUI dependency updates in `gui/`:
+  - `npm install` completed successfully.
+  - lockfile updated for `electron-updater` dependency.
+- Ran renderer/electron compile verification:
+  - Command: `cd gui && npm run build:e2e`
+  - First run: failed with TS nullability error in `App.tsx` (`statusResponse.data` possibly undefined during missing-engine install polling).
+  - Fix: introduced explicit `statusData` guard before field access.
+  - Second run: succeeded (`tsc` + `vite build` for renderer/main/preload all green).
+
+### E2E determinism improvement + new specs
+- Added E2E-only RPC mock bridge to avoid real engine installs in Playwright:
+  - Main process (`gui/electron/main.ts`):
+    - `qv-set-e2e-rpc-mock`
+    - `qv-clear-e2e-rpc-mocks`
+    - `qv-request` now checks mock queues first when `E2E_TEST_MODE=true`.
+  - Preload (`gui/electron/preload.ts`):
+    - `setE2ERpcMock()` and `clearE2ERpcMocks()` exposed.
+  - Type contract (`gui/src/types/qv.ts`) updated with optional E2E mock methods.
+- Added Playwright spec:
+  - `gui/tests/e2e/engine_manager.spec.ts`
+  - Coverage added for:
+    - Engine Manager visible in Settings
+    - Install button -> progress state (mocked `engine.install`/`get_job_status`)
+    - Commercial engine `Configure Path` presence
+    - Run-flow missing-engine inline guidance panel
+    - Updater banner visibility/actions when update-available state is simulated
+
+### Test and build validation updates
+- Backend targeted regressions:
+  - Command: `source .venv/bin/activate && python -m pytest tests/daemon/contract/test_engine_rpcs.py tests/contract_crawler/test_coverage.py -v --tb=short`
+  - Result: `18 passed`.
+- Playwright targeted new spec:
+  - Command: `cd gui && npx playwright test tests/e2e/engine_manager.spec.ts --project=electron`
+  - Result: `4 passed`.
+- Playwright full suite:
+  - Command: `cd gui && npx playwright test`
+  - Result: `20 passed` in ~7.0m.
+  - Notes:
+    - Real-run QE specs are long and produce heavy daemon polling logs; run completed green.
+- Electron build verification:
+  - Command: `cd gui && npm run build`
+    - Result: success (renderer+electron build + DMG artifact generation).
+  - Command: `cd gui && npx electron-builder --dir`
+    - Result: success (unpacked app output).
+  - Expected warnings observed:
+    - app icon not set (default Electron icon used)
+    - code signing skipped (Step 6 scope)
+    - package metadata warnings for missing `description`/`author` in `gui/package.json`
+
+### Continuity note (post-checkpoint)
+- Confirmed requirement: keep detailed incremental worklog entries during implementation, including failures, attempted fixes, and rationale for final choices.
+- Going forward in Step 5, each substantive code/test action will be logged immediately in this file before context switches.
+- Current status remains: Step 5 feature set implemented and validated (targeted + full runs); next actions are cleanup/commit-level polish and any user-requested follow-up adjustments.

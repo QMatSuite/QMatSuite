@@ -244,6 +244,12 @@ class QVDaemon:
             "list_engine_ui_parameters": self._handle_list_engine_ui_parameters,
             "list_engine_parameter_metadata": self._handle_list_engine_parameter_metadata,
             "set_engine_family": self._handle_set_engine_family,
+            "engine.list": self._handle_engine_list,
+            "engine.verify": self._handle_engine_verify,
+            "engine.set_active": self._handle_engine_set_active,
+            "engine.register_path": self._handle_engine_register_path,
+            "engine.path": self._handle_engine_register_path,  # Alias for GUI/CLI symmetry
+            "engine.unregister": self._handle_engine_unregister,
             "engine.install": self._handle_engine_install,
             "engine.uninstall": self._handle_engine_uninstall,
             "engine.list_installable": self._handle_engine_list_installable,
@@ -1388,6 +1394,104 @@ class QVDaemon:
 
         items = list_installable_engines()
         return {"engines": items, "count": len(items)}
+
+    def _handle_engine_list(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """List engines with real installed/active status."""
+        from quantumvitas.api.engines import list_engines as api_list_engines
+
+        installed_only = bool(payload.get("installed_only", False))
+        items = api_list_engines(installed_only=installed_only)
+        return {
+            "engines": items,
+            "count": len(items),
+            "installed_only": installed_only,
+        }
+
+    def _handle_engine_verify(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Verify currently active installation for an engine family."""
+        from quantumvitas.api.engines import verify_engine as api_verify_engine
+
+        engine_family = self._require_str(payload, "engine_family").strip().lower()
+        ok, message = api_verify_engine(engine_family)
+        return {
+            "engine": engine_family,
+            "ok": bool(ok),
+            "message": str(message),
+        }
+
+    def _handle_engine_set_active(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Set active installation for an engine family."""
+        from quantumvitas.api.engines import set_active_engine as api_set_active_engine
+
+        engine_family = self._require_str(payload, "engine_family").strip().lower()
+        installation_id = str(payload.get("installation_id") or "").strip()
+        if not installation_id:
+            return {
+                "engine": engine_family,
+                "installation_id": installation_id,
+                "active": False,
+                "message": "installation_id is required",
+            }
+
+        active = api_set_active_engine(engine_family, installation_id)
+        return {
+            "engine": engine_family,
+            "installation_id": installation_id,
+            "active": bool(active),
+            "message": "OK" if active else "installation_id not found",
+        }
+
+    def _handle_engine_register_path(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Register user-provided engine path and set it active.
+
+        Payload:
+            engine_family: str (required)
+            path: str (required)
+            source: str (optional, default: user_path)
+            env_vars: dict[str, str] (optional)
+        """
+        from quantumvitas.api.engines import register_engine as api_register_engine
+
+        engine_family = self._require_str(payload, "engine_family").strip().lower()
+        install_path = self._require_str(payload, "path").strip()
+        source = str(payload.get("source") or "user_path")
+        env_vars = payload.get("env_vars") or {}
+        if not isinstance(env_vars, dict):
+            raise ValueError("'env_vars' must be an object/dict")
+
+        installation = api_register_engine(
+            engine_family=engine_family,
+            path=install_path,
+            source=source,
+            env_vars={str(k): str(v) for k, v in env_vars.items()},
+        )
+        return {
+            "engine": engine_family,
+            "installation": installation,
+        }
+
+    def _handle_engine_unregister(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Remove an installation record from engines.json."""
+        from quantumvitas.api.engines import unregister_engine as api_unregister_engine
+
+        engine_family = self._require_str(payload, "engine_family").strip().lower()
+        installation_id = str(payload.get("installation_id") or "").strip()
+        if not installation_id:
+            return {
+                "engine": engine_family,
+                "installation_id": installation_id,
+                "removed": False,
+                "message": "installation_id is required",
+            }
+
+        removed = api_unregister_engine(engine_family, installation_id)
+        return {
+            "engine": engine_family,
+            "installation_id": installation_id,
+            "removed": bool(removed),
+            "message": "OK" if removed else "installation_id not found",
+        }
 
     def _handle_engine_install(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

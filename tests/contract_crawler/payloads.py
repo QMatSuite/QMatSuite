@@ -32,6 +32,7 @@ def get_minimal_payload(method_name: str, project_root: Path | None = None, tmp_
         "list_jobs": {},
         # M4: Generic engine RPCs
         "list_engine_families": {},
+        "engine.list": {},
         # Step 3: engine install management
         "engine.list_installable": {},
         # Additional stateless/near-stateless methods
@@ -66,6 +67,9 @@ def get_minimal_payload(method_name: str, project_root: Path | None = None, tmp_
         "list_step_palette": {"engine_family": None},  # UNDECIDED state
         "list_engine_ui_parameters": {"engine_family": "qe", "step_type_gen": "scf"},
         "list_engine_parameter_metadata": {"engine_family": "qe", "operation": "list_categories"},
+        "engine.verify": {"engine_family": "qe"},
+        "engine.set_active": {"engine_family": "qe", "installation_id": "missing-installation"},
+        "engine.unregister": {"engine_family": "qe", "installation_id": "missing-installation"},
     }
 
     if method_name in SIMPLE_PARAMS:
@@ -161,6 +165,9 @@ def get_methods_needing_recipes() -> set[str]:
         
         # System mutations
         "shutdown",
+
+        # Engine registry mutations requiring filesystem-specific setup
+        "engine.register_path", "engine.path",
 
         # Workflow requiring calculation context
         "detect_workflow", "instantiate_workflow",
