@@ -343,3 +343,9 @@ Notes:
   - `tests/gates/test_schema_self_consistency.py::TestSchemaConsistency::test_no_legacy_key_assertions`
   - `tests/gates/test_engine_no_ssot_import.py::test_engine_no_yaml_safe_load`
   - `tests/gates/test_no_deep_domain_import.py::test_no_cross_domain_deep_imports`
+
+## Milestone commit
+
+- Commit: `6a889205`
+- Message: `distribution step2: add unified engine registry and real install detection`
+- Repository state after commit: clean working tree (`git status --short` produced no output)
