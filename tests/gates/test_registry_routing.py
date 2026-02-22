@@ -16,7 +16,7 @@ class TestRegistryBasics:
 
     def test_registry_is_singleton(self):
         """Registry should be a singleton."""
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         r1 = DriverRegistry.get_instance()
         r2 = DriverRegistry.get_instance()
         assert r1 is r2
@@ -24,17 +24,17 @@ class TestRegistryBasics:
     def test_qe_driver_registered(self):
         """QE driver should be auto-registered."""
         # Import drivers to trigger registration
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         assert DriverRegistry.is_engine_registered("qe")
         driver = DriverRegistry.get_driver("qe")
         assert driver.engine_family == "qe"
 
     def test_unknown_engine_raises(self):
         """Unknown engine should raise UnknownEngineError."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownEngineError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownEngineError
 
         with pytest.raises(UnknownEngineError) as exc_info:
             DriverRegistry.get_driver("nonexistent_engine_xyz")
@@ -48,16 +48,16 @@ class TestStepTypeRouting:
 
     def test_known_step_type_returns_handler(self):
         """Known step type should return handler."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         handler = DriverRegistry.get_handler("qe_scf")
         assert callable(handler)
 
     def test_unknown_step_type_raises(self):
         """Unknown step type should raise UnknownStepTypeError."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownStepTypeError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownStepTypeError
 
         with pytest.raises(UnknownStepTypeError) as exc_info:
             DriverRegistry.get_handler("totally_unknown_step_xyz")
@@ -66,9 +66,9 @@ class TestStepTypeRouting:
 
     def test_step_type_spec_retrieval(self):
         """Should retrieve full StepTypeSpec for step type."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         spec = DriverRegistry.get_step_type_spec("qe_scf")
         assert spec.step_type_spec == "qe_scf"  # driver_protocol StepTypeSpec uses 'step_type_spec' field
         assert spec.engine == "qe"
@@ -76,9 +76,9 @@ class TestStepTypeRouting:
 
     def test_engine_for_step_type(self):
         """Should retrieve engine family for step type."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         engine = DriverRegistry.get_engine_for_step_type("qe_scf")
         assert engine == "qe"
 
@@ -88,18 +88,18 @@ class TestMaterialization:
 
     def test_materialize_known_type(self):
         """Known gen type should materialize to spec type."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         spec_type = DriverRegistry.materialize_step_type("qe", "scf")
         assert spec_type == "qe_scf"
 
     def test_materialize_unknown_gen_type_raises(self):
         """Unknown gen type should raise UnknownMaterializationError."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownMaterializationError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownMaterializationError
 
         with pytest.raises(UnknownMaterializationError) as exc_info:
             DriverRegistry.materialize_step_type("qe", "nonexistent")
@@ -108,8 +108,8 @@ class TestMaterialization:
 
     def test_materialize_unknown_engine_raises(self):
         """Unknown engine should raise UnknownEngineError."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownEngineError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownEngineError
 
         with pytest.raises(UnknownEngineError):
             DriverRegistry.materialize_step_type("nonexistent", "scf")
@@ -120,10 +120,10 @@ class TestRecipeRouting:
 
     def test_recipe_class_for_engine(self):
         """Should retrieve recipe class for engine."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.execution.recipes import BaseRecipe
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.execution.recipes import BaseRecipe
 
         recipe_class = DriverRegistry.get_recipe_class("qe")
         assert recipe_class is not None
@@ -131,8 +131,8 @@ class TestRecipeRouting:
 
     def test_recipe_class_unknown_engine_raises(self):
         """Unknown engine should raise UnknownEngineError."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownEngineError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownEngineError
 
         with pytest.raises(UnknownEngineError):
             DriverRegistry.get_recipe_class("nonexistent_engine")
@@ -143,7 +143,7 @@ class TestDriverValidation:
 
     def setup_method(self):
         """Reset registry before each test."""
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         import importlib
         import sys
         
@@ -152,45 +152,45 @@ class TestDriverValidation:
         
         # Remove driver modules from sys.modules so they can be re-imported fresh
         modules_to_remove = [
-            'quantumvitas.drivers',
-            'quantumvitas.drivers.qe',
-            'quantumvitas.drivers.vasp',
-            'quantumvitas.drivers.lammps',
-            'quantumvitas.drivers.cp2k',
-            'quantumvitas.drivers.w90',
-            'quantumvitas.drivers.orca',
-            'quantumvitas.drivers.pyscf',
-            'quantumvitas.drivers.qmcpack',
-            'quantumvitas.drivers.psi4',
-            'quantumvitas.drivers.gpaw',
-            'quantumvitas.drivers.siesta',
-            'quantumvitas.drivers.xtb',
-            'quantumvitas.drivers.yambo',
-            'quantumvitas.drivers.abinit',
-            'quantumvitas.drivers.gaussian',
+            'qmatsuite.drivers',
+            'qmatsuite.drivers.qe',
+            'qmatsuite.drivers.vasp',
+            'qmatsuite.drivers.lammps',
+            'qmatsuite.drivers.cp2k',
+            'qmatsuite.drivers.w90',
+            'qmatsuite.drivers.orca',
+            'qmatsuite.drivers.pyscf',
+            'qmatsuite.drivers.qmcpack',
+            'qmatsuite.drivers.psi4',
+            'qmatsuite.drivers.gpaw',
+            'qmatsuite.drivers.siesta',
+            'qmatsuite.drivers.xtb',
+            'qmatsuite.drivers.yambo',
+            'qmatsuite.drivers.abinit',
+            'qmatsuite.drivers.gaussian',
         ]
         for mod_name in modules_to_remove:
             if mod_name in sys.modules:
                 del sys.modules[mod_name]
         
         # Now re-import drivers (they will register themselves)
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
     def test_duplicate_engine_rejected(self):
         """Duplicate engine registration should raise."""
         # QE is already registered via drivers/qe/__init__.py
-        from quantumvitas.drivers.qe.driver import QEDriver
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import DuplicateEngineError
+        from qmatsuite.drivers.qe.driver import QEDriver
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import DuplicateEngineError
 
         with pytest.raises(DuplicateEngineError):
             DriverRegistry.register(QEDriver())
 
     def test_empty_engine_family_rejected(self):
         """Empty engine family should be rejected."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_protocol import StepTypeSpec
-        from quantumvitas.core.driver_exceptions import InvalidDriverError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_protocol import StepTypeSpec
+        from qmatsuite.core.driver_exceptions import InvalidDriverError
 
         class BadDriver:
             engine_family = ""
@@ -218,7 +218,7 @@ class TestKernelIntegration:
 
     def test_handlers_uses_registry(self):
         """handlers.py should use registry for dispatch."""
-        source = (PROJECT_ROOT / "src/quantumvitas/execution/handlers.py").read_text()
+        source = (PROJECT_ROOT / "src/qmatsuite/execution/handlers.py").read_text()
 
         # After refactor, should import and use DriverRegistry
         assert "DriverRegistry" in source or "driver_registry" in source, (
@@ -227,7 +227,7 @@ class TestKernelIntegration:
 
     def test_recipes_uses_registry(self):
         """recipes.py should use registry for dispatch."""
-        source = (PROJECT_ROOT / "src/quantumvitas/execution/recipes.py").read_text()
+        source = (PROJECT_ROOT / "src/qmatsuite/execution/recipes.py").read_text()
 
         # After refactor, should import and use DriverRegistry
         assert "DriverRegistry" in source or "driver_registry" in source, (

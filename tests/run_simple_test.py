@@ -1,13 +1,13 @@
 """Simple script to verify QE input parsing and generation.
 
-This script is intended to be run directly *after* installing quantumvitas
+This script is intended to be run directly *after* installing qmatsuite
 (e.g. via ``pip install -e .``) or setting ``PYTHONPATH=src``.
 """
 
 from pathlib import Path
 import sys
 
-from quantumvitas.io import QEInputParser, QEInputGenerator
+from qmatsuite.io import QEInputParser, QEInputGenerator
 
 
 def test_simple_parse_generate() -> None:

@@ -53,7 +53,7 @@ All 15 tools chain correctly after context hint fixes. Error envelopes are consi
 
 Moved shared fixtures from `test_stage3.py` to `tests/mcp/conftest.py`:
 - `SI_STRUCTURE_JSON` constant
-- `qv_project` fixture (creates project with Si from JSON, patches MCP context)
+- `qms_project` fixture (creates project with Si from JSON, patches MCP context)
 - `qe_available` fixture (fails if QE not installed)
 - `qe_project_with_si` fixture (creates project with Si from CIF, patches MCP context)
 
@@ -76,14 +76,14 @@ Both Stage 3 and Stage 5 now use these shared fixtures via pytest autodiscovery.
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/mcp/tools/get_presets.py` | Fixed 2 context_hints (available + unavailable paths) |
-| `src/quantumvitas/mcp/tools/search_parameters.py` | Fixed hint to mention set_parameters |
-| `src/quantumvitas/mcp/tools/create_calculation.py` | Added calc_ulid to hint |
-| `src/quantumvitas/mcp/tools/set_parameters.py` | Added calc_ulid to hint |
-| `src/quantumvitas/mcp/tools/apply_preset.py` | Added calc_ulid to hint |
-| `src/quantumvitas/mcp/tools/inspect_calculation.py` | Added calc_ulid to hint |
-| `src/quantumvitas/mcp/tools/get_status.py` | Added calc_ulid to all 3 hint paths |
-| `src/quantumvitas/mcp/tools/search_knowledge.py` | Fixed hint to guide toward parameter choices |
+| `src/qmatsuite/mcp/tools/get_presets.py` | Fixed 2 context_hints (available + unavailable paths) |
+| `src/qmatsuite/mcp/tools/search_parameters.py` | Fixed hint to mention set_parameters |
+| `src/qmatsuite/mcp/tools/create_calculation.py` | Added calc_ulid to hint |
+| `src/qmatsuite/mcp/tools/set_parameters.py` | Added calc_ulid to hint |
+| `src/qmatsuite/mcp/tools/apply_preset.py` | Added calc_ulid to hint |
+| `src/qmatsuite/mcp/tools/inspect_calculation.py` | Added calc_ulid to hint |
+| `src/qmatsuite/mcp/tools/get_status.py` | Added calc_ulid to all 3 hint paths |
+| `src/qmatsuite/mcp/tools/search_knowledge.py` | Fixed hint to guide toward parameter choices |
 | `tests/mcp/test_stage3.py` | Removed fixtures (now in conftest.py) |
 
 ## MCP Tool Count

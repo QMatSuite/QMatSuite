@@ -8,27 +8,27 @@
 
 ## Contract
 
-**Frontends import only `quantumvitas.api`** (QVService wrappers + re-exports). No direct kernel imports.
+**Frontends import only `qmatsuite.api`** (QMSService wrappers + re-exports). No direct kernel imports.
 
 **Kernel modules** (forbidden in frontends):
-- `quantumvitas.core`
-- `quantumvitas.calculation`
-- `quantumvitas.drivers`
-- `quantumvitas.analysis`
-- `quantumvitas.io`
-- `quantumvitas.engine`
-- `quantumvitas.workflow`
-- `quantumvitas.presets`
+- `qmatsuite.core`
+- `qmatsuite.calculation`
+- `qmatsuite.drivers`
+- `qmatsuite.analysis`
+- `qmatsuite.io`
+- `qmatsuite.engine`
+- `qmatsuite.workflow`
+- `qmatsuite.presets`
 
 **Frontends** (must use API only):
-- `src/quantumvitas/cli/*`
-- `src/quantumvitas/daemon/*`
-- `src/quantumvitas/frontends/*/*`
+- `src/qmatsuite/cli/*`
+- `src/qmatsuite/daemon/*`
+- `src/qmatsuite/frontends/*/*`
 
 **API facade pattern**:
-- Functions → `QVService.<wrapper>()` static methods (pass-through, no behavior change)
-- Types/Enums/Exceptions → re-exported from `quantumvitas.api` (same object identity)
-- Wrappers convert generic exceptions to `QVServiceError` when appropriate
+- Functions → `QMSService.<wrapper>()` static methods (pass-through, no behavior change)
+- Types/Enums/Exceptions → re-exported from `qmatsuite.api` (same object identity)
+- Wrappers convert generic exceptions to `QMSServiceError` when appropriate
 
 ---
 
@@ -68,7 +68,7 @@ def test_wrapper(monkeypatch):
     monkeypatch.setattr(module, "underlying_function", fake_underlying)
     
     # Call wrapper
-    result = QVService.wrapper_method(...)
+    result = QMSService.wrapper_method(...)
     
     # Verify pass-through
     assert result == "fake_result"
@@ -77,8 +77,8 @@ def test_wrapper(monkeypatch):
 
 **Re-export validation**: Verify identity (same object):
 ```python
-from quantumvitas.api import SomeType
-from quantumvitas.original.module import SomeType as OriginalType
+from qmatsuite.api import SomeType
+from qmatsuite.original.module import SomeType as OriginalType
 assert SomeType is OriginalType
 ```
 
@@ -117,17 +117,17 @@ ls -la .audit/
 ### 4. Manual Verification
 ```bash
 # Check for forbidden imports
-rg -n "^from quantumvitas\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/quantumvitas/cli
-rg -n "^from quantumvitas\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/quantumvitas/daemon
+rg -n "^from qmatsuite\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/qmatsuite/cli
+rg -n "^from qmatsuite\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/qmatsuite/daemon
 
 # Expected: 0 matches
 ```
 
 ### 5. Importability Checks
 ```bash
-python -c "from quantumvitas.cli.main import app; print('CLI OK')"
-python -c "from quantumvitas.daemon.server import QVDaemon; print('Daemon OK')"
-python -c "from quantumvitas.api import QVService; print('API OK')"
+python -c "from qmatsuite.cli.main import app; print('CLI OK')"
+python -c "from qmatsuite.daemon.server import QMSDaemon; print('Daemon OK')"
+python -c "from qmatsuite.api import QMSService; print('API OK')"
 ```
 
 ---
@@ -140,7 +140,7 @@ python -c "from quantumvitas.api import QVService; print('API OK')"
 - Safety documentation added
 
 ### Batch 1: API Facade Instance Methods
-- QVService instance methods added
+- QMSService instance methods added
 - Re-exports for types/exceptions added
 - Unit tests for API facade
 
@@ -156,9 +156,9 @@ python -c "from quantumvitas.api import QVService; print('API OK')"
 ### CLI Migration Completion (0 Violations)
 - All CLI kernel imports migrated to API
 - Multiple commits (A2-A15, B1-B2, C1):
-  - `efbb129` - C1: eliminate remaining CLI violations via quantumvitas.api/QVService
-  - `a895cd4` - B2: remove remaining CLI quantumvitas.analysis.* deps via QVService/api
-  - `5bb76b4` - B1: remove remaining CLI quantumvitas.calculation.* deps via QVService/api
+  - `efbb129` - C1: eliminate remaining CLI violations via qmatsuite.api/QMSService
+  - `a895cd4` - B2: remove remaining CLI qmatsuite.analysis.* deps via QMSService/api
+  - `5bb76b4` - B1: remove remaining CLI qmatsuite.calculation.* deps via QMSService/api
   - Plus A2-A15 series for incremental migration
 
 ### D1: Default Enforcement Change

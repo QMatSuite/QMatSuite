@@ -11,12 +11,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from quantumvitas.core.pseudo_options import (
+from qmatsuite.core.pseudo_options import (
     PseudoOption,
     PseudoSource,
     get_pseudo_options_for_elements,
 )
-from quantumvitas.core.pseudo_config import PseudoConfig
+from qmatsuite.core.pseudo_config import PseudoConfig
 
 
 @pytest.fixture
@@ -110,9 +110,9 @@ def create_test_upf_file(path: Path, element: str, content: str = None):
     return path
 
 
-@patch("quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle")
-@patch("quantumvitas.core.pseudo_options._find_upf_in_libraries")
-@patch("quantumvitas.core.pseudo_options.get_system_pseudo_dir")
+@patch("qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle")
+@patch("qmatsuite.core.pseudo_options._find_upf_in_libraries")
+@patch("qmatsuite.core.pseudo_options.get_system_pseudo_dir")
 def test_dedup_by_sha256(
     mock_get_system_pseudo_dir,
     mock_find_upf,
@@ -152,9 +152,9 @@ def test_dedup_by_sha256(
         assert len(matching_variants) == 1, f"Project files with same sha256 should merge into one variant, got {len(matching_variants)}"
 
 
-@patch("quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle")
-@patch("quantumvitas.core.pseudo_options._find_upf_in_libraries")
-@patch("quantumvitas.core.pseudo_options.get_system_pseudo_dir")
+@patch("qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle")
+@patch("qmatsuite.core.pseudo_options._find_upf_in_libraries")
+@patch("qmatsuite.core.pseudo_options.get_system_pseudo_dir")
 def test_name_collision_different_sha256(
     mock_get_system_pseudo_dir,
     mock_find_upf,
@@ -181,9 +181,9 @@ def test_name_collision_different_sha256(
     assert len(options["Si"]) >= 1
 
 
-@patch("quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle")
-@patch("quantumvitas.core.pseudo_options._find_upf_in_libraries")
-@patch("quantumvitas.core.pseudo_options.get_system_pseudo_dir")
+@patch("qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle")
+@patch("qmatsuite.core.pseudo_options._find_upf_in_libraries")
+@patch("qmatsuite.core.pseudo_options.get_system_pseudo_dir")
 def test_library_chips_from_occurrences(
     mock_get_system_pseudo_dir,
     mock_find_upf,
@@ -201,7 +201,7 @@ def test_library_chips_from_occurrences(
     mock_find_upf.return_value = Path("/mock/lib/Si.pbe-n-rrkjus_psl.1.0.0.UPF")
     mock_get_system_pseudo_dir.return_value = None
 
-    with patch("quantumvitas.core.pseudo_options.compute_sha256_file") as mock_sha256:
+    with patch("qmatsuite.core.pseudo_options.compute_sha256_file") as mock_sha256:
         mock_sha256.return_value = "abc123"  # Matches bundle
 
         config = PseudoConfig(store_dir=str(project_root / "store"))
@@ -217,9 +217,9 @@ def test_library_chips_from_occurrences(
                 assert any(s["installed"] for s in library_sources)
 
 
-@patch("quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle")
-@patch("quantumvitas.core.pseudo_options._find_upf_in_libraries")
-@patch("quantumvitas.core.pseudo_options.get_system_pseudo_dir")
+@patch("qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle")
+@patch("qmatsuite.core.pseudo_options._find_upf_in_libraries")
+@patch("qmatsuite.core.pseudo_options.get_system_pseudo_dir")
 def test_installed_chip_reflects_library_status(
     mock_get_system_pseudo_dir,
     mock_find_upf,
@@ -239,7 +239,7 @@ def test_installed_chip_reflects_library_status(
 
     config = PseudoConfig(store_dir=str(project_root / "store"))
 
-    with patch("quantumvitas.core.pseudo_options.compute_sha256_file") as mock_sha256:
+    with patch("qmatsuite.core.pseudo_options.compute_sha256_file") as mock_sha256:
         mock_sha256.return_value = "abc123"
 
         options = get_pseudo_options_for_elements(project_root, ["Si"], config=config)
@@ -249,9 +249,9 @@ def test_installed_chip_reflects_library_status(
         assert mock_find_upf.called
 
 
-@patch("quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle")
-@patch("quantumvitas.core.pseudo_options._find_upf_in_libraries")
-@patch("quantumvitas.core.pseudo_options.get_system_pseudo_dir")
+@patch("qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle")
+@patch("qmatsuite.core.pseudo_options._find_upf_in_libraries")
+@patch("qmatsuite.core.pseudo_options.get_system_pseudo_dir")
 def test_project_chip_adds_to_existing_option(
     mock_get_system_pseudo_dir,
     mock_find_upf,
@@ -270,7 +270,7 @@ def test_project_chip_adds_to_existing_option(
 
     config = PseudoConfig(store_dir=str(project_root / "store"))
 
-    with patch("quantumvitas.core.pseudo_options.compute_sha256_file") as mock_sha256:
+    with patch("qmatsuite.core.pseudo_options.compute_sha256_file") as mock_sha256:
         mock_sha256.return_value = "abc123"
 
         options = get_pseudo_options_for_elements(project_root, ["Si"], config=config)
@@ -282,9 +282,9 @@ def test_project_chip_adds_to_existing_option(
             assert len(project_sources) > 0
 
 
-@patch("quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle")
-@patch("quantumvitas.core.pseudo_options._find_upf_in_libraries")
-@patch("quantumvitas.core.pseudo_options.get_system_pseudo_dir")
+@patch("qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle")
+@patch("qmatsuite.core.pseudo_options._find_upf_in_libraries")
+@patch("qmatsuite.core.pseudo_options.get_system_pseudo_dir")
 def test_internal_chip_always_installed(
     mock_get_system_pseudo_dir,
     mock_find_upf,
@@ -315,9 +315,9 @@ def test_internal_chip_always_installed(
             assert all(s["installed"] for s in internal_sources)
 
 
-@patch("quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle")
-@patch("quantumvitas.core.pseudo_options._find_upf_in_libraries")
-@patch("quantumvitas.core.pseudo_options.get_system_pseudo_dir")
+@patch("qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle")
+@patch("qmatsuite.core.pseudo_options._find_upf_in_libraries")
+@patch("qmatsuite.core.pseudo_options.get_system_pseudo_dir")
 def test_rpc_roundtrip_stable_json(
     mock_get_system_pseudo_dir,
     mock_find_upf,

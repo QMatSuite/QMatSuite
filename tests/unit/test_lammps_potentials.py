@@ -4,8 +4,8 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from quantumvitas.core.resources import get_resources_dir
-from quantumvitas.engine.lammps_potentials import (
+from qmatsuite.core.resources import get_resources_dir
+from qmatsuite.engine.lammps_potentials import (
     stage_potentials,
     compute_potential_digest,
     generate_pair_style_block,

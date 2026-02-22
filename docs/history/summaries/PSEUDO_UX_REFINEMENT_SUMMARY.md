@@ -6,7 +6,7 @@ Refined pseudopotential UX to support multiple sources (INTERNAL, SSSP libraries
 
 ## Changes Made
 
-### Backend (src/quantumvitas/api.py)
+### Backend (src/qmatsuite/api.py)
 
 **Extended `get_calculation_pseudo_mapping` API:**
 
@@ -94,7 +94,7 @@ Refined pseudopotential UX to support multiple sources (INTERNAL, SSSP libraries
    - All inputs use theme-aware colors
    - Better visibility in dark mode
 
-### TypeScript Types (gui/src/types/qv.ts)
+### TypeScript Types (gui/src/types/qms.ts)
 
 1. **Extended `CalculationPseudoMappingResult`:**
    - Added `installed_sources`
@@ -144,8 +144,8 @@ Refined pseudopotential UX to support multiple sources (INTERNAL, SSSP libraries
 
 ## Files Modified
 
-1. `src/quantumvitas/api.py` - Extended API with candidates and resolution
-2. `gui/src/types/qv.ts` - Extended TypeScript types
+1. `src/qmatsuite/api.py` - Extended API with candidates and resolution
+2. `gui/src/types/qms.ts` - Extended TypeScript types
 3. `gui/src/components/common_cards/CommonCardPseudo.tsx` - Added INTERNAL, source badges, improved dropdown
 4. `gui/src/components/common_cards/CommonCardPseudo.css` - Dark theme fixes, source badge styles
 5. `gui/src/components/panels/CalculationListPanel.tsx` - Updated display to use new API fields

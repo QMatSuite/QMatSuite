@@ -7,14 +7,14 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from quantumvitas.execution.relax_artifacts import (
+from qmatsuite.execution.relax_artifacts import (
     get_generated_structure_path,
     write_generated_structure,
     read_generated_structure,
     clean_generated_structure,
     is_relax_step_type,
 )
-from quantumvitas.execution.handlers import handle_qe_relax_output
+from qmatsuite.execution.handlers import handle_qe_relax_output
 
 
 class TestGeneratedStructurePath:
@@ -58,10 +58,10 @@ class TestWriteGeneratedStructure:
         
         # Check content
         data = json.loads(result_path.read_text())
-        assert "__qv_meta__" in data
-        assert data["__qv_meta__"]["type"] == "generated_structure"  # artifact type, not step_type
-        assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == "qe_relax"
+        assert "__qms_meta__" in data
+        assert data["__qms_meta__"]["type"] == "generated_structure"  # artifact type, not step_type
+        assert data["__qms_meta__"]["source_step_ulid"] == step_ulid
+        assert data["__qms_meta__"]["provenance"]["method"] == "qe_relax"
 
     def test_write_creates_parent_dirs(self, tmp_path):
         """Writing creates parent directories if needed."""
@@ -229,11 +229,11 @@ Si   0.250000000   0.250000000   0.250000000
 
         # Verify content
         data = json.loads(artifact_path.read_text())
-        assert "__qv_meta__" in data
-        assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == step_type_spec
-        assert data["__qv_meta__"]["provenance"]["calculation_ulid"] == calculation_ulid
-        assert data["__qv_meta__"]["provenance"]["input_structure_ulid"] == input_structure_ulid
+        assert "__qms_meta__" in data
+        assert data["__qms_meta__"]["source_step_ulid"] == step_ulid
+        assert data["__qms_meta__"]["provenance"]["method"] == step_type_spec
+        assert data["__qms_meta__"]["provenance"]["calculation_ulid"] == calculation_ulid
+        assert data["__qms_meta__"]["provenance"]["input_structure_ulid"] == input_structure_ulid
         
         # Verify structure can be read
         loaded = read_generated_structure(calc_dir, step_ulid)
@@ -246,9 +246,9 @@ class TestScopedCleanup:
 
     def test_scoped_cleanup_removes_current_json(self, tmp_path):
         """Pre-clean removes current.json for relax steps in job."""
-        from quantumvitas.execution.executor import JobExecutor
-        from quantumvitas.execution.job_graph import Job
-        from quantumvitas.execution.relax_artifacts import write_generated_structure
+        from qmatsuite.execution.executor import JobExecutor
+        from qmatsuite.execution.job_graph import Job
+        from qmatsuite.execution.relax_artifacts import write_generated_structure
         from pymatgen.core import Structure, Lattice
         from unittest.mock import MagicMock
         
@@ -302,9 +302,9 @@ class TestScopedCleanup:
     
     def test_scoped_cleanup_only_cleans_job_steps(self, tmp_path):
         """Pre-clean only removes current.json for steps in the job."""
-        from quantumvitas.execution.executor import JobExecutor
-        from quantumvitas.execution.job_graph import Job
-        from quantumvitas.execution.relax_artifacts import write_generated_structure
+        from qmatsuite.execution.executor import JobExecutor
+        from qmatsuite.execution.job_graph import Job
+        from qmatsuite.execution.relax_artifacts import write_generated_structure
         from pymatgen.core import Structure, Lattice
         from unittest.mock import MagicMock
         

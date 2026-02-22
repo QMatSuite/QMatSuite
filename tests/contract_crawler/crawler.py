@@ -6,7 +6,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
 
 from .introspection import get_all_rpc_methods
 from .payloads import get_minimal_payload, get_methods_needing_recipes
@@ -71,7 +71,7 @@ class CrawlReport:
 
 
 def crawl_method(
-    daemon: QVDaemon,
+    daemon: QMSDaemon,
     method_name: str,
     payload: dict[str, Any],
 ) -> CrawlResult:
@@ -79,7 +79,7 @@ def crawl_method(
     Crawl a single RPC method.
 
     Args:
-        daemon: QVDaemon instance
+        daemon: QMSDaemon instance
         method_name: RPC method name
         payload: Request payload
 
@@ -143,7 +143,7 @@ def crawl_all_methods(
     Returns:
         CrawlReport with all results.
     """
-    daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+    daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
     methods = get_all_rpc_methods()
     needs_recipes = get_methods_needing_recipes()
 

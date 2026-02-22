@@ -47,8 +47,8 @@
 **Goal**: Ensure all existing step types are explicitly engine-prefixed
 
 **Files to modify**:
-- `src/quantumvitas/workflow/registry.py`: Update `_STEP_TYPES` dict to use engine-prefixed IDs
-- `src/quantumvitas/calculation/types.py`: Update `StepType` enum to use engine-prefixed names
+- `src/qmatsuite/workflow/registry.py`: Update `_STEP_TYPES` dict to use engine-prefixed IDs
+- `src/qmatsuite/calculation/types.py`: Update `StepType` enum to use engine-prefixed names
 - Update all references to step types throughout codebase
 
 **Changes needed**:
@@ -62,8 +62,8 @@
 **Goal**: Define generalized steps and mapping (family, general) → specific
 
 **Files to create/modify**:
-- `src/quantumvitas/workflow/generalized_steps.py`: New file with generalized step definitions
-- `src/quantumvitas/workflow/materialization.py`: New file with materialization logic
+- `src/qmatsuite/workflow/generalized_steps.py`: New file with generalized step definitions
+- `src/qmatsuite/workflow/materialization.py`: New file with materialization logic
 
 **Generalized steps to define**:
 - SCF (self-consistent field)
@@ -94,8 +94,8 @@ MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
 **Goal**: Add structure_kind and engine_family to calculation model
 
 **Files to modify**:
-- `src/quantumvitas/core/models.py`: Add `structure_kind` and `engine_family` fields to `CalculationModel`
-- `src/quantumvitas/cli/main.py`: Add structure_kind selection in `init_calculation_command`
+- `src/qmatsuite/core/models.py`: Add `structure_kind` and `engine_family` fields to `CalculationModel`
+- `src/qmatsuite/cli/main.py`: Add structure_kind selection in `init_calculation_command`
 - Update calc.yaml I/O to persist these fields
 
 **Default logic**:
@@ -108,8 +108,8 @@ MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
 **Goal**: Materialize generalized steps → engine-specific steps
 
 **Files to create/modify**:
-- `src/quantumvitas/workflow/materialization.py`: Implement `materialize_workflow()` function
-- `src/quantumvitas/workflow/templates.py`: Update `instantiate_workflow()` to use materialization
+- `src/qmatsuite/workflow/materialization.py`: Implement `materialize_workflow()` function
+- `src/qmatsuite/workflow/templates.py`: Update `instantiate_workflow()` to use materialization
 
 **Function signature**:
 ```python
@@ -136,8 +136,8 @@ def materialize_workflow(
 **Goal**: Handle existing calcs without engine_family metadata
 
 **Files to modify**:
-- `src/quantumvitas/core/models.py`: Add recovery logic in `CalculationModel.from_dict()`
-- `src/quantumvitas/calculation/calculation.py`: Add inference logic
+- `src/qmatsuite/core/models.py`: Add recovery logic in `CalculationModel.from_dict()`
+- `src/qmatsuite/calculation/calculation.py`: Add inference logic
 
 **Recovery logic**:
 1. If all steps belong to one family → infer it

@@ -57,7 +57,7 @@ Per user specification, we need at least 3 smoke workflows that:
 **Project Structure**:
 ```
 tests/data/lammps/lj_minimize/
-├── project.qv.yml
+├── project.qms.yml
 ├── structures/
 │   └── lj_fcc_108.json         # 108-atom FCC Ar lattice
 └── calculations/
@@ -106,8 +106,8 @@ steps:
 
 import pytest
 from pathlib import Path
-from quantumvitas.daemon.runner import run_calculation
-from quantumvitas.project import Project
+from qmatsuite.daemon.runner import run_calculation
+from qmatsuite.project import Project
 
 @pytest.fixture
 def lj_project(tmp_path):
@@ -149,7 +149,7 @@ def test_lj_minimize_produces_outputs(lj_project):
 @pytest.mark.lammps
 def test_lj_minimize_trajectory_parse(lj_project):
     """LJ minimize trajectory can be parsed."""
-    from quantumvitas.engine.lammps_parser import parse_lammps_dump
+    from qmatsuite.engine.lammps_parser import parse_lammps_dump
     
     project = Project.load(lj_project)
     calc = project.get_calculation("minimize")
@@ -182,7 +182,7 @@ def test_lj_minimize_trajectory_parse(lj_project):
 **Project Structure**:
 ```
 tests/data/lammps/eam_md/
-├── project.qv.yml
+├── project.qms.yml
 ├── structures/
 │   └── cu_fcc_32.json          # 32-atom Cu FCC
 ├── potentials/
@@ -258,8 +258,8 @@ def lammps_test_potentials():
 @pytest.mark.lammps
 def test_eam_md_completes(eam_project):
     """EAM MD runs to completion."""
-    from quantumvitas.project import Project
-    from quantumvitas.daemon.runner import run_calculation
+    from qmatsuite.project import Project
+    from qmatsuite.daemon.runner import run_calculation
     
     project = Project.load(eam_project)
     calc = project.get_calculation("md_nvt")
@@ -272,9 +272,9 @@ def test_eam_md_completes(eam_project):
 @pytest.mark.lammps
 def test_eam_md_temperature_stable(eam_project):
     """EAM MD maintains target temperature."""
-    from quantumvitas.project import Project
-    from quantumvitas.daemon.runner import run_calculation
-    from quantumvitas.engine.lammps_parser import parse_lammps_log
+    from qmatsuite.project import Project
+    from qmatsuite.daemon.runner import run_calculation
+    from qmatsuite.engine.lammps_parser import parse_lammps_log
     
     project = Project.load(eam_project)
     calc = project.get_calculation("md_nvt")
@@ -291,9 +291,9 @@ def test_eam_md_temperature_stable(eam_project):
 @pytest.mark.lammps
 def test_eam_md_trajectory_has_frames(eam_project):
     """EAM MD produces multi-frame trajectory."""
-    from quantumvitas.project import Project
-    from quantumvitas.daemon.runner import run_calculation
-    from quantumvitas.engine.lammps_parser import parse_lammps_dump
+    from qmatsuite.project import Project
+    from qmatsuite.daemon.runner import run_calculation
+    from qmatsuite.engine.lammps_parser import parse_lammps_dump
     
     project = Project.load(eam_project)
     calc = project.get_calculation("md_nvt")
@@ -325,7 +325,7 @@ def test_eam_md_trajectory_has_frames(eam_project):
 **Project Structure**:
 ```
 tests/data/lammps/chain_workflow/
-├── project.qv.yml
+├── project.qms.yml
 ├── structures/
 │   └── cu_fcc_32.json
 ├── potentials/
@@ -425,8 +425,8 @@ def chain_project(tmp_path, lammps_test_potentials):
 @pytest.mark.lammps
 def test_chain_all_steps_complete(chain_project):
     """Chain workflow runs all 3 steps to completion."""
-    from quantumvitas.project import Project
-    from quantumvitas.daemon.runner import run_calculation
+    from qmatsuite.project import Project
+    from qmatsuite.daemon.runner import run_calculation
     
     project = Project.load(chain_project)
     calc = project.get_calculation("chain")
@@ -441,8 +441,8 @@ def test_chain_all_steps_complete(chain_project):
 @pytest.mark.lammps
 def test_chain_restart_uses_correct_artifacts(chain_project):
     """MD step uses final.data from relax; continue uses restart.bin from MD."""
-    from quantumvitas.project import Project
-    from quantumvitas.daemon.runner import run_calculation
+    from qmatsuite.project import Project
+    from qmatsuite.daemon.runner import run_calculation
     
     project = Project.load(chain_project)
     calc = project.get_calculation("chain")
@@ -470,8 +470,8 @@ def test_chain_restart_uses_correct_artifacts(chain_project):
 @pytest.mark.lammps
 def test_chain_relax_produces_artifact(chain_project):
     """Relax step produces generated structure artifact."""
-    from quantumvitas.project import Project
-    from quantumvitas.daemon.runner import run_calculation
+    from qmatsuite.project import Project
+    from qmatsuite.daemon.runner import run_calculation
     
     project = Project.load(chain_project)
     calc = project.get_calculation("chain")
@@ -486,8 +486,8 @@ def test_chain_relax_produces_artifact(chain_project):
 @pytest.mark.lammps
 def test_chain_missing_artifact_fails(chain_project):
     """restart_from with missing artifact raises clear error."""
-    from quantumvitas.project import Project
-    from quantumvitas.daemon.runner import run_calculation
+    from qmatsuite.project import Project
+    from qmatsuite.daemon.runner import run_calculation
     
     project = Project.load(chain_project)
     calc = project.get_calculation("chain")
@@ -531,7 +531,7 @@ def test_chain_missing_artifact_fails(chain_project):
 
 import pytest
 from pathlib import Path
-from quantumvitas.engine.lammps_parser import parse_lammps_log, parse_lammps_dump
+from qmatsuite.engine.lammps_parser import parse_lammps_log, parse_lammps_dump
 
 @pytest.fixture
 def fixtures_dir():
@@ -905,7 +905,7 @@ pytest tests/integration/test_lammps*.py -v
 pytest tests/integration/test_lammps_lj_minimize.py -v
 
 # Run with coverage
-pytest tests/unit/test_lammps*.py --cov=quantumvitas.engine.lammps --cov-report=term-missing
+pytest tests/unit/test_lammps*.py --cov=qmatsuite.engine.lammps --cov-report=term-missing
 ```
 
 ### 7.2 CI Verification
@@ -924,7 +924,7 @@ pytest tests/unit/test_lammps*.py tests/integration/test_lammps*.py -v --tb=shor
 ```
 tests/data/lammps/
 ├── lj_minimize/                    # Smoke workflow 1
-│   ├── project.qv.yml
+│   ├── project.qms.yml
 │   ├── structures/
 │   │   └── lj_fcc_108.json
 │   └── calculations/
@@ -934,7 +934,7 @@ tests/data/lammps/
 │               └── step_001.yaml
 │
 ├── eam_md/                         # Smoke workflow 2
-│   ├── project.qv.yml
+│   ├── project.qms.yml
 │   ├── structures/
 │   │   └── cu_fcc_32.json
 │   ├── potentials/                 # Copied at test time
@@ -945,7 +945,7 @@ tests/data/lammps/
 │               └── step_001.yaml
 │
 ├── chain_workflow/                 # Smoke workflow 3
-│   ├── project.qv.yml
+│   ├── project.qms.yml
 │   ├── structures/
 │   │   └── cu_fcc_32.json
 │   ├── potentials/                 # Copied at test time

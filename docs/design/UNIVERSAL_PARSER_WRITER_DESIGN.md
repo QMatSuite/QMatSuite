@@ -875,7 +875,7 @@ class ParameterMetadata:
 
 ### 5.4 Serialization
 
-- **Metadata catalogs**: JSON files in `src/quantumvitas/data/`, one per engine. Human-editable, version-controlled. Schema: `<engine>_parameters.json`.
+- **Metadata catalogs**: JSON files in `src/qmatsuite/data/`, one per engine. Human-editable, version-controlled. Schema: `<engine>_parameters.json`.
 - **InputDocument**: In-memory only during parsing/writing. Not persisted (no need — the source files and SSOT docs are the persistent representations).
 - **DialectSpec / EngineInputSpec**: Python code in driver bundles. Not serialized.
 
@@ -899,7 +899,7 @@ Non-breaking additions (no version bump needed):
 ### 6.1 Where Code Lives
 
 ```
-src/quantumvitas/
+src/qmatsuite/
 ├── inputformat/                       # NEW: Engine-agnostic parsing framework
 │   ├── __init__.py                    #   Internal API (NOT public facade)
 │   ├── core.py                        #   InputDocument, Node hierarchy,
@@ -956,10 +956,10 @@ src/quantumvitas/
 Each driver bundle contains an `inputspec.py` that centralizes ALL input format knowledge for that engine:
 
 ```python
-# src/quantumvitas/drivers/vasp/inputspec.py
+# src/qmatsuite/drivers/vasp/inputspec.py
 
-from quantumvitas.inputformat.core import InputFileSpec, ResourceRefSpec, SSOTMappingSpec
-from quantumvitas.inputformat.dialect import DialectSpec, FlatKeyvalSectionConfig
+from qmatsuite.inputformat.core import InputFileSpec, ResourceRefSpec, SSOTMappingSpec
+from qmatsuite.inputformat.dialect import DialectSpec, FlatKeyvalSectionConfig
 
 VASP_DIALECT = DialectSpec(
     comment_chars=("#", "!"),
@@ -983,8 +983,8 @@ VASP_DIALECT = DialectSpec(
     grammar_version="6.4",
 )
 
-from quantumvitas.drivers.vasp.io.poscar import parse_poscar_text, write_poscar_text
-from quantumvitas.drivers.vasp.io.kpoints import parse_kpoints_text, write_kpoints_text
+from qmatsuite.drivers.vasp.io.poscar import parse_poscar_text, write_poscar_text
+from qmatsuite.drivers.vasp.io.kpoints import parse_kpoints_text, write_kpoints_text
 
 VASP_INPUT_SPEC = EngineInputSpec(
     engine_family="vasp",
@@ -1039,7 +1039,7 @@ VASP_INPUT_SPEC = EngineInputSpec(
 **Driver integration** — the driver returns the spec on request:
 
 ```python
-# src/quantumvitas/drivers/vasp/driver.py
+# src/qmatsuite/drivers/vasp/driver.py
 
 class VASPDriver(BaseEngineDriver):
     # ... existing 7-item MUST interface ...
@@ -1054,7 +1054,7 @@ class VASPDriver(BaseEngineDriver):
 The parse/write functions are kernel-internal. They are NOT exposed as a public API facade. The `inputformat/__init__.py` provides internal helper functions used by other kernel code:
 
 ```python
-# src/quantumvitas/inputformat/__init__.py
+# src/qmatsuite/inputformat/__init__.py
 # NOTE: This is an internal module. NOT part of the public API facade.
 
 def parse_engine_inputs(
@@ -1297,7 +1297,7 @@ tests/inputformat/
 Not in CI. Run against `.tmp/engine_research/` corpora:
 
 ```bash
-python -m quantumvitas.inputformat.harness \
+python -m qmatsuite.inputformat.harness \
     --corpus .tmp/engine_research/qe/examples \
     --engine qe \
     --output .tmp/corpus_reports/qe/
@@ -1360,7 +1360,7 @@ python -m quantumvitas.inputformat.harness \
 ### 8.2 Corpus Harness
 
 ```python
-# src/quantumvitas/inputformat/harness.py
+# src/qmatsuite/inputformat/harness.py
 
 @dataclass
 class CorpusResult:
@@ -1515,7 +1515,7 @@ The following 20 engines have been researched for input format compatibility. Al
 ### 10.1 Complete File Tree
 
 ```
-src/quantumvitas/inputformat/
+src/qmatsuite/inputformat/
 ├── __init__.py                        # Internal API: parse_engine_inputs,
 │                                      #   write_engine_inputs, get_metadata
 │                                      #   NOT a public API facade
@@ -1542,10 +1542,10 @@ src/quantumvitas/inputformat/
 └── harness.py                         # Corpus validation harness
 
 # Per-engine declarations (in driver bundles):
-src/quantumvitas/drivers/<engine>/inputspec.py
+src/qmatsuite/drivers/<engine>/inputspec.py
 
 # Metadata catalogs:
-src/quantumvitas/data/<engine>_parameters.json
+src/qmatsuite/data/<engine>_parameters.json
 ```
 
 ### 10.2 Dependency Rules

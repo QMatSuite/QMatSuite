@@ -22,13 +22,13 @@
 ### 1.1 用户报告的日志
 
 ```
-[qv-daemon] [INFO] [quantumvitas.core.engines.qe_calculation] [RUN_STEP] Starting step execution: step_type=scf, ...
-[qv-daemon] [INFO] [quantumvitas.core.engines.qe_calculation] [RUN_STEP] Starting step execution: step_type=nscf, ...
-[qv-daemon] [INFO] [quantumvitas.calculation.input_runner] [PREPARE_INPUT_STEP] Wannier90 step detected: step_type=w90_preproc
-[qv-daemon] [INFO] [quantumvitas.calculation.input_runner] [PREPARE_INPUT_STEP] Wannier90 step prepared: modified_input=.../diamond.win
-[qv-daemon] [INFO] [quantumvitas.core.engines.qe_calculation] [RUN_STEP] Starting step execution: step_type=w90_preproc, ...
-[qv-daemon] [INFO] [quantumvitas.core.engines.qe_calculation] [RUN_STEP] Built command: .../wannier90.x -pp diamond
-[qv-daemon] [INFO] [quantumvitas.core.engines.qe_calculation] [RUN_STEP] uses_stdin: False (step_type=w90_preproc)
+[qms-daemon] [INFO] [qmatsuite.core.engines.qe_calculation] [RUN_STEP] Starting step execution: step_type=scf, ...
+[qms-daemon] [INFO] [qmatsuite.core.engines.qe_calculation] [RUN_STEP] Starting step execution: step_type=nscf, ...
+[qms-daemon] [INFO] [qmatsuite.calculation.input_runner] [PREPARE_INPUT_STEP] Wannier90 step detected: step_type=w90_preproc
+[qms-daemon] [INFO] [qmatsuite.calculation.input_runner] [PREPARE_INPUT_STEP] Wannier90 step prepared: modified_input=.../diamond.win
+[qms-daemon] [INFO] [qmatsuite.core.engines.qe_calculation] [RUN_STEP] Starting step execution: step_type=w90_preproc, ...
+[qms-daemon] [INFO] [qmatsuite.core.engines.qe_calculation] [RUN_STEP] Built command: .../wannier90.x -pp diamond
+[qms-daemon] [INFO] [qmatsuite.core.engines.qe_calculation] [RUN_STEP] uses_stdin: False (step_type=w90_preproc)
 
 # ❌ 缺失：pw2wannier90 的 PREPARE_INPUT_STEP 和 RUN_STEP 日志
 # ❌ 缺失：w90_run 的日志
@@ -56,37 +56,37 @@
 
 ### 2.1 修复列表（按时间顺序）
 
-#### 修复 1: pw2wannier90 命令格式 (`src/quantumvitas/core/engines/qe.py`)
+#### 修复 1: pw2wannier90 命令格式 (`src/qmatsuite/core/engines/qe.py`)
 - **问题**: 使用 stdin 重定向导致 Errno 21
 - **修复**: 改为 `pw2wannier90.x -i pw2wan.in` 格式
 - **状态**: ✅ 已实施
 
-#### 修复 2: uses_stdin 方法 (`src/quantumvitas/core/engines/qe.py`)
+#### 修复 2: uses_stdin 方法 (`src/qmatsuite/core/engines/qe.py`)
 - **问题**: pw2wannier90 被标记为使用 stdin
 - **修复**: `uses_stdin("pw2wannier90")` 返回 `False`
 - **状态**: ✅ 已实施
 
-#### 修复 3: build_command 路径处理 (`src/quantumvitas/core/engines/qe.py`)
+#### 修复 3: build_command 路径处理 (`src/qmatsuite/core/engines/qe.py`)
 - **问题**: 路径可能被错误解析为 `'.'`
 - **修复**: 使用新变量，添加安全检查，确保转换为相对路径
 - **状态**: ✅ 已实施
 
-#### 修复 4: run_step 验证逻辑 (`src/quantumvitas/core/engines/qe_calculation.py`)
+#### 修复 4: run_step 验证逻辑 (`src/qmatsuite/core/engines/qe_calculation.py`)
 - **问题**: 缺少对 `'.'` 或目录路径的验证
 - **修复**: 添加详细的路径验证和日志
 - **状态**: ✅ 已实施
 
-#### 修复 5: prepare_input_step 安全检查 (`src/quantumvitas/calculation/input_runner.py`)
+#### 修复 5: prepare_input_step 安全检查 (`src/qmatsuite/calculation/input_runner.py`)
 - **问题**: Wannier90 步骤缺少路径验证
 - **修复**: 添加完整的安全检查和日志
 - **状态**: ✅ 已实施
 
-#### 修复 6: run_prepared_step 路径转换 (`src/quantumvitas/calculation/input_runner.py`)
+#### 修复 6: run_prepared_step 路径转换 (`src/qmatsuite/calculation/input_runner.py`)
 - **问题**: 绝对路径可能传递给 `-i` 选项
 - **修复**: 确保转换为相对路径
 - **状态**: ✅ 已实施
 
-#### 修复 7: ensure_qe_pseudos 安全检查 (`src/quantumvitas/core/pseudo.py`)
+#### 修复 7: ensure_qe_pseudos 安全检查 (`src/qmatsuite/core/pseudo.py`)
 - **问题**: 可能被调用时传入 `'.'` 路径
 - **修复**: 添加安全检查，跳过 Wannier90 文件的解析
 - **状态**: ✅ 已实施
@@ -102,7 +102,7 @@
 
 ## 三、Code Review 发现
 
-### 3.1 步骤执行流程 (`src/quantumvitas/calculation/runner.py`)
+### 3.1 步骤执行流程 (`src/qmatsuite/calculation/runner.py`)
 
 ```python
 class CalculationRunner:
@@ -259,15 +259,15 @@ if step_status != StepStatus.SUCCESS:
 
 ### 5.3 需要检查的代码路径
 
-1. **`step.run()` 的实现** (`src/quantumvitas/calculation/step.py`):
+1. **`step.run()` 的实现** (`src/qmatsuite/calculation/step.py`):
    - 是否正确处理异常？
    - 是否正确返回 `StepResult`？
 
-2. **`run_input_step()` 的实现** (`src/quantumvitas/calculation/input_runner.py`):
+2. **`run_input_step()` 的实现** (`src/qmatsuite/calculation/input_runner.py`):
    - 是否正确处理 Wannier90 步骤？
    - 是否可能抛出异常？
 
-3. **`QECalculationRunner.run_step()` 的实现** (`src/quantumvitas/core/engines/qe_calculation.py`):
+3. **`QECalculationRunner.run_step()` 的实现** (`src/qmatsuite/core/engines/qe_calculation.py`):
    - 对于非 stdin 步骤，是否正确处理？
    - 是否可能返回 `success=False` 但没有错误信息？
 
@@ -346,16 +346,16 @@ if step_status != StepStatus.SUCCESS:
 ## 附录：相关文件列表
 
 ### 修改的文件
-- `src/quantumvitas/core/engines/qe.py`
-- `src/quantumvitas/core/engines/qe_calculation.py`
-- `src/quantumvitas/calculation/input_runner.py`
-- `src/quantumvitas/core/pseudo.py`
+- `src/qmatsuite/core/engines/qe.py`
+- `src/qmatsuite/core/engines/qe_calculation.py`
+- `src/qmatsuite/calculation/input_runner.py`
+- `src/qmatsuite/core/pseudo.py`
 
 ### 关键代码位置
-- `src/quantumvitas/calculation/runner.py:150` - 步骤执行循环
-- `src/quantumvitas/calculation/step.py:69` - Step.run() 方法
-- `src/quantumvitas/calculation/input_runner.py:389` - run_input_step() 方法
-- `src/quantumvitas/core/engines/qe_calculation.py:122` - run_step() 方法
+- `src/qmatsuite/calculation/runner.py:150` - 步骤执行循环
+- `src/qmatsuite/calculation/step.py:69` - Step.run() 方法
+- `src/qmatsuite/calculation/input_runner.py:389` - run_input_step() 方法
+- `src/qmatsuite/core/engines/qe_calculation.py:122` - run_step() 方法
 
 ### 相关文档
 - `docs/BUGFIX_PW2WANNIER90_FILENAME.md`

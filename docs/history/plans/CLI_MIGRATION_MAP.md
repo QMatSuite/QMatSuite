@@ -7,11 +7,11 @@
 **Audit Summary**:
 - Total violations: 142
 - Bare resolve_* calls: 3
-- Single file: `src/quantumvitas/cli/main.py`
+- Single file: `src/qmatsuite/cli/main.py`
 
 ## Top 10 Kernel Modules by Import Count
 
-1. **quantumvitas.core.resolution** (30 imports)
+1. **qmatsuite.core.resolution** (30 imports)
    - `build_resource_index`: 10 uses
    - `require_calculation`: 5 uses
    - `require_structure`: 4 uses
@@ -22,15 +22,15 @@
    - `resolve_structure`: 1 use
    - Other symbols: 3 uses
 
-2. **quantumvitas.core.project_utils** (30 imports)
+2. **qmatsuite.core.project_utils** (30 imports)
    - Many utility functions used across CLI commands
    - Functions: `load_project_config`, `save_project_config`, `find_project_root`, `collect_slugs`, `entry_matches`, `entry_display_name`, `ensure_structure_entry_defaults`, `ensure_calculation_entry_defaults`, `find_structure_entry`, `find_calculation_entry`, `calculation_directory`, `structure_reference_tokens`, `spec_uses_structure`, `calculations_using_structure`, `calculation_identifiers`, `calculations_depending_on`, `move_to_trash`, `apply_structure_rename`, `apply_calculation_rename`, `delete_calculation_entry`, `require_project_root`, `find_enclosing_calculation`, `find_step_in_calculation`, `find_resource_auto`, `resolve_resource`
 
-3. **quantumvitas.core.context** (11 imports)
+3. **qmatsuite.core.context** (11 imports)
    - `find_path_context_from_pwd`: 6 uses
    - `ContextNotFoundError`: 5 uses
 
-4. **quantumvitas.core.selectors** (7 imports)
+4. **qmatsuite.core.selectors** (7 imports)
    - `extract_calculation_selector_from_entry`: 1 use
    - `extract_structure_selector_from_entry`: 1 use
    - `extract_step_selector_from_entry`: 1 use
@@ -39,7 +39,7 @@
    - `get_structure_selector_from_entry_or_raise`: 1 use
    - `get_step_selector_from_entry_or_raise`: 1 use
 
-5. **quantumvitas.core.resources** (6 imports)
+5. **qmatsuite.core.resources** (6 imports)
    - `ResourceMeta`: 1 use
    - `ensure_relative_path`: 1 use
    - `generate_resource_id`: 1 use
@@ -47,32 +47,32 @@
    - `meta_from_name`: 1 use
    - `slugify`: 1 use
 
-6. **quantumvitas.calculation.structure_steps** (6 imports)
+6. **qmatsuite.calculation.structure_steps** (6 imports)
    - `StructureStepSpec`: 2 uses
    - `generate_qe_input_from_spec`: 1 use
    - `generate_qe_input_from_structure`: 1 use
    - `materialize_step_spec`: 1 use
    - `detect_runtime_control_keys`: 1 use
 
-7. **quantumvitas.calculation.input_runner** (5 imports)
+7. **qmatsuite.calculation.input_runner** (5 imports)
    - `ParameterOverride`: 1 use
    - `apply_card_overrides_to_qe_input`: 1 use
    - `apply_species_overrides_to_qe_input`: 1 use
    - `detect_project_root`: 1 use
    - `run_input_step`: 1 use
 
-8. **quantumvitas.io** (5 imports)
+8. **qmatsuite.io** (5 imports)
    - `QEInputGenerator`: 1 use
    - `read_structure`: 3 uses
    - `write_structure`: 1 use
 
-9. **quantumvitas.analysis.parsers** (4 imports)
+9. **qmatsuite.analysis.parsers** (4 imports)
    - `parse_scf_output`: 1 use
    - `parse_dos_data`: 1 use
    - `parse_bands_gnu`: 1 use
    - `DOSData`: 1 use
 
-10. **quantumvitas.analysis.plotting** (4 imports)
+10. **qmatsuite.analysis.plotting** (4 imports)
     - `plot_dos`: 1 use
     - `plot_bands`: 1 use
     - `plot_scf_convergence`: 1 use
@@ -96,15 +96,15 @@
 - `run_step_command` (uses `build_resource_index`)
 
 **Kernel Modules**:
-- `quantumvitas.core.resolution` (primary)
-- `quantumvitas.core.context` (secondary)
+- `qmatsuite.core.resolution` (primary)
+- `qmatsuite.core.context` (secondary)
 
-**QVService Wrappers Needed** (Chunk 1):
-1. ✅ `build_resource_index()` - **EXISTS** (already in QVService)
-2. ✅ `resolve_calculation_ref()` - **EXISTS** (already in QVService)
-3. ✅ `resolve_step_ref()` - **EXISTS** (already in QVService)
-4. ✅ `resolve_structure_ref()` - **EXISTS** (already in QVService)
-5. ✅ `find_path_context_from_pwd()` - **EXISTS** (static method in QVService, line 9585)
+**QMSService Wrappers Needed** (Chunk 1):
+1. ✅ `build_resource_index()` - **EXISTS** (already in QMSService)
+2. ✅ `resolve_calculation_ref()` - **EXISTS** (already in QMSService)
+3. ✅ `resolve_step_ref()` - **EXISTS** (already in QMSService)
+4. ✅ `resolve_structure_ref()` - **EXISTS** (already in QMSService)
+5. ✅ `find_path_context_from_pwd()` - **EXISTS** (static method in QMSService, line 9585)
 6. ❌ `require_calculation_ref()` - **NEEDED** (wrapper for `require_calculation`)
 7. ❌ `require_structure_ref()` - **NEEDED** (wrapper for `require_structure`)
 8. ❌ `require_step_ref()` - **NEEDED** (wrapper for `require_step`)
@@ -113,12 +113,12 @@
 **Migration Pattern**:
 ```python
 # BEFORE:
-from quantumvitas.core.resolution import build_resource_index, require_calculation
+from qmatsuite.core.resolution import build_resource_index, require_calculation
 index = build_resource_index(project_root)
 calc = require_calculation(project_root, selector, config=config, index=index)
 
 # AFTER:
-svc = QVService(project_root)
+svc = QMSService(project_root)
 index = svc.build_resource_index()
 calc_ref = svc.require_calculation_ref(selector, index=index)
 ```
@@ -135,9 +135,9 @@ calc_ref = svc.require_calculation_ref(selector, index=index)
 - Various helper functions
 
 **Kernel Modules**:
-- `quantumvitas.core.project_utils` (entry lookup subset)
+- `qmatsuite.core.project_utils` (entry lookup subset)
 
-**QVService Wrappers Needed**:
+**QMSService Wrappers Needed**:
 1. `find_structure_entry_ref()` - wrapper for `find_structure_entry`
 2. `find_calculation_entry_ref()` - wrapper for `find_calculation_entry`
 3. `entry_matches_ref()` - wrapper for `entry_matches`
@@ -153,9 +153,9 @@ calc_ref = svc.require_calculation_ref(selector, index=index)
 - `configure_calculation_command`
 
 **Kernel Modules**:
-- `quantumvitas.core.project_utils` (resource management subset)
+- `qmatsuite.core.project_utils` (resource management subset)
 
-**QVService Wrappers Needed**:
+**QMSService Wrappers Needed**:
 1. `move_to_trash_ref()` - wrapper for `move_to_trash`
 2. `apply_structure_rename_ref()` - wrapper for `apply_structure_rename`
 3. `apply_calculation_rename_ref()` - wrapper for `apply_calculation_rename`
@@ -170,10 +170,10 @@ calc_ref = svc.require_calculation_ref(selector, index=index)
 - Multiple commands using selectors
 
 **Kernel Modules**:
-- `quantumvitas.core.selectors`
-- `quantumvitas.core.resources`
+- `qmatsuite.core.selectors`
+- `qmatsuite.core.resources`
 
-**QVService Wrappers Needed**:
+**QMSService Wrappers Needed**:
 1. `extract_calculation_selector_ref()` - wrapper for `extract_calculation_selector_from_entry`
 2. `extract_structure_selector_ref()` - wrapper for `extract_structure_selector_from_entry`
 3. `extract_step_selector_ref()` - wrapper for `extract_step_selector_from_entry`
@@ -191,14 +191,14 @@ calc_ref = svc.require_calculation_ref(selector, index=index)
 - `_run_standalone_step`
 
 **Kernel Modules**:
-- `quantumvitas.calculation.runner`
-- `quantumvitas.calculation.structure_steps`
-- `quantumvitas.calculation.input_runner`
-- `quantumvitas.calculation.types`
+- `qmatsuite.calculation.runner`
+- `qmatsuite.calculation.structure_steps`
+- `qmatsuite.calculation.input_runner`
+- `qmatsuite.calculation.types`
 
-**QVService Wrappers Needed**:
-1. `run_calculation_ref()` - **EXISTS** (already in QVService)
-2. `run_step_ref()` - **EXISTS** (already in QVService)
+**QMSService Wrappers Needed**:
+1. `run_calculation_ref()` - **EXISTS** (already in QMSService)
+2. `run_step_ref()` - **EXISTS** (already in QMSService)
 3. `generate_qe_input_from_spec_ref()` - wrapper for `generate_qe_input_from_spec`
 4. `generate_qe_input_from_structure_ref()` - wrapper for `generate_qe_input_from_structure`
 5. `apply_card_overrides_ref()` - wrapper for `apply_card_overrides_to_qe_input`
@@ -215,18 +215,18 @@ calc_ref = svc.require_calculation_ref(selector, index=index)
 - `init_calculation_command`
 
 **Kernel Modules**:
-- `quantumvitas.analysis.parsers`
-- `quantumvitas.analysis.plotting`
-- `quantumvitas.io`
-- `quantumvitas.analysis.structure_viz`
+- `qmatsuite.analysis.parsers`
+- `qmatsuite.analysis.plotting`
+- `qmatsuite.io`
+- `qmatsuite.analysis.structure_viz`
 
-**QVService Wrappers Needed**:
+**QMSService Wrappers Needed**:
 1. `read_structure_ref()` - wrapper for `read_structure`
 2. `write_structure_ref()` - wrapper for `write_structure`
 3. `parse_scf_output_ref()` - wrapper for `parse_scf_output`
 4. `parse_dos_data_ref()` - wrapper for `parse_dos_data`
 5. `parse_bands_gnu_ref()` - wrapper for `parse_bands_gnu`
-6. `visualize_structure_ref()` - **EXISTS** (already in QVService)
+6. `visualize_structure_ref()` - **EXISTS** (already in QMSService)
 
 ### Chunk 7: Templates & Initialization (10-15 call sites)
 **Target**: Template copying, step defaults, kpath generation
@@ -236,11 +236,11 @@ calc_ref = svc.require_calculation_ref(selector, index=index)
 - `init_step_command`
 
 **Kernel Modules**:
-- `quantumvitas.core.templates`
-- `quantumvitas.calculation.step_defaults`
-- `quantumvitas.analysis.kpath`
+- `qmatsuite.core.templates`
+- `qmatsuite.calculation.step_defaults`
+- `qmatsuite.analysis.kpath`
 
-**QVService Wrappers Needed**:
+**QMSService Wrappers Needed**:
 1. `copy_calculation_template_ref()` - wrapper for `copy_calculation_template`
 2. `copy_structure_template_ref()` - wrapper for `copy_structure_template`
 3. `list_calculation_templates_ref()` - wrapper for `list_calculation_templates`
@@ -256,12 +256,12 @@ calc_ref = svc.require_calculation_ref(selector, index=index)
 - Various helper functions
 
 **Kernel Modules**:
-- `quantumvitas.calculation.species_config`
-- `quantumvitas.calculation.naming`
-- `quantumvitas.io.model`
-- `quantumvitas.calculation.importers`
+- `qmatsuite.calculation.species_config`
+- `qmatsuite.calculation.naming`
+- `qmatsuite.io.model`
+- `qmatsuite.calculation.importers`
 
-**QVService Wrappers Needed**:
+**QMSService Wrappers Needed**:
 1. `configure_species_map_ref()` - wrapper for `configure_species_map`
 2. `find_band_analysis_files_ref()` - wrapper for `find_band_analysis_files`
 3. `find_calculation_raw_dir_ref()` - wrapper for `find_calculation_raw_dir`
@@ -269,15 +269,15 @@ calc_ref = svc.require_calculation_ref(selector, index=index)
 
 ## Migration Strategy
 
-1. **Wrapper-first approach**: Never remove an import until a QVService wrapper exists
+1. **Wrapper-first approach**: Never remove an import until a QMSService wrapper exists
 2. **Small chunks**: 10-20 call sites per chunk to keep changes manageable
 3. **Test after each chunk**: Run full test suite after each chunk migration
 4. **Incremental commits**: Commit after each successful chunk
 
 ## Chunk 1 Implementation Plan
 
-### Step 1: Add Missing QVService Wrappers
-Add these methods to `QVService` class in `src/quantumvitas/api.py`:
+### Step 1: Add Missing QMSService Wrappers
+Add these methods to `QMSService` class in `src/qmatsuite/api.py`:
 
 1. `require_calculation_ref(selector, *, index=None, config=None) -> ResolvedResource`
 2. `require_structure_ref(selector, *, index=None, config=None) -> ResolvedResource`
@@ -291,8 +291,8 @@ Create/extend tests in `tests/unit/test_api_*.py` to verify:
 - Return types match expected ResolvedResource
 
 ### Step 3: Verify Importability
-- `python -m py_compile src/quantumvitas/cli/main.py`
-- `python -c "import quantumvitas.cli.main; print('CLI import ok')"`
+- `python -m py_compile src/qmatsuite/cli/main.py`
+- `python -c "import qmatsuite.cli.main; print('CLI import ok')"`
 - `python -m pytest tests/gates/test_import_rules.py -v -rs`
 - `python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
 
@@ -301,5 +301,5 @@ Create/extend tests in `tests/unit/test_api_*.py` to verify:
 - All wrappers should be instance methods (use `self.project_root`)
 - Keep wrapper names generic (no `*_for_cli` suffix)
 - Prefer returning dicts/strings over re-exporting kernel types
-- Exception handling: wrap kernel exceptions in `QVServiceError` where appropriate
+- Exception handling: wrap kernel exceptions in `QMSServiceError` where appropriate
 

@@ -9,11 +9,11 @@ Fix: Added "bandspw" to applies_to_step_types.
 import pytest
 import yaml
 
-from quantumvitas.presets.dimensions import (
+from qmatsuite.presets.dimensions import (
     OccupationsSchemeOption,
     MagnetismOption,
 )
-from quantumvitas.presets.variants_registry import (
+from qmatsuite.presets.variants_registry import (
     get_variant,
     compile_dimension_patch_for_step,
     OCCUPATIONS_SCHEME_VARIANT,
@@ -80,7 +80,7 @@ class TestOccupationsSchemeBandspw:
 
     def test_apply_presets_to_bandspw_step_file(self, tmp_path):
         """Full integration: apply_presets_to_step writes occupations to bandspw step."""
-        from quantumvitas.presets.integration import apply_presets_to_step
+        from qmatsuite.presets.integration import apply_presets_to_step
 
         step_path = tmp_path / "test.step.yaml"
         initial_content = {

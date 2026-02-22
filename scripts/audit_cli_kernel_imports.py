@@ -2,10 +2,10 @@
 """
 Audit CLI kernel imports to generate a dependency manifest.
 
-Scans src/quantumvitas/cli/*.py using AST and reports all forbidden
-imports (quantumvitas.core, quantumvitas.calculation, quantumvitas.analysis,
-quantumvitas.io, quantumvitas.drivers, quantumvitas.engine, quantumvitas.workflow,
-quantumvitas.presets).
+Scans src/qmatsuite/cli/*.py using AST and reports all forbidden
+imports (qmatsuite.core, qmatsuite.calculation, qmatsuite.analysis,
+qmatsuite.io, qmatsuite.drivers, qmatsuite.engine, qmatsuite.workflow,
+qmatsuite.presets).
 
 Also detects bare resolve_* function calls (not method calls like svc.resolve_*).
 
@@ -26,17 +26,17 @@ from typing import Any, Dict, List, Optional
 
 # Forbidden prefixes (must match test_import_rules.py)
 FORBIDDEN_PREFIXES = (
-    "quantumvitas.core",
-    "quantumvitas.calculation",
-    "quantumvitas.analysis",
-    "quantumvitas.io",
-    "quantumvitas.drivers",
-    "quantumvitas.engine",
-    "quantumvitas.workflow",
-    "quantumvitas.presets",
+    "qmatsuite.core",
+    "qmatsuite.calculation",
+    "qmatsuite.analysis",
+    "qmatsuite.io",
+    "qmatsuite.drivers",
+    "qmatsuite.engine",
+    "qmatsuite.workflow",
+    "qmatsuite.presets",
 )
 
-# Bare resolve_* functions that should be called via QVService
+# Bare resolve_* functions that should be called via QMSService
 BARE_RESOLVE_FUNCTIONS = {
     "resolve_calculation",
     "resolve_step",
@@ -127,7 +127,7 @@ def audit_cli_imports(cli_dir: Path) -> Dict[str, Any]:
     Audit CLI directory for forbidden kernel imports and bare resolve_* calls.
     
     Args:
-        cli_dir: Path to CLI directory (src/quantumvitas/cli)
+        cli_dir: Path to CLI directory (src/qmatsuite/cli)
         
     Returns:
         JSON-serializable manifest dict
@@ -271,7 +271,7 @@ def main():
     args = parser.parse_args()
     
     repo_root = Path(__file__).parent.parent
-    cli_dir = repo_root / "src" / "quantumvitas" / "cli"
+    cli_dir = repo_root / "src" / "qmatsuite" / "cli"
     
     if not cli_dir.exists():
         print(f"Error: CLI directory not found: {cli_dir}", file=sys.stderr)

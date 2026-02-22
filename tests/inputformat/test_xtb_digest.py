@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.xtb.parsers.output import (
+from qmatsuite.drivers.xtb.parsers.output import (
     HARTREE_TO_EV,
     XTBDigest,
     XTBOutputParser,
@@ -99,7 +99,7 @@ class TestXTBOutputParserClass:
         assert d.error_message is not None
 
     def test_registry(self):
-        from quantumvitas.parsers.registry import get_parser
+        from qmatsuite.parsers.registry import get_parser
 
         cls = get_parser("xtb", "scf_digest")
         assert cls is XTBOutputParser

@@ -43,73 +43,73 @@ test.describe('Demo Project UI: si_bands_demo comprehensive', () => {
       projectName: 'e2e-demo-ui',
       parentDir: projectDir,
     });
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-home-project')).toBeVisible({ timeout: 10000 });
 
     // =============================================
     // SECTION 1: Structures view
     // =============================================
     await navigateToView(appPage, 'structures');
-    await expect(appPage.getByTestId('qv-structures-view')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-structures-view')).toBeVisible({ timeout: 10000 });
 
     // Verify structure list (1 Si structure from demo)
-    const structureRows = appPage.getByTestId('qv-structure-row');
+    const structureRows = appPage.getByTestId('qms-structure-row');
     await expect(structureRows).toHaveCount(1, { timeout: 10000 });
 
     // Verify count text
-    const structureCount = appPage.getByTestId('qv-structures-count');
+    const structureCount = appPage.getByTestId('qms-structures-count');
     await expect(structureCount).toBeVisible();
     await expect(structureCount).toContainText('1 total');
 
     // Click structure to open 3D viewer
     await structureRows.first().click();
-    const viewerPanel = appPage.getByTestId('qv-structure-viewer-panel');
+    const viewerPanel = appPage.getByTestId('qms-structure-viewer-panel');
     await expect(viewerPanel).toBeVisible({ timeout: 15000 });
     await expect(viewerPanel).toContainText('Si', { timeout: 5000 });
 
     // Verify 3D viewer container rendered
-    await expect(appPage.getByTestId('qv-structure-viewer')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-structure-viewer')).toBeVisible({ timeout: 10000 });
 
     // =============================================
     // SECTION 2: Calculations view
     // =============================================
     await navigateToView(appPage, 'calculations');
-    const calcView = appPage.getByTestId('qv-calculations-view');
+    const calcView = appPage.getByTestId('qms-calculations-view');
     await expect(calcView).toBeVisible({ timeout: 10000 });
 
     // Verify Overview & Steps tab is active by default
-    const overviewTab = appPage.getByTestId('qv-calc-tab-overview');
+    const overviewTab = appPage.getByTestId('qms-calc-tab-overview');
     await expect(overviewTab).toBeVisible();
     await expect(overviewTab).toHaveClass(/calculations-workspace-tab--active/);
 
     // Verify exactly one calculation row
-    const calcRows = appPage.getByTestId('qv-calculation-row');
+    const calcRows = appPage.getByTestId('qms-calculation-row');
     await expect(calcRows).toHaveCount(1, { timeout: 10000 });
 
     // Verify calculation count displayed
-    const calcCount = appPage.getByTestId('qv-calculations-count');
+    const calcCount = appPage.getByTestId('qms-calculations-count');
     await expect(calcCount).toBeVisible();
     await expect(calcCount).toContainText('1');
 
     // Click calculation to see detail
     await calcRows.first().click();
-    const detailPanel = appPage.getByTestId('qv-calculation-detail');
+    const detailPanel = appPage.getByTestId('qms-calculation-detail');
     await expect(detailPanel).toBeVisible({ timeout: 15000 });
 
     // Verify detail panel shows name and subtitle
     await expect(detailPanel).toContainText('Si bands', { timeout: 5000 });
-    await expect(detailPanel.locator('.qv-calc-header-subtitle')).toContainText('Calculation');
+    await expect(detailPanel.locator('.qms-calc-header-subtitle')).toContainText('Calculation');
 
     // Verify Run Calculation button visible
-    await expect(appPage.getByTestId('qv-btn-run-calculation')).toBeVisible();
+    await expect(appPage.getByTestId('qms-btn-run-calculation')).toBeVisible();
 
     // Verify steps list is visible
-    const stepsList = appPage.getByTestId('qv-steps-list');
+    const stepsList = appPage.getByTestId('qms-steps-list');
     await expect(stepsList).toBeVisible({ timeout: 10000 });
 
     // =============================================
     // SECTION 3: Step detail and YAML verification
     // =============================================
-    const stepRows = appPage.locator('[data-testid^="qv-step-row-"]');
+    const stepRows = appPage.locator('[data-testid^="qms-step-row-"]');
     const stepCount = await stepRows.count();
     expect(stepCount).toBeGreaterThan(0);
 
@@ -120,7 +120,7 @@ test.describe('Demo Project UI: si_bands_demo comprehensive', () => {
       const stepRow = stepRows.nth(i);
 
       // Get step type and step ID BEFORE entering focus mode
-      // (focus mode unmounts CalculationDetailPanel, removing qv-step-row-* from DOM)
+      // (focus mode unmounts CalculationDetailPanel, removing qms-step-row-* from DOM)
       const stepTypeBadge = stepRow.locator('.step-type-badge');
       await expect(stepTypeBadge).toBeVisible({ timeout: 5000 });
       const stepType = (await stepTypeBadge.textContent())?.trim().toLowerCase();
@@ -135,11 +135,11 @@ test.describe('Demo Project UI: si_bands_demo comprehensive', () => {
       await stepButton.click({ timeout: 5000 });
 
       // Verify Step Focus mode activated
-      await expect(appPage.getByTestId('qv-calc-overview-tab-focus')).toBeVisible({ timeout: 10000 });
-      await expect(appPage.getByTestId('qv-compact-step-list')).toBeVisible({ timeout: 5000 });
+      await expect(appPage.getByTestId('qms-calc-overview-tab-focus')).toBeVisible({ timeout: 10000 });
+      await expect(appPage.getByTestId('qms-compact-step-list')).toBeVisible({ timeout: 5000 });
 
       // Verify step detail panel visible
-      const stepDetail = appPage.getByTestId('qv-step-detail');
+      const stepDetail = appPage.getByTestId('qms-step-detail');
       await expect(stepDetail).toBeVisible({ timeout: 10000 });
 
       // Verify detail panel step type matches
@@ -147,8 +147,8 @@ test.describe('Demo Project UI: si_bands_demo comprehensive', () => {
       await expect(detailBadge).toHaveText(new RegExp(stepType!, 'i'), { timeout: 5000 });
 
       // Verify step ID and file path
-      const stepIdText = await appPage.getByTestId('qv-step-id').textContent();
-      const stepFilePath = await appPage.getByTestId('qv-step-file-path').textContent();
+      const stepIdText = await appPage.getByTestId('qms-step-id').textContent();
+      const stepFilePath = await appPage.getByTestId('qms-step-file-path').textContent();
       expect(stepIdText).toBeTruthy();
       expect(stepFilePath).toBeTruthy();
 
@@ -177,9 +177,9 @@ test.describe('Demo Project UI: si_bands_demo comprehensive', () => {
       }
 
       // Exit Step Focus mode
-      await appPage.getByTestId('qv-btn-back-to-overview').click();
-      await expect(appPage.getByTestId('qv-calc-overview-tab')).toBeVisible({ timeout: 5000 });
-      await expect(appPage.getByTestId('qv-compact-step-list')).not.toBeVisible({ timeout: 2000 });
+      await appPage.getByTestId('qms-btn-back-to-overview').click();
+      await expect(appPage.getByTestId('qms-calc-overview-tab')).toBeVisible({ timeout: 5000 });
+      await expect(appPage.getByTestId('qms-compact-step-list')).not.toBeVisible({ timeout: 2000 });
       await appPage.waitForTimeout(200);
     }
 

@@ -12,7 +12,7 @@
 
 ## 1. Objective
 
-Extract all PySCF-specific code from kernel files into a self-contained driver bundle at `src/quantumvitas/drivers/pyscf/`. After this migration:
+Extract all PySCF-specific code from kernel files into a self-contained driver bundle at `src/qmatsuite/drivers/pyscf/`. After this migration:
 
 1. All PySCF code lives in `drivers/pyscf/`
 2. PySCF is registered via DriverRegistry
@@ -25,7 +25,7 @@ Extract all PySCF-specific code from kernel files into a self-contained driver b
 
 ### 2.1 Handler Code
 
-**Source**: `src/quantumvitas/execution/handlers.py`
+**Source**: `src/qmatsuite/execution/handlers.py`
 
 | Function | Lines | Description |
 |----------|-------|-------------|
@@ -33,7 +33,7 @@ Extract all PySCF-specific code from kernel files into a self-contained driver b
 
 ### 2.2 Recipe Code
 
-**Source**: `src/quantumvitas/execution/recipes.py`
+**Source**: `src/qmatsuite/execution/recipes.py`
 
 | Class | Lines | Description |
 |-------|-------|-------------|
@@ -57,15 +57,15 @@ pyscf_casscf, pyscf_casci, pyscf_dft, pyscf_tddft
 ### 2.5 Additional PySCF Logic
 
 **Locations**:
-- `src/quantumvitas/calculation/structure_steps.py` - PYSCF_STEP_TYPES
-- `src/quantumvitas/workflow/generalized_steps.py` - pyscf startswith checks
+- `src/qmatsuite/calculation/structure_steps.py` - PYSCF_STEP_TYPES
+- `src/qmatsuite/workflow/generalized_steps.py` - pyscf startswith checks
 
 ---
 
 ## 3. Target Structure
 
 ```
-src/quantumvitas/drivers/pyscf/
+src/qmatsuite/drivers/pyscf/
 ├── __init__.py          # Registration (15 lines)
 ├── driver.py            # PySCFDriver class (70 lines)
 ├── handler.py           # pyscf_chain_handler (128 lines, moved)
@@ -81,16 +81,16 @@ src/quantumvitas/drivers/pyscf/
 ### Step 1: Create Directory Structure
 
 ```bash
-mkdir -p src/quantumvitas/drivers/pyscf
-touch src/quantumvitas/drivers/pyscf/__init__.py
-touch src/quantumvitas/drivers/pyscf/driver.py
-touch src/quantumvitas/drivers/pyscf/handler.py
-touch src/quantumvitas/drivers/pyscf/recipe.py
+mkdir -p src/qmatsuite/drivers/pyscf
+touch src/qmatsuite/drivers/pyscf/__init__.py
+touch src/qmatsuite/drivers/pyscf/driver.py
+touch src/qmatsuite/drivers/pyscf/handler.py
+touch src/qmatsuite/drivers/pyscf/recipe.py
 ```
 
 ### Step 2: Create driver.py
 
-**Create file**: `src/quantumvitas/drivers/pyscf/driver.py`
+**Create file**: `src/qmatsuite/drivers/pyscf/driver.py`
 
 ```python
 """PySCF engine driver.
@@ -103,7 +103,7 @@ This driver handles all PySCF quantum chemistry calculations including:
 - TD-DFT excited states
 """
 
-from quantumvitas.core.driver_protocol import (
+from qmatsuite.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
     WorkdirPolicy,
@@ -276,7 +276,7 @@ class PySCFDriver(BaseEngineDriver):
 
 ### Step 3: Move Handler to handler.py
 
-**Create file**: `src/quantumvitas/drivers/pyscf/handler.py`
+**Create file**: `src/qmatsuite/drivers/pyscf/handler.py`
 
 **Copy** the `pyscf_chain_handler` function from `handlers.py` (lines 757-885).
 
@@ -292,9 +292,9 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from quantumvitas.core.job import Job
-from quantumvitas.core.step_context import StepContext
-from quantumvitas.core.job_result import JobResult
+from qmatsuite.core.job import Job
+from qmatsuite.core.step_context import StepContext
+from qmatsuite.core.job_result import JobResult
 
 if TYPE_CHECKING:
     pass
@@ -326,7 +326,7 @@ def pyscf_chain_handler(job: Job, context: StepContext) -> JobResult:
 
 ### Step 4: Move Recipe to recipe.py
 
-**Create file**: `src/quantumvitas/drivers/pyscf/recipe.py`
+**Create file**: `src/qmatsuite/drivers/pyscf/recipe.py`
 
 **Copy** the `PySCFRecipe` class from `recipes.py` (lines 583-692).
 
@@ -340,7 +340,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from quantumvitas.execution.recipes import BaseRecipe
+from qmatsuite.execution.recipes import BaseRecipe
 
 logger = logging.getLogger(__name__)
 
@@ -362,17 +362,17 @@ class PySCFRecipe(BaseRecipe):
 
 ### Step 5: Create __init__.py
 
-**Create file**: `src/quantumvitas/drivers/pyscf/__init__.py`
+**Create file**: `src/qmatsuite/drivers/pyscf/__init__.py`
 
 ```python
 """PySCF driver bundle.
 
-This package provides the PySCF engine driver for QuantumVitas.
+This package provides the PySCF engine driver for QMatSuite.
 It handles all PySCF quantum chemistry calculations including
 HF, DFT, post-HF, and multiconfigurational methods.
 """
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import PySCFDriver
 
 # Register driver at import time
@@ -383,15 +383,15 @@ __all__ = ["PySCFDriver"]
 
 ### Step 6: Update drivers/__init__.py
 
-**File**: `src/quantumvitas/drivers/__init__.py`
+**File**: `src/qmatsuite/drivers/__init__.py`
 
 **Add** PySCF import:
 
 ```python
-from quantumvitas.drivers import qe_shim
-from quantumvitas.drivers import vasp
-from quantumvitas.drivers import orca
-from quantumvitas.drivers import pyscf  # ADD THIS LINE
+from qmatsuite.drivers import qe_shim
+from qmatsuite.drivers import vasp
+from qmatsuite.drivers import orca
+from qmatsuite.drivers import pyscf  # ADD THIS LINE
 ```
 
 ### Step 7: Remove PySCF from Kernel Files
@@ -410,9 +410,9 @@ from quantumvitas.drivers import pyscf  # ADD THIS LINE
 """Tests for PySCF driver bundle."""
 
 import pytest
-from quantumvitas.drivers.pyscf import PySCFDriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.pyscf import PySCFDriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestPySCFDriver:
@@ -469,7 +469,7 @@ class TestPySCFRegistration:
 
     def test_pyscf_registered(self):
         """PySCF should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("pyscf")
         driver = DriverRegistry.get_driver("pyscf")
@@ -477,7 +477,7 @@ class TestPySCFRegistration:
 
     def test_pyscf_step_types_registered(self):
         """PySCF step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("pyscf_scf")
         assert DriverRegistry.is_step_type_registered("pyscf_opt")
@@ -489,14 +489,14 @@ class TestPySCFIsolation:
     def test_handlers_no_pyscf_handler(self):
         """handlers.py should not contain pyscf_chain_handler."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/handlers.py").read_text()
+        source = Path("src/qmatsuite/execution/handlers.py").read_text()
 
         assert "def pyscf_chain_handler" not in source
 
     def test_recipes_no_pyscf_recipe(self):
         """recipes.py should not contain PySCFRecipe."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/recipes.py").read_text()
+        source = Path("src/qmatsuite/execution/recipes.py").read_text()
 
         assert "class PySCFRecipe" not in source
 ```

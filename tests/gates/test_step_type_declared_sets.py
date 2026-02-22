@@ -32,7 +32,7 @@ SCAN_DIRS = [
 # Files to skip (legitimate exemptions with reason)
 ALLOWLIST_PATTERNS = [
     # _vault is legacy archive
-    "src/quantumvitas/_vault/*",
+    "src/qmatsuite/_vault/*",
     # This gate file itself (contains test strings)
     "tests/gates/test_step_type_declared_sets.py",
     # Param mismatch gate contains signature definitions with type markers
@@ -57,7 +57,7 @@ def _build_gen_set() -> Set[str]:
 
     # Source 1: Registry (primary SSOT for step type specs)
     try:
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
 
         # registry._types is keyed by step_type_spec, values are StepTypeSpec
@@ -70,8 +70,8 @@ def _build_gen_set() -> Set[str]:
 
     # Source 2: DriverRegistry registered step types (from drivers)
     try:
-        from quantumvitas.core.driver_registry import DriverRegistry
-        import quantumvitas.drivers  # Ensure drivers are registered
+        from qmatsuite.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers  # Ensure drivers are registered
 
         # Get all registered step types from drivers
         for step_type_spec in DriverRegistry.get_all_step_types():
@@ -84,8 +84,8 @@ def _build_gen_set() -> Set[str]:
 
     # Source 3: Engine recipes (SUPPORTED_GEN_STEPS) - fallback if driver registry failed
     try:
-        from quantumvitas.core.driver_registry import DriverRegistry
-        import quantumvitas.drivers  # Ensure drivers are registered
+        from qmatsuite.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers  # Ensure drivers are registered
 
         for engine in DriverRegistry.get_all_engines():
             driver = DriverRegistry.get_driver(engine)
@@ -123,7 +123,7 @@ def _build_spec_set() -> Set[str]:
 
     # Source 1: Registry (primary SSOT for SPEC types)
     try:
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
 
         # registry._types is keyed by step_type_spec
@@ -135,8 +135,8 @@ def _build_spec_set() -> Set[str]:
 
     # Source 2: DriverRegistry registered step types (from drivers)
     try:
-        from quantumvitas.core.driver_registry import DriverRegistry
-        import quantumvitas.drivers  # Ensure drivers are registered
+        from qmatsuite.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers  # Ensure drivers are registered
 
         # Get all registered step types from drivers
         for step_type_spec in DriverRegistry.get_all_step_types():
@@ -147,8 +147,8 @@ def _build_spec_set() -> Set[str]:
 
     # Source 3: Engine recipes (compute SPEC = PREFIX + "_" + GEN)
     try:
-        from quantumvitas.core.driver_registry import DriverRegistry
-        import quantumvitas.drivers
+        from qmatsuite.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers
 
         for engine in DriverRegistry.get_all_engines():
             driver = DriverRegistry.get_driver(engine)
@@ -168,8 +168,8 @@ def _build_spec_set() -> Set[str]:
     # Also add all possible {prefix}_{gen} combinations for known prefixes
     # This ensures we don't miss any valid combinations
     try:
-        from quantumvitas.core.driver_registry import DriverRegistry
-        import quantumvitas.drivers
+        from qmatsuite.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers
 
         gen_types = _build_gen_set()
         for engine in DriverRegistry.get_all_engines():

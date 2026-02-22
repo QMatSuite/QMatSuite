@@ -43,13 +43,13 @@ The analysis pipeline backend was largely complete (53 registered parsers, 5 dom
 ### Backend (2 files)
 | File | Action |
 |------|--------|
-| `src/quantumvitas/core/analysis/dos/model.py` | EDIT: PDOS Series1D emission + spin-down flip |
+| `src/qmatsuite/core/analysis/dos/model.py` | EDIT: PDOS Series1D emission + spin-down flip |
 | `tests/core/analysis/test_dos_model.py` | NEW: 9 tests for PDOS series |
 
 ### GUI (7 files)
 | File | Action |
 |------|--------|
-| `gui/src/types/qv.ts` | EDIT: Add geometry frame types |
+| `gui/src/types/qms.ts` | EDIT: Add geometry frame types |
 | `gui/src/components/panels/CalculationAnalysisPanel.tsx` | EDIT: Object-type dispatch |
 | `gui/src/components/panels/AnalysisVizPanel.tsx` | EDIT: PDOS, convergence, field3d |
 | `gui/src/components/panels/TrajectoryVizPanel.tsx` | NEW |

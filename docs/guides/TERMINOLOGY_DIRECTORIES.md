@@ -9,10 +9,10 @@ This document clarifies the semantics of directory-related terms used across the
 | Term in code | Context | Current meaning | Recommended standard meaning | Notes/callsites |
 |-------------|---------|----------------|------------------------------|-----------------|
 | `raw_dir` (tests) | Tests | Fixture/template directory containing input files | `fixture_dir` or `template_dir` | `tests/integration/test_pw_step_specs.py`, `tests/integration/test_pw_scf_ibrav_step_specs.py` - READ-ONLY template directory |
-| `raw_dir` (product) | Product | Runtime I/O directory: `project/calc/raw/` | `calculation.raw_dir` (keep as-is) | `src/quantumvitas/calculation/calculation.py`, `src/quantumvitas/calculation/runner.py` - WRITABLE runtime directory |
+| `raw_dir` (product) | Product | Runtime I/O directory: `project/calc/raw/` | `calculation.raw_dir` (keep as-is) | `src/qmatsuite/calculation/calculation.py`, `src/qmatsuite/calculation/runner.py` - WRITABLE runtime directory |
 | `working_dir` (tests) | Tests | Base test directory (may contain fixtures) | `test_base_dir` or keep `working_dir` | `tests/core/qe_step_runner.py` - Base directory for test artifacts |
 | `working_dir` (tests execution) | Tests | Sandbox directory where QE executes | `sandbox_dir` or `execution_dir` | `tests/integration/test_pw_step_specs.py` - Created via `create_sandbox_working_dir()` |
-| `working_dir` (product) | Product | Same as `calculation.raw_dir` (I/O directory) | Keep `working_dir` in calculation model | `src/quantumvitas/calculation/calculation.py` - Runtime I/O directory name |
+| `working_dir` (product) | Product | Same as `calculation.raw_dir` (I/O directory) | Keep `working_dir` in calculation model | `src/qmatsuite/calculation/calculation.py` - Runtime I/O directory name |
 | `sandbox_dir` | Tests | Temporary execution directory | `sandbox_dir` (standard) | `tests/core/qe_step_runner.py::create_sandbox_working_dir()` - Execution sandbox |
 | `output_dir` | Both | Directory where generated inputs are written | `output_dir` (keep as-is) | `materialize_step_spec()` - Can be fixture_dir (tests) or raw_dir (product) |
 | `outdir` | Both | QE scratch directory (`./outdir` relative to execution) | `outdir` (keep as-is) | QE-specific, always relative to execution directory |

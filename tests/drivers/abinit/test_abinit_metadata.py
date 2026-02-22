@@ -36,7 +36,7 @@ REQUIRED_FIELDS = {"name", "type", "category", "description", "status"}
 @pytest.fixture(scope="module")
 def raw_catalog() -> dict:
     """Load the raw JSON catalog."""
-    data_path = resources.files("quantumvitas.drivers.abinit.data").joinpath(
+    data_path = resources.files("qmatsuite.drivers.abinit.data").joinpath(
         "abinit_tags.json"
     )
     with resources.as_file(data_path) as path:
@@ -104,45 +104,45 @@ class TestMetadataAccessLayer:
     """Test abinit_metadata.py API."""
 
     def test_safe_load_metadata(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import safe_load_metadata
+        from qmatsuite.drivers.abinit.data.abinit_metadata import safe_load_metadata
         data = safe_load_metadata()
         assert "tags" in data
         assert len(data["tags"]) >= 100
 
     def test_get_tag_info_ecut(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import get_tag_info
+        from qmatsuite.drivers.abinit.data.abinit_metadata import get_tag_info
         info = get_tag_info("ecut")
         assert info is not None
         assert info["type"] == "real"
         assert "cutoff" in info["description"].lower()
 
     def test_get_tag_info_case_insensitive(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import get_tag_info
+        from qmatsuite.drivers.abinit.data.abinit_metadata import get_tag_info
         info = get_tag_info("ECUT")
         assert info is not None
         assert info["name"] == "ecut"
 
     def test_get_tag_info_missing(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import get_tag_info
+        from qmatsuite.drivers.abinit.data.abinit_metadata import get_tag_info
         info = get_tag_info("NONEXISTENT_TAG_XYZ")
         assert info is None
 
     def test_list_tags_all(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import list_tags
+        from qmatsuite.drivers.abinit.data.abinit_metadata import list_tags
         tags = list_tags()
         assert len(tags) >= 100
         assert "ecut" in tags
         assert "ionmov" in tags
 
     def test_list_tags_by_category(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import list_tags
+        from qmatsuite.drivers.abinit.data.abinit_metadata import list_tags
         structure_tags = list_tags(category="structure")
         assert len(structure_tags) >= 5
         assert "natom" in structure_tags
         assert "ecut" not in structure_tags
 
     def test_list_categories(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import list_categories
+        from qmatsuite.drivers.abinit.data.abinit_metadata import list_categories
         cats = list_categories()
         assert len(cats) >= 10
         assert "structure" in cats
@@ -150,18 +150,18 @@ class TestMetadataAccessLayer:
         assert "gw" in cats
 
     def test_validate_params_all_valid(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import validate_params
+        from qmatsuite.drivers.abinit.data.abinit_metadata import validate_params
         unknowns = validate_params({"ecut": 10, "nstep": 30, "toldfe": 1e-8})
         assert unknowns == []
 
     def test_validate_params_unknown_flagged(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import validate_params
+        from qmatsuite.drivers.abinit.data.abinit_metadata import validate_params
         unknowns = validate_params({"ecut": 10, "fakeparam": 42})
         assert "fakeparam" in unknowns
         assert "ecut" not in unknowns
 
     def test_reload_metadata(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import (
+        from qmatsuite.drivers.abinit.data.abinit_metadata import (
             reload_metadata, safe_load_metadata,
         )
         reload_metadata()
@@ -169,19 +169,19 @@ class TestMetadataAccessLayer:
         assert len(data["tags"]) >= 100
 
     def test_metadata_debug_info(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import get_metadata_file_info
+        from qmatsuite.drivers.abinit.data.abinit_metadata import get_metadata_file_info
         info = get_metadata_file_info()
         assert "metadata_path_abs" in info
         assert "schema_version" in info
 
     def test_get_tag_type(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import get_tag_type
+        from qmatsuite.drivers.abinit.data.abinit_metadata import get_tag_type
         assert get_tag_type("ecut") == "real"
         assert get_tag_type("nstep") == "integer"
         assert get_tag_type("ngkpt") == "array_int"
         assert get_tag_type("NONEXISTENT") is None
 
     def test_get_tag_default(self):
-        from quantumvitas.drivers.abinit.data.abinit_metadata import get_tag_default
+        from qmatsuite.drivers.abinit.data.abinit_metadata import get_tag_default
         assert get_tag_default("nstep") == "30"
         assert get_tag_default("NONEXISTENT") is None

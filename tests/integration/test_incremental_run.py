@@ -16,21 +16,21 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.core.locking import calc_run_lock, calc_edit_lock, CalculationLockError, LockReentrancyError
-from quantumvitas.calculation.manifest import (
+from qmatsuite.core.locking import calc_run_lock, calc_edit_lock, CalculationLockError, LockReentrancyError
+from qmatsuite.calculation.manifest import (
     Manifest,
     ManifestStepEntry,
     load_manifest,
     save_manifest_atomic,
 )
-from quantumvitas.calculation.manifest_reconcile import reconcile_manifest
-from quantumvitas.calculation.hash_utils import (
+from qmatsuite.calculation.manifest_reconcile import reconcile_manifest
+from qmatsuite.calculation.hash_utils import (
     compute_pseudo_set_sha,
     compute_structure_sha,
     compute_step_sha,
 )
-from quantumvitas.calculation.step_done import is_step_done
-from quantumvitas.api import QVService, APIError
+from qmatsuite.calculation.step_done import is_step_done
+from qmatsuite.api import QMSService, APIError
 from typing import Dict, Any
 
 
@@ -60,8 +60,8 @@ def tmp_project(tmp_path):
     project_root = tmp_path / "project"
     
     # Use service API to create project
-    from quantumvitas.api import QVService
-    project_root = QVService.init_project(target_dir=project_root, name="test_project")
+    from qmatsuite.api import QMSService
+    project_root = QMSService.init_project(target_dir=project_root, name="test_project")
     
     return project_root
 
@@ -69,7 +69,7 @@ def tmp_project(tmp_path):
 @pytest.fixture
 def minimal_structure(tmp_project):
     """Create a minimal structure using service API."""
-    from quantumvitas.api import QVService
+    from qmatsuite.api import QMSService
     from pymatgen.core import Structure, Lattice
     import tempfile
     
@@ -86,7 +86,7 @@ def minimal_structure(tmp_project):
         structure.to(filename=str(cif_path), fmt="cif")
         
         # Import structure using service API
-        structure_resolved = QVService(tmp_project).structure.import_file(
+        structure_resolved = QMSService(tmp_project).structure.import_file(
             source=cif_path,
             name="test_structure",
         )
@@ -109,10 +109,10 @@ def minimal_calculation(tmp_project, minimal_structure):
     """Create a minimal calculation with steps using service APIs."""
     structure_ulid, structure_path = minimal_structure
     
-    from quantumvitas.api import QVService
+    from qmatsuite.api import QMSService
     
     # Create calculation using service API
-    calc_resolved = QVService(tmp_project).project.init_calculation(
+    calc_resolved = QMSService(tmp_project).project.init_calculation(
         name="test_calc",
         structure_selector=structure_ulid,
         engine_family="qe",
@@ -123,14 +123,14 @@ def minimal_calculation(tmp_project, minimal_structure):
     # Configure calculation with species_map and pseudo
     # We need to set species_map for pseudo SHA computation
     # Use edit lock to update calc.yaml (as production code does)
-    from quantumvitas.core.locking import calc_edit_lock
-    from quantumvitas.core.models import load_calculation
+    from qmatsuite.core.locking import calc_edit_lock
+    from qmatsuite.core.models import load_calculation
     
     # Configure calculation with species_map and pseudo
     # Use save_yaml_doc which handles edit lock internally
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.core.models import load_calculation
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yamldoc import CalcDoc
+    from qmatsuite.core.models import load_calculation
     
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -148,7 +148,7 @@ def minimal_calculation(tmp_project, minimal_structure):
         save_yaml_doc(calc_doc, calc_data_path)
     
     # Create steps using domain API
-    svc = QVService(tmp_project)
+    svc = QMSService(tmp_project)
     step1_dto = svc.calculation.add_step(
         calc_selector=calc_id,
         step_type_gen="scf",
@@ -235,10 +235,10 @@ def test_different_calcs_run_concurrently(tmp_project, minimal_structure):
     """Test that different calculations can run concurrently."""
     structure_ulid, _ = minimal_structure
     
-    from quantumvitas.api import QVService
+    from qmatsuite.api import QMSService
     
     # Create two calculations using service API
-    calc1_resolved = QVService(tmp_project).project.init_calculation(
+    calc1_resolved = QMSService(tmp_project).project.init_calculation(
         name="calc1",
         structure_selector=structure_ulid,
         engine_family="qe",
@@ -246,7 +246,7 @@ def test_different_calcs_run_concurrently(tmp_project, minimal_structure):
     calc1_id = calc1_resolved.meta.ulid
     calc1_dir = calc1_resolved.absolute_path
 
-    calc2_resolved = QVService(tmp_project).project.init_calculation(
+    calc2_resolved = QMSService(tmp_project).project.init_calculation(
         name="calc2",
         structure_selector=structure_ulid,
         engine_family="qe",
@@ -289,13 +289,13 @@ def test_manifest_trim_on_removing_last_step(tmp_project, minimal_calculation, m
     # Must patch at the import location in manifest_reconcile module
     def mock_is_step_done(*args, **kwargs):
         return True
-    monkeypatch.setattr("quantumvitas.calculation.manifest_reconcile.is_step_done", mock_is_step_done)
+    monkeypatch.setattr("qmatsuite.calculation.manifest_reconcile.is_step_done", mock_is_step_done)
     
     # Compute actual SHAs for manifest entries
-    from quantumvitas.core.models import load_calculation
-    from quantumvitas.core.resolution import require_structure, require_step, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
-    from quantumvitas.core.yamldoc import StepDoc
+    from qmatsuite.core.models import load_calculation
+    from qmatsuite.core.resolution import require_structure, require_step, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
+    from qmatsuite.core.yamldoc import StepDoc
     
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -339,9 +339,9 @@ def test_manifest_trim_on_removing_last_step(tmp_project, minimal_calculation, m
     
     # Modify calculation.yaml to remove last step
     # Use save_yaml_doc which handles edit lock internally
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.core.models import load_calculation
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yamldoc import CalcDoc
+    from qmatsuite.core.models import load_calculation
     
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -351,15 +351,15 @@ def test_manifest_trim_on_removing_last_step(tmp_project, minimal_calculation, m
     save_yaml_doc(calc_doc, calc_data_path)  # Handles lock internally
     
     # Reconcile manifest
-    from quantumvitas.calculation.calculation import Calculation
-    from quantumvitas.project.model import Project
+    from qmatsuite.calculation.calculation import Calculation
+    from qmatsuite.project.model import Project
     
     project = Project.open(tmp_project)
     calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
     
     # Get structure path using resolver (don't assume path)
-    from quantumvitas.core.resolution import require_structure, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.resolution import require_structure, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
     config = load_project_config(tmp_project)
     index = build_resource_index(tmp_project)
     
@@ -398,13 +398,13 @@ def test_reorder_forces_rerun_from_divergence(tmp_project, minimal_calculation, 
     # Must patch at the import location in manifest_reconcile module
     def mock_is_step_done(*args, **kwargs):
         return True
-    monkeypatch.setattr("quantumvitas.calculation.manifest_reconcile.is_step_done", mock_is_step_done)
+    monkeypatch.setattr("qmatsuite.calculation.manifest_reconcile.is_step_done", mock_is_step_done)
     
     # Compute actual SHAs for manifest entries
-    from quantumvitas.core.models import load_calculation
-    from quantumvitas.core.resolution import require_structure, require_step, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
-    from quantumvitas.core.yamldoc import StepDoc
+    from qmatsuite.core.models import load_calculation
+    from qmatsuite.core.resolution import require_structure, require_step, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
+    from qmatsuite.core.yamldoc import StepDoc
     
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -445,9 +445,9 @@ def test_reorder_forces_rerun_from_divergence(tmp_project, minimal_calculation, 
     
     # Reorder calculation.yaml to [A, C, B]
     # Use save_yaml_doc which handles edit lock internally
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.core.models import load_calculation
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yamldoc import CalcDoc
+    from qmatsuite.core.models import load_calculation
     
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -457,15 +457,15 @@ def test_reorder_forces_rerun_from_divergence(tmp_project, minimal_calculation, 
     save_yaml_doc(calc_doc, calc_data_path)  # Handles lock internally
     
     # Reconcile
-    from quantumvitas.calculation.calculation import Calculation
-    from quantumvitas.project.model import Project
+    from qmatsuite.calculation.calculation import Calculation
+    from qmatsuite.project.model import Project
     
     project = Project.open(tmp_project)
     calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
     
     # Get structure path using resolver (don't assume path)
-    from quantumvitas.core.resolution import require_structure, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.resolution import require_structure, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
     config = load_project_config(tmp_project)
     index = build_resource_index(tmp_project)
     
@@ -505,13 +505,13 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     # Must patch at the import location in manifest_reconcile module
     def mock_is_step_done(*args, **kwargs):
         return True
-    monkeypatch.setattr("quantumvitas.calculation.manifest_reconcile.is_step_done", mock_is_step_done)
+    monkeypatch.setattr("qmatsuite.calculation.manifest_reconcile.is_step_done", mock_is_step_done)
     
-    from quantumvitas.api import QVService
-    from quantumvitas.core.resolution import require_step
-    from quantumvitas.core.yamldoc import StepDoc
-    from quantumvitas.workflow.step_factory import save_step_doc
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.api import QMSService
+    from qmatsuite.core.resolution import require_step
+    from qmatsuite.core.yamldoc import StepDoc
+    from qmatsuite.workflow.step_factory import save_step_doc
+    from qmatsuite.core.project_utils import load_project_config
     
     # Get step at index 1 (nscf) content to create identical copy
     config = load_project_config(tmp_project)
@@ -525,9 +525,9 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     
     # Create manifest with step done=true using step_ids[1] (old ULID) but correct SHA
     # Load calc model to get structure_ulid and species_map
-    from quantumvitas.core.models import load_calculation
-    from quantumvitas.core.resolution import require_structure, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.models import load_calculation
+    from qmatsuite.core.resolution import require_structure, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
     
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -540,9 +540,9 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     pseudo_sha = compute_pseudo_set_sha(tmp_project / "pseudo", calc_model.species_map or {})
     
     # Get step SHAs for all steps (using actual SHAs)
-    from quantumvitas.core.resolution import require_step, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
-    from quantumvitas.core.yamldoc import StepDoc
+    from qmatsuite.core.resolution import require_step, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
+    from qmatsuite.core.yamldoc import StepDoc
     
     config = load_project_config(tmp_project)
     index = build_resource_index(tmp_project)
@@ -578,7 +578,7 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     
     # Create a new step u2b with identical content to step_ids[1]
     # This should have same step_sha but different ULID
-    svc = QVService(tmp_project)
+    svc = QMSService(tmp_project)
     step2b_dto = svc.calculation.add_step(
         calc_selector=calc_id,
         step_type_gen="nscf",  # GEN type for UI layer (step_ids[1] is nscf step)
@@ -613,9 +613,9 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     
     # Replace step_ids[1] with step2b_id in calculation.yaml step list
     # Use save_yaml_doc which handles edit lock internally
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.core.models import load_calculation, CalculationStepEntry
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yamldoc import CalcDoc
+    from qmatsuite.core.models import load_calculation, CalculationStepEntry
     
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -635,8 +635,8 @@ def test_ignore_ulid_for_equivalence(tmp_project, minimal_calculation, monkeypat
     step_list = [{"step_ulid": s.step_ulid, "step_type_spec": s.step_type_spec} for s in calc_model.steps]
     
     # Reconcile - should still skip because SHAs match, but ULID should be updated to step2b_id
-    from quantumvitas.calculation.calculation import Calculation
-    from quantumvitas.project.model import Project
+    from qmatsuite.calculation.calculation import Calculation
+    from qmatsuite.project.model import Project
     
     project = Project.open(tmp_project)
     calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
@@ -694,16 +694,16 @@ def test_single_step_invalidates_suffix(tmp_project, minimal_calculation):
     
     # Run single step at index 1 (middle step)
     # First, mock the step execution to succeed
-    from quantumvitas.calculation.manifest import clear_manifest_from_step
+    from qmatsuite.calculation.manifest import clear_manifest_from_step
     
     # Simulate successful execution by marking step 1 as done and invalidating suffix
-    from quantumvitas.calculation.manifest import update_manifest_step, now_iso8601
-    from quantumvitas.calculation.hash_utils import compute_structure_sha, compute_step_sha
-    from quantumvitas.core.yamldoc import StepDoc
+    from qmatsuite.calculation.manifest import update_manifest_step, now_iso8601
+    from qmatsuite.calculation.hash_utils import compute_structure_sha, compute_step_sha
+    from qmatsuite.core.yamldoc import StepDoc
     
     # Update step 1 to done - find step file using resolver
-    from quantumvitas.core.resolution import require_step, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.resolution import require_step, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
     config = load_project_config(tmp_project)
     index = build_resource_index(tmp_project)
     step1_resolved = require_step(tmp_project, calc_id, step_ids[1], config=config, index=index)
@@ -713,9 +713,9 @@ def test_single_step_invalidates_suffix(tmp_project, minimal_calculation):
     step_sha = compute_step_sha(step_data)
     
     # Load calc model to get structure_ulid and species_map
-    from quantumvitas.core.models import load_calculation
-    from quantumvitas.core.resolution import require_structure, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.models import load_calculation
+    from qmatsuite.core.resolution import require_structure, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
     
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -756,7 +756,7 @@ def test_pseudo_preflight_warning_and_update(tmp_project, minimal_calculation, c
     calc_id, calc_dir, _ = minimal_calculation
     
     # Compute actual SHA using same production function
-    from quantumvitas.core.models import load_calculation
+    from qmatsuite.core.models import load_calculation
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model_initial = load_calculation(calc_data_path, project_root=tmp_project)
     species_map = calc_model_initial.species_map or {}
@@ -767,12 +767,12 @@ def test_pseudo_preflight_warning_and_update(tmp_project, minimal_calculation, c
     
     # Don't mock CalculationRunner.run - allow Step0 to run so pseudo records get updated
     # Mock only the actual QE execution to avoid running real calculations
-    from quantumvitas.execution.executor import JobExecutor
+    from qmatsuite.execution.executor import JobExecutor
     
     def mock_execute(self, job_graph, selection_mode, *, context=None):
         # Return success without actually executing jobs
-        from quantumvitas.execution.executor import ExecutionResult, JobResult
-        from quantumvitas.execution.job_graph import SelectionMode
+        from qmatsuite.execution.executor import ExecutionResult, JobResult
+        from qmatsuite.execution.job_graph import SelectionMode
         
         job_results = []
         for job in job_graph.get_jobs_for_target(selection_mode):
@@ -792,7 +792,7 @@ def test_pseudo_preflight_warning_and_update(tmp_project, minimal_calculation, c
     
     # Mock pseudopotential resolution to avoid pseudo requirements
     def fake_ensure_qe_pseudos(*args, **kwargs):
-        from quantumvitas.core.pseudo import PseudoResolutionResult
+        from qmatsuite.core.pseudo import PseudoResolutionResult
         return PseudoResolutionResult(
             project_pseudo_dir=tmp_project / "pseudo",
             system_pseudo_dir=None,
@@ -800,11 +800,11 @@ def test_pseudo_preflight_warning_and_update(tmp_project, minimal_calculation, c
             all_available=True,
         )
     
-    monkeypatch.setattr("quantumvitas.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
+    monkeypatch.setattr("qmatsuite.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
     
     # Run calculation - manifest should be updated with fresh pseudo_set_sha
     import logging
-    svc = QVService(tmp_project)
+    svc = QMSService(tmp_project)
     with caplog.at_level(logging.WARNING):
         try:
             svc.run.run_calculation(
@@ -821,7 +821,7 @@ def test_pseudo_preflight_warning_and_update(tmp_project, minimal_calculation, c
         "calc.yaml should NOT contain pseudo_set_sha (it's derived, stored only in manifest)"
     
     # Verify manifest has correct pseudo_set_sha
-    from quantumvitas.calculation.manifest import load_manifest
+    from qmatsuite.calculation.manifest import load_manifest
     manifest = load_manifest(calc_dir)
     assert manifest is not None, "Manifest should exist after run"
     assert len(manifest.steps) > 0, "Manifest should have at least one step"
@@ -877,9 +877,9 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
     save_manifest_atomic(calc_dir, manifest)
     
     # Mock runner to simulate crash at step 1 (index 1)
-    from quantumvitas.calculation.runner import CalculationRunner
-    from quantumvitas.calculation.results import CalculationResult
-    from quantumvitas.calculation.types import StepStatus
+    from qmatsuite.calculation.runner import CalculationRunner
+    from qmatsuite.calculation.results import CalculationResult
+    from qmatsuite.calculation.types import StepStatus
     from datetime import datetime, timezone
     
     call_count = [0]
@@ -889,7 +889,7 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
         # Simulate crash after starting step 1
         if call_count[0] == 1:
             # First call: update manifest for step 1, then crash
-            from quantumvitas.calculation.manifest import update_manifest_step, now_iso8601
+            from qmatsuite.calculation.manifest import update_manifest_step, now_iso8601
             update_manifest_step(
                 calc_dir=calculation.dir,
                 step_index=1,
@@ -919,7 +919,7 @@ def test_crash_recovery_incremental_rerun_from_failed_step(tmp_project, minimal_
     monkeypatch.setattr(CalculationRunner, "run", mock_run)
     
     # First run - should crash
-    svc = QVService(tmp_project)
+    svc = QMSService(tmp_project)
     try:
         svc.run.run_calculation(
             calc_selector=calc_id,
@@ -954,7 +954,7 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
     calc_data_path = calc_dir / "calculation.yaml"
     
     # Make manifest directory read-only to simulate write failure (not calc.yaml)
-    from quantumvitas.calculation.manifest import get_manifest_dir
+    from qmatsuite.calculation.manifest import get_manifest_dir
     manifest_dir = get_manifest_dir(calc_dir)
     manifest_dir.mkdir(parents=True, exist_ok=True)
     
@@ -967,9 +967,9 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
     
     try:
         # Mock runner to track execution calls
-        from quantumvitas.calculation.runner import CalculationRunner
-        from quantumvitas.calculation.results import CalculationResult
-        from quantumvitas.calculation.types import StepStatus
+        from qmatsuite.calculation.runner import CalculationRunner
+        from qmatsuite.calculation.results import CalculationResult
+        from qmatsuite.calculation.types import StepStatus
         from datetime import datetime, timezone
         
         def mock_run(self, calculation, *, run_ulid=None, run_mode="incremental", **kwargs):
@@ -991,7 +991,7 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
         
         # Mock pseudopotential resolution
         def fake_ensure_qe_pseudos(*args, **kwargs):
-            from quantumvitas.core.pseudo import PseudoResolutionResult
+            from qmatsuite.core.pseudo import PseudoResolutionResult
             return PseudoResolutionResult(
                 project_pseudo_dir=tmp_project / "pseudo",
                 system_pseudo_dir=None,
@@ -999,11 +999,11 @@ def test_pseudo_preflight_update_failure_non_blocking(tmp_project, minimal_calcu
                 all_available=True,
             )
         
-        monkeypatch.setattr("quantumvitas.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
+        monkeypatch.setattr("qmatsuite.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
         
         # Run calculation - should continue despite write failure
         import logging
-        svc = QVService(tmp_project)
+        svc = QMSService(tmp_project)
         with caplog.at_level(logging.WARNING):
             result = svc.run.run_calculation(
                 calc_selector=calc_id,  # Use real calc_id from service
@@ -1046,8 +1046,8 @@ def test_nested_calc_edit_lock_raises_fast(tmp_project, minimal_calculation):
 
 def test_structure_sha_float_tolerance(tmp_project, minimal_structure):
     """Test that structure_sha is stable under small float perturbations."""
-    from quantumvitas.core.resolution import require_structure, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.resolution import require_structure, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
     import json
     
     # Use existing structure from fixture
@@ -1095,7 +1095,7 @@ def test_pseudo_set_sha_stable_under_reordering_and_rename(tmp_project, minimal_
     calc_id, calc_dir, step_ids = minimal_calculation
     
     # Load calculation to get species_map
-    from quantumvitas.core.models import load_calculation
+    from qmatsuite.core.models import load_calculation
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
     
@@ -1149,7 +1149,7 @@ def test_manifest_corruption_recovery(tmp_project, minimal_calculation):
     calc_id, calc_dir, _ = minimal_calculation
     
     # Get the actual manifest path using the same function the code uses
-    from quantumvitas.calculation.manifest import get_manifest_path
+    from qmatsuite.calculation.manifest import get_manifest_path
     manifest_path = get_manifest_path(calc_dir)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text("INVALID JSON { broken syntax }")
@@ -1197,8 +1197,8 @@ def test_step_has_no_id_property(tmp_project, minimal_calculation):
     
     Accessing step.id should raise AttributeError (or simply assert not hasattr(step, "id")).
     """
-    from quantumvitas.calculation.calculation import Calculation
-    from quantumvitas.project.model import Project
+    from qmatsuite.calculation.calculation import Calculation
+    from qmatsuite.project.model import Project
     
     calc_id, calc_dir, _ = minimal_calculation
     
@@ -1236,8 +1236,8 @@ def test_manifest_stores_ulid_not_slug(tmp_project, minimal_calculation, monkeyp
     Run reconcile/run path and assert manifest entries store step_ulid that looks like ULID,
     and never equals the slug like "scf".
     """
-    from quantumvitas.calculation.calculation import Calculation
-    from quantumvitas.project.model import Project
+    from qmatsuite.calculation.calculation import Calculation
+    from qmatsuite.project.model import Project
     
     calc_id, calc_dir, _ = minimal_calculation
     
@@ -1259,14 +1259,14 @@ def test_manifest_stores_ulid_not_slug(tmp_project, minimal_calculation, monkeyp
     
     # Mock is_step_done to return False (so we can test manifest creation)
     monkeypatch.setattr(
-        "quantumvitas.calculation.manifest_reconcile.is_step_done",
+        "qmatsuite.calculation.manifest_reconcile.is_step_done",
         lambda *args, **kwargs: False
     )
     
     # Compute SHAs needed for reconcile
-    from quantumvitas.core.models import load_calculation
-    from quantumvitas.core.resolution import require_structure, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.models import load_calculation
+    from qmatsuite.core.resolution import require_structure, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
     
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -1280,7 +1280,7 @@ def test_manifest_stores_ulid_not_slug(tmp_project, minimal_calculation, monkeyp
     pseudo_sha = compute_pseudo_set_sha(tmp_project / "pseudo", calc_model.species_map or {})
     
     # Run reconcile to create/update manifest
-    from quantumvitas.calculation.manifest_reconcile import reconcile_manifest
+    from qmatsuite.calculation.manifest_reconcile import reconcile_manifest
     
     reconciled_manifest, first_changed_idx = reconcile_manifest(
         calc_dir=calc_dir,
@@ -1303,7 +1303,7 @@ def test_manifest_stores_ulid_not_slug(tmp_project, minimal_calculation, monkeyp
     
     # Verify slug never appears in manifest JSON as a step identifier
     # Note: slug may appear as 'kind' if it matches step type (e.g., "scf"), but that's the step type, not identifier
-    from quantumvitas.calculation.manifest import get_manifest_path
+    from qmatsuite.calculation.manifest import get_manifest_path
     import json
     manifest_path = get_manifest_path(calc_dir)
     if manifest_path.exists():

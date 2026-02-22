@@ -11,7 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import type { PrimitiveBundleData } from '../../types/qv';
+import type { PrimitiveBundleData } from '../../types/qms';
 
 interface AnalysisVizPanelProps {
   availableObjectTypes: string[];
@@ -149,7 +149,7 @@ export function AnalysisVizPanel({
 
   if (availableObjectTypes.length === 0) {
     return (
-      <div className="analysis-surface__placeholder" data-testid="qv-analysis-no-objects">
+      <div className="analysis-surface__placeholder" data-testid="qms-analysis-no-objects">
         No analysis object is available for this step in the current run.
       </div>
     );
@@ -213,13 +213,13 @@ export function AnalysisVizPanel({
         </div>
       ) : null}
 
-      {loading ? <div className="analysis-surface__placeholder" data-testid="qv-analysis-loading">Loading analysis...</div> : null}
-      {error ? <div className="analysis-surface__error" data-testid="qv-analysis-error">{error}</div> : null}
+      {loading ? <div className="analysis-surface__placeholder" data-testid="qms-analysis-loading">Loading analysis...</div> : null}
+      {error ? <div className="analysis-surface__error" data-testid="qms-analysis-error">{error}</div> : null}
 
       {/* Field3D metadata card (no chart) */}
       {!loading && !error && bundle && isField3d ? (
         <>
-          <div className="analysis-viz__field3d-card" data-testid="qv-analysis-field3d-card">
+          <div className="analysis-viz__field3d-card" data-testid="qms-analysis-field3d-card">
             <h4>Field3D</h4>
             {field3dExtra ? (
               <table className="analysis-viz__field3d-table">
@@ -263,7 +263,7 @@ export function AnalysisVizPanel({
         <>
           {/* Convergence info bar */}
           {isConvergence ? (
-            <div className="analysis-viz__convergence-info" data-testid="qv-analysis-convergence-info">
+            <div className="analysis-viz__convergence-info" data-testid="qms-analysis-convergence-info">
               <span className={`analysis-viz__convergence-badge${convergedStatus ? ' analysis-viz__convergence-badge--ok' : ' analysis-viz__convergence-badge--no'}`}>
                 {convergedStatus ? 'Converged' : 'Not converged'}
               </span>
@@ -274,13 +274,13 @@ export function AnalysisVizPanel({
 
           <div className="analysis-viz__info">
             {fermiEnergy != null ? (
-              <span data-testid="qv-analysis-fermi">E_F = {fermiEnergy.toFixed(4)} eV</span>
+              <span data-testid="qms-analysis-fermi">E_F = {fermiEnergy.toFixed(4)} eV</span>
             ) : null}
             {kpathLabels ? (
-              <span data-testid="qv-analysis-kpath">{kpathLabels}</span>
+              <span data-testid="qms-analysis-kpath">{kpathLabels}</span>
             ) : null}
           </div>
-          <div className="analysis-viz__plot" data-testid={`qv-analysis-${selectedObjectType ?? 'unknown'}-chart`}>
+          <div className="analysis-viz__plot" data-testid={`qms-analysis-${selectedObjectType ?? 'unknown'}-chart`}>
             <ResponsiveContainer height={420} width="100%">
               <LineChart data={chartData} margin={{ top: 18, right: 20, left: 16, bottom: 16 }}>
                 <CartesianGrid strokeDasharray="3 3" />

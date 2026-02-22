@@ -59,7 +59,7 @@ Do not reopen unless regressions are discovered.
 ### M1: Parser auto-registration chain for all engines
 - **Source**: Engine integration audit
 - QE, VASP, ORCA, ABINIT, CP2K, W90 output parsers are not auto-discovered via registry chain
-- **Partial fix** (2026-02-21): `get_results_summary` and `run_calculation` use `find_parser_for_raw()` with `import quantumvitas.drivers` trigger
+- **Partial fix** (2026-02-21): `get_results_summary` and `run_calculation` use `find_parser_for_raw()` with `import qmatsuite.drivers` trigger
 - **Remaining**: Wire parser registration into DriverRegistry startup for systemic coverage
 
 ### M2: search_knowledge adoption — agent instruction strengthening

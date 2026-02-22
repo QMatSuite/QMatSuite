@@ -36,7 +36,7 @@ def main():
     # Pre-Run Checks
     print_section("PRE-RUN CHECKS")
     print("Python: Python 3.14.0")
-    print("QMatSuite: <HOME>/QMatSuite/src/quantumvitas/__init__.py")
+    print("QMatSuite: <HOME>/QMatSuite/src/qmatsuite/__init__.py")
     print("LAMMPS binary: /opt/homebrew/opt/lammps/bin/lmp_serial")
     print("LAMMPS version: Large-scale Atomic/Molecular Massively Parallel Simulator - 22 Jul 2025 - Update 2")
     

@@ -102,7 +102,7 @@ SCF (qe_scf) → NSCF (qe_nscf) → w90_wannierprep → qe_pw2wannier → w90_wa
 
 ### Central GenStepRegistry
 
-**Module**: `src/quantumvitas/workflow/gen_steps.py` (NEW)
+**Module**: `src/qmatsuite/workflow/gen_steps.py` (NEW)
 
 ```python
 class GenStepRegistry:
@@ -144,7 +144,7 @@ class GenStepRegistry:
 
 ### Engine Recipe Declarations
 
-**QE Recipe** (`src/quantumvitas/drivers/qe/recipe.py`):
+**QE Recipe** (`src/qmatsuite/drivers/qe/recipe.py`):
 ```python
 class QERecipe:
     PREFIX: str = "qe"  # REQUIRED, no underscore
@@ -155,7 +155,7 @@ class QERecipe:
     })
 ```
 
-**W90 Recipe** (`src/quantumvitas/drivers/w90/recipe.py`):
+**W90 Recipe** (`src/qmatsuite/drivers/w90/recipe.py`):
 ```python
 class W90Recipe:
     PREFIX: str = "w90"  # REQUIRED, no underscore
@@ -167,7 +167,7 @@ class W90Recipe:
 
 ### Canonical Conversion Module
 
-**Module**: `src/quantumvitas/workflow/step_type_convert.py` (NEW)
+**Module**: `src/qmatsuite/workflow/step_type_convert.py` (NEW)
 
 ```python
 """Pure functions for SPEC↔GEN conversion. No mapping tables."""
@@ -304,13 +304,13 @@ def prefix_from(spec: str) -> str:
 
 | File | Status | Action |
 |------|--------|--------|
-| `src/quantumvitas/drivers/qe/driver.py:33-56` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
-| `src/quantumvitas/drivers/vasp/driver.py:144-158` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
-| `src/quantumvitas/drivers/pyscf/driver.py:137-148` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
-| `src/quantumvitas/drivers/orca/driver.py:141-151` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
-| `src/quantumvitas/drivers/cp2k/driver.py:117-128` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
-| `src/quantumvitas/drivers/lammps/driver.py:125-131` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
-| `src/quantumvitas/drivers/w90/driver.py:80-87` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
+| `src/qmatsuite/drivers/qe/driver.py:33-56` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
+| `src/qmatsuite/drivers/vasp/driver.py:144-158` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
+| `src/qmatsuite/drivers/pyscf/driver.py:137-148` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
+| `src/qmatsuite/drivers/orca/driver.py:141-151` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
+| `src/qmatsuite/drivers/cp2k/driver.py:117-128` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
+| `src/qmatsuite/drivers/lammps/driver.py:125-131` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
+| `src/qmatsuite/drivers/w90/driver.py:80-87` | **MUST DELETE** | Replace with `PREFIX` + `SUPPORTED_GEN_STEPS` |
 
 ### 5.2 StepTypeRegistry Internal Maps
 
@@ -377,7 +377,7 @@ def prefix_from(spec: str) -> str:
 ```python
 def test_no_underscore_in_gen_registry():
     """All GEN steps must not contain underscore."""
-    from quantumvitas.workflow.gen_steps import GenStepRegistry
+    from qmatsuite.workflow.gen_steps import GenStepRegistry
     for gen in GenStepRegistry.GEN_STEPS:
         assert "_" not in gen, f"GEN '{gen}' contains underscore"
 ```
@@ -387,8 +387,8 @@ def test_no_underscore_in_gen_registry():
 ```python
 def test_no_underscore_in_engine_prefix():
     """All engine prefixes must not contain underscore."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
     for engine in DriverRegistry.get_all_engines():
         driver = DriverRegistry.get_driver(engine)
         prefix = driver.get_recipe_class().PREFIX
@@ -401,9 +401,9 @@ def test_no_underscore_in_engine_prefix():
 ```python
 def test_supported_gen_steps_subset_of_registry():
     """Each engine's supported_gen_steps must be subset of GenStepRegistry."""
-    from quantumvitas.workflow.gen_steps import GenStepRegistry
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.workflow.gen_steps import GenStepRegistry
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     for engine in DriverRegistry.get_all_engines():
         driver = DriverRegistry.get_driver(engine)
@@ -432,7 +432,7 @@ def test_no_explicit_mapping_dicts():
 ```python
 def test_wannier90_engine_ownership():
     """Wannier90 steps must have correct engine assignment."""
-    from quantumvitas.workflow.registry import get_registry
+    from qmatsuite.workflow.registry import get_registry
 
     registry = get_registry()
 
@@ -471,8 +471,8 @@ def test_wannier90_engine_ownership():
 
 ### CREATE (New SSOT)
 
-1. `src/quantumvitas/workflow/gen_steps.py` - GenStepRegistry
-2. `src/quantumvitas/workflow/step_type_convert.py` - Pure functions
+1. `src/qmatsuite/workflow/gen_steps.py` - GenStepRegistry
+2. `src/qmatsuite/workflow/step_type_convert.py` - Pure functions
 3. `tests/gates/test_step_type_constitution.py` - Gate tests
 
 ### KEEP (OK/Canonical)

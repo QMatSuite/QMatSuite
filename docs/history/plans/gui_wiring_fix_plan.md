@@ -48,9 +48,9 @@ No "adapter/shim/compat for GUI" is allowed anywhere in the backend.
 
 ## Phase 1: Update Type Definitions
 
-**File**: `gui/src/types/qv.ts`
+**File**: `gui/src/types/qms.ts`
 
-### Step 1.1: Fix QVError
+### Step 1.1: Fix QMSError
 
 ```diff
 - step_id?: string;
@@ -359,7 +359,7 @@ Update logging to use new field names:
 + <span className="step-ulid">{step.ulid}</span>
 ```
 
-### Step 2.11: hooks/useQVClient.ts
+### Step 2.11: hooks/useQMSClient.ts
 
 **Line 382**:
 ```diff
@@ -471,7 +471,7 @@ If issues are discovered after deployment:
 
 | Category | Count |
 |----------|-------|
-| Type definitions | 1 file (qv.ts) |
+| Type definitions | 1 file (qms.ts) |
 | React components | 10 files |
 | Hooks | 1 file |
 | **Total** | 12 files |

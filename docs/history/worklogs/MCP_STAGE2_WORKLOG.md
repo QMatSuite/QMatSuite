@@ -20,7 +20,7 @@ Added 3 keyword-only fields for richer diagnostics while keeping backward compat
 ### 1. Project context module (mcp/project.py — NEW)
 
 - `get_project_root()` — auto-detects via `find_project_root()` or returns override
-- `get_service()` — returns `QVService(get_project_root())`
+- `get_service()` — returns `QMSService(get_project_root())`
 - `set_project_root(path)` — testable override for monkeypatching in tests
 - `ProjectNotFoundError` — raised when no project found
 
@@ -59,31 +59,31 @@ Added 3 keyword-only fields for richer diagnostics while keeping backward compat
 ### 8. Bugfix: `service.py` apply_presets broken import
 
 Fixed pre-existing bug where `apply_presets()` tried to import
-`PresetCompilationError` and `PrecisionContextError` from `quantumvitas.api`
+`PresetCompilationError` and `PrecisionContextError` from `qmatsuite.api`
 but they were never re-exported there. Changed to import from their source modules:
-- `quantumvitas.presets.compiler.PresetCompilationError`
-- `quantumvitas.presets.precision_context.PrecisionContextError`
-- `quantumvitas.presets.dimensions.DIMENSION_PRECISION, PrecisionOption`
+- `qmatsuite.presets.compiler.PresetCompilationError`
+- `qmatsuite.presets.precision_context.PrecisionContextError`
+- `qmatsuite.presets.dimensions.DIMENSION_PRECISION, PrecisionOption`
 
 ## Files Created (7 new)
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/mcp/project.py` | Project context (get_service, testable override) |
-| `src/quantumvitas/mcp/tools/create_calculation.py` | create_calculation tool |
-| `src/quantumvitas/mcp/tools/set_parameters.py` | set_parameters tool |
-| `src/quantumvitas/mcp/tools/apply_preset.py` | apply_preset tool |
-| `src/quantumvitas/mcp/tools/inspect_calculation.py` | inspect_calculation tool |
-| `src/quantumvitas/mcp/tools/preview_compilation.py` | preview_compilation tool |
+| `src/qmatsuite/mcp/project.py` | Project context (get_service, testable override) |
+| `src/qmatsuite/mcp/tools/create_calculation.py` | create_calculation tool |
+| `src/qmatsuite/mcp/tools/set_parameters.py` | set_parameters tool |
+| `src/qmatsuite/mcp/tools/apply_preset.py` | apply_preset tool |
+| `src/qmatsuite/mcp/tools/inspect_calculation.py` | inspect_calculation tool |
+| `src/qmatsuite/mcp/tools/preview_compilation.py` | preview_compilation tool |
 | `tests/mcp/test_stage2.py` | 15 Stage 2 tests |
 
 ## Files Modified (3 existing)
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/mcp/envelope.py` | Added severity, diagnostics, suggested_fixes to make_error |
-| `src/quantumvitas/mcp/server.py` | 5 new tool module imports |
-| `src/quantumvitas/api/service.py` | Fixed broken import in apply_presets |
+| `src/qmatsuite/mcp/envelope.py` | Added severity, diagnostics, suggested_fixes to make_error |
+| `src/qmatsuite/mcp/server.py` | 5 new tool module imports |
+| `src/qmatsuite/api/service.py` | Fixed broken import in apply_presets |
 
 ## Test Results
 

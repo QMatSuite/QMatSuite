@@ -70,7 +70,7 @@ DTO_PATTERNS = ["DTO", "Model", "Entry", "Meta"]
 
 # Allowlist patterns (files that are explicitly allowed to have issues)
 ALLOWLIST_PATTERNS = [
-    "src/quantumvitas/_vault/*",  # Legacy archive
+    "src/qmatsuite/_vault/*",  # Legacy archive
 ]
 
 # ============================================================================

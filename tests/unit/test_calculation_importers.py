@@ -4,12 +4,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.project.model import Project
-from quantumvitas.calculation import (
+from qmatsuite.project.model import Project
+from qmatsuite.calculation import (
     build_step_spec_from_qe_input,
     build_calculation_from_qe_inputs,
 )
-from quantumvitas.calculation.calculation import Calculation
+from qmatsuite.calculation.calculation import Calculation
 
 
 SIMPLE_SCF = textwrap.dedent(
@@ -251,7 +251,7 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     
     # Verify structure file exists and has correct meta
     assert result.structure_path.exists(), f"Structure file should exist: {result.structure_path}"
-    from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+    from qmatsuite.io.structure_io import STRUCTURE_META_KEY
     import json
     structure_data = json.loads(result.structure_path.read_text())
     structure_meta = structure_data.get(STRUCTURE_META_KEY, {})
@@ -276,7 +276,7 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
     # If calculation.yaml doesn't have meta.id, we need to create it
     # For now, generate a ULID and update the calculation.yaml
     if not actual_calculation_id:
-        from quantumvitas.core.resources import generate_resource_id, meta_from_name
+        from qmatsuite.core.resources import generate_resource_id, meta_from_name
         actual_calculation_id = generate_resource_id()
         calculation_meta = meta_from_name(
             "calculation",
@@ -310,7 +310,7 @@ def test_build_calculation_from_qe_inputs_and_load(tmp_path: Path):
         "settings": {},
     }
     project_root.mkdir(parents=True, exist_ok=True)
-    (project_root / "project.qv.yml").write_text(
+    (project_root / "project.qms.yml").write_text(
         yaml.safe_dump(project_config, sort_keys=False)
     )
 
@@ -338,9 +338,9 @@ def test_materialize_step_spec_generates_atomic_species(tmp_path: Path):
     Note: This test does NOT verify pseudo materialization (that happens at runtime
     via prepare_input_step/run_step, not at materialize time).
     """
-    from quantumvitas.calculation import materialize_step_spec
-    from quantumvitas.io import QEInputParser
-    from quantumvitas.io.model import QECardType
+    from qmatsuite.calculation import materialize_step_spec
+    from qmatsuite.io import QEInputParser
+    from qmatsuite.io.model import QECardType
     
     # Create a QE input with ATOMIC_SPECIES
     input_file = tmp_path / "test.in"

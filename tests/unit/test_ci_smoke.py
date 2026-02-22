@@ -4,7 +4,7 @@ Lightweight smoke tests that run with the rest of the suite.
 
 import pytest
 
-from quantumvitas.io import QEInputParser, QEInputGenerator
+from qmatsuite.io import QEInputParser, QEInputGenerator
 
 pytestmark = pytest.mark.unit
 

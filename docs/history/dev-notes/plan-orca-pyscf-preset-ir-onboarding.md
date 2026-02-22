@@ -29,10 +29,10 @@
 
 | # | Item | Spec Says | Code Reality | File/Location | Impact |
 |---|------|-----------|--------------|---------------|--------|
-| D1 | IR bool type | IR uses Python `True/False`; `.true.` only in `.in` files | `ir_bool()` converts Python bool → `.true.`/`.false.` strings BEFORE writing to step.yaml | `src/quantumvitas/presets/paramspace.py:601-605`, `ir/backends/qe/mapping.py:14-41` | **Keep v0 as-is for PW.** QC dialect SHOULD use Python bool for new keys (no legacy compat burden). |
-| D2 | `supported_presets` per engine | Spec requires `supported_presets: [...]` engine declaration | Current code uses `accepts_presets` (bool) + `allowed_dimensions` (frozenset) per step type, not per engine | `src/quantumvitas/workflow/registry.py:StepTypeSpec` (lines 35-51) | **Tolerable for v0.** Step-level control is sufficient. Engine-level gating can be deferred. |
-| D3 | StepType Enum violations | Enum MUST NOT be used for core logic | Still used in 2 validation paths: `api.py:7757`, `api.py:7867` | `src/quantumvitas/api.py` | **Out of scope.** Fix deferred; does not affect ORCA/PySCF preset work. |
-| D4 | Dialect namespace structure | Spec says `ir.pw` / `ir.qc` | Current code uses flat namespace; no dialect concept in IR layer | `src/quantumvitas/ir/` | **Will implement.** Introduce dialect as directory structure + docstrings; no runtime registry yet. |
+| D1 | IR bool type | IR uses Python `True/False`; `.true.` only in `.in` files | `ir_bool()` converts Python bool → `.true.`/`.false.` strings BEFORE writing to step.yaml | `src/qmatsuite/presets/paramspace.py:601-605`, `ir/backends/qe/mapping.py:14-41` | **Keep v0 as-is for PW.** QC dialect SHOULD use Python bool for new keys (no legacy compat burden). |
+| D2 | `supported_presets` per engine | Spec requires `supported_presets: [...]` engine declaration | Current code uses `accepts_presets` (bool) + `allowed_dimensions` (frozenset) per step type, not per engine | `src/qmatsuite/workflow/registry.py:StepTypeSpec` (lines 35-51) | **Tolerable for v0.** Step-level control is sufficient. Engine-level gating can be deferred. |
+| D3 | StepType Enum violations | Enum MUST NOT be used for core logic | Still used in 2 validation paths: `api.py:7757`, `api.py:7867` | `src/qmatsuite/api.py` | **Out of scope.** Fix deferred; does not affect ORCA/PySCF preset work. |
+| D4 | Dialect namespace structure | Spec says `ir.pw` / `ir.qc` | Current code uses flat namespace; no dialect concept in IR layer | `src/qmatsuite/ir/` | **Will implement.** Introduce dialect as directory structure + docstrings; no runtime registry yet. |
 
 ---
 
@@ -67,16 +67,16 @@
 
 **Title**: `IR: introduce dialect directory structure (ir.pw, ir.qc)`
 
-**Scope**: `src/quantumvitas/ir/`
+**Scope**: `src/qmatsuite/ir/`
 
 **Tasks**:
 - [ ] Create directory structure:
-  - `src/quantumvitas/ir/dialects/__init__.py`
-  - `src/quantumvitas/ir/dialects/pw/__init__.py` (docstring only; re-export from `backends/qe`)
-  - `src/quantumvitas/ir/dialects/qc/__init__.py` (new, empty initially)
+  - `src/qmatsuite/ir/dialects/__init__.py`
+  - `src/qmatsuite/ir/dialects/pw/__init__.py` (docstring only; re-export from `backends/qe`)
+  - `src/qmatsuite/ir/dialects/qc/__init__.py` (new, empty initially)
 - [ ] Add docstrings explaining dialect paradigm (PW = PBC + plane-wave; QC = mol + AO)
-- [ ] Create `src/quantumvitas/ir/dialects/qc/parameters.py` with `QC_IR_PARAMETERS` dict (empty initially)
-- [ ] Update `src/quantumvitas/ir/__init__.py` to expose dialects
+- [ ] Create `src/qmatsuite/ir/dialects/qc/parameters.py` with `QC_IR_PARAMETERS` dict (empty initially)
+- [ ] Update `src/qmatsuite/ir/__init__.py` to expose dialects
 
 **Do NOT do**:
 - Do not touch `ir/backends/qe/mapping.py`
@@ -89,7 +89,7 @@
 **Verification**:
 ```bash
 pytest tests/unit/test_ir_dialect_structure.py -v
-python -c "from quantumvitas.ir.dialects import pw, qc; print('OK')"
+python -c "from qmatsuite.ir.dialects import pw, qc; print('OK')"
 ```
 
 **Expected outcome**: Dialect directory structure exists; imports work; QE/PW unchanged.
@@ -101,17 +101,17 @@ python -c "from quantumvitas.ir.dialects import pw, qc; print('OK')"
 **Title**: `Presets: define QC precision ParamSpace with ir.qc keys`
 
 **Scope**: 
-- `src/quantumvitas/ir/dialects/qc/parameters.py`
-- `src/quantumvitas/presets/qc_precision.py` (new)
-- `src/quantumvitas/presets/spaces_registry.py`
-- `src/quantumvitas/presets/dimensions.py`
+- `src/qmatsuite/ir/dialects/qc/parameters.py`
+- `src/qmatsuite/presets/qc_precision.py` (new)
+- `src/qmatsuite/presets/spaces_registry.py`
+- `src/qmatsuite/presets/dimensions.py`
 
 **Tasks**:
 - [ ] Define `ir.qc` keys in `QC_IR_PARAMETERS`:
   - `scf.conv_tol` (float): SCF convergence tolerance
   - `scf.max_cycle` (int): Maximum SCF iterations
   - `dft.grid_level` (int, optional): DFT grid level
-- [ ] Create `src/quantumvitas/presets/qc_precision.py` with:
+- [ ] Create `src/qmatsuite/presets/qc_precision.py` with:
   - `QC_PRECISION_PARAMSPACE` defining profiles `LOW`, `MED`, `HIGH`
   - Profile values (PySCF-compatible defaults)
   - Key ownership registered
@@ -145,9 +145,9 @@ pytest tests/unit/test_qc_precision_paramspace.py -v
 **Title**: `Presets: implement specific-supersedes-general materialization for QC`
 
 **Scope**:
-- `src/quantumvitas/presets/variants_registry.py`
-- `src/quantumvitas/presets/integration.py`
-- `src/quantumvitas/ir/dialects/qc/mapping.py` (new)
+- `src/qmatsuite/presets/variants_registry.py`
+- `src/qmatsuite/presets/integration.py`
+- `src/qmatsuite/ir/dialects/qc/mapping.py` (new)
 
 **Tasks**:
 - [ ] Create `ir/dialects/qc/mapping.py` with:
@@ -186,7 +186,7 @@ pytest tests/unit/test_paramspace_contract.py -v  # Ensure PW unchanged
 **Title**: `Workflow: enable accepts_presets for orca_scf/pyscf_scf step types`
 
 **Scope**:
-- `src/quantumvitas/workflow/registry.py`
+- `src/qmatsuite/workflow/registry.py`
 
 **Tasks**:
 - [ ] Set `accepts_presets=True` for:
@@ -220,8 +220,8 @@ pytest tests/unit/test_paramspace_contract.py -v
 **Title**: `ORCA: materialize engine.orca.scf.macro to input file`
 
 **Scope**:
-- `src/quantumvitas/engines/orca/input_compiler.py`
-- `src/quantumvitas/engine/orca_engine.py`
+- `src/qmatsuite/engines/orca/input_compiler.py`
+- `src/qmatsuite/engine/orca_engine.py`
 
 **Tasks**:
 - [ ] Read `engine.orca.scf.macro` from step spec if present
@@ -315,11 +315,11 @@ STOP IF: Any confusion about spec intent; write log and stop.
 You are implementing PR1 (IR dialect directory structure).
 
 TARGET FILES:
-- src/quantumvitas/ir/dialects/__init__.py (new)
-- src/quantumvitas/ir/dialects/pw/__init__.py (new)
-- src/quantumvitas/ir/dialects/qc/__init__.py (new)
-- src/quantumvitas/ir/dialects/qc/parameters.py (new)
-- src/quantumvitas/ir/__init__.py (update)
+- src/qmatsuite/ir/dialects/__init__.py (new)
+- src/qmatsuite/ir/dialects/pw/__init__.py (new)
+- src/qmatsuite/ir/dialects/qc/__init__.py (new)
+- src/qmatsuite/ir/dialects/qc/parameters.py (new)
+- src/qmatsuite/ir/__init__.py (update)
 
 TASK:
 1. Create directories: ir/dialects/, ir/dialects/pw/, ir/dialects/qc/
@@ -336,7 +336,7 @@ TESTS: Create tests/unit/test_ir_dialect_structure.py with import tests
 
 VERIFICATION:
 pytest tests/unit/test_ir_dialect_structure.py -v
-python -c "from quantumvitas.ir.dialects import pw, qc; print('OK')"
+python -c "from qmatsuite.ir.dialects import pw, qc; print('OK')"
 
 STOP IF: Any import error or test failure; log and stop.
 ```
@@ -349,10 +349,10 @@ STOP IF: Any import error or test failure; log and stop.
 You are implementing PR2 (QC precision ParamSpace).
 
 TARGET FILES:
-- src/quantumvitas/ir/dialects/qc/parameters.py (update)
-- src/quantumvitas/presets/qc_precision.py (new)
-- src/quantumvitas/presets/spaces_registry.py (update)
-- src/quantumvitas/presets/dimensions.py (update)
+- src/qmatsuite/ir/dialects/qc/parameters.py (update)
+- src/qmatsuite/presets/qc_precision.py (new)
+- src/qmatsuite/presets/spaces_registry.py (update)
+- src/qmatsuite/presets/dimensions.py (update)
 
 TASK:
 1. Define QC_IR_PARAMETERS with keys: scf.conv_tol, scf.max_cycle, dft.grid_level
@@ -385,9 +385,9 @@ STOP IF: Any PW test regression; log and stop.
 You are implementing PR3 (dual-path materialization).
 
 TARGET FILES:
-- src/quantumvitas/ir/dialects/qc/mapping.py (new)
-- src/quantumvitas/presets/variants_registry.py (update)
-- src/quantumvitas/presets/integration.py (update)
+- src/qmatsuite/ir/dialects/qc/mapping.py (new)
+- src/qmatsuite/presets/variants_registry.py (update)
+- src/qmatsuite/presets/integration.py (update)
 
 TASK:
 1. Create qc/mapping.py with QC_IR_TO_PYSCF_MAPPING and QC_IR_TO_ORCA_MAPPING
@@ -418,7 +418,7 @@ STOP IF: Any PW test regression or compile ordering change; log and stop.
 ```
 You are implementing PR4 (enable QC presets for step types).
 
-TARGET FILE: src/quantumvitas/workflow/registry.py
+TARGET FILE: src/qmatsuite/workflow/registry.py
 
 TASK:
 1. Find StepTypeSpec for "pyscf_scf" (line ~440)
@@ -447,8 +447,8 @@ STOP IF: Any PW step type changed; log and stop.
 You are implementing PR5 (ORCA macro materialization).
 
 TARGET FILES:
-- src/quantumvitas/engines/orca/input_compiler.py (update)
-- src/quantumvitas/engine/orca_engine.py (update if needed)
+- src/qmatsuite/engines/orca/input_compiler.py (update)
+- src/qmatsuite/engine/orca_engine.py (update if needed)
 
 TASK:
 1. Read engine.orca.scf.macro from step spec in ORCA input compilation

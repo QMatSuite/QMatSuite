@@ -81,7 +81,7 @@ The old `analysis/artifacts.py` (701 lines, marked DEPRECATED) is still **active
 | `get_scf_convergence_data()` | 1224+ | `AnalysisType, read_artifact, parse_scf_output` |
 | `ensure_analysis()` | 1866–1943 | Calls the three above |
 
-Total: **16 import sites** from `quantumvitas.analysis.*` in `service.py`.
+Total: **16 import sites** from `qmatsuite.analysis.*` in `service.py`.
 
 Daemon legacy handlers still registered (lines 358–364):
 - `ensure_calculation_analysis` → `_handle_ensure_calculation_analysis` (line 4608)
@@ -97,12 +97,12 @@ Daemon legacy handlers still registered (lines 358–364):
 
 ### 3.3 No Daemon-Level E2E Test for New Pipeline (HIGH)
 
-All new analysis pipeline tests operate at the `QVService` level:
+All new analysis pipeline tests operate at the `QMSService` level:
 - `tests/api/test_analysis_eager_write.py` — calls `_finalize_run_analysis_pipeline()` directly
 - `tests/api/test_analysis_endpoint.py` — calls `get_analysis()` directly
 - `tests/api/test_analysis_snapshot_endpoint.py` — calls `get_analysis_snapshot()` directly
 
-**No test exercises the full daemon RPC path**: daemon → QVService → runner → analysis pipeline → CAS/SQLite.
+**No test exercises the full daemon RPC path**: daemon → QMSService → runner → analysis pipeline → CAS/SQLite.
 
 The "ancient" test (`tests/daemon/test_si_bands_calculation_daemon.py`) **only tests the legacy pipeline** — it calls `get_band_structure_data` and `analyze_band`, not the new Surface B/C endpoints.
 

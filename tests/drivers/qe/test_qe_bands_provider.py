@@ -7,9 +7,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.band_structure import BandStructure
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.qe.parsers.bands import QEBandsProvider
+from qmatsuite.core.analysis.band_structure import BandStructure
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.qe.parsers.bands import QEBandsProvider
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]

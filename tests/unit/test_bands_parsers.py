@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from quantumvitas.analysis.parsers import _parse_bands_symmetry_output
+from qmatsuite.analysis.parsers import _parse_bands_symmetry_output
 
 
 def test_parse_bands_symmetry_output_basic():

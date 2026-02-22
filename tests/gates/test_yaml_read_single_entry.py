@@ -48,7 +48,7 @@ KERNEL_PACKAGES = [
 YAML_IO_MODULE = "core/yaml_io.py"
 
 # Allowlist: files that may use yaml.safe_load with justification
-# Format: (relative_path_from_quantumvitas, line_number_or_None, exception_code)
+# Format: (relative_path_from_qmatsuite, line_number_or_None, exception_code)
 ALLOWLIST = [
     # EXC-004: settings file, not SSOT
     ("project/storage.py", None, "EXC-004"),
@@ -122,8 +122,8 @@ class TestYamlReadSingleEntry:
 
     @pytest.fixture
     def src_root(self) -> Path:
-        """Get quantumvitas source root."""
-        return Path(__file__).parent.parent.parent / "src" / "quantumvitas"
+        """Get qmatsuite source root."""
+        return Path(__file__).parent.parent.parent / "src" / "qmatsuite"
 
     def test_no_yaml_safe_load_outside_yaml_io(self, src_root: Path):
         """

@@ -16,7 +16,7 @@ from typing import Any
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
 
 from tests.contract_crawler.introspection import get_all_rpc_methods
 from tests.contract_crawler.payloads import get_minimal_payload, get_methods_needing_recipes
@@ -87,7 +87,7 @@ def categorize_failure(error: Any, method_name: str) -> str:
     return "error"
 
 
-def discover_method(method_name: str, daemon: QVDaemon) -> DiscoveryResult:
+def discover_method(method_name: str, daemon: QMSDaemon) -> DiscoveryResult:
     """
     Attempt to call a single RPC method with best-effort payload.
     
@@ -176,7 +176,7 @@ def discover_all_methods() -> list[DiscoveryResult]:
     Returns:
         List of DiscoveryResult objects.
     """
-    daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+    daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
     all_methods = get_all_rpc_methods()
     
     results = []

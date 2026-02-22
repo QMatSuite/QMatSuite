@@ -41,14 +41,14 @@
 
 #### Stage 1: ParamSpace Compiler Output (Before Patch)
 
-**Location**: `src/quantumvitas/presets/paramspace.py:compile_profile_patch()` (lines 601-605)
+**Location**: `src/qmatsuite/presets/paramspace.py:compile_profile_patch()` (lines 601-605)
 
 **Code snippet**:
 ```python
 # Convert boolean values to IR canonical format (.true./.false.)
 # IR contract: boolean values must be canonical strings, not Python bool
 if isinstance(value, bool):
-    from quantumvitas.ir.backends.qe.mapping import ir_bool
+    from qmatsuite.ir.backends.qe.mapping import ir_bool
     value = ir_bool(value)
 ```
 
@@ -63,13 +63,13 @@ if isinstance(value, bool):
 
 #### Stage 2: Integration Apply Patch (Before StepDoc)
 
-**Location**: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (lines 712-720)
+**Location**: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (lines 712-720)
 
 **Code snippet**:
 ```python
 # Serialize IR patch to engine format before writing to step.yaml
 # step.yaml is spec step, parameters must be engine-specific format (QE: .true./.false.)
-from quantumvitas.ir.backends.qe.mapping import ir_params_to_qe_params
+from qmatsuite.ir.backends.qe.mapping import ir_params_to_qe_params
 qe_patch = ir_params_to_qe_params(unified_patch)
 doc.apply_patch(qe_patch)
 ```
@@ -85,7 +85,7 @@ doc.apply_patch(qe_patch)
 
 #### Stage 3: StepDoc Apply Patch (In-Memory)
 
-**Location**: `src/quantumvitas/core/yamldoc.py:apply_patch()` (lines 358-396)
+**Location**: `src/qmatsuite/core/yamldoc.py:apply_patch()` (lines 358-396)
 
 **Code snippet**:
 ```python
@@ -108,7 +108,7 @@ def _apply_patch_recursive(self, patch: dict, current_path: list[str]) -> None:
 
 #### Stage 4: Step YAML Serialized Representation
 
-**Location**: `src/quantumvitas/core/yaml_io.py:save_yaml_doc()` (line 77)
+**Location**: `src/qmatsuite/core/yaml_io.py:save_yaml_doc()` (line 77)
 
 **Code snippet**:
 ```python
@@ -128,7 +128,7 @@ content = yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
 
 #### Stage 5: StructureStepSpec.from_yaml Load Type (After yaml.safe_load)
 
-**Location**: `src/quantumvitas/calculation/structure_steps.py:StructureStepSpec.from_yaml()` (lines 150-169)
+**Location**: `src/qmatsuite/calculation/structure_steps.py:StructureStepSpec.from_yaml()` (lines 150-169)
 
 **Code snippet**:
 ```python
@@ -169,7 +169,7 @@ def test_yaml_boolean_parsing():
 
 #### Stage 6: Materialize Step Spec / Generate Input Type
 
-**Location**: `src/quantumvitas/calculation/structure_steps.py:generate_qe_input_from_spec()` (line 487-524)
+**Location**: `src/qmatsuite/calculation/structure_steps.py:generate_qe_input_from_spec()` (line 487-524)
 
 **Code snippet**:
 ```python
@@ -187,7 +187,7 @@ spec_overrides = parameter_dict_to_overrides(spec.parameters)
 
 #### Stage 7: Engine Writer Final Serialization Type
 
-**Location**: `src/quantumvitas/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 118-122)
+**Location**: `src/qmatsuite/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 118-122)
 
 **Code snippet**:
 ```python
@@ -225,12 +225,12 @@ if isinstance(ir_value, bool):
 
 **Answer**: **YES**
 
-**Evidence**: `src/quantumvitas/presets/paramspace.py:compile_profile_patch()` (lines 601-605)
+**Evidence**: `src/qmatsuite/presets/paramspace.py:compile_profile_patch()` (lines 601-605)
 ```python
 # Convert boolean values to IR canonical format (.true./.false.)
 # IR contract: boolean values must be canonical strings, not Python bool
 if isinstance(value, bool):
-    from quantumvitas.ir.backends.qe.mapping import ir_bool
+    from qmatsuite.ir.backends.qe.mapping import ir_bool
     value = ir_bool(value)
 ```
 
@@ -242,7 +242,7 @@ if isinstance(value, bool):
 
 **Answer**: **YES**
 
-**Evidence**: `src/quantumvitas/core/yamldoc.py:apply_patch()` (lines 358-396)
+**Evidence**: `src/qmatsuite/core/yamldoc.py:apply_patch()` (lines 358-396)
 - `_apply_patch_recursive()` calls `set()` for leaf values (line 396)
 - `set()` stores value directly: `parent[key] = value` (yamldoc.py:333)
 - No type conversion or normalization in `apply_patch()` or `set()`
@@ -348,19 +348,19 @@ plain_false -> bool False
 ### B.1 Inventory of All Representations
 
 **1. public_type (Gen Step)**:
-- **Definition**: `src/quantumvitas/workflow/registry.py:StepTypeSpec.public_type` (line 46)
+- **Definition**: `src/qmatsuite/workflow/registry.py:StepTypeSpec.public_type` (line 46)
 - **Format**: Generalized step type string (e.g., `"scf"`, `"nscf"`)
 - **Storage**: Not stored on disk (in-memory only)
 - **SSOT**: `StepTypeRegistry` `public_type` field
 
 **2. machine_type (Spec Step)**:
-- **Definition**: `src/quantumvitas/workflow/registry.py:StepTypeSpec.machine_type` (line 45)
+- **Definition**: `src/qmatsuite/workflow/registry.py:StepTypeSpec.machine_type` (line 45)
 - **Format**: Engine-prefixed step type string (e.g., `"qe_scf"`, `"w90_run"`)
 - **Storage**: Stored in `step.yaml` `step_type` field
 - **SSOT**: `StepTypeRegistry` `machine_type` field
 
 **3. StepType Enum**:
-- **Definition**: `src/quantumvitas/calculation/types.py:StepType` (lines 10-30)
+- **Definition**: `src/qmatsuite/calculation/types.py:StepType` (lines 10-30)
 - **Format**: Enum with values like `StepType.SCF = "scf"`, `StepType.BANDS_PW = "bands_pw"`, `StepType.PYSCF_SCF = "pyscf_scf"`
 - **Storage**: Not stored on disk (in-memory only)
 - **Status**: Legacy compatibility layer
@@ -416,9 +416,9 @@ plain_false -> bool False
 
 **Current code**:
 ```python
-from quantumvitas.calculation.types import StepType
+from qmatsuite.calculation.types import StepType
 if step_type not in (StepType.RELAX.value, StepType.VC_RELAX.value):
-    raise QVServiceError(
+    raise QMSServiceError(
         f"Step '{step_selector}' is not a relax/vc-relax step (type: {step_type})"
     )
 ```
@@ -427,11 +427,11 @@ if step_type not in (StepType.RELAX.value, StepType.VC_RELAX.value):
 
 **Proposed replacement**:
 ```python
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 registry = get_registry()
 spec = registry.get(step_type)  # Accepts both public and machine types
 if spec is None:
-    raise QVServiceError(f"Unknown step type: {step_type}")
+    raise QMSServiceError(f"Unknown step type: {step_type}")
 
 # Check if step type is a relax type (use public_type for comparison)
 # Relax types: "relax", "vc-relax" (public types)
@@ -439,7 +439,7 @@ if spec is None:
 # PySCF: "pyscf_opt" (machine type) -> public_type "opt"
 public_type = spec.public_type
 if public_type not in ("relax", "vc-relax", "opt"):  # "opt" for ORCA/PySCF
-    raise QVServiceError(
+    raise QMSServiceError(
         f"Step '{step_selector}' is not a relax/vc-relax/opt step (type: {step_type}, public_type: {public_type})"
     )
 ```
@@ -456,7 +456,7 @@ if public_type not in ("relax", "vc-relax", "opt"):  # "opt" for ORCA/PySCF
 
 ### B.4 Mapping Logic: Public ↔ Machine
 
-**Single source of truth**: `src/quantumvitas/workflow/registry.py:StepTypeRegistry.get()` (lines 594-618)
+**Single source of truth**: `src/qmatsuite/workflow/registry.py:StepTypeRegistry.get()` (lines 594-618)
 
 **Evidence**:
 - Accepts both `public_type` and `machine_type` (line 608-616)
@@ -475,13 +475,13 @@ if public_type not in ("relax", "vc-relax", "opt"):  # "opt" for ORCA/PySCF
 
 ### C.1 Preset/ParamSpace Targeting (Must Use public_type)
 
-**Current implementation**: `src/quantumvitas/presets/variants_registry.py:get_variant()` (lines 257-268)
+**Current implementation**: `src/qmatsuite/presets/variants_registry.py:get_variant()` (lines 257-268)
 
 **Evidence**:
 ```python
 # STEP TYPE MAPPING: Map machine_type to public_type for variant lookup
 # Presets use gen/public step types (string), not machine_type
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 registry = get_registry()
 spec = registry.get(step_type)
 if spec and spec.public_type:
@@ -499,9 +499,9 @@ return VARIANT_BY_STEP_AND_DIMENSION.get(key)
 ### C.2 Spec/Machine Type (Must Land in step.yaml and Runner)
 
 **Current implementation**: 
-- **Storage**: `src/quantumvitas/workflow/step_factory.py:create_step_doc()` (line 73) - stores `machine_type` in step.yaml
-- **Execution**: `src/quantumvitas/calculation/step.py:Step.run()` (line 92) - reads from step.yaml (machine_type)
-- **Materialization**: `src/quantumvitas/calculation/structure_steps.py:materialize_step_spec()` (lines 747-772) - uses machine_type for routing
+- **Storage**: `src/qmatsuite/workflow/step_factory.py:create_step_doc()` (line 73) - stores `machine_type` in step.yaml
+- **Execution**: `src/qmatsuite/calculation/step.py:Step.run()` (line 92) - reads from step.yaml (machine_type)
+- **Materialization**: `src/qmatsuite/calculation/structure_steps.py:materialize_step_spec()` (lines 747-772) - uses machine_type for routing
 
 **Conclusion**: ORCA/PySCF must:
 1. Add `machine_type` entries to `StepTypeRegistry` (e.g., `"orca_scf"`, `"pyscf_scf"`)
@@ -512,7 +512,7 @@ return VARIANT_BY_STEP_AND_DIMENSION.get(key)
 
 #### C.3.1 StepTypeRegistry Entries
 
-**Location**: `src/quantumvitas/workflow/registry.py:_STEP_TYPES` dict (line ~100-558)
+**Location**: `src/qmatsuite/workflow/registry.py:_STEP_TYPES` dict (line ~100-558)
 
 **Action**: Add `StepTypeSpec` entries for ORCA/PySCF step types
 
@@ -538,7 +538,7 @@ StepTypeSpec(
 
 #### C.3.2 Preset Variant Entries
 
-**Location**: `src/quantumvitas/presets/variants_registry.py:VARIANT_BY_STEP_AND_DIMENSION` (line ~100-150)
+**Location**: `src/qmatsuite/presets/variants_registry.py:VARIANT_BY_STEP_AND_DIMENSION` (line ~100-150)
 
 **Action**: Add variant entries with `applies_to_step_types` including ORCA/PySCF public types
 
@@ -562,13 +562,13 @@ PRECISION_PW_DEFAULT_VARIANT = ParamSpaceVariant(
 
 #### C.3.3 Engine-Owned IR→Engine Parameter Mapping
 
-**Location**: `src/quantumvitas/ir/backends/{engine}/mapping.py` (create new files)
+**Location**: `src/qmatsuite/ir/backends/{engine}/mapping.py` (create new files)
 
 **Action**: Create IR→engine mapping modules
 
 **Example structure**:
 ```python
-# src/quantumvitas/ir/backends/orca/mapping.py
+# src/qmatsuite/ir/backends/orca/mapping.py
 
 IR_TO_ORCA_MAPPING: Dict[str, Tuple[str, str, str]] = {
     # Reuse IR keys (same as QE in v0)
@@ -604,7 +604,7 @@ def ir_to_orca_param(ir_key: str, ir_value: Any) -> Tuple[str, str, str, Any]:
 
 **Responsibility**: Engine writers must convert IR canonical strings (`.true.`/`.false.`) to engine-specific format
 
-**Current QE implementation**: `src/quantumvitas/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 118-122)
+**Current QE implementation**: `src/qmatsuite/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 118-122)
 - Converts Python `bool` → `.true.`/`.false.` strings
 - If input is already `.true.` string, passes through unchanged
 
@@ -744,23 +744,23 @@ def ir_to_orca_param(ir_key: str, ir_value: Any) -> Tuple[str, str, str, Any]:
 
 **File → Symbol → Why Relevant**:
 
-- `src/quantumvitas/presets/paramspace.py:compile_profile_patch()` (lines 601-605)
+- `src/qmatsuite/presets/paramspace.py:compile_profile_patch()` (lines 601-605)
   - Converts Python `bool` → `.true.`/`.false.` strings
   - **Evidence**: ParamSpace compiler output type
 
-- `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (lines 712-720)
+- `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (lines 712-720)
   - Calls `ir_params_to_qe_params()` to ensure QE format
   - **Evidence**: Integration layer type handling
 
-- `src/quantumvitas/ir/backends/qe/mapping.py:ir_bool()` (lines 14-41)
+- `src/qmatsuite/ir/backends/qe/mapping.py:ir_bool()` (lines 14-41)
   - IR canonical boolean encoder
   - **Evidence**: IR canonical format definition
 
-- `src/quantumvitas/ir/backends/qe/mapping.py:ir_params_to_qe_params()` (lines 218-278)
+- `src/qmatsuite/ir/backends/qe/mapping.py:ir_params_to_qe_params()` (lines 218-278)
   - Converts IR parameters to QE parameters
   - **Evidence**: IR→QE conversion at boundary
 
-- `src/quantumvitas/core/yamldoc.py:apply_patch()` (lines 358-396)
+- `src/qmatsuite/core/yamldoc.py:apply_patch()` (lines 358-396)
   - Stores values as-is
   - **Evidence**: StepDoc storage behavior
 
@@ -772,27 +772,27 @@ def ir_to_orca_param(ir_key: str, ir_value: Any) -> Tuple[str, str, str, Any]:
 
 **File → Symbol → Why Relevant**:
 
-- `src/quantumvitas/workflow/registry.py:StepTypeSpec` (lines 23-58)
+- `src/qmatsuite/workflow/registry.py:StepTypeSpec` (lines 23-58)
   - Defines `public_type` and `machine_type`
   - **Evidence**: Vocabulary definitions
 
-- `src/quantumvitas/workflow/step_factory.py:create_step_doc()` (line 73)
+- `src/qmatsuite/workflow/step_factory.py:create_step_doc()` (line 73)
   - Stores `machine_type` in step.yaml
   - **Evidence**: Storage location
 
-- `src/quantumvitas/presets/variants_registry.py:get_variant()` (lines 257-265)
+- `src/qmatsuite/presets/variants_registry.py:get_variant()` (lines 257-265)
   - Maps machine_type → public_type for variant lookup
   - **Evidence**: Preset targeting uses public_type
 
-- `src/quantumvitas/calculation/step.py:Step.run()` (line 92)
+- `src/qmatsuite/calculation/step.py:Step.run()` (line 92)
   - Reads step_type from step.yaml (machine_type)
   - **Evidence**: Runner execution uses machine_type
 
-- `src/quantumvitas/calculation/types.py:StepType` (lines 10-30)
+- `src/qmatsuite/calculation/types.py:StepType` (lines 10-30)
   - Enum definition
   - **Evidence**: Legacy vocabulary
 
-- `src/quantumvitas/api.py:set_relax_final_cell()` (lines 7756-7758)
+- `src/qmatsuite/api.py:set_relax_final_cell()` (lines 7756-7758)
   - Enum validation (FORBIDDEN)
   - **Evidence**: SSOT violation
 
@@ -800,16 +800,16 @@ def ir_to_orca_param(ir_key: str, ir_value: Any) -> Tuple[str, str, str, Any]:
 
 ```bash
 # IR representation
-rg -n "ir_bool|\.true\.|\.false\.|IR canonical|canonical encoding" -S src/quantumvitas
+rg -n "ir_bool|\.true\.|\.false\.|IR canonical|canonical encoding" -S src/qmatsuite
 rg -n "noncolin|lspinorb|canonical" -S tests
 
 # Step vocabulary
-rg -n "public_type|machine_type|StepType\b|StepTypeRegistry" -S src/quantumvitas
-rg -n "step_type.*=.*public|step_type.*=.*machine" -S src/quantumvitas
+rg -n "public_type|machine_type|StepType\b|StepTypeRegistry" -S src/qmatsuite
+rg -n "step_type.*=.*public|step_type.*=.*machine" -S src/qmatsuite
 
 # Enum usage
-rg -n "from.*StepType|import.*StepType|StepType\." -S src/quantumvitas
-rg -n "StepType\(|StepType\." -S src/quantumvitas
+rg -n "from.*StepType|import.*StepType|StepType\." -S src/qmatsuite
+rg -n "StepType\(|StepType\." -S src/qmatsuite
 ```
 
 ---

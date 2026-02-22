@@ -18,7 +18,7 @@
 │                     parse_bands_gnu()       bands.json          get_bands_*        │
 │                            │                    │                   │               │
 │                            └── dataclasses ─────┴─── JSON ──────────┘               │
-│                             (SCFResult,        (via artifacts.py)  (via QVService)  │
+│                             (SCFResult,        (via artifacts.py)  (via QMSService)  │
 │                              DOSData,                                               │
 │                              BandStructureData)                                     │
 │                                                                                      │
@@ -40,7 +40,7 @@
 <calculation_dir>/analysis/<type>.json
 ```
 
-**Current AnalysisType enum** (`src/quantumvitas/analysis/artifacts.py`):
+**Current AnalysisType enum** (`src/qmatsuite/analysis/artifacts.py`):
 
 ```python
 class AnalysisType(str, Enum):
@@ -49,7 +49,7 @@ class AnalysisType(str, Enum):
     BANDS = "bands"
 ```
 
-**Key Data Structures** (`src/quantumvitas/analysis/parsers.py`):
+**Key Data Structures** (`src/qmatsuite/analysis/parsers.py`):
 
 | Dataclass | Fields | Storage |
 |-----------|--------|---------|
@@ -61,7 +61,7 @@ class AnalysisType(str, Enum):
 1. Check if artifact exists via `artifact_exists()`
 2. If exists and not `force=True`: read from cache via `read_artifact()`
 3. If not exists or `force`: parse raw output, write via `write_artifact()`
-4. Artifacts include metadata: `_artifact_meta: {analysis_type, created_at, qv_version}`
+4. Artifacts include metadata: `_artifact_meta: {analysis_type, created_at, qms_version}`
 
 ### 1.3 Missing "Unified Artifact Abstraction"
 
@@ -74,7 +74,7 @@ class AnalysisType(str, Enum):
 **What's needed:**
 
 ```python
-# Proposed: src/quantumvitas/analysis/artifact_types.py
+# Proposed: src/qmatsuite/analysis/artifact_types.py
 
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -121,12 +121,12 @@ class BaseArtifact(ABC):
 
 | Component | Location | Rationale |
 |-----------|----------|-----------|
-| `ArtifactKind`, `BaseArtifact` | `src/quantumvitas/analysis/artifact_types.py` | New file, alongside existing `artifacts.py` |
-| `VolumeArtifact` | `src/quantumvitas/analysis/volume_artifacts.py` | Separate due to size/complexity |
-| `MapArtifact` | `src/quantumvitas/analysis/map_artifacts.py` | Separate file for 2D data |
-| XSF/Cube/BXSF parsers | `src/quantumvitas/io/parser/volume_parsers.py` | Following existing `qe_parser.py` pattern |
+| `ArtifactKind`, `BaseArtifact` | `src/qmatsuite/analysis/artifact_types.py` | New file, alongside existing `artifacts.py` |
+| `VolumeArtifact` | `src/qmatsuite/analysis/volume_artifacts.py` | Separate due to size/complexity |
+| `MapArtifact` | `src/qmatsuite/analysis/map_artifacts.py` | Separate file for 2D data |
+| XSF/Cube/BXSF parsers | `src/qmatsuite/io/parser/volume_parsers.py` | Following existing `qe_parser.py` pattern |
 | Volume viewer component | `gui/src/components/panels/VolumeViewer3D.tsx` | Alongside `StructureViewer3D.tsx` |
-| Binary cache utils | `src/quantumvitas/analysis/binary_cache.py` | Separate binary I/O from JSON logic |
+| Binary cache utils | `src/qmatsuite/analysis/binary_cache.py` | Separate binary I/O from JSON logic |
 
 **Dependency Direction:**
 ```
@@ -186,7 +186,7 @@ daemon/server.py → analysis/* (consumes, no circular deps)
 
 **State Management:**
 - Use existing pattern: `useState` for local UI state, RPC calls for data
-- Add `useVolumeData` hook mirroring existing `useQVClient` pattern
+- Add `useVolumeData` hook mirroring existing `useQMSClient` pattern
 - For large volumes: streaming/chunked loading with progress indicator
 
 ### 1.6 Performance & File Size Concerns
@@ -196,8 +196,8 @@ daemon/server.py → analysis/* (consumes, no circular deps)
 Analysis of current IPC path:
 ```typescript
 // gui/electron/preload.ts
-qvApi.request = async (type, payload) => {
-  return ipcRenderer.invoke('qv-request', request);
+qmsApi.request = async (type, payload) => {
+  return ipcRenderer.invoke('qms-request', request);
 };
 
 // daemon/server.py - all responses go through JSON
@@ -311,7 +311,7 @@ def _send_response(self, response: RPCResponse) -> None:
 │  │                            FRONTEND (React/Electron)                          │   │
 │  ├──────────────────────────────────────────────────────────────────────────────┤   │
 │  │                                                                               │   │
-│  │  types/qv.ts                components/panels/                               │   │
+│  │  types/qms.ts                components/panels/                               │   │
 │  │  ──────────                 ─────────────────                                │   │
 │  │  + VolumeMetadata          + VolumeViewer3D.tsx                              │   │
 │  │  + MapMetadata               │ Three.js isosurface                           │   │
@@ -360,7 +360,7 @@ def _send_response(self, response: RPCResponse) -> None:
 | **M1.9** | Create `VolumeViewer3D` component with MarchingCubes | `gui/src/components/panels/VolumeViewer3D.tsx` |
 | **M1.10** | Add isosurface controls (±iso value slider) | `VolumeViewer3D.tsx` |
 | **M1.11** | Add slice plane controls | `VolumeViewer3D.tsx` |
-| **M1.12** | Add TypeScript types for volume data | `gui/src/types/qv.ts` |
+| **M1.12** | Add TypeScript types for volume data | `gui/src/types/qms.ts` |
 | **M1.13** | Unit tests: XSF/Cube parsers | `tests/unit/test_volume_parsers.py` |
 | **M1.14** | Unit tests: Binary cache | `tests/unit/test_binary_cache.py` |
 | **M1.15** | Integration test: RPC volume workflow | `tests/integration/test_volume_rpc.py` |
@@ -434,10 +434,10 @@ def _send_response(self, response: RPCResponse) -> None:
 
 #### Frontend: TypeScript Types
 
-- [ ] **#VOL-016**: Add `VolumeMetadata` interface to `types/qv.ts`
-- [ ] **#VOL-017**: Add `MapData` interface to `types/qv.ts`
-- [ ] **#VOL-018**: Add `WannierProperties` interface to `types/qv.ts`
-- [ ] **#VOL-019**: Extend `QVCommandMap` with volume RPC types
+- [ ] **#VOL-016**: Add `VolumeMetadata` interface to `types/qms.ts`
+- [ ] **#VOL-017**: Add `MapData` interface to `types/qms.ts`
+- [ ] **#VOL-018**: Add `WannierProperties` interface to `types/qms.ts`
+- [ ] **#VOL-019**: Extend `QMSCommandMap` with volume RPC types
 
 #### Frontend: Electron IPC
 

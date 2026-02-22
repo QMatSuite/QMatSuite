@@ -26,18 +26,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from quantumvitas.api import QVService
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc
-from quantumvitas.core.models import load_calculation
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc
+from qmatsuite.core.models import load_calculation
+from qmatsuite.core.pseudo_provenance import compute_sha256_file
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-RESOURCES_DIR = REPO_ROOT / "src" / "quantumvitas" / "resources"
+RESOURCES_DIR = REPO_ROOT / "src" / "qmatsuite" / "resources"
 LAMMPS_STRUCTURES_DIR = REPO_ROOT / "tests" / "data" / "lammps" / "structures"
 LAMMPS_POTENTIALS_DIR = RESOURCES_DIR / "lammps" / "potentials"
 
@@ -102,7 +102,7 @@ def run_workflow_a_lj_relax(base_dir: Path) -> Dict[str, Any]:
     
     try:
         # Create project for this workflow
-        project_root = QVService.init_project(
+        project_root = QMSService.init_project(
             target_dir=base_dir / "workflow_a",
             name="LJ Relax Test"
         )
@@ -115,11 +115,11 @@ def run_workflow_a_lj_relax(base_dir: Path) -> Dict[str, Any]:
             return evidence
         
         # Import structure
-        struct_result = QVService(project_root).structure.import_file(struct_file, name="LJ FCC 108")
+        struct_result = QMSService(project_root).structure.import_file(struct_file, name="LJ FCC 108")
         structure_id = struct_result.meta.ulid
         
         # Create calculation
-        calc_result = QVService(project_root).project.init_calculation(
+        calc_result = QMSService(project_root).project.init_calculation(
             name="lj_relax",
             structure_selector=structure_id,
         )
@@ -135,11 +135,11 @@ def run_workflow_a_lj_relax(base_dir: Path) -> Dict[str, Any]:
         save_yaml_doc(calc_doc, calc_path)
         
         # Create relax step
-        relax_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
+        relax_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
         relax_step_id = relax_step.meta.ulid
         
         # Configure step
-        QVService.configure_step(
+        QMSService.configure_step(
             project_root=project_root,
             calculation_selector=calc_id,
             step_selector=relax_step_id,
@@ -272,7 +272,7 @@ def run_workflow_b_eam_md(base_dir: Path) -> Dict[str, Any]:
     
     try:
         # Create project for this workflow
-        project_root = QVService.init_project(
+        project_root = QMSService.init_project(
             target_dir=base_dir / "workflow_b",
             name="EAM MD Test"
         )
@@ -284,7 +284,7 @@ def run_workflow_b_eam_md(base_dir: Path) -> Dict[str, Any]:
             return evidence
         
         # Import structure
-        struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
+        struct_result = QMSService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
         structure_id = struct_result.meta.ulid
 
         # Copy potential file
@@ -301,7 +301,7 @@ def run_workflow_b_eam_md(base_dir: Path) -> Dict[str, Any]:
         potential_sha = compute_sha256_file(potential_dst)
 
         # Create calculation
-        calc_result = QVService(project_root).project.init_calculation(
+        calc_result = QMSService(project_root).project.init_calculation(
             name="eam_md",
             structure_selector=structure_id,
         )
@@ -325,11 +325,11 @@ def run_workflow_b_eam_md(base_dir: Path) -> Dict[str, Any]:
         save_yaml_doc(calc_doc, calc_path)
         
         # Create MD step
-        md_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+        md_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="md")
         md_step_id = md_step.meta.ulid
         
         # Configure step
-        QVService.configure_step(
+        QMSService.configure_step(
             project_root=project_root,
             calculation_selector=calc_id,
             step_selector=md_step_id,
@@ -466,7 +466,7 @@ def run_workflow_c_chain(base_dir: Path) -> Dict[str, Any]:
     
     try:
         # Create project for this workflow
-        project_root = QVService.init_project(
+        project_root = QMSService.init_project(
             target_dir=base_dir / "workflow_c",
             name="Chain Test"
         )
@@ -478,7 +478,7 @@ def run_workflow_c_chain(base_dir: Path) -> Dict[str, Any]:
             return evidence
         
         # Import structure
-        struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
+        struct_result = QMSService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
         structure_id = struct_result.meta.ulid
 
         # Copy potential file
@@ -495,7 +495,7 @@ def run_workflow_c_chain(base_dir: Path) -> Dict[str, Any]:
         potential_sha = compute_sha256_file(potential_dst)
 
         # Create calculation
-        calc_result = QVService(project_root).project.init_calculation(
+        calc_result = QMSService(project_root).project.init_calculation(
             name="chain",
             structure_selector=structure_id,
         )
@@ -519,10 +519,10 @@ def run_workflow_c_chain(base_dir: Path) -> Dict[str, Any]:
         save_yaml_doc(calc_doc, calc_path)
         
         # Create relax step
-        relax_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
+        relax_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
         relax_step_id = relax_step.meta.ulid
         
-        QVService.configure_step(
+        QMSService.configure_step(
             project_root=project_root,
             calculation_selector=calc_id,
             step_selector=relax_step_id,
@@ -539,10 +539,10 @@ def run_workflow_c_chain(base_dir: Path) -> Dict[str, Any]:
         )
         
         # Create MD step
-        md_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+        md_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="md")
         md_step_id = md_step.meta.ulid
         
-        QVService.configure_step(
+        QMSService.configure_step(
             project_root=project_root,
             calculation_selector=calc_id,
             step_selector=md_step_id,
@@ -664,7 +664,7 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
     
     try:
         # Create project for this workflow
-        project_root = QVService.init_project(
+        project_root = QMSService.init_project(
             target_dir=base_dir / "workflow_d",
             name="Restart Test"
         )
@@ -676,7 +676,7 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
             return evidence
         
         # Import structure
-        struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
+        struct_result = QMSService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
         structure_id = struct_result.meta.ulid
 
         # Copy potential file
@@ -693,7 +693,7 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
         potential_sha = compute_sha256_file(potential_dst)
 
         # Create calculation
-        calc_result = QVService(project_root).project.init_calculation(
+        calc_result = QMSService(project_root).project.init_calculation(
             name="restart",
             structure_selector=structure_id,
         )
@@ -717,10 +717,10 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
         save_yaml_doc(calc_doc, calc_path)
         
         # Create relax step
-        relax_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
+        relax_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
         relax_step_id = relax_step.meta.ulid
         
-        QVService.configure_step(
+        QMSService.configure_step(
             project_root=project_root,
             calculation_selector=calc_id,
             step_selector=relax_step_id,
@@ -737,10 +737,10 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
         )
         
         # Create first MD step
-        md1_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+        md1_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="md")
         md1_step_id = md1_step.meta.ulid
         
-        QVService.configure_step(
+        QMSService.configure_step(
             project_root=project_root,
             calculation_selector=calc_id,
             step_selector=md1_step_id,
@@ -759,10 +759,10 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
         )
         
         # Create second MD step (restart from first MD)
-        md2_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+        md2_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="md")
         md2_step_id = md2_step.meta.ulid
         
-        QVService.configure_step(
+        QMSService.configure_step(
             project_root=project_root,
             calculation_selector=calc_id,
             step_selector=md2_step_id,
@@ -891,7 +891,7 @@ def generate_markdown_report(summary: Dict, results: Dict, env_info: Dict) -> st
     lines.append("")
     lines.append("### Environment Verification")
     lines.append(f"- ✅ **Python version**: {env_info['python_version']}")
-    lines.append(f"- ✅ **QMatSuite import**: Success - `{env_info['qvitas_path']}`")
+    lines.append(f"- ✅ **QMatSuite import**: Success - `{env_info['qmatsuite_path']}`")
     lines.append(f"- ✅ **LAMMPS binary path**: `{env_info['lammps_bin']}`")
     if env_info.get('lammps_version'):
         lines.append(f"- ✅ **LAMMPS version**: {env_info['lammps_version']}")
@@ -899,7 +899,7 @@ def generate_markdown_report(summary: Dict, results: Dict, env_info: Dict) -> st
     lines.append("```")
     lines.append("=== PRE-RUN CHECKS ===")
     lines.append(f"Python: {env_info['python_version']}")
-    lines.append(f"QMatSuite: {env_info['qvitas_path']}")
+    lines.append(f"QMatSuite: {env_info['qmatsuite_path']}")
     lines.append(f"LAMMPS binary: {env_info['lammps_bin']}")
     if env_info.get('lammps_version'):
         lines.append(f"LAMMPS version: {env_info['lammps_version']}")
@@ -1106,9 +1106,9 @@ Examples:
     
     # QMatSuite import
     try:
-        import quantumvitas
-        qvitas_path = quantumvitas.__file__
-        print(f"QMatSuite: {qvitas_path}")
+        import qmatsuite
+        qmatsuite_path = qmatsuite.__file__
+        print(f"QMatSuite: {qmatsuite_path}")
     except ImportError:
         print("ERROR: QMatSuite not found")
         sys.exit(1)
@@ -1127,7 +1127,7 @@ Examples:
         print(f"LAMMPS binary (from --lammps-bin): {lammps_bin}")
     else:
         try:
-            from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
+            from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin
             lammps_bin = resolve_lammps_bin()
             print(f"LAMMPS binary (auto-detected): {lammps_bin}")
         except Exception as e:
@@ -1143,7 +1143,7 @@ Examples:
     
     env_info = {
         "python_version": python_version,
-        "qvitas_path": qvitas_path,
+        "qmatsuite_path": qmatsuite_path,
         "lammps_bin": str(lammps_bin),
         "lammps_version": lammps_version,
     }

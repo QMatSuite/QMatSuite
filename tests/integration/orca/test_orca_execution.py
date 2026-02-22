@@ -16,7 +16,7 @@ from typing import Dict, Any, Optional
 def get_orca_path() -> Optional[Path]:
     """Get ORCA path using the resolver."""
     try:
-        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+        from qmatsuite.core.engines.orca_resolver import resolve_orca_bin
         return resolve_orca_bin()
     except RuntimeError:
         return None
@@ -74,7 +74,7 @@ def orca_engine():
     if not orca_path.exists():
         pytest.skip(f"ORCA binary not found at {ORCA_BIN}")
 
-    from quantumvitas.engine.orca_engine import ORCAEngine
+    from qmatsuite.engine.orca_engine import ORCAEngine
     return ORCAEngine(orca_bin=orca_path)
 
 
@@ -85,7 +85,7 @@ class TestORCAExecution:
 
     def test_scf_execution(self, orca_engine, tmp_path):
         """Test basic SCF calculation."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -106,7 +106,7 @@ class TestORCAExecution:
 
     def test_scf_td_chain(self, orca_engine, tmp_path):
         """Test SCF + TDDFT chain."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -132,7 +132,7 @@ class TestORCAExecution:
 
     def test_property_file_generated(self, orca_engine, tmp_path):
         """Verify property.txt is generated."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -151,8 +151,8 @@ class TestORCAExecution:
 
     def test_fresh_run_uses_noautostart(self, orca_engine, tmp_path):
         """Verify fresh=True generates NoAutoStart in input."""
-        from quantumvitas.engine.qc_engine_base import QCChain
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
 
         scf_step = MockStep(
             ulid="s1",
@@ -169,7 +169,7 @@ class TestORCAExecution:
 
     def test_chain_artifacts_exist(self, orca_engine, tmp_path):
         """Verify all required chain artifacts are created."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -189,7 +189,7 @@ class TestORCAExecution:
 
     def test_dft_calculation(self, orca_engine, tmp_path):
         """Test DFT (B3LYP) calculation."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -207,7 +207,7 @@ class TestORCAExecution:
 
     def test_energy_parsing(self, orca_engine, tmp_path):
         """Test that energy is correctly parsed from output."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -227,7 +227,7 @@ class TestORCAExecution:
 
     def test_tddft_excitation_energies(self, orca_engine, tmp_path):
         """Test TDDFT excitation energy extraction."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -261,7 +261,7 @@ class TestORCAChainBehavior:
 
     def test_chain_key_in_filenames(self, orca_engine, tmp_path):
         """Verify chain key is used in output filenames."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -278,7 +278,7 @@ class TestORCAChainBehavior:
 
     def test_multiple_chains_independent(self, orca_engine, tmp_path):
         """Test that multiple chains can run independently."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         # Create two chains
         chain1 = QCChain(

@@ -7,12 +7,12 @@ from the intersection of Engine.supported_presets and ParamSpace gen-step applic
 
 import pytest
 
-from quantumvitas.presets.variants_registry import list_dimensions_for_gen_step
-from quantumvitas.presets.catalog import list_presets_for_engine
-from quantumvitas.workflow.registry import get_registry
-from quantumvitas.engine.qe_engine import QeEngine
-from quantumvitas.engine.pyscf_engine import PySCFEngine
-from quantumvitas.engine.orca_engine import ORCAEngine
+from qmatsuite.presets.variants_registry import list_dimensions_for_gen_step
+from qmatsuite.presets.catalog import list_presets_for_engine
+from qmatsuite.workflow.registry import get_registry
+from qmatsuite.engine.qe_engine import QeEngine
+from qmatsuite.engine.pyscf_engine import PySCFEngine
+from qmatsuite.engine.orca_engine import ORCAEngine
 
 
 class TestListDimensionsForGenStep:

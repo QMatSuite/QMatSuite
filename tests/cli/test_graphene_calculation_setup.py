@@ -2,13 +2,13 @@
 Unit test for graphene calculation setup via CLI.
 
 This test verifies the exact CLI command sequence from manual_tests/instructions:
-- qv init project --name graphene_project
+- qms init project --name graphene_project
 - cd graphene_project
-- qv import-structure tests/data/13_graphene/graphene.2_scf.in
-- qv init calculation "graphene bands" --structure C
+- qms import-structure tests/data/13_graphene/graphene.2_scf.in
+- qms init calculation "graphene bands" --structure C
 - cd calculations/graphene-bands
-- qv init step scf                 # Should auto-detect parent calculation + structure
-- qv configure calculation --name "graph"
+- qms init step scf                 # Should auto-detect parent calculation + structure
+- qms configure calculation --name "graph"
 
 This is a unit test (no QE execution required).
 """
@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from quantumvitas.cli.main import app
+from qmatsuite.cli.main import app
 
 pytestmark = pytest.mark.unit
 
@@ -38,7 +38,7 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
         fs_path = Path(fs)
         
         # Step 1: Create project
-        # qv init project --name graphene_project
+        # qms init project --name graphene_project
         result = runner.invoke(
             app,
             ["init", "project", "--name", "graphene_project"],
@@ -50,11 +50,11 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
         project_dirs = [d for d in fs_path.iterdir() if d.is_dir() and d.name.startswith("graphene")]
         assert len(project_dirs) > 0, f"No project directory found. Created dirs: {list(fs_path.iterdir())}"
         project_dir = project_dirs[0]
-        assert (project_dir / "project.qv.yml").exists(), f"project.qv.yml not found in {project_dir}"
-        assert (project_dir / "project.qv.yml").exists()
+        assert (project_dir / "project.qms.yml").exists(), f"project.qms.yml not found in {project_dir}"
+        assert (project_dir / "project.qms.yml").exists()
         
         # Verify project name
-        project_config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
+        project_config = yaml.safe_load((project_dir / "project.qms.yml").read_text())
         assert project_config["project"]["name"] == "graphene_project"
         
         # Step 2: cd graphene_project (simulated by changing working directory)
@@ -65,7 +65,7 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             os.chdir(project_dir)
             
             # Step 3: Import structure
-            # qv import-structure $PYTHONSRC/tests/data/13_graphene/graphene.2_scf.in
+            # qms import-structure $PYTHONSRC/tests/data/13_graphene/graphene.2_scf.in
             result = runner.invoke(
                 app,
                 [
@@ -84,14 +84,14 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             assert len(structure_files) > 0, "Structure file should be created"
             
             # Verify structure is registered in project config
-            # ID-only model: project.qv.yml only has structure_ulid, not name
+            # ID-only model: project.qms.yml only has structure_ulid, not name
             # Resolve structure from registry to get its name
-            project_config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
+            project_config = yaml.safe_load((project_dir / "project.qms.yml").read_text())
             structures = project_config.get("structures", [])
             assert len(structures) > 0, "Structure should be registered"
             # In ID-only model, entries have structure_ulid (ULID), not name
             # Resolve the structure to get its meta.name
-            from quantumvitas.core.resolution import build_resource_index, require_structure
+            from qmatsuite.core.resolution import build_resource_index, require_structure
             index = build_resource_index(project_dir)
             structure_ulid = structures[0].get("structure_ulid")
             assert structure_ulid is not None, "Structure entry should have structure_ulid"
@@ -99,7 +99,7 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             assert resolved.meta.name == "C", f"Structure name should be 'C'. Found: {resolved.meta.name}"
             
             # Step 4: Create calculation
-            # qv init calculation "graphene bands" --structure C
+            # qms init calculation "graphene bands" --structure C
             result = runner.invoke(
                 app,
                 [
@@ -132,12 +132,12 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             assert calculation_data["steps"] == []
             
             # Verify calculation is registered in project config
-            # API model: project.qv.yml has meta with ulid, name, slug, path
+            # API model: project.qms.yml has meta with ulid, name, slug, path
             # Resolve calculation from registry to get its name
-            project_config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
+            project_config = yaml.safe_load((project_dir / "project.qms.yml").read_text())
             calculations = project_config.get("calculations", [])
             assert len(calculations) > 0, "Calculation should be registered"
-            from quantumvitas.core.resolution import build_resource_index, require_calculation
+            from qmatsuite.core.resolution import build_resource_index, require_calculation
             index = build_resource_index(project_dir)
             calculation_id = (calculations[0].get("meta") or {}).get("ulid")
             assert calculation_id is not None, "Calculation entry should have meta.ulid"
@@ -148,7 +148,7 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             os.chdir(calculation_dir)
             
             # Step 6: Create SCF step (should auto-detect calculation and structure)
-            # qv init step scf
+            # qms init step scf
             result = runner.invoke(
                 app,
                 ["init", "step", "scf"],
@@ -189,7 +189,7 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             assert "CONTROL" in step_data.get("parameters", {}), "Step should have CONTROL section from defaults"
             
             # Step 7: Rename calculation
-            # qv configure calculation --name "graph"
+            # qms configure calculation --name "graph"
             result = runner.invoke(
                 app,
                 [
@@ -202,13 +202,13 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
             assert result.exit_code == 0, f"Calculation rename failed: {result.stdout}"
             
             # Verify calculation name was updated in project config
-            project_config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
+            project_config = yaml.safe_load((project_dir / "project.qms.yml").read_text())
             calculations = project_config.get("calculations", [])
             calculation_entry = next((w for w in calculations if w.get("name") == "graph"), None)
             assert calculation_entry is not None, "Calculation should be renamed to 'graph' in project config"
             
             # Re-resolve calculation directory (it may have moved if slug changed)
-            from quantumvitas.core.project_utils import calculation_directory
+            from qmatsuite.core.project_utils import calculation_directory
             new_calculation_dir = calculation_directory(project_dir, calculation_entry)
             assert new_calculation_dir.exists(), "Calculation directory should exist after rename"
             assert (new_calculation_dir / "calculation.yaml").exists(), "calculation.yaml should exist after rename"
@@ -229,7 +229,7 @@ def test_graphene_calculation_setup(ci_test_data_dir: Path, tmp_path: Path):
 
 
 def test_init_step_fails_at_project_root_without_calculation(ci_test_data_dir: Path, tmp_path: Path):
-    """Test that qv init step scf fails with clear error when at project root without --calculation."""
+    """Test that qms init step scf fails with clear error when at project root without --calculation."""
     runner = CliRunner()
     
     with runner.isolated_filesystem() as fs:
@@ -240,7 +240,7 @@ def test_init_step_fails_at_project_root_without_calculation(ci_test_data_dir: P
         assert result.exit_code == 0
         
         # Find the actual project directory (may be slugified)
-        project_dirs = [d for d in fs_path.iterdir() if d.is_dir() and (d / "project.qv.yml").exists()]
+        project_dirs = [d for d in fs_path.iterdir() if d.is_dir() and (d / "project.qms.yml").exists()]
         assert len(project_dirs) > 0, f"No project directory found. Created dirs: {list(fs_path.iterdir())}"
         project_dir = project_dirs[0]
         

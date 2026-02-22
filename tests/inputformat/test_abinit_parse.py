@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.abinit.inputspec import (
+from qmatsuite.drivers.abinit.inputspec import (
     _parse_abinit_text,
     _write_abinit_text,
     get_abinit_input_spec,
@@ -208,7 +208,7 @@ class TestABINITOrchestrator:
 
     def test_orchestrator_roundtrip(self, tmp_path):
         """Write via orchestrator -> parse via orchestrator -> compare."""
-        from quantumvitas.inputformat import write_engine_inputs, parse_engine_inputs
+        from qmatsuite.inputformat import write_engine_inputs, parse_engine_inputs
 
         spec = get_abinit_input_spec()
 

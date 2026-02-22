@@ -60,14 +60,14 @@ This PR:
 
 | File | Action | Description | Status |
 |------|--------|-------------|--------|
-| `src/quantumvitas/core/structure_fingerprint.py` | MODIFY | Add pure fingerprint functions (NO transforms) | ✅ DONE |
-| `src/quantumvitas/core/structure_canonicalize.py` | CREATE | New module for unified canonicalization | ✅ DONE |
-| `src/quantumvitas/api.py` | MODIFY | Call canonicalize before fingerprint; remove hash fork | ✅ DONE |
-| `src/quantumvitas/execution/executor.py` | MODIFY | Use unified fingerprint | ✅ DONE |
-| `src/quantumvitas/execution/orca_relax_parser.py` | MODIFY | Canonicalize before writing current.json | ✅ DONE |
-| `src/quantumvitas/execution/pyscf_relax_handler.py` | MODIFY | Canonicalize before writing current.json | ✅ DONE |
-| `src/quantumvitas/execution/handlers.py` | MODIFY | Canonicalize QE relax output before writing | ✅ DONE |
-| `src/quantumvitas/io/structure_io.py` | MODIFY | Remove duplicate or wrap | ✅ DONE |
+| `src/qmatsuite/core/structure_fingerprint.py` | MODIFY | Add pure fingerprint functions (NO transforms) | ✅ DONE |
+| `src/qmatsuite/core/structure_canonicalize.py` | CREATE | New module for unified canonicalization | ✅ DONE |
+| `src/qmatsuite/api.py` | MODIFY | Call canonicalize before fingerprint; remove hash fork | ✅ DONE |
+| `src/qmatsuite/execution/executor.py` | MODIFY | Use unified fingerprint | ✅ DONE |
+| `src/qmatsuite/execution/orca_relax_parser.py` | MODIFY | Canonicalize before writing current.json | ✅ DONE |
+| `src/qmatsuite/execution/pyscf_relax_handler.py` | MODIFY | Canonicalize before writing current.json | ✅ DONE |
+| `src/qmatsuite/execution/handlers.py` | MODIFY | Canonicalize QE relax output before writing | ✅ DONE |
+| `src/qmatsuite/io/structure_io.py` | MODIFY | Remove duplicate or wrap | ✅ DONE |
 | `tests/unit/test_structure_fingerprint.py` | MODIFY | Update tests per matrix | ✅ DONE |
 
 ---
@@ -76,7 +76,7 @@ This PR:
 
 ### ✅ Step 1: Create Unified Canonicalization Module
 
-**File**: `src/quantumvitas/core/structure_canonicalize.py` (NEW)
+**File**: `src/qmatsuite/core/structure_canonicalize.py` (NEW)
 
 ```python
 """
@@ -93,7 +93,7 @@ from pymatgen.core import Structure as PMGStructure
 from pymatgen.core import Molecule as PMGMolecule
 from typing import Union
 
-from quantumvitas.analysis.structure_viz import canonicalize_structure_in_place
+from qmatsuite.analysis.structure_viz import canonicalize_structure_in_place
 
 
 def canonicalize_structure_like_in_place(obj: Union[PMGStructure, PMGMolecule]) -> None:
@@ -143,7 +143,7 @@ def _canonicalize_molecule_in_place(molecule: PMGMolecule) -> None:
 
 ### ✅ Step 1.5: Add Quantization Helper (Single Entrypoint)
 
-**File**: `src/quantumvitas/core/structure_fingerprint.py`
+**File**: `src/qmatsuite/core/structure_fingerprint.py`
 
 **Add quantization helper function** (before `structure_like_fingerprint`):
 
@@ -193,7 +193,7 @@ def quantize_array(arr: np.ndarray, tol: float) -> np.ndarray:
 
 ### ✅ Step 2: Update Fingerprint Functions (Remove Transforms)
 
-**File**: `src/quantumvitas/core/structure_fingerprint.py`
+**File**: `src/qmatsuite/core/structure_fingerprint.py`
 
 **Update imports** (after line 27):
 
@@ -312,14 +312,14 @@ def _fingerprint_molecule(molecule: PMGMolecule, tol_ang: float) -> str:
 
 ### ✅ Step 3: Update api.py
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 
 **Update dedup section** (around lines 397-410):
 
 ```python
 if dedup_by_fingerprint:
-    from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+    from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
     
     # Canonicalize first, then fingerprint
     canonicalize_structure_like_in_place(structure)
@@ -330,8 +330,8 @@ if dedup_by_fingerprint:
 
 ```python
 # Compute fingerprint for storage (even if not using for dedup)
-from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
 
 # Canonicalize if not already done in dedup path
 if not dedup_by_fingerprint:
@@ -345,36 +345,36 @@ fingerprint = structure_like_fingerprint(structure, tol_ang=1e-3)
 
 ### ✅ Step 4: Update Relax Handlers to Canonicalize Before Writing
 
-**File**: `src/quantumvitas/execution/orca_relax_parser.py`
+**File**: `src/qmatsuite/execution/orca_relax_parser.py`
 
 In `handle_orca_relax_output()`, after parsing the molecule:
 
 ```python
-from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
 
 # After parsing molecule from output...
 canonicalize_structure_like_in_place(molecule)
 write_generated_structure(molecule, calc_dir, step_ulid)
 ```
 
-**File**: `src/quantumvitas/execution/pyscf_relax_handler.py`
+**File**: `src/qmatsuite/execution/pyscf_relax_handler.py`
 
 In `handle_pyscf_relax_output()`, after creating the molecule:
 
 ```python
-from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
 
 # After creating molecule from results...
 canonicalize_structure_like_in_place(molecule)
 write_generated_structure(molecule, calc_dir, step_ulid)
 ```
 
-**File**: `src/quantumvitas/execution/handlers.py`
+**File**: `src/qmatsuite/execution/handlers.py`
 
 In `handle_qe_relax_output()`, after parsing the structure:
 
 ```python
-from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
 
 # After parsing structure from QE output...
 canonicalize_structure_like_in_place(structure)
@@ -385,12 +385,12 @@ write_generated_structure(structure, calc_dir, step_ulid)
 
 ### ✅ Step 5: Update executor.py
 
-**File**: `src/quantumvitas/execution/executor.py`
+**File**: `src/qmatsuite/execution/executor.py`
 
 **Update import**:
 
 ```python
-from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
 ```
 
 **Update usage** (line ~751):
@@ -404,7 +404,7 @@ effective_structure_sha = structure_like_fingerprint(structure, tol_ang=1e-3)
 
 ### ✅ Step 6: Handle Duplicate in structure_io.py
 
-**File**: `src/quantumvitas/io/structure_io.py`
+**File**: `src/qmatsuite/io/structure_io.py`
 
 Make it a wrapper that delegates to the canonical implementation:
 
@@ -413,9 +413,9 @@ def structure_fingerprint(structure: PMGStructure, tol: float = 1e-5) -> str:
     """
     Generate a deterministic fingerprint for a structure.
     
-    Deprecated: Use quantumvitas.core.structure_fingerprint.structure_like_fingerprint()
+    Deprecated: Use qmatsuite.core.structure_fingerprint.structure_like_fingerprint()
     """
-    from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+    from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
     return structure_like_fingerprint(structure, tol_ang=tol)
 ```
 
@@ -517,15 +517,15 @@ This is a fix, not a regression.
 
 Cursor Auto must:
 
-1. **Create** `src/quantumvitas/core/structure_canonicalize.py` with:
+1. **Create** `src/qmatsuite/core/structure_canonicalize.py` with:
    - `canonicalize_structure_like_in_place()`
    - `_canonicalize_molecule_in_place()`
 
-2. **Modify** `src/quantumvitas/core/structure_fingerprint.py`:
+2. **Modify** `src/qmatsuite/core/structure_fingerprint.py`:
    - Remove `np.mod(frac, 1.0)` from `_fingerprint_pbc_structure()`
    - Remove COG shift from `_fingerprint_molecule()`
 
-3. **Modify** `src/quantumvitas/api.py`:
+3. **Modify** `src/qmatsuite/api.py`:
    - Call `canonicalize_structure_like_in_place()` before fingerprint
    - Remove the `json.dumps()` hash fork
 

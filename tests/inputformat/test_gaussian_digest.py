@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.gaussian.parsers.output import (
+from qmatsuite.drivers.gaussian.parsers.output import (
     GaussianDigest,
     GaussianOutputParser,
     parse_gaussian_output_text,
@@ -247,12 +247,12 @@ class TestParserRegistry:
     """Verify the parser is properly registered."""
 
     def test_registry_lookup(self):
-        from quantumvitas.parsers.registry import get_parser
+        from qmatsuite.parsers.registry import get_parser
         cls = get_parser("gaussian", "scf_digest")
         assert cls is GaussianOutputParser
 
     def test_registry_find_for_raw(self, tmp_path):
-        from quantumvitas.parsers.registry import find_parser_for_raw
+        from qmatsuite.parsers.registry import find_parser_for_raw
         (tmp_path / "output.log").write_text(
             "Entering Gaussian System\nSCF Done: E(RHF) = -74.963\n"
             "Normal termination of Gaussian 09"

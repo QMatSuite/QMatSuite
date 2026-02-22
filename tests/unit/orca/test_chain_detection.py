@@ -23,7 +23,7 @@ class TestChainDetection:
 
     def test_single_scf_forms_one_chain(self):
         """Single SCF step forms one chain."""
-        from quantumvitas.engine.qc_engine_base import detect_chains
+        from qmatsuite.engine.qc_engine_base import detect_chains
 
         steps = [MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", )]
         chains = detect_chains(steps)
@@ -34,7 +34,7 @@ class TestChainDetection:
 
     def test_scf_td_forms_one_chain(self):
         """SCF + TD forms one chain with TD as downstream."""
-        from quantumvitas.engine.qc_engine_base import detect_chains
+        from qmatsuite.engine.qc_engine_base import detect_chains
 
         steps = [
             MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -49,7 +49,7 @@ class TestChainDetection:
 
     def test_two_scf_forms_two_chains(self):
         """Two SCF steps form two separate chains."""
-        from quantumvitas.engine.qc_engine_base import detect_chains
+        from qmatsuite.engine.qc_engine_base import detect_chains
 
         steps = [
             MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -65,7 +65,7 @@ class TestChainDetection:
 
     def test_hf_also_starts_chain(self):
         """HF step also starts a new chain (like SCF)."""
-        from quantumvitas.engine.qc_engine_base import detect_chains
+        from qmatsuite.engine.qc_engine_base import detect_chains
 
         steps = [
             MockStep(ulid="s1", step_type_gen="hf", step_type_spec="orca_hf", ),
@@ -78,7 +78,7 @@ class TestChainDetection:
 
     def test_chain_key_derivation(self):
         """Chain key derived from step types."""
-        from quantumvitas.engine.qc_engine_base import QCChain, derive_chain_key
+        from qmatsuite.engine.qc_engine_base import QCChain, derive_chain_key
 
         chain = QCChain(
             scf_root=MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -90,7 +90,7 @@ class TestChainDetection:
 
     def test_chain_key_scf_only(self):
         """Chain key for SCF-only chain."""
-        from quantumvitas.engine.qc_engine_base import QCChain, derive_chain_key
+        from qmatsuite.engine.qc_engine_base import QCChain, derive_chain_key
 
         chain = QCChain(
             scf_root=MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -102,7 +102,7 @@ class TestChainDetection:
 
     def test_chain_key_collision_resolution(self):
         """Multiple chains with same structure get unique keys."""
-        from quantumvitas.engine.qc_engine_base import detect_chains
+        from qmatsuite.engine.qc_engine_base import detect_chains
 
         steps = [
             MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -117,7 +117,7 @@ class TestChainDetection:
 
     def test_all_steps_property(self):
         """all_steps returns SCF root + downstream in order."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         chain = QCChain(
             scf_root=MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -140,7 +140,7 @@ class TestPartialChain:
 
     def test_partial_chain_to_target(self):
         """Extract partial chain from SCF root to target."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         chain = QCChain(
             scf_root=MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -159,7 +159,7 @@ class TestPartialChain:
 
     def test_partial_chain_to_scf_root(self):
         """Partial chain to SCF root includes only SCF."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         chain = QCChain(
             scf_root=MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -174,7 +174,7 @@ class TestPartialChain:
 
     def test_partial_chain_invalid_target_raises(self):
         """Invalid target step raises ValueError."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         chain = QCChain(
             scf_root=MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -191,7 +191,7 @@ class TestFindChainForStep:
 
     def test_find_chain_for_scf_root(self):
         """Find chain containing SCF root step."""
-        from quantumvitas.engine.qc_engine_base import detect_chains, find_chain_for_step
+        from qmatsuite.engine.qc_engine_base import detect_chains, find_chain_for_step
 
         steps = [
             MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -206,7 +206,7 @@ class TestFindChainForStep:
 
     def test_find_chain_for_downstream_step(self):
         """Find chain containing downstream step."""
-        from quantumvitas.engine.qc_engine_base import detect_chains, find_chain_for_step
+        from qmatsuite.engine.qc_engine_base import detect_chains, find_chain_for_step
 
         steps = [
             MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", ),
@@ -221,7 +221,7 @@ class TestFindChainForStep:
 
     def test_find_chain_for_nonexistent_step(self):
         """Find chain for nonexistent step returns None."""
-        from quantumvitas.engine.qc_engine_base import detect_chains, find_chain_for_step
+        from qmatsuite.engine.qc_engine_base import detect_chains, find_chain_for_step
 
         steps = [MockStep(ulid="s1", step_type_gen="scf", step_type_spec="orca_scf", )]
         chains = detect_chains(steps)

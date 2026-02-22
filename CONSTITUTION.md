@@ -2,7 +2,7 @@
 
 **Version**: 2.1
 **Last Updated**: 2026-02-03
-**Scope**: QMatSuite / QuantumVITAS v2 codebase
+**Scope**: QMatSuite / QMatSuite v2 codebase
 
 ---
 
@@ -135,7 +135,7 @@ Skip determination uses only: `(kind/step_type, pseudo_set_sha, structure_sha, s
 
 ### 6.2 Project Root
 
-- Project root marker is fixed at: `project.qv.yml`.
+- Project root marker is fixed at: `project.qms.yml`.
 - Discovery logic: traverse directory tree upward to find the directory containing the marker.
 
 ### 6.3 Identity Immutability
@@ -432,15 +432,15 @@ Input files may be versioned (`scf.in`, `scf-1.in`); output is fixed at `{step_t
 
 | Layer | Package | Import Rules |
 |-------|---------|-------------|
-| **Frontend** | daemon, CLI, GUI | May only import from `quantumvitas.api` |
-| **API Facade** | `quantumvitas.api` | DTOs + Errors + Utils + Service |
+| **Frontend** | daemon, CLI, GUI | May only import from `qmatsuite.api` |
+| **API Facade** | `qmatsuite.api` | DTOs + Errors + Utils + Service |
 | **Core/Runtime** | All other packages | Frontend MUST NOT import directly |
 
 ### 18.2 Utils Policy
 
 Utils reexport is disallowed by default. Exceptions only for:
 - Genuine frontend boundary helpers
-- Functions that cannot reasonably be a QVService capability method
+- Functions that cannot reasonably be a QMSService capability method
 - With docstring justification
 
 ### 18.3 DTO Boundary

@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api.service import QVService
+from qmatsuite.api.service import QMSService
 
 
 # Minimal pymatgen-format 2-atom Silicon structure.
@@ -44,8 +44,8 @@ def _build_structure_doc():
 
 def _get_qe_input_spec():
     """Get the QE input spec for SCF step type."""
-    import quantumvitas.drivers  # noqa: F401
-    from quantumvitas.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers  # noqa: F401
+    from qmatsuite.core.driver_registry import DriverRegistry
 
     driver = DriverRegistry.get_driver("qe")
     return driver.get_input_spec(gen_type="scf")
@@ -56,7 +56,7 @@ class TestQEDryRunCompleteness:
 
     def test_dryrun_has_kpoints_card(self):
         """dry_run input for QE SCF contains K_POINTS card."""
-        from quantumvitas.inputformat.writer import write_engine_inputs
+        from qmatsuite.inputformat.writer import write_engine_inputs
 
         spec = _get_qe_input_spec()
         assert spec is not None
@@ -79,7 +79,7 @@ class TestQEDryRunCompleteness:
 
     def test_dryrun_has_nat_ntyp(self):
         """dry_run input contains nat and ntyp in &SYSTEM."""
-        from quantumvitas.inputformat.writer import write_engine_inputs
+        from qmatsuite.inputformat.writer import write_engine_inputs
 
         spec = _get_qe_input_spec()
         params = {
@@ -99,7 +99,7 @@ class TestQEDryRunCompleteness:
 
     def test_dryrun_has_atomic_positions(self):
         """dry_run input contains ATOMIC_POSITIONS card."""
-        from quantumvitas.inputformat.writer import write_engine_inputs
+        from qmatsuite.inputformat.writer import write_engine_inputs
 
         spec = _get_qe_input_spec()
         params = {
@@ -117,7 +117,7 @@ class TestQEDryRunCompleteness:
 
     def test_dryrun_has_cell_parameters(self):
         """dry_run input contains CELL_PARAMETERS for ibrav=0."""
-        from quantumvitas.inputformat.writer import write_engine_inputs
+        from qmatsuite.inputformat.writer import write_engine_inputs
 
         spec = _get_qe_input_spec()
         params = {
@@ -136,7 +136,7 @@ class TestQEDryRunCompleteness:
 
     def test_dryrun_kpoints_values_match(self):
         """K_POINTS values in dry_run match what was configured."""
-        from quantumvitas.inputformat.writer import write_engine_inputs
+        from qmatsuite.inputformat.writer import write_engine_inputs
 
         spec = _get_qe_input_spec()
         params = {
@@ -167,14 +167,14 @@ class TestQEDryRunCompleteness:
     def test_dryrun_through_inspect_api(self, tmp_path):
         """Full dry_run through inspect_calculation matches expected content."""
         # Create project and calculation
-        project_root = QVService.init_project(tmp_path / "proj")
-        svc = QVService(project_root)
+        project_root = QMSService.init_project(tmp_path / "proj")
+        svc = QMSService(project_root)
 
         source = tmp_path / "si.json"
         source.write_text(_SI_STRUCTURE_JSON)
         svc.structure.import_file(source, name="Silicon")
 
-        import quantumvitas.drivers  # noqa: F401
+        import qmatsuite.drivers  # noqa: F401
         calc = svc.project.init_calculation(
             name="si_scf", structure_selector="Silicon", engine_family="qe",
         )

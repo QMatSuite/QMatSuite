@@ -52,7 +52,7 @@ Integrate Psi4 as a plug-in engine driver in QMatSuite, following the same patte
 ## 3. Driver Bundle Structure
 
 ```
-src/quantumvitas/drivers/psi4/
+src/qmatsuite/drivers/psi4/
 ├── __init__.py          # DriverRegistry.register(Psi4Driver())
 ├── driver.py            # Psi4Driver (PREFIX, SUPPORTED_GEN_STEPS, 7 MUST items)
 ├── recipe.py            # Psi4Recipe (strong-chain, subchain jobs)
@@ -287,7 +287,7 @@ calc/raw/
 
 | File | Change | Reason |
 |------|--------|--------|
-| `src/quantumvitas/drivers/__init__.py` | Add `from quantumvitas.drivers.psi4 import *` | Register Psi4Driver |
+| `src/qmatsuite/drivers/__init__.py` | Add `from qmatsuite.drivers.psi4 import *` | Register Psi4Driver |
 
 This is NOT a kernel logic change — it's adding an import to the driver loading module, which is the designated registration point per `ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md` §2.3.
 
@@ -295,7 +295,7 @@ This is NOT a kernel logic change — it's adding an import to the driver loadin
 
 | File | Change | Reason |
 |------|--------|--------|
-| `src/quantumvitas/workflow/gen_steps.py` | Add `"freq"`, `"ccsd"` to `GEN_STEPS` | Enable frequency and CCSD as first-class GEN steps |
+| `src/qmatsuite/workflow/gen_steps.py` | Add `"freq"`, `"ccsd"` to `GEN_STEPS` | Enable frequency and CCSD as first-class GEN steps |
 
 This is a policy decision: these are generic computational intents that other engines (ORCA, PySCF, CP2K) could also declare. The change is additive (2 strings to a frozenset) and benefits all engines.
 
@@ -422,7 +422,7 @@ Mark integration tests with `@pytest.mark.skipif(not psi4_available)`.
 
 | Deliverable | Location |
 |-------------|----------|
-| Driver bundle | `src/quantumvitas/drivers/psi4/` (6 files) |
+| Driver bundle | `src/qmatsuite/drivers/psi4/` (6 files) |
 | Unit tests | `tests/drivers/test_psi4_*.py` (5 files) |
 | Integration tests | `tests/integration/test_psi4_integration.py` |
 | Registration | One line in `drivers/__init__.py` |

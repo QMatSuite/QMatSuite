@@ -10,8 +10,8 @@ import numpy as np
 from pathlib import Path
 from pymatgen.core import Lattice, Structure
 
-from quantumvitas.io.parser.qe_parser import QEInputParser
-from quantumvitas.io.structure_io import (
+from qmatsuite.io.parser.qe_parser import QEInputParser
+from qmatsuite.io.structure_io import (
     structure_from_qe_input,
     _get_system_namelist,
     _extract_ibrav_parameters,
@@ -118,7 +118,7 @@ def test_graphene_structure_creation():
 
 def test_ibrav12_case_insensitive_parameters():
     """Test that parameter names are case-insensitive (A, B, C, cosAB, etc.)."""
-    from quantumvitas.io.model import QEInput, QENamelist
+    from qmatsuite.io.model import QEInput, QENamelist
     
     # Create a QE input with uppercase parameter names
     system_namelist = QENamelist(
@@ -143,7 +143,7 @@ def test_ibrav12_case_insensitive_parameters():
 
 def test_ibrav_minus12_uses_cosac():
     """Test that ibrav=-12 correctly uses cosac (not cosab)."""
-    from quantumvitas.io.model import QEInput, QENamelist
+    from qmatsuite.io.model import QEInput, QENamelist
     
     # ibrav=-12: Monoclinic, unique axis b, uses cos(beta) = cos(angle between a and c)
     system_namelist = QENamelist(

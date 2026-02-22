@@ -28,16 +28,16 @@ Each milestone is self-contained, test-verifiable, and produces a green test sui
 
 | # | File | Line | Pattern | Fix |
 |---|------|------|---------|-----|
-| F1 | `src/quantumvitas/api/service.py` | 3182 | `engine = step_spec.engine if step_spec else "qe"` | Hard error if step_spec is None |
-| F2 | `src/quantumvitas/api/service.py` | 3825 | `engine_family = getattr(calc_model, 'engine_family', None) or "qe"` | Raise if engine_family is None for base step |
-| F3 | `src/quantumvitas/api/service.py` | 3921 | `engine = step_spec.engine if step_spec else "qe"` | Hard error if step_spec is None |
-| F4 | `src/quantumvitas/api/service.py` | 6244 | `engine_family = "pyscf" if structure_kind == "molecule" else "qe"` | Accept null (UNDECIDED) |
-| F5 | `src/quantumvitas/api/service.py` | 7267 | `def resolve_step_type_spec(..., engine_family: str = "qe")` | Remove default; require caller to pass |
-| F6 | `src/quantumvitas/core/models.py` | 359 | `engine_family = "qe"` (final default) | Allow null; raise on base-step-add |
-| F7 | `src/quantumvitas/core/templates.py` | 399 | `calculation_data["engine_family"] = "qe"` | Require engine_family from caller |
-| F8 | `src/quantumvitas/frontends/cli/app.py` | 848 | `engine_family = "qe"` | Accept null; prompt user |
-| F9 | `src/quantumvitas/cli/main.py` | 1289 | `engine_family = "qe"` | Use calc_data value; raise if missing for base step |
-| F10 | `src/quantumvitas/workflow/templates.py` | 486 | `engine_family = "qe"` | Raise if engine_family is None |
+| F1 | `src/qmatsuite/api/service.py` | 3182 | `engine = step_spec.engine if step_spec else "qe"` | Hard error if step_spec is None |
+| F2 | `src/qmatsuite/api/service.py` | 3825 | `engine_family = getattr(calc_model, 'engine_family', None) or "qe"` | Raise if engine_family is None for base step |
+| F3 | `src/qmatsuite/api/service.py` | 3921 | `engine = step_spec.engine if step_spec else "qe"` | Hard error if step_spec is None |
+| F4 | `src/qmatsuite/api/service.py` | 6244 | `engine_family = "pyscf" if structure_kind == "molecule" else "qe"` | Accept null (UNDECIDED) |
+| F5 | `src/qmatsuite/api/service.py` | 7267 | `def resolve_step_type_spec(..., engine_family: str = "qe")` | Remove default; require caller to pass |
+| F6 | `src/qmatsuite/core/models.py` | 359 | `engine_family = "qe"` (final default) | Allow null; raise on base-step-add |
+| F7 | `src/qmatsuite/core/templates.py` | 399 | `calculation_data["engine_family"] = "qe"` | Require engine_family from caller |
+| F8 | `src/qmatsuite/frontends/cli/app.py` | 848 | `engine_family = "qe"` | Accept null; prompt user |
+| F9 | `src/qmatsuite/cli/main.py` | 1289 | `engine_family = "qe"` | Use calc_data value; raise if missing for base step |
+| F10 | `src/qmatsuite/workflow/templates.py` | 486 | `engine_family = "qe"` | Raise if engine_family is None |
 
 ### B. QE-Specific GUI Code (must be generalized)
 
@@ -49,8 +49,8 @@ Each milestone is self-contained, test-verifiable, and produces a green test sui
 | G4 | `gui/src/components/panels/CalculationListPanel.tsx` | 1345-1354 | Hard-coded QE step dropdown (10 types) |
 | G5 | `gui/src/components/panels/QEParameterBrowserPanel.tsx` | entire | QE-only parameter browser (1400+ lines) |
 | G6 | `gui/src/hooks/useQEParameterMetadata.ts` | entire | QE-only metadata hook (370 lines) |
-| G7 | `gui/src/hooks/useQVClient.ts` | 54, 55-58 | `listQeUiParameters`, `listQeParameterMetadata` |
-| G8 | `gui/src/types/qv.ts` | 397-405, 493-496 | `QEDetectionResult`, QE RPC types |
+| G7 | `gui/src/hooks/useQMSClient.ts` | 54, 55-58 | `listQeUiParameters`, `listQeParameterMetadata` |
+| G8 | `gui/src/types/qms.ts` | 397-405, 493-496 | `QEDetectionResult`, QE RPC types |
 | G9 | `gui/src/components/panels/SettingsPanel.tsx` | 300-349 | Hard-coded "Quantum ESPRESSO" section |
 | G10 | `gui/src/components/dialogs/CreateCalculationDialog.tsx` | 96-101 | No engine_family in create_calculation payload |
 
@@ -93,22 +93,22 @@ Each milestone is self-contained, test-verifiable, and produces a green test sui
 **Goal**: Add `ENGINE_ROLE` and `COMPANION_ENGINES` to all 15 drivers. Write gate tests for EF6, EF8, EF9.
 
 **Files to change**:
-- `src/quantumvitas/core/driver_protocol.py` (add 2 class attributes to BaseEngineDriver)
-- `src/quantumvitas/drivers/qe/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/vasp/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/abinit/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/cp2k/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/siesta/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/gpaw/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/orca/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/gaussian/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/psi4/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/pyscf/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/xtb/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/lammps/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/w90/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/qmcpack/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
-- `src/quantumvitas/drivers/yambo/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/core/driver_protocol.py` (add 2 class attributes to BaseEngineDriver)
+- `src/qmatsuite/drivers/qe/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/vasp/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/abinit/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/cp2k/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/siesta/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/gpaw/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/orca/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/gaussian/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/psi4/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/pyscf/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/xtb/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/lammps/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/w90/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/qmcpack/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
+- `src/qmatsuite/drivers/yambo/driver.py` (add ENGINE_ROLE + COMPANION_ENGINES)
 - **NEW** `tests/gates/test_postproc_gen_uniqueness.py`
 - **NEW** `tests/gates/test_companion_completeness.py`
 - **NEW** `tests/gates/test_demo_integrity.py`
@@ -131,8 +131,8 @@ COMPANION_ENGINES: frozenset = frozenset()  # only meaningful for base engines
 - [ ] `python -m pytest tests/gates/test_companion_completeness.py -v` passes
 - [ ] `python -m pytest tests/gates/test_demo_integrity.py -v` passes (or xfails for known ORCA bugs)
 - [ ] `python -m pytest tests/ -v --tb=short -n auto --dist=loadfile` — all existing tests still pass
-- [ ] `grep -rn "ENGINE_ROLE" src/quantumvitas/drivers/*/driver.py | wc -l` = 15
-- [ ] `grep -rn "COMPANION_ENGINES" src/quantumvitas/drivers/*/driver.py | wc -l` = 15
+- [ ] `grep -rn "ENGINE_ROLE" src/qmatsuite/drivers/*/driver.py | wc -l` = 15
+- [ ] `grep -rn "COMPANION_ENGINES" src/qmatsuite/drivers/*/driver.py | wc -l` = 15
 
 **Expected failure modes**:
 1. Putting ENGINE_ROLE on the protocol (abstract class) instead of BaseEngineDriver (concrete class)
@@ -199,12 +199,12 @@ COMPANION_ENGINES: frozenset = frozenset()  # only meaningful for base engines
 **Goal**: Zero `or "qe"` fallbacks in non-driver code. UNDECIDED (`engine_family: null`) is legal.
 
 **Files to change**:
-- `src/quantumvitas/api/service.py` (lines 3182, 3825, 3921, 6244, 7267)
-- `src/quantumvitas/core/models.py` (line 359)
-- `src/quantumvitas/core/templates.py` (line 399)
-- `src/quantumvitas/frontends/cli/app.py` (line 848)
-- `src/quantumvitas/cli/main.py` (lines 1289, 1291)
-- `src/quantumvitas/workflow/templates.py` (line 486)
+- `src/qmatsuite/api/service.py` (lines 3182, 3825, 3921, 6244, 7267)
+- `src/qmatsuite/core/models.py` (line 359)
+- `src/qmatsuite/core/templates.py` (line 399)
+- `src/qmatsuite/frontends/cli/app.py` (line 848)
+- `src/qmatsuite/cli/main.py` (lines 1289, 1291)
+- `src/qmatsuite/workflow/templates.py` (line 486)
 - **NEW** `tests/gates/test_no_qe_fallback.py`
 
 **Files NOT to touch**: drivers/, GUI files, daemon/server.py
@@ -254,7 +254,7 @@ if "engine_family" not in calculation_data or calculation_data["engine_family"] 
 
 **F9-F10 (cli/main.py, workflow/templates.py)**: Similar pattern — require explicit value, raise if missing.
 
-**Gate test** (`test_no_qe_fallback.py`): Scan all Python files in `src/quantumvitas/` (excluding `drivers/`) for patterns:
+**Gate test** (`test_no_qe_fallback.py`): Scan all Python files in `src/qmatsuite/` (excluding `drivers/`) for patterns:
 - `or "qe"`
 - `else "qe"`
 - `= "qe"` as a default parameter value
@@ -263,8 +263,8 @@ Allowlist: zero entries.
 
 **Acceptance criteria**:
 - [ ] `python -m pytest tests/gates/test_no_qe_fallback.py -v` passes
-- [ ] `grep -rn 'or "qe"' src/quantumvitas/ --include="*.py" | grep -v drivers/ | grep -v tests/` = empty
-- [ ] `grep -rn 'else "qe"' src/quantumvitas/ --include="*.py" | grep -v drivers/ | grep -v tests/` = empty
+- [ ] `grep -rn 'or "qe"' src/qmatsuite/ --include="*.py" | grep -v drivers/ | grep -v tests/` = empty
+- [ ] `grep -rn 'else "qe"' src/qmatsuite/ --include="*.py" | grep -v drivers/ | grep -v tests/` = empty
 - [ ] `python -m pytest tests/ -v --tb=short -n auto --dist=loadfile` — all pass
 
 **Expected failure modes**:
@@ -281,8 +281,8 @@ Allowlist: zero entries.
 **Goal**: Materialization uses companion allowlist. StepTypeRegistry first-match is eliminated for cross-engine step resolution.
 
 **Files to change**:
-- `src/quantumvitas/workflow/generalized_steps.py` (rewrite `materialize_public_step_key`, `materialize_workflow`)
-- `src/quantumvitas/core/driver_registry.py` (add `get_postproc_engine_for_gen_step()`)
+- `src/qmatsuite/workflow/generalized_steps.py` (rewrite `materialize_public_step_key`, `materialize_workflow`)
+- `src/qmatsuite/core/driver_registry.py` (add `get_postproc_engine_for_gen_step()`)
 - **NEW** `tests/gates/test_engine_family_lifecycle.py`
 - **NEW** `tests/gates/test_decided_companion_validation.py`
 - Tests in `tests/workflow/` for updated materialization
@@ -314,7 +314,7 @@ Allowlist: zero entries.
 - [ ] `materialize_public_step_key("vmc", None)` returns `"qmcpack_vmc"`
 - [ ] `materialize_public_step_key("wannierprep", "vasp")` raises `UnsupportedStepError`
 - [ ] `python -m pytest tests/ -v --tb=short -n auto --dist=loadfile` — all pass
-- [ ] `grep -n "StepTypeRegistry" src/quantumvitas/workflow/generalized_steps.py` returns NO first-match usage
+- [ ] `grep -n "StepTypeRegistry" src/qmatsuite/workflow/generalized_steps.py` returns NO first-match usage
 
 **Expected failure modes**:
 1. Breaking `materialize_workflow` for QE workflows (the primary path)
@@ -330,9 +330,9 @@ Allowlist: zero entries.
 **Goal**: New engine-agnostic RPCs exist. QE-specific RPCs still work (deprecated but not removed).
 
 **Files to change**:
-- `src/quantumvitas/daemon/server.py` (add new RPC handlers)
-- `src/quantumvitas/api/service.py` (add new service methods)
-- `src/quantumvitas/core/driver_protocol.py` (add `get_managed_keys()` to BaseEngineDriver)
+- `src/qmatsuite/daemon/server.py` (add new RPC handlers)
+- `src/qmatsuite/api/service.py` (add new service methods)
+- `src/qmatsuite/core/driver_protocol.py` (add `get_managed_keys()` to BaseEngineDriver)
 - Tests for new RPCs
 
 **New RPC handlers in server.py**:
@@ -375,8 +375,8 @@ Allowlist: zero entries.
 - `gui/src/components/panels/CalculationOverviewTab.tsx` (replace hard-coded dropdown at lines 453-461)
 - `gui/src/components/panels/CalculationListPanel.tsx` (replace hard-coded dropdown at lines 1345-1354)
 - `gui/src/components/dialogs/CreateCalculationDialog.tsx` (add engine_family selector)
-- `gui/src/hooks/useQVClient.ts` (add new RPC client methods)
-- `gui/src/types/qv.ts` (add new RPC type definitions)
+- `gui/src/hooks/useQMSClient.ts` (add new RPC client methods)
+- `gui/src/types/qms.ts` (add new RPC type definitions)
 
 **Files NOT to touch**: StepDetailPanel.tsx (M6), QEParameterBrowserPanel.tsx (M7), SettingsPanel.tsx (M7), Python backend (already done)
 
@@ -388,11 +388,11 @@ Allowlist: zero entries.
 
 3. **CalculationListPanel.tsx:1345-1354**: Same replacement. Remove hard-coded QE step labels like `"SCF (pw.x)"`.
 
-4. **useQVClient.ts**: Add methods:
+4. **useQMSClient.ts**: Add methods:
    - `listEngineFamilies()` → calls `list_engine_families`
    - `listStepPalette(engineFamily)` → calls `list_step_palette`
 
-5. **types/qv.ts**: Add interfaces for `EngineFamilyInfo`, `StepPaletteResult`.
+5. **types/qms.ts**: Add interfaces for `EngineFamilyInfo`, `StepPaletteResult`.
 
 **Acceptance criteria**:
 - [ ] Step dropdown in CalculationOverviewTab shows different options for QE vs VASP calculations
@@ -416,8 +416,8 @@ Allowlist: zero entries.
 
 **Files to change**:
 - `gui/src/components/panels/StepDetailPanel.tsx` (remove stepTypeToModule, LEGACY_EDITABLE_PARAMS; use generic RPC)
-- `gui/src/hooks/useQVClient.ts` (add `listEngineUiParameters`)
-- `gui/src/types/qv.ts` (add parameter types)
+- `gui/src/hooks/useQMSClient.ts` (add `listEngineUiParameters`)
+- `gui/src/types/qms.ts` (add parameter types)
 
 **Files NOT to touch**: QEParameterBrowserPanel.tsx (M7), SettingsPanel.tsx (M7), Python backend (already done)
 
@@ -453,8 +453,8 @@ Allowlist: zero entries.
 - `gui/src/components/panels/QEParameterBrowserPanel.tsx` → rename to `EngineParameterBrowserPanel.tsx`
 - `gui/src/hooks/useQEParameterMetadata.ts` → rename to `useEngineParameterMetadata.ts`
 - `gui/src/components/panels/SettingsPanel.tsx` (generalize QE section)
-- `gui/src/hooks/useQVClient.ts` (add `listEngineParameterMetadata`)
-- `gui/src/types/qv.ts` (update types)
+- `gui/src/hooks/useQMSClient.ts` (add `listEngineParameterMetadata`)
+- `gui/src/types/qms.ts` (update types)
 - Any file that imports `QEParameterBrowserPanel` or `useQEParameterMetadata`
 
 **Files NOT to touch**: Python backend (already done)
@@ -489,9 +489,9 @@ Allowlist: zero entries.
 **Goal**: Delete all deprecated QE-specific RPC handlers, types, and components. No QE literal defaults remain.
 
 **Files to change**:
-- `src/quantumvitas/daemon/server.py` (delete handlers H1-H9 and their registrations)
-- `gui/src/hooks/useQVClient.ts` (delete `listQeUiParameters`, `listQeParameterMetadata`)
-- `gui/src/types/qv.ts` (delete `QEDetectionResult`, QE RPC types)
+- `src/qmatsuite/daemon/server.py` (delete handlers H1-H9 and their registrations)
+- `gui/src/hooks/useQMSClient.ts` (delete `listQeUiParameters`, `listQeParameterMetadata`)
+- `gui/src/types/qms.ts` (delete `QEDetectionResult`, QE RPC types)
 - `gui/src/components/panels/SettingsPanel.tsx` (remove any remaining QE-specific code)
 - **NEW** `tests/gates/test_no_qe_special_case.py`
 
@@ -507,7 +507,7 @@ Allowlist: zero entries.
 
 **Acceptance criteria**:
 - [ ] `python -m pytest tests/gates/test_no_qe_special_case.py -v` passes
-- [ ] `grep -rn "_handle_detect_qe\|_handle_list_qe_\|_handle_set_qe_\|_handle_discover_qe_\|_handle_reload_qe_\|_handle_get_qe_\|_handle_import_step_from_qe" src/quantumvitas/daemon/server.py` = empty
+- [ ] `grep -rn "_handle_detect_qe\|_handle_list_qe_\|_handle_set_qe_\|_handle_discover_qe_\|_handle_reload_qe_\|_handle_get_qe_\|_handle_import_step_from_qe" src/qmatsuite/daemon/server.py` = empty
 - [ ] `grep -rn "listQeUiParameters\|listQeParameterMetadata" gui/src/` = empty
 - [ ] `grep -rn "QEDetectionResult\|QEParameterBrowser\|useQEParameterMetadata" gui/src/` = empty
 - [ ] `python -m pytest tests/ -v --tb=short -n auto --dist=loadfile` — all pass
@@ -531,7 +531,7 @@ Allowlist: zero entries.
 
 4. **Making tests depend on .tmp**: Test fixtures must use tmp_path or live in tests/. Never import from .tmp/.
 
-5. **GUI mixing legacy and new types**: When adding new RPC types to qv.ts, Auto must not create duplicate interfaces. Old QE types should be deleted only in M8, not earlier.
+5. **GUI mixing legacy and new types**: When adding new RPC types to qms.ts, Auto must not create duplicate interfaces. Old QE types should be deleted only in M8, not earlier.
 
 6. **Accidentally reintroducing "bare step_type"**: DTOs must use `step_type_gen` and `step_type_spec`, never bare `step_type`. Gate test `test_no_bare_step_type.py` catches this.
 

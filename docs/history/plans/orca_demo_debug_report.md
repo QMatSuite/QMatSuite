@@ -21,12 +21,12 @@
    - **问题**: materialize时calculation.yaml缺少`engine_family`字段
    - **修复**: 
      - 在`tools/generate_orca_demos.py`中为demo添加`engine_family: orca`
-     - 在`src/quantumvitas/project/snapshot.py`中添加engine_family推断逻辑
+     - 在`src/qmatsuite/project/snapshot.py`中添加engine_family推断逻辑
    - **状态**: ✅ 已修复并验证
 
 4. **step_type materialization**
    - **问题**: step.yaml中存储的是public type (`scf`)，需要materialize为machine type (`orca_scf`)
-   - **修复**: 在`src/quantumvitas/project/snapshot.py`中添加materialization逻辑
+   - **修复**: 在`src/qmatsuite/project/snapshot.py`中添加materialization逻辑
    - **状态**: ✅ 已实现（但被后续normalization覆盖）
 
 ### ❌ 当前阻塞问题
@@ -38,13 +38,13 @@
 - 但写入step.yaml后，step_type又变回`scf`
 
 ### 根本原因
-`src/quantumvitas/calculation/structure_steps.py`第102-106行：
+`src/qmatsuite/calculation/structure_steps.py`第102-106行：
 
 ```python
 step_type = data.get("step_type", "scf")
 # Normalize step_type to public format for backward compatibility
 # step.yaml stores machine types (qe_scf), but StructureStepSpec uses public types (scf)
-from quantumvitas.workflow.registry import normalize_step_type_to_public
+from qmatsuite.workflow.registry import normalize_step_type_to_public
 step_type = normalize_step_type_to_public(str(step_type))
 ```
 
@@ -74,12 +74,12 @@ step_type = normalize_step_type_to_public(str(step_type))
 ### 现象
 运行计算时抛出`NotImplementedError`：
 ```
-File "<HOME>/QMatSuite/src/quantumvitas/engine/base.py", line 26, in run_step
+File "<HOME>/QMatSuite/src/qmatsuite/engine/base.py", line 26, in run_step
     raise NotImplementedError
 ```
 
 ### 根本原因
-`src/quantumvitas/engine/orca_engine.py`中的`ORCAEngine`类继承自`Engine`，但没有实现`run_step()`方法。
+`src/qmatsuite/engine/orca_engine.py`中的`ORCAEngine`类继承自`Engine`，但没有实现`run_step()`方法。
 
 ### 影响
 - 无法执行ORCA计算
@@ -101,7 +101,7 @@ File "<HOME>/QMatSuite/src/quantumvitas/engine/base.py", line 26, in run_step
 
 **方案C: 修改runner支持ORCA chain执行**
 - 在runner中检测ORCA engine，使用chain执行模式
-- 需要修改`src/quantumvitas/calculation/runner.py`
+- 需要修改`src/qmatsuite/calculation/runner.py`
 
 ## 问题3: materialize_step_spec对ORCA的处理
 
@@ -109,7 +109,7 @@ File "<HOME>/QMatSuite/src/quantumvitas/engine/base.py", line 26, in run_step
 `materialize_step_spec()`检测到ORCA步骤后，返回dummy input file，但不写入实际文件。
 
 ### 当前实现
-在`src/quantumvitas/calculation/structure_steps.py`第703-722行：
+在`src/qmatsuite/calculation/structure_steps.py`第703-722行：
 - 检测到ORCA步骤时，创建dummy input file path
 - 不写入文件（因为ORCA engine会动态生成）
 
@@ -175,10 +175,10 @@ NotImplementedError: ORCA engine缺少run_step方法
 
 ## 约束条件
 
-- **不允许修改**: `src/quantumvitas/calculation/structure_steps.py`（用户已回滚）
-- **不允许修改**: `src/quantumvitas/engine/orca_engine.py`（用户已回滚）
+- **不允许修改**: `src/qmatsuite/calculation/structure_steps.py`（用户已回滚）
+- **不允许修改**: `src/qmatsuite/engine/orca_engine.py`（用户已回滚）
 - **允许修改**: `tools/`目录下的脚本
-- **允许修改**: `src/quantumvitas/project/snapshot.py`（已接受）
+- **允许修改**: `src/qmatsuite/project/snapshot.py`（已接受）
 
 ## 推荐的修复方案（在允许范围内）
 

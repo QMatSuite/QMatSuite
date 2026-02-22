@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestSiestaDriverProtocol:
@@ -16,35 +16,35 @@ class TestSiestaDriverProtocol:
 
     def test_driver_imports_and_registers(self):
         """Driver is importable and registers with DriverRegistry."""
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("siesta")
         assert driver is not None
 
     def test_engine_family(self):
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("siesta")
         assert driver.engine_family == "siesta"
 
     def test_display_name(self):
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("siesta")
         assert driver.display_name == "Siesta"
 
     def test_driver_api_version(self):
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("siesta")
         assert driver.driver_api_version == "1.0.0"
 
     def test_prefix_and_supported_gen_steps(self):
-        from quantumvitas.drivers.siesta.driver import SiestaDriver
+        from qmatsuite.drivers.siesta.driver import SiestaDriver
 
         assert SiestaDriver.PREFIX == "siesta"
         assert SiestaDriver.SUPPORTED_GEN_STEPS == frozenset({
@@ -52,8 +52,8 @@ class TestSiestaDriverProtocol:
         })
 
     def test_workdir_policy_is_isolated(self):
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("siesta")
         assert driver.get_workdir_policy() == WorkdirPolicy.ISOLATED
@@ -63,8 +63,8 @@ class TestSiestaStepTypeSpecs:
     """Verify step type specs are correctly defined and registered."""
 
     def test_all_step_types_registered(self):
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         expected_specs = [
             "siesta_scf", "siesta_relax", "siesta_md",
@@ -77,7 +77,7 @@ class TestSiestaStepTypeSpecs:
             assert spec.executable == "siesta"
 
     def test_step_type_specs_have_correct_prefix(self):
-        from quantumvitas.drivers.siesta.driver import SiestaDriver
+        from qmatsuite.drivers.siesta.driver import SiestaDriver
 
         driver = SiestaDriver()
         for spec in driver.get_step_type_specs():
@@ -86,8 +86,8 @@ class TestSiestaStepTypeSpecs:
             )
 
     def test_materialization_map(self):
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("siesta")
         mat_map = driver.get_materialization_map()
@@ -102,26 +102,26 @@ class TestSiestaHandlerAndRecipe:
     """Verify handler and recipe are retrievable."""
 
     def test_get_handler(self):
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         handler = DriverRegistry.get_handler("siesta_scf")
         assert handler is not None
         assert callable(handler)
 
     def test_get_recipe_class(self):
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         recipe_cls = DriverRegistry.get_recipe_class("siesta")
         assert recipe_cls is not None
-        from quantumvitas.execution.recipes import BaseRecipe
+        from qmatsuite.execution.recipes import BaseRecipe
         assert issubclass(recipe_cls, BaseRecipe)
 
     def test_handler_same_for_all_step_types(self):
         """All siesta step types should use the same handler."""
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         handlers = set()
         for spec_name in ["siesta_scf", "siesta_relax", "siesta_md"]:
@@ -134,7 +134,7 @@ class TestSiestaCapabilities:
     """Verify capabilities and other optional methods."""
 
     def test_capabilities(self):
-        from quantumvitas.drivers.siesta.driver import SiestaDriver
+        from qmatsuite.drivers.siesta.driver import SiestaDriver
 
         driver = SiestaDriver()
         caps = driver.get_capabilities()
@@ -144,14 +144,14 @@ class TestSiestaCapabilities:
         assert "mpi" in caps
 
     def test_md_not_skippable(self):
-        from quantumvitas.drivers.siesta.driver import SiestaDriver
+        from qmatsuite.drivers.siesta.driver import SiestaDriver
 
         driver = SiestaDriver()
         assert driver.supports_incremental_skip("siesta_scf") is True
         assert driver.supports_incremental_skip("siesta_md") is False
 
     def test_artifact_patterns(self):
-        from quantumvitas.drivers.siesta.driver import SiestaDriver
+        from qmatsuite.drivers.siesta.driver import SiestaDriver
 
         driver = SiestaDriver()
         patterns = driver.get_artifact_patterns()

@@ -64,16 +64,16 @@ This document provides a **detailed, step-by-step execution plan** for implement
 
 ```python
 @pytest.fixture
-def daemon() -> QVDaemon:
+def daemon() -> QMSDaemon:
     """Create a clean daemon instance for testing."""
-    return QVDaemon()
+    return QMSDaemon()
 
 @pytest.fixture
 def temp_project(tmp_path: Path) -> Path:
     """Create a minimal temporary project."""
     project_dir = tmp_path / "test_project"
     project_dir.mkdir()
-    QVService.init_project(project_dir, name="test_project")
+    QMSService.init_project(project_dir, name="test_project")
     return project_dir
 
 @pytest.fixture
@@ -93,7 +93,7 @@ def demo_project_with_run(tmp_path: Path) -> tuple[Path, str, str, str]:
     # Import a demo ref_pack with pre-computed results
     # Return (project_root, calc_ulid, step_ulid, run_ulid)
 
-def send_request(daemon: QVDaemon, request_type: str, payload: dict) -> dict:
+def send_request(daemon: QMSDaemon, request_type: str, payload: dict) -> dict:
     """Helper to send RPC request and return data (raises on error)."""
     response = daemon.handle_request(RPCRequest(id="test", type=request_type, payload=payload))
     if not response.ok:
@@ -785,8 +785,8 @@ class TestGetStructureVis:
 6. Verify structure can be viewed in 3D
 
 **Test IDs Needed:**
-- `qv-btn-import-structure`
-- `qv-structure-row-{structureId}`
+- `qms-btn-import-structure`
+- `qms-structure-row-{structureId}`
 
 **Estimated Time:** 1 hour (test + debugging)
 
@@ -805,9 +805,9 @@ class TestGetStructureVis:
 6. Verify preset footprint displayed
 
 **Test IDs Needed:**
-- `qv-btn-apply-preset`
-- `qv-preset-selector`
-- `qv-step-param-{paramName}`
+- `qms-btn-apply-preset`
+- `qms-preset-selector`
+- `qms-step-param-{paramName}`
 
 **Estimated Time:** 1.5 hours (preset selector UI may need test IDs added)
 
@@ -831,7 +831,7 @@ class TestGetStructureVis:
 **Deferred to future session.** Focus on RPC contracts first.
 
 If time permits, only test:
-- `qv-daemon.ts` RPC client (request formatting)
+- `qms-daemon.ts` RPC client (request formatting)
 
 ---
 
@@ -892,11 +892,11 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 
 ### TypeScript Type Validation
 
-For each RPC response, cross-reference with `gui/src/types/qv.ts`:
+For each RPC response, cross-reference with `gui/src/types/qms.ts`:
 
 ```typescript
 // Example: list_structures response
-export interface QVCommandMap {
+export interface QMSCommandMap {
   list_structures: {
     payload: { project_root: string };
     result: {
@@ -917,7 +917,7 @@ assert response["count"] == len(response["structures"])
 
 ### Error Code Validation
 
-Expected error codes (from TypeScript QVError):
+Expected error codes (from TypeScript QMSError):
 - `invalid_argument` — Missing/invalid parameters
 - `resource_not_found` — Non-existent resource (structure, calculation, step)
 - `project_missing` — Non-project directory
@@ -966,7 +966,7 @@ def qe_si_scf_demo(tmp_path: Path) -> tuple[Path, str, str]:
 - RPC handlers use selector parameters that accept slug/name/ULID (resolved internally)
 - Existing test patterns are well-established (use `send_request` helper)
 - Demo ref_packs can be imported for analysis tests (see `demo_project_with_run` fixture)
-- TypeScript types in `gui/src/types/qv.ts` don't always match Python parameter names
+- TypeScript types in `gui/src/types/qms.ts` don't always match Python parameter names
 
 ### 📝 Next Session Priorities (In Order)
 1. **Complete Tier 1 RPC tests** (42 tests remaining):
@@ -1083,7 +1083,7 @@ def qe_si_scf_demo(tmp_path: Path) -> tuple[Path, str, str]:
 - Existing `createDemoProject` helper simplifies test setup (no file I/O complexity)
 - Structure viewer tests validate the `get_structure_vis` RPC we just validated in contracts
 - Preset tests provide smoke testing for preset UI (implementation may still be in progress)
-- Test IDs follow pattern: `qv-{component}-{element}` (e.g., `qv-structure-row`, `qv-step-detail-panel`)
+- Test IDs follow pattern: `qms-{component}-{element}` (e.g., `qms-structure-row`, `qms-step-detail-panel`)
 
 ---
 
@@ -1124,7 +1124,7 @@ def qe_si_scf_demo(tmp_path: Path) -> tuple[Path, str, str]:
 - Analysis result viewing (bands, DOS, convergence)
 
 **Component Tests (Lower Priority):**
-- `qv-daemon.ts` RPC client (request formatting, error handling)
+- `qms-daemon.ts` RPC client (request formatting, error handling)
 - StructureVis component (3D rendering, camera controls)
 - PresetSelector component (dropdown, validation)
 
@@ -1146,7 +1146,7 @@ def qe_si_scf_demo(tmp_path: Path) -> tuple[Path, str, str]:
 - [x] **E2E Tests:** 2 verified passing tests in structure_viewer_basic.spec.ts
   - Test 1: structures view loads and displays structure list ✅
   - Test 2: clicking structure shows 3D viewer panel ✅
-  - Test IDs added: qv-structures-view, qv-structure-row, qv-structures-count, qv-structure-viewer-panel, qv-structure-viewer
+  - Test IDs added: qms-structures-view, qms-structure-row, qms-structures-count, qms-structure-viewer-panel, qms-structure-viewer
 
 ### 🚧 In Progress
 - [ ] Complete remaining Tier 1 RPC tests (7 tests remaining)
@@ -1181,7 +1181,7 @@ def qe_si_scf_demo(tmp_path: Path) -> tuple[Path, str, str]:
 - **Total new e2e tests: 6 verified passing**
 
 **Test IDs Added:**
-- qv-calculations-count (CalculationListPanel.tsx line 220)
+- qms-calculations-count (CalculationListPanel.tsx line 220)
 - All structure viewer test IDs from Session 2 retained
 
 **Test Execution:**

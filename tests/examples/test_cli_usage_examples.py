@@ -13,8 +13,8 @@ import yaml
 from pymatgen.core import Lattice, Structure
 from typer.testing import CliRunner
 
-from quantumvitas.cli.main import app
-from quantumvitas.io import read_structure, write_structure
+from qmatsuite.cli.main import app
+from qmatsuite.io import read_structure, write_structure
 
 
 @pytest.fixture
@@ -23,13 +23,13 @@ def sample_project(tmp_path):
     project_root = tmp_path / "test_project"
     project_root.mkdir()
 
-    # Create project.qv.yml
+    # Create project.qms.yml
     project_config = {
         "project": {"name": "test_project"},
         "calculations": [],
         "structures": [],
     }
-    (project_root / "project.qv.yml").write_text(
+    (project_root / "project.qms.yml").write_text(
         yaml.safe_dump(project_config, sort_keys=False)
     )
 
@@ -50,13 +50,13 @@ def sample_project(tmp_path):
 
 
 class TestImportStructureCommand:
-    """Examples of using `qv import-structure` command."""
+    """Examples of using `qms import-structure` command."""
 
     def test_import_structure_from_cif(self, sample_project):
         """
         Example: Import structure from CIF file.
 
-        This demonstrates the basic usage of `qv import-structure`.
+        This demonstrates the basic usage of `qms import-structure`.
         """
         project_root, cif_file = sample_project
         runner = CliRunner()
@@ -85,15 +85,15 @@ class TestImportStructureCommand:
         loaded = read_structure(structure_file, format="json")
         assert loaded.formula == "Si2"
 
-        # Verify project.qv.yml was updated
+        # Verify project.qms.yml was updated
         # ID-only model: entries only have structure_ulid, not name/file/meta
-        config = yaml.safe_load((project_root / "project.qv.yml").read_text())
+        config = yaml.safe_load((project_root / "project.qms.yml").read_text())
         structures = config.get("structures", [])
         assert len(structures) == 1
         entry = structures[0]
         assert "structure_ulid" in entry, "Structure entry should have structure_ulid (ID-only model)"
         # Resolve structure from registry to verify name and slug
-        from quantumvitas.core.resolution import build_resource_index, require_structure
+        from qmatsuite.core.resolution import build_resource_index, require_structure
         index = build_resource_index(project_root)
         resolved = require_structure(project_root, entry["structure_ulid"], index=index)
         assert resolved.meta.name == "si", f"Structure name should be 'si'. Found: {resolved.meta.name}"
@@ -170,7 +170,7 @@ class TestImportStructureCommand:
 
 
 class TestRunStructureCommand:
-    """Examples of using `qv run structure` command."""
+    """Examples of using `qms run structure` command."""
 
     def test_run_structure_basic(self, sample_project, monkeypatch):
         """
@@ -198,10 +198,10 @@ class TestRunStructureCommand:
 
         # Mock QE execution to avoid requiring actual QE binaries
         def mock_run_input_step(*args, **kwargs):
-            from quantumvitas.core.engines.qe_calculation import StepResult
-            from quantumvitas.calculation.input_runner import PreparedInputStep
+            from qmatsuite.core.engines.qe_calculation import StepResult
+            from qmatsuite.calculation.input_runner import PreparedInputStep
 
-            from quantumvitas.core.paths import tmp_runs_dir
+            from qmatsuite.core.paths import tmp_runs_dir
             working_dir = kwargs.get("working_dir", tmp_runs_dir() / "cli_examples")
             return (
                 StepResult(
@@ -261,7 +261,7 @@ class TestRunStructureCommand:
 
 
 class TestRunStepCommand:
-    """Examples of using `qv run step` command with parameter overrides."""
+    """Examples of using `qms run step` command with parameter overrides."""
 
     def test_run_step_with_overrides(self, tmp_path, sample_project):
         """
@@ -326,7 +326,7 @@ class TestParameterOverrideParsing:
 
         This demonstrates the internal parsing logic.
         """
-        from quantumvitas.cli.main import _parse_override_args
+        from qmatsuite.cli.main import _parse_override_args
 
         # Simple integer
         bundle = _parse_override_args(["--ecutwfc=60"])
@@ -362,7 +362,7 @@ class TestParameterOverrideParsing:
 
         Use SECTION.parameter syntax when needed.
         """
-        from quantumvitas.cli.main import _parse_override_args
+        from qmatsuite.cli.main import _parse_override_args
 
         # Section-prefixed
         bundle = _parse_override_args(["--SYSTEM.ecutwfc=60"])
@@ -393,7 +393,7 @@ class TestParameterOverrideParsing:
 
         Lists can be specified in multiple formats.
         """
-        from quantumvitas.cli.main import _parse_override_args
+        from qmatsuite.cli.main import _parse_override_args
 
         # Card override via explicit CARD. prefix
         bundle = _parse_override_args(['--CARD.K_POINTS.data=[[6,6,6,0,0,0]]'])

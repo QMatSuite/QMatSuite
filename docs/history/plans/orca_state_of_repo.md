@@ -70,12 +70,12 @@ Constitution §13.2:
 
 | Component | File Path | Purpose |
 |-----------|-----------|---------|
-| PySCF Engine Adapter | `src/quantumvitas/engine/pyscf_engine.py` | Subprocess-based engine, never imports PySCF in daemon |
-| PySCF Runner | `src/quantumvitas/engines/pyscf/runner.py` | Entry point for subprocess execution |
-| Chain Execution | `src/quantumvitas/engines/pyscf/chain_execution.py` | One-session dependency chain execution (Phase 3C) |
-| Step Registry | `src/quantumvitas/workflow/registry.py` | Step type definitions with `StepTypeSpec` |
-| Generalized Steps | `src/quantumvitas/workflow/generalized_steps.py` | Engine-agnostic step mapping |
-| Calculation Runner | `src/quantumvitas/calculation/runner.py` | Orchestrates step execution |
+| PySCF Engine Adapter | `src/qmatsuite/engine/pyscf_engine.py` | Subprocess-based engine, never imports PySCF in daemon |
+| PySCF Runner | `src/qmatsuite/engines/pyscf/runner.py` | Entry point for subprocess execution |
+| Chain Execution | `src/qmatsuite/engines/pyscf/chain_execution.py` | One-session dependency chain execution (Phase 3C) |
+| Step Registry | `src/qmatsuite/workflow/registry.py` | Step type definitions with `StepTypeSpec` |
+| Generalized Steps | `src/qmatsuite/workflow/generalized_steps.py` | Engine-agnostic step mapping |
+| Calculation Runner | `src/qmatsuite/calculation/runner.py` | Orchestrates step execution |
 
 ### 3.2 PySCF Engine Architecture
 
@@ -90,7 +90,7 @@ Constitution §13.2:
 │ PySCFEngine.run_step() or PySCFEngine.run_chain()                   │
 │    │                                                                 │
 │    ▼                                                                 │
-│ subprocess: python -m quantumvitas.engines.pyscf job.json           │
+│ subprocess: python -m qmatsuite.engines.pyscf job.json           │
 │    │                                                                 │
 │    ▼                                                                 │
 │ Runner (runner.py) → imports PySCF, executes calculation            │
@@ -118,7 +118,7 @@ class PySCFEngine(Engine):
 
     def run_step(self, step, working_dir, ...) -> StepResult:
         # Creates job.json with step parameters
-        # Launches subprocess: [python, -m, quantumvitas.engines.pyscf, job.json]
+        # Launches subprocess: [python, -m, qmatsuite.engines.pyscf, job.json]
         # Reads results.json for structured output
 
     def run_chain(self, steps, working_dir, ...) -> List[StepResult]:
@@ -247,7 +247,7 @@ def materialize_step(engine_family: str, generalized_step: GeneralizedStep) -> s
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │ PROJECT                                                              │
-│ ├── project.qv.yml (project root marker + config)                   │
+│ ├── project.qms.yml (project root marker + config)                   │
 │ ├── structures/                                                      │
 │ │   └── {structure_ulid}/structure.yaml                             │
 │ ├── pseudo/ (pseudopotentials, populated at runtime)                │
@@ -267,14 +267,14 @@ def materialize_step(engine_family: str, generalized_step: GeneralizedStep) -> s
 
 ### 4.2 ULID + Manifest + Artifact Registry
 
-**ULID Generation** (`src/quantumvitas/core/resources.py`):
+**ULID Generation** (`src/qmatsuite/core/resources.py`):
 ```python
 def generate_resource_id() -> str:
     """Generate ULID for resource identification."""
     return str(ulid.new())
 ```
 
-**Manifest System** (`src/quantumvitas/calculation/manifest.py`):
+**Manifest System** (`src/qmatsuite/calculation/manifest.py`):
 ```yaml
 # manifest.yaml structure
 steps:
@@ -724,7 +724,7 @@ This section provides a definitive map of what is persisted vs runtime-only, and
 
 ### 9.3 CalculationRunner Skip/Redo Logic
 
-**Location**: `src/quantumvitas/calculation/runner.py:172-336`
+**Location**: `src/qmatsuite/calculation/runner.py:172-336`
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -783,8 +783,8 @@ This section provides a definitive map of what is persisted vs runtime-only, and
 |-----------|----------|----------|
 | RPC Handler | `daemon/server.py:5450-5516` | `_handle_run_step()` |
 | RPC Handler (always run) | `daemon/server.py:5518-5572` | `_handle_run_single_step()` |
-| Backend | `api.py:1319-1470` | `QVService.run_step()` |
-| Backend (always run) | `api.py:1675-1850+` | `QVService.run_single_step()` |
+| Backend | `api.py:1319-1470` | `QMSService.run_step()` |
+| Backend (always run) | `api.py:1675-1850+` | `QMSService.run_single_step()` |
 | Job Manager | `daemon/jobs.py:112-683` | `JobManager` class |
 
 **Execution Flow**:
@@ -795,10 +795,10 @@ UI "Run Step" button
 RPC: _handle_run_step(calc_id, step_id)   [server.py:5450]
     │
     ▼
-JobManager.submit_with_id(func=QVService.run_step)   [server.py:5496]
+JobManager.submit_with_id(func=QMSService.run_step)   [server.py:5496]
     │
     ▼
-QVService.run_step(calc_id, step_id)   [api.py:1319]
+QMSService.run_step(calc_id, step_id)   [api.py:1319]
     │
     ├── resolve_engine_for_step() → engine name   [api.py:1386-1396]
     │
@@ -830,7 +830,7 @@ QVService.run_step(calc_id, step_id)   [api.py:1319]
 
 ### 9.6 Manifest Structure
 
-**Location**: `src/quantumvitas/calculation/manifest.py`
+**Location**: `src/qmatsuite/calculation/manifest.py`
 
 ```yaml
 # manifest.yaml structure

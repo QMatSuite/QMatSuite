@@ -7,7 +7,7 @@ in the wrong namelist (e.g. diago_full_acc in SYSTEM instead of ELECTRONS).
 
 import pytest
 
-from quantumvitas.drivers.qe.preflight import QEPreflightChecker
+from qmatsuite.drivers.qe.preflight import QEPreflightChecker
 
 
 @pytest.fixture
@@ -139,7 +139,7 @@ class TestParamRegistryUtility:
     """Test the shared param_registry module."""
 
     def test_get_qe_param_namelist_known(self):
-        from quantumvitas.drivers.qe.param_registry import get_qe_param_namelist
+        from qmatsuite.drivers.qe.param_registry import get_qe_param_namelist
 
         assert get_qe_param_namelist("ecutwfc") == "SYSTEM"
         assert get_qe_param_namelist("conv_thr") == "ELECTRONS"
@@ -148,12 +148,12 @@ class TestParamRegistryUtility:
         assert get_qe_param_namelist("ion_dynamics") == "IONS"
 
     def test_get_qe_param_namelist_unknown(self):
-        from quantumvitas.drivers.qe.param_registry import get_qe_param_namelist
+        from qmatsuite.drivers.qe.param_registry import get_qe_param_namelist
 
         assert get_qe_param_namelist("nonexistent_param_xyz") is None
 
     def test_case_insensitive(self):
-        from quantumvitas.drivers.qe.param_registry import get_qe_param_namelist
+        from qmatsuite.drivers.qe.param_registry import get_qe_param_namelist
 
         assert get_qe_param_namelist("ECUTWFC") == "SYSTEM"
         assert get_qe_param_namelist("Ecutwfc") == "SYSTEM"

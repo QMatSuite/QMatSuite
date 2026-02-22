@@ -4,7 +4,7 @@
 
 cd "$(dirname "$0")/.."
 
-RESOURCES_DIR="src/quantumvitas/resources"
+RESOURCES_DIR="src/qmatsuite/resources"
 DEMO_DIR="${RESOURCES_DIR}/demo_projects"
 
 if [ ! -d "$DEMO_DIR" ]; then

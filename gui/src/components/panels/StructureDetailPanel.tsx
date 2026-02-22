@@ -6,7 +6,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import type { StructureModel, Provenance } from '../../types/qv';
+import type { StructureModel, Provenance } from '../../types/qms';
 import './StructureDetailPanel.css';
 
 interface StructureDetailPanelProps {
@@ -203,7 +203,7 @@ export function StructureDetailPanel({ model, onClose }: StructureDetailPanelPro
   }
   
   return (
-    <div className="structure-detail-panel" data-testid="qv-structure-viewer-panel">
+    <div className="structure-detail-panel" data-testid="qms-structure-viewer-panel">
       <div className="panel-header">
         <h2 className="panel-title">
           <span className="panel-icon">📐</span>

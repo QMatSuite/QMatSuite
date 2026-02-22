@@ -10,14 +10,14 @@
 
 ### Environment Verification
 - ✅ **Python version**: Python 3.14.0
-- ✅ **QMatSuite import**: Success - `<HOME>/QMatSuite/src/quantumvitas/__init__.py`
+- ✅ **QMatSuite import**: Success - `<HOME>/QMatSuite/src/qmatsuite/__init__.py`
 - ✅ **LAMMPS binary path**: `/opt/homebrew/opt/lammps/bin/lmp_serial`
 - ✅ **LAMMPS version**: Large-scale Atomic/Molecular Massively Parallel Simulator - 22 Jul 2025 - Update 2
 
 ```
 === PRE-RUN CHECKS ===
 Python: Python 3.14.0
-QMatSuite: <HOME>/QMatSuite/src/quantumvitas/__init__.py
+QMatSuite: <HOME>/QMatSuite/src/qmatsuite/__init__.py
 LAMMPS binary: /opt/homebrew/opt/lammps/bin/lmp_serial
 LAMMPS version: Large-scale Atomic/Molecular Massively Parallel Simulator - 22 Jul 2025 - Update 2
 ```
@@ -27,7 +27,7 @@ LAMMPS version: Large-scale Atomic/Molecular Massively Parallel Simulator - 22 J
 ## Fixes Applied
 
 ### Fix 1: LAMMPS Data Parser Enhancement
-**File**: `src/quantumvitas/io/lammps_data.py`
+**File**: `src/qmatsuite/io/lammps_data.py`
 **Problem**: The `read_lammps_data()` function failed to parse `final.data` files that contained "Pair Coeffs" section (output from LAMMPS `write_data` command).
 **Solution**: Enhanced parser to skip non-essential sections (Pair Coeffs, Bond Coeffs, Velocities, etc.) and properly handle image flags in atom coordinates.
 
@@ -191,7 +191,7 @@ Overall:                    ✅ PASS (4/4 workflows passed)
 
 ## Changes Made
 
-### 1. Parser Enhancement (`src/quantumvitas/io/lammps_data.py`)
+### 1. Parser Enhancement (`src/qmatsuite/io/lammps_data.py`)
 
 Added support for skipping non-essential sections in LAMMPS data files:
 

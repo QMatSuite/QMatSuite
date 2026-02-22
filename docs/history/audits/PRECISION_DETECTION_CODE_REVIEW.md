@@ -222,10 +222,10 @@ if calc_model.structure_id:
     try:
         # 尝试通过 project root 加载
         project_root = calculation_dir.parent
-        if not (project_root / "project.qv.yml").exists():
+        if not (project_root / "project.qms.yml").exists():
             project_root = project_root.parent
         
-        if (project_root / "project.qv.yml").exists():
+        if (project_root / "project.qms.yml").exists():
             config = load_project_config(project_root)  # 可能抛出 ProjectConfigError
             index = build_resource_index(project_root)
             resolved = resolve_structure(...)
@@ -240,7 +240,7 @@ if calc_model.structure_id:
 ```
 
 **潜在问题：**
-- 如果 `load_project_config(project_root)` 抛出 `ProjectConfigError`（当 project.qv.yml 不存在时），会被 `except Exception` 捕获
+- 如果 `load_project_config(project_root)` 抛出 `ProjectConfigError`（当 project.qms.yml 不存在时），会被 `except Exception` 捕获
 - 然后会 fallback 到直接文件系统搜索
 - **但是**，如果 fallback 也失败（比如 structures 目录不存在），`structure` 会保持为 `None`
 - 然后函数会返回 CUSTOM（第 584-587 行）
@@ -299,7 +299,7 @@ except Exception as e:
 
 **调试输出：**
 ```
-project_root: /var/folders/pd/.../T, project.qv.yml exists: False
+project_root: /var/folders/pd/.../T, project.qms.yml exists: False
 ERROR: structure is None
 === 函数返回: Custom ===
 ```
@@ -309,20 +309,20 @@ ERROR: structure is None
 1. **Project root 计算逻辑：**
    ```python
    project_root = calculation_dir.parent  # /tmp/tmpXXX
-   if not (project_root / "project.qv.yml").exists():
+   if not (project_root / "project.qms.yml").exists():
        project_root = project_root.parent  # /tmp
    ```
-   - 在测试环境中，`project.qv.yml` 不存在
+   - 在测试环境中，`project.qms.yml` 不存在
    - 所以 `project_root` 被设置为 `/tmp`（temp 目录的父目录）
 
 2. **Structure 加载逻辑：**
    ```python
-   if (project_root / "project.qv.yml").exists():
+   if (project_root / "project.qms.yml").exists():
        # 通过 project root 加载
    else:
-       # 不会进入这个分支，因为 project.qv.yml 不存在
+       # 不会进入这个分支，因为 project.qms.yml 不存在
    ```
-   - 因为 `project.qv.yml` 不存在，不会进入第一个分支
+   - 因为 `project.qms.yml` 不存在，不会进入第一个分支
    - 会 fallback 到直接文件系统搜索
 
 3. **Fallback 逻辑：**
@@ -366,7 +366,7 @@ ERROR: structure is None
 ## 建议的修复方案
 
 ### 方案 1：简化 Structure 加载逻辑
-- 移除对 `project.qv.yml` 的依赖
+- 移除对 `project.qms.yml` 的依赖
 - 直接使用文件系统搜索（因为这是最可靠的方法）
 
 ### 方案 2：改进异常处理

@@ -7,7 +7,7 @@ PR2: Tests for parallel provider querying with timeouts.
 from unittest.mock import patch, Mock
 import pytest
 
-from quantumvitas.io.providers.optimade import (
+from qmatsuite.io.providers.optimade import (
     ProviderConfig,
     ProviderResult,
     Candidate,
@@ -57,7 +57,7 @@ class TestParallelSearch:
         }
         mock_response_cod.raise_for_status = Mock()
         
-        with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
             # Mock get to return different responses based on URL
             def side_effect(url, **kwargs):
                 if "materialsproject" in url:
@@ -80,7 +80,7 @@ class TestParallelSearch:
             ProviderConfig(provider_key="slow", name="Slow", base_url="https://slow.example.com", enabled=True, trust_weight=0.8),
         ]
         
-        with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
             import requests
             mock_get.side_effect = requests.exceptions.Timeout("Request timeout")
             
@@ -96,7 +96,7 @@ class TestParallelSearch:
             ProviderConfig(provider_key="error", name="Error", base_url="https://error.example.com", enabled=True, trust_weight=0.8),
         ]
         
-        with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
             import requests
             mock_response = Mock()
             mock_response.status_code = 500
@@ -115,7 +115,7 @@ class TestParallelSearch:
             ProviderConfig(provider_key="disabled", name="Disabled", base_url="https://disabled.example.com", enabled=False, trust_weight=0.8),
         ]
         
-        with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = {"data": []}
             mock_response.raise_for_status = Mock()
@@ -146,7 +146,7 @@ class TestParallelSearch:
         }
         mock_response.raise_for_status = Mock()
         
-        with patch('quantumvitas.io.providers.optimade.requests.get', return_value=mock_response):
+        with patch('qmatsuite.io.providers.optimade.requests.get', return_value=mock_response):
             result = _query_single_provider(provider, "Si", max_results=10, timeout_s=8.0)
             
             assert result.provider_id == "test"

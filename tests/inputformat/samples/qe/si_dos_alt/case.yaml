@@ -31,7 +31,7 @@ asset_requirements:
   pseudopotentials:
   - file: Si.pbe-n-rrkjus_psl.1.0.0.UPF
     element: Si
-    source: src/quantumvitas/resources/pseudo
+    source: src/qmatsuite/resources/pseudo
 multi_step: true
 steps:
 - step_type_gen: scf

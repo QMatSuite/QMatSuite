@@ -14,8 +14,8 @@ This document lists lightweight improvements needed to align the codebase with t
 **Status**: Current implementation only has in-memory cache in daemon (`DaemonState._caches`).
 
 **Location**: See [`IMPLEMENTATION_NOTES.md`](IMPLEMENTATION_NOTES.md#a-resource-index--cache-implementation) for details:
-- Cache implementation: `src/quantumvitas/daemon/server.py:82-156`
-- Index building: `src/quantumvitas/core/resolution.py:368-523`
+- Cache implementation: `src/qmatsuite/daemon/server.py:82-156`
+- Index building: `src/qmatsuite/core/resolution.py:368-523`
 
 **Issue**: 
 - `build_resource_index()` does full filesystem scan every time (no persistent cache).
@@ -23,12 +23,12 @@ This document lists lightweight improvements needed to align the codebase with t
 
 **Suggested Fix**:
 - Add persistent cache (JSON/SQLite) with mtime-based invalidation.
-- Cache file: `.qv_index_cache.json` in project root (or `.qv/` subdirectory).
+- Cache file: `.qms_index_cache.json` in project root (or `.qms/` subdirectory).
 - Invalidate when any resource file mtime changes.
 
 **Files to Modify**:
-- `src/quantumvitas/core/cache.py` (new) - Cache management
-- `src/quantumvitas/core/resolution.py` - Integrate cache into `build_resource_index()`
+- `src/qmatsuite/core/cache.py` (new) - Cache management
+- `src/qmatsuite/core/resolution.py` - Integrate cache into `build_resource_index()`
 
 **Test**:
 - `tests/unit/test_resource_index_cache.py` (new) - Test cache creation, mtime invalidation
@@ -38,7 +38,7 @@ This document lists lightweight improvements needed to align the codebase with t
 ### A2: Cache Invalidation Strategy Not Documented
 **Status**: Cache invalidation is manual (`invalidate_cache()`), no automatic mtime/hash-based invalidation.
 
-**Location**: `src/quantumvitas/daemon/server.py:148-156`
+**Location**: `src/qmatsuite/daemon/server.py:148-156`
 
 **Issue**: 
 - No clear documentation on when cache should be invalidated.
@@ -49,7 +49,7 @@ This document lists lightweight improvements needed to align the codebase with t
 - Consider adding mtime-based automatic invalidation (check mtime on cache load).
 
 **Files to Modify**:
-- `src/quantumvitas/daemon/server.py` - Add invalidation strategy comments
+- `src/qmatsuite/daemon/server.py` - Add invalidation strategy comments
 - `docs/CACHE_STRATEGY.md` (new) - Document cache strategy
 
 ---
@@ -69,7 +69,7 @@ This document lists lightweight improvements needed to align the codebase with t
   - Missing files (ULID in index but file doesn't exist)
 
 **Files to Modify**:
-- `src/quantumvitas/core/resolution.py` - Add validation function
+- `src/qmatsuite/core/resolution.py` - Add validation function
 - `tests/unit/test_resource_index_validation.py` (new)
 
 ---
@@ -80,7 +80,7 @@ This document lists lightweight improvements needed to align the codebase with t
 **Status**: Code has `BOUNDARY_FRAC_TOL = 1e-6`, but some docs mention `1e-8`.
 
 **Location**: See [`IMPLEMENTATION_NOTES.md`](IMPLEMENTATION_NOTES.md#b-geometry--canonicalization-implementation) for constant definitions:
-- Code: `src/quantumvitas/analysis/structure_viz.py:160`
+- Code: `src/qmatsuite/analysis/structure_viz.py:160`
 - Docs: `docs/BOND_DETECTION_NOTES.md:72` mentions `1e-8`
 
 **Issue**: 
@@ -94,7 +94,7 @@ This document lists lightweight improvements needed to align the codebase with t
 
 **Files to Modify**:
 - `docs/BOND_DETECTION_NOTES.md` - Update to match code
-- `src/quantumvitas/analysis/structure_viz.py` - Add comment if legacy
+- `src/qmatsuite/analysis/structure_viz.py` - Add comment if legacy
 
 ---
 
@@ -159,8 +159,8 @@ This document lists lightweight improvements needed to align the codebase with t
 **Status**: Code implements SHA/SHATOKEN, but no ADR documents explain the design decision.
 
 **Location**: See [`IMPLEMENTATION_NOTES.md`](IMPLEMENTATION_NOTES.md#d-pseudopotential-shashatoken-implementation) for function locations:
-- SHA256: `src/quantumvitas/core/pseudo_provenance.py:56`
-- SHATOKEN: `src/quantumvitas/core/pseudo_libinfo.py:95`
+- SHA256: `src/qmatsuite/core/pseudo_provenance.py:56`
+- SHATOKEN: `src/qmatsuite/core/pseudo_libinfo.py:95`
 
 **Issue**: 
 - Constitution requires this distinction, but it's not documented as an ADR.
@@ -180,7 +180,7 @@ This document lists lightweight improvements needed to align the codebase with t
 ### D2: SHATOKEN Algorithm Risk Assessment
 **Status**: Current algorithm (whitespace normalization) may not handle all "physically same" cases.
 
-**Location**: `src/quantumvitas/core/pseudo_libinfo.py:71-92`
+**Location**: `src/qmatsuite/core/pseudo_libinfo.py:71-92`
 
 **Issue**: 
 - Algorithm doesn't handle:

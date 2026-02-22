@@ -18,15 +18,15 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.presets import (
+from qmatsuite.presets import (
     compile_magnetism,
     compile_occupations_scheme,
     detect_magnetism,
     detect_occupations_scheme,
 )
-from quantumvitas.presets.compiler import compile_precision
-from quantumvitas.presets.detector import detect_precision
-from quantumvitas.presets.paramspace import (
+from qmatsuite.presets.compiler import compile_precision
+from qmatsuite.presets.detector import detect_precision
+from qmatsuite.presets.paramspace import (
     get_magnetism_paramspace,
     get_occupations_scheme_paramspace,
     get_precision_paramspace,
@@ -38,7 +38,7 @@ class TestNoLegacySymbols:
     
     def test_no_detect_precision_strict(self):
         """detect_precision_strict must not exist."""
-        presets_dir = Path(__file__).parent.parent.parent / "src" / "quantumvitas" / "presets"
+        presets_dir = Path(__file__).parent.parent.parent / "src" / "qmatsuite" / "presets"
         
         forbidden_patterns = [
             r"def\s+detect_precision_strict\s*\(",
@@ -62,7 +62,7 @@ class TestNoLegacySymbols:
     
     def test_no_heuristic_conv_thr_med(self):
         """No heuristic 'conv_thr missing → return MED' logic."""
-        presets_dir = Path(__file__).parent.parent.parent / "src" / "quantumvitas" / "presets"
+        presets_dir = Path(__file__).parent.parent.parent / "src" / "qmatsuite" / "presets"
         
         forbidden_patterns = [
             r"conv_thr.*is\s+None.*return.*MED",
@@ -86,7 +86,7 @@ class TestNoLegacySymbols:
     
     def test_no_precision_config_legacy(self):
         """PRECISION_CONFIGS and PrecisionConfig must not exist."""
-        presets_dir = Path(__file__).parent.parent.parent / "src" / "quantumvitas" / "presets"
+        presets_dir = Path(__file__).parent.parent.parent / "src" / "qmatsuite" / "presets"
         
         for py_file in presets_dir.glob("*.py"):
             content = py_file.read_text()

@@ -99,9 +99,9 @@ steps:
 ```
 
 **Root cause code location:**
-- `src/quantumvitas/api.py:4933`: `CalculationStepEntry(step_id=step_ulid, type=None)`
-- `src/quantumvitas/core/models.py:63`: `if self.type: d["type"] = self.type` (only writes if truthy)
-- `src/quantumvitas/workflow/templates.py:375-379`: `calc_set_steps()` called with only ULIDs, no step_type info
+- `src/qmatsuite/api.py:4933`: `CalculationStepEntry(step_id=step_ulid, type=None)`
+- `src/qmatsuite/core/models.py:63`: `if self.type: d["type"] = self.type` (only writes if truthy)
+- `src/qmatsuite/workflow/templates.py:375-379`: `calc_set_steps()` called with only ULIDs, no step_type info
 
 ### Evidence 2: Step YAML meta.path comparison
 
@@ -126,8 +126,8 @@ meta:
 ```
 
 **Root cause code location:**
-- `src/quantumvitas/workflow/step_factory.py:104-108`: `save_step_doc()` doesn't update `meta.path` before saving
-- Compare with `src/quantumvitas/api.py:874-878`: `init_step()` DOES set `meta.path` before saving
+- `src/qmatsuite/workflow/step_factory.py:104-108`: `save_step_doc()` doesn't update `meta.path` before saving
+- Compare with `src/qmatsuite/api.py:874-878`: `init_step()` DOES set `meta.path` before saving
 
 ### Evidence 3: Step YAML species_overrides comparison
 
@@ -145,8 +145,8 @@ species_overrides:
 ```
 
 **Root cause code location:**
-- `src/quantumvitas/workflow/step_factory.py:82-84`: `create_step_doc()` adds `species_overrides` from defaults
-- `src/quantumvitas/workflow/registry.py:330`: `get_defaults()` returns `{"species_overrides": {}}` (empty dict)
+- `src/qmatsuite/workflow/step_factory.py:82-84`: `create_step_doc()` adds `species_overrides` from defaults
+- `src/qmatsuite/workflow/registry.py:330`: `get_defaults()` returns `{"species_overrides": {}}` (empty dict)
 - Empty dicts may not be persisted by YAML serializer (implementation-dependent)
 
 ### Evidence 4: Step YAML cards comparison
@@ -179,7 +179,7 @@ cards:
 ```
 
 **Root cause code location:**
-- `src/quantumvitas/workflow/step_factory.py:79-80`: `create_step_doc()` adds cards from defaults
+- `src/qmatsuite/workflow/step_factory.py:79-80`: `create_step_doc()` adds cards from defaults
 - Defaults may not include cards for all step types (bands_pw may not have default cards)
 
 ### Evidence 5: Runtime representation comparison
@@ -206,7 +206,7 @@ cards:
 }
 ```
 
-**UI expectation (from `gui/src/types/qv.ts:417-429`):**
+**UI expectation (from `gui/src/types/qms.ts:417-429`):**
 ```typescript
 export interface StepDetail {
   path: string;  // REQUIRED - will be undefined if missing
@@ -217,7 +217,7 @@ export interface StepDetail {
 
 ### Evidence 6: Workflow detection code path
 
-**Location**: `src/quantumvitas/workflow/templates.py:196-235`
+**Location**: `src/qmatsuite/workflow/templates.py:196-235`
 
 ```python
 for step_entry in steps:
@@ -253,7 +253,7 @@ for step_entry in steps:
 
 ### Hypothesis 2: Step detail crash due to missing mandatory fields
 
-**CONFIRMED**: Factory steps are missing `meta.path` and `species_overrides`. The UI expects these fields (see `gui/src/types/qv.ts:421, 428`). When `get_step_detail()` returns `step.meta.path` as `None` (line 3455 in `api.py`), the UI receives `path: null` instead of a string, which may cause TypeScript type errors or runtime crashes.
+**CONFIRMED**: Factory steps are missing `meta.path` and `species_overrides`. The UI expects these fields (see `gui/src/types/qms.ts:421, 428`). When `get_step_detail()` returns `step.meta.path` as `None` (line 3455 in `api.py`), the UI receives `path: null` instead of a string, which may cause TypeScript type errors or runtime crashes.
 
 **Evidence**:
 - `api.py:3455`: `"path": step.meta.path` (will be None if not set)
@@ -277,7 +277,7 @@ for step_entry in steps:
 
 ### Priority 1: Fix `calc_set_steps()` to preserve step type
 
-**Location**: `src/quantumvitas/api.py:4892-4938`
+**Location**: `src/qmatsuite/api.py:4892-4938`
 
 **Issue**: `calc_set_steps()` creates `CalculationStepEntry(step_id=step_ulid, type=None)` when step is not in current model, and `to_dict()` doesn't write None values.
 
@@ -304,7 +304,7 @@ def calc_set_steps(
 
 ### Priority 2: Fix `save_step_doc()` to set `meta.path`
 
-**Location**: `src/quantumvitas/workflow/step_factory.py:96-108`
+**Location**: `src/qmatsuite/workflow/step_factory.py:96-108`
 
 **Issue**: `save_step_doc()` doesn't update `meta.path` before saving, unlike `init_step()` which does.
 
@@ -332,7 +332,7 @@ def save_step_doc(step_doc: StepDoc, path: Path) -> None:
 
 ### Priority 3: Ensure `species_overrides` and `cards` are always persisted
 
-**Location**: `src/quantumvitas/workflow/step_factory.py:82-84`
+**Location**: `src/qmatsuite/workflow/step_factory.py:82-84`
 
 **Issue**: Empty dicts may not be persisted by YAML serializer.
 
@@ -356,7 +356,7 @@ def save_step_doc(step_doc: StepDoc, path: Path) -> None:
 
 ### Priority 4: Fix incomplete cards data
 
-**Location**: `src/quantumvitas/workflow/step_factory.py:79-80` and step defaults
+**Location**: `src/qmatsuite/workflow/step_factory.py:79-80` and step defaults
 
 **Issue**: Some step types (bands_pw) don't have default cards, and cards may be created with incomplete data (option but no data).
 
@@ -463,7 +463,7 @@ The UI is passing a slug (`"bands"`) instead of a ULID when selecting a step. Th
 
 ### Evidence: Workflow Detection Code Path
 
-**Location**: `src/quantumvitas/workflow/templates.py:196-285`
+**Location**: `src/qmatsuite/workflow/templates.py:196-285`
 
 **Code flow:**
 1. Loads `calculation.yaml` and reads `steps[]` array

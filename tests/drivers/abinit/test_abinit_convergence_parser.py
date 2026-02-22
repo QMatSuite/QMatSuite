@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.convergence import Convergence
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.abinit.parsers.convergence import ABINITConvergenceProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.convergence import Convergence
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.abinit.parsers.convergence import ABINITConvergenceProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_abinit_trajectory"

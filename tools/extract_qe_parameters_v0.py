@@ -3,7 +3,7 @@
 Utility to scrape Quantum ESPRESSO input documentation and build a
 module -> {section -> parameters} map.
 
-The output is written to JSON and consumed by the CLI (`qv params`).
+The output is written to JSON and consumed by the CLI (`qms params`).
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ def build_request(url: str) -> request.Request:
     return request.Request(
         url,
         headers={
-            "User-Agent": "QuantumVITAS-DocExtractor/1.0 (+https://quantumvitas.org)"
+            "User-Agent": "QMatSuite-DocExtractor/1.0 (+https://qmatsuite.org)"
         },
     )
 
@@ -178,7 +178,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        default="src/quantumvitas/data/qe_module_parameters.json",
+        default="src/qmatsuite/data/qe_module_parameters.json",
         help="Destination JSON file (default: %(default)s)",
     )
     parser.add_argument(

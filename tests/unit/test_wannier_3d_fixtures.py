@@ -4,14 +4,14 @@ Unit tests for Wannier90 3D fixtures discovery.
 
 import pytest
 from pathlib import Path
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 import io
 import sys
 
 
 def test_list_wannier_3d_fixtures():
     """Test that fixtures discovery works and returns expected fixtures."""
-    daemon = QVDaemon(
+    daemon = QMSDaemon(
         stdin=io.StringIO(),
         stdout=io.StringIO(),
         stderr=io.StringIO(),
@@ -71,7 +71,7 @@ def test_list_wannier_3d_fixtures_with_env_var(monkeypatch, tmp_path):
     # Set environment variable
     monkeypatch.setenv("QMATSUITE_WANNIER_3D_FIXTURES", str(test_fixtures_dir))
     
-    daemon = QVDaemon(
+    daemon = QMSDaemon(
         stdin=io.StringIO(),
         stdout=io.StringIO(),
         stderr=io.StringIO(),
@@ -93,7 +93,7 @@ def test_list_wannier_3d_fixtures_not_found(monkeypatch):
     # Also override the DEV fallback to non-existent
     # We need to patch the handler to skip repo derivation and DEV fallback
     # Since we can't easily mock Path(__file__), we'll use payload override
-    daemon = QVDaemon(
+    daemon = QMSDaemon(
         stdin=io.StringIO(),
         stdout=io.StringIO(),
         stderr=io.StringIO(),

@@ -1,8 +1,8 @@
 """
 Dangling API Call Scanner
 
-AST-based scanner to detect calls to QVService methods that don't exist
-on the canonical quantumvitas.api.service.QVService class.
+AST-based scanner to detect calls to QMSService methods that don't exist
+on the canonical qmatsuite.api.service.QMSService class.
 """
 
 import ast
@@ -12,15 +12,15 @@ from pathlib import Path
 from typing import Any
 
 
-def get_canonical_qvservice_methods() -> tuple[set[str], dict[str, set[str]]]:
-    """Get all method names and nested class methods from canonical QVService.
+def get_canonical_qmsservice_methods() -> tuple[set[str], dict[str, set[str]]]:
+    """Get all method names and nested class methods from canonical QMSService.
     
     Returns:
         (direct_methods, nested_class_methods) where:
-        - direct_methods: set of method names directly on QVService
+        - direct_methods: set of method names directly on QMSService
         - nested_class_methods: dict mapping nested class name to set of its method names
     """
-    service_file = Path("src/quantumvitas/api/service.py")
+    service_file = Path("src/qmatsuite/api/service.py")
     if not service_file.exists():
         return set(), {}
 
@@ -31,7 +31,7 @@ def get_canonical_qvservice_methods() -> tuple[set[str], dict[str, set[str]]]:
         tree = ast.parse(content, filename=str(service_file))
 
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name == "QVService":
+            if isinstance(node, ast.ClassDef) and node.name == "QMSService":
                 for item in node.body:
                     if isinstance(item, ast.FunctionDef):
                         direct_methods.add(item.name)
@@ -52,35 +52,35 @@ def get_canonical_qvservice_methods() -> tuple[set[str], dict[str, set[str]]]:
     return direct_methods, nested_class_methods
 
 
-class QVServiceCallVisitor(ast.NodeVisitor):
-    """AST visitor to collect QVService method calls."""
+class QMSServiceCallVisitor(ast.NodeVisitor):
+    """AST visitor to collect QMSService method calls."""
     
     def __init__(self, direct_methods: set[str], nested_class_methods: dict[str, set[str]], file_path: Path):
         self.direct_methods = direct_methods
         self.nested_class_methods = nested_class_methods
         self.file_path = file_path
         self.dangling_calls = []
-        self.imports_qvservice = False
-        self.qvservice_alias = "QVService"
+        self.imports_qmsservice = False
+        self.qmsservice_alias = "QMSService"
     
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        """Track imports of QVService from quantumvitas.api."""
-        if node.module == "quantumvitas.api":
+        """Track imports of QMSService from qmatsuite.api."""
+        if node.module == "qmatsuite.api":
             for alias in node.names:
-                if alias.name == "QVService":
-                    self.imports_qvservice = True
-                    self.qvservice_alias = alias.asname or "QVService"
+                if alias.name == "QMSService":
+                    self.imports_qmsservice = True
+                    self.qmsservice_alias = alias.asname or "QMSService"
         self.generic_visit(node)
     
     def visit_Call(self, node: ast.Call):
-        """Collect QVService.method() calls."""
+        """Collect QMSService.method() calls."""
         if isinstance(node.func, ast.Attribute):
-            # Check if it's QVService.method() or instance.method()
+            # Check if it's QMSService.method() or instance.method()
             if isinstance(node.func.value, ast.Name):
-                # Static call: QVService.method() or QVService.NestedClass()
-                if node.func.value.id == self.qvservice_alias:
+                # Static call: QMSService.method() or QMSService.NestedClass()
+                if node.func.value.id == self.qmsservice_alias:
                     method_name = node.func.attr
-                    # Allow nested class instantiation (QVService.Analysis(self) is valid)
+                    # Allow nested class instantiation (QMSService.Analysis(self) is valid)
                     if method_name in self.nested_class_methods:
                         # This is a nested class instantiation, which is valid
                         pass
@@ -88,14 +88,14 @@ class QVServiceCallVisitor(ast.NodeVisitor):
                         self.dangling_calls.append({
                             "file": str(self.file_path),
                             "line": node.lineno,
-                            "method": f"{self.qvservice_alias}.{method_name}()",
+                            "method": f"{self.qmsservice_alias}.{method_name}()",
                             "method_name": method_name,
                         })
             elif isinstance(node.func.value, ast.Attribute):
-                # Nested: QVService.NestedClass.method() or something.QVService.method()
+                # Nested: QMSService.NestedClass.method() or something.QMSService.method()
                 if isinstance(node.func.value.value, ast.Name):
-                    if node.func.value.value.id == self.qvservice_alias:
-                        # QVService.NestedClass.method()
+                    if node.func.value.value.id == self.qmsservice_alias:
+                        # QMSService.NestedClass.method()
                         nested_class_name = node.func.value.attr
                         method_name = node.func.attr
                         # Check if nested_class is a valid nested class and method is valid
@@ -104,7 +104,7 @@ class QVServiceCallVisitor(ast.NodeVisitor):
                                 self.dangling_calls.append({
                                     "file": str(self.file_path),
                                     "line": node.lineno,
-                                    "method": f"{self.qvservice_alias}.{nested_class_name}.{method_name}()",
+                                    "method": f"{self.qmsservice_alias}.{nested_class_name}.{method_name}()",
                                     "method_name": method_name,
                                 })
                         else:
@@ -112,19 +112,19 @@ class QVServiceCallVisitor(ast.NodeVisitor):
                             self.dangling_calls.append({
                                 "file": str(self.file_path),
                                 "line": node.lineno,
-                                "method": f"{self.qvservice_alias}.{nested_class_name}.{method_name}()",
+                                "method": f"{self.qmsservice_alias}.{nested_class_name}.{method_name}()",
                                 "method_name": method_name,
                             })
         self.generic_visit(node)
 
 
 def scan_file(file_path: Path, direct_methods: set[str], nested_class_methods: dict[str, set[str]]) -> list[dict[str, Any]]:
-    """Scan a single file for dangling QVService calls."""
+    """Scan a single file for dangling QMSService calls."""
     try:
         content = file_path.read_text(encoding="utf-8")
         tree = ast.parse(content, filename=str(file_path))
         
-        visitor = QVServiceCallVisitor(direct_methods, nested_class_methods, file_path)
+        visitor = QMSServiceCallVisitor(direct_methods, nested_class_methods, file_path)
         visitor.visit(tree)
         
         return visitor.dangling_calls
@@ -133,7 +133,7 @@ def scan_file(file_path: Path, direct_methods: set[str], nested_class_methods: d
 
 
 def scan_directory(directory: Path, direct_methods: set[str], nested_class_methods: dict[str, set[str]]) -> list[dict[str, Any]]:
-    """Scan a directory for dangling QVService calls."""
+    """Scan a directory for dangling QMSService calls."""
     all_dangling = []
     
     for py_file in directory.rglob("*.py"):
@@ -149,14 +149,14 @@ def scan_directory(directory: Path, direct_methods: set[str], nested_class_metho
 
 def main():
     """Main entry point."""
-    direct_methods, nested_class_methods = get_canonical_qvservice_methods()
+    direct_methods, nested_class_methods = get_canonical_qmsservice_methods()
     
     if not direct_methods and not nested_class_methods:
-        print("ERROR: Could not load canonical QVService methods", file=sys.stderr)
+        print("ERROR: Could not load canonical QMSService methods", file=sys.stderr)
         sys.exit(1)
     
-    # Scan src/quantumvitas for production code
-    src_dir = Path("src/quantumvitas")
+    # Scan src/qmatsuite for production code
+    src_dir = Path("src/qmatsuite")
     dangling_calls = scan_directory(src_dir, direct_methods, nested_class_methods)
     
     if "--json" in sys.argv:
@@ -172,8 +172,8 @@ def main():
             print("ERROR: Dangling API calls detected:")
             for call in dangling_calls:
                 print(f"  - {call['file']}:{call['line']}: {call['method']}")
-                print(f"    Method '{call['method_name']}' not found on quantumvitas.api.service.QVService")
-                print(f"    Suggestion: Method may exist on quantumvitas._vault._legacy_service.QVService - needs migration")
+                print(f"    Method '{call['method_name']}' not found on qmatsuite.api.service.QMSService")
+                print(f"    Suggestion: Method may exist on qmatsuite._vault._legacy_service.QMSService - needs migration")
             sys.exit(1)
         else:
             print("PASS: No dangling calls found")

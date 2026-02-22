@@ -93,11 +93,11 @@ tests/ (full suite): 5999 passed, 0 failed, 4 skipped
 |------|--------|
 | `docs/plans/DEFERRED_ITEMS.md` | CREATE |
 | `docs/history/worklogs/MCP_STAGE11_WORKLOG.md` | UPDATE |
-| `src/quantumvitas/mcp/tools/run_calculation.py` | FIX: promote_structure hint for relax |
-| `src/quantumvitas/mcp/tools/get_results_summary.py` | FIX: promote_structure hint + calc_ulid in hint |
-| `src/quantumvitas/mcp/tools/quick_run.py` | FIX: promote_structure hint for relax |
-| `src/quantumvitas/mcp/tools/get_status.py` | FIX: promote_structure hint for relax completed |
-| `src/quantumvitas/mcp/tools/create_calculation.py` | FIX: context_hint on error paths |
-| `src/quantumvitas/mcp/tools/demo_store.py` | FIX: empty result fallback hint |
-| `src/quantumvitas/mcp/tools/inspect_calculation.py` | FIX: dry_run/preflight mention in hint |
+| `src/qmatsuite/mcp/tools/run_calculation.py` | FIX: promote_structure hint for relax |
+| `src/qmatsuite/mcp/tools/get_results_summary.py` | FIX: promote_structure hint + calc_ulid in hint |
+| `src/qmatsuite/mcp/tools/quick_run.py` | FIX: promote_structure hint for relax |
+| `src/qmatsuite/mcp/tools/get_status.py` | FIX: promote_structure hint for relax completed |
+| `src/qmatsuite/mcp/tools/create_calculation.py` | FIX: context_hint on error paths |
+| `src/qmatsuite/mcp/tools/demo_store.py` | FIX: empty result fallback hint |
+| `src/qmatsuite/mcp/tools/inspect_calculation.py` | FIX: dry_run/preflight mention in hint |
 | `tests/mcp/test_stage11.py` | CREATE: 15 tests |

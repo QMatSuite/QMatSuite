@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.api import QMSService
+from qmatsuite.core.resources import get_resources_dir
 
 REF_PACKS_DIR = get_resources_dir() / "demo_projects" / "ref_packs"
 
@@ -55,7 +55,7 @@ def test_reference_analysis_returns_data(slug, ref_types, tmp_path):
     project_dir.mkdir()
 
     # 1. Create demo project
-    result = QVService.create_demo_project(
+    result = QMSService.create_demo_project(
         target_dir=str(project_dir),
         name=slug,
         demo_id=slug,
@@ -64,7 +64,7 @@ def test_reference_analysis_returns_data(slug, ref_types, tmp_path):
     assert project_root.exists(), f"Project root not created: {project_root}"
 
     # 2. Get calculation selector
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     calc_dtos = svc.calculation.list()
     assert calc_dtos, f"No calculations in demo project {slug}"
     calc_selector = calc_dtos[0].meta.slug or calc_dtos[0].calc_ulid

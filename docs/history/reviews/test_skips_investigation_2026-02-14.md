@@ -51,7 +51,7 @@ if not demo_path.exists():
 
 **Recommendation:** 
 - If this is a required demo file, add a test setup step to generate it
-- If it's optional, update skip message to: `"Wannier90 demo not generated (run 'qv demo generate w90_diamond' to create)"`
+- If it's optional, update skip message to: `"Wannier90 demo not generated (run 'qms demo generate w90_diamond' to create)"`
 
 ---
 
@@ -107,18 +107,18 @@ if not MP_API_AVAILABLE:
 
 **Skip Logic:**
 ```python
-notebook_dir = PROJECT_ROOT / "src/quantumvitas/frontends/notebook"
+notebook_dir = PROJECT_ROOT / "src/qmatsuite/frontends/notebook"
 if not notebook_dir.exists():
     pytest.skip("Notebook frontend does not exist")
 
-tools_dir = PROJECT_ROOT / "src/quantumvitas/tools"
+tools_dir = PROJECT_ROOT / "src/qmatsuite/tools"
 if not tools_dir.exists():
     pytest.skip("Tools directory does not exist")
 ```
 
 **Investigation:**
-- Checked: `src/quantumvitas/frontends/notebook` → **NOT FOUND**
-- Checked: `src/quantumvitas/tools` → **NOT FOUND**
+- Checked: `src/qmatsuite/frontends/notebook` → **NOT FOUND**
+- Checked: `src/qmatsuite/tools` → **NOT FOUND**
 
 **Root Cause:** These frontend directories have not been implemented yet.
 
@@ -206,7 +206,7 @@ if not success:
 1. `tests/contract_crawler/test_gui_methods_covered.py::test_gui_methods_covered`
 2. `tests/contract_crawler/test_gui_methods_covered.py::test_gui_methods_covered_soft`
 
-**Skip Reason:** Soft gate - skips unless `QV_ENFORCE_GUI_RPC_COVERAGE=1` is set.
+**Skip Reason:** Soft gate - skips unless `QMS_ENFORCE_GUI_RPC_COVERAGE=1` is set.
 
 **Code Location:**
 - `tests/contract_crawler/test_gui_methods_covered.py:25-28, 88-89`
@@ -224,7 +224,7 @@ if not gui_methods:
 ```
 
 **Investigation:**
-- Environment variable: `QV_ENFORCE_GUI_RPC_COVERAGE` not set (default behavior)
+- Environment variable: `QMS_ENFORCE_GUI_RPC_COVERAGE` not set (default behavior)
 - File exists: `gui/tests/e2e/tools/gui_rpc_methods.json` → **YES**
 
 **Root Cause:** This is intentional soft-gate behavior. Tests skip by default and only run when explicitly enabled.
@@ -236,7 +236,7 @@ if not gui_methods:
 
 **Recommendation:**
 - Keep as-is. These are soft gates that can be enabled for coverage audits.
-- Consider running with `QV_ENFORCE_GUI_RPC_COVERAGE=1` periodically to check coverage.
+- Consider running with `QMS_ENFORCE_GUI_RPC_COVERAGE=1` periodically to check coverage.
 
 ---
 
@@ -248,7 +248,7 @@ if not gui_methods:
 
 ✅ **No skips due to missing engines**
 
-All engine-related tests passed. The discovery system (`quantumvitas.core.engines.discovery`) correctly finds engines in:
+All engine-related tests passed. The discovery system (`qmatsuite.core.engines.discovery`) correctly finds engines in:
 - `.qmatsuite/engines/` (verified: qe, vasp, qmcpack, abinit, gaussian, orca, yambo directories exist)
 - System PATH
 - Homebrew (macOS)
@@ -256,7 +256,7 @@ All engine-related tests passed. The discovery system (`quantumvitas.core.engine
 - Python modules in `.venv`
 
 **Engine Discovery System:**
-- Location: `src/quantumvitas/core/engines/discovery.py`
+- Location: `src/qmatsuite/core/engines/discovery.py`
 - Search order:
   1. Bundled (`.qmatsuite/engines/`)
   2. Python import (Python-native engines)
@@ -301,7 +301,7 @@ All engine-related tests passed. The discovery system (`quantumvitas.core.engine
 
 ### Long-term Improvements
 1. **Better skip messages:**
-   - Add actionable skip reasons (e.g., "Run 'qv demo generate w90_diamond' to create demo")
+   - Add actionable skip reasons (e.g., "Run 'qms demo generate w90_diamond' to create demo")
    - Include installation instructions for optional dependencies
 
 2. **Test documentation:**
@@ -309,7 +309,7 @@ All engine-related tests passed. The discovery system (`quantumvitas.core.engine
    - Add notes about optional dependencies and their test coverage
 
 3. **CI/CD considerations:**
-   - Consider running with `QV_ENFORCE_GUI_RPC_COVERAGE=1` periodically
+   - Consider running with `QMS_ENFORCE_GUI_RPC_COVERAGE=1` periodically
    - Consider installing `mp-api` in CI for Materials Project tests
 
 ---

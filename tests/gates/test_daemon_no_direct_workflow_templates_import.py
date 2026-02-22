@@ -1,8 +1,8 @@
 """
 Gate test: daemon must not import workflow.templates directly.
 
-The daemon should use QVService.get_workflow_service() instead of
-directly importing from quantumvitas.workflow.templates.
+The daemon should use QMSService.get_workflow_service() instead of
+directly importing from qmatsuite.workflow.templates.
 
 This ensures the daemon stays behind the API facade and maintains
 architectural boundaries.
@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DAEMON_FILE = PROJECT_ROOT / "src/quantumvitas/daemon/server.py"
+DAEMON_FILE = PROJECT_ROOT / "src/qmatsuite/daemon/server.py"
 
 
 def test_daemon_no_direct_workflow_templates_import():
@@ -24,11 +24,11 @@ def test_daemon_no_direct_workflow_templates_import():
     Allowed:
     - Comments containing "workflow.templates"
     - Docstrings containing "workflow.templates"
-    - QVService.get_workflow_service() calls (method calls, not imports)
+    - QMSService.get_workflow_service() calls (method calls, not imports)
     
     Forbidden:
-    - import quantumvitas.workflow.templates
-    - from quantumvitas.workflow.templates import ...
+    - import qmatsuite.workflow.templates
+    - from qmatsuite.workflow.templates import ...
     """
     if not DAEMON_FILE.exists():
         pytest.skip(f"Daemon file not found: {DAEMON_FILE}")
@@ -39,9 +39,9 @@ def test_daemon_no_direct_workflow_templates_import():
     # Patterns to detect forbidden imports
     forbidden_patterns = [
         # Direct import
-        (r'^\s*import\s+quantumvitas\.workflow\.templates', "Direct import of quantumvitas.workflow.templates"),
+        (r'^\s*import\s+qmatsuite\.workflow\.templates', "Direct import of qmatsuite.workflow.templates"),
         # From import
-        (r'^\s*from\s+quantumvitas\.workflow\.templates\s+import', "From import of quantumvitas.workflow.templates"),
+        (r'^\s*from\s+qmatsuite\.workflow\.templates\s+import', "From import of qmatsuite.workflow.templates"),
     ]
     
     in_docstring = False
@@ -97,8 +97,8 @@ def test_daemon_no_direct_workflow_templates_import():
         ] + violations + [
             "",
             "=" * 70,
-            "Fix: Use QVService.get_workflow_service() instead of",
-            "     directly importing from quantumvitas.workflow.templates",
+            "Fix: Use QMSService.get_workflow_service() instead of",
+            "     directly importing from qmatsuite.workflow.templates",
             "=" * 70,
         ])
         pytest.fail(report)

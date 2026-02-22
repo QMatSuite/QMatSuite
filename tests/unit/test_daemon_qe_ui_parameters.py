@@ -6,7 +6,7 @@ Uses the generic list_engine_ui_parameters handler with engine_family=qe.
 
 import pytest
 
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 
 
 class TestEngineUIParametersQE:
@@ -14,7 +14,7 @@ class TestEngineUIParametersQE:
 
     def test_ui_parameters_pw_scf(self):
         """Test fetching UI parameters for QE scf (inferred module=pw)."""
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         payload = {"engine_family": "qe", "step_type_gen": "scf"}
 
         result = daemon._handle_list_engine_ui_parameters(payload)
@@ -33,7 +33,7 @@ class TestEngineUIParametersQE:
 
     def test_ui_parameters_pw_nscf(self):
         """Test fetching UI parameters for QE nscf (inferred module=pw)."""
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         payload = {"engine_family": "qe", "step_type_gen": "nscf"}
 
         result = daemon._handle_list_engine_ui_parameters(payload)
@@ -44,7 +44,7 @@ class TestEngineUIParametersQE:
 
     def test_ui_parameters_bands(self):
         """Test fetching UI parameters for QE bands (inferred module=bands)."""
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         payload = {"engine_family": "qe", "step_type_gen": "bands"}
 
         result = daemon._handle_list_engine_ui_parameters(payload)
@@ -59,7 +59,7 @@ class TestEngineUIParametersQE:
 
     def test_missing_engine_family_raises(self):
         """Test that missing engine_family raises error."""
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         payload = {"step_type_gen": "scf"}
 
         with pytest.raises(ValueError, match="'engine_family' is required"):
@@ -67,7 +67,7 @@ class TestEngineUIParametersQE:
 
     def test_missing_step_type_raises(self):
         """Test that missing step_type_gen raises error."""
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         payload = {"engine_family": "qe"}
 
         with pytest.raises(ValueError, match="'step_type_gen' is required"):
@@ -75,9 +75,9 @@ class TestEngineUIParametersQE:
 
     def test_ui_parameters_exist_in_qe_params(self):
         """Test that all returned parameter keys exist in qe_module_parameters.json."""
-        from quantumvitas.data import get_module_param_sections
+        from qmatsuite.data import get_module_param_sections
 
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         payload = {"engine_family": "qe", "step_type_gen": "scf"}
 
         result = daemon._handle_list_engine_ui_parameters(payload)

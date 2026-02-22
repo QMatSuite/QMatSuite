@@ -4,7 +4,7 @@ This document describes the diagnostic logging added to help debug pseudo-relate
 
 ## Log Locations
 
-### 1. `ensure_qe_pseudos` (src/quantumvitas/core/pseudo.py)
+### 1. `ensure_qe_pseudos` (src/qmatsuite/core/pseudo.py)
 
 **When**: Before raising `ValueError` for "Pseudopotential not configured for element(s)"
 
@@ -25,7 +25,7 @@ This document describes the diagnostic logging added to help debug pseudo-relate
 
 **Example log**:
 ```
-ERROR [quantumvitas.core.pseudo] [PSEUDO_CONFIG_ERROR] Pseudopotential not configured for element(s): Si
+ERROR [qmatsuite.core.pseudo] [PSEUDO_CONFIG_ERROR] Pseudopotential not configured for element(s): Si
   qe_input_file=/path/to/project/calculations/calc/raw/scf.in
   project_pseudo_dir=/path/to/project/pseudo
   system_pseudo_dir=/path/to/repo/resources/pseudo
@@ -39,7 +39,7 @@ ERROR [quantumvitas.core.pseudo] [PSEUDO_CONFIG_ERROR] Pseudopotential not confi
   element_pseudopot_values={'Si': 'Si.pbe-n-van.UPF'}
 ```
 
-### 2. `get_calculation_pseudo_mapping` (src/quantumvitas/api.py)
+### 2. `get_calculation_pseudo_mapping` (src/qmatsuite/api.py)
 
 **When**: Entry and exit of function
 
@@ -66,15 +66,15 @@ ERROR [quantumvitas.core.pseudo] [PSEUDO_CONFIG_ERROR] Pseudopotential not confi
 
 **Example log**:
 ```
-INFO [quantumvitas.api] [GET_CALCULATION_PSEUDO_MAPPING] ENTRY calculation_ulid=01KE052JT5S9DMATPNNJ8ZCTK3 project_root=/path/to/project
-INFO [quantumvitas.api] [GET_CALCULATION_PSEUDO_MAPPING] resolved calculation path=/path/to/project/calculations/silicon-mlwfs/calculation.yaml
-INFO [quantumvitas.api] [GET_CALCULATION_PSEUDO_MAPPING] structure_path=/path/to/project/structures/silicon.json required_elements=['Si']
-INFO [quantumvitas.api] [GET_CALCULATION_PSEUDO_MAPPING] species_map keys=['Si'] element_pseudopot_values={'Si': 'Si.pbe-n-van.UPF'}
-INFO [quantumvitas.api] [GET_CALCULATION_PSEUDO_MAPPING] project_pseudo_dir=/path/to/project/pseudo project_pseudo_dir.exists()=True available_pseudos=['Si.pbe-n-van.UPF']
-INFO [quantumvitas.api] [GET_CALCULATION_PSEUDO_MAPPING] EXIT final_pseudo_mapping={'Si': 'Si.pbe-n-van.UPF'} mapping_missing=[] warnings=[]
+INFO [qmatsuite.api] [GET_CALCULATION_PSEUDO_MAPPING] ENTRY calculation_ulid=01KE052JT5S9DMATPNNJ8ZCTK3 project_root=/path/to/project
+INFO [qmatsuite.api] [GET_CALCULATION_PSEUDO_MAPPING] resolved calculation path=/path/to/project/calculations/silicon-mlwfs/calculation.yaml
+INFO [qmatsuite.api] [GET_CALCULATION_PSEUDO_MAPPING] structure_path=/path/to/project/structures/silicon.json required_elements=['Si']
+INFO [qmatsuite.api] [GET_CALCULATION_PSEUDO_MAPPING] species_map keys=['Si'] element_pseudopot_values={'Si': 'Si.pbe-n-van.UPF'}
+INFO [qmatsuite.api] [GET_CALCULATION_PSEUDO_MAPPING] project_pseudo_dir=/path/to/project/pseudo project_pseudo_dir.exists()=True available_pseudos=['Si.pbe-n-van.UPF']
+INFO [qmatsuite.api] [GET_CALCULATION_PSEUDO_MAPPING] EXIT final_pseudo_mapping={'Si': 'Si.pbe-n-van.UPF'} mapping_missing=[] warnings=[]
 ```
 
-### 3. `_handle_get_calculation_pseudo_mapping` (src/quantumvitas/daemon/server.py)
+### 3. `_handle_get_calculation_pseudo_mapping` (src/qmatsuite/daemon/server.py)
 
 **When**: Entry and exit of handler
 
@@ -92,11 +92,11 @@ INFO [quantumvitas.api] [GET_CALCULATION_PSEUDO_MAPPING] EXIT final_pseudo_mappi
 
 **Example log**:
 ```
-INFO [quantumvitas.daemon.server] [HANDLER_GET_CALCULATION_PSEUDO_MAPPING] ENTRY payload_keys=['project_root', 'calculation'] calculation_selector=silicon-mlwfs
-INFO [quantumvitas.daemon.server] [HANDLER_GET_CALCULATION_PSEUDO_MAPPING] EXIT calculation_ulid=01KE052JT5S9DMATPNNJ8ZCTK3 resolved_ulid=01KE052JT5S9DMATPNNJ8ZCTK3 mapping_keys=['Si'] warnings=[]
+INFO [qmatsuite.daemon.server] [HANDLER_GET_CALCULATION_PSEUDO_MAPPING] ENTRY payload_keys=['project_root', 'calculation'] calculation_selector=silicon-mlwfs
+INFO [qmatsuite.daemon.server] [HANDLER_GET_CALCULATION_PSEUDO_MAPPING] EXIT calculation_ulid=01KE052JT5S9DMATPNNJ8ZCTK3 resolved_ulid=01KE052JT5S9DMATPNNJ8ZCTK3 mapping_keys=['Si'] warnings=[]
 ```
 
-### 4. `_handle_get_pseudo_options_for_calculation` (src/quantumvitas/daemon/server.py)
+### 4. `_handle_get_pseudo_options_for_calculation` (src/qmatsuite/daemon/server.py)
 
 **When**: Entry of handler
 
@@ -110,12 +110,12 @@ INFO [quantumvitas.daemon.server] [HANDLER_GET_CALCULATION_PSEUDO_MAPPING] EXIT 
 
 **Example log**:
 ```
-INFO [quantumvitas.daemon.server] [GET_PSEUDO_OPTIONS_FOR_CALCULATION] ENTRY payload_keys=['project_root', 'calculation'] calculation=silicon-mlwfs
-INFO [quantumvitas.daemon.server] [GET_PSEUDO_OPTIONS_FOR_CALCULATION] inspect.signature(get_calculation_detail)=['project_root', 'calculation_selector', 'index', 'config', ...]
-INFO [quantumvitas.daemon.server] [GET_PSEUDO_OPTIONS_FOR_CALCULATION] calling get_calculation_detail with calculation_selector=silicon-mlwfs (index and config from cache)
+INFO [qmatsuite.daemon.server] [GET_PSEUDO_OPTIONS_FOR_CALCULATION] ENTRY payload_keys=['project_root', 'calculation'] calculation=silicon-mlwfs
+INFO [qmatsuite.daemon.server] [GET_PSEUDO_OPTIONS_FOR_CALCULATION] inspect.signature(get_calculation_detail)=['project_root', 'calculation_selector', 'index', 'config', ...]
+INFO [qmatsuite.daemon.server] [GET_PSEUDO_OPTIONS_FOR_CALCULATION] calling get_calculation_detail with calculation_selector=silicon-mlwfs (index and config from cache)
 ```
 
-### 5. `Calculation.from_yaml` materialization (src/quantumvitas/calculation/calculation.py)
+### 5. `Calculation.from_yaml` materialization (src/qmatsuite/calculation/calculation.py)
 
 **When**: Entry of step materialization (when `materialize_steps=True`)
 
@@ -129,10 +129,10 @@ INFO [quantumvitas.daemon.server] [GET_PSEUDO_OPTIONS_FOR_CALCULATION] calling g
 
 **Example log**:
 ```
-INFO [quantumvitas.calculation.calculation] [MATERIALIZE_STEPS] ENTRY calculation_dir=/path/to/project/calculations/silicon-mlwfs raw_dir=/path/to/project/calculations/silicon-mlwfs/raw steps_to_materialize=['01KE052JT5380NNREG30HFRQRM', ...] n_steps=5
+INFO [qmatsuite.calculation.calculation] [MATERIALIZE_STEPS] ENTRY calculation_dir=/path/to/project/calculations/silicon-mlwfs raw_dir=/path/to/project/calculations/silicon-mlwfs/raw steps_to_materialize=['01KE052JT5380NNREG30HFRQRM', ...] n_steps=5
 ```
 
-### 6. `materialize_step_spec` (src/quantumvitas/calculation/structure_steps.py)
+### 6. `materialize_step_spec` (src/qmatsuite/calculation/structure_steps.py)
 
 **When**: Before calling `ensure_qe_pseudos`
 
@@ -148,7 +148,7 @@ INFO [quantumvitas.calculation.calculation] [MATERIALIZE_STEPS] ENTRY calculatio
 
 **Example log**:
 ```
-INFO [quantumvitas.calculation.structure_steps] [MATERIALIZE_STEP_SPEC] before ensure_qe_pseudos calculation_dir=/path/to/project/calculations/silicon-mlwfs project_pseudo_dir=/path/to/project/pseudo calculation_context={'calculation_path': '/path/to/...', 'species_map': {...}, 'structure_path': '/path/to/...'}
+INFO [qmatsuite.calculation.structure_steps] [MATERIALIZE_STEP_SPEC] before ensure_qe_pseudos calculation_dir=/path/to/project/calculations/silicon-mlwfs project_pseudo_dir=/path/to/project/pseudo calculation_context={'calculation_path': '/path/to/...', 'species_map': {...}, 'structure_path': '/path/to/...'}
 ```
 
 ## How to View Logs

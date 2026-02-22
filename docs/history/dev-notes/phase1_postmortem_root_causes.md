@@ -42,22 +42,22 @@ Tests expecting `PrecisionOption` but receiving `CUSTOM`:
 ### Files Touched for IR Migration
 
 **Core ParamSpace Logic Files**:
-- `src/quantumvitas/presets/paramspace.py` - Core ParamSpace definition and matching/compilation logic
-- `src/quantumvitas/presets/spaces_registry.py` - Registry API (detect_dimension, compile_dimension_patch)
-- `src/quantumvitas/presets/variants_registry.py` - Variant-specific API (detect_dimension_for_step, compile_dimension_patch_for_step)
+- `src/qmatsuite/presets/paramspace.py` - Core ParamSpace definition and matching/compilation logic
+- `src/qmatsuite/presets/spaces_registry.py` - Registry API (detect_dimension, compile_dimension_patch)
+- `src/qmatsuite/presets/variants_registry.py` - Variant-specific API (detect_dimension_for_step, compile_dimension_patch_for_step)
 
 ### Change Categories
 
 #### (i) Rename/Key-Space Substitution Only
 
-**Files**: `src/quantumvitas/presets/paramspace.py`
+**Files**: `src/qmatsuite/presets/paramspace.py`
 - **Function**: `ParamKey.key` field (conceptually renamed to IR key, but no code changes)
 - **Evidence**: Documentation comment added (line 64): "key: IR parameter key name (conceptually IR, but values same as QE in v0)"
 - **Status**: ✅ No semantic changes - keys are now understood to be IR keys, but ParamSpace logic unchanged
 
 #### (ii) Normalization/Type Conversion Changes
 
-**Files**: `src/quantumvitas/presets/spaces_registry.py`, `src/quantumvitas/presets/variants_registry.py`
+**Files**: `src/qmatsuite/presets/spaces_registry.py`, `src/qmatsuite/presets/variants_registry.py`
 
 1. **`detect_dimension()` (spaces_registry.py, lines 190-193, 220-221)**:
    - **Change**: Added `qe_yaml_to_ir_yaml()` conversion before `match_profile()` or `match_precision_profile()`
@@ -107,7 +107,7 @@ Tests expecting `PrecisionOption` but receiving `CUSTOM`:
    - **Evidence**: Test with `yaml.safe_dump({'noncolin': True})` produces `noncolin: true` (YAML bool, not string)
 
 2. **StepDoc Write Path**:
-   - **Location**: `src/quantumvitas/core/yaml_io.py::save_yaml_doc()` (line 117-147)
+   - **Location**: `src/qmatsuite/core/yaml_io.py::save_yaml_doc()` (line 117-147)
    - **Serialization**: Uses `yaml.safe_dump(data, default_flow_style=False, sort_keys=False)` (line 77 in yaml_io.py)
    - **Conclusion**: step.yaml uses YAML boolean literals (`true`/`false`), not QE strings (`.true.`/`.false.`)
 
@@ -117,7 +117,7 @@ Tests expecting `PrecisionOption` but receiving `CUSTOM`:
    - **Conclusion**: Pre-IR compiler returned `.true.`/`.false.` strings in patch dicts
 
 4. **Current IR Migration Behavior**:
-   - **Location**: `src/quantumvitas/ir/backends/qe/mapping.py::ir_to_qe_param()` (line 83)
+   - **Location**: `src/qmatsuite/ir/backends/qe/mapping.py::ir_to_qe_param()` (line 83)
    - **Code**: `qe_value = ir_value` (no conversion for booleans)
    - **Result**: Compiler output now contains Python `True`/`False` instead of `.true.`/`.false.`
    - **Evidence**: Test run shows `compile_magnetism()` returns `{'SYSTEM': {'noncolin': True}}` (Python bool)
@@ -178,7 +178,7 @@ Tests expecting `PrecisionOption` but receiving `CUSTOM`:
 
 ### Root Cause #1: Boolean Format Boundary Shift
 
-**Location**: `src/quantumvitas/ir/backends/qe/mapping.py::ir_to_qe_param()` (line 83)
+**Location**: `src/qmatsuite/ir/backends/qe/mapping.py::ir_to_qe_param()` (line 83)
 
 **Pre-IR Behavior** (CONFIRMED):
 - Compiler output contained `.true.`/`.false.` strings (QE format)
@@ -194,7 +194,7 @@ Tests expecting `PrecisionOption` but receiving `CUSTOM`:
 
 ### Root Cause #2: K_POINTS_CARD Structure Mismatch
 
-**Location**: `src/quantumvitas/presets/compiler.py::compile_precision()` (line 152-153)
+**Location**: `src/qmatsuite/presets/compiler.py::compile_precision()` (line 152-153)
 
 **Problem**:
 - `compile_precision()` returns `K_POINTS_CARD` at top level (backward compat shim)
@@ -219,7 +219,7 @@ Tests expecting `PrecisionOption` but receiving `CUSTOM`:
 
 **Change**: Modify `ir_to_qe_param()` to convert Python bool → QE string for boolean parameters
 
-**Location**: `src/quantumvitas/ir/backends/qe/mapping.py::ir_to_qe_param()` (line 83)
+**Location**: `src/qmatsuite/ir/backends/qe/mapping.py::ir_to_qe_param()` (line 83)
 
 **Implementation**:
 ```python
@@ -264,7 +264,7 @@ else:
 
 **Change**: Handle `K_POINTS_CARD` → `cards.K_POINTS` conversion in `qe_yaml_to_ir_yaml()`
 
-**Location**: `src/quantumvitas/ir/backends/qe/mapping.py::qe_yaml_to_ir_yaml()` (line 179)
+**Location**: `src/qmatsuite/ir/backends/qe/mapping.py::qe_yaml_to_ir_yaml()` (line 179)
 
 **Implementation**:
 ```python
@@ -290,7 +290,7 @@ if "K_POINTS_CARD" in qe_yaml:
 
 **Change**: Remove backward compat shim from `compile_precision()`, update tests to use `cards.K_POINTS`
 
-**Location**: `src/quantumvitas/presets/compiler.py::compile_precision()` (line 152-153)
+**Location**: `src/qmatsuite/presets/compiler.py::compile_precision()` (line 152-153)
 
 **Implementation**:
 - Remove lines 152-153 (backward compat shim)

@@ -5,7 +5,7 @@ Tests the error enrichment layer and real QE failure + recovery scenarios.
 - Unit tests: mock digest → enrichment classification (no QE needed)
 - Integration tests: real QE failure with bad params → enriched error → fix → success
 
-Shared fixtures (qv_project, qe_available, qe_project_with_si) are in conftest.py.
+Shared fixtures (qms_project, qe_available, qe_project_with_si) are in conftest.py.
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from quantumvitas.api import QVService
-from quantumvitas.mcp.error_enrichment import enrich_run_error
+from qmatsuite.api import QMSService
+from qmatsuite.mcp.error_enrichment import enrich_run_error
 
 
 # ---------------------------------------------------------------------------
@@ -52,10 +52,10 @@ def _make_mock_result_dto(
 
 def _setup_si_scf_calc(project_root: Path, **param_overrides) -> str:
     """Create a QE SCF calc with species_map and optional param overrides."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
-    from quantumvitas.mcp.tools.set_parameters import set_parameters
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.set_parameters import set_parameters
 
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
 
     result = create_calculation.fn(
         engine="qe", workflow="scf", structure_selector="si",
@@ -91,14 +91,14 @@ class TestEnrichmentClassification:
     @pytest.fixture(autouse=True)
     def _patch_knowledge(self, tmp_path, monkeypatch):
         """Patch KnowledgeStore to use a temp DB."""
-        from quantumvitas.mcp.knowledge.store import KnowledgeStore
-        from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
+        from qmatsuite.mcp.knowledge.store import KnowledgeStore
+        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
 
         db_path = tmp_path / "knowledge" / "test.db"
         build_builtin_db(output_path=db_path)
         # Patch the default path so error_enrichment finds it
         monkeypatch.setattr(
-            "quantumvitas.mcp.knowledge.store._default_db_path",
+            "qmatsuite.mcp.knowledge.store._default_db_path",
             lambda: db_path,
         )
 
@@ -202,9 +202,9 @@ class TestRealQEFailureRecovery:
         guarantee SCF non-convergence.  QE exits normally ("JOB DONE")
         but with no converged energy — the enrichment layer detects this.
         """
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
 
         # 1. Create with bad params: impossibly tight threshold + low iterations
         calc_ulid = _setup_si_scf_calc(
@@ -238,7 +238,7 @@ class TestRealQEFailureRecovery:
 
     def test_error_return_has_diagnostics(self, qe_project_with_si):
         """Verify the error return structure is complete on failure."""
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
 
         calc_ulid = _setup_si_scf_calc(
             qe_project_with_si,

@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 
-SERVICE_PATH = Path(__file__).parent.parent.parent / "src" / "quantumvitas" / "api" / "service.py"
+SERVICE_PATH = Path(__file__).parent.parent.parent / "src" / "qmatsuite" / "api" / "service.py"
 
 # Patterns that indicate stub/placeholder implementations
 STUB_PATTERNS = [
@@ -55,8 +55,8 @@ class StubMethodVisitor(ast.NodeVisitor):
         if not self.current_class:
             return
 
-        # Skip non-nested classes (QVService itself)
-        if self.current_class == "QVService":
+        # Skip non-nested classes (QMSService itself)
+        if self.current_class == "QMSService":
             return
 
         violation = self._check_stub_patterns(node)

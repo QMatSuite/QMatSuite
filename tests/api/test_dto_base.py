@@ -8,8 +8,8 @@ import json
 
 import pytest
 
-from quantumvitas.api.types.base import BaseDTO
-from quantumvitas.api.types.error import ErrorDTO
+from qmatsuite.api.types.base import BaseDTO
+from qmatsuite.api.types.error import ErrorDTO
 
 
 def test_base_dto_to_dict():

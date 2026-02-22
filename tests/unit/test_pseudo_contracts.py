@@ -12,11 +12,11 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
-from quantumvitas.core.models import load_calculation
-from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
-from quantumvitas.core.pseudo_libinfo import compute_sha_family_file
+from qmatsuite.api import QMSService
+from qmatsuite.core.models import load_calculation
+from qmatsuite.core.pseudo_options import get_pseudo_options_for_elements
+from qmatsuite.core.pseudo_provenance import compute_sha256_file
+from qmatsuite.core.pseudo_libinfo import compute_sha_family_file
 
 
 def create_test_upf_file(path: Path, element: str) -> None:
@@ -109,18 +109,18 @@ class TestUIWritebackContract:
 
     def test_update_writes_complete_triplet(self, tmp_path: Path):
         """Test that species_map update writes complete triplet together."""
-        from quantumvitas.core.resolution import require_calculation
-        from quantumvitas.core.models import save_calculation
+        from qmatsuite.core.resolution import require_calculation
+        from qmatsuite.core.models import save_calculation
 
         project_root = tmp_path / "test_project"
         project_root.mkdir()
         (project_root / "pseudo").mkdir()
 
         # Create project
-        QVService.init_project(project_root, "Test Project")
+        QMSService.init_project(project_root, "Test Project")
 
         # Create calculation
-        calc_result = QVService(project_root).project.init_calculation(
+        calc_result = QMSService(project_root).project.init_calculation(
             name="Test Calc",
         )
         calc_id = calc_result.meta.ulid
@@ -171,18 +171,18 @@ class TestUIWritebackContract:
 
     def test_update_rejects_incomplete_triplet(self, tmp_path: Path):
         """Test that update with incomplete triplet is handled (should still work but warn)."""
-        from quantumvitas.core.resolution import require_calculation
-        from quantumvitas.core.models import save_calculation
+        from qmatsuite.core.resolution import require_calculation
+        from qmatsuite.core.models import save_calculation
 
         project_root = tmp_path / "test_project"
         project_root.mkdir()
         (project_root / "pseudo").mkdir()
 
         # Create project
-        QVService.init_project(project_root, "Test Project")
+        QMSService.init_project(project_root, "Test Project")
 
         # Create calculation
-        calc_result = QVService(project_root).project.init_calculation(
+        calc_result = QMSService(project_root).project.init_calculation(
             name="Test Calc",
         )
         calc_id = calc_result.meta.ulid

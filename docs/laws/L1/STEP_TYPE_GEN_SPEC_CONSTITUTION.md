@@ -3,7 +3,7 @@
 **Status**: Final
 **Version**: 1.1
 **Parent Law**: `CONSTITUTION.md` §7
-**Location**: `src/quantumvitas/workflow/step_type_convert.py` (SSOT for conversion), `src/quantumvitas/workflow/gen_steps.py` (GenStepRegistry), `src/quantumvitas/drivers/*/driver.py` (engine recipes)
+**Location**: `src/qmatsuite/workflow/step_type_convert.py` (SSOT for conversion), `src/qmatsuite/workflow/gen_steps.py` (GenStepRegistry), `src/qmatsuite/drivers/*/driver.py` (engine recipes)
 
 ---
 
@@ -34,15 +34,15 @@ Examples:
 ### 2.2 SSOT Sources
 
 - **`step_type_gen` values**: MUST come from `GenStepRegistry.GEN_STEPS` (SSOT)
-  - Location: `src/quantumvitas/workflow/gen_steps.py`
+  - Location: `src/qmatsuite/workflow/gen_steps.py`
   - All valid gen step names are declared in this frozen set
 
 - **`engine_prefix`**: MUST come from engine recipe `PREFIX` class attribute (SSOT)
-  - Location: `src/quantumvitas/drivers/*/driver.py`
+  - Location: `src/qmatsuite/drivers/*/driver.py`
   - Example: `QEDriver.PREFIX = "qe"`
 
 - **`supported_gen_steps`**: MUST come from engine recipe `SUPPORTED_GEN_STEPS` class attribute (SSOT)
-  - Location: `src/quantumvitas/drivers/*/driver.py`
+  - Location: `src/qmatsuite/drivers/*/driver.py`
   - Example: `QEDriver.SUPPORTED_GEN_STEPS = frozenset({"scf", "nscf", ...})`
   - MUST satisfy: `supported_gen_steps ⊆ GenStepRegistry.GEN_STEPS` (enforced by gate)
 
@@ -61,7 +61,7 @@ Where `join(prefix, gen)` is implemented as `f"{prefix}_{gen}"`.
 **Reverse derivation** (spec → gen) MUST use `split(spec)`, which returns `(prefix, gen)` by splitting on the first underscore.
 
 **Canonical Implementation**: These operations MUST be implemented using:
-- `spec_from(prefix, gen)` from `src/quantumvitas/workflow/step_type_convert.py` for join
+- `spec_from(prefix, gen)` from `src/qmatsuite/workflow/step_type_convert.py` for join
 - `gen_from(spec)` from the same module for split (returns gen only)
 - `prefix_from(spec)` from the same module for split (returns prefix only)
 
@@ -194,17 +194,17 @@ Daemon, CLI, compat, and test code MUST:
 
 **FORBIDDEN in daemon/CLI/compat/tests**:
 - Calling `gen_from()`, `spec_from()`, `prefix_from()`, or any conversion function
-- Importing from `quantumvitas.workflow.step_type_convert`
-- Importing from `quantumvitas.execution.step_type_unpack`
+- Importing from `qmatsuite.workflow.step_type_convert`
+- Importing from `qmatsuite.execution.step_type_unpack`
 - Manual underscore parsing or concatenation
 
 **Rationale**: This is a direct consequence of the import layering rule: daemon/CLI MUST NOT import kernel modules. Since API must not reexport conversion, upper layers cannot convert—period.
 
 ### 4.8 Ban API-Level Reexport of Conversion (Hard Ban)
 
-**The API layer (`quantumvitas.api.*`) MUST NOT reexport or wrap kernel conversion functions.**
+**The API layer (`qmatsuite.api.*`) MUST NOT reexport or wrap kernel conversion functions.**
 
-**FORBIDDEN in `quantumvitas.api.utils` or any API module**:
+**FORBIDDEN in `qmatsuite.api.utils` or any API module**:
 - `step_type_gen_from_spec()` or any wrapper around `gen_from()`
 - `step_type_spec_from_gen()` or any wrapper around `spec_from()`
 - `is_step_type_spec()` or any wrapper around `is_spec()`
@@ -398,13 +398,13 @@ Everything MUST be explicitly:
 
 ### 12.1 Gen Step Registry
 
-**`GenStepRegistry.GEN_STEPS`** (`src/quantumvitas/workflow/gen_steps.py`) is the **only SSOT** of valid gen step names.
+**`GenStepRegistry.GEN_STEPS`** (`src/qmatsuite/workflow/gen_steps.py`) is the **only SSOT** of valid gen step names.
 
 No other code, test, or tool MAY maintain a list of valid gen steps. All validation MUST query `GenStepRegistry.is_valid(gen)`.
 
 ### 12.2 Engine Recipe Declarations
 
-**Engine recipe classes** (`src/quantumvitas/drivers/*/driver.py`) are the **only SSOT** of:
+**Engine recipe classes** (`src/qmatsuite/drivers/*/driver.py`) are the **only SSOT** of:
 - `engine_prefix` (via `PREFIX` class attribute)
 - `supported_gen_steps` (via `SUPPORTED_GEN_STEPS` class attribute)
 
@@ -625,11 +625,11 @@ When migrating step type names or adding new engines:
 
 ### Checklist
 
-1. **Update GenStepRegistry** (`src/quantumvitas/workflow/gen_steps.py`)
+1. **Update GenStepRegistry** (`src/qmatsuite/workflow/gen_steps.py`)
    - Add/remove gen step names in `GEN_STEPS` frozenset
    - Ensure no underscores in gen names
 
-2. **Update Engine Recipes** (`src/quantumvitas/drivers/*/driver.py`)
+2. **Update Engine Recipes** (`src/qmatsuite/drivers/*/driver.py`)
    - Update `SUPPORTED_GEN_STEPS` to include new gen steps (if engine supports them)
    - Ensure `PREFIX` has no underscores
 

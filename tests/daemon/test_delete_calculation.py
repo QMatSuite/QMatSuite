@@ -10,9 +10,9 @@ import pytest
 from pathlib import Path
 import yaml
 
-from quantumvitas.core.resources import generate_resource_id
-from quantumvitas.core.resolution import build_resource_index
-from quantumvitas.api import QVService
+from qmatsuite.core.resources import generate_resource_id
+from qmatsuite.core.resolution import build_resource_index
+from qmatsuite.api import QMSService
 
 
 @pytest.mark.unit
@@ -21,14 +21,14 @@ class TestDeleteCalculation:
     
     def test_delete_calculation_with_none_selector_returns_invalid_argument(self, tmp_path):
         """delete_calculation with selector=None returns invalid_argument (no crash)."""
-        from quantumvitas.daemon.server import QVDaemon
+        from qmatsuite.daemon.server import QMSDaemon
         
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         
         # Create minimal project
         project_root = tmp_path / "project"
         project_root.mkdir()
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump({"project": {"name": "Test", "ulid": generate_resource_id()}}, sort_keys=False)
         )
         
@@ -44,14 +44,14 @@ class TestDeleteCalculation:
     
     def test_delete_calculation_with_empty_selector_returns_invalid_argument(self, tmp_path):
         """delete_calculation with selector='' returns invalid_argument."""
-        from quantumvitas.daemon.server import QVDaemon
+        from qmatsuite.daemon.server import QMSDaemon
         
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         
         # Create minimal project
         project_root = tmp_path / "project"
         project_root.mkdir()
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump({"project": {"name": "Test", "ulid": generate_resource_id()}}, sort_keys=False)
         )
         
@@ -67,14 +67,14 @@ class TestDeleteCalculation:
     
     def test_delete_calculation_with_non_string_selector_returns_invalid_argument(self, tmp_path):
         """delete_calculation with selector=123 (int) returns invalid_argument."""
-        from quantumvitas.daemon.server import QVDaemon
+        from qmatsuite.daemon.server import QMSDaemon
         
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         
         # Create minimal project
         project_root = tmp_path / "project"
         project_root.mkdir()
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump({"project": {"name": "Test", "ulid": generate_resource_id()}}, sort_keys=False)
         )
         
@@ -90,7 +90,7 @@ class TestDeleteCalculation:
     
     def test_entry_matches_raises_value_error_for_none(self):
         """entry_matches raises ValueError for None identifier."""
-        from quantumvitas.core.project_utils import entry_matches
+        from qmatsuite.core.project_utils import entry_matches
         
         entry = {"meta": {"ulid": "01TEST123", "name": "test"}}
         
@@ -99,7 +99,7 @@ class TestDeleteCalculation:
     
     def test_entry_matches_raises_value_error_for_empty_string(self):
         """entry_matches raises ValueError for empty string."""
-        from quantumvitas.core.project_utils import entry_matches
+        from qmatsuite.core.project_utils import entry_matches
         
         entry = {"meta": {"ulid": "01TEST123", "name": "test"}}
         
@@ -108,7 +108,7 @@ class TestDeleteCalculation:
     
     def test_entry_matches_raises_value_error_for_non_string(self):
         """entry_matches raises ValueError for non-string identifier."""
-        from quantumvitas.core.project_utils import entry_matches
+        from qmatsuite.core.project_utils import entry_matches
         
         entry = {"meta": {"ulid": "01TEST123", "name": "test"}}
         

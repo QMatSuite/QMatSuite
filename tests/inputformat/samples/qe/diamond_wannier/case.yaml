@@ -55,7 +55,7 @@ asset_requirements:
   pseudopotentials:
   - file: C.pz-vbc.UPF
     element: C
-    source: src/quantumvitas/resources/pseudo
+    source: src/qmatsuite/resources/pseudo
 attribution:
   source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 5
   license: MIT (QMatSuite)

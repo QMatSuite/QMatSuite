@@ -10,9 +10,9 @@ from pathlib import Path
 import yaml
 import pytest
 
-from quantumvitas.presets.integration import apply_presets_to_step
-from quantumvitas.presets.precision import PrecisionAdvisor, PrecisionOption
-from quantumvitas.presets.variants_registry import get_variant, PRECISION_PW_BANDSPW_VARIANT
+from qmatsuite.presets.integration import apply_presets_to_step
+from qmatsuite.presets.precision import PrecisionAdvisor, PrecisionOption
+from qmatsuite.presets.variants_registry import get_variant, PRECISION_PW_BANDSPW_VARIANT
 
 
 class TestPrecisionVariantsBandsPw:
@@ -29,9 +29,9 @@ class TestPrecisionVariantsBandsPw:
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir()
 
-        # Create project.qv.yml
-        project_qv_yml = project_root / "project.qv.yml"
-        project_qv_yml.write_text(yaml.safe_dump({
+        # Create project.qms.yml
+        project_qms_yml = project_root / "project.qms.yml"
+        project_qms_yml.write_text(yaml.safe_dump({
             "name": "Test Project",
             "version": "1.0",
         }))

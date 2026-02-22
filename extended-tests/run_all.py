@@ -54,7 +54,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="QuantumVITAS Extended Tests Runner",
+        description="QMatSuite Extended Tests Runner",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
@@ -100,8 +100,8 @@ def main():
     args = parser.parse_args()
     
     # Setup QE engine (auto-detect if not provided)
-    from quantumvitas.core.engines.qe import QuantumEspressoEngine
-    from quantumvitas.core.engines.base import EngineConfig
+    from qmatsuite.core.engines.qe import QuantumEspressoEngine
+    from qmatsuite.core.engines.base import EngineConfig
     
     if args.qe_home:
         config = EngineConfig(name="qe", executable_path=args.qe_home)

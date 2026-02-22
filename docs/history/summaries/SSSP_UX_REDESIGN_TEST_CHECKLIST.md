@@ -273,14 +273,14 @@
 ## Files Modified
 
 ### Backend
-- `src/quantumvitas/core/pseudo_config.py`
+- `src/qmatsuite/core/pseudo_config.py`
   - Modified `download_sssp_library()` to accept `seed_dir` parameter
   - Added seed archive saving logic (Step 5)
   - Added `list_seed_archives()` function
   - Added `SeedArchiveInfo` dataclass
   - Modified `download_all_sssp()` to pass `seed_dir`
 
-- `src/quantumvitas/daemon/server.py`
+- `src/qmatsuite/daemon/server.py`
   - Modified `_handle_download_sssp_library()` to pass `seed_dir`
   - Modified `_handle_download_all_sssp()` to pass `seed_dir`
   - Added `_handle_list_seed_archives()` handler
@@ -308,7 +308,7 @@
   - Added styles for advanced section (accordion)
   - Added styles for archive items
 
-- `gui/src/types/qv.ts`
+- `gui/src/types/qms.ts`
   - Added `list_seed_archives` RPC type definition
 
 ## Architecture Preserved

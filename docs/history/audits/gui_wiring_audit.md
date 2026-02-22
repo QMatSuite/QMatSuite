@@ -58,7 +58,7 @@ These endpoints emit legacy `type` field for v0 client compatibility:
 
 ### Field Normalization in Compat Layer
 
-**Location**: `src/quantumvitas/daemon/compat.py`
+**Location**: `src/qmatsuite/daemon/compat.py`
 
 | Function | Lines | What It Does |
 |----------|-------|--------------|
@@ -81,11 +81,11 @@ These endpoints emit legacy `type` field for v0 client compatibility:
 
 ### Type Definition Violations
 
-**File**: `gui/src/types/qv.ts`
+**File**: `gui/src/types/qms.ts`
 
 | Line | Type | Field | Violation | Should Be |
 |------|------|-------|-----------|-----------|
-| 40 | `QVError.details` | `step_id?: string` | Legacy identity | `step_ulid?: string` |
+| 40 | `QMSError.details` | `step_id?: string` | Legacy identity | `step_ulid?: string` |
 | 327-328 | `JobStepInfo` | `step_id?: string`, `step_type: string` | Legacy fields | `step_ulid`, `step_type_gen` |
 | 335 | `JobInfo` | `id: string` | Legacy identity | `run_ulid: string` |
 | 698 | RPC payload | `step_type: string` | Legacy step type | `step_type_gen: string` |
@@ -188,7 +188,7 @@ These types already use the correct field names:
 | 1444-1445 | `step.id`, `step.type` | Logging uses legacy |
 | 1458 | `step.id` | Display uses legacy |
 
-#### 11. `hooks/useQVClient.ts`
+#### 11. `hooks/useQMSClient.ts`
 
 | Line | Usage | Issue |
 |------|-------|-------|
@@ -219,7 +219,7 @@ These types already use the correct field names:
 
 | File | Issue Count | Categories |
 |------|-------------|------------|
-| `types/qv.ts` | 18 | Type definitions |
+| `types/qms.ts` | 18 | Type definitions |
 | `StepDetailPanel.tsx` | 5 | Runtime accesses |
 | `HistoryPanel.tsx` | 4 | Runtime accesses |
 | `CalculationAnalysisPanel.tsx` | 6 | Runtime accesses |
@@ -230,7 +230,7 @@ These types already use the correct field names:
 | `CalculationRunTab.tsx` | 1 | Fallback pattern |
 | `ScanSummary.tsx` | 2 | Runtime accesses |
 | `AnalysisPanel.tsx` | 1 | Runtime accesses |
-| `useQVClient.ts` | 1 | RPC payload |
+| `useQMSClient.ts` | 1 | RPC payload |
 | `PresetSection.tsx` | 3 | Runtime accesses |
 
 ---
@@ -255,7 +255,7 @@ These types already use the correct field names:
 
 ### Conversion Utilities (SSOT)
 
-All conversions MUST use functions from `src/quantumvitas/workflow/step_type_convert.py`:
+All conversions MUST use functions from `src/qmatsuite/workflow/step_type_convert.py`:
 
 | Function | Purpose |
 |----------|---------|

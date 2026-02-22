@@ -9,7 +9,7 @@ This test verifies that QE resolution follows the two-state model:
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.engines.qe_diagnostics import (
+from qmatsuite.core.engines.qe_diagnostics import (
     diagnose_qe_resolution,
     check_settings_for_external_engines,
     check_environment_variables,
@@ -119,7 +119,7 @@ def test_qe_resolution_two_state_model():
     c) Internal mode finds QE from .qmatsuite/engines/qe/**/bin or raises error
     d) No PATH/QE_HOME/shell/disk fallbacks are used
     """
-    from quantumvitas.core.settings import load_settings
+    from qmatsuite.core.settings import load_settings
     
     settings = load_settings()
     report = diagnose_qe_resolution()

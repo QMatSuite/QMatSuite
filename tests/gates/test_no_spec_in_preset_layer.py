@@ -17,8 +17,8 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 
 # Directories that MUST use GEN only (no SPEC)
 GEN_ONLY_DIRS = [
-    REPO_ROOT / "src" / "quantumvitas" / "presets",
-    REPO_ROOT / "src" / "quantumvitas" / "workflow" / "templates.py",
+    REPO_ROOT / "src" / "qmatsuite" / "presets",
+    REPO_ROOT / "src" / "qmatsuite" / "workflow" / "templates.py",
 ]
 
 # Known engine prefixes (for detecting SPEC strings)
@@ -26,7 +26,7 @@ ENGINE_PREFIXES = {"qe", "vasp", "pyscf", "orca", "lammps", "cp2k", "w90"}
 
 SKIP_PATTERNS = [
     "tests/gates/test_no_spec_in_preset_layer.py",  # This file itself
-    "src/quantumvitas/_vault/*",  # Legacy archive
+    "src/qmatsuite/_vault/*",  # Legacy archive
 ]
 
 

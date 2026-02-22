@@ -14,7 +14,7 @@ This document describes the refactor of Pseudo Selection V2 to align with the fi
 
 **Implementation:**
 - `gui/src/components/common_cards/CommonCardPseudo.tsx`: Uses `selectedSha256ByElement` state (sha256 as primary selection key)
-- `src/quantumvitas/core/pseudo_options.py`: Returns `PseudoVariant[]` keyed by sha256 (not sha_token-grouped)
+- `src/qmatsuite/core/pseudo_options.py`: Returns `PseudoVariant[]` keyed by sha256 (not sha_token-grouped)
 
 **Manual Verification:**
 - Open a calculation with pseudo selections
@@ -27,7 +27,7 @@ This document describes the refactor of Pseudo Selection V2 to align with the fi
 ### 2. Only 3 Sources Exist
 
 **Implementation:**
-- `src/quantumvitas/core/pseudo_options.py`: Scans only:
+- `src/qmatsuite/core/pseudo_options.py`: Scans only:
   1. `project_root/pseudo` (project)
   2. `repo/resources/pseudo` (internal)
   3. Installed archives from `MANIFEST_PSEUDO_SEED.json` (lib)
@@ -42,8 +42,8 @@ This document describes the refactor of Pseudo Selection V2 to align with the fi
 ### 3. QE Runtime Only Reads from project/pseudo
 
 **Implementation:**
-- `src/quantumvitas/core/engines/qe_calculation.py`: Sets `ESPRESSO_PSEUDO = project_root / "pseudo"`
-- `src/quantumvitas/calculation/input_runner.py`: Points QE input to `project_root / "pseudo"`
+- `src/qmatsuite/core/engines/qe_calculation.py`: Sets `ESPRESSO_PSEUDO = project_root / "pseudo"`
+- `src/qmatsuite/calculation/input_runner.py`: Points QE input to `project_root / "pseudo"`
 
 **Manual Verification:**
 - Run a calculation, check QE input file: `pseudo_dir` should point to `project/pseudo`
@@ -101,7 +101,7 @@ This document describes the refactor of Pseudo Selection V2 to align with the fi
 ### 7. Token-Match Edge Case
 
 **Implementation:**
-- `src/quantumvitas/core/pseudo_options.py`: When project has same basename with token-match but sha256 differs:
+- `src/qmatsuite/core/pseudo_options.py`: When project has same basename with token-match but sha256 differs:
   - Creates **separate variants** (one for project sha256, one for internal/lib sha256)
   - Adds `token_match_warnings` to both variants
 - `gui/src/components/common_cards/CommonCardPseudo.tsx`: Displays warnings inline
@@ -118,7 +118,7 @@ This document describes the refactor of Pseudo Selection V2 to align with the fi
 ### 8. Step0 Runtime Semantics
 
 **Implementation:**
-- `src/quantumvitas/core/pseudo_runtime.py::prepare_project_pseudos_for_run()`:
+- `src/qmatsuite/core/pseudo_runtime.py::prepare_project_pseudos_for_run()`:
   - If `source_kind == "project"` and sha256 matches: **noop** (just refresh calc records)
   - If `source_kind in ("internal", "lib")`:
     - Same sha256: noop
@@ -138,14 +138,14 @@ This document describes the refactor of Pseudo Selection V2 to align with the fi
 ## Files Changed
 
 ### Backend
-- `src/quantumvitas/core/pseudo_options.py`: Refactored to sha256-keyed `PseudoVariant` (not sha_token-grouped)
-- `src/quantumvitas/core/pseudo_runtime.py`: Updated project source detection and Step0 logic
-- `src/quantumvitas/api.py`: Removed `use_sha_token_grouping` flag
-- `src/quantumvitas/daemon/server.py`: Updated to use sha256-keyed options
-- `src/quantumvitas/calculation/runner.py`: Updated `refresh_calc_pseudo_records_after_step0` call
+- `src/qmatsuite/core/pseudo_options.py`: Refactored to sha256-keyed `PseudoVariant` (not sha_token-grouped)
+- `src/qmatsuite/core/pseudo_runtime.py`: Updated project source detection and Step0 logic
+- `src/qmatsuite/api.py`: Removed `use_sha_token_grouping` flag
+- `src/qmatsuite/daemon/server.py`: Updated to use sha256-keyed options
+- `src/qmatsuite/calculation/runner.py`: Updated `refresh_calc_pseudo_records_after_step0` call
 
 ### Frontend
-- `gui/src/types/qv.ts`: Updated `PseudoVariant` interface to match backend
+- `gui/src/types/qms.ts`: Updated `PseudoVariant` interface to match backend
 - `gui/src/components/common_cards/CommonCardPseudo.tsx`: Complete refactor to sha256-keyed selection
 
 ### Tests

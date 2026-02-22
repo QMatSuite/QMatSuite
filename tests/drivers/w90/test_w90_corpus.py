@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.drivers.w90.inputspec import _parse_win_text, _write_win_text
+from qmatsuite.drivers.w90.inputspec import _parse_win_text, _write_win_text
 
 SAMPLES_DIR = Path(__file__).parents[2] / "inputformat" / "samples" / "w90"
 

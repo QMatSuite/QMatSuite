@@ -85,7 +85,7 @@ Already production-ready. Just needs an MCP tool wrapper.
 5. Download (TODO/stubbed)
 
 `ensure_qe_pseudos()` (runtime) also checks `additional_search_dirs` and
-`QV_PSEUDO_PATH` env var.
+`QMS_PSEUDO_PATH` env var.
 
 No MCP fix needed — the chain is correct.
 
@@ -120,7 +120,7 @@ for SCF convergence."
 - Gated dry_run materialization; non-pw.x steps get `dry_run_note` explaining skip
 
 ### Fix 5: download_pseudo_library Tool (MEDIUM) — DONE
-- New file `src/quantumvitas/mcp/tools/download_pseudo_library.py`
+- New file `src/qmatsuite/mcp/tools/download_pseudo_library.py`
 - Wraps `pseudo_config.download_sssp_library()` with flavor validation
 - Registered in `server.py` (tool count: 26 → 27)
 
@@ -163,19 +163,19 @@ for SCF convergence."
 ## Files Created/Modified
 
 ### New Files
-- `src/quantumvitas/mcp/tools/download_pseudo_library.py` — new MCP tool
+- `src/qmatsuite/mcp/tools/download_pseudo_library.py` — new MCP tool
 - `tests/mcp/test_stage_p4.py` — 22 MCP-level tests
 - `tests/api/test_p4_hardening.py` — 14 API-level tests
 
 ### Modified Files
-- `src/quantumvitas/mcp/knowledge/store.py` — FTS5 sanitization (Fix 1)
-- `src/quantumvitas/mcp/tools/inspect_calculation.py` — pw.x gen-step gate (Fix 2)
-- `src/quantumvitas/mcp/tools/list_resources.py` — installed flag (Fix 3)
-- `src/quantumvitas/mcp/tools/resolve_species_map.py` — download hint (Fix 4)
-- `src/quantumvitas/mcp/tools/set_species_map.py` — file existence warning (Fix 6)
-- `src/quantumvitas/mcp/tools/preview_compilation.py` — empty params hint (Fix 7)
-- `src/quantumvitas/drivers/qe/preflight.py` — METAL_FIXED_OCC advisory (Fix 8)
-- `src/quantumvitas/mcp/server.py` — import download_pseudo_library tool
+- `src/qmatsuite/mcp/knowledge/store.py` — FTS5 sanitization (Fix 1)
+- `src/qmatsuite/mcp/tools/inspect_calculation.py` — pw.x gen-step gate (Fix 2)
+- `src/qmatsuite/mcp/tools/list_resources.py` — installed flag (Fix 3)
+- `src/qmatsuite/mcp/tools/resolve_species_map.py` — download hint (Fix 4)
+- `src/qmatsuite/mcp/tools/set_species_map.py` — file existence warning (Fix 6)
+- `src/qmatsuite/mcp/tools/preview_compilation.py` — empty params hint (Fix 7)
+- `src/qmatsuite/drivers/qe/preflight.py` — METAL_FIXED_OCC advisory (Fix 8)
+- `src/qmatsuite/mcp/server.py` — import download_pseudo_library tool
 - `tests/mcp/test_stage_p1.py` — tool count 26 → 27
 - `tests/mcp/test_stage_p2.py` — tool count 26 → 27
 - `tests/mcp/test_stage11.py` — tool count 26 → 27, expected_names updated

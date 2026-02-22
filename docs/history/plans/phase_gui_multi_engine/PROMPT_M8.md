@@ -15,7 +15,7 @@ M0-M7 must ALL be complete. Every consumer of the QE-specific RPCs must already 
 ```bash
 # 1. Verify no GUI code still calls QE-specific RPCs
 grep -rn "listQeUiParameters\|listQeParameterMetadata\|detect_qe\|list_qe_engines\|discover_qe_engines\|set_qe_engine\|reload_qe_parameter_metadata\|get_qe_parameter_metadata_debug_info\|import_step_from_qe_input" gui/src/ --include="*.tsx" --include="*.ts"
-# Expected: ONLY in useQVClient.ts (the convenience method definitions) and qv.ts (type definitions)
+# Expected: ONLY in useQMSClient.ts (the convenience method definitions) and qms.ts (type definitions)
 # If found in any OTHER file, STOP and fix M5-M7 first
 
 # 2. Verify renamed components are in use
@@ -23,7 +23,7 @@ grep -rn "EngineParameterBrowserPanel\|useEngineParameterMetadata" gui/src/ --in
 # Expected: > 0 matches (the new generic versions are being used)
 
 # 3. Verify generic RPCs are registered
-grep -n "list_engine_families\|list_step_palette\|list_engine_ui_parameters\|list_engine_parameter_metadata\|set_engine_family" src/quantumvitas/daemon/server.py
+grep -n "list_engine_families\|list_step_palette\|list_engine_ui_parameters\|list_engine_parameter_metadata\|set_engine_family" src/qmatsuite/daemon/server.py
 # Expected: 5 entries in _handlers dict
 ```
 
@@ -33,9 +33,9 @@ If ANY of these checks fail, DO NOT proceed. Go back and fix the prerequisite mi
 
 ### Modify
 
-1. `src/quantumvitas/daemon/server.py` — Delete 9 QE RPC handlers + their registrations in `_handlers` dict
-2. `gui/src/hooks/useQVClient.ts` — Delete `listQeUiParameters` and `listQeParameterMetadata` convenience methods
-3. `gui/src/types/qv.ts` — Delete `QEDetectionResult`, `detect_qe`, `list_qe_engines`, `discover_qe_engines`, `set_qe_engine`, `list_qe_ui_parameters`, `list_qe_parameter_metadata`, `reload_qe_parameter_metadata`, `get_qe_parameter_metadata_debug_info`, `import_step_from_qe_input` type entries
+1. `src/qmatsuite/daemon/server.py` — Delete 9 QE RPC handlers + their registrations in `_handlers` dict
+2. `gui/src/hooks/useQMSClient.ts` — Delete `listQeUiParameters` and `listQeParameterMetadata` convenience methods
+3. `gui/src/types/qms.ts` — Delete `QEDetectionResult`, `detect_qe`, `list_qe_engines`, `discover_qe_engines`, `set_qe_engine`, `list_qe_ui_parameters`, `list_qe_parameter_metadata`, `reload_qe_parameter_metadata`, `get_qe_parameter_metadata_debug_info`, `import_step_from_qe_input` type entries
 
 ### Create
 
@@ -43,8 +43,8 @@ If ANY of these checks fail, DO NOT proceed. Go back and fix the prerequisite mi
 
 ## Do NOT Touch
 
-- `src/quantumvitas/drivers/qe/` — QE driver code legitimately references "qe"
-- `src/quantumvitas/api/utils.py` — QE metadata utilities may still be used by generic RPCs (the `list_engine_ui_parameters` handler delegates to them for engine_family="qe")
+- `src/qmatsuite/drivers/qe/` — QE driver code legitimately references "qe"
+- `src/qmatsuite/api/utils.py` — QE metadata utilities may still be used by generic RPCs (the `list_engine_ui_parameters` handler delegates to them for engine_family="qe")
 - `gui/src/components/panels/EngineParameterBrowserPanel.tsx` — Already generic (M7)
 - `gui/src/hooks/useEngineParameterMetadata.ts` — Already generic (M7)
 
@@ -90,7 +90,7 @@ Delete these 9 methods from the DaemonServer class:
 After deletion, verify no dangling references:
 
 ```bash
-grep -n "_handle_detect_qe\|_handle_list_qe_\|_handle_set_qe_\|_handle_discover_qe_\|_handle_reload_qe_\|_handle_get_qe_\|_handle_import_step_from_qe" src/quantumvitas/daemon/server.py
+grep -n "_handle_detect_qe\|_handle_list_qe_\|_handle_set_qe_\|_handle_discover_qe_\|_handle_reload_qe_\|_handle_get_qe_\|_handle_import_step_from_qe" src/qmatsuite/daemon/server.py
 # Expected: 0 matches
 ```
 
@@ -99,7 +99,7 @@ grep -n "_handle_detect_qe\|_handle_list_qe_\|_handle_set_qe_\|_handle_discover_
 After deleting the handlers, some imports at the top of server.py may become unused. Specifically, check these imports (around lines 66-77):
 
 ```python
-from quantumvitas.api.utils import (
+from qmatsuite.api.utils import (
     get_ui_parameters,
     list_supported_modules,
     get_module_param_sections,
@@ -117,9 +117,9 @@ Check which of these are still used by the generic handlers (`_handle_list_engin
 
 **IMPORTANT**: `get_ui_parameters`, `list_supported_modules`, and related imports may still be needed by the generic `_handle_list_engine_ui_parameters` handler (which delegates to QE metadata when engine_family="qe"). Do NOT remove these unless you verify they're unused.
 
-### Step 5: Delete QE-specific client methods from useQVClient.ts
+### Step 5: Delete QE-specific client methods from useQMSClient.ts
 
-In `gui/src/hooks/useQVClient.ts`, delete:
+In `gui/src/hooks/useQMSClient.ts`, delete:
 
 ```typescript
 // DELETE these method declarations:
@@ -135,9 +135,9 @@ listQeUiParameters: (module, stepType) => call('list_qe_ui_parameters', ...),
 listQeParameterMetadata: (operation, params) => call('list_qe_parameter_metadata', ...),
 ```
 
-### Step 6: Delete QE-specific types from qv.ts
+### Step 6: Delete QE-specific types from qms.ts
 
-In `gui/src/types/qv.ts`, delete:
+In `gui/src/types/qms.ts`, delete:
 
 1. The `QEDetectionResult` interface (lines 397-405):
 ```typescript
@@ -145,7 +145,7 @@ In `gui/src/types/qv.ts`, delete:
 export interface QEDetectionResult { ... }
 ```
 
-2. The QE RPC entries from `QVCommandMap` (around lines 493+):
+2. The QE RPC entries from `QMSCommandMap` (around lines 493+):
 ```typescript
 // DELETE these entries:
 detect_qe: { ... };
@@ -190,7 +190,7 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 
 def test_no_qe_rpc_handlers_in_server():
     """No QE-specific RPC handler methods in daemon/server.py."""
-    server_path = REPO_ROOT / "src" / "quantumvitas" / "daemon" / "server.py"
+    server_path = REPO_ROOT / "src" / "qmatsuite" / "daemon" / "server.py"
     text = server_path.read_text(encoding="utf-8")
 
     qe_handler_patterns = [
@@ -220,7 +220,7 @@ def test_no_qe_rpc_handlers_in_server():
 
 def test_no_qe_rpc_registrations_in_server():
     """No QE-specific RPC names in the _handlers dict."""
-    server_path = REPO_ROOT / "src" / "quantumvitas" / "daemon" / "server.py"
+    server_path = REPO_ROOT / "src" / "qmatsuite" / "daemon" / "server.py"
     text = server_path.read_text(encoding="utf-8")
 
     qe_rpc_names = [
@@ -314,7 +314,7 @@ def test_no_qe_specific_hooks_in_gui():
 source .venv/bin/activate && python -m pytest tests/gates/test_no_qe_special_case.py -v
 
 # 2. No QE handlers in server
-grep -rn "_handle_detect_qe\|_handle_list_qe_\|_handle_set_qe_\|_handle_discover_qe_\|_handle_reload_qe_\|_handle_get_qe_\|_handle_import_step_from_qe" src/quantumvitas/daemon/server.py
+grep -rn "_handle_detect_qe\|_handle_list_qe_\|_handle_set_qe_\|_handle_discover_qe_\|_handle_reload_qe_\|_handle_get_qe_\|_handle_import_step_from_qe" src/qmatsuite/daemon/server.py
 # Expected: 0 matches
 
 # 3. No QE client methods in GUI

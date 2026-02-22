@@ -5,7 +5,7 @@ Phase 3C: Tests that registry contract for state dependencies is correctly enfor
 """
 
 import pytest
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 
 
 class TestPySCFRegistryContract:

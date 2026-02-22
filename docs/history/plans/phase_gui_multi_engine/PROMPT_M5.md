@@ -15,8 +15,8 @@ M0-M4 must be complete. The `list_engine_families`, `list_step_palette`, and `se
 1. `gui/src/components/panels/CalculationOverviewTab.tsx` — Replace hard-coded QE step dropdown (lines 453-461) with dynamic list from `list_step_palette` RPC
 2. `gui/src/components/panels/CalculationListPanel.tsx` — Replace hard-coded QE step dropdown (lines 1345-1354) with dynamic list from `list_step_palette` RPC
 3. `gui/src/components/dialogs/CreateCalculationDialog.tsx` — Add engine_family selector, pass engine_family in `create_calculation` payload
-4. `gui/src/hooks/useQVClient.ts` — Add `listEngineFamilies()` and `listStepPalette()` convenience methods
-5. `gui/src/types/qv.ts` — Add `EngineFamilyInfo`, `StepPaletteResult`, and new RPC type entries
+4. `gui/src/hooks/useQMSClient.ts` — Add `listEngineFamilies()` and `listStepPalette()` convenience methods
+5. `gui/src/types/qms.ts` — Add `EngineFamilyInfo`, `StepPaletteResult`, and new RPC type entries
 
 ## Do NOT Touch
 
@@ -28,7 +28,7 @@ M0-M4 must be complete. The `list_engine_families`, `list_step_palette`, and `se
 
 ## Exact Instructions
 
-### Step 1: Add types to qv.ts
+### Step 1: Add types to qms.ts
 
 Add these interfaces after the existing `QEDetectionResult` interface (around line 405):
 
@@ -57,7 +57,7 @@ export interface StepPaletteResult {
 }
 ```
 
-Add the RPC type entries to the `QVCommandMap` interface (around line 490, after existing entries):
+Add the RPC type entries to the `QMSCommandMap` interface (around line 490, after existing entries):
 
 ```typescript
   // Generic engine RPCs
@@ -75,14 +75,14 @@ Add the RPC type entries to the `QVCommandMap` interface (around line 490, after
   };
 ```
 
-### Step 2: Add convenience methods to useQVClient.ts
+### Step 2: Add convenience methods to useQMSClient.ts
 
 Add these after the existing `listQeParameterMetadata` method (around line 58):
 
 ```typescript
-  listEngineFamilies: () => Promise<QVResponse<QVResult<'list_engine_families'>>>;
-  listStepPalette: (engineFamily: string | null) => Promise<QVResponse<QVResult<'list_step_palette'>>>;
-  setEngineFamily: (projectRoot: string, calculation: string, engineFamily: string) => Promise<QVResponse<QVResult<'set_engine_family'>>>;
+  listEngineFamilies: () => Promise<QMSResponse<QMSResult<'list_engine_families'>>>;
+  listStepPalette: (engineFamily: string | null) => Promise<QMSResponse<QMSResult<'list_step_palette'>>>;
+  setEngineFamily: (projectRoot: string, calculation: string, engineFamily: string) => Promise<QMSResponse<QMSResult<'set_engine_family'>>>;
 ```
 
 And implement them in the hook body:
@@ -123,7 +123,7 @@ const [stepPalette, setStepPalette] = useState<StepPaletteResult | null>(null);
 useEffect(() => {
   // engine_family comes from the calculation data (loaded from calculation.yaml)
   const engineFamily = calculationDetail?.engine_family ?? null;
-  qv.listStepPalette(engineFamily).then((res) => {
+  qms.listStepPalette(engineFamily).then((res) => {
     if (res.ok && res.data) {
       setStepPalette(res.data);
     }
@@ -180,7 +180,7 @@ const [selectedEngine, setSelectedEngine] = useState<string>('');
 2. Fetch engine families on mount:
 ```typescript
 useEffect(() => {
-  qv.listEngineFamilies().then((res) => {
+  qms.listEngineFamilies().then((res) => {
     if (res.ok && res.data) {
       // Filter to base engines only (postprocessing engines can't be selected as engine_family)
       const baseEngines = res.data.engines.filter(e => e.engine_role === 'base');
@@ -211,7 +211,7 @@ useEffect(() => {
 
 4. Pass engine_family in the create_calculation payload (around line 96):
 ```typescript
-const response = await qv.call('create_calculation', {
+const response = await qms.call('create_calculation', {
   project_root: projectRoot,
   name: calculationName,
   structure: selectedStructure || undefined,
@@ -222,8 +222,8 @@ const response = await qv.call('create_calculation', {
 
 ## Invariants to Preserve
 
-- Existing QE types (`QEDetectionResult`, etc.) still exist in qv.ts (deleted in M8)
-- Existing QE RPC methods (`listQeUiParameters`, etc.) still exist in useQVClient.ts (deleted in M8)
+- Existing QE types (`QEDetectionResult`, etc.) still exist in qms.ts (deleted in M8)
+- Existing QE RPC methods (`listQeUiParameters`, etc.) still exist in useQMSClient.ts (deleted in M8)
 - The `step_type_gen` value sent to `add_step_to_calculation` RPC remains the same format (lowercase gen step name, e.g., "scf")
 - The `create_calculation` RPC accepts `engine_family: null` for UNDECIDED state
 - The dropdown shows step labels, not raw spec types
@@ -244,11 +244,11 @@ grep -c "engine_family\|engine-family\|selectedEngine\|listEngineFamilies" gui/s
 # Expected: > 0
 
 # 3. New types exist
-grep -c "EngineFamilyInfo\|StepPaletteResult\|StepPaletteEntry" gui/src/types/qv.ts
+grep -c "EngineFamilyInfo\|StepPaletteResult\|StepPaletteEntry" gui/src/types/qms.ts
 # Expected: > 0
 
 # 4. New convenience methods exist
-grep -c "listEngineFamilies\|listStepPalette\|setEngineFamily" gui/src/hooks/useQVClient.ts
+grep -c "listEngineFamilies\|listStepPalette\|setEngineFamily" gui/src/hooks/useQMSClient.ts
 # Expected: > 0
 
 # 5. Backend tests still pass
@@ -257,8 +257,8 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ## Do NOT Do
 
-- Do NOT remove QE-specific types from qv.ts (that's M8)
-- Do NOT remove QE RPC methods from useQVClient.ts (that's M8)
+- Do NOT remove QE-specific types from qms.ts (that's M8)
+- Do NOT remove QE RPC methods from useQMSClient.ts (that's M8)
 - Do NOT modify StepDetailPanel.tsx (that's M6)
 - Do NOT modify QEParameterBrowserPanel.tsx (that's M7)
 - Do NOT modify SettingsPanel.tsx (that's M7)

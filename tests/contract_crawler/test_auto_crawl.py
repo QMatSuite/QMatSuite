@@ -5,8 +5,8 @@ from pathlib import Path
 
 from tests.contract_crawler.crawler import crawl_all_methods, crawl_method
 from tests.contract_crawler.payloads import get_minimal_payload
-from quantumvitas.daemon.server import QVDaemon
-from quantumvitas.api import QVService
+from qmatsuite.daemon.server import QMSDaemon
+from qmatsuite.api import QMSService
 from io import StringIO
 
 
@@ -15,7 +15,7 @@ class TestStatelessMethodsCrawl:
 
     def test_crawl_ping(self):
         """Ping method returns expected shape."""
-        daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+        daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
         result = crawl_method(daemon, "ping", {})
 
         assert result.success
@@ -24,7 +24,7 @@ class TestStatelessMethodsCrawl:
 
     def test_crawl_get_env_info(self):
         """get_env_info returns JSON-serializable data."""
-        daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+        daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
         result = crawl_method(daemon, "get_env_info", {})
 
         assert result.success
@@ -51,12 +51,12 @@ class TestProjectScopedMethodsCrawl:
         """Create minimal project for testing."""
         project_root = tmp_path / "test_project"
         project_root.mkdir()
-        QVService.init_project(project_root, name="test_project")
+        QMSService.init_project(project_root, name="test_project")
         return project_root
 
     def test_crawl_list_structures(self, temp_project):
         """list_structures returns expected shape."""
-        daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+        daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
         payload = {"project_root": str(temp_project)}
         result = crawl_method(daemon, "list_structures", payload)
 
@@ -67,7 +67,7 @@ class TestProjectScopedMethodsCrawl:
 
     def test_crawl_list_calculations(self, temp_project):
         """list_calculations returns expected shape."""
-        daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+        daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
         payload = {"project_root": str(temp_project)}
         result = crawl_method(daemon, "list_calculations", payload)
 
@@ -78,7 +78,7 @@ class TestProjectScopedMethodsCrawl:
 
     def test_crawl_get_project_summary(self, temp_project):
         """get_project_summary returns expected shape."""
-        daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+        daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
         payload = {"project_root": str(temp_project)}
         result = crawl_method(daemon, "get_project_summary", payload)
 

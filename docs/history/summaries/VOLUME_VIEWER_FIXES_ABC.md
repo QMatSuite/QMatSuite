@@ -138,14 +138,14 @@ const geometry = useMemo(() => {
   - Line 701-706: triTable proof log
 
 **修复方案：**
-1. 引入 `DEBUG_MARCHING_CUBES` 开关：`localStorage.getItem('qv_mc_debug') === '1'`
+1. 引入 `DEBUG_MARCHING_CUBES` 开关：`localStorage.getItem('qms_mc_debug') === '1'`
 2. 默认只打印一行摘要：`[MC] iso=... dims=... activeCubes=... triangles=... ms=...`
 3. 详细日志（Step A/B/C）只在 debug 开关开启时打印
 4. Step B corner logs 限制为前 3 个 active cubes（debug 开启时）
 
 **关键代码变更：**
 ```typescript
-const debugMc = typeof localStorage !== 'undefined' && localStorage.getItem('qv_mc_debug') === '1';
+const debugMc = typeof localStorage !== 'undefined' && localStorage.getItem('qms_mc_debug') === '1';
 const debugLimit = debugMc ? 3 : 0;
 
 // Only log detailed cube info if debug enabled and within limit
@@ -166,7 +166,7 @@ if (process.env.NODE_ENV === 'development') {
 
 ### 验收
 - [x] 默认只有一行摘要日志（每次 mesh 生成）
-- [x] 开启 debug flag (`localStorage.setItem('qv_mc_debug', '1')`) 后才有详细日志
+- [x] 开启 debug flag (`localStorage.setItem('qms_mc_debug', '1')`) 后才有详细日志
 - [x] 无交互时不再刷屏
 
 ## 额外修复
@@ -191,8 +191,8 @@ if (process.env.NODE_ENV === 'development') {
 
 3. **C) Console 刷屏：**
    - 默认状态：应该只有一行 `[MC]` 摘要
-   - 开启 debug：`localStorage.setItem('qv_mc_debug', '1')`
+   - 开启 debug：`localStorage.setItem('qms_mc_debug', '1')`
    - 刷新页面，应该看到详细 Step A/B/C 日志
-   - 关闭 debug：`localStorage.removeItem('qv_mc_debug')`
+   - 关闭 debug：`localStorage.removeItem('qms_mc_debug')`
    - 刷新页面，应该又只有摘要
 

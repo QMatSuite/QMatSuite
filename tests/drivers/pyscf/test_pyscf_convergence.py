@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.pyscf.parsers.convergence import (
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.pyscf.parsers.convergence import (
     PySCFConvergenceProvider,
     parse_pyscf_convergence,
 )
-from quantumvitas.parsers.registry import get_parser
+from qmatsuite.parsers.registry import get_parser
 
 
 PYSCF_SCF_OUTPUT = """\

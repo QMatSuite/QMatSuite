@@ -8,7 +8,7 @@ See test_materialization_ssot.py for comprehensive SSOT tests.
 
 import pytest
 
-from quantumvitas.workflow.generalized_steps import (
+from qmatsuite.workflow.generalized_steps import (
     materialize_step,
     materialize_workflow,
     dematerialize_step,
@@ -16,8 +16,8 @@ from quantumvitas.workflow.generalized_steps import (
     get_supported_generalized_steps,
     get_engine_families_for_step,
 )
-from quantumvitas.core.driver_registry import DriverRegistry
-import quantumvitas.drivers  # Ensure drivers are loaded
+from qmatsuite.core.driver_registry import DriverRegistry
+import qmatsuite.drivers  # Ensure drivers are loaded
 
 
 class TestGenStepMaterialization:

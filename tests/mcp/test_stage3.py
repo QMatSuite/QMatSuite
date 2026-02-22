@@ -8,7 +8,7 @@ get_results_summary, and quick_run.
 
 All tests call .fn() directly on the @mcp.tool-decorated functions.
 
-Shared fixtures (qv_project, qe_available, qe_project_with_si) are in conftest.py.
+Shared fixtures (qms_project, qe_available, qe_project_with_si) are in conftest.py.
 """
 
 from __future__ import annotations
@@ -17,12 +17,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
-def _create_qe_scf(qv_project):
+def _create_qe_scf(qms_project):
     """Helper: create a QE SCF calculation and return its data dict."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
 
     result = create_calculation.fn(
         engine="qe", workflow="scf", structure_selector="silicon",
@@ -39,19 +39,19 @@ def _create_qe_scf(qv_project):
 class TestContractErrors:
     """Error-path tests that do not require QE."""
 
-    def test_run_calculation_invalid_calc(self, qv_project):
+    def test_run_calculation_invalid_calc(self, qms_project):
         """Nonexistent calc_ulid -> error envelope."""
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
 
         result = run_calculation.fn(calc_ulid="NONEXISTENT_ULID_12345678")
         assert result["status"] == "error"
         assert result["error_type"] == "not_found"
 
-    def test_get_status_no_runs(self, qv_project):
+    def test_get_status_no_runs(self, qms_project):
         """Calc exists but never run -> overall_status == 'not_run'."""
-        from quantumvitas.mcp.tools.get_status import get_status
+        from qmatsuite.mcp.tools.get_status import get_status
 
-        calc_data = _create_qe_scf(qv_project)
+        calc_data = _create_qe_scf(qms_project)
         calc_ulid = calc_data["calc_ulid"]
 
         result = get_status.fn(calc_ulid=calc_ulid)
@@ -61,20 +61,20 @@ class TestContractErrors:
         assert len(data["steps"]) >= 1
         assert data["steps"][0]["status"] == "not_run"
 
-    def test_get_results_summary_no_run(self, qv_project):
+    def test_get_results_summary_no_run(self, qms_project):
         """Calc exists but never run -> error."""
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
 
-        calc_data = _create_qe_scf(qv_project)
+        calc_data = _create_qe_scf(qms_project)
         calc_ulid = calc_data["calc_ulid"]
 
         result = get_results_summary.fn(calc_ulid=calc_ulid)
         assert result["status"] == "error"
         assert result["error_type"] == "no_results"
 
-    def test_quick_run_invalid_engine(self, qv_project):
+    def test_quick_run_invalid_engine(self, qms_project):
         """Unknown engine -> error envelope."""
-        from quantumvitas.mcp.tools.quick_run import quick_run
+        from qmatsuite.mcp.tools.quick_run import quick_run
 
         result = quick_run.fn(
             engine="nonexistent",
@@ -94,10 +94,10 @@ class TestContractErrors:
 
 def _setup_si_scf_calc(project_root: Path) -> str:
     """Create a QE SCF calc with species_map and ecutwfc=20.0. Returns calc_ulid."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
-    from quantumvitas.mcp.tools.set_parameters import set_parameters
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.set_parameters import set_parameters
 
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
 
     # Create calculation
     result = create_calculation.fn(
@@ -128,7 +128,7 @@ class TestRealQERun:
 
     def test_run_calculation_si_scf(self, qe_project_with_si):
         """Run a Si SCF calculation and verify completed status."""
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
 
         calc_ulid = _setup_si_scf_calc(qe_project_with_si)
 
@@ -141,8 +141,8 @@ class TestRealQERun:
 
     def test_get_results_summary_si_scf(self, qe_project_with_si):
         """After running, verify converged=True and total_energy < 0."""
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
 
         calc_ulid = _setup_si_scf_calc(qe_project_with_si)
 
@@ -163,8 +163,8 @@ class TestRealQERun:
 
     def test_get_status_after_run(self, qe_project_with_si):
         """After running, get_status reports completed."""
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
-        from quantumvitas.mcp.tools.get_status import get_status
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.get_status import get_status
 
         calc_ulid = _setup_si_scf_calc(qe_project_with_si)
 
@@ -182,14 +182,14 @@ class TestRealQERun:
 
     def test_quick_run_si_scf(self, qe_project_with_si):
         """One-shot quick_run with low precision."""
-        from quantumvitas.mcp.tools.quick_run import quick_run
+        from qmatsuite.mcp.tools.quick_run import quick_run
 
-        svc = QVService(qe_project_with_si)
+        svc = QMSService(qe_project_with_si)
 
         # Set species_map for all Si calcs in this project
         # quick_run creates its own calc, so we need to set species_map after creation.
         # Instead, we call quick_run with overrides that include ecutwfc.
-        # But species_map needs to be set on the calc. Let's test via direct QVService.
+        # But species_map needs to be set on the calc. Let's test via direct QMSService.
 
         result = quick_run.fn(
             engine="qe",
@@ -213,8 +213,8 @@ class TestRealQERun:
 
     def test_results_summary_fields(self, qe_project_with_si):
         """Verify all expected fields are present and reasonable."""
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
 
         calc_ulid = _setup_si_scf_calc(qe_project_with_si)
 

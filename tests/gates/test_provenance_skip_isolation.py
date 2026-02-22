@@ -28,7 +28,7 @@ def test_manifest_no_provenance_imports():
     Skip logic is for runtime optimization based on SSOT data.
     Provenance is for audit/rollback/analytics only.
     """
-    manifest_path = Path(__file__).parents[2] / "src" / "quantumvitas" / "calculation" / "manifest.py"
+    manifest_path = Path(__file__).parents[2] / "src" / "qmatsuite" / "calculation" / "manifest.py"
 
     if not manifest_path.exists():
         pytest.skip(f"manifest.py not found at {manifest_path}")
@@ -61,7 +61,7 @@ def test_skip_logic_no_provenance_calls():
     Specifically checks for any function that looks like it's querying
     provenance data (query_operations, query_runs, open_provenance_db, etc.)
     """
-    manifest_path = Path(__file__).parents[2] / "src" / "quantumvitas" / "calculation" / "manifest.py"
+    manifest_path = Path(__file__).parents[2] / "src" / "qmatsuite" / "calculation" / "manifest.py"
 
     if not manifest_path.exists():
         pytest.skip(f"manifest.py not found at {manifest_path}")

@@ -55,7 +55,7 @@ valid_prefixes = ("qe_", "w90_", "pyscf_", "orca_", "vasp_", "lammps_")
 
 **Option B: Derive from registry (better long-term)**
 ```python
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 valid_prefixes = tuple(f"{e}_" for e in get_registry().list_engines())
 ```
 
@@ -65,17 +65,17 @@ valid_prefixes = tuple(f"{e}_" for e in get_registry().list_engines())
 
 ### Q3: What is the correct integration test API pattern?
 
-**Answer: Use `QVService` API, not manual directory construction**
+**Answer: Use `QMSService` API, not manual directory construction**
 
 **Correct Pattern (from `test_vasp_project_e2e.py`):**
 ```python
-from quantumvitas.api import QVService
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc
-from quantumvitas.core.models import load_calculation
+from qmatsuite.api import QMSService
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc
+from qmatsuite.core.models import load_calculation
 
 # 1. Create project
-project_root = QVService.init_project(target_dir=tmp_path / "project", name="LAMMPS Test")
+project_root = QMSService.init_project(target_dir=tmp_path / "project", name="LAMMPS Test")
 
 # 2. Create structure file (pymatgen Structure/Molecule)
 from pymatgen.core import Structure, Lattice
@@ -86,11 +86,11 @@ struct_file = structures_dir / "cu_fcc.json"
 struct_file.write_text(json.dumps(struct.as_dict()))
 
 # 3. Import structure (or register manually)
-struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC")
+struct_result = QMSService.import_structure(project_root, struct_file, name="Cu FCC")
 structure_id = struct_result.meta.id
 
 # 4. Create calculation
-calc_resolved = QVService.init_calculation(
+calc_resolved = QMSService.init_calculation(
     project_root=project_root,
     name="test_calc",
     structure_selector=structure_id,
@@ -106,7 +106,7 @@ calc_doc = CalcDoc(calc_model.to_dict())
 save_yaml_doc(calc_doc, calc_data_path)
 
 # 6. Create step
-step_resolved = QVService.init_step(
+step_resolved = QMSService.init_step(
     project_root=project_root,
     calculation_selector=calc_id,
     step_type="relax",  # or "md"
@@ -114,7 +114,7 @@ step_resolved = QVService.init_step(
 step_id = step_resolved.meta.id
 
 # 7. Configure step parameters
-QVService.configure_step(
+QMSService.configure_step(
     project_root=project_root,
     calculation_selector=calc_id,
     step_selector=step_id,
@@ -122,14 +122,14 @@ QVService.configure_step(
 )
 
 # 8. Run
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.calculation.runner import CalculationRunner
 
 registry = create_default_registry(include_lammps=True)
 runner = CalculationRunner(engine_registry=registry)
 
 # Load calculation from disk (as runner expects)
-from quantumvitas.calculation.calculation import Calculation
+from qmatsuite.calculation.calculation import Calculation
 calculation = Calculation.from_yaml(calc_data_path, project=project_root)
 result = runner.run(calculation)
 ```
@@ -137,12 +137,12 @@ result = runner.run(calculation)
 **Key API Entry Points:**
 | API | Purpose | Location |
 |-----|---------|----------|
-| `QVService.init_project()` | Create project | `src/quantumvitas/api.py` |
-| `QVService.import_structure()` | Import structure file | `src/quantumvitas/api.py` |
-| `QVService.init_calculation()` | Create calculation | `src/quantumvitas/api.py` |
-| `QVService.init_step()` | Add step to calculation | `src/quantumvitas/api.py` |
-| `QVService.configure_step()` | Set step parameters | `src/quantumvitas/api.py` |
-| `CalculationRunner.run()` | Execute calculation | `src/quantumvitas/calculation/runner.py` |
+| `QMSService.init_project()` | Create project | `src/qmatsuite/api.py` |
+| `QMSService.import_structure()` | Import structure file | `src/qmatsuite/api.py` |
+| `QMSService.init_calculation()` | Create calculation | `src/qmatsuite/api.py` |
+| `QMSService.init_step()` | Add step to calculation | `src/qmatsuite/api.py` |
+| `QMSService.configure_step()` | Set step parameters | `src/qmatsuite/api.py` |
+| `CalculationRunner.run()` | Execute calculation | `src/qmatsuite/calculation/runner.py` |
 
 ---
 
@@ -170,7 +170,7 @@ Rationale:
 
 **Files to Change:**
 
-#### 1.1 `src/quantumvitas/workflow/registry.py`
+#### 1.1 `src/qmatsuite/workflow/registry.py`
 
 ```diff
 # Lines 545-556: Rename lammps_minimize → lammps_relax
@@ -206,7 +206,7 @@ Rationale:
 + valid_prefixes = ("qe_", "w90_", "pyscf_", "orca_", "vasp_", "lammps_")
 ```
 
-#### 1.3 `src/quantumvitas/engine/lammps_writer.py`
+#### 1.3 `src/qmatsuite/engine/lammps_writer.py`
 
 ```diff
 # Line 61: Update docstring
@@ -218,7 +218,7 @@ Rationale:
 + if step_type == "lammps_relax":
 ```
 
-#### 1.4 `src/quantumvitas/execution/lammps_relax_handler.py`
+#### 1.4 `src/qmatsuite/execution/lammps_relax_handler.py`
 
 ```diff
 # Line 31: Update docstring
@@ -293,19 +293,19 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc
-from quantumvitas.core.models import load_calculation
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc
+from qmatsuite.core.models import load_calculation
 
 
 @pytest.fixture
 def lj_project(tmp_path: Path):
     """Create a LAMMPS project using Service API."""
-    from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
+    from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin
     
     try:
         resolve_lammps_bin()
@@ -313,7 +313,7 @@ def lj_project(tmp_path: Path):
         pytest.skip("LAMMPS not installed")
     
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=tmp_path / "lj_project",
         name="LJ Minimize Test"
     )
@@ -332,11 +332,11 @@ def lj_project(tmp_path: Path):
     struct_file = structures_dir / "ar_fcc.json"
     struct_file.write_text(json.dumps(structure.as_dict()))
     
-    struct_result = QVService.import_structure(project_root, struct_file, name="Ar FCC")
+    struct_result = QMSService.import_structure(project_root, struct_file, name="Ar FCC")
     structure_id = struct_result.meta.id
     
     # Create calculation
-    calc_resolved = QVService.init_calculation(
+    calc_resolved = QMSService.init_calculation(
         project_root=project_root,
         name="lj_minimize",
         structure_selector=structure_id,
@@ -352,14 +352,14 @@ def lj_project(tmp_path: Path):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    step_resolved = QVService.init_step(
+    step_resolved = QMSService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
     )
     
     # Configure step parameters
-    QVService.configure_step(
+    QMSService.configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=step_resolved.meta.id,
@@ -389,7 +389,7 @@ def test_lj_minimize_workflow(lj_project):
     calc_path = lj_project["calc_path"]
     
     # Load and run
-    from quantumvitas.project.model import Project
+    from qmatsuite.project.model import Project
     project = Project.open(project_root)
     calculation = Calculation.from_yaml(calc_path, project)
     
@@ -412,9 +412,9 @@ Similar rewrite using Service API pattern (with multiple steps).
 
 **Key Changes:**
 - Replace `Project.from_directory()` with `Project.open()` (exists)
-- Use `QVService.init_project()` to create proper project structure
-- Use `QVService.init_calculation()` and `QVService.init_step()` to create resources
-- Use `QVService.configure_step()` to set parameters
+- Use `QMSService.init_project()` to create proper project structure
+- Use `QMSService.init_calculation()` and `QMSService.init_step()` to create resources
+- Use `QMSService.configure_step()` to set parameters
 - Load calculation properly before running
 
 **Verification Command:**

@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 # 2-atom Si diamond in pymatgen JSON format — gives correct Fd-3m spacegroup.
 SI_DIAMOND_JSON = json.dumps({
@@ -50,15 +50,15 @@ SI_DIAMOND_JSON = json.dumps({
 
 
 @pytest.fixture
-def qv_project_si_diamond(tmp_path, monkeypatch):
+def qms_project_si_diamond(tmp_path, monkeypatch):
     """Project with a proper 2-atom Si diamond structure."""
-    project_root = QVService.init_project(tmp_path / "project")
+    project_root = QMSService.init_project(tmp_path / "project")
 
     source = tmp_path / "si_diamond.json"
     source.write_text(SI_DIAMOND_JSON)
-    QVService(project_root).structure.import_file(source, name="SiDiamond")
+    QMSService(project_root).structure.import_file(source, name="SiDiamond")
 
-    from quantumvitas.mcp import project as mcp_project
+    from qmatsuite.mcp import project as mcp_project
     monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
     return project_root
@@ -66,7 +66,7 @@ def qv_project_si_diamond(tmp_path, monkeypatch):
 
 def _create_qe_bands(project_root):
     """Helper: create a QE bands calculation and return its data."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
 
     result = create_calculation.fn(
         engine="qe", workflow="bands", structure_selector="SiDiamond",
@@ -77,7 +77,7 @@ def _create_qe_bands(project_root):
 
 def _create_qe_scf(project_root):
     """Helper: create a QE SCF calculation and return its data."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
 
     result = create_calculation.fn(
         engine="qe", workflow="scf", structure_selector="SiDiamond",
@@ -94,11 +94,11 @@ def _create_qe_scf(project_root):
 class TestC1SetParametersCardsRouting:
     """C1: set_parameters auto-routes QE card keys to cards namespace."""
 
-    def test_set_parameters_routes_kpoints_to_cards(self, qv_project_si_diamond):
+    def test_set_parameters_routes_kpoints_to_cards(self, qms_project_si_diamond):
         """K_POINTS key should be auto-routed to cards namespace."""
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
 
-        calc_data = _create_qe_scf(qv_project_si_diamond)
+        calc_data = _create_qe_scf(qms_project_si_diamond)
         calc_ulid = calc_data["calc_ulid"]
 
         kpoints_card = {
@@ -117,7 +117,7 @@ class TestC1SetParametersCardsRouting:
         assert result["status"] == "success"
 
         # Verify via inspect that K_POINTS ended up in cards
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         inspect = inspect_calculation.fn(calc_ulid=calc_ulid, step=0)
         assert inspect["status"] == "success"
@@ -125,11 +125,11 @@ class TestC1SetParametersCardsRouting:
         assert "K_POINTS" in cards
         assert cards["K_POINTS"]["option"] == "crystal_b"
 
-    def test_set_parameters_routes_system_to_parameters(self, qv_project_si_diamond):
+    def test_set_parameters_routes_system_to_parameters(self, qms_project_si_diamond):
         """SYSTEM key should stay in parameters namespace."""
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
 
-        calc_data = _create_qe_scf(qv_project_si_diamond)
+        calc_data = _create_qe_scf(qms_project_si_diamond)
         calc_ulid = calc_data["calc_ulid"]
 
         result = set_parameters.fn(
@@ -139,18 +139,18 @@ class TestC1SetParametersCardsRouting:
         )
         assert result["status"] == "success"
 
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         inspect = inspect_calculation.fn(calc_ulid=calc_ulid, step=0)
         assert inspect["status"] == "success"
         parameters = inspect["data"]["step_detail"]["parameters"]
         assert parameters.get("SYSTEM", {}).get("ecutwfc") == 60
 
-    def test_set_parameters_mixed_cards_and_params(self, qv_project_si_diamond):
+    def test_set_parameters_mixed_cards_and_params(self, qms_project_si_diamond):
         """Both card keys and namelist keys in one call."""
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
 
-        calc_data = _create_qe_scf(qv_project_si_diamond)
+        calc_data = _create_qe_scf(qms_project_si_diamond)
         calc_ulid = calc_data["calc_ulid"]
 
         result = set_parameters.fn(
@@ -163,18 +163,18 @@ class TestC1SetParametersCardsRouting:
         )
         assert result["status"] == "success"
 
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         inspect = inspect_calculation.fn(calc_ulid=calc_ulid, step=0)
         data = inspect["data"]["step_detail"]
         assert data["parameters"].get("SYSTEM", {}).get("ecutwfc") == 50
         assert "K_POINTS" in data["cards"]
 
-    def test_set_parameters_explicit_namespace(self, qv_project_si_diamond):
+    def test_set_parameters_explicit_namespace(self, qms_project_si_diamond):
         """Explicit 'cards' and 'parameters' keys in params dict."""
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
 
-        calc_data = _create_qe_scf(qv_project_si_diamond)
+        calc_data = _create_qe_scf(qms_project_si_diamond)
         calc_ulid = calc_data["calc_ulid"]
 
         result = set_parameters.fn(
@@ -187,18 +187,18 @@ class TestC1SetParametersCardsRouting:
         )
         assert result["status"] == "success"
 
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         inspect = inspect_calculation.fn(calc_ulid=calc_ulid, step=0)
         data = inspect["data"]["step_detail"]
         assert data["parameters"].get("SYSTEM", {}).get("ecutwfc") == 40
         assert "K_POINTS" in data["cards"]
 
-    def test_set_parameters_backward_compatible(self, qv_project_si_diamond):
+    def test_set_parameters_backward_compatible(self, qms_project_si_diamond):
         """Existing usage with namelist keys still works."""
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
 
-        calc_data = _create_qe_scf(qv_project_si_diamond)
+        calc_data = _create_qe_scf(qms_project_si_diamond)
         calc_ulid = calc_data["calc_ulid"]
 
         result = set_parameters.fn(
@@ -218,9 +218,9 @@ class TestC1SetParametersCardsRouting:
 class TestC3GenerateKpath:
     """C3: generate_kpath MCP tool tests."""
 
-    def test_generate_kpath_si_diamond(self, qv_project_si_diamond):
+    def test_generate_kpath_si_diamond(self, qms_project_si_diamond):
         """Generate k-path for Si diamond — should return FCC-type path."""
-        from quantumvitas.mcp.tools.generate_kpath import generate_kpath
+        from qmatsuite.mcp.tools.generate_kpath import generate_kpath
 
         result = generate_kpath.fn(structure_selector="SiDiamond")
         assert result["status"] == "success", result
@@ -232,9 +232,9 @@ class TestC3GenerateKpath:
         assert len(data["labels"]) >= 2
         assert "path_string" in data
 
-    def test_generate_kpath_returns_qe_card_format(self, qv_project_si_diamond):
+    def test_generate_kpath_returns_qe_card_format(self, qms_project_si_diamond):
         """kpoints_card should have option='crystal_b' and data list."""
-        from quantumvitas.mcp.tools.generate_kpath import generate_kpath
+        from qmatsuite.mcp.tools.generate_kpath import generate_kpath
 
         result = generate_kpath.fn(structure_selector="SiDiamond")
         assert result["status"] == "success"
@@ -246,17 +246,17 @@ class TestC3GenerateKpath:
         for row in card["data"]:
             assert len(row) == 4
 
-    def test_generate_kpath_invalid_structure(self, qv_project_si_diamond):
+    def test_generate_kpath_invalid_structure(self, qms_project_si_diamond):
         """Non-existent structure returns error."""
-        from quantumvitas.mcp.tools.generate_kpath import generate_kpath
+        from qmatsuite.mcp.tools.generate_kpath import generate_kpath
 
         result = generate_kpath.fn(structure_selector="NONEXISTENT_STRUCTURE")
         assert result["status"] == "error"
         assert result["error_type"] == "structure_error"
 
-    def test_generate_kpath_points_per_segment(self, qv_project_si_diamond):
+    def test_generate_kpath_points_per_segment(self, qms_project_si_diamond):
         """Changing points_per_segment affects the data."""
-        from quantumvitas.mcp.tools.generate_kpath import generate_kpath
+        from qmatsuite.mcp.tools.generate_kpath import generate_kpath
 
         r10 = generate_kpath.fn(structure_selector="SiDiamond", points_per_segment=10)
         r40 = generate_kpath.fn(structure_selector="SiDiamond", points_per_segment=40)
@@ -275,10 +275,10 @@ class TestC3GenerateKpath:
         assert 10 in npts_10
         assert 40 in npts_40
 
-    def test_generate_kpath_card_usable_with_set_parameters(self, qv_project_si_diamond):
+    def test_generate_kpath_card_usable_with_set_parameters(self, qms_project_si_diamond):
         """Integration: generate_kpath output can be passed to set_parameters."""
-        from quantumvitas.mcp.tools.generate_kpath import generate_kpath
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.generate_kpath import generate_kpath
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
 
         # Generate k-path
         kpath_result = generate_kpath.fn(structure_selector="SiDiamond")
@@ -286,7 +286,7 @@ class TestC3GenerateKpath:
         kpoints_card = kpath_result["data"]["kpoints_card"]
 
         # Create a calculation and set the k-path
-        calc_data = _create_qe_scf(qv_project_si_diamond)
+        calc_data = _create_qe_scf(qms_project_si_diamond)
         calc_ulid = calc_data["calc_ulid"]
 
         result = set_parameters.fn(
@@ -297,7 +297,7 @@ class TestC3GenerateKpath:
         assert result["status"] == "success"
 
         # Verify it's stored correctly
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         inspect = inspect_calculation.fn(calc_ulid=calc_ulid, step=0)
         assert inspect["status"] == "success"
@@ -316,7 +316,7 @@ class TestC2FilbandInjection:
 
     def test_filband_injection_present_in_schema(self):
         """The BANDS QE module should define filband as a parameter."""
-        from quantumvitas.data import get_module_param_sections
+        from qmatsuite.data import get_module_param_sections
 
         sections = get_module_param_sections("bands")
         # filband should be in one of the sections
@@ -329,7 +329,7 @@ class TestC2FilbandInjection:
 
     def test_fildos_injection_present_in_schema(self):
         """The DOS QE module should define fildos as a parameter."""
-        from quantumvitas.data import get_module_param_sections
+        from qmatsuite.data import get_module_param_sections
 
         sections = get_module_param_sections("dos")
         all_params = set()
@@ -341,8 +341,8 @@ class TestC2FilbandInjection:
 
     def test_evidence_glob_widened(self):
         """QE driver bands evidence should include multiple glob patterns."""
-        import quantumvitas.drivers  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("qe")
         bands_caps = [
@@ -357,10 +357,10 @@ class TestC2FilbandInjection:
     def test_filband_unconditional_injection(self):
         """filband is unconditionally injected from input_name, even without user value."""
         import logging
-        from quantumvitas.calculation.structure_steps import (
+        from qmatsuite.calculation.structure_steps import (
             _inject_calculation_prefix_outdir,
         )
-        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist
+        from qmatsuite.drivers.qe.io.model import QEInput, QENamelist
 
         # bands.x input with BANDS namelist but no filband set
         namelist = QENamelist(name="BANDS", parameters={})
@@ -370,7 +370,7 @@ class TestC2FilbandInjection:
         _inject_calculation_prefix_outdir(
             qe_input=qe_input,
             step_type_spec="qe_bands",
-            calculation_prefix="qvtest1",
+            calculation_prefix="qmstest1",
             calculation_outdir="./outdir",
             spec_params={},
             logger=logging.getLogger("test"),
@@ -381,10 +381,10 @@ class TestC2FilbandInjection:
     def test_filband_overrides_user_value(self):
         """User-set filband is overridden by runtime injection."""
         import logging
-        from quantumvitas.calculation.structure_steps import (
+        from qmatsuite.calculation.structure_steps import (
             _inject_calculation_prefix_outdir,
         )
-        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist
+        from qmatsuite.drivers.qe.io.model import QEInput, QENamelist
 
         namelist = QENamelist(
             name="BANDS", parameters={"filband": "user_custom.dat"},
@@ -395,7 +395,7 @@ class TestC2FilbandInjection:
         _inject_calculation_prefix_outdir(
             qe_input=qe_input,
             step_type_spec="qe_bands",
-            calculation_prefix="qvtest1",
+            calculation_prefix="qmstest1",
             calculation_outdir="./outdir",
             spec_params={"BANDS": {"filband": "user_custom.dat"}},
             logger=logging.getLogger("test"),
@@ -407,10 +407,10 @@ class TestC2FilbandInjection:
     def test_fildos_unconditional_injection(self):
         """fildos is unconditionally injected from input_name."""
         import logging
-        from quantumvitas.calculation.structure_steps import (
+        from qmatsuite.calculation.structure_steps import (
             _inject_calculation_prefix_outdir,
         )
-        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist
+        from qmatsuite.drivers.qe.io.model import QEInput, QENamelist
 
         namelist = QENamelist(name="DOS", parameters={})
         qe_input = QEInput(namelists=[namelist], cards=[], module=None)
@@ -430,10 +430,10 @@ class TestC2FilbandInjection:
     def test_fildos_overrides_user_value(self):
         """User-set fildos is overridden by runtime injection."""
         import logging
-        from quantumvitas.calculation.structure_steps import (
+        from qmatsuite.calculation.structure_steps import (
             _inject_calculation_prefix_outdir,
         )
-        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist
+        from qmatsuite.drivers.qe.io.model import QEInput, QENamelist
 
         namelist = QENamelist(
             name="DOS", parameters={"fildos": "si.dos.dat"},
@@ -455,10 +455,10 @@ class TestC2FilbandInjection:
     def test_no_injection_without_input_name(self):
         """Without input_name, filband/fildos injection is skipped."""
         import logging
-        from quantumvitas.calculation.structure_steps import (
+        from qmatsuite.calculation.structure_steps import (
             _inject_calculation_prefix_outdir,
         )
-        from quantumvitas.drivers.qe.io.model import QEInput, QENamelist
+        from qmatsuite.drivers.qe.io.model import QEInput, QENamelist
 
         namelist = QENamelist(
             name="BANDS", parameters={"filband": "user.dat"},
@@ -469,7 +469,7 @@ class TestC2FilbandInjection:
         _inject_calculation_prefix_outdir(
             qe_input=qe_input,
             step_type_spec="qe_bands",
-            calculation_prefix="qvtest1",
+            calculation_prefix="qmstest1",
             calculation_outdir="./outdir",
             spec_params={},
             logger=logging.getLogger("test"),
@@ -480,12 +480,12 @@ class TestC2FilbandInjection:
 
     def test_filband_fildos_in_runtime_keys(self):
         """filband and fildos should be in RUNTIME_KEYS for detection."""
-        from quantumvitas.calculation.structure_steps import detect_runtime_control_keys
+        from qmatsuite.calculation.structure_steps import detect_runtime_control_keys
 
         # filband/fildos are not in CONTROL section — they're in BANDS/DOS namelists.
         # RUNTIME_KEYS set is used for user warning messages, not for blocking.
         # Just verify the constant includes them.
-        from quantumvitas.calculation import structure_steps
+        from qmatsuite.calculation import structure_steps
         src = structure_steps.__file__
         import inspect
         source = inspect.getsource(detect_runtime_control_keys)
@@ -503,7 +503,7 @@ class TestM2DryRunCardHandling:
 
     def test_merge_cards_crystal_b(self):
         """_merge_cards_into_params preserves crystal_b format."""
-        from quantumvitas.mcp.tools.inspect_calculation import _merge_cards_into_params
+        from qmatsuite.mcp.tools.inspect_calculation import _merge_cards_into_params
 
         params: dict = {}
         cards = {
@@ -523,7 +523,7 @@ class TestM2DryRunCardHandling:
 
     def test_merge_cards_gamma(self):
         """_merge_cards_into_params handles gamma format."""
-        from quantumvitas.mcp.tools.inspect_calculation import _merge_cards_into_params
+        from qmatsuite.mcp.tools.inspect_calculation import _merge_cards_into_params
 
         params: dict = {}
         cards = {"K_POINTS": {"option": "gamma"}}
@@ -532,7 +532,7 @@ class TestM2DryRunCardHandling:
 
     def test_merge_cards_automatic(self):
         """_merge_cards_into_params extracts mesh+shift for automatic."""
-        from quantumvitas.mcp.tools.inspect_calculation import _merge_cards_into_params
+        from qmatsuite.mcp.tools.inspect_calculation import _merge_cards_into_params
 
         params: dict = {}
         cards = {
@@ -548,7 +548,7 @@ class TestM2DryRunCardHandling:
 
     def test_write_qe_text_crystal_b(self):
         """_write_qe_text_direct handles crystal_b K_POINTS."""
-        from quantumvitas.drivers.qe.inputspec import _write_qe_text_direct
+        from qmatsuite.drivers.qe.inputspec import _write_qe_text_direct
 
         params = {
             "SYSTEM": {"ecutwfc": 30},
@@ -568,7 +568,7 @@ class TestM2DryRunCardHandling:
 
     def test_write_qe_text_gamma(self):
         """_write_qe_text_direct handles gamma K_POINTS."""
-        from quantumvitas.drivers.qe.inputspec import _write_qe_text_direct
+        from qmatsuite.drivers.qe.inputspec import _write_qe_text_direct
 
         params = {"kpoints": {"option": "gamma"}}
         text = _write_qe_text_direct(params, {})
@@ -576,7 +576,7 @@ class TestM2DryRunCardHandling:
 
     def test_write_qe_text_automatic_no_regression(self):
         """_write_qe_text_direct still handles automatic K_POINTS."""
-        from quantumvitas.drivers.qe.inputspec import _write_qe_text_direct
+        from qmatsuite.drivers.qe.inputspec import _write_qe_text_direct
 
         params = {
             "kpoints": {
@@ -590,7 +590,7 @@ class TestM2DryRunCardHandling:
 
     def test_write_qe_text_tpiba_b(self):
         """_write_qe_text_direct handles tpiba_b K_POINTS."""
-        from quantumvitas.drivers.qe.inputspec import _write_qe_text_direct
+        from qmatsuite.drivers.qe.inputspec import _write_qe_text_direct
 
         params = {
             "kpoints": {
@@ -617,7 +617,7 @@ class TestC4NbndKnowledge:
 
     def test_nbnd_entry_exists(self):
         """BUILTIN_ENTRIES should contain QE nbnd entry."""
-        from quantumvitas.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
+        from qmatsuite.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
 
         nbnd_entries = [
             e for e in BUILTIN_ENTRIES
@@ -630,7 +630,7 @@ class TestC4NbndKnowledge:
 
     def test_nbands_vasp_entry_exists(self):
         """BUILTIN_ENTRIES should contain VASP NBANDS entry."""
-        from quantumvitas.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
+        from qmatsuite.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
 
         nbands_entries = [
             e for e in BUILTIN_ENTRIES
@@ -643,7 +643,7 @@ class TestC4NbndKnowledge:
     def test_search_knowledge_nbnd(self, tmp_path, monkeypatch):
         """search_knowledge finds nbnd entry."""
         # Build a fresh builtin DB in a temp location
-        from quantumvitas.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
+        from qmatsuite.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
 
         found = any(
             "nbnd" in e.get("content", "").lower()
@@ -653,7 +653,7 @@ class TestC4NbndKnowledge:
 
     def test_search_knowledge_conduction_bands(self):
         """search_knowledge finds conduction bands entry."""
-        from quantumvitas.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
+        from qmatsuite.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
 
         found = any(
             "conduction" in e.get("content", "").lower()

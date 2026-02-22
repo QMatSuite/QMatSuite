@@ -1,7 +1,7 @@
 """
 Test run capabilities.
 
-Tests for the run domain in QVService.
+Tests for the run domain in QMSService.
 """
 
 import json
@@ -11,9 +11,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from quantumvitas.api.errors import NotFoundError
-from quantumvitas.api.service import QVService
-from quantumvitas.api.types.run import RunResultDTO
+from qmatsuite.api.errors import NotFoundError
+from qmatsuite.api.service import QMSService
+from qmatsuite.api.types.run import RunResultDTO
 
 
 def test_run_calculation_returns_dto(tmp_path):
@@ -21,9 +21,9 @@ def test_run_calculation_returns_dto(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     # This will fail because we need proper calculation setup, but tests the structure
     try:
@@ -42,9 +42,9 @@ def test_run_step_returns_dto(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         result = svc.run.run_step("test_calc", "step1")
@@ -60,9 +60,9 @@ def test_list_runs_returns_list(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         runs = svc.run.list_runs()
@@ -78,12 +78,12 @@ def test_cancel_happy_path(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     # Mock JobManager and Job
-    from quantumvitas.daemon.jobs import Job, JobStatus
+    from qmatsuite.daemon.jobs import Job, JobStatus
     
     mock_job = Mock(spec=Job)
     mock_job.id = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
@@ -118,9 +118,9 @@ def test_cancel_not_found(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     # Mock JobManager returning None (job not found)
     mock_job_manager = Mock()
@@ -142,12 +142,12 @@ def test_cancel_json_serializable(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     # Mock JobManager and Job
-    from quantumvitas.daemon.jobs import Job, JobStatus
+    from qmatsuite.daemon.jobs import Job, JobStatus
     
     mock_job = Mock(spec=Job)
     mock_job.id = "01ARZ3NDEKTSV4RRFFQ69G5FAV"

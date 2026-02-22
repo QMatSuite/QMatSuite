@@ -6,7 +6,7 @@ Tests for AnalysisRefDTO and AnalysisSummaryDTO.
 
 import pytest
 
-from quantumvitas.api.types.analysis import AnalysisRefDTO, AnalysisSummaryDTO
+from qmatsuite.api.types.analysis import AnalysisRefDTO, AnalysisSummaryDTO
 
 
 def test_analysis_ref_dto_required_fields():

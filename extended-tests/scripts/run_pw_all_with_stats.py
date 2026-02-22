@@ -26,8 +26,8 @@ sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "extended-tests"))
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 from tests.core.qe_test_utils import run_test_category_workflow
 from tests.core.qe_test_utils import parse_jobconfig
 

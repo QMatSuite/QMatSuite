@@ -3,9 +3,9 @@ from pathlib import Path
 import pytest
 from pymatgen.core import Lattice, Structure
 
-from quantumvitas.io import read_structure
-from quantumvitas.io.model import QECardType
-from quantumvitas.io.structure_io import qe_input_from_structure, write_structure
+from qmatsuite.io import read_structure
+from qmatsuite.io.model import QECardType
+from qmatsuite.io.structure_io import qe_input_from_structure, write_structure
 
 
 def test_write_and_read_structure_json(tmp_path: Path):

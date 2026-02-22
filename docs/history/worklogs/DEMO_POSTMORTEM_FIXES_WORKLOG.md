@@ -43,7 +43,7 @@ Confirmed all three rendering defects:
 
 ## Phase 1: Matplotlib Renderer Fixes
 
-**File:** `src/quantumvitas/mcp/renderers/matplotlib_renderer.py`
+**File:** `src/qmatsuite/mcp/renderers/matplotlib_renderer.py`
 
 Rewrote `_plot_bands()`:
 - Energy shift: `y_data = s.y - e_fermi` when reference_energy available
@@ -57,7 +57,7 @@ Updated `_plot_dos()`:
 
 ## Phase 2: plotext Integration
 
-**New file:** `src/quantumvitas/mcp/renderers/plotext_renderer.py` (~130 lines)
+**New file:** `src/qmatsuite/mcp/renderers/plotext_renderer.py` (~130 lines)
 - `render_bundle_with_plotext()` — primary ASCII renderer
 - `_render_bands_plotext()` — specialized: E-shift, Fermi line, k-point xticks
 - `_render_generic_plotext()` — convergence, DOS, trajectory
@@ -74,7 +74,7 @@ Updated `_plot_dos()`:
 
 ## Phase 3: Occupation Defaults
 
-**File:** `src/quantumvitas/calculation/step_defaults.py`
+**File:** `src/qmatsuite/calculation/step_defaults.py`
 
 Added to SYSTEM namelist for qe_scf, qe_nscf, qe_bandspw, qe_relax, qe_md:
 ```python

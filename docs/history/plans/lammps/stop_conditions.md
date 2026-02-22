@@ -11,8 +11,8 @@ This document lists conditions under which the patch implementation should STOP 
 ### Evidence Required:
 - If fixing integration tests requires changes to core files beyond:
   - Test files (`tests/`)
-  - LAMMPS-specific files (`src/quantumvitas/engine/lammps_*.py`)
-  - Step type registry (`src/quantumvitas/workflow/registry.py`)
+  - LAMMPS-specific files (`src/qmatsuite/engine/lammps_*.py`)
+  - Step type registry (`src/qmatsuite/workflow/registry.py`)
 
 ### Current Status: ✅ NOT TRIGGERED
 
@@ -28,7 +28,7 @@ No core skeleton changes are required.
 ## Condition 2: Service API Cannot Create LAMMPS Resources
 
 ### Evidence Required:
-- If `QVService.init_calculation()` or `QVService.init_step()` cannot be used for LAMMPS
+- If `QMSService.init_calculation()` or `QMSService.init_step()` cannot be used for LAMMPS
 - If `engine_family="lammps"` is rejected by existing validators
 - If step type `"relax"` cannot be resolved to `lammps_relax` without core changes
 
@@ -36,12 +36,12 @@ No core skeleton changes are required.
 
 Evidence from codebase review:
 ```python
-# src/quantumvitas/workflow/registry.py
+# src/qmatsuite/workflow/registry.py
 # After adding lammps_relax, GEN→SPEC resolution will work:
 # "relax" → engine="lammps" → "lammps_relax"
 
-# QVService.init_step() already supports:
-step_resolved = QVService.init_step(
+# QMSService.init_step() already supports:
+step_resolved = QMSService.init_step(
     project_root=project_root,
     calculation_selector=calc_id,
     step_type="relax",  # This will resolve to lammps_relax if engine_family=lammps

@@ -6,7 +6,7 @@
  */
 
 import { CalculationAnalysisPanel } from './CalculationAnalysisPanel';
-import type { CalculationInfo, CalculationDetailResult } from '../../types/qv';
+import type { CalculationInfo, CalculationDetailResult } from '../../types/qms';
 import './CalculationAnalysisTab.css';
 
 interface CalculationAnalysisTabProps {

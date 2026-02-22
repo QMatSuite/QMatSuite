@@ -2,7 +2,7 @@
 """
 API Surface Audit Tool
 
-Enumerates all public entrypoints in quantumvitas.api and computes usage counts.
+Enumerates all public entrypoints in qmatsuite.api and computes usage counts.
 Used for API slimming progress tracking per API_CONSTITUTION.md.
 
 Usage:
@@ -126,7 +126,7 @@ def extract_service_methods(service_path: Path) -> tuple[list[str], list[str]]:
 
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
-            if node.name == 'QVService':
+            if node.name == 'QMSService':
                 for item in node.body:
                     if isinstance(item, ast.FunctionDef):
                         # Check for @staticmethod decorator
@@ -197,9 +197,9 @@ def extract_init_exports(init_path: Path) -> list[str]:
 def run_audit() -> AuditSummary:
     """Run the full API surface audit."""
     repo_root = get_repo_root()
-    api_dir = repo_root / 'src' / 'quantumvitas' / 'api'
-    daemon_dir = repo_root / 'src' / 'quantumvitas' / 'daemon'
-    cli_dir = repo_root / 'src' / 'quantumvitas' / 'cli'
+    api_dir = repo_root / 'src' / 'qmatsuite' / 'api'
+    daemon_dir = repo_root / 'src' / 'qmatsuite' / 'daemon'
+    cli_dir = repo_root / 'src' / 'qmatsuite' / 'cli'
     tests_dir = repo_root / 'tests'
 
     summary = AuditSummary()
@@ -237,7 +237,7 @@ def run_audit() -> AuditSummary:
             result = AuditResult(
                 name=method,
                 category='service_static',
-                module='api.service.QVService',
+                module='api.service.QMSService',
                 daemon_refs=count_refs(method, daemon_dir),
                 cli_refs=count_refs(method, cli_dir),
                 test_refs=count_refs(method, tests_dir),
@@ -250,7 +250,7 @@ def run_audit() -> AuditSummary:
             result = AuditResult(
                 name=method,
                 category='service_nested',
-                module='api.service.QVService',
+                module='api.service.QMSService',
                 daemon_refs=count_refs(short_name, daemon_dir),
                 cli_refs=count_refs(short_name, cli_dir),
                 test_refs=count_refs(short_name, tests_dir),

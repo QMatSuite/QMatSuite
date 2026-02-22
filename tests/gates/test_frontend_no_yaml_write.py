@@ -7,7 +7,7 @@ Per API Constitution Law H9:
 - All filesystem mutations MUST go through kernel via API calls
 
 YAML SSOT files:
-- project.qv.yml -> ProjectDoc
+- project.qms.yml -> ProjectDoc
 - calculation.yaml -> CalcDoc
 - *.step.yaml -> StepDoc
 
@@ -31,7 +31,7 @@ YAML_WRITE_PATTERNS = [
 
 # SSOT file patterns that should not be written by frontends
 SSOT_FILE_PATTERNS = [
-    r"project\.qv\.yml",
+    r"project\.qms\.yml",
     r"calculation\.yaml",
     r"\.step\.yaml",
 ]
@@ -94,7 +94,7 @@ class TestFrontendNoYamlWrite:
 
         Per Law H9, CLI should use API calls for all YAML modifications.
         """
-        cli_path = project_root / "src" / "quantumvitas" / "cli" / "main.py"
+        cli_path = project_root / "src" / "qmatsuite" / "cli" / "main.py"
         if not cli_path.exists():
             pytest.skip(f"CLI file not found: {cli_path}")
 
@@ -113,7 +113,7 @@ class TestFrontendNoYamlWrite:
 
         # Filter out _write_step_spec helper (standalone step files, allowed per H9.3)
         # _write_step_spec is only used for standalone steps or user export files
-        # These are not SSOT files (project.qv.yml, calculation.yaml, *.step.yaml in calculations)
+        # These are not SSOT files (project.qms.yml, calculation.yaml, *.step.yaml in calculations)
         cli_content = cli_path.read_text()
         cli_lines = cli_content.split("\n")
         filtered_violations = []
@@ -143,7 +143,7 @@ class TestFrontendNoYamlWrite:
                 f"Per Law H9, use API calls instead:\n"
                 f"  - svc.calculation.add_step_from_spec() for step creation\n"
                 f"  - svc.project.init_calculation() for calculation creation\n"
-                f"  - QVService.init_project() for project creation\n"
+                f"  - QMSService.init_project() for project creation\n"
             )
 
     def test_daemon_no_direct_yaml_writes(self, project_root: Path):
@@ -152,7 +152,7 @@ class TestFrontendNoYamlWrite:
 
         Per Law H9, daemon should use API calls for all YAML modifications.
         """
-        daemon_path = project_root / "src" / "quantumvitas" / "daemon" / "server.py"
+        daemon_path = project_root / "src" / "qmatsuite" / "daemon" / "server.py"
         if not daemon_path.exists():
             pytest.skip(f"Daemon file not found: {daemon_path}")
 
@@ -175,7 +175,7 @@ class TestFrontendNoYamlWrite:
         Per Law H2, utils should be pure helpers or proxy reexports.
         YAML writes belong in service methods.
         """
-        utils_path = project_root / "src" / "quantumvitas" / "api" / "utils.py"
+        utils_path = project_root / "src" / "qmatsuite" / "api" / "utils.py"
         if not utils_path.exists():
             pytest.skip(f"Utils file not found: {utils_path}")
 
@@ -208,7 +208,7 @@ class TestSSSOTWriterClasses:
 
     def test_yamldoc_classes_exist(self, project_root: Path):
         """Verify the required YamlDoc classes exist in core/yamldoc.py."""
-        yamldoc_path = project_root / "src" / "quantumvitas" / "core" / "yamldoc.py"
+        yamldoc_path = project_root / "src" / "qmatsuite" / "core" / "yamldoc.py"
         if not yamldoc_path.exists():
             pytest.skip(f"yamldoc.py not found: {yamldoc_path}")
 

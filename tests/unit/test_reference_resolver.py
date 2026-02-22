@@ -1,8 +1,8 @@
 """Unit tests for reference SCF resolver."""
 
 import pytest
-from quantumvitas.execution.reference_resolver import find_reference_scf, get_gen_type
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.execution.reference_resolver import find_reference_scf, get_gen_type
+from qmatsuite.workflow.registry import get_registry
 
 
 class MockStep:

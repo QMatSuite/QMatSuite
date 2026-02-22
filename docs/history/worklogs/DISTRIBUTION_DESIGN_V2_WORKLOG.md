@@ -9,21 +9,21 @@
 
 ### 1.1 Daemon Import Trace
 
-Traced the full import chain from `python -m quantumvitas.daemon.server`:
+Traced the full import chain from `python -m qmatsuite.daemon.server`:
 
 **Heavy dependencies loaded at daemon startup:**
 - **pymatgen** (~29 modules) — via module-level imports in:
   - `core/structure_fingerprint.py:23-24` (`from pymatgen.core import Structure, Molecule`)
   - `core/structure_canonicalize.py:11-12` (same)
   - `io/structure_io.py:16-18` (`from pymatgen.core import Element, Lattice, Structure, Molecule`)
-  - `api/utils.py:558` (`from quantumvitas.analysis.structure_viz import DisplayModeParams`)
+  - `api/utils.py:558` (`from qmatsuite.analysis.structure_viz import DisplayModeParams`)
 - **matplotlib** (~94 modules) — via `analysis/structure_viz.py:47-48,59-60` (module-level `matplotlib.use("Agg")` and `import matplotlib.pyplot`)
   - Triggered indirectly by `api/utils.py:558` and `core/structure_fingerprint.py:27`
 - **scipy** (~178 modules) — transitive via pymatgen
 - **numpy** — unavoidable, used directly and transitively
 
 **NOT loaded at startup:**
-- `ase` — NOT IMPORTED ANYWHERE in `src/quantumvitas/`. Dead dependency.
+- `ase` — NOT IMPORTED ANYWHERE in `src/qmatsuite/`. Dead dependency.
 - `beautifulsoup4` — NOT IMPORTED ANYWHERE. Dead dependency.
 - `plotext` — only in `mcp/renderers/plotext_renderer.py:15` (lazy, MCP analysis only)
 - `jinja2` — only in `engine/lammps_writer.py:9` (lazy, LAMMPS only)
@@ -51,7 +51,7 @@ Only these packages would load at startup:
 - requests + certifi (~0.7MB)
 - portalocker (~0.1MB)
 - fastmcp (~3.2MB) — for MCP server
-- quantumvitas (~17.5MB source)
+- qmatsuite (~17.5MB source)
 
 Total minimal startup: ~43MB loaded, vs current ~350MB.
 
@@ -61,8 +61,8 @@ Total minimal startup: ~43MB loaded, vs current ~350MB.
 
 ### Finding: All three Python engines are ALREADY subprocess-isolated
 
-- **Psi4**: `engine/psi4_engine.py:564` — `subprocess.run(cmd, ...)` where cmd = `[psi4_python, "-m", "quantumvitas.engines.psi4", job_chain.json]`
-- **PySCF**: `engine/pyscf_engine.py:390` — `subprocess.run(cmd, ...)` where cmd = `[sys.executable, "-m", "quantumvitas.engines.pyscf", job_chain.json]`
+- **Psi4**: `engine/psi4_engine.py:564` — `subprocess.run(cmd, ...)` where cmd = `[psi4_python, "-m", "qmatsuite.engines.psi4", job_chain.json]`
+- **PySCF**: `engine/pyscf_engine.py:390` — `subprocess.run(cmd, ...)` where cmd = `[sys.executable, "-m", "qmatsuite.engines.pyscf", job_chain.json]`
 - **GPAW**: `drivers/gpaw/handler.py:126` — `subprocess.run([sys.executable, script_name], ...)`
 
 Neither pyscf nor psi4 is ever imported into the main daemon process. The `engines/pyscf/chain_execution.py` (which does `import pyscf`) is only loaded in the runner subprocess.
@@ -99,12 +99,12 @@ Neither pyscf nor psi4 is ever imported into the main daemon process. The `engin
 | beautifulsoup4 | 0.8 MB | **DEAD — not imported** | Remove from deps |
 | plotext | 0.7 MB | Yes (MCP ASCII plots) | Already lazy |
 | PyYAML | 0.8 MB | Yes (SSOT) | No — core |
-| quantumvitas | 17.5 MB | Yes | N/A |
+| qmatsuite | 17.5 MB | Yes | N/A |
 
 ### 3.2 Dead Dependencies to Remove
 
-- `ase` (11.3 MB) — zero imports in src/quantumvitas/
-- `beautifulsoup4` (0.8 MB) — zero imports in src/quantumvitas/
+- `ase` (11.3 MB) — zero imports in src/qmatsuite/
+- `beautifulsoup4` (0.8 MB) — zero imports in src/qmatsuite/
 
 ### 3.3 PySCF Optional Extra to Remove from pyproject.toml
 
@@ -151,7 +151,7 @@ Verified exact binary names from handler/recipe source code:
 - **Total PyInstaller bundle: ~230-270 MB**
 
 ### Comparison with micromamba approach:
-- **PyInstaller**: ~250 MB (Python + all deps + quantumvitas)
+- **PyInstaller**: ~250 MB (Python + all deps + qmatsuite)
 - **Micromamba env**: ~500 MB (full Python environment)
 - **Saving**: ~250 MB
 
@@ -194,7 +194,7 @@ Applied all corrections to `CROSS_PLATFORM_DISTRIBUTION_DESIGN.md`:
 3. Python engines (PySCF, Psi4, GPAW) → micromamba-managed with `user_venv` alternative
 4. Designed Python engine subprocess isolation for distribution (§3.8):
    - Engine adapter uses registered Python executable (not `sys.executable`)
-   - PYTHONPATH injection so engine's Python can import quantumvitas
+   - PYTHONPATH injection so engine's Python can import qmatsuite
    - Dev mode compatibility: falls back to `sys.executable` (developer's venv)
    - `user_venv` source type: user can point to existing venv with engine installed
 5. Code signing strategy section added (§7)

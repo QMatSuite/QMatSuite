@@ -3,8 +3,8 @@ PR10 Gate Tests: Final API Surface Contract Enforcement
 
 These tests enforce the PR10 Definition of Done:
 - Export count ≤30
-- Zero kernel symbols in quantumvitas.api namespace
-- All exports are API-owned (from quantumvitas.api.*)
+- Zero kernel symbols in qmatsuite.api namespace
+- All exports are API-owned (from qmatsuite.api.*)
 
 Reference:
 - docs/history/plans/API_FACADE_IMPLEMENTATION_PLAN.md §PR10
@@ -23,7 +23,7 @@ def test_api_export_count_final():
     
     Per API_FACADE_CONTRACT.md §6.1 and PR10 §Final __init__.py State.
     """
-    import quantumvitas.api as api
+    import qmatsuite.api as api
     
     # Prefer __all__ if present (canonical intended export list)
     if hasattr(api, "__all__") and api.__all__:
@@ -50,7 +50,7 @@ def test_api_no_kernel_symbols():
     Per PR10 §test_no_kernel_symbols and API_FACADE_CONTRACT.md §7.
     Kernel types, exceptions, and constants must not leak through API.
     """
-    import quantumvitas.api as api
+    import qmatsuite.api as api
     
     # Denylist of known kernel-leak names
     # Based on PR10 plan and progress review findings
@@ -136,7 +136,7 @@ def test_api_no_kernel_symbols():
             obj = getattr(api, name)
             mod = getattr(obj, "__module__", "")
             # Allow API-owned symbols even if name matches forbidden list
-            if mod.startswith("quantumvitas.api"):
+            if mod.startswith("qmatsuite.api"):
                 continue  # API-owned, not a violation
             violations.append(name)
     
@@ -148,18 +148,18 @@ def test_api_no_kernel_symbols():
 
 def test_all_exports_are_api_owned():
     """
-    Every export must be from quantumvitas.api.*
+    Every export must be from qmatsuite.api.*
     
     Per PR10 §test_all_exports_are_api_owned.
-    All symbols in __all__ must come from quantumvitas.api modules,
+    All symbols in __all__ must come from qmatsuite.api modules,
     not from kernel modules (core, calculation, drivers, etc.).
     """
-    import quantumvitas.api as api
+    import qmatsuite.api as api
     
     # Whitelist of allowed non-api.* modules (builtins, typing, etc.)
     # Per contract, only explicit exceptions allowed
     ALLOWED_MODULE_PREFIXES = [
-        "quantumvitas.api",  # Required: all must be from api.*
+        "qmatsuite.api",  # Required: all must be from api.*
         "builtins",  # Built-in types (int, str, etc.)
         "typing",  # Typing constructs (Optional, Union, etc.)
     ]
@@ -186,7 +186,7 @@ def test_all_exports_are_api_owned():
         if name in ALLOWED_TYPING_REEXPORTS:
             # Verify it's actually from typing/pathlib, not kernel
             mod = getattr(obj, "__module__", "")
-            if mod.startswith("quantumvitas.") and not mod.startswith("quantumvitas.api"):
+            if mod.startswith("qmatsuite.") and not mod.startswith("qmatsuite.api"):
                 violations.append((name, mod, "kernel re-export of typing/pathlib symbol"))
             continue
         
@@ -207,11 +207,11 @@ def test_all_exports_are_api_owned():
             mod = getattr(obj_type, "__module__", "")
             
             # If it's a kernel type, that's a violation
-            if mod.startswith("quantumvitas.") and not mod.startswith("quantumvitas.api"):
+            if mod.startswith("qmatsuite.") and not mod.startswith("qmatsuite.api"):
                 violations.append((name, mod, f"constant of kernel type {obj_type.__name__}"))
     
     assert len(violations) == 0, (
-        f"Found {len(violations)} exports not from quantumvitas.api.*:\n" +
+        f"Found {len(violations)} exports not from qmatsuite.api.*:\n" +
         "\n".join(
             f"  - {name}: {reason}" + (f" (module: {mod})" if mod else "")
             for name, mod, reason in violations

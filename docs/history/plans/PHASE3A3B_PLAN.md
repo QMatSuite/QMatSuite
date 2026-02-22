@@ -5,7 +5,7 @@
 ## Phase 3A: Calc Identity Immutability + Best-Effort Recovery
 
 ### A1. Central Identity Inference Function
-- [ ] Create `src/quantumvitas/core/calc_identity.py` with:
+- [ ] Create `src/qmatsuite/core/calc_identity.py` with:
   - `infer_calculation_identity(calc_dir: Path, steps: List[CalculationStepEntry]) -> Tuple[Optional[str], Optional[str]]`
     - Infers (structure_kind, engine_family) from steps
     - Uses MACHINE step types from step.yaml if calculation.yaml steps not available
@@ -17,7 +17,7 @@
     - pyscf → molecule, else → periodic
 
 ### A2. Identity Recovery in CalculationModel.from_dict()
-- [ ] Update `src/quantumvitas/core/models.py`:
+- [ ] Update `src/qmatsuite/core/models.py`:
   - Replace current `_infer_engine_family_from_steps()` logic with call to `infer_calculation_identity()`
   - When structure_kind/engine_family missing, call inference
   - Store inferred values in CalculationModel (but don't write to YAML yet)
@@ -30,7 +30,7 @@
   - Must not crash on errors (best-effort)
 - [ ] Hook into:
   - `Calculation.from_yaml()` - call after loading, before returning
-  - `QVService` calculation loading paths (via `ensure_calculation_identity()`)
+  - `QMSService` calculation loading paths (via `ensure_calculation_identity()`)
   - Any other entry points that load calculations
 
 ### A4. Immutability Enforcement
@@ -41,7 +41,7 @@
   - Only allow setting if current values are None (first-time write)
 - [ ] Ensure all save paths go through this check:
   - `save_calculation()` in `models.py`
-  - `QVService` methods that modify calculations
+  - `QMSService` methods that modify calculations
   - CLI/daemon paths
 
 ### A5. Tests for Phase 3A
@@ -57,14 +57,14 @@
 ## Phase 3B: Workflow Materialization by engine_family
 
 ### B1. Update Materialization to Use PUBLIC Step Keys
-- [ ] Review `src/quantumvitas/workflow/generalized_steps.py`:
+- [ ] Review `src/qmatsuite/workflow/generalized_steps.py`:
   - Confirm `materialize_workflow()` works with PUBLIC step keys (lowercase strings like "scf", not GeneralizedStep enum)
   - If needed, add helper: `materialize_public_step(public_step: str, engine_family: str) -> Optional[str]`
     - Converts public step key (e.g., "scf") → GeneralizedStep enum → machine type
   - Ensure 0-1 mapping invariant (each public step maps to at most one machine type)
 
 ### B2. Update Workflow Templates
-- [ ] Verify `src/quantumvitas/workflow/templates.py`:
+- [ ] Verify `src/qmatsuite/workflow/templates.py`:
   - Templates already use PUBLIC step keys (lowercase) - confirm
   - Document that templates use PUBLIC keys, materialization converts to MACHINE
 
@@ -124,11 +124,11 @@
 
 ## Files to Modify
 
-1. `src/quantumvitas/core/calc_identity.py` (NEW)
-2. `src/quantumvitas/core/models.py` (A2, A4)
-3. `src/quantumvitas/calculation/calculation.py` (A3)
-4. `src/quantumvitas/workflow/templates.py` (B3)
-5. `src/quantumvitas/workflow/generalized_steps.py` (B1, B5)
+1. `src/qmatsuite/core/calc_identity.py` (NEW)
+2. `src/qmatsuite/core/models.py` (A2, A4)
+3. `src/qmatsuite/calculation/calculation.py` (A3)
+4. `src/qmatsuite/workflow/templates.py` (B3)
+5. `src/qmatsuite/workflow/generalized_steps.py` (B1, B5)
 6. `tests/unit/test_calc_identity.py` (NEW, A5)
 7. `tests/workflow/test_generalized_steps.py` (B6)
 8. `tests/unit/test_workflow.py` (B6)

@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 from datetime import datetime, timezone
 
-from quantumvitas.core.analysis.base import (
+from qmatsuite.core.analysis.base import (
     AnalysisObjectMeta,
     SourceFileStat,
 )

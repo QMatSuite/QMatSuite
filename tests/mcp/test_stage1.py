@@ -15,7 +15,7 @@ import pytest
 # ---------------------------------------------------------------------------
 
 def test_make_error_shape():
-    from quantumvitas.mcp.envelope import make_error
+    from qmatsuite.mcp.envelope import make_error
 
     result = make_error("test_error", "something broke")
     assert result["status"] == "error"
@@ -29,7 +29,7 @@ def test_make_error_shape():
 # ---------------------------------------------------------------------------
 
 def test_list_engines_returns_all_15():
-    from quantumvitas.mcp.tools.list_engines import list_engines
+    from qmatsuite.mcp.tools.list_engines import list_engines
 
     result = list_engines.fn()
     assert result["status"] == "success"
@@ -39,7 +39,7 @@ def test_list_engines_returns_all_15():
 
 
 def test_list_engines_entry_shape():
-    from quantumvitas.mcp.tools.list_engines import list_engines
+    from qmatsuite.mcp.tools.list_engines import list_engines
 
     result = list_engines.fn()
     engines = result["data"]["engines"]
@@ -55,7 +55,7 @@ def test_list_engines_entry_shape():
 
 
 def test_list_engines_qe_parameter_count():
-    from quantumvitas.mcp.tools.list_engines import list_engines
+    from qmatsuite.mcp.tools.list_engines import list_engines
 
     result = list_engines.fn()
     qe = next(e for e in result["data"]["engines"] if e["engine"] == "qe")
@@ -68,7 +68,7 @@ def test_list_engines_qe_parameter_count():
 # ---------------------------------------------------------------------------
 
 def test_list_workflows_qe_has_scf():
-    from quantumvitas.mcp.tools.list_workflows import list_workflows
+    from qmatsuite.mcp.tools.list_workflows import list_workflows
 
     result = list_workflows.fn(engine="qe")
     assert result["status"] == "success"
@@ -79,7 +79,7 @@ def test_list_workflows_qe_has_scf():
 
 
 def test_list_workflows_unknown_engine():
-    from quantumvitas.mcp.tools.list_workflows import list_workflows
+    from qmatsuite.mcp.tools.list_workflows import list_workflows
 
     result = list_workflows.fn(engine="nonexistent")
     assert result["status"] == "error"
@@ -88,7 +88,7 @@ def test_list_workflows_unknown_engine():
 
 
 def test_list_workflows_spec_steps_materialized():
-    from quantumvitas.mcp.tools.list_workflows import list_workflows
+    from qmatsuite.mcp.tools.list_workflows import list_workflows
 
     result = list_workflows.fn(engine="vasp")
     data = result["data"]
@@ -101,7 +101,7 @@ def test_list_workflows_spec_steps_materialized():
 # ---------------------------------------------------------------------------
 
 def test_get_presets_qe_scf_has_dimensions():
-    from quantumvitas.mcp.tools.get_presets import get_presets
+    from qmatsuite.mcp.tools.get_presets import get_presets
 
     result = get_presets.fn(engine="qe", workflow="scf")
     assert result["status"] == "success"
@@ -113,7 +113,7 @@ def test_get_presets_qe_scf_has_dimensions():
 
 
 def test_get_presets_unknown_workflow():
-    from quantumvitas.mcp.tools.get_presets import get_presets
+    from qmatsuite.mcp.tools.get_presets import get_presets
 
     result = get_presets.fn(engine="qe", workflow="nonexistent")
     assert result["status"] == "error"
@@ -121,7 +121,7 @@ def test_get_presets_unknown_workflow():
 
 
 def test_get_presets_dimension_has_options():
-    from quantumvitas.mcp.tools.get_presets import get_presets
+    from qmatsuite.mcp.tools.get_presets import get_presets
 
     # Verify that returned dimensions have option entries
     result = get_presets.fn(engine="qe", workflow="scf")
@@ -137,7 +137,7 @@ def test_get_presets_dimension_has_options():
 # ---------------------------------------------------------------------------
 
 def test_search_parameters_energy_cutoff():
-    from quantumvitas.mcp.tools.search_parameters import search_parameters
+    from qmatsuite.mcp.tools.search_parameters import search_parameters
 
     result = search_parameters.fn(query="energy cutoff")
     assert result["status"] == "success"
@@ -149,7 +149,7 @@ def test_search_parameters_energy_cutoff():
 
 
 def test_search_parameters_filter_engine():
-    from quantumvitas.mcp.tools.search_parameters import search_parameters
+    from qmatsuite.mcp.tools.search_parameters import search_parameters
 
     result = search_parameters.fn(query="energy cutoff", engine="vasp")
     assert result["status"] == "success"
@@ -158,7 +158,7 @@ def test_search_parameters_filter_engine():
 
 
 def test_search_parameters_empty_query():
-    from quantumvitas.mcp.tools.search_parameters import search_parameters
+    from qmatsuite.mcp.tools.search_parameters import search_parameters
 
     result = search_parameters.fn(query="")
     assert result["status"] == "success"
@@ -166,7 +166,7 @@ def test_search_parameters_empty_query():
 
 
 def test_search_parameters_result_shape():
-    from quantumvitas.mcp.tools.search_parameters import search_parameters
+    from qmatsuite.mcp.tools.search_parameters import search_parameters
 
     result = search_parameters.fn(query="smearing")
     data = result["data"]

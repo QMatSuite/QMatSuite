@@ -552,12 +552,12 @@ Before implementing this spec, Cursor Auto MUST locate and summarize the followi
 
 ### Fingerprint & Manifest
 
-- [ ] **Search for** `compute_step_sha` in `src/quantumvitas/calculation/hash_utils.py` and summarize:
+- [ ] **Search for** `compute_step_sha` in `src/qmatsuite/calculation/hash_utils.py` and summarize:
   - What fields are stripped (meta)?
   - Is `parameter_scan` section currently present/handled?
   - Are runtime-managed keys (prefix, outdir, pseudo_dir) excluded?
 
-- [ ] **Search for** `ManifestStepEntry` in `src/quantumvitas/calculation/manifest.py` and summarize:
+- [ ] **Search for** `ManifestStepEntry` in `src/qmatsuite/calculation/manifest.py` and summarize:
   - What fields are stored per step?
   - How is `step_sha` used for skip logic?
 
@@ -565,7 +565,7 @@ Before implementing this spec, Cursor Auto MUST locate and summarize the followi
 
 ### Runtime-Managed Key Injection
 
-- [ ] **Search for** `_inject_calculation_prefix_outdir` in `src/quantumvitas/calculation/structure_steps.py` and summarize:
+- [ ] **Search for** `_inject_calculation_prefix_outdir` in `src/qmatsuite/calculation/structure_steps.py` and summarize:
   - When/where are prefix, outdir, pseudo_dir injected?
   - Are they added to step.yaml or only to the materialized input file?
 
@@ -573,7 +573,7 @@ Before implementing this spec, Cursor Auto MUST locate and summarize the followi
 
 ### StepDoc YAML Parsing/Serialization
 
-- [ ] **Search for** `class StepDoc` in `src/quantumvitas/core/yamldoc.py` and summarize:
+- [ ] **Search for** `class StepDoc` in `src/qmatsuite/core/yamldoc.py` and summarize:
   - Current known sections (parameters, cards, species_overrides, meta, step_type)
   - Where top-level keys are validated/normalized
 
@@ -581,7 +581,7 @@ Before implementing this spec, Cursor Auto MUST locate and summarize the followi
 
 ### Job Formation Differences
 
-- [ ] **Search for** `class QERecipe`, `class ORCARecipe`, `class PySCFRecipe` in `src/quantumvitas/execution/recipes.py` and summarize:
+- [ ] **Search for** `class QERecipe`, `class ORCARecipe`, `class PySCFRecipe` in `src/qmatsuite/execution/recipes.py` and summarize:
   - How steps map to jobs for each engine
   - Where step lists are determined for a job
 
@@ -589,11 +589,11 @@ Before implementing this spec, Cursor Auto MUST locate and summarize the followi
 
 ### Snapshot/Diff Archiving
 
-- [ ] **Search for** `_create_snapshot` in `src/quantumvitas/history/run_revision.py` and summarize:
+- [ ] **Search for** `_create_snapshot` in `src/qmatsuite/history/run_revision.py` and summarize:
   - What files are currently snapshotted?
   - Is raw/ snapshotted?
 
-- [ ] **Search for** any existing snapshot-diff logic in `src/quantumvitas/` and summarize if present.
+- [ ] **Search for** any existing snapshot-diff logic in `src/qmatsuite/` and summarize if present.
 
 - [ ] **Search for** how `outdir` is currently excluded from any file operations (grep for `outdir` patterns in calculation code).
 

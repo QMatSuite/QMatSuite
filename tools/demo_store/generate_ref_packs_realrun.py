@@ -3,9 +3,9 @@
 Generate reference packs from REAL daemon-level engine runs.
 
 For every demo project, this tool:
-  1. Materializes the demo via QVService.create_demo_project()
-  2. Runs the calculation via QVService.run.run_calculation()
-  3. Probes all analysis types via QVService.analysis.get_analysis()
+  1. Materializes the demo via QMSService.create_demo_project()
+  2. Runs the calculation via QMSService.run.run_calculation()
+  3. Probes all analysis types via QMSService.analysis.get_analysis()
   4. Serializes CanonicalPrimitiveBundle JSON to ref_packs/<slug>/
 
 ALL 15 engines are available locally.  There is NO fallback.
@@ -38,7 +38,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-RESOURCES_DIR = REPO_ROOT / "src" / "quantumvitas" / "resources"
+RESOURCES_DIR = REPO_ROOT / "src" / "qmatsuite" / "resources"
 REF_PACKS_DIR = RESOURCES_DIR / "demo_projects" / "ref_packs"
 WORK_DIR = REPO_ROOT / ".tmp" / "refpack_runs"
 GENERATOR_VERSION = "3.0.0"
@@ -56,8 +56,8 @@ log = logging.getLogger("refpack_gen")
 # ---------------------------------------------------------------------------
 def _get_engine_analysis_types(engine: str) -> list[str]:
     """Derive analysis types from driver's ANALYSIS_CAPABILITIES."""
-    import quantumvitas.drivers  # noqa: F401 — ensure registration
-    from quantumvitas.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers  # noqa: F401 — ensure registration
+    from qmatsuite.core.driver_registry import DriverRegistry
 
     try:
         driver = DriverRegistry.get_driver(engine)
@@ -140,7 +140,7 @@ def generate_one_demo(
 
     Returns dict with status, types, timing, error info.
     """
-    from quantumvitas.api.service import QVService
+    from qmatsuite.api.service import QMSService
 
     result: dict[str, Any] = {
         "slug": slug,
@@ -160,7 +160,7 @@ def generate_one_demo(
 
     try:
         # Step 1: Create demo project
-        demo_result = QVService.create_demo_project(
+        demo_result = QMSService.create_demo_project(
             target_dir=work_dir,
             name=slug,
             demo_id=slug,
@@ -168,7 +168,7 @@ def generate_one_demo(
         project_root = Path(demo_result["project_root"])
 
         # Step 2: Run calculation
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         calcs = svc.calculation.list()
         if not calcs:
             result["status"] = "NO_CALCULATIONS"

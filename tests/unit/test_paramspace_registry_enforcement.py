@@ -18,15 +18,15 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.presets.spaces_registry import SPACES
-from quantumvitas.presets import (
+from qmatsuite.presets.spaces_registry import SPACES
+from qmatsuite.presets import (
     compile_magnetism,
     compile_occupations_scheme,
     detect_magnetism,
     detect_occupations_scheme,
 )
-from quantumvitas.presets.compiler import compile_precision
-from quantumvitas.presets.detector import detect_precision
+from qmatsuite.presets.compiler import compile_precision
+from qmatsuite.presets.detector import detect_precision
 
 
 # Expected dimensions (must match integration/receivers usage)
@@ -52,7 +52,7 @@ class TestRegistryCompleteness:
     
     def test_registry_values_are_paramspaces(self):
         """All SPACES values must be ParamSpace objects."""
-        from quantumvitas.presets.paramspace import ParamSpace
+        from qmatsuite.presets.paramspace import ParamSpace
         
         for dimension, space in SPACES.items():
             assert isinstance(space, ParamSpace), (
@@ -165,7 +165,7 @@ class TestNoLegacySymbols:
     
     def test_no_detect_precision_strict(self):
         """detect_precision_strict must not exist."""
-        presets_dir = Path(__file__).parent.parent.parent / "src" / "quantumvitas" / "presets"
+        presets_dir = Path(__file__).parent.parent.parent / "src" / "qmatsuite" / "presets"
         
         forbidden_patterns = [
             r"def\s+detect_precision_strict\s*\(",
@@ -187,7 +187,7 @@ class TestNoLegacySymbols:
     
     def test_no_heuristic_conv_thr_med(self):
         """No heuristic 'conv_thr missing => return MED' logic."""
-        presets_dir = Path(__file__).parent.parent.parent / "src" / "quantumvitas" / "presets"
+        presets_dir = Path(__file__).parent.parent.parent / "src" / "qmatsuite" / "presets"
         
         forbidden_patterns = [
             r"conv_thr.*is\s+None.*return.*MED",
@@ -209,7 +209,7 @@ class TestNoLegacySymbols:
     
     def test_no_precision_config_legacy(self):
         """PRECISION_CONFIGS and PrecisionConfig must not exist."""
-        presets_dir = Path(__file__).parent.parent.parent / "src" / "quantumvitas" / "presets"
+        presets_dir = Path(__file__).parent.parent.parent / "src" / "qmatsuite" / "presets"
         
         for py_file in presets_dir.glob("*.py"):
             content = py_file.read_text()

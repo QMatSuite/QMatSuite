@@ -12,9 +12,9 @@
 
 1. **QE has a mature, constitution-backed resource system; all other engines have ad-hoc solutions.** QE pseudopotentials have a 7-module infrastructure (`pseudo.py`, `pseudo_config.py`, `pseudo_materialization.py`, `pseudo_options.py`, `pseudo_runtime.py`, `pseudo_provenance.py`, `pseudo_libinfo.py`) with SHA256 pinning, a 3-source model, and UI-grade option generation. VASP and LAMMPS have basic single-file staging helpers. The remaining 12 engines have zero runtime resource management.
 
-2. **The AI agent cannot discover what pseudopotentials are available.** During the real MCP demo, the agent knew it needed a pseudopotential but had no way to query which filenames exist on disk. The `set_species_map` tool (`src/quantumvitas/mcp/tools/set_species_map.py`) validates syntax only (line 36-41: checks that `cfg` is a dict with a `pseudopot` key) — it performs no file existence check and offers no suggestions. The `create_calculation` tool emits a `context_hint` about `set_species_map` (line 109-113) but provides no actionable data.
+2. **The AI agent cannot discover what pseudopotentials are available.** During the real MCP demo, the agent knew it needed a pseudopotential but had no way to query which filenames exist on disk. The `set_species_map` tool (`src/qmatsuite/mcp/tools/set_species_map.py`) validates syntax only (line 36-41: checks that `cfg` is a dict with a `pseudopot` key) — it performs no file existence check and offers no suggestions. The `create_calculation` tool emits a `context_hint` about `set_species_map` (line 109-113) but provides no actionable data.
 
-3. **Path resolution is dev-only and non-portable.** `paths.py:get_repo_root()` (lines 22-52) walks up from `__file__` looking for `pyproject.toml` + `src/quantumvitas/`. This works in development but fails in any installed package scenario. There is no `QMATSUITE_HOME` environment variable. `.qmatsuite/` is always created at the repo root (line 64-67), not at `~/.qmatsuite/` or any user-configurable location.
+3. **Path resolution is dev-only and non-portable.** `paths.py:get_repo_root()` (lines 22-52) walks up from `__file__` looking for `pyproject.toml` + `src/qmatsuite/`. This works in development but fails in any installed package scenario. There is no `QMATSUITE_HOME` environment variable. `.qmatsuite/` is always created at the repo root (line 64-67), not at `~/.qmatsuite/` or any user-configurable location.
 
 4. **No unified resource abstraction exists.** `ResourceRefSpec` in `inputformat/core.py` (lines 49-64) declares staging_policy per engine, but there is no runtime system that implements staging across engines. QE has `ensure_qe_pseudos()`, VASP has `stage_potcar()`, LAMMPS has `stage_potentials()` — three completely independent implementations with different search paths, error handling, and conventions.
 
@@ -37,7 +37,7 @@
 
 ### 2.1 Global Resource Layout
 
-**Source:** `src/quantumvitas/core/paths.py`
+**Source:** `src/qmatsuite/core/paths.py`
 
 The `.qmatsuite/` directory is the persistent asset root. It is located at the repository root in development mode:
 
@@ -58,11 +58,11 @@ The `.qmatsuite/` directory is the persistent asset root. It is located at the r
 └── logs/             # paths.py:118-123 — home_logs_dir()
 ```
 
-**Path resolution mechanism:** `get_repo_root()` (lines 22-52) starts from `Path(__file__).parent` and walks up until it finds both `pyproject.toml` and `src/quantumvitas/`. The result is cached in module-level `_repo_root_cache` (line 19). This is the sole entry point; `get_qmatsuite_home_root()` (lines 55-67) delegates to `get_repo_root()` and appends `.qmatsuite/`.
+**Path resolution mechanism:** `get_repo_root()` (lines 22-52) starts from `Path(__file__).parent` and walks up until it finds both `pyproject.toml` and `src/qmatsuite/`. The result is cached in module-level `_repo_root_cache` (line 19). This is the sole entry point; `get_qmatsuite_home_root()` (lines 55-67) delegates to `get_repo_root()` and appends `.qmatsuite/`.
 
 **Gitignore:** `.qmatsuite/` is gitignored (it contains user-local engine binaries and pseudopotential libraries). The `resources/pseudo/` directory (committed, ~30 bundled UPF files) is the only resource directory tracked by git.
 
-**Portability gap:** No `QMATSUITE_HOME` env var exists. No `~/.qmatsuite/` fallback. The `get_repo_root()` function will fail in installed-package scenarios where `pyproject.toml` doesn't exist above the module. The `_find_quantumvitas_root()` function in `pseudo_config.py` (lines 56-67) has the same limitation — it searches for `src/quantumvitas/`, not `pyproject.toml`.
+**Portability gap:** No `QMATSUITE_HOME` env var exists. No `~/.qmatsuite/` fallback. The `get_repo_root()` function will fail in installed-package scenarios where `pyproject.toml` doesn't exist above the module. The `_find_qmatsuite_root()` function in `pseudo_config.py` (lines 56-67) has the same limitation — it searches for `src/qmatsuite/`, not `pyproject.toml`.
 
 ### 2.2 QE Pseudopotential Lifecycle
 
@@ -119,7 +119,7 @@ Each element in `calculation.yaml`'s `species_map` can have:
 2. **For each pseudo file** (lines 382-444):
    - Check `project_pseudo_dir` (project/pseudo)
    - Check `system_pseudo_dir` (resources/pseudo)
-   - Check `additional_search_dirs` (test fixtures, `QV_PSEUDO_PATH` env var)
+   - Check `additional_search_dirs` (test fixtures, `QMS_PSEUDO_PATH` env var)
    - Download if not found (unless `strict=True`)
 3. **Placeholder detection**: `__MISSING_PSEUDO__<element>` placeholder pattern (lines 21-47) distinguishes configuration errors from missing files.
 
@@ -157,7 +157,7 @@ Scan order: project → internal → library (from occurrences index).
 
 | Engine | Resource Type | Has Staging? | Staging Policy | Search Locations | Env Var | MCP Exposed? |
 |--------|-------------|-------------|----------------|-----------------|---------|-------------|
-| **QE** | Pseudopotentials (.UPF) | Yes (7 modules) | copy | project/pseudo → resources/pseudo → QV_PSEUDO_PATH → download | `QV_PSEUDO_PATH` | No |
+| **QE** | Pseudopotentials (.UPF) | Yes (7 modules) | copy | project/pseudo → resources/pseudo → QMS_PSEUDO_PATH → download | `QMS_PSEUDO_PATH` | No |
 | **VASP** | POTCARs | Yes (1 module) | copy | VASP_PP_PATH → .qmatsuite/engines/vasp/ → CWD walk | `VASP_PP_PATH` | No (list_available_potcars exists but not exposed) |
 | **LAMMPS** | Force-field files (.eam, .tersoff, etc.) | Yes (1 module) | copy | LAMMPS_POTENTIALS → .qmatsuite/engines/lammps/potentials/ → CWD walk → Homebrew | `LAMMPS_POTENTIALS` | No |
 | **ABINIT** | Pseudopotentials | Declared | reference | None implemented | None | No |
@@ -231,8 +231,8 @@ These engines bundle their basis sets internally and require no external resourc
 |--------|-------------|-----------|-------|
 | Repo root detection | Walk up from `__file__` to `pyproject.toml` | Dev-only | Fails in installed packages |
 | `.qmatsuite/` location | Always at repo root | Dev-only | No `~/.qmatsuite/` fallback |
-| User config path | Platform-specific (`~/Library/Application Support/QuantumVITAS/config.json`) | Yes | `pseudo_config.py:135-155` handles macOS/Linux/Windows |
-| `QV_PSEUDO_PATH` | Env var for QE pseudo search | Yes | `pseudo.py:344` |
+| User config path | Platform-specific (`~/Library/Application Support/QMatSuite/config.json`) | Yes | `pseudo_config.py:135-155` handles macOS/Linux/Windows |
+| `QMS_PSEUDO_PATH` | Env var for QE pseudo search | Yes | `pseudo.py:344` |
 | `VASP_PP_PATH` | Env var for VASP POTCAR search | Yes | `vasp_potcar.py:65` |
 | `LAMMPS_POTENTIALS` | Env var for LAMMPS potential search | Yes | `lammps_potential.py:27` |
 | SSSP download | GitHub releases via urllib | Yes | `pseudo_config.py:905-961`, SSL via certifi |
@@ -359,7 +359,7 @@ For per-element pseudopotentials (QE, VASP, ABINIT, Siesta, QMCPACK), the resolu
 1. project/pseudo/              (project-local copies)
 2. resources/pseudo/             (committed internal demos)
 3. .qmatsuite/libraries/pseudo/  (installed SSSP/PseudoDojo)
-4. env var (QV_PSEUDO_PATH, VASP_PP_PATH, etc.)
+4. env var (QMS_PSEUDO_PATH, VASP_PP_PATH, etc.)
 5. Download (if allowed and library known)
 ```
 
@@ -564,7 +564,7 @@ Constitution §9.4 defines:
 def get_repo_root() -> Path:
     current = Path(__file__).parent
     while current != current.parent:
-        if (current / "pyproject.toml").exists() and (current / "src" / "quantumvitas").exists():
+        if (current / "pyproject.toml").exists() and (current / "src" / "qmatsuite").exists():
             return current
         current = current.parent
     raise RuntimeError(...)
@@ -623,23 +623,23 @@ This is a P3 item — needed for packaging but not blocking current development.
    - Wire QE → `get_pseudo_options_for_elements()` (exists)
    - Wire VASP → `list_available_potcars()` (exists)
    - Wire LAMMPS → directory listing (new, ~20 lines)
-   - New file: `src/quantumvitas/mcp/tools/list_resources.py`
+   - New file: `src/qmatsuite/mcp/tools/list_resources.py`
 
 2. **Add `auto_resolve_species_map` MCP tool**
    - Wire QE → `resolve_project_pseudos()` (exists in `pseudo_config.py:1326`)
    - Wire VASP → pick default POTCAR variant per element (new, ~40 lines)
-   - New file: `src/quantumvitas/mcp/tools/resolve_species_map.py`
+   - New file: `src/qmatsuite/mcp/tools/resolve_species_map.py`
 
 3. **Add pre-run resource validation in `run_calculation`**
    - Check species_map is set for pseudo engines
    - Check pseudo files resolve to existing files
    - Return actionable error with `context_hint` on failure
-   - Modified file: `src/quantumvitas/mcp/tools/run_calculation.py`
+   - Modified file: `src/qmatsuite/mcp/tools/run_calculation.py`
 
 4. **Enhance `set_species_map` with file existence validation**
    - Add optional file existence check (warning, not error)
    - Suggest available alternatives when file not found
-   - Modified file: `src/quantumvitas/mcp/tools/set_species_map.py`
+   - Modified file: `src/qmatsuite/mcp/tools/set_species_map.py`
 
 ### Phase 2: Resource Validation (P1, ~2 days)
 

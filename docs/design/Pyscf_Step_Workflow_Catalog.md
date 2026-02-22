@@ -263,7 +263,7 @@ parameters:
 
 **Reference**:
 - PySCF SCF docs: https://pyscf.org/user/scf.html
-- Phase 3C implementation: `src/quantumvitas/engines/pyscf/runner.py`
+- Phase 3C implementation: `src/qmatsuite/engines/pyscf/runner.py`
 
 ---
 
@@ -452,7 +452,7 @@ parameters:
 **Reference**:
 - PySCF MP2 docs: https://pyscf.org/user/mp.html
 - Examples: `.tmp/pyscf-master/examples/mp/00-simple_mp2.py`
-- Phase 3C implementation: `src/quantumvitas/engines/pyscf/runner.py::run_mp2`
+- Phase 3C implementation: `src/qmatsuite/engines/pyscf/runner.py::run_mp2`
 
 ---
 
@@ -750,7 +750,7 @@ All other workflows (CCSD, CCSD(T), EOM-CCSD, NMR, etc.) are deferred to v1+.
 
 ### 5.2 Workflow-Level Validation (Physics Rules)
 
-**Location**: Workflow validation happens in the workflow service/materialization layer (`src/quantumvitas/workflow/templates.py` or workflow service).
+**Location**: Workflow validation happens in the workflow service/materialization layer (`src/qmatsuite/workflow/templates.py` or workflow service).
 
 **Category 1 Workflows (SCF → Property)**:
 - All property steps require converged SCF checkpoint
@@ -940,9 +940,9 @@ When users manually assemble steps (not using predefined workflow templates), wo
 
 - **Phase 3C Implementation Plan**: `docs/design/PHASE3C_PLAN.md`
 - **SCHEMA.md**: `docs/SCHEMA.md` (structure and step.yaml format)
-- **Workflow Materialization**: `src/quantumvitas/workflow/generalized_steps.py`
-- **Step Type Registry**: `src/quantumvitas/workflow/registry.py`
-- **PySCF Runner**: `src/quantumvitas/engines/pyscf/runner.py`
+- **Workflow Materialization**: `src/qmatsuite/workflow/generalized_steps.py`
+- **Step Type Registry**: `src/qmatsuite/workflow/registry.py`
+- **PySCF Runner**: `src/qmatsuite/engines/pyscf/runner.py`
 
 ---
 

@@ -18,11 +18,11 @@ Implemented robust per-calculation locking and incremental run functionality (ma
 ## Files Created
 
 ### Core Implementation
-- `src/quantumvitas/core/locking.py` - OS-level file locking (run.lock, edit.lock)
-- `src/quantumvitas/calculation/hash_utils.py` - Hash computation (pseudo_set_sha, structure_sha, step_sha)
-- `src/quantumvitas/calculation/step_done.py` - Centralized step completion detection
-- `src/quantumvitas/calculation/manifest.py` - Manifest schema and operations
-- `src/quantumvitas/calculation/manifest_reconcile.py` - Manifest reconciliation logic
+- `src/qmatsuite/core/locking.py` - OS-level file locking (run.lock, edit.lock)
+- `src/qmatsuite/calculation/hash_utils.py` - Hash computation (pseudo_set_sha, structure_sha, step_sha)
+- `src/qmatsuite/calculation/step_done.py` - Centralized step completion detection
+- `src/qmatsuite/calculation/manifest.py` - Manifest schema and operations
+- `src/qmatsuite/calculation/manifest_reconcile.py` - Manifest reconciliation logic
 
 ### Tests
 - `tests/integration/test_incremental_run.py` - Comprehensive integration tests
@@ -30,17 +30,17 @@ Implemented robust per-calculation locking and incremental run functionality (ma
 ## Files Modified
 
 ### Core
-- `src/quantumvitas/core/settings.py` - Added `max_concurrent_calcs` (default: 2)
-- `src/quantumvitas/core/yaml_io.py` - Added edit lock around YAML writes
-- `src/quantumvitas/calculation/runner.py` - Added incremental run logic, manifest updates
-- `src/quantumvitas/api.py` - Added run_mode parameter, run lock, preflight, single-step run method
-- `src/quantumvitas/daemon/server.py` - Added run_mode support, run_single_step handler, configurable max_workers
+- `src/qmatsuite/core/settings.py` - Added `max_concurrent_calcs` (default: 2)
+- `src/qmatsuite/core/yaml_io.py` - Added edit lock around YAML writes
+- `src/qmatsuite/calculation/runner.py` - Added incremental run logic, manifest updates
+- `src/qmatsuite/api.py` - Added run_mode parameter, run lock, preflight, single-step run method
+- `src/qmatsuite/daemon/server.py` - Added run_mode support, run_single_step handler, configurable max_workers
 
 ### GUI
 - `gui/src/App.tsx` - Added run_mode parameter, error handling for locked calculations
 - `gui/src/components/panels/CalculationListPanel.tsx` - Added dropdown for run mode selection
 - `gui/src/components/panels/CalculationOverviewTab.tsx` - Updated run calculation handler
-- `gui/src/types/qv.ts` - Added run_mode to run_calculation payload, added run_single_step RPC
+- `gui/src/types/qms.ts` - Added run_mode to run_calculation payload, added run_single_step RPC
 
 ## Key Behaviors Verified
 
@@ -83,7 +83,7 @@ Implemented robust per-calculation locking and incremental run functionality (ma
 - **No other fields**: No artifact lists, output hashes, or paths
 
 ### 6. StepDonePolicy
-- Centralized in `src/quantumvitas/calculation/step_done.py`
+- Centralized in `src/qmatsuite/calculation/step_done.py`
 - Used by both runner advancement and incremental skip checks
 - Default: Primary .out exists and contains "JOB DONE" for QE steps
 - Supports Wannier90 steps (checks .wout file existence)

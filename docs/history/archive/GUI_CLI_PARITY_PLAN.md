@@ -8,65 +8,65 @@
 
 | CLI Command | GUI Status | Priority | Implementation Notes |
 |-------------|------------|----------|---------------------|
-| `qv init project` | ✅ Done | - | CreateProjectDialog |
-| `qv init project --template` | ✅ Done | - | Template selector in dialog |
+| `qms init project` | ✅ Done | - | CreateProjectDialog |
+| `qms init project --template` | ✅ Done | - | Template selector in dialog |
 | Project load/browse | ✅ Done | - | Sidebar + file dialog |
-| `qv delete project` | ❌ Missing | P2 | Context menu → confirm → trash |
-| `qv configure project --name` | ❌ Missing | P3 | Settings in project summary |
+| `qms delete project` | ❌ Missing | P2 | Context menu → confirm → trash |
+| `qms configure project --name` | ❌ Missing | P3 | Settings in project summary |
 
 ### 1.2 Structure Operations
 
 | CLI Command | GUI Status | Priority | Implementation Notes |
 |-------------|------------|----------|---------------------|
-| `qv import-structure` | ✅ Done | - | ImportStructureDialog |
-| `qv list` (structures) | ✅ Done | - | StructureListPanel |
-| `qv configure structure --name` | ❌ Missing | P1 | Rename context menu |
-| `qv delete structure` | ❌ Missing | P1 | Delete with cascade warning |
+| `qms import-structure` | ✅ Done | - | ImportStructureDialog |
+| `qms list` (structures) | ✅ Done | - | StructureListPanel |
+| `qms configure structure --name` | ❌ Missing | P1 | Rename context menu |
+| `qms delete structure` | ❌ Missing | P1 | Delete with cascade warning |
 | Structure 3D viewer | ✅ Done | - | StructureViewer3D |
 
 ### 1.3 Calculation Operations
 
 | CLI Command | GUI Status | Priority | Implementation Notes |
 |-------------|------------|----------|---------------------|
-| `qv init calculation` | ✅ Done | - | CreateWorkflowDialog |
-| `qv init calculation --template` | ✅ Done | - | Template selector |
-| `qv list` (calculations) | ✅ Done | - | CalculationListPanel |
-| `qv run calculation` | ✅ Done | - | CalculationDetailPanel → Run |
-| `qv configure calculation --name` | ❌ Missing | P1 | Rename context menu |
-| `qv configure calculation --structure` | ❌ Missing | P2 | Structure dropdown |
-| `qv configure calculation --reorder` | ❌ Missing | P2 | Step drag-and-drop |
-| `qv delete calculation` | ❌ Missing | P1 | Delete with cascade warning |
+| `qms init calculation` | ✅ Done | - | CreateWorkflowDialog |
+| `qms init calculation --template` | ✅ Done | - | Template selector |
+| `qms list` (calculations) | ✅ Done | - | CalculationListPanel |
+| `qms run calculation` | ✅ Done | - | CalculationDetailPanel → Run |
+| `qms configure calculation --name` | ❌ Missing | P1 | Rename context menu |
+| `qms configure calculation --structure` | ❌ Missing | P2 | Structure dropdown |
+| `qms configure calculation --reorder` | ❌ Missing | P2 | Step drag-and-drop |
+| `qms delete calculation` | ❌ Missing | P1 | Delete with cascade warning |
 | Duplicate calculation | ❌ Missing | P3 | Clone with new name |
 
 ### 1.4 Step Operations
 
 | CLI Command | GUI Status | Priority | Implementation Notes |
 |-------------|------------|----------|---------------------|
-| `qv init step` | ❌ Missing | P1 | AddStepDialog |
-| `qv run step` | ❌ Missing | P1 | StepDetailPanel → Run |
+| `qms init step` | ❌ Missing | P1 | AddStepDialog |
+| `qms run step` | ❌ Missing | P1 | StepDetailPanel → Run |
 | Step detail view | ❌ Missing | P1 | StepDetailPanel |
-| `qv configure step` (params) | ❌ Missing | P2 | Parameter form |
-| `qv delete step` | ❌ Missing | P2 | Delete with calculation update |
+| `qms configure step` (params) | ❌ Missing | P2 | Parameter form |
+| `qms delete step` | ❌ Missing | P2 | Delete with calculation update |
 
 ### 1.5 Analysis Operations
 
 | CLI Command | GUI Status | Priority | Implementation Notes |
 |-------------|------------|----------|---------------------|
-| `qv analyze scf` | ✅ Done | - | AnalysisPanel SCF chart |
-| `qv analyze dos` | ✅ Done | - | AnalysisPanel DOS chart |
-| `qv analyze band` | ✅ Done | - | AnalysisPanel bands chart |
-| `qv analyze structure` | ✅ Done | - | 3D viewer already exists |
+| `qms analyze scf` | ✅ Done | - | AnalysisPanel SCF chart |
+| `qms analyze dos` | ✅ Done | - | AnalysisPanel DOS chart |
+| `qms analyze band` | ✅ Done | - | AnalysisPanel bands chart |
+| `qms analyze structure` | ✅ Done | - | 3D viewer already exists |
 | Link analysis to jobs | ❌ Missing | P2 | "View in Analysis" from job |
 
 ### 1.6 Environment/Settings
 
 | CLI Command | GUI Status | Priority | Implementation Notes |
 |-------------|------------|----------|---------------------|
-| `qv detect-qe` | ❌ Missing | P1 | SettingsPanel |
+| `qms detect-qe` | ❌ Missing | P1 | SettingsPanel |
 | QE path display | ❌ Missing | P1 | SettingsPanel |
 | Python/daemon info | ❌ Missing | P1 | SettingsPanel |
 | Default project root | ❌ Missing | P3 | User preferences |
-| `qv params` | ❌ Missing | P3 | Parameter reference panel |
+| `qms params` | ❌ Missing | P3 | Parameter reference panel |
 
 ### 1.7 Job Management
 
@@ -131,7 +131,7 @@ These features are essential for basic usability:
 
 1. Delete project
 2. Recent projects list
-3. Parameter reference (`qv params`)
+3. Parameter reference (`qms params`)
 4. Step templates browser
 5. Advanced parameter editing
 6. Import calculation from QE input files
@@ -150,7 +150,7 @@ detect_qe: {
 };
 get_env_info: {
   payload: Record<string, never>;
-  result: { python_version: string; qv_version: string; qe_home: string | null };
+  result: { python_version: string; qms_version: string; qe_home: string | null };
 };
 
 // Structure management
@@ -217,7 +217,7 @@ components/
 
 ### Phase 1: Settings & QE Detection (Day 1)
 
-1. Add `detect_qe` and `get_env_info` to QVService
+1. Add `detect_qe` and `get_env_info` to QMSService
 2. Add daemon handlers
 3. Create SettingsPanel component
 4. Add "Settings" view to sidebar
@@ -225,7 +225,7 @@ components/
 
 ### Phase 2: Structure CRUD (Day 1-2)
 
-1. Add `rename_structure` and `delete_structure` to QVService
+1. Add `rename_structure` and `delete_structure` to QMSService
 2. Add daemon handlers
 3. Create RenameDialog and DeleteConfirmDialog
 4. Add context menu to StructureListPanel
@@ -233,7 +233,7 @@ components/
 
 ### Phase 3: Calculation CRUD (Day 2)
 
-1. Add `rename_calculation` and `delete_calculation` to QVService
+1. Add `rename_calculation` and `delete_calculation` to QMSService
 2. Add daemon handlers
 3. Add context menu to CalculationListPanel
 4. Wire up dialogs
@@ -258,7 +258,7 @@ components/
 
 A user should be able to:
 
-1. ✅ Open QV GUI without any CLI knowledge
+1. ✅ Open QMS GUI without any CLI knowledge
 2. ✅ Understand if QE is properly configured (new)
 3. ✅ Create a new project
 4. ✅ Import a structure file

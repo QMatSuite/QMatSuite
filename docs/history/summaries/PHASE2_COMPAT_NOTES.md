@@ -24,7 +24,7 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 **Rationale**: Existing code expects `spec.id` to return the legacy step type name. This allows the registry to work with both old and new code paths.
 
 **Files Modified**:
-- `src/quantumvitas/workflow/registry.py`: Added `machine_type` and `public_type` to `StepTypeSpec`
+- `src/qmatsuite/workflow/registry.py`: Added `machine_type` and `public_type` to `StepTypeSpec`
 
 ### 2. StepTypeRegistry Lookup Compatibility
 
@@ -33,7 +33,7 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 **Rationale**: Allows code to look up steps by either name, ensuring backward compatibility while supporting new engine-prefixed names.
 
 **Files Modified**:
-- `src/quantumvitas/workflow/registry.py`: Enhanced `get()` method to search both `_public_to_spec` and `_machine_to_spec` maps
+- `src/qmatsuite/workflow/registry.py`: Enhanced `get()` method to search both `_public_to_spec` and `_machine_to_spec` maps
 
 ### 3. Registry Listing Methods Return Public Types
 
@@ -42,7 +42,7 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 **Rationale**: Existing tests and APIs expect legacy step type names. New `_machine` variants are available for internal use if needed.
 
 **Files Modified**:
-- `src/quantumvitas/workflow/registry.py`: Modified listing methods to return `public_type`s
+- `src/qmatsuite/workflow/registry.py`: Modified listing methods to return `public_type`s
 
 ### 4. step.yaml Stores Machine Types, But Reading Returns Public Types
 
@@ -54,7 +54,7 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 - Conversion happens transparently at the read boundary
 
 **Files Modified**:
-- `src/quantumvitas/core/yamldoc.py`: Added `get()` override in `StepDoc` to convert machine types to public types
+- `src/qmatsuite/core/yamldoc.py`: Added `get()` override in `StepDoc` to convert machine types to public types
 
 ### 5. calculation.yaml Stores Public Types
 
@@ -63,7 +63,7 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 **Rationale**: `calculation.yaml` is user-facing metadata, so it should use human-readable public types. Machine types are only needed for execution (`step.yaml`).
 
 **Files Modified**:
-- `src/quantumvitas/core/models.py`: `CalculationStepEntry.from_dict()` normalizes machine types to public types when loading
+- `src/qmatsuite/core/models.py`: `CalculationStepEntry.from_dict()` normalizes machine types to public types when loading
 
 ### 6. Workflow Templates Use Public Types
 
@@ -72,7 +72,7 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 **Rationale**: Workflows are user-facing and should use generalized step names. Materialization converts to machine types during instantiation.
 
 **Files Modified**:
-- `src/quantumvitas/workflow/templates.py`: Updated `WorkflowTemplate.step_sequence` to use lowercase public types
+- `src/qmatsuite/workflow/templates.py`: Updated `WorkflowTemplate.step_sequence` to use lowercase public types
 
 ### 7. Wannier90 Engine ID Compatibility
 
@@ -81,7 +81,7 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 **Rationale**: Existing tests expect `engine="qe"` for all Wannier90 steps. This is a legacy compatibility decision that may be revisited in the future.
 
 **Files Modified**:
-- `src/quantumvitas/workflow/registry.py`: Set `engine="qe"` for `w90_preproc` and `w90_run` (with comment noting legacy compatibility)
+- `src/qmatsuite/workflow/registry.py`: Set `engine="qe"` for `w90_preproc` and `w90_run` (with comment noting legacy compatibility)
 
 **Note**: This contradicts the Phase 2 goal of having `engine_id="w90"` for Wannier90 steps. The tests were prioritized to maintain backward compatibility. This can be revisited if tests are updated.
 
@@ -92,7 +92,7 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 **Rationale**: Existing code accesses `entry.step_type` and expects the legacy public type name.
 
 **Files Modified**:
-- `src/quantumvitas/core/models.py`: Added `step_type` property to `CalculationStepEntry`
+- `src/qmatsuite/core/models.py`: Added `step_type` property to `CalculationStepEntry`
 
 ### 9. structure_kind and engine_family CLI Support
 
@@ -105,8 +105,8 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 **Immutability**: `structure_kind` and `engine_family` are set only during calculation creation and cannot be modified afterward. There is no configure command that modifies these fields, so immutability is enforced by design (no code path exists to change them).
 
 **Files Modified**:
-- `src/quantumvitas/cli/main.py`: Added `--structure-kind` and `--engine-family` options to `init_calculation_command`
-- `src/quantumvitas/core/templates.py`: Added defaults for structure_kind/engine_family in template copying (if missing from template)
+- `src/qmatsuite/cli/main.py`: Added `--structure-kind` and `--engine-family` options to `init_calculation_command`
+- `src/qmatsuite/core/templates.py`: Added defaults for structure_kind/engine_family in template copying (if missing from template)
 - `tests/cli/test_calculation_structure_kind_engine_family.py`: NEW - Test suite for CLI options
 
 ## Schema Migration / Recovery Logic
@@ -118,7 +118,7 @@ Phase 2 introduced engine-prefixed step types (machine types) while maintaining 
 - If `engine_family` is missing, attempt to infer from step types (best-effort recovery)
 
 **Files Modified**:
-- `src/quantumvitas/core/models.py`: `CalculationModel.from_dict()` includes backward compatibility logic
+- `src/qmatsuite/core/models.py`: `CalculationModel.from_dict()` includes backward compatibility logic
 
 ## Aliases / Properties Added
 
@@ -162,9 +162,9 @@ After Phase 2 implementation, several tests failed due to step_type normalizatio
 2. **`StructureStepSpec.from_dict()`**: Normalizes step_type to public format when loading from step.yaml
 
 **Files Modified**:
-- `src/quantumvitas/workflow/registry.py`: Added `normalize_step_type_to_public()` function
-- `src/quantumvitas/calculation/hash_utils.py`: Normalize step_type in `compute_step_sha()`
-- `src/quantumvitas/calculation/structure_steps.py`: Normalize step_type in `StructureStepSpec.from_dict()`
+- `src/qmatsuite/workflow/registry.py`: Added `normalize_step_type_to_public()` function
+- `src/qmatsuite/calculation/hash_utils.py`: Normalize step_type in `compute_step_sha()`
+- `src/qmatsuite/calculation/structure_steps.py`: Normalize step_type in `StructureStepSpec.from_dict()`
 
 **Rationale**: 
 - Hash computation must be stable across Phase 2 transition (machine types vs public types)
@@ -220,7 +220,7 @@ After Phase 2 implementation, several tests failed due to step_type normalizatio
 
 ### Helper Functions
 
-- `normalize_step_type_to_public(step_type: str) -> str`: Converts machine types to public types. Located in `src/quantumvitas/workflow/registry.py`. Should be used at all I/O boundaries where step_type is read from step.yaml.
+- `normalize_step_type_to_public(step_type: str) -> str`: Converts machine types to public types. Located in `src/qmatsuite/workflow/registry.py`. Should be used at all I/O boundaries where step_type is read from step.yaml.
 
 ### Enforcement
 
@@ -247,8 +247,8 @@ Normalization is **mandatory** at all boundaries where step_type crosses between
 4. Infer `structure_kind` from `engine_family` (pyscf → molecule, else → periodic)
 
 **Files Modified**:
-- `src/quantumvitas/core/models.py`: Added immutability enforcement in `save_calculation()`
-- `src/quantumvitas/core/calc_identity.py`: NEW - Identity inference and recovery functions
+- `src/qmatsuite/core/models.py`: Added immutability enforcement in `save_calculation()`
+- `src/qmatsuite/core/calc_identity.py`: NEW - Identity inference and recovery functions
 
 ### Workflow Materialization by Engine Family (Phase 3B)
 
@@ -261,8 +261,8 @@ Normalization is **mandatory** at all boundaries where step_type crosses between
 - Unsupported families: Materialization returns `None` for unsupported steps, `materialize_workflow()` raises `ValueError`
 
 **Files Modified**:
-- `src/quantumvitas/workflow/generalized_steps.py`: Enhanced `materialize_public_step_key()` and `materialize_workflow()` to use `engine_family`
-- `src/quantumvitas/workflow/templates.py`: `instantiate_workflow()` now uses `engine_family` from `calculation.yaml` for materialization
+- `src/qmatsuite/workflow/generalized_steps.py`: Enhanced `materialize_public_step_key()` and `materialize_workflow()` to use `engine_family`
+- `src/qmatsuite/workflow/templates.py`: `instantiate_workflow()` now uses `engine_family` from `calculation.yaml` for materialization
 
 **Tests Added**:
 - `tests/unit/test_calc_identity.py`: Phase 3A tests (identity inference, immutability)

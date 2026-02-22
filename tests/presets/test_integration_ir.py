@@ -8,11 +8,11 @@ import pytest
 import yaml
 from pathlib import Path
 
-from quantumvitas.presets.integration import (
+from qmatsuite.presets.integration import (
     apply_presets_to_step,
     detect_presets_from_calculation_typed,
 )
-from quantumvitas.presets.dimensions import (
+from qmatsuite.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
     ConvergenceOption,
@@ -121,7 +121,7 @@ class TestRoundTripBehavior:
         # Detect presets from step (use typed version for enum comparison)
         # Note: detect_presets_from_calculation_typed requires proper calculation structure
         # For this test, we'll use detect_dimension directly on the step YAML
-        from quantumvitas.presets.spaces_registry import detect_dimension
+        from qmatsuite.presets.spaces_registry import detect_dimension
         
         step_content = yaml.safe_load(step_path.read_text())
         step_yaml = step_content.get("parameters", {})
@@ -154,7 +154,7 @@ class TestRoundTripBehavior:
         step_path.write_text(yaml.safe_dump(initial_content))
         
         # Detect presets (use detect_dimension directly)
-        from quantumvitas.presets.spaces_registry import detect_dimension
+        from qmatsuite.presets.spaces_registry import detect_dimension
         
         step_content = yaml.safe_load(step_path.read_text())
         step_yaml = step_content.get("parameters", {})
@@ -199,7 +199,7 @@ class TestBackwardCompatibility:
         step_path.write_text(yaml.safe_dump(old_content))
         
         # Detection should still work (use detect_dimension directly)
-        from quantumvitas.presets.spaces_registry import detect_dimension
+        from qmatsuite.presets.spaces_registry import detect_dimension
         
         step_content = yaml.safe_load(step_path.read_text())
         step_yaml = step_content.get("parameters", {})

@@ -50,7 +50,7 @@ asset_requirements:
   pseudopotentials:
   - file: Si.pbe-n-rrkjus_psl.1.0.0.UPF
     element: Si
-    source: src/quantumvitas/resources/pseudo
+    source: src/qmatsuite/resources/pseudo
 attribution:
   source: Constructed for QMatSuite, inspired by Yambo tutorials
   license: MIT (QMatSuite)

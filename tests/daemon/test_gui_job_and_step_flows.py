@@ -25,13 +25,13 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-from quantumvitas.api import QVService
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
-from quantumvitas.daemon.jobs import JobManager, JobStatus
-from quantumvitas.core.resolution import build_resource_index, require_calculation, require_step
+from qmatsuite.api import QMSService
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
+from qmatsuite.daemon.jobs import JobManager, JobStatus
+from qmatsuite.core.resolution import build_resource_index, require_calculation, require_step
 
 
-def send_request(daemon: QVDaemon, request_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def send_request(daemon: QMSDaemon, request_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Send a request to the daemon and return the response data."""
     response = daemon.handle_request(RPCRequest(
         id="test",
@@ -52,14 +52,14 @@ def temp_project(tmp_path: Path) -> Path:
     project_dir.mkdir()
     
     # Initialize project
-    QVService.init_project(project_dir, name="test_gui_flows")
+    QMSService.init_project(project_dir, name="test_gui_flows")
     
     # Import a structure (using test data if available)
     test_data = Path(__file__).parent.parent / "data" / "calculation_bands"
     if test_data.exists():
         scf_in = test_data / "si.0_scf.in"
         if scf_in.exists():
-            structure_resolved = QVService(project_dir).structure.import_file(
+            structure_resolved = QMSService(project_dir).structure.import_file(
                 source=scf_in,
                 name="Si",
             )
@@ -72,7 +72,7 @@ def temp_project(tmp_path: Path) -> Path:
         pytest.skip("Test data not available")
     
     # Create a calculation with one SCF step
-    calculation_result = QVService(project_dir).project.init_calculation(
+    calculation_result = QMSService(project_dir).project.init_calculation(
         name="test_calculation",
         structure_selector=structure_ulid,
         engine_family="qe",
@@ -80,7 +80,7 @@ def temp_project(tmp_path: Path) -> Path:
     calculation_id = calculation_result.meta.ulid
     
     # Use domain accessor API for step creation
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
     
     # Add a simple SCF step
     step_result = svc.calculation.add_step(
@@ -92,15 +92,15 @@ def temp_project(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def daemon() -> QVDaemon:
+def daemon() -> QMSDaemon:
     """Create a daemon instance for testing."""
-    return QVDaemon()
+    return QMSDaemon()
 
 
 class TestJobSubmissionAndListing:
     """Test job submission and listing (GUI path)."""
     
-    def test_submit_job_and_list_jobs(self, temp_project: Path, daemon: QVDaemon):
+    def test_submit_job_and_list_jobs(self, temp_project: Path, daemon: QMSDaemon):
         """
         Test that submitting a calculation job and listing jobs works.
         
@@ -153,7 +153,7 @@ class TestJobSubmissionAndListing:
         assert job["job_type"] == "run_calculation"
         assert job["target_name"] == calculation_slug
     
-    def test_job_list_path_normalization(self, temp_project: Path, daemon: QVDaemon):
+    def test_job_list_path_normalization(self, temp_project: Path, daemon: QMSDaemon):
         """
         Test that job listing works with different path formats.
         
@@ -198,7 +198,7 @@ class TestJobSubmissionAndListing:
 class TestStepDetailRetrieval:
     """Test step detail retrieval (GUI path)."""
     
-    def test_get_step_detail_with_ulid(self, temp_project: Path, daemon: QVDaemon):
+    def test_get_step_detail_with_ulid(self, temp_project: Path, daemon: QMSDaemon):
         """
         Test that step detail can be retrieved using step ULID.
         
@@ -216,7 +216,7 @@ class TestStepDetailRetrieval:
         
         # Get step ULID from calculation
         calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.models import load_calculation
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
@@ -239,7 +239,7 @@ class TestStepDetailRetrieval:
         assert "parameters" in detail_response
         assert "cards" in detail_response
     
-    def test_get_step_detail_requires_ulid_from_calculation_yaml(self, temp_project: Path, daemon: QVDaemon):
+    def test_get_step_detail_requires_ulid_from_calculation_yaml(self, temp_project: Path, daemon: QMSDaemon):
         """
         Test that get_step_detail requires step_selector to be a ULID that exists in calculation.yaml.
         
@@ -254,7 +254,7 @@ class TestStepDetailRetrieval:
         
         # Get step via registry to find its slug
         calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.models import load_calculation
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         step_entry = wf_model.steps[0]
         step_id_ulid = step_entry.step_ulid
@@ -287,7 +287,7 @@ class TestDAGInvariants:
     
     def test_calculation_has_structure_ulid_ulid(self, temp_project: Path):
         """Verify calculation.yaml has structure_ulid (ULID), not structure selector."""
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.models import load_calculation
         index = build_resource_index(temp_project)
         calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
         calculation = calculations[0]
@@ -305,14 +305,14 @@ class TestDAGInvariants:
     
     def test_step_yaml_no_structure_ulid(self, temp_project: Path):
         """Verify step YAML does NOT contain structure_ulid or parent_calculation_id."""
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from qmatsuite.calculation.structure_steps import StructureStepSpec
         index = build_resource_index(temp_project)
         calculations = [meta for meta in index.by_id.values() if meta.kind == "calculation"]
         assert len(calculations) > 0
         calculation = calculations[0]
         calculation_resolved = require_calculation(temp_project, calculation.slug, index=index)
         
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.models import load_calculation
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         step_entry = wf_model.steps[0]
         step_id_ulid = step_entry.step_ulid
@@ -336,7 +336,7 @@ class TestDAGInvariants:
 class TestStepCreationRaceCondition:
     """Test race condition handling when step is created and immediately accessed."""
     
-    def test_immediate_get_step_detail_after_add_step(self, temp_project: Path, daemon: QVDaemon):
+    def test_immediate_get_step_detail_after_add_step(self, temp_project: Path, daemon: QMSDaemon):
         """
         Test that get_step_detail succeeds immediately after add_step_to_calculation.
         
@@ -407,7 +407,7 @@ class TestStepCreationRaceCondition:
         
         # CRITICAL: Verify the step YAML file was actually created on disk
         # This ensures add_step_to_calculation creates the file, not just the calculation entry
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.models import load_calculation
         calculation_resolved = require_calculation(temp_project, calculation_slug, index=build_resource_index(temp_project))
         wf_model = load_calculation(calculation_resolved.absolute_path / "calculation.yaml", temp_project)
         
@@ -444,7 +444,7 @@ class TestStepCreationRaceCondition:
 class TestStepDeletion:
     """Test step deletion via daemon RPC."""
     
-    def test_delete_step_via_daemon_removes_from_calculation_yaml(self, temp_project: Path, daemon: QVDaemon):
+    def test_delete_step_via_daemon_removes_from_calculation_yaml(self, temp_project: Path, daemon: QMSDaemon):
         """Test that delete_step removes the step entry from calculation.yaml."""
         # Get calculation and step info
         index = build_resource_index(temp_project)
@@ -455,7 +455,7 @@ class TestStepDeletion:
         
         # Get step ULID from calculation
         calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.models import load_calculation
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
@@ -479,7 +479,7 @@ class TestStepDeletion:
         assert not any(s.step_ulid == step_id_ulid for s in wf_model_after.steps), \
             f"Step {step_id_ulid} should be removed from calculation.yaml"
     
-    def test_delete_step_via_daemon_moves_step_file_to_trash(self, temp_project: Path, daemon: QVDaemon):
+    def test_delete_step_via_daemon_moves_step_file_to_trash(self, temp_project: Path, daemon: QMSDaemon):
         """Test that delete_step moves the step file to the trash directory."""
         # Get calculation and step info
         index = build_resource_index(temp_project)
@@ -490,7 +490,7 @@ class TestStepDeletion:
         
         # Get step ULID and file path
         calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.models import load_calculation
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
@@ -529,7 +529,7 @@ class TestStepDeletion:
         assert trash_file.name.startswith(original_step_path.name), \
             f"Trash file {trash_file.name} should start with original name {original_step_path.name}"
     
-    def test_delete_step_via_daemon_allows_missing_step_file(self, temp_project: Path, daemon: QVDaemon):
+    def test_delete_step_via_daemon_allows_missing_step_file(self, temp_project: Path, daemon: QMSDaemon):
         """Test that delete_step handles ghost steps (entry in calculation.yaml but no file) gracefully."""
         # Get calculation and step info
         index = build_resource_index(temp_project)
@@ -540,7 +540,7 @@ class TestStepDeletion:
         
         # Get step ULID from calculation
         calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.models import load_calculation
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) > 0
         step_entry = wf_model.steps[0]
@@ -570,7 +570,7 @@ class TestStepDeletion:
         assert not any(s.step_ulid == step_id_ulid for s in wf_model_after.steps), \
             f"Step {step_id_ulid} should be removed from calculation.yaml even if file was missing"
     
-    def test_delete_step_via_daemon_invalid_ulid_raises_resource_not_found(self, temp_project: Path, daemon: QVDaemon):
+    def test_delete_step_via_daemon_invalid_ulid_raises_resource_not_found(self, temp_project: Path, daemon: QMSDaemon):
         """Test that delete_step with invalid ULID raises resource_not_found error."""
         # Get calculation
         index = build_resource_index(temp_project)
@@ -609,7 +609,7 @@ class TestStepDeletion:
 class TestCalculationFailureHandling:
     """Test that multi-step calculations stop after a step failure."""
     
-    def test_calculation_stops_after_step_failure(self, temp_project: Path, daemon: QVDaemon, monkeypatch):
+    def test_calculation_stops_after_step_failure(self, temp_project: Path, daemon: QMSDaemon, monkeypatch):
         """
         Test that when a multi-step calculation runs and a middle step fails,
         later dependent steps are not executed and are marked as SKIPPED.
@@ -645,12 +645,12 @@ class TestCalculationFailureHandling:
         
         # Verify calculation has 3 steps now
         calculation_resolved = require_calculation(temp_project, calculation_slug, index=index)
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.models import load_calculation
         wf_model = load_calculation(calculation_resolved.absolute_path, temp_project)
         assert len(wf_model.steps) >= 3, "Calculation should have at least 3 steps"
         
         # Configure calculation-level species_map (required for project runs)
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         svc.calculation.configure_species_map(
             calculation=calculation_slug,
             set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
@@ -663,9 +663,9 @@ class TestCalculationFailureHandling:
         dos_step_id = step_ids[2]
         
         # Mock the calculation runner to simulate nscf failure
-        from quantumvitas.calculation.runner import CalculationRunner
-        from quantumvitas.calculation.types import StepStatus
-        from quantumvitas.calculation.results import CalculationResult, StepResultSummary
+        from qmatsuite.calculation.runner import CalculationRunner
+        from qmatsuite.calculation.types import StepStatus
+        from qmatsuite.calculation.results import CalculationResult, StepResultSummary
         from datetime import datetime, timezone
         
         original_run = CalculationRunner.run
@@ -675,13 +675,13 @@ class TestCalculationFailureHandling:
             
             Accepts run_mode and any other kwargs for future compatibility.
             """
-            from quantumvitas.calculation.types import StepMode
+            from qmatsuite.calculation.types import StepMode
             started = datetime.now(timezone.utc)
             step_summaries = []
             calculation_failed = False
             
             # Get step IDs from calculation model (ULIDs from calculation.yaml)
-            from quantumvitas.core.models import load_calculation
+            from qmatsuite.core.models import load_calculation
             wf_model = load_calculation(calculation.dir / "calculation.yaml", calculation.project.root)
             step_ulids = [s.step_ulid for s in wf_model.steps]
             
@@ -755,7 +755,7 @@ class TestCalculationFailureHandling:
         
         # Mock pseudopotential resolution to avoid pseudo requirements
         def fake_ensure_qe_pseudos(*args, **kwargs):
-            from quantumvitas.core.pseudo import PseudoResolutionResult
+            from qmatsuite.core.pseudo import PseudoResolutionResult
             from pathlib import Path
             # Return success without actually resolving pseudos
             return PseudoResolutionResult(
@@ -765,7 +765,7 @@ class TestCalculationFailureHandling:
                 all_available=True,
             )
         
-        monkeypatch.setattr("quantumvitas.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
+        monkeypatch.setattr("qmatsuite.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
         
         # Run calculation via daemon
         submit_response = send_request(daemon, "run_calculation", {

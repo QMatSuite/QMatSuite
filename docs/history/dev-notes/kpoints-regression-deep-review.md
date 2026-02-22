@@ -45,7 +45,7 @@ input_file = Path(...)  # 指向已生成的 .in 文件？
 
 ### 1. Step.resolve_input_path() 的行为
 
-**代码位置**: `src/quantumvitas/calculation/step.py:34-60`
+**代码位置**: `src/qmatsuite/calculation/step.py:34-60`
 
 ```python
 def resolve_input_path(self, calculation_raw_dir: Path) -> Path:
@@ -62,7 +62,7 @@ def resolve_input_path(self, calculation_raw_dir: Path) -> Path:
 
 ### 2. prepare_input_step() 的参数
 
-**代码位置**: `src/quantumvitas/calculation/input_runner.py:199-209`
+**代码位置**: `src/qmatsuite/calculation/input_runner.py:199-209`
 
 ```python
 def prepare_input_step(
@@ -83,7 +83,7 @@ def prepare_input_step(
 
 ### 3. Step.run() 的调用链
 
-**代码位置**: `src/quantumvitas/calculation/step.py:62-127`
+**代码位置**: `src/qmatsuite/calculation/step.py:62-127`
 
 ```python
 def run(self, ...):
@@ -147,25 +147,25 @@ def run(self, ...):
 ## 需要检查的关键代码位置
 
 ### 1. materialize_step_spec() 中的 cards 处理
-**文件**: `src/quantumvitas/calculation/structure_steps.py:1112`
+**文件**: `src/qmatsuite/calculation/structure_steps.py:1112`
 ```python
 qe_input, _ = generate_qe_input_from_spec(structure, spec_obj, species_map=calculation_species_map)
 ```
 - **检查**: `spec_obj.cards` 在此时是否完整？
 
 ### 2. generate_qe_input_from_spec() 中的 cards 传递
-**文件**: `src/quantumvitas/calculation/structure_steps.py:571`
+**文件**: `src/qmatsuite/calculation/structure_steps.py:571`
 ```python
 apply_card_overrides_to_qe_input(qe_input, spec.cards)
 ```
 - **检查**: `spec.cards` 在此时是否完整？
 
 ### 3. Step.run() 中是否传递 card_overrides
-**文件**: `src/quantumvitas/calculation/step.py:99-107`
+**文件**: `src/qmatsuite/calculation/step.py:99-107`
 - **检查**: 是否应该从 `step.yaml` 读取 cards 并作为 `card_overrides` 传递？
 
 ### 4. JobRunner handler 中的 materialization
-**文件**: `src/quantumvitas/execution/handlers.py:112`
+**文件**: `src/qmatsuite/execution/handlers.py:112`
 ```python
 result = step.run(...)
 ```

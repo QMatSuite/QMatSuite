@@ -63,15 +63,15 @@ jobs:
       - name: Verify wheel in clean environment
         run: |
           set -euo pipefail
-          rm -rf /tmp/qv-verify
-          python -m venv /tmp/qv-verify
-          /tmp/qv-verify/bin/python -m pip install --upgrade pip
-          /tmp/qv-verify/bin/pip install dist/*.whl
-          /tmp/qv-verify/bin/python -c "import quantumvitas, importlib.metadata as m; print('quantumvitas:', m.version('quantumvitas'))"
-          /tmp/qv-verify/bin/python -c "from quantumvitas.daemon.server import main; print('daemon OK')"
-          /tmp/qv-verify/bin/qv --help >/tmp/qv_help.txt
-          head -n 5 /tmp/qv_help.txt
-          /tmp/qv-verify/bin/python -c "from quantumvitas.mcp.server import create_server; print('MCP OK')"
+          rm -rf /tmp/qms-verify
+          python -m venv /tmp/qms-verify
+          /tmp/qms-verify/bin/python -m pip install --upgrade pip
+          /tmp/qms-verify/bin/pip install dist/*.whl
+          /tmp/qms-verify/bin/python -c "import qmatsuite, importlib.metadata as m; print('qmatsuite:', m.version('qmatsuite'))"
+          /tmp/qms-verify/bin/python -c "from qmatsuite.daemon.server import main; print('daemon OK')"
+          /tmp/qms-verify/bin/qms --help >/tmp/qms_help.txt
+          head -n 5 /tmp/qms_help.txt
+          /tmp/qms-verify/bin/python -c "from qmatsuite.mcp.server import create_server; print('MCP OK')"
 
       - name: Upload to TestPyPI
         if: ${{ inputs.target == 'testpypi' }}

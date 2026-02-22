@@ -28,7 +28,7 @@ All 8 tests in `tests/unit/test_paramspace_invariants.py` pass:
 
 ### ParamSpace
 - ✅ Every ParamSpace has `apply_invariants()` (default no-op)
-  - Verified in `src/quantumvitas/presets/paramspace.py:140`
+  - Verified in `src/qmatsuite/presets/paramspace.py:140`
   - Precision ParamSpace overrides it (line 745)
 - ✅ No invariant logic inside detect
   - Verified: degauss deletion is in `apply_invariants()`, not in detect functions
@@ -39,7 +39,7 @@ All 8 tests in `tests/unit/test_paramspace_invariants.py` pass:
 
 ### Precision
 - ✅ degauss deletion happens ONLY in PrecisionParamSpace
-  - Verified in `src/quantumvitas/presets/paramspace.py:755-760`
+  - Verified in `src/qmatsuite/presets/paramspace.py:755-760`
 - ✅ deletion happens even when precision is CUSTOM
   - Verified: `apply_invariants()` is called unconditionally (line 674 in integration.py)
   - Test `test_a2_precision_custom_still_deletes_degauss` confirms this
@@ -48,7 +48,7 @@ All 8 tests in `tests/unit/test_paramspace_invariants.py` pass:
 
 ### Oracle
 - ✅ Oracle only reads parsed YAML
-  - Verified in `src/quantumvitas/presets/oracle.py:44-54`
+  - Verified in `src/qmatsuite/presets/oracle.py:44-54`
   - Only reads `SYSTEM.occupations` from `yaml_state`
 - ✅ Oracle does NOT read preset IDs or detect results
   - Verified: Oracle has no access to preset IDs or detect results
@@ -58,11 +58,11 @@ All 8 tests in `tests/unit/test_paramspace_invariants.py` pass:
 
 ### Apply Scheduler
 - ✅ prerequisite ParamSpaces execute before precision
-  - Verified in `src/quantumvitas/presets/integration.py:413-548`
+  - Verified in `src/qmatsuite/presets/integration.py:413-548`
   - Phase 1: prerequisite dimensions (occupations_scheme, magnetism)
   - Phase 2: dependent dimensions (precision)
 - ✅ `apply_invariants()` is ALWAYS called
-  - Verified in `src/quantumvitas/presets/integration.py:672-674`
+  - Verified in `src/qmatsuite/presets/integration.py:672-674`
   - Called for all ParamSpaces in SPACES registry, unconditionally
 - ✅ no "skip apply when CUSTOM" logic exists
   - Verified: No conditional logic that skips `apply_invariants()` when CUSTOM
@@ -93,10 +93,10 @@ All 8 tests in `tests/unit/test_paramspace_invariants.py` pass:
 ## Implementation Files
 
 ### Core Implementation
-- `src/quantumvitas/presets/oracle.py` - Oracle implementation
-- `src/quantumvitas/presets/paramspace.py` - ParamSpace API extension + Precision invariant enforcement
-- `src/quantumvitas/presets/integration.py` - Apply scheduler with phased execution
-- `src/quantumvitas/presets/variants_registry.py` - Precision degauss writing logic
+- `src/qmatsuite/presets/oracle.py` - Oracle implementation
+- `src/qmatsuite/presets/paramspace.py` - ParamSpace API extension + Precision invariant enforcement
+- `src/qmatsuite/presets/integration.py` - Apply scheduler with phased execution
+- `src/qmatsuite/presets/variants_registry.py` - Precision degauss writing logic
 
 ### Tests
 - `tests/unit/test_paramspace_invariants.py` - Comprehensive invariant enforcement tests

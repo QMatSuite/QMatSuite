@@ -9,8 +9,8 @@ This demonstrates the generalized step/calculation system where:
 """
 
 from pathlib import Path
-from src.quantumvitas.core.engines.qe import QuantumEspressoEngine
-from src.quantumvitas.core.engines.base import EngineConfig
+from src.qmatsuite.core.engines.qe import QuantumEspressoEngine
+from src.qmatsuite.core.engines.base import EngineConfig
 
 # Initialize QE engine
 config = EngineConfig(name="qe")
@@ -22,7 +22,7 @@ step_type = engine.detect_step_type(input_file)
 print(f"Detected step type: {step_type}")  # Should be "scf"
 
 # Example 2: Run a single step
-from quantumvitas.core.paths import tmp_runs_dir
+from qmatsuite.core.paths import tmp_runs_dir
 working_dir = tmp_runs_dir() / "work"
 result = engine.run_step(
     input_file=input_file,

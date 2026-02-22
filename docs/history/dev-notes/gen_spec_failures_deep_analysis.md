@@ -110,7 +110,7 @@ step_type_gen = "nscf"  # Since test creates nscf-copy
 **Fix Proposal**:
 ```python
 # In test_wannier90_evaluation.py
-from quantumvitas.workflow.step_type_convert import spec_from
+from qmatsuite.workflow.step_type_convert import spec_from
 
 # For wannierprep (W90 engine):
 step_type_spec = spec_from("w90", "wannierprep")  # "w90_wannierprep"
@@ -164,7 +164,7 @@ step_type_spec = spec_from("qe", "pw2wannier")  # "qe_pw2wannier"
 
 **Code Analysis**:
 ```python
-gen_to_spec = rg_count(r'step_type_spec\s*=\s*f"\{.*\}_\{.*\}"', "src/quantumvitas/core/driver_registry.py")
+gen_to_spec = rg_count(r'step_type_spec\s*=\s*f"\{.*\}_\{.*\}"', "src/qmatsuite/core/driver_registry.py")
 assert gen_to_spec > 0, "Registry missing gen→spec mapping"
 ```
 
@@ -196,13 +196,13 @@ assert gen_to_spec > 0, "Registry missing gen→spec mapping"
 Gate test uses `DriverRegistry.get_step_type_spec("w90_wannierprep")` which returns `None`.
 
 **Investigation**:
-1. **W90 Driver Registration**: `src/quantumvitas/drivers/w90/driver.py` has:
+1. **W90 Driver Registration**: `src/qmatsuite/drivers/w90/driver.py` has:
    ```python
    PREFIX: str = "w90"
    SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({"wannierprep", "wannier"})
    ```
 
-2. **QE Driver Registration**: `src/quantumvitas/drivers/qe/driver.py` has:
+2. **QE Driver Registration**: `src/qmatsuite/drivers/qe/driver.py` has:
    ```python
    PREFIX: str = "qe"
    SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({..., "pw2wannier", ...})
@@ -213,7 +213,7 @@ Gate test uses `DriverRegistry.get_step_type_spec("w90_wannierprep")` which retu
    - `w90_wannier` from `PREFIX="w90"` + `gen="wannier"`
    - `qe_pw2wannier` from `PREFIX="qe"` + `gen="pw2wannier"`
 
-4. **Legacy Registry**: `src/quantumvitas/workflow/registry.py` has hardcoded entries:
+4. **Legacy Registry**: `src/qmatsuite/workflow/registry.py` has hardcoded entries:
    ```python
    "w90_wannierprep": StepTypeSpec(...),
    "qe_pw2wannier": StepTypeSpec(...),
@@ -230,7 +230,7 @@ Gate test uses `DriverRegistry.get_step_type_spec("w90_wannierprep")` which retu
 
 1. **Ensure Driver Registration on Import**:
    ```python
-   # In src/quantumvitas/drivers/w90/__init__.py
+   # In src/qmatsuite/drivers/w90/__init__.py
    from .driver import W90Driver
    DriverRegistry.register(W90Driver())
    ```
@@ -240,7 +240,7 @@ Gate test uses `DriverRegistry.get_step_type_spec("w90_wannierprep")` which retu
    - Should register each SPEC type in `_step_types` dict
 
 3. **Check Import Order**:
-   - Ensure `quantumvitas.drivers` is imported before gate tests run
+   - Ensure `qmatsuite.drivers` is imported before gate tests run
    - May need explicit import in gate test setup
 
 **Decision**: **FIX** - This is a registration issue. Drivers must be registered on import, and `DriverRegistry` must build SPEC types from GEN types correctly.
@@ -253,28 +253,28 @@ Gate test uses `DriverRegistry.get_step_type_spec("w90_wannierprep")` which retu
 
 **Violations Found** (7 total):
 
-1. **`src/quantumvitas/workflow/registry.py:924`**
+1. **`src/qmatsuite/workflow/registry.py:924`**
    ```python
    step_type_gen = step_type_str  # Fallback if conversion fails
    ```
    **Issue**: `step_type_str` may be SPEC type (has underscore), assigned to `step_type_gen` sink.
    **Fix**: Use `gen_from(step_type_str)` before assignment, or validate it's actually GEN.
 
-2. **`src/quantumvitas/api/service.py:6984`**
+2. **`src/qmatsuite/api/service.py:6984`**
    ```python
    step_entry = CalculationStepEntry(step_ulid=..., step_type_spec=machine_step_type)
    ```
    **Issue**: `machine_step_type` may be GEN type, assigned to `step_type_spec` sink.
    **Fix**: Convert to SPEC using `spec_from(engine_prefix, machine_step_type)` if it's GEN.
 
-3. **`src/quantumvitas/presets/integration.py:318, 381`**
+3. **`src/qmatsuite/presets/integration.py:318, 381`**
    ```python
    step_type_gen = step_type_spec  # Fallback if conversion fails
    ```
    **Issue**: SPEC type assigned to GEN sink as fallback.
    **Fix**: Use `gen_from(step_type_spec)` instead of direct assignment.
 
-4. **`src/quantumvitas/engine/pyscf_engine.py:519, 546`**
+4. **`src/qmatsuite/engine/pyscf_engine.py:519, 546`**
    ```python
    step_type_gen = step_type_spec
    ```
@@ -295,7 +295,7 @@ Gate test uses `DriverRegistry.get_step_type_spec("w90_wannierprep")` which retu
 step_type_gen = step_type_str  # Fallback if conversion fails
 
 # Fix:
-from quantumvitas.workflow.step_type_convert import gen_from
+from qmatsuite.workflow.step_type_convert import gen_from
 try:
     step_type_gen = get_step_type_gen(step_type_str) if "_" in step_type_str else step_type_str
 except (KeyError, ValueError):
@@ -313,7 +313,7 @@ except (KeyError, ValueError):
 step_entry = CalculationStepEntry(step_ulid=..., step_type_spec=machine_step_type)
 
 # Fix:
-from quantumvitas.workflow.step_type_convert import spec_from, is_spec
+from qmatsuite.workflow.step_type_convert import spec_from, is_spec
 if is_spec(machine_step_type):
     step_type_spec = machine_step_type
 else:
@@ -330,7 +330,7 @@ step_entry = CalculationStepEntry(step_ulid=..., step_type_spec=step_type_spec)
 step_type_gen = step_type_spec  # Fallback if conversion fails
 
 # Fix:
-from quantumvitas.workflow.step_type_convert import gen_from
+from qmatsuite.workflow.step_type_convert import gen_from
 try:
     step_type_gen = get_step_type_gen(step_type_spec)
 except (KeyError, ValueError):
@@ -343,7 +343,7 @@ except (KeyError, ValueError):
 step_type_gen = step_type_spec
 
 # Fix:
-from quantumvitas.workflow.step_type_convert import gen_from
+from qmatsuite.workflow.step_type_convert import gen_from
 step_type_gen = gen_from(step_type_spec)
 ```
 
@@ -505,7 +505,7 @@ step_type_spec = spec_from("lammps", step_type_gen)  # step_type_gen is already 
 **Fix Proposal**:
 ```python
 # Check if already SPEC before converting
-from quantumvitas.workflow.step_type_convert import is_spec, gen_from
+from qmatsuite.workflow.step_type_convert import is_spec, gen_from
 if is_spec(step_type_gen):
     step_type_spec = step_type_gen
 else:
@@ -600,13 +600,13 @@ else:
 
 ### Source Files Needing Fixes
 
-- [ ] `src/quantumvitas/workflow/registry.py:924` - Cross-assignment
-- [ ] `src/quantumvitas/api/service.py:6984` - Cross-assignment  
-- [ ] `src/quantumvitas/presets/integration.py:318, 381` - Cross-assignment
-- [ ] `src/quantumvitas/engine/pyscf_engine.py:519, 546` - Cross-assignment
-- [ ] `src/quantumvitas/engine/lammps_writer.py:68` - Double prefix bug
-- [ ] `src/quantumvitas/core/driver_registry.py` - Registration logic
-- [ ] `src/quantumvitas/drivers/*/__init__.py` - Ensure registration on import
+- [ ] `src/qmatsuite/workflow/registry.py:924` - Cross-assignment
+- [ ] `src/qmatsuite/api/service.py:6984` - Cross-assignment  
+- [ ] `src/qmatsuite/presets/integration.py:318, 381` - Cross-assignment
+- [ ] `src/qmatsuite/engine/pyscf_engine.py:519, 546` - Cross-assignment
+- [ ] `src/qmatsuite/engine/lammps_writer.py:68` - Double prefix bug
+- [ ] `src/qmatsuite/core/driver_registry.py` - Registration logic
+- [ ] `src/qmatsuite/drivers/*/__init__.py` - Ensure registration on import
 
 ### Test Files Needing Fixes
 

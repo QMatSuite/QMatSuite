@@ -35,7 +35,7 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 
 # Directories to scan for YAML/JSON resources
 RESOURCE_DIRS = [
-    REPO_ROOT / "src" / "quantumvitas" / "resources",
+    REPO_ROOT / "src" / "qmatsuite" / "resources",
     REPO_ROOT / "tests" / "fixtures",
     REPO_ROOT / "tests" / "data",
 ]
@@ -51,9 +51,9 @@ ALLOWLIST_PATTERNS = [
     # External schema files
     "tests/fixtures/external_*",
     # Third-party vendored data
-    "src/quantumvitas/resources/third_party/*",
+    "src/qmatsuite/resources/third_party/*",
     # _vault is legacy archive (explicitly preserved for reference)
-    "src/quantumvitas/_vault/*",
+    "src/qmatsuite/_vault/*",
 ]
 
 # Forbidden identity keys in meta blocks (YAML/JSON)
@@ -99,7 +99,7 @@ ALLOWLISTED_ID_CLASSES = {
 
 # NOTE: External API dict keys (e.g., OPTIMADE API's "id" field) are NOT scanned by this gate.
 # This gate only checks:
-# 1. Meta blocks in our persisted YAML/JSON resources (__qv_meta__, meta:)
+# 1. Meta blocks in our persisted YAML/JSON resources (__qms_meta__, meta:)
 # 2. Python class/dataclass field definitions (class Foo: id: str)
 #
 # External API dict access like `.get("id")` on OPTIMADE responses is exempt because:
@@ -155,7 +155,7 @@ def scan_yaml_file(file_path: Path) -> List[ResourceViolation]:
         stripped = line.strip()
 
         # Detect meta block start
-        if stripped.startswith("meta:") or stripped.startswith("__qv_meta__:"):
+        if stripped.startswith("meta:") or stripped.startswith("__qms_meta__:"):
             in_meta_block = True
             meta_indent = len(line) - len(line.lstrip())
             continue
@@ -221,7 +221,7 @@ def scan_json_file(file_path: Path) -> List[ResourceViolation]:
             current_path = f"{path}.{key}" if path else key
 
             # Check meta blocks
-            if key in ("meta", "__qv_meta__"):
+            if key in ("meta", "__qms_meta__"):
                 if isinstance(value, dict):
                     for forbidden in FORBIDDEN_META_KEYS:
                         if forbidden in value:
@@ -429,7 +429,7 @@ class TestNoLegacyIdentityFields:
         """
         Gate: No forbidden identity keys in YAML/JSON resource files.
 
-        Scans tests/fixtures/, tests/data/, src/quantumvitas/resources/ for:
+        Scans tests/fixtures/, tests/data/, src/qmatsuite/resources/ for:
         - 'id' in meta blocks (should be 'ulid')
         - project_id, calc_id, step_id, structure_id (should be *_ulid)
         - ambiguous step_type (should be step_type_spec or step_type_gen)

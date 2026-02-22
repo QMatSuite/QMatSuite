@@ -10,7 +10,7 @@ Error: Parameter 'seedname' is not defined for module 'pw'. Provide the section 
 ## Root Cause
 
 ### Problem Location
-**File**: `src/quantumvitas/calculation/structure_steps.py`  
+**File**: `src/qmatsuite/calculation/structure_steps.py`  
 **Function**: `materialize_step_spec`
 
 ### Analysis
@@ -19,7 +19,7 @@ Error: Parameter 'seedname' is not defined for module 'pw'. Provide the section 
 
 2. **QE Input Generation**: `generate_qe_input_from_spec` calls `generate_qe_input_from_structure`, which creates a QE input object and then calls `apply_parameter_overrides`.
 
-3. **Parameter Validation**: `apply_parameter_overrides` (in `src/quantumvitas/calculation/input_runner.py:442-512`) validates parameters against QE module schemas by:
+3. **Parameter Validation**: `apply_parameter_overrides` (in `src/qmatsuite/calculation/input_runner.py:442-512`) validates parameters against QE module schemas by:
    - Detecting the QE module (defaults to `pw` for structure-based inputs)
    - Loading parameter metadata for that module
    - Checking if each parameter exists in the module's parameter sections
@@ -36,7 +36,7 @@ The materialization code path was designed for QE steps only. Wannier90 steps we
 ## Solution
 
 ### Fix Location
-**File**: `src/quantumvitas/calculation/structure_steps.py`  
+**File**: `src/qmatsuite/calculation/structure_steps.py`  
 **Lines**: ~545-650
 
 ### Implementation
@@ -49,7 +49,7 @@ The materialization code path was designed for QE steps only. Wannier90 steps we
    ```
 
 2. **Separate Generation Path**:
-   - **For `w90_preproc` and `w90_run`**: Use `Wannier90Input` from `quantumvitas.io.wannier90_input` to generate `.win` files
+   - **For `w90_preproc` and `w90_run`**: Use `Wannier90Input` from `qmatsuite.io.wannier90_input` to generate `.win` files
    - **For `pw2wannier90`**: Use `Pw2Wannier90Input` to generate `.pw2wan` files
    - **Skip**: QE input generation, QE parameter validation, pseudo resolution (Wannier90 steps don't need pseudos directly)
 
@@ -66,7 +66,7 @@ This is because:
 
 ## Files Changed
 
-1. **`src/quantumvitas/calculation/structure_steps.py`**:
+1. **`src/qmatsuite/calculation/structure_steps.py`**:
    - Added Wannier90 step type detection at the start of `materialize_step_spec`
    - Added separate generation path for Wannier90 steps using `wannier90_input.py`
    - Bypassed QE input generation and validation for Wannier90 steps

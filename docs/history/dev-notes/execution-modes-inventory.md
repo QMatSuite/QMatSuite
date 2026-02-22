@@ -11,9 +11,9 @@ QMatSuite supports **6 distinct execution modes**, each with different requireme
 
 1. **Standalone Mode** (`--standalone`): Runs QE input without project context. Performs full roundtrip: import .in → step.yaml → generate .in → run. Uses `workdir/pseudo` for pseudos.
 
-2. **Project SSOT Run (Normal)**: Standard project execution via `qv run step` or `QVService.run_step()`. Requires `calculation.yaml` and `step.yaml`. Generates .in from YAML SSOT. Uses `project_root/pseudo`.
+2. **Project SSOT Run (Normal)**: Standard project execution via `qms run step` or `QMSService.run_step()`. Requires `calculation.yaml` and `step.yaml`. Generates .in from YAML SSOT. Uses `project_root/pseudo`.
 
-3. **Project Calculation Run**: Runs entire calculation via `qv run calculation` or `QVService.run_calculation()`. Same as Project SSOT Run but for all steps.
+3. **Project Calculation Run**: Runs entire calculation via `qms run calculation` or `QMSService.run_calculation()`. Same as Project SSOT Run but for all steps.
 
 4. **Compat Input Playback**: Tutorial test mode that executes existing .in files with minimal patching. Bypasses YAML SSOT. Uses `project_root/pseudo`.
 
@@ -52,11 +52,11 @@ QMatSuite supports **6 distinct execution modes**, each with different requireme
 **Name:** Standalone Mode  
 **Purpose:** Run QE input files without project context. Pure QE helper that operates on raw input files.
 
-**Entry Point:** `qv run step --standalone --input <file>`
+**Entry Point:** `qms run step --standalone --input <file>`
 
 #### 1.B) Call Chain
 
-**Entry:** `src/quantumvitas/cli/main.py::_run_standalone_step()` (lines 1636-1758)
+**Entry:** `src/qmatsuite/cli/main.py::_run_standalone_step()` (lines 1636-1758)
 
 **Call Chain:**
 1. `cli/main.py::_run_standalone_step()` (line 1636)
@@ -65,7 +65,7 @@ QMatSuite supports **6 distinct execution modes**, each with different requireme
 2. `calculation/importers.py::build_step_spec_from_qe_input()` (line 1696)
    - Parses .in file
    - Extracts structure, parameters, cards, **species_overrides** from `ATOMIC_SPECIES`
-   - Writes temporary `step.yaml` to `.qv_standalone_import/`
+   - Writes temporary `step.yaml` to `.qms_standalone_import/`
 3. `calculation/structure_steps.py::materialize_step_spec()` (line 1721)
    - Loads step.yaml
    - Generates .in from step.yaml
@@ -156,18 +156,18 @@ QMatSuite supports **6 distinct execution modes**, each with different requireme
 **Purpose:** Execute a single step within a project using YAML as SSOT.
 
 **Entry Points:**
-- CLI: `qv run step --calculation X --step Y`
-- API: `QVService.run_step(project_root, calculation_selector, step_selector)`
+- CLI: `qms run step --calculation X --step Y`
+- API: `QMSService.run_step(project_root, calculation_selector, step_selector)`
 
 #### 2.B) Call Chain
 
-**Entry:** `src/quantumvitas/cli/main.py::run_step_command()` (line 1427) or `src/quantumvitas/api.py::QVService.run_step()` (if exists)
+**Entry:** `src/qmatsuite/cli/main.py::run_step_command()` (line 1427) or `src/qmatsuite/api.py::QMSService.run_step()` (if exists)
 
 **Call Chain:**
 1. `cli/main.py::run_step_command()` (line 1427)
    - Resolves project, calculation, step via registry
-   - Calls `QVService.run_step()` (line 1604)
-2. `api.py::QVService.run_step()` (if exists) or direct to `CalculationRunner`
+   - Calls `QMSService.run_step()` (line 1604)
+2. `api.py::QMSService.run_step()` (if exists) or direct to `CalculationRunner`
 3. `calculation/runner.py::CalculationRunner.run()` (line 132)
    - Loads calculation: `Calculation.from_yaml(..., materialize_steps=True)` (line 1208)
    - Creates `JobGraph` and `JobExecutor`
@@ -255,16 +255,16 @@ QMatSuite supports **6 distinct execution modes**, each with different requireme
 **Purpose:** Execute all steps in a calculation sequentially.
 
 **Entry Points:**
-- CLI: `qv run calculation X` (if exists)
-- API: `QVService.run_calculation(project_root, calculation_selector)`
+- CLI: `qms run calculation X` (if exists)
+- API: `QMSService.run_calculation(project_root, calculation_selector)`
 - Daemon: `daemon/server.py::_handle_run_calculation()` (line 5358)
 
 #### 3.B) Call Chain
 
-**Entry:** `src/quantumvitas/api.py::QVService.run_calculation()` (line 1151) or `src/quantumvitas/daemon/server.py::_handle_run_calculation()` (line 5358)
+**Entry:** `src/qmatsuite/api.py::QMSService.run_calculation()` (line 1151) or `src/qmatsuite/daemon/server.py::_handle_run_calculation()` (line 5358)
 
 **Call Chain:**
-1. `api.py::QVService.run_calculation()` (line 1151)
+1. `api.py::QMSService.run_calculation()` (line 1151)
    - Loads calculation: `Calculation.from_yaml(..., materialize_steps=True)` (line 1208)
    - Creates `CalculationRunner` and calls `runner.run()` (line 1195)
 2. `calculation/runner.py::CalculationRunner.run()` (line 132)
@@ -405,7 +405,7 @@ QMatSuite supports **6 distinct execution modes**, each with different requireme
 
 #### 5.B) Call Chain
 
-**Entry:** `src/quantumvitas/daemon/server.py::_handle_run_calculation()` (line 5358)
+**Entry:** `src/qmatsuite/daemon/server.py::_handle_run_calculation()` (line 5358)
 
 **Call Chain:**
 1. `daemon/server.py::_handle_run_calculation()` (line 5358)
@@ -414,7 +414,7 @@ QMatSuite supports **6 distinct execution modes**, each with different requireme
 2. `daemon/jobs.py::JobManager.submit_with_id()` (line 187)
    - Creates Job and submits to ThreadPoolExecutor
 3. `daemon/jobs.py::JobManager._execute_job()` (wrapper function)
-   - Calls `QVService.run_calculation()` (line 5427)
+   - Calls `QMSService.run_calculation()` (line 5427)
 4. **Same as Mode 3** (Project Calculation Run)
 
 **QE Invocation:** Same as Mode 3
@@ -444,11 +444,11 @@ QMatSuite supports **6 distinct execution modes**, each with different requireme
 **Name:** CLI Run Structure  
 **Purpose:** Generate and run .in from structure + overrides (no calculation.yaml required).
 
-**Entry Point:** `qv run structure <structure> [--type scf] [overrides...]`
+**Entry Point:** `qms run structure <structure> [--type scf] [overrides...]`
 
 #### 6.B) Call Chain
 
-**Entry:** `src/quantumvitas/cli/main.py::run_structure_command()` (line 1764)
+**Entry:** `src/qmatsuite/cli/main.py::run_structure_command()` (line 1764)
 
 **Call Chain:**
 1. `cli/main.py::run_structure_command()` (line 1764)
@@ -730,26 +730,26 @@ QMatSuite supports **6 distinct execution modes**, each with different requireme
 ## Evidence Summary (File + Line References)
 
 ### Entry Points
-- `src/quantumvitas/cli/main.py:1427` - `run_step_command()` (Project SSOT Run, Standalone)
-- `src/quantumvitas/cli/main.py:1636` - `_run_standalone_step()` (Standalone)
-- `src/quantumvitas/cli/main.py:1764` - `run_structure_command()` (CLI Run Structure)
-- `src/quantumvitas/api.py:1151` - `QVService.run_calculation()` (Project Calculation Run)
-- `src/quantumvitas/daemon/server.py:5358` - `_handle_run_calculation()` (Daemon/JobManager Run)
-- `src/quantumvitas/calculation/runner.py:140` - `CalculationRunner.run(compat_input_playback=True)` (Compat Input Playback)
+- `src/qmatsuite/cli/main.py:1427` - `run_step_command()` (Project SSOT Run, Standalone)
+- `src/qmatsuite/cli/main.py:1636` - `_run_standalone_step()` (Standalone)
+- `src/qmatsuite/cli/main.py:1764` - `run_structure_command()` (CLI Run Structure)
+- `src/qmatsuite/api.py:1151` - `QMSService.run_calculation()` (Project Calculation Run)
+- `src/qmatsuite/daemon/server.py:5358` - `_handle_run_calculation()` (Daemon/JobManager Run)
+- `src/qmatsuite/calculation/runner.py:140` - `CalculationRunner.run(compat_input_playback=True)` (Compat Input Playback)
 
 ### Pseudopotential Resolution
-- `src/quantumvitas/core/pseudo.py:67-392` - `ensure_qe_pseudos()` (canonical resolution function)
-- `src/quantumvitas/calculation/structure_steps.py:1166-1171` - Calls `ensure_qe_pseudos()` with species_map
-- `src/quantumvitas/calculation/compat_executor.py:86-91` - Extracts and stages pseudos (bypasses ensure_qe_pseudos)
+- `src/qmatsuite/core/pseudo.py:67-392` - `ensure_qe_pseudos()` (canonical resolution function)
+- `src/qmatsuite/calculation/structure_steps.py:1166-1171` - Calls `ensure_qe_pseudos()` with species_map
+- `src/qmatsuite/calculation/compat_executor.py:86-91` - Extracts and stages pseudos (bypasses ensure_qe_pseudos)
 
 ### Override Application
-- `src/quantumvitas/calculation/structure_steps.py:573-576` - Species override precedence (calc-level > step-level)
-- `src/quantumvitas/calculation/structure_steps.py:571` - Card override application
-- `src/quantumvitas/calculation/structure_steps.py:514` - Parameter override application
+- `src/qmatsuite/calculation/structure_steps.py:573-576` - Species override precedence (calc-level > step-level)
+- `src/qmatsuite/calculation/structure_steps.py:571` - Card override application
+- `src/qmatsuite/calculation/structure_steps.py:514` - Parameter override application
 
 ### QE Invocation
-- `src/quantumvitas/engine/qe_calculation.py:147` - `QECalculationRunner.run_step()` (actual QE execution)
-- `src/quantumvitas/calculation/step.py:200+` - `Step.run()` (wraps engine execution)
+- `src/qmatsuite/engine/qe_calculation.py:147` - `QECalculationRunner.run_step()` (actual QE execution)
+- `src/qmatsuite/calculation/step.py:200+` - `Step.run()` (wraps engine execution)
 
 ---
 

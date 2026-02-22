@@ -68,7 +68,7 @@
 
 
      PseudoPot. # 1 for Si read from file:
-     <HOME>/quantumVITAS/pseudo/Si.pbe-n-rrkjus_psl.1.0.0.UPF
+     <HOME>/QMatSuite/pseudo/Si.pbe-n-rrkjus_psl.1.0.0.UPF
      MD5 check sum: fa25574f73a70a4139f2adfbefec430c
      Pseudo is Ultrasoft + core correction, Zval =  4.0
      Generated using &quot;atomic&quot; code by A. Dal Corso  v.6.3

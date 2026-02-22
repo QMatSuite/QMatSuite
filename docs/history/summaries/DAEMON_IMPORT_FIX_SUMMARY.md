@@ -1,7 +1,7 @@
 # Daemon Import Fix Summary
 
 ## Problem
-Daemon code was importing removed legacy error names from `quantumvitas.api`:
+Daemon code was importing removed legacy error names from `qmatsuite.api`:
 - `ResourceNotFoundError`
 - `LegacyProjectError`
 - `ContextNotFoundError`
@@ -9,21 +9,21 @@ Daemon code was importing removed legacy error names from `quantumvitas.api`:
 - `PresetCompilationError`
 - `VolumeParserError`
 
-These were removed in PR10 to keep the API surface slim. The daemon needs to use API errors from `quantumvitas.api.errors` instead.
+These were removed in PR10 to keep the API surface slim. The daemon needs to use API errors from `qmatsuite.api.errors` instead.
 
 ## Solution
 Updated daemon imports and exception handlers to:
-1. Use API errors from `quantumvitas.api.errors` (e.g., `NotFoundError`, `ConfigError`, `ValidationError`, `EngineError`)
+1. Use API errors from `qmatsuite.api.errors` (e.g., `NotFoundError`, `ConfigError`, `ValidationError`, `EngineError`)
 2. Handle kernel exceptions without importing them (using dynamic type checking)
 3. Update exception handlers to work with API error structure (using `context` dict instead of direct attributes)
 
 ## Files Changed
 
-### `src/quantumvitas/daemon/server.py`
+### `src/qmatsuite/daemon/server.py`
 
 **Line 548**: Changed import
-- **Before**: `from quantumvitas.api import ResourceNotFoundError, LegacyProjectError`
-- **After**: `from quantumvitas.api.errors import NotFoundError`
+- **Before**: `from qmatsuite.api import ResourceNotFoundError, LegacyProjectError`
+- **After**: `from qmatsuite.api.errors import NotFoundError`
 - **Note**: `LegacyProjectError` is now handled via dynamic type checking (no import needed)
 
 **Line 626-644**: Updated `ResourceNotFoundError` handler to `NotFoundError`
@@ -32,8 +32,8 @@ Updated daemon imports and exception handlers to:
 - **Reason**: API errors use `context` dict instead of direct attributes
 
 **Line 2000**: Changed import
-- **Before**: `from quantumvitas.api import QVService, ContextNotFoundError`
-- **After**: `from quantumvitas.api import QVService` and `from quantumvitas.api.errors import NotFoundError`
+- **Before**: `from qmatsuite.api import QMSService, ContextNotFoundError`
+- **After**: `from qmatsuite.api import QMSService` and `from qmatsuite.api.errors import NotFoundError`
 - **Note**: `ContextNotFoundError` is mapped to `NotFoundError` by `map_kernel_exception`
 
 **Line 2009**: Updated exception handler
@@ -41,7 +41,7 @@ Updated daemon imports and exception handlers to:
 - **After**: `except NotFoundError:` and `except ValueError:` (both catch cases)
 
 **Line 3655**: Removed kernel import
-- **Before**: `from quantumvitas.presets.precision_context import PrecisionContextError`
+- **Before**: `from qmatsuite.presets.precision_context import PrecisionContextError`
 - **After**: Removed (handled via `ConfigError` from API errors)
 - **Note**: `PrecisionContextError` is mapped to `ConfigError` by `map_kernel_exception`
 
@@ -50,7 +50,7 @@ Updated daemon imports and exception handlers to:
 - **After**: Catches `ConfigError` and checks error message for "precision" or "context" keywords
 
 **Line 3748**: Removed kernel import
-- **Before**: `from quantumvitas.presets.compiler import PresetCompilationError`
+- **Before**: `from qmatsuite.presets.compiler import PresetCompilationError`
 - **After**: Removed (handled via `ValidationError` from API errors)
 - **Note**: `PresetCompilationError` is mapped to `ValidationError` by `map_kernel_exception`
 
@@ -59,7 +59,7 @@ Updated daemon imports and exception handlers to:
 - **After**: Catches `ValidationError` and checks error message for "preset" or "compilation" keywords
 
 **Line 5074**: Removed kernel import
-- **Before**: `from quantumvitas.io.parser.volume_parsers import VolumeParserError`
+- **Before**: `from qmatsuite.io.parser.volume_parsers import VolumeParserError`
 - **After**: Removed (handled via `EngineError` from API errors)
 - **Note**: `VolumeParserError` is mapped to `EngineError` by `map_kernel_exception`
 
@@ -100,11 +100,11 @@ python -m pytest tests/unit/test_daemon.py -q
 
 ## Key Changes Summary
 
-1. **Replaced `ResourceNotFoundError`** → `NotFoundError` from `quantumvitas.api.errors`
-2. **Replaced `ContextNotFoundError`** → `NotFoundError` from `quantumvitas.api.errors`
-3. **Replaced `PrecisionContextError`** → `ConfigError` from `quantumvitas.api.errors` (with message checking)
-4. **Replaced `PresetCompilationError`** → `ValidationError` from `quantumvitas.api.errors` (with message checking)
-5. **Replaced `VolumeParserError`** → `EngineError` from `quantumvitas.api.errors` (with code/message checking)
+1. **Replaced `ResourceNotFoundError`** → `NotFoundError` from `qmatsuite.api.errors`
+2. **Replaced `ContextNotFoundError`** → `NotFoundError` from `qmatsuite.api.errors`
+3. **Replaced `PrecisionContextError`** → `ConfigError` from `qmatsuite.api.errors` (with message checking)
+4. **Replaced `PresetCompilationError`** → `ValidationError` from `qmatsuite.api.errors` (with message checking)
+5. **Replaced `VolumeParserError`** → `EngineError` from `qmatsuite.api.errors` (with code/message checking)
 6. **Replaced `LegacyProjectError` import** → Dynamic type checking (no import)
 
 ## Exception Handler Updates
@@ -120,7 +120,7 @@ For kernel exceptions that may not be mapped yet, handlers use:
 
 ## Compliance
 
-✅ **No new exports added to `quantumvitas.api.__init__.__all__`**
+✅ **No new exports added to `qmatsuite.api.__init__.__all__`**
 ✅ **No kernel imports in daemon code** (all removed)
 ✅ **All gates pass** (import rules, API surface, etc.)
 ✅ **Daemon ping test passes** (ImportError for ResourceNotFoundError fixed)

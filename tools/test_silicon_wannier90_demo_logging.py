@@ -29,9 +29,9 @@ logging.basicConfig(
     ]
 )
 
-from quantumvitas.project.snapshot import ProjectSnapshot
-from quantumvitas.project.snapshot import materialize_project_from_snapshot
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.project.snapshot import ProjectSnapshot
+from qmatsuite.project.snapshot import materialize_project_from_snapshot
+from qmatsuite.core.resources import get_resources_dir
 import yaml
 
 # Load demo (prefer legacy silicon demo name, then current wannier demos)
@@ -74,12 +74,12 @@ with tempfile.TemporaryDirectory() as tmpdir:
     project_root = Path(tmpdir) / "test_project"
     project_root.mkdir()
     
-    # Materialize project (creates project.qv.yml)
+    # Materialize project (creates project.qms.yml)
     materialize_project_from_snapshot(snapshot, project_root)
     
     # Verify project was created
-    if not (project_root / "project.qv.yml").exists():
-        print(f"ERROR: Project was not properly materialized. project.qv.yml not found.")
+    if not (project_root / "project.qms.yml").exists():
+        print(f"ERROR: Project was not properly materialized. project.qms.yml not found.")
         sys.exit(1)
     
     print("\n" + "=" * 80)
@@ -90,15 +90,15 @@ with tempfile.TemporaryDirectory() as tmpdir:
     calc = snapshot.calculations[0]
     calc_id = calc["meta"]["id"]
     
-    from quantumvitas.api import QVService
-    from quantumvitas.core.resolution import build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.api import QMSService
+    from qmatsuite.core.resolution import build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
     
     config = load_project_config(project_root)
     index = build_resource_index(project_root)
     
     try:
-        result = QVService.get_calculation_pseudo_mapping(
+        result = QMSService.get_calculation_pseudo_mapping(
             project_root=project_root,
             calculation_ulid=calc_id,
             index=index,
@@ -118,8 +118,8 @@ with tempfile.TemporaryDirectory() as tmpdir:
     
     # Try to load calculation and materialize steps
     try:
-        from quantumvitas.project.model import Project
-        from quantumvitas.calculation.calculation import Calculation
+        from qmatsuite.project.model import Project
+        from qmatsuite.calculation.calculation import Calculation
         
         project = Project.open(project_root)
         calc_resolved = project.get_calculation_by_id(calc_id)

@@ -74,17 +74,17 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 | `SCFResult` | `analysis/parsers.py:89` | `iterations: List[SCFIteration]`, `fermi_energy: float`, `converged: bool` | ❌ No meta | ❌ No `to_visual_primitives()` | ❌ **Bypass** |
 
 **Evidence**:
-- **Trajectory**: `src/quantumvitas/core/analysis/trajectory/model.py:130-303`
+- **Trajectory**: `src/qmatsuite/core/analysis/trajectory/model.py:130-303`
   - Has `meta: AnalysisObjectMeta` field
   - Implements `to_visual_primitives()` method (line 255)
   - Returns `GeometryFrames` and `Series1D` primitives
 
-- **DOSData**: `src/quantumvitas/analysis/parsers.py:434-479`
+- **DOSData**: `src/qmatsuite/analysis/parsers.py:434-479`
   - No `meta` field
   - No `to_visual_primitives()` method
   - Direct consumption by `plot_dos()` function
 
-- **BandStructureData**: `src/quantumvitas/analysis/parsers.py:559-618`
+- **BandStructureData**: `src/qmatsuite/analysis/parsers.py:559-618`
   - No `meta` field
   - No `to_visual_primitives()` method
   - Direct consumption by `plot_bands()` function
@@ -103,20 +103,20 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 | VASP | bands | `parse_eigenval()` | `engine/vasp_parser.py:220` | ❌ Not registered | ❌ **Standalone** |
 
 **Evidence**:
-- **Trajectory parser registration**: `src/quantumvitas/drivers/qe/parsers/trajectory.py:25`
+- **Trajectory parser registration**: `src/qmatsuite/drivers/qe/parsers/trajectory.py:25`
   ```python
   @register_parser("qe", "trajectory")
   class QETrajectoryParser:
       ...
   ```
 
-- **Bands parser (no registration)**: `src/quantumvitas/analysis/parsers.py:620`
+- **Bands parser (no registration)**: `src/qmatsuite/analysis/parsers.py:620`
   ```python
   def parse_bands_gnu(...) -> BandStructureData:
       # Standalone function, not a class, not registered
   ```
 
-- **DOS parser (no registration)**: `src/quantumvitas/analysis/parsers.py:481`
+- **DOS parser (no registration)**: `src/qmatsuite/analysis/parsers.py:481`
   ```python
   def parse_dos_data(path: Path | str) -> DOSData:
       # Standalone function, not a class, not registered
@@ -139,34 +139,34 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 **Evidence for each cell**:
 
 ### Trajectory (✅ OK)
-- **Raw Discovery**: `src/quantumvitas/drivers/qe/parsers/trajectory.py:34-40`
+- **Raw Discovery**: `src/qmatsuite/drivers/qe/parsers/trajectory.py:34-40`
   ```python
   def can_parse(self, raw_dir: Path) -> bool:
       for pattern in ["relax.out", "vc-relax.out", "md.out"]:
           if list(raw_dir.glob(pattern)):
               return True
   ```
-- **Parse**: `src/quantumvitas/drivers/qe/parsers/trajectory.py:42-92`
-- **Canonical Object**: `src/quantumvitas/core/analysis/trajectory/model.py:130`
-- **Derived Compute**: `src/quantumvitas/core/analysis/trajectory/model.py:158-232`
-- **Viz**: `src/quantumvitas/core/analysis/trajectory/model.py:255-283`
+- **Parse**: `src/qmatsuite/drivers/qe/parsers/trajectory.py:42-92`
+- **Canonical Object**: `src/qmatsuite/core/analysis/trajectory/model.py:130`
+- **Derived Compute**: `src/qmatsuite/core/analysis/trajectory/model.py:158-232`
+- **Viz**: `src/qmatsuite/core/analysis/trajectory/model.py:255-283`
 - **Pin/History**: Via artifact system (trajectory artifacts use `AnalysisObjectMeta`)
 
 ### Bands (❌ Bypass)
-- **Raw Discovery**: `src/quantumvitas/analysis/parsers.py:700-750` (`find_bands_files()`)
-- **Parse**: `src/quantumvitas/analysis/parsers.py:620-697` (`parse_bands_gnu()`)
+- **Raw Discovery**: `src/qmatsuite/analysis/parsers.py:700-750` (`find_bands_files()`)
+- **Parse**: `src/qmatsuite/analysis/parsers.py:620-697` (`parse_bands_gnu()`)
 - **Canonical Object**: ❌ `BandStructureData` has no `meta` field
 - **Derived Compute**: ⚠️ `shift_to_fermi()` is a method, not a separate layer
-- **Viz**: `src/quantumvitas/analysis/plotting.py:200-277` (direct consumption)
-- **Pin/History**: `src/quantumvitas/analysis/artifacts.py:482-656` (artifact system exists but doesn't use `AnalysisObjectMeta`)
+- **Viz**: `src/qmatsuite/analysis/plotting.py:200-277` (direct consumption)
+- **Pin/History**: `src/qmatsuite/analysis/artifacts.py:482-656` (artifact system exists but doesn't use `AnalysisObjectMeta`)
 
 ### DOS (❌ Bypass)
-- **Raw Discovery**: `src/quantumvitas/analysis/parsers.py:750-800` (`find_dos_files()`)
-- **Parse**: `src/quantumvitas/analysis/parsers.py:481-543` (`parse_dos_data()`)
+- **Raw Discovery**: `src/qmatsuite/analysis/parsers.py:750-800` (`find_dos_files()`)
+- **Parse**: `src/qmatsuite/analysis/parsers.py:481-543` (`parse_dos_data()`)
 - **Canonical Object**: ❌ `DOSData` has no `meta` field
 - **Derived Compute**: ⚠️ `shift_to_fermi()` is a method, not a separate layer
-- **Viz**: `src/quantumvitas/analysis/plotting.py:68-145` (direct consumption)
-- **Pin/History**: `src/quantumvitas/analysis/artifacts.py:392-479` (artifact system exists but doesn't use `AnalysisObjectMeta`)
+- **Viz**: `src/qmatsuite/analysis/plotting.py:68-145` (direct consumption)
+- **Pin/History**: `src/qmatsuite/analysis/artifacts.py:392-479` (artifact system exists but doesn't use `AnalysisObjectMeta`)
 
 ---
 
@@ -188,11 +188,11 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 - Cannot generalize to multi-engine (VASP, ORCA parsers would need separate plotting paths)
 
 **Locations**:
-- `src/quantumvitas/analysis/parsers.py:434-479` (DOSData definition)
-- `src/quantumvitas/analysis/parsers.py:559-618` (BandStructureData definition)
-- `src/quantumvitas/analysis/plotting.py:68-145` (plot_dos consumes DOSData directly)
-- `src/quantumvitas/analysis/plotting.py:200-277` (plot_bands consumes BandStructureData directly)
-- `src/quantumvitas/api.py:3338-3425` (get_dos_data returns raw dict, not canonical object)
+- `src/qmatsuite/analysis/parsers.py:434-479` (DOSData definition)
+- `src/qmatsuite/analysis/parsers.py:559-618` (BandStructureData definition)
+- `src/qmatsuite/analysis/plotting.py:68-145` (plot_dos consumes DOSData directly)
+- `src/qmatsuite/analysis/plotting.py:200-277` (plot_bands consumes BandStructureData directly)
+- `src/qmatsuite/api.py:3338-3425` (get_dos_data returns raw dict, not canonical object)
 
 ---
 
@@ -200,11 +200,11 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 
 **Evidence**:
 - `DOSData` exists in both:
-  - `src/quantumvitas/analysis/parsers.py:434` (parsing layer)
-  - `src/quantumvitas/viz/data_models.py:33` (visualization layer)
+  - `src/qmatsuite/analysis/parsers.py:434` (parsing layer)
+  - `src/qmatsuite/viz/data_models.py:33` (visualization layer)
 - `BandStructureData` exists in both:
-  - `src/quantumvitas/analysis/parsers.py:559` (parsing layer)
-  - `src/quantumvitas/viz/data_models.py:16` (visualization layer)
+  - `src/qmatsuite/analysis/parsers.py:559` (parsing layer)
+  - `src/qmatsuite/viz/data_models.py:16` (visualization layer)
 
 **Impact**:
 - Schema drift risk (two definitions can diverge)
@@ -212,8 +212,8 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 - Violates DRY principle
 
 **Locations**:
-- `src/quantumvitas/analysis/parsers.py:434` vs `src/quantumvitas/viz/data_models.py:33`
-- `src/quantumvitas/analysis/parsers.py:559` vs `src/quantumvitas/viz/data_models.py:16`
+- `src/qmatsuite/analysis/parsers.py:434` vs `src/qmatsuite/viz/data_models.py:33`
+- `src/qmatsuite/analysis/parsers.py:559` vs `src/qmatsuite/viz/data_models.py:16`
 
 ---
 
@@ -222,7 +222,7 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 **Evidence**:
 - Trajectory parser is registered: `@register_parser("qe", "trajectory")`
 - Bands/DOS parsers are standalone functions, not classes, not registered
-- Registry exists: `src/quantumvitas/parsers/registry.py`
+- Registry exists: `src/qmatsuite/parsers/registry.py`
 
 **Impact**:
 - Cannot auto-discover parsers for multi-engine support
@@ -230,9 +230,9 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 - Inconsistent with trajectory pattern
 
 **Locations**:
-- `src/quantumvitas/parsers/registry.py:16-21` (registration decorator)
-- `src/quantumvitas/drivers/qe/parsers/trajectory.py:25` (trajectory uses it)
-- `src/quantumvitas/analysis/parsers.py:481,620` (bands/dos don't use it)
+- `src/qmatsuite/parsers/registry.py:16-21` (registration decorator)
+- `src/qmatsuite/drivers/qe/parsers/trajectory.py:25` (trajectory uses it)
+- `src/qmatsuite/analysis/parsers.py:481,620` (bands/dos don't use it)
 
 ---
 
@@ -250,9 +250,9 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 - Inconsistent with SSOT/history requirements
 
 **Locations**:
-- `src/quantumvitas/core/analysis/trajectory/model.py:136` (Trajectory has meta)
-- `src/quantumvitas/analysis/artifacts.py:456-461` (DOS artifact is plain dict)
-- `src/quantumvitas/analysis/artifacts.py:570-580` (Bands artifact is plain dict)
+- `src/qmatsuite/core/analysis/trajectory/model.py:136` (Trajectory has meta)
+- `src/qmatsuite/analysis/artifacts.py:456-461` (DOS artifact is plain dict)
+- `src/qmatsuite/analysis/artifacts.py:570-580` (Bands artifact is plain dict)
 
 ---
 
@@ -269,9 +269,9 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 - Violates separation of concerns
 
 **Locations**:
-- `src/quantumvitas/analysis/plotting.py:68` (`plot_dos(dos_data: DOSData)`)
-- `src/quantumvitas/analysis/plotting.py:200` (`plot_bands(band_data: BandStructureData)`)
-- `src/quantumvitas/core/analysis/trajectory/model.py:255` (Trajectory uses primitives)
+- `src/qmatsuite/analysis/plotting.py:68` (`plot_dos(dos_data: DOSData)`)
+- `src/qmatsuite/analysis/plotting.py:200` (`plot_bands(band_data: BandStructureData)`)
+- `src/qmatsuite/core/analysis/trajectory/model.py:255` (Trajectory uses primitives)
 
 ---
 
@@ -287,9 +287,9 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 - Inconsistent with trajectory pattern (which has separate `utils.py`)
 
 **Locations**:
-- `src/quantumvitas/analysis/parsers.py:453-463` (DOSData.shift_to_fermi)
-- `src/quantumvitas/analysis/parsers.py:585-595` (BandStructureData.shift_to_fermi)
-- `src/quantumvitas/core/analysis/trajectory/utils.py` (separate utils module)
+- `src/qmatsuite/analysis/parsers.py:453-463` (DOSData.shift_to_fermi)
+- `src/qmatsuite/analysis/parsers.py:585-595` (BandStructureData.shift_to_fermi)
+- `src/qmatsuite/core/analysis/trajectory/utils.py` (separate utils module)
 
 ---
 
@@ -307,8 +307,8 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 - No runtime validation
 
 **Locations**:
-- `src/quantumvitas/core/analysis/trajectory/model.py:42` (Frame.energy: Optional[float] = None  # eV)
-- `src/quantumvitas/analysis/parsers.py:446` (energies: np.ndarray  # Energy values in eV - comment only)
+- `src/qmatsuite/core/analysis/trajectory/model.py:42` (Frame.energy: Optional[float] = None  # eV)
+- `src/qmatsuite/analysis/parsers.py:446` (energies: np.ndarray  # Energy values in eV - comment only)
 
 ---
 
@@ -325,8 +325,8 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 - Inconsistent with trajectory artifacts
 
 **Locations**:
-- `src/quantumvitas/analysis/artifacts.py:438-461` (DOS artifact creation)
-- `src/quantumvitas/analysis/artifacts.py:534-580` (Bands artifact creation)
+- `src/qmatsuite/analysis/artifacts.py:438-461` (DOS artifact creation)
+- `src/qmatsuite/analysis/artifacts.py:534-580` (Bands artifact creation)
 
 ---
 
@@ -399,9 +399,9 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 **What**: Create canonical `Bands` object with `AnalysisObjectMeta` and `to_visual_primitives()`.
 
 **Motivation**: 
-- `src/quantumvitas/analysis/parsers.py:559` (BandStructureData has no meta)
-- `src/quantumvitas/analysis/plotting.py:200` (plot_bands consumes BandStructureData directly)
-- `src/quantumvitas/viz/data_models.py:16` (duplicate BandStructureData definition)
+- `src/qmatsuite/analysis/parsers.py:559` (BandStructureData has no meta)
+- `src/qmatsuite/analysis/plotting.py:200` (plot_bands consumes BandStructureData directly)
+- `src/qmatsuite/viz/data_models.py:16` (duplicate BandStructureData definition)
 
 **Alignment Points**:
 - Follow trajectory pattern: `core/analysis/trajectory/model.py:130`
@@ -416,9 +416,9 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 **What**: Create canonical `DOS` object with `AnalysisObjectMeta` and `to_visual_primitives()`.
 
 **Motivation**:
-- `src/quantumvitas/analysis/parsers.py:434` (DOSData has no meta)
-- `src/quantumvitas/analysis/plotting.py:68` (plot_dos consumes DOSData directly)
-- `src/quantumvitas/viz/data_models.py:33` (duplicate DOSData definition)
+- `src/qmatsuite/analysis/parsers.py:434` (DOSData has no meta)
+- `src/qmatsuite/analysis/plotting.py:68` (plot_dos consumes DOSData directly)
+- `src/qmatsuite/viz/data_models.py:33` (duplicate DOSData definition)
 
 **Alignment Points**:
 - Follow trajectory pattern: `core/analysis/trajectory/model.py:130`
@@ -433,9 +433,9 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 **What**: Register bands/DOS parsers in `parsers/registry.py` and route through registry.
 
 **Motivation**:
-- `src/quantumvitas/analysis/parsers.py:481,620` (standalone functions, not registered)
-- `src/quantumvitas/drivers/qe/parsers/trajectory.py:25` (trajectory uses registry)
-- `src/quantumvitas/parsers/registry.py:16` (registry exists but underused)
+- `src/qmatsuite/analysis/parsers.py:481,620` (standalone functions, not registered)
+- `src/qmatsuite/drivers/qe/parsers/trajectory.py:25` (trajectory uses registry)
+- `src/qmatsuite/parsers/registry.py:16` (registry exists but underused)
 
 **Alignment Points**:
 - Convert `parse_bands_gnu()` to `QEBandsParser` class
@@ -450,9 +450,9 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 **What**: Update `plot_bands()` and `plot_dos()` to consume `to_visual_primitives()` output, not raw data models.
 
 **Motivation**:
-- `src/quantumvitas/analysis/plotting.py:68` (plot_dos accepts DOSData)
-- `src/quantumvitas/analysis/plotting.py:200` (plot_bands accepts BandStructureData)
-- `src/quantumvitas/core/analysis/trajectory/model.py:255` (Trajectory uses primitives)
+- `src/qmatsuite/analysis/plotting.py:68` (plot_dos accepts DOSData)
+- `src/qmatsuite/analysis/plotting.py:200` (plot_bands accepts BandStructureData)
+- `src/qmatsuite/core/analysis/trajectory/model.py:255` (Trajectory uses primitives)
 
 **Alignment Points**:
 - Change `plot_dos()` signature to accept `Series1D` (from `DOS.to_visual_primitives()`)
@@ -466,9 +466,9 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 **What**: Move `shift_to_fermi()` and projection logic to derived compute layer, not data model methods.
 
 **Motivation**:
-- `src/quantumvitas/analysis/parsers.py:453` (DOSData.shift_to_fermi is method)
-- `src/quantumvitas/analysis/parsers.py:585` (BandStructureData.shift_to_fermi is method)
-- `src/quantumvitas/core/analysis/trajectory/utils.py` (trajectory has separate utils)
+- `src/qmatsuite/analysis/parsers.py:453` (DOSData.shift_to_fermi is method)
+- `src/qmatsuite/analysis/parsers.py:585` (BandStructureData.shift_to_fermi is method)
+- `src/qmatsuite/core/analysis/trajectory/utils.py` (trajectory has separate utils)
 
 **Alignment Points**:
 - Create `core/analysis/dos/utils.py` with `shift_dos_to_fermi(dos: DOS) -> DOS`
@@ -482,8 +482,8 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 **What**: Delete `DOSData` and `BandStructureData` from `viz/data_models.py`, use canonical objects only.
 
 **Motivation**:
-- `src/quantumvitas/viz/data_models.py:16,33` (duplicate definitions)
-- `src/quantumvitas/analysis/parsers.py:434,559` (original definitions)
+- `src/qmatsuite/viz/data_models.py:16,33` (duplicate definitions)
+- `src/qmatsuite/analysis/parsers.py:434,559` (original definitions)
 
 **Alignment Points**:
 - After creating canonical `Bands` and `DOS` objects, remove `viz/data_models.py` duplicates
@@ -497,9 +497,9 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 **What**: Update `parse_and_write_dos_artifact()` and `parse_and_write_bands_artifact()` to create canonical objects with `AnalysisObjectMeta`.
 
 **Motivation**:
-- `src/quantumvitas/analysis/artifacts.py:456` (DOS artifact is plain dict, no meta)
-- `src/quantumvitas/analysis/artifacts.py:570` (Bands artifact is plain dict, no meta)
-- `src/quantumvitas/core/analysis/trajectory/model.py:136` (Trajectory has meta)
+- `src/qmatsuite/analysis/artifacts.py:456` (DOS artifact is plain dict, no meta)
+- `src/qmatsuite/analysis/artifacts.py:570` (Bands artifact is plain dict, no meta)
+- `src/qmatsuite/core/analysis/trajectory/model.py:136` (Trajectory has meta)
 
 **Alignment Points**:
 - After creating canonical `DOS` and `Bands` objects, update artifact creation to:
@@ -513,17 +513,17 @@ QMatSuite has a **partially unified** analysis pipeline. The trajectory domain i
 
 ### Key Files
 
-- **Trajectory Model**: `src/quantumvitas/core/analysis/trajectory/model.py`
-- **Trajectory Parser**: `src/quantumvitas/drivers/qe/parsers/trajectory.py`
-- **Bands Parser**: `src/quantumvitas/analysis/parsers.py:620`
-- **DOS Parser**: `src/quantumvitas/analysis/parsers.py:481`
-- **Bands Data Model**: `src/quantumvitas/analysis/parsers.py:559`
-- **DOS Data Model**: `src/quantumvitas/analysis/parsers.py:434`
-- **Duplicate Models**: `src/quantumvitas/viz/data_models.py:16,33`
-- **Parser Registry**: `src/quantumvitas/parsers/registry.py`
-- **Plotting Functions**: `src/quantumvitas/analysis/plotting.py`
-- **Artifact System**: `src/quantumvitas/analysis/artifacts.py`
-- **API Layer**: `src/quantumvitas/api.py:3338-3425` (get_dos_data, get_bands_data)
+- **Trajectory Model**: `src/qmatsuite/core/analysis/trajectory/model.py`
+- **Trajectory Parser**: `src/qmatsuite/drivers/qe/parsers/trajectory.py`
+- **Bands Parser**: `src/qmatsuite/analysis/parsers.py:620`
+- **DOS Parser**: `src/qmatsuite/analysis/parsers.py:481`
+- **Bands Data Model**: `src/qmatsuite/analysis/parsers.py:559`
+- **DOS Data Model**: `src/qmatsuite/analysis/parsers.py:434`
+- **Duplicate Models**: `src/qmatsuite/viz/data_models.py:16,33`
+- **Parser Registry**: `src/qmatsuite/parsers/registry.py`
+- **Plotting Functions**: `src/qmatsuite/analysis/plotting.py`
+- **Artifact System**: `src/qmatsuite/analysis/artifacts.py`
+- **API Layer**: `src/qmatsuite/api.py:3338-3425` (get_dos_data, get_bands_data)
 
 ### Key Functions/Classes
 

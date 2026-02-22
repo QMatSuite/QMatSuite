@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright configuration for QuantumVITAS Electron E2E tests
+ * Playwright configuration for QMatSuite Electron E2E tests
  */
 export default defineConfig({
   testDir: './tests/e2e',

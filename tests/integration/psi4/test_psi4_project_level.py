@@ -2,7 +2,7 @@
 Level-3 Project Integration Tests for Psi4.
 
 These tests verify the full unified pipeline (JobGraph execution) for Psi4:
-- QVService.run_calculation() runs through JobGraph pipeline
+- QMSService.run_calculation() runs through JobGraph pipeline
 - run_step() runs through unified run_step()
 - SPEC step types are preserved throughout execution
 
@@ -14,10 +14,10 @@ import pytest
 import yaml
 from pathlib import Path
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
-from quantumvitas.core.engines.discovery import is_engine_available
+from qmatsuite.core.engines.discovery import is_engine_available
 
 pytestmark = pytest.mark.skipif(
     not is_engine_available("psi4"),
@@ -27,7 +27,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def psi4_project(tmp_path):
-    """Create a Psi4 project using QVService APIs.
+    """Create a Psi4 project using QMSService APIs.
 
     Creates:
     - Project directory
@@ -36,7 +36,7 @@ def psi4_project(tmp_path):
     - SCF step with HF/STO-3G parameters
     """
     # Create project using service API
-    project_root = QVService.init_project(target_dir=tmp_path / "psi4_project", name="Psi4 Test")
+    project_root = QMSService.init_project(target_dir=tmp_path / "psi4_project", name="Psi4 Test")
 
     # Create molecule structure file (water)
     from pymatgen.core import Molecule
@@ -56,10 +56,10 @@ def psi4_project(tmp_path):
     structures_dir = project_root / "structures"
     structures_dir.mkdir(parents=True, exist_ok=True)
 
-    from quantumvitas.core.resources import generate_resource_id
+    from qmatsuite.core.resources import generate_resource_id
     structure_ulid = generate_resource_id()
     structure_data = {
-        "__qv_meta__": {
+        "__qms_meta__": {
             "ulid": structure_ulid,
             "name": "H2O",
             "slug": "h2o",
@@ -71,7 +71,7 @@ def psi4_project(tmp_path):
     (structures_dir / "h2o.json").write_text(json.dumps(structure_data))
 
     # Create calculation for Psi4
-    calc_resolved = QVService(project_root).project.init_calculation(
+    calc_resolved = QMSService(project_root).project.init_calculation(
         name="h2o-scf",
         structure_selector=structure_ulid,
     )
@@ -85,7 +85,7 @@ def psi4_project(tmp_path):
     calc_yaml.write_text(yaml.dump(calc_data, default_flow_style=False))
 
     # Add SCF step with SPEC step type
-    step_dto = QVService(project_root).calculation.add_step(
+    step_dto = QMSService(project_root).calculation.add_step(
         calc_id,
         step_type_gen="scf",
     )
@@ -117,7 +117,7 @@ class TestPsi4ProjectLevelExecution:
 
     def test_run_calculation_completes(self, psi4_project):
         """Verify run_calculation() executes through JobGraph pipeline."""
-        svc = QVService(psi4_project["root"])
+        svc = QMSService(psi4_project["root"])
         result = svc.run.run_calculation(
             calc_selector=psi4_project["calc_selector"],
         )
@@ -127,7 +127,7 @@ class TestPsi4ProjectLevelExecution:
 
     def test_run_step_completes(self, psi4_project):
         """Verify run_step() uses unified pipeline."""
-        svc = QVService(psi4_project["root"])
+        svc = QMSService(psi4_project["root"])
         result = svc.run.run_step(
             calc_selector=psi4_project["calc_selector"],
             step_selector=psi4_project["step_ulid"],
@@ -159,7 +159,7 @@ class TestPsi4RegistryLookup:
 
     def test_registry_resolves_psi4_types(self):
         """Verify all Psi4 step types are in registry."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         registry = get_registry()
 
@@ -183,7 +183,7 @@ class TestPsi4RegistryLookup:
 
     def test_engine_registered_in_engine_registry(self):
         """Verify Psi4 is registered in the EngineRegistry."""
-        from quantumvitas.engine.registry import create_default_registry
+        from qmatsuite.engine.registry import create_default_registry
 
         registry = create_default_registry()
         assert registry.has("psi4")
@@ -193,7 +193,7 @@ class TestPsi4RegistryLookup:
 
     def test_driver_registered_in_driver_registry(self):
         """Verify Psi4 driver is registered in the DriverRegistry."""
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         assert "psi4" in DriverRegistry.get_all_engines()
         driver = DriverRegistry.get_driver("psi4")

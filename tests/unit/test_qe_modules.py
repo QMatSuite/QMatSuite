@@ -5,13 +5,13 @@ Unit tests for QE module detection and multi-module support.
 import pytest
 from pathlib import Path
 
-from quantumvitas.io import (
+from qmatsuite.io import (
     QEInputParser,
     QEInputGenerator,
     QEModule,
 )
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 
 class TestQEModuleDetection:

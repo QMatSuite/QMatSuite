@@ -5,7 +5,7 @@ This is a pure code-scanning test - no runtime, no manifest, no fixtures.
 It ensures GUI-called RPC methods are wired to daemon handlers.
 
 Scan approach:
-1. Extract method names from GUI's QVCommandMap interface (TypeScript)
+1. Extract method names from GUI's QMSCommandMap interface (TypeScript)
 2. Extract method names from daemon's _HANDLER_MAP (Python)
 3. Fail if any GUI method is not in daemon (GUI calls would fail at runtime)
 
@@ -18,11 +18,11 @@ from pathlib import Path
 import pytest
 
 
-# GUI source file with QVCommandMap interface
-GUI_TYPES_FILE = Path(__file__).parent.parent.parent / "gui" / "src" / "types" / "qv.ts"
+# GUI source file with QMSCommandMap interface
+GUI_TYPES_FILE = Path(__file__).parent.parent.parent / "gui" / "src" / "types" / "qms.ts"
 
 # Daemon server file with handler registry
-DAEMON_SERVER_FILE = Path(__file__).parent.parent.parent / "src" / "quantumvitas" / "daemon" / "server.py"
+DAEMON_SERVER_FILE = Path(__file__).parent.parent.parent / "src" / "qmatsuite" / "daemon" / "server.py"
 
 # Methods exempt from the wiring check with reasons
 # Use sparingly - only for methods that are intentionally not wired
@@ -32,21 +32,21 @@ EXEMPT_METHODS = {
 
 
 def extract_gui_rpc_methods() -> set[str]:
-    """Extract RPC method names from GUI's QVCommandMap TypeScript interface."""
+    """Extract RPC method names from GUI's QMSCommandMap TypeScript interface."""
     if not GUI_TYPES_FILE.exists():
         pytest.skip(f"GUI types file not found: {GUI_TYPES_FILE}")
 
     content = GUI_TYPES_FILE.read_text()
 
-    # Find QVCommandMap interface block
-    # Pattern: interface QVCommandMap { ... }
+    # Find QMSCommandMap interface block
+    # Pattern: interface QMSCommandMap { ... }
     interface_match = re.search(
-        r'export interface QVCommandMap\s*\{(.*?)^\}',
+        r'export interface QMSCommandMap\s*\{(.*?)^\}',
         content,
         re.DOTALL | re.MULTILINE
     )
     if not interface_match:
-        pytest.fail("Could not find QVCommandMap interface in GUI types file")
+        pytest.fail("Could not find QMSCommandMap interface in GUI types file")
 
     interface_body = interface_match.group(1)
 

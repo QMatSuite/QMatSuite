@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.project.snapshot import (
+from qmatsuite.project.snapshot import (
     export_project_to_snapshot,
     materialize_project_from_snapshot,
 )

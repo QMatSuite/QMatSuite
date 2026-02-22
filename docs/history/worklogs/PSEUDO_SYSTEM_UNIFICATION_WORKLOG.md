@@ -1,33 +1,33 @@
 # Pseudo System Unification — Worklog
 
 ## Goal
-Unify three incompatible pseudo install/resolve systems into ONE pipeline (`src/quantumvitas/pseudo/`). Delete OLD systems. Fix MCP agent flow `download_pseudo_library -> auto_resolve_species_map`.
+Unify three incompatible pseudo install/resolve systems into ONE pipeline (`src/qmatsuite/pseudo/`). Delete OLD systems. Fix MCP agent flow `download_pseudo_library -> auto_resolve_species_map`.
 
 ## Status: COMPLETE
 
 ---
 
 ## Phase 1: Delete root head.json from pipeline.py — DONE
-- **File**: `src/quantumvitas/pseudo/pipeline.py`
+- **File**: `src/qmatsuite/pseudo/pipeline.py`
 - Deleted root head.json write block (lines 247-253)
 - Install-level head.json at `SSSP/precision/1.3.0/head.json` retained (SSOT)
 
 ## Phase 2: Rewrite resolution in pseudo_config.py — DONE
-- **File**: `src/quantumvitas/core/pseudo_config.py`
+- **File**: `src/qmatsuite/core/pseudo_config.py`
 - Renamed `flavor` -> `variant` in PseudoResolutionRequest, default `"precision"`
-- Replaced `_find_quantumvitas_root()` with `importlib.resources` + dev fallback
+- Replaced `_find_qmatsuite_root()` with `importlib.resources` + dev fallback
 - Rewrote `resolve_project_pseudos()` with three-level directory walk
 - Deleted ~800 lines of OLD system functions (get_sssp_library_path, install_sssp_from_seed, download_sssp_library, list_installed_sssp, etc.)
 - Kept: PseudoConfig, load_pseudo_config, validate_pseudo_config, PseudoResolutionRequest/Result, resolve_project_pseudos, compute_sha256, download_github_release_asset
 
 ## Phase 3: Rewrite library_manager.py — DONE
-- **File**: `src/quantumvitas/core/library_manager.py`
+- **File**: `src/qmatsuite/core/library_manager.py`
 - Removed all OLD imports
 - Rewrote `_get_sssp_status()` with three-level walk
 - `install_library()` / `remove_library()` / `repair_library()` use `pipeline.download_and_install()`
 
 ## Phase 4: Delete pseudo_installs.py + update consumers — DONE
-- **DELETED**: `src/quantumvitas/core/pseudo_installs.py`
+- **DELETED**: `src/qmatsuite/core/pseudo_installs.py`
 - Updated `pseudo_materialization.py`: archive extraction -> three-level library walk
 - Updated `pseudo_runtime.py`: archive extraction -> three-level library walk with case-insensitive matching
 - Updated `pseudo_options.py`: added `_find_upf_in_libraries()` and `_find_upf_by_sha256_in_libraries()` helpers; replaced all `check_archive_status()` calls
@@ -38,7 +38,7 @@ Unify three incompatible pseudo install/resolve systems into ONE pipeline (`src/
 - Updated `api/utils.py`: `get_pseudo_status_bundle()` uses `library_manager.get_library_status()`
 
 ## Phase 6: Rewrite daemon/server.py handlers — DONE
-- `_handle_install_sssp_from_seed`: uses `QVService.Pseudo.download_and_install()`
+- `_handle_install_sssp_from_seed`: uses `QMSService.Pseudo.download_and_install()`
 - `_handle_download_sssp_library`: simplified, uses `download_and_install()`
 - `_handle_download_all_sssp`: loops precision/efficiency
 - `_handle_import_seed_archives`: returns deprecation message
@@ -74,26 +74,26 @@ Unify three incompatible pseudo install/resolve systems into ONE pipeline (`src/
 ## Files Summary
 
 ### DELETED:
-- `src/quantumvitas/core/pseudo_installs.py`
+- `src/qmatsuite/core/pseudo_installs.py`
 - `tests/integration/test_pseudo_download.py`
 
 ### Major rewrites:
-- `src/quantumvitas/core/pseudo_config.py` (~800 lines deleted, resolution rewritten)
-- `src/quantumvitas/core/library_manager.py` (all OLD imports -> NEW pipeline)
-- `src/quantumvitas/core/pseudo_options.py` (archive checks -> NEW layout)
-- `src/quantumvitas/core/pseudo_materialization.py` (archive extraction -> library walk)
-- `src/quantumvitas/core/pseudo_runtime.py` (archive extraction -> library walk)
-- `src/quantumvitas/api/service.py` (Pseudo class: 7 methods -> 1 method)
-- `src/quantumvitas/api/utils.py` (get_pseudo_status_bundle rewritten)
-- `src/quantumvitas/daemon/server.py` (SSSP handlers, flavor->variant, install_pseudo_archive)
+- `src/qmatsuite/core/pseudo_config.py` (~800 lines deleted, resolution rewritten)
+- `src/qmatsuite/core/library_manager.py` (all OLD imports -> NEW pipeline)
+- `src/qmatsuite/core/pseudo_options.py` (archive checks -> NEW layout)
+- `src/qmatsuite/core/pseudo_materialization.py` (archive extraction -> library walk)
+- `src/qmatsuite/core/pseudo_runtime.py` (archive extraction -> library walk)
+- `src/qmatsuite/api/service.py` (Pseudo class: 7 methods -> 1 method)
+- `src/qmatsuite/api/utils.py` (get_pseudo_status_bundle rewritten)
+- `src/qmatsuite/daemon/server.py` (SSSP handlers, flavor->variant, install_pseudo_archive)
 
 ### Minor fixes:
-- `src/quantumvitas/pseudo/pipeline.py` (deleted root head.json write)
-- `src/quantumvitas/mcp/tools/resolve_species_map.py` (flavor->variant)
-- `src/quantumvitas/mcp/tools/_resource_utils.py` (flavor->variant, add version)
-- `src/quantumvitas/mcp/tools/download_pseudo_library.py` (fix docstring)
-- `src/quantumvitas/mcp/tools/list_resources.py` (install-level scan)
-- `src/quantumvitas/calculation/runner.py` (fix unbound variable + warning handling)
+- `src/qmatsuite/pseudo/pipeline.py` (deleted root head.json write)
+- `src/qmatsuite/mcp/tools/resolve_species_map.py` (flavor->variant)
+- `src/qmatsuite/mcp/tools/_resource_utils.py` (flavor->variant, add version)
+- `src/qmatsuite/mcp/tools/download_pseudo_library.py` (fix docstring)
+- `src/qmatsuite/mcp/tools/list_resources.py` (install-level scan)
+- `src/qmatsuite/calculation/runner.py` (fix unbound variable + warning handling)
 - `gui/src/components/panels/StepDetailPanel.tsx` (fix dos module mapping)
 
 ### Tests updated:
@@ -108,13 +108,13 @@ Unify three incompatible pseudo install/resolve systems into ONE pipeline (`src/
 ## Patch: Shared Utility + Missing Tests + Cleanup
 
 ### Part 1: Shared three-level walk utility — DONE
-- **Created**: `src/quantumvitas/pseudo/layout.py`
+- **Created**: `src/qmatsuite/pseudo/layout.py`
   - `InstalledLibrary` dataclass (frozen, install_dir + library_key + variant + version + head)
   - `iter_installed_libraries(libraries_root)` — single canonical three-level walk
   - `find_installed_library(libraries_root, library_key, variant, version)` — targeted lookup
   - `find_upf_in_libraries(libraries_root, filename)` — exact filename search
   - `find_upf_in_libraries_casefold(libraries_root, filename)` — case-insensitive fallback
-- **Updated**: `src/quantumvitas/pseudo/__init__.py` — exports all 5 new symbols
+- **Updated**: `src/qmatsuite/pseudo/__init__.py` — exports all 5 new symbols
 - **Replaced 9 inline walks in 7 files**:
   - `core/pseudo_config.py` — `_scan_installed_libraries()` now delegates
   - `core/library_manager.py` — `_scan_installed_for_library()` now delegates
@@ -128,7 +128,7 @@ Unify three incompatible pseudo install/resolve systems into ONE pipeline (`src/
 ### Part 2: Delete remaining `flavor` fallbacks — DONE
 - Deleted 3 backward-compat fallbacks in `daemon/server.py` (lines 852, 906, 1199)
 - Fixed 3 stale `flavor` references in daemon docstrings
-- **Verification**: `grep -rn "flavor" src/quantumvitas/ --include="*.py"` returns 0 pseudo-related hits (only CP2K binary flavors remain, which are legitimate)
+- **Verification**: `grep -rn "flavor" src/qmatsuite/ --include="*.py"` returns 0 pseudo-related hits (only CP2K binary flavors remain, which are legitimate)
 
 ### Part 3: Fix cutoffs loading — DONE
 - **BUG FOUND**: SSSP cutoffs JSON is a dict keyed by element (`{"Ac": {...}, "Ag": {...}}`), but parser at `pseudo_config.py:555` used `isinstance(cutoffs_data, list)` which always evaluated to empty `[]` for dicts. **Cutoffs were NEVER loaded.**

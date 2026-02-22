@@ -11,13 +11,13 @@ Uses new capability contract:
 
 import pytest
 
-from quantumvitas.workflow.registry import get_registry
-from quantumvitas.presets.dimensions import DIMENSION_QC_PRECISION
-from quantumvitas.presets.variants_registry import get_variant
-from quantumvitas.engine.pyscf_engine import PySCFEngine
-from quantumvitas.engine.orca_engine import ORCAEngine
-from quantumvitas.engine.qe_engine import QeEngine
-from quantumvitas.presets.catalog import list_presets_for_engine
+from qmatsuite.workflow.registry import get_registry
+from qmatsuite.presets.dimensions import DIMENSION_QC_PRECISION
+from qmatsuite.presets.variants_registry import get_variant
+from qmatsuite.engine.pyscf_engine import PySCFEngine
+from qmatsuite.engine.orca_engine import ORCAEngine
+from qmatsuite.engine.qe_engine import QeEngine
+from qmatsuite.presets.catalog import list_presets_for_engine
 
 
 def test_pyscf_scf_accepts_presets():

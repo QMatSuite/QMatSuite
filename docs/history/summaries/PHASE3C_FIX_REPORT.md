@@ -12,11 +12,11 @@ All 5 failing tests are now passing. The fixes were minimal and focused on:
 
 ## Files Changed
 
-1. **src/quantumvitas/engine/pyscf_engine.py**
+1. **src/qmatsuite/engine/pyscf_engine.py**
    - Moved PySCF availability check before step.yaml read in `run_step_with_chain()`
    - This allows graceful failure messages when PySCF is not installed
 
-2. **src/quantumvitas/engines/pyscf/chain_execution.py**
+2. **src/qmatsuite/engines/pyscf/chain_execution.py**
    - Added `homo_index` and `lumo_index` to RHF/RKS results
    - Added `mo_energies_alpha` and `mo_energies_beta` to UHF results
    - Added pyscf.log file creation (sets `mf.stdout` to log file handle)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from quantumvitas.demo_store.authoring_ops import (
+from qmatsuite.demo_store.authoring_ops import (
     AddStep,
     ConfigureSpeciesMap,
     CreateCalculation,

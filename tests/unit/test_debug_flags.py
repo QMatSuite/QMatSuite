@@ -10,8 +10,8 @@ import tempfile
 import shutil
 from unittest.mock import patch, MagicMock
 
-from quantumvitas.core.debug import is_resolution_debug_enabled
-from quantumvitas.core.settings import load_settings, save_settings, QMatSuiteSettings
+from qmatsuite.core.debug import is_resolution_debug_enabled
+from qmatsuite.core.settings import load_settings, save_settings, QMatSuiteSettings
 
 
 class TestDebugFlags:
@@ -24,14 +24,14 @@ class TestDebugFlags:
         settings_dir.mkdir(parents=True)
         
         # Mock get_settings_json_path to return our temp path
-        from quantumvitas.core.paths import get_settings_json_path
+        from qmatsuite.core.paths import get_settings_json_path
         original = get_settings_json_path
         
         def mock_get_settings_json_path():
             return settings_dir / "settings.json"
         
-        monkeypatch.setattr("quantumvitas.core.paths.get_settings_json_path", mock_get_settings_json_path)
-        monkeypatch.setattr("quantumvitas.core.settings.get_settings_json_path", mock_get_settings_json_path)
+        monkeypatch.setattr("qmatsuite.core.paths.get_settings_json_path", mock_get_settings_json_path)
+        monkeypatch.setattr("qmatsuite.core.settings.get_settings_json_path", mock_get_settings_json_path)
         
         return settings_dir
     
@@ -77,7 +77,7 @@ class TestDebugFlags:
     
     def test_logs_gated_when_flag_off(self, temp_settings_dir):
         """Test that trace logs are suppressed when flag is OFF."""
-        from quantumvitas.core.resolution import ResourceIndex, ResourceMeta
+        from qmatsuite.core.resolution import ResourceIndex, ResourceMeta
         
         # Ensure flag is OFF
         settings = QMatSuiteSettings(debug_resolution=False)

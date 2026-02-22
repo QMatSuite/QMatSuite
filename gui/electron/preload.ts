@@ -1,5 +1,5 @@
 /**
- * QuantumVITAS Preload Script
+ * QMatSuite Preload Script
  * 
  * Exposes a safe API to the renderer process for communicating
  * with the Python daemon via IPC.
@@ -21,14 +21,14 @@ function generateRequestId(): string {
   return `req-${Date.now()}-${requestIdCounter}`;
 }
 
-// Type definitions for the API (mirrored in src/types/qv.ts)
-interface QVRequest {
+// Type definitions for the API (mirrored in src/types/qms.ts)
+interface QMSRequest {
   id: string;
   type: string;
   payload: Record<string, unknown>;
 }
 
-interface QVResponse<T = Record<string, unknown>> {
+interface QMSResponse<T = Record<string, unknown>> {
   id: string;
   ok: boolean;
   data?: T;
@@ -38,7 +38,7 @@ interface QVResponse<T = Record<string, unknown>> {
   };
 }
 
-type E2ERpcMockResponse = Omit<QVResponse, 'id'>;
+type E2ERpcMockResponse = Omit<QMSResponse, 'id'>;
 
 interface DaemonStatus {
   connected: boolean;
@@ -64,7 +64,7 @@ interface UpdaterState {
 /**
  * Exposed API for communicating with the daemon
  */
-const qvApi = {
+const qmsApi = {
   /**
    * Send a request to the Python daemon
    * 
@@ -73,7 +73,7 @@ const qvApi = {
    * @returns Promise with the daemon response
    * 
    * @example
-   * const response = await window.qv.request('ping', {});
+   * const response = await window.qms.request('ping', {});
    * if (response.ok) {
    *   console.log('Daemon version:', response.data.version);
    * }
@@ -81,14 +81,14 @@ const qvApi = {
   request: async <T = Record<string, unknown>>(
     type: string,
     payload: Record<string, unknown> = {}
-  ): Promise<QVResponse<T>> => {
-    const request: QVRequest = {
+  ): Promise<QMSResponse<T>> => {
+    const request: QMSRequest = {
       id: generateRequestId(),
       type,
       payload,
     };
     
-    return ipcRenderer.invoke('qv-request', request);
+    return ipcRenderer.invoke('qms-request', request);
   },
   
   /**
@@ -98,7 +98,7 @@ const qvApi = {
    * @returns Unsubscribe function
    * 
    * @example
-   * const unsubscribe = window.qv.onLog((msg) => console.log('[daemon]', msg));
+   * const unsubscribe = window.qms.onLog((msg) => console.log('[daemon]', msg));
    * // Later: unsubscribe();
    */
   onLog: (callback: (message: string) => void): (() => void) => {
@@ -120,7 +120,7 @@ const qvApi = {
    * @returns Promise<boolean> - true if daemon is connected
    */
   isConnected: async (): Promise<boolean> => {
-    return ipcRenderer.invoke('qv-is-connected');
+    return ipcRenderer.invoke('qms-is-connected');
   },
   
   /**
@@ -129,7 +129,7 @@ const qvApi = {
    * @returns Promise<string | null> - Selected path or null if cancelled
    */
   openDirectory: async (): Promise<string | null> => {
-    return ipcRenderer.invoke('qv-open-directory');
+    return ipcRenderer.invoke('qms-open-directory');
   },
   
   /**
@@ -142,7 +142,7 @@ const qvApi = {
     title?: string;
     filters?: { name: string; extensions: string[] }[];
   }): Promise<string | null> => {
-    return ipcRenderer.invoke('qv-open-file', options);
+    return ipcRenderer.invoke('qms-open-file', options);
   },
   
   /**
@@ -151,14 +151,14 @@ const qvApi = {
    * @returns Promise<DaemonStatus>
    */
   getDaemonStatus: async (): Promise<DaemonStatus> => {
-    return ipcRenderer.invoke('qv-daemon-status');
+    return ipcRenderer.invoke('qms-daemon-status');
   },
 
   /**
    * Get runtime setup status from main process.
    */
   getRuntimeSetupStatus: async (): Promise<RuntimeSetupStatus> => {
-    return ipcRenderer.invoke('qv-runtime-setup-status');
+    return ipcRenderer.invoke('qms-runtime-setup-status');
   },
 
   /**
@@ -178,7 +178,7 @@ const qvApi = {
    * Get updater status from main process.
    */
   getUpdaterState: async (): Promise<UpdaterState> => {
-    return ipcRenderer.invoke('qv-updater-state');
+    return ipcRenderer.invoke('qms-updater-state');
   },
 
   /**
@@ -198,21 +198,21 @@ const qvApi = {
    * Trigger an explicit update check.
    */
   checkForUpdates: async (): Promise<{ ok: boolean; message?: string }> => {
-    return ipcRenderer.invoke('qv-check-for-updates');
+    return ipcRenderer.invoke('qms-check-for-updates');
   },
 
   /**
    * Start downloading the currently available update.
    */
   downloadUpdate: async (): Promise<{ ok: boolean; message?: string }> => {
-    return ipcRenderer.invoke('qv-download-update');
+    return ipcRenderer.invoke('qms-download-update');
   },
 
   /**
    * Restart app and install a downloaded update.
    */
   quitAndInstallUpdate: async (): Promise<{ ok: boolean; message?: string }> => {
-    return ipcRenderer.invoke('qv-quit-and-install-update');
+    return ipcRenderer.invoke('qms-quit-and-install-update');
   },
   
   /**
@@ -250,12 +250,12 @@ const qvApi = {
   
   /**
    * Set the current project path for log file storage
-   * Logs will be saved to .qv-daemon.log in the project directory
+   * Logs will be saved to .qms-daemon.log in the project directory
    * 
    * @param projectPath - Project root path or null to disable
    */
   setProject: async (projectPath: string | null): Promise<void> => {
-    return ipcRenderer.invoke('qv-set-project', projectPath);
+    return ipcRenderer.invoke('qms-set-project', projectPath);
   },
   
   /**
@@ -266,7 +266,7 @@ const qvApi = {
    * @returns Array of log lines
    */
   readLogs: async (projectPath: string, tailLines?: number): Promise<string[]> => {
-    return ipcRenderer.invoke('qv-read-logs', projectPath, tailLines);
+    return ipcRenderer.invoke('qms-read-logs', projectPath, tailLines);
   },
   
   /**
@@ -276,7 +276,7 @@ const qvApi = {
    * @returns true if successful
    */
   revealPath: async (targetPath: string): Promise<boolean> => {
-    return ipcRenderer.invoke('qv-reveal-path', targetPath);
+    return ipcRenderer.invoke('qms-reveal-path', targetPath);
   },
   
   /**
@@ -286,7 +286,7 @@ const qvApi = {
    * @param directory - Directory path to use for file dialogs
    */
   setE2ETestDirectory: async (directory: string): Promise<void> => {
-    return ipcRenderer.invoke('qv-set-e2e-test-directory', directory);
+    return ipcRenderer.invoke('qms-set-e2e-test-directory', directory);
   },
 
   /**
@@ -296,21 +296,21 @@ const qvApi = {
     method: string,
     payload: E2ERpcMockResponse | E2ERpcMockResponse[] | null,
   ): Promise<void> => {
-    return ipcRenderer.invoke('qv-set-e2e-rpc-mock', method, payload);
+    return ipcRenderer.invoke('qms-set-e2e-rpc-mock', method, payload);
   },
 
   /**
    * Clear all E2E RPC mocks.
    */
   clearE2ERpcMocks: async (): Promise<void> => {
-    return ipcRenderer.invoke('qv-clear-e2e-rpc-mocks');
+    return ipcRenderer.invoke('qms-clear-e2e-rpc-mocks');
   },
 
   /**
    * Set updater state in E2E mode.
    */
   setE2EUpdaterState: async (state: Partial<UpdaterState>): Promise<void> => {
-    return ipcRenderer.invoke('qv-e2e-set-updater-state', state);
+    return ipcRenderer.invoke('qms-e2e-set-updater-state', state);
   },
   
   /**
@@ -321,7 +321,7 @@ const qvApi = {
    * @returns ArrayBuffer with blob data
    */
   readBlob: async (blobId: string, calcDir: string): Promise<ArrayBuffer> => {
-    return ipcRenderer.invoke('qv-read-blob', blobId, calcDir);
+    return ipcRenderer.invoke('qms-read-blob', blobId, calcDir);
   },
 
   /**
@@ -332,12 +332,12 @@ const qvApi = {
    * @returns ArrayBuffer with file contents
    */
   readScratchFile: async (calcDir: string, relativePath: string): Promise<ArrayBuffer> => {
-    return ipcRenderer.invoke('qv-read-scratch-file', calcDir, relativePath);
+    return ipcRenderer.invoke('qms-read-scratch-file', calcDir, relativePath);
   },
 };
 
 // Expose to renderer via contextBridge
-contextBridge.exposeInMainWorld('qv', qvApi);
+contextBridge.exposeInMainWorld('qms', qmsApi);
 
-// Type declaration for window.qv (for TypeScript)
-export type QVApiType = typeof qvApi;
+// Type declaration for window.qms (for TypeScript)
+export type QMSApiType = typeof qmsApi;

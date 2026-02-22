@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.inputformat.core import (
+from qmatsuite.inputformat.core import (
     EngineInputSpec,
     InputFileSpec,
     ResourceRefSpec,
     SSOTMappingSpec,
 )
-from quantumvitas.inputformat.writer import write_engine_inputs
+from qmatsuite.inputformat.writer import write_engine_inputs
 
 
 # ─────────────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 
 from .conftest import send_request
 
@@ -18,7 +18,7 @@ from .conftest import send_request
 class TestGetCalculationDetail:
     """Contract tests for get_calculation_detail RPC."""
 
-    def test_get_calculation_detail_happy_path(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_get_calculation_detail_happy_path(self, demo_project_with_calculation, daemon: QMSDaemon):
         """get_calculation_detail returns full calculation data."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -40,7 +40,7 @@ class TestGetCalculationDetail:
         assert "ulid" in step or "step_ulid" in step
         assert "step_type_spec" in step or "type" in step
 
-    def test_get_calculation_detail_not_found(self, temp_project: Path, daemon: QVDaemon):
+    def test_get_calculation_detail_not_found(self, temp_project: Path, daemon: QMSDaemon):
         """get_calculation_detail errors on non-existent calculation."""
         fake_ulid = "01HZZZZZZZZZZZZZZZZZZZZZZ"
 
@@ -52,7 +52,7 @@ class TestGetCalculationDetail:
 
         assert "not_found" in str(exc_info.value).lower() or "not found" in str(exc_info.value).lower()
 
-    def test_get_calculation_detail_workflow(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_get_calculation_detail_workflow(self, demo_project_with_calculation, daemon: QMSDaemon):
         """get_calculation_detail after list_calculations."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -73,7 +73,7 @@ class TestGetCalculationDetail:
 class TestAddStepToCalculation:
     """Contract tests for add_step_to_calculation RPC."""
 
-    def test_add_step_to_calculation_happy_path(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_add_step_to_calculation_happy_path(self, demo_project_with_calculation, daemon: QMSDaemon):
         """add_step_to_calculation creates a new step."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -89,7 +89,7 @@ class TestAddStepToCalculation:
         assert "steps" in response
         assert len(response["steps"]) == 2  # Original SCF + new relax
 
-    def test_add_step_missing_step_type(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_add_step_missing_step_type(self, demo_project_with_calculation, daemon: QMSDaemon):
         """add_step_to_calculation errors on missing step_type_gen."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -102,7 +102,7 @@ class TestAddStepToCalculation:
 
         assert "invalid_argument" in str(exc_info.value).lower() or "missing" in str(exc_info.value).lower()
 
-    def test_add_step_workflow(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_add_step_workflow(self, demo_project_with_calculation, daemon: QMSDaemon):
         """add_step in context of calculation creation workflow."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -123,7 +123,7 @@ class TestAddStepToCalculation:
 class TestCreateCalculation:
     """Contract tests for create_calculation RPC."""
 
-    def test_create_calculation_happy_path(self, demo_project_with_structure, daemon: QVDaemon):
+    def test_create_calculation_happy_path(self, demo_project_with_structure, daemon: QMSDaemon):
         """create_calculation creates a new calculation."""
         project_root, structure_ulid = demo_project_with_structure
 
@@ -137,7 +137,7 @@ class TestCreateCalculation:
         # Response should include calculation ULID
         assert "ulid" in response or "calc_ulid" in response or "calculation_ulid" in response
 
-    def test_create_calculation_missing_structure(self, temp_project: Path, daemon: QVDaemon):
+    def test_create_calculation_missing_structure(self, temp_project: Path, daemon: QMSDaemon):
         """create_calculation with non-existent structure."""
         fake_ulid = "01HZZZZZZZZZZZZZZZZZZZZZZ"
 
@@ -155,7 +155,7 @@ class TestCreateCalculation:
             # If it errors, that's also OK
             pass
 
-    def test_create_calculation_workflow(self, demo_project_with_structure, daemon: QVDaemon):
+    def test_create_calculation_workflow(self, demo_project_with_structure, daemon: QMSDaemon):
         """create_calculation in full workflow."""
         project_root, structure_ulid = demo_project_with_structure
 
@@ -180,7 +180,7 @@ class TestCreateCalculation:
 class TestRenameCalculation:
     """Contract tests for rename_calculation RPC."""
 
-    def test_rename_calculation_happy_path(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_rename_calculation_happy_path(self, demo_project_with_calculation, daemon: QMSDaemon):
         """rename_calculation updates calculation name."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -200,7 +200,7 @@ class TestRenameCalculation:
         })
         assert detail["name"] == new_name
 
-    def test_rename_calculation_not_found(self, temp_project: Path, daemon: QVDaemon):
+    def test_rename_calculation_not_found(self, temp_project: Path, daemon: QMSDaemon):
         """rename_calculation errors on non-existent calculation."""
         fake_ulid = "01HZZZZZZZZZZZZZZZZZZZZZZ"
 
@@ -215,7 +215,7 @@ class TestRenameCalculation:
 class TestDeleteCalculation:
     """Contract tests for delete_calculation and can_delete_calculation RPCs."""
 
-    def test_can_delete_calculation_happy_path(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_can_delete_calculation_happy_path(self, demo_project_with_calculation, daemon: QMSDaemon):
         """can_delete_calculation checks if calculation can be deleted."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -227,7 +227,7 @@ class TestDeleteCalculation:
         # Response should indicate if deletion is allowed
         assert "has_dependencies" in response or "can_delete" in response
 
-    def test_delete_calculation_happy_path(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_delete_calculation_happy_path(self, demo_project_with_calculation, daemon: QMSDaemon):
         """delete_calculation removes a calculation."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -246,7 +246,7 @@ class TestDeleteCalculation:
                 "calculation": calc_ulid
             })
 
-    def test_delete_calculation_not_found(self, temp_project: Path, daemon: QVDaemon):
+    def test_delete_calculation_not_found(self, temp_project: Path, daemon: QMSDaemon):
         """delete_calculation with non-existent calculation."""
         fake_ulid = "01HZZZZZZZZZZZZZZZZZZZZZZ"
 
@@ -265,7 +265,7 @@ class TestDeleteCalculation:
 class TestReorderCalculationSteps:
     """Contract tests for reorder_calculation_steps RPC."""
 
-    def test_reorder_steps_happy_path(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_reorder_steps_happy_path(self, demo_project_with_calculation, daemon: QMSDaemon):
         """reorder_calculation_steps validates step order."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -281,7 +281,7 @@ class TestReorderCalculationSteps:
                 "step_order": fake_ids
             })
 
-    def test_reorder_steps_invalid_ids(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_reorder_steps_invalid_ids(self, demo_project_with_calculation, daemon: QMSDaemon):
         """reorder_calculation_steps errors on invalid step IDs."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -298,7 +298,7 @@ class TestReorderCalculationSteps:
 class TestChangeCalculationStructure:
     """Contract tests for change_calculation_structure RPC."""
 
-    def test_change_structure_happy_path(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_change_structure_happy_path(self, demo_project_with_calculation, daemon: QMSDaemon):
         """change_calculation_structure RPC accepts parameters."""
         project_root, structure_ulid, calc_ulid = demo_project_with_calculation
 
@@ -312,7 +312,7 @@ class TestChangeCalculationStructure:
         # Should succeed (changing to same structure is valid)
         assert response is not None
 
-    def test_change_structure_not_found(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_change_structure_not_found(self, demo_project_with_calculation, daemon: QMSDaemon):
         """change_calculation_structure errors on non-existent structure."""
         project_root, _, calc_ulid = demo_project_with_calculation
         fake_struct = "01HZZZZZZZZZZZZZZZZZZZZZZ"

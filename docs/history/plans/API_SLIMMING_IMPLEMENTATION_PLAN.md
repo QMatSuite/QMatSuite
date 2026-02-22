@@ -102,9 +102,9 @@
 **Criteria**: Functions that proxy domain logic should be service methods
 
 Per API_SLIMMING_REVIEW.md consolidation proposals:
-- Online search functions → `QVService.OnlineSearch.*`
-- Analysis functions → `QVService.Analysis.*`
-- Structure functions → `QVService.Structure.*`
+- Online search functions → `QMSService.OnlineSearch.*`
+- Analysis functions → `QMSService.Analysis.*`
+- Structure functions → `QMSService.Structure.*`
 
 ---
 

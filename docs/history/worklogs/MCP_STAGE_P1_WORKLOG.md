@@ -53,7 +53,7 @@ except Exception as struct_err:
 
 ### Fix 4: init_project MCP Tool (LOW)
 
-**Problem**: `QVService.init_project()` exists but no MCP tool wraps it.
+**Problem**: `QMSService.init_project()` exists but no MCP tool wraps it.
 Agent couldn't create a project through the MCP interface.
 
 **Fix**: Created `mcp/tools/init_project.py` — creates project, then calls
@@ -68,14 +68,14 @@ Demo exists at `qe_si_scf.yml` and works correctly. Agent usage issue.
 
 | File | Action |
 |------|--------|
-| `src/quantumvitas/api/service.py` | Fixed import at L4737 |
-| `src/quantumvitas/api/utils.py` | Fixed stub signature at L2031 |
-| `src/quantumvitas/io/structure_io.py` | Fixed error chain at L109 |
-| `src/quantumvitas/mcp/tools/set_species_map.py` | Created |
-| `src/quantumvitas/mcp/tools/init_project.py` | Created |
-| `src/quantumvitas/mcp/server.py` | Added 2 imports |
-| `src/quantumvitas/mcp/tools/create_calculation.py` | Updated context_hint |
-| `src/quantumvitas/mcp/tools/quick_run.py` | Added species_map param |
+| `src/qmatsuite/api/service.py` | Fixed import at L4737 |
+| `src/qmatsuite/api/utils.py` | Fixed stub signature at L2031 |
+| `src/qmatsuite/io/structure_io.py` | Fixed error chain at L109 |
+| `src/qmatsuite/mcp/tools/set_species_map.py` | Created |
+| `src/qmatsuite/mcp/tools/init_project.py` | Created |
+| `src/qmatsuite/mcp/server.py` | Added 2 imports |
+| `src/qmatsuite/mcp/tools/create_calculation.py` | Updated context_hint |
+| `src/qmatsuite/mcp/tools/quick_run.py` | Added species_map param |
 | `tests/mcp/test_stage_p1.py` | Created (11 tests) |
 | `tests/mcp/test_stage11.py` | Updated tool count 22→24 |
 

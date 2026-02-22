@@ -3,14 +3,14 @@
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
-from quantumvitas.execution.vasp_staging import (
+from qmatsuite.execution.vasp_staging import (
     stage_chgcar,
     stage_wavecar,
     is_scf_step,
     MissingPrerequisiteError,
     MissingArtifactError,
 )
-from quantumvitas.calculation.manifest import ManifestStepEntry
+from qmatsuite.calculation.manifest import ManifestStepEntry
 
 
 class MockStep:

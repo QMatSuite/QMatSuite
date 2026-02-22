@@ -7,7 +7,7 @@ Tests:
 - Preflight rules count
 - Context hint correctness (relax hints, no dead-end hints)
 
-Shared fixtures (qv_project, qe_available, qe_project_with_si) in conftest.py.
+Shared fixtures (qms_project, qe_available, qe_project_with_si) in conftest.py.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import asyncio
 
 import pytest
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
 # ===========================================================================
@@ -26,7 +26,7 @@ from quantumvitas.api import QVService
 
 def _setup_calc_with_species_map(project_root, calc_ulid: str) -> None:
     """Set species_map on a calculation (required for real QE runs)."""
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     svc.calculation.update_species_map(
         calc_ulid,
         {"Si": {"pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"}},
@@ -38,11 +38,11 @@ class TestRealQERelax:
 
     def test_promote_structure_real_qe_relax(self, qe_project_with_si):
         """Full relax → promote → re-use cycle with real QE via demo."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.demo_store import load_demo
-        from quantumvitas.mcp.tools.list_structures import list_structures
-        from quantumvitas.mcp.tools.promote_structure import promote_structure
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.list_structures import list_structures
+        from qmatsuite.mcp.tools.promote_structure import promote_structure
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
 
         # 1. Load QE vc-relax demo (includes species_map + params)
         r = load_demo.fn(demo_id="qe_si_vc_relax")
@@ -86,10 +86,10 @@ class TestRealQEDemoWorkflow:
 
     def test_load_demo_then_run_real_qe(self, qe_project_with_si):
         """search → load → inspect → run → results with real QE."""
-        from quantumvitas.mcp.tools.demo_store import load_demo, search_demos
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.demo_store import load_demo, search_demos
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
 
         # 1. Search for QE demos
         r = search_demos.fn(engine="qe")
@@ -130,10 +130,10 @@ class TestRealQEDemoWorkflow:
 
     def test_demo_provenance_after_run(self, qe_project_with_si):
         """Load demo → run → get_status → get_results_summary all work."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
-        from quantumvitas.mcp.tools.get_status import get_status
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.get_status import get_status
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
 
         r = load_demo.fn(demo_id="qe_si_scf")
         assert r["status"] == "success"
@@ -157,14 +157,14 @@ class TestRealQEScenarios:
 
     def test_scenario_c_demo_workflow(self, qe_project_with_si):
         """Scenario C: search → demo_results → load → inspect(dry_run) → run → results."""
-        from quantumvitas.mcp.tools.demo_store import (
+        from qmatsuite.mcp.tools.demo_store import (
             get_demo_results,
             load_demo,
             search_demos,
         )
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
 
         # search
         r = search_demos.fn(engine="qe", tag="scf")
@@ -196,11 +196,11 @@ class TestRealQEScenarios:
 
     def test_scenario_d_preflight_fix_run(self, qe_project_with_si):
         """Scenario D: create → set bad params → preflight warns → fix → run → converge."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
 
         # create
         r = create_calculation.fn(
@@ -252,12 +252,12 @@ class TestRealQEScenarios:
 
     def test_scenario_e_knowledge_informed(self, qe_project_with_si):
         """Scenario E: search_knowledge + search_parameters → create → configure → run."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
-        from quantumvitas.mcp.tools.search_parameters import search_parameters
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_parameters import search_parameters
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
 
         # search_knowledge
         r = search_knowledge.fn(query="smearing", engine="qe")
@@ -305,8 +305,8 @@ class TestToolRegistration:
 
     def test_all_32_tools_registered(self):
         """Verify all 32 tools are registered in the FastMCP server."""
-        from quantumvitas.mcp import server  # noqa: F401 — triggers registration
-        from quantumvitas.mcp.app import mcp
+        from qmatsuite.mcp import server  # noqa: F401 — triggers registration
+        from qmatsuite.mcp.app import mcp
 
         loop = asyncio.new_event_loop()
         try:
@@ -362,7 +362,7 @@ class TestBuiltinDB:
 
     def test_builtin_db_entry_count(self):
         """Verify builtin.db has >= 35 entries."""
-        from quantumvitas.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
+        from qmatsuite.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
 
         assert len(BUILTIN_ENTRIES) >= 35, (
             f"Expected >= 35 builtin entries, got {len(BUILTIN_ENTRIES)}"
@@ -374,8 +374,8 @@ class TestPreflightRulesCount:
 
     def test_preflight_rules_count(self):
         """Verify QE preflight has >= 20 rules."""
-        import quantumvitas.drivers  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("qe")
         checker = driver.get_preflight_checker()
@@ -405,9 +405,9 @@ class TestPreflightRulesCount:
 class TestContextHintCorrectness:
     """Tests 10-12: Hint content validation."""
 
-    def test_new_tool_hints_correct(self, qv_project):
+    def test_new_tool_hints_correct(self, qms_project):
         """Load demo → check hints mention correct next tools."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         r = load_demo.fn(demo_id="qe_si_scf")
         assert r["status"] == "success"
@@ -415,11 +415,11 @@ class TestContextHintCorrectness:
         assert "inspect_calculation" in hint
         assert "run_calculation" in hint
 
-    def test_relax_hints_mention_promote(self, qv_project):
+    def test_relax_hints_mention_promote(self, qms_project):
         """Create relax → run_calculation success hint should mention promote_structure."""
         # We can't run QE here (no qe_available), but we can check the
         # hint logic by testing the get_status completed hint for a relax calc.
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
 
         r = create_calculation.fn(
             engine="qe", workflow="relax", structure_selector="Silicon",
@@ -428,23 +428,23 @@ class TestContextHintCorrectness:
         calc_ulid = r["data"]["calc_ulid"]
 
         # get_status for a not-yet-run relax calc — hint should be about running
-        from quantumvitas.mcp.tools.get_status import get_status
+        from qmatsuite.mcp.tools.get_status import get_status
 
         r = get_status.fn(calc_ulid=calc_ulid)
         assert r["status"] == "success"
         # Not run yet, so hint should be about running
         assert "run_calculation" in r["context_hint"]
 
-    def test_no_dead_end_hints(self, qv_project):
+    def test_no_dead_end_hints(self, qms_project):
         """All tool responses with context_hint should reference at least one tool name."""
         # Collect responses from multiple tools
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.demo_store import search_demos
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
-        from quantumvitas.mcp.tools.list_engines import list_engines
-        from quantumvitas.mcp.tools.list_workflows import list_workflows
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
-        from quantumvitas.mcp.tools.search_parameters import search_parameters
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.demo_store import search_demos
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.list_engines import list_engines
+        from qmatsuite.mcp.tools.list_workflows import list_workflows
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_parameters import search_parameters
 
         # Known tool names that should appear in hints
         tool_names = {
@@ -485,9 +485,9 @@ class TestContextHintCorrectness:
                     f"Dead-end hint (no tool reference): '{hint}'"
                 )
 
-    def test_create_calculation_error_hints(self, qv_project):
+    def test_create_calculation_error_hints(self, qms_project):
         """Error paths in create_calculation should have context hints."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
 
         # Unknown engine
         r = create_calculation.fn(
@@ -513,10 +513,10 @@ class TestContextHintCorrectness:
         assert r.get("context_hint") is not None
         assert "import_structure" in r["context_hint"]
 
-    def test_inspect_step_detail_mentions_dry_run(self, qv_project):
+    def test_inspect_step_detail_mentions_dry_run(self, qms_project):
         """inspect_calculation with step >= 0 should mention dry_run in hint."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         r = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -529,9 +529,9 @@ class TestContextHintCorrectness:
         hint = r["context_hint"]
         assert "dry_run" in hint, f"Expected dry_run in hint: {hint}"
 
-    def test_search_demos_empty_hints_suggest_create(self, qv_project):
+    def test_search_demos_empty_hints_suggest_create(self, qms_project):
         """search_demos with no results should suggest create_calculation."""
-        from quantumvitas.mcp.tools.demo_store import search_demos
+        from qmatsuite.mcp.tools.demo_store import search_demos
 
         r = search_demos.fn(engine="nonexistent_engine_xyz")
         assert r["status"] == "success"

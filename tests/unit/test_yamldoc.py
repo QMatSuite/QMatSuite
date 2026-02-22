@@ -15,7 +15,7 @@ import pytest
 from pathlib import Path
 import tempfile
 
-from quantumvitas.core.yamldoc import (
+from qmatsuite.core.yamldoc import (
     YamlDoc,
     StepDoc,
     CalcDoc,
@@ -26,7 +26,7 @@ from quantumvitas.core.yamldoc import (
     AccessControlError,
     YamlDocError,
 )
-from quantumvitas.core.yaml_io import (
+from qmatsuite.core.yaml_io import (
     load_yaml_doc,
     save_yaml_doc,
     load_step_doc,

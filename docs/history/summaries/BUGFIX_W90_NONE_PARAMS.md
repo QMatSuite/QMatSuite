@@ -11,7 +11,7 @@ int() argument must be a string, a bytes-like object or a number, not 'NoneType'
 
 ## Fix
 
-**File**: `src/quantumvitas/calculation/structure_steps.py`
+**File**: `src/qmatsuite/calculation/structure_steps.py`
 
 **Changes**: Added `None` checks before converting parameters to integers in the Wannier90 step materialization code:
 
@@ -52,7 +52,7 @@ Tested with the actual diamond demo step spec:
 ```bash
 python -c "
 from pathlib import Path
-from quantumvitas.calculation.structure_steps import StructureStepSpec, materialize_step_spec
+from qmatsuite.calculation.structure_steps import StructureStepSpec, materialize_step_spec
 import tempfile
 
 spec_file = Path('<HOME>/Documents/diamond-wannier90-demo/calculations/diamond-mlwfs/steps/w90_preproc.step.yaml')
@@ -83,7 +83,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
 
 ## Related Files
 
-- `src/quantumvitas/calculation/structure_steps.py`: Main fix location
+- `src/qmatsuite/calculation/structure_steps.py`: Main fix location
 - `resources/demo_projects/diamond_wannier90_demo.yml`: Contains `num_bands: null` in w90_preproc parameters
 - `tools/generate_wannier90_demos.py`: Generates demos with `win_input.num_bands` which can be `None`
 

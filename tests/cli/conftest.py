@@ -8,12 +8,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 
-def run_qv(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
-    """Run qv CLI command."""
-    cmd = [sys.executable, "-m", "quantumvitas.cli.main"] + args
+def run_qms(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
+    """Run qms CLI command."""
+    cmd = [sys.executable, "-m", "qmatsuite.cli.main"] + args
     result = subprocess.run(
         cmd,
         cwd=cwd,
@@ -78,7 +78,7 @@ K_POINTS (automatic)
     scf_in.write_text(qe_input_content)
     
     # Initialize project
-    run_qv(["init", "project", "--name", "si_bands_test"], cwd=test_project_dir)
+    run_qms(["init", "project", "--name", "si_bands_test"], cwd=test_project_dir)
     
     project_dir = test_project_dir / "si_bands_test"
     assert project_dir.exists(), f"Project not created at {project_dir}"
@@ -94,6 +94,6 @@ K_POINTS (automatic)
         shutil.copy2(pp_file, pseudo_dst / pp_file.name)
     
     # Import structure from SCF input
-    run_qv(["import-structure", str(scf_in), "--name", "si"], cwd=project_dir)
+    run_qms(["import-structure", str(scf_in), "--name", "si"], cwd=project_dir)
     
     return project_dir

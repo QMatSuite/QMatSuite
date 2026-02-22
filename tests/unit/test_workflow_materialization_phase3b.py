@@ -10,11 +10,11 @@ import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from quantumvitas.workflow.generalized_steps import (
+from qmatsuite.workflow.generalized_steps import (
     materialize_public_step_key,
     materialize_workflow,
 )
-from quantumvitas.workflow.templates import get_workflow_service
+from qmatsuite.workflow.templates import get_workflow_service
 
 
 class TestQEFamilyMaterialization:

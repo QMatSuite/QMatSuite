@@ -19,11 +19,11 @@ import pytest
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-SRC_DIR = PROJECT_ROOT / "src" / "quantumvitas"
+SRC_DIR = PROJECT_ROOT / "src" / "qmatsuite"
 
 
 class TestNoLegacyHistoryImports:
-    """Verify no code imports from quantumvitas.history module."""
+    """Verify no code imports from qmatsuite.history module."""
 
     # Files that are allowed to reference .history (comments, docs, migration only)
     ALLOWED_EXCEPTIONS = frozenset({
@@ -46,7 +46,7 @@ class TestNoLegacyHistoryImports:
         return files
 
     def test_no_history_module_imports(self):
-        """No code should import from quantumvitas.history module."""
+        """No code should import from qmatsuite.history module."""
         violations = []
 
         for path in self._get_python_files():
@@ -59,13 +59,13 @@ class TestNoLegacyHistoryImports:
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
-                        if "quantumvitas.history" in alias.name:
+                        if "qmatsuite.history" in alias.name:
                             violations.append(
                                 f"{path.relative_to(PROJECT_ROOT)}:{node.lineno}: "
                                 f"import {alias.name}"
                             )
                 elif isinstance(node, ast.ImportFrom):
-                    if node.module and "quantumvitas.history" in node.module:
+                    if node.module and "qmatsuite.history" in node.module:
                         violations.append(
                             f"{path.relative_to(PROJECT_ROOT)}:{node.lineno}: "
                             f"from {node.module} import ..."
@@ -73,7 +73,7 @@ class TestNoLegacyHistoryImports:
 
         if violations:
             pytest.fail(
-                f"Found {len(violations)} imports from quantumvitas.history:\n"
+                f"Found {len(violations)} imports from qmatsuite.history:\n"
                 + "\n".join(violations[:20])
                 + ("\n..." if len(violations) > 20 else "")
             )
@@ -190,7 +190,7 @@ class TestHistoryModuleDeleted:
     """Verify the legacy history module has been deleted."""
 
     def test_history_module_not_exists(self):
-        """src/quantumvitas/history/ should not exist."""
+        """src/qmatsuite/history/ should not exist."""
         history_dir = SRC_DIR / "history"
         if history_dir.exists():
             files = list(history_dir.rglob("*.py"))

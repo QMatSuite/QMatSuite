@@ -45,12 +45,12 @@ This is implemented via `CONVERGENCE_VARIANT` in `variants_registry.py` with `ap
 
 ## Implementation Files
 
-- `src/quantumvitas/presets/dimensions.py`: `ConvergenceOption` enum
-- `src/quantumvitas/presets/paramspace.py`: `build_convergence_paramspace()` function
-- `src/quantumvitas/presets/spaces_registry.py`: Registration in `SPACES` dict
-- `src/quantumvitas/presets/variants_registry.py`: `CONVERGENCE_VARIANT` definition
-- `src/quantumvitas/presets/catalog.py`: UI labels, descriptions, defaults, order
-- `src/quantumvitas/presets/integration.py`: Convergence handling in `apply_presets_to_step()`
+- `src/qmatsuite/presets/dimensions.py`: `ConvergenceOption` enum
+- `src/qmatsuite/presets/paramspace.py`: `build_convergence_paramspace()` function
+- `src/qmatsuite/presets/spaces_registry.py`: Registration in `SPACES` dict
+- `src/qmatsuite/presets/variants_registry.py`: `CONVERGENCE_VARIANT` definition
+- `src/qmatsuite/presets/catalog.py`: UI labels, descriptions, defaults, order
+- `src/qmatsuite/presets/integration.py`: Convergence handling in `apply_presets_to_step()`
 
 ## Tests
 

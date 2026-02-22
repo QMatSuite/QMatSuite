@@ -377,9 +377,9 @@ head -20 DOSCAR > ../../fixtures/doscar_header_sample.txt
 
 **Files to create/modify**:
 ```
-src/quantumvitas/core/engines/vasp_resolver.py  (NEW)
-src/quantumvitas/workflow/registry.py           (EXTEND)
-src/quantumvitas/workflow/generalized_steps.py  (EXTEND)
+src/qmatsuite/core/engines/vasp_resolver.py  (NEW)
+src/qmatsuite/workflow/registry.py           (EXTEND)
+src/qmatsuite/workflow/generalized_steps.py  (EXTEND)
 tests/unit/test_vasp_registry.py                (NEW)
 ```
 
@@ -401,7 +401,7 @@ tests/unit/test_vasp_registry.py                (NEW)
 
 **Files to create/modify**:
 ```
-src/quantumvitas/execution/reference_resolver.py  (NEW)
+src/qmatsuite/execution/reference_resolver.py  (NEW)
 tests/unit/test_reference_resolver.py             (NEW)
 ```
 
@@ -424,7 +424,7 @@ tests/unit/test_reference_resolver.py             (NEW)
 
 **Files to create/modify**:
 ```
-src/quantumvitas/execution/vasp_staging.py  (NEW)
+src/qmatsuite/execution/vasp_staging.py  (NEW)
 tests/unit/test_vasp_staging.py             (NEW)
 ```
 
@@ -450,8 +450,8 @@ tests/unit/test_vasp_staging.py             (NEW)
 
 **Files to create/modify**:
 ```
-src/quantumvitas/execution/recipes.py     (EXTEND: add VASPRecipe)
-src/quantumvitas/execution/handlers.py    (EXTEND: add vasp_step_handler)
+src/qmatsuite/execution/recipes.py     (EXTEND: add VASPRecipe)
+src/qmatsuite/execution/handlers.py    (EXTEND: add vasp_step_handler)
 tests/unit/test_vasp_recipe.py            (NEW)
 ```
 
@@ -480,9 +480,9 @@ tests/unit/test_vasp_recipe.py            (NEW)
 
 **Files to create/modify**:
 ```
-src/quantumvitas/engine/vasp_engine.py   (NEW)
-src/quantumvitas/engine/vasp_writer.py   (NEW)
-src/quantumvitas/engine/registry.py      (EXTEND: register VaspEngine)
+src/qmatsuite/engine/vasp_engine.py   (NEW)
+src/qmatsuite/engine/vasp_writer.py   (NEW)
+src/qmatsuite/engine/registry.py      (EXTEND: register VaspEngine)
 tests/unit/test_vasp_writer.py           (NEW)
 ```
 
@@ -508,7 +508,7 @@ tests/unit/test_vasp_writer.py           (NEW)
 
 **Files to create/modify**:
 ```
-src/quantumvitas/engine/vasp_parser.py   (NEW)
+src/qmatsuite/engine/vasp_parser.py   (NEW)
 tests/unit/test_vasp_parser.py           (NEW)
 ```
 
@@ -565,8 +565,8 @@ tests/integration/vasp/test_vasp_project_e2e.py  (NEW)
 - Verify artifacts
 
 **Tests**:
-- E2E: SCF → Bands workflow via QVService
-- E2E: SCF → DOS workflow via QVService
+- E2E: SCF → Bands workflow via QMSService
+- E2E: SCF → DOS workflow via QMSService
 - E2E: Incremental run skips completed steps
 - E2E: Manifest correctly tracks VASP steps
 
@@ -583,7 +583,7 @@ tests/integration/vasp/test_vasp_project_e2e.py  (NEW)
 
 **Status**: ✅ **COMPLETE** - Implemented in `materialize_workflow()`
 
-**Location**: `src/quantumvitas/workflow/generalized_steps.py`
+**Location**: `src/qmatsuite/workflow/generalized_steps.py`
 
 **Behavior**:
 ```python
@@ -605,7 +605,7 @@ def materialize_workflow(
 
 **Status**: ✅ **COMPLETE** - Implemented with `UnsupportedStepError` exception
 
-**Location**: `src/quantumvitas/api.py` (or equivalent)
+**Location**: `src/qmatsuite/api.py` (or equivalent)
 
 **Behavior**:
 ```python
@@ -700,7 +700,7 @@ def test_vasp_fake_scf():
 ```python
 def is_vasp_available() -> bool:
     try:
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
         resolve_vasp_bin()
         return True
     except RuntimeError:
@@ -720,12 +720,12 @@ def require_vasp():
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/core/engines/vasp_resolver.py` | Binary/POTCAR discovery |
-| `src/quantumvitas/execution/reference_resolver.py` | Find reference SCF |
-| `src/quantumvitas/execution/vasp_staging.py` | CHGCAR/WAVECAR staging |
-| `src/quantumvitas/engine/vasp_engine.py` | Engine implementation |
-| `src/quantumvitas/engine/vasp_writer.py` | Input file generators |
-| `src/quantumvitas/engine/vasp_parser.py` | Output parsers |
+| `src/qmatsuite/core/engines/vasp_resolver.py` | Binary/POTCAR discovery |
+| `src/qmatsuite/execution/reference_resolver.py` | Find reference SCF |
+| `src/qmatsuite/execution/vasp_staging.py` | CHGCAR/WAVECAR staging |
+| `src/qmatsuite/engine/vasp_engine.py` | Engine implementation |
+| `src/qmatsuite/engine/vasp_writer.py` | Input file generators |
+| `src/qmatsuite/engine/vasp_parser.py` | Output parsers |
 | `tests/fixtures/fake_vasp.py` | Fake VASP for CI |
 | `tests/fixtures/vasp/*.txt` | Parser test fixtures |
 | `tests/unit/test_vasp_*.py` | Unit tests |
@@ -735,11 +735,11 @@ def require_vasp():
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/workflow/registry.py` | Add VASP step types |
-| `src/quantumvitas/workflow/generalized_steps.py` | Add VASP GEN→SPEC mappings |
-| `src/quantumvitas/execution/recipes.py` | Add VASPRecipe |
-| `src/quantumvitas/execution/handlers.py` | Add vasp_step_handler |
-| `src/quantumvitas/engine/registry.py` | Register VaspEngine |
+| `src/qmatsuite/workflow/registry.py` | Add VASP step types |
+| `src/qmatsuite/workflow/generalized_steps.py` | Add VASP GEN→SPEC mappings |
+| `src/qmatsuite/execution/recipes.py` | Add VASPRecipe |
+| `src/qmatsuite/execution/handlers.py` | Add vasp_step_handler |
+| `src/qmatsuite/engine/registry.py` | Register VaspEngine |
 
 ---
 
@@ -911,7 +911,7 @@ class TestVASPResolver:
         
         monkeypatch.setenv("QMATS_VASP_STD_BIN", str(fake_bin))
         
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
         result = resolve_vasp_bin("std")
         assert result == fake_bin
     
@@ -924,10 +924,10 @@ class TestVASPResolver:
         fake_bin.write_text("#!/bin/bash\necho fake")
         fake_bin.chmod(0o755)
         
-        # Mock quantumvitas package location to point to tmp_path
+        # Mock qmatsuite package location to point to tmp_path
         monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)
         
-        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        import qmatsuite.core.engines.vasp_resolver as resolver_mod
         original_repo_root = getattr(resolver_mod, '_get_repo_root', None)
         monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
         
@@ -938,7 +938,7 @@ class TestVASPResolver:
         """Test resolver raises RuntimeError when VASP not found."""
         monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)
         
-        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        import qmatsuite.core.engines.vasp_resolver as resolver_mod
         monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
         
         with pytest.raises(RuntimeError, match="VASP.*not found"):
@@ -953,7 +953,7 @@ class TestVASPResolver:
         si_dir.mkdir()
         (si_dir / "POTCAR").write_text("FAKE POTCAR")
         
-        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        import qmatsuite.core.engines.vasp_resolver as resolver_mod
         monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
         
         result = get_potcar_dir("PBE")
@@ -1025,7 +1025,7 @@ def is_ci() -> bool:
 
 def require_real_vasp():
     """Check for real VASP binary."""
-    from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+    from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
     try:
         bin_path = resolve_vasp_bin("std")
         if not bin_path.exists():
@@ -1038,7 +1038,7 @@ def require_real_vasp():
 
 def require_real_potcar():
     """Check for real POTCAR directory."""
-    from quantumvitas.core.engines.vasp_resolver import get_potcar_dir
+    from qmatsuite.core.engines.vasp_resolver import get_potcar_dir
     try:
         potcar_dir = get_potcar_dir("PBE")
         si_potcar = potcar_dir / "Si" / "POTCAR"
@@ -1114,7 +1114,7 @@ CI=true pytest tests/integration/vasp/test_vasp_real.py -v --tb=short
 
 **实现内容**:
 1. `test_vasp_real.py` 中实现 `TestRealVASPSmoke` 测试
-2. 使用 QVService API 或直接调用 VaspEngine
+2. 使用 QMSService API 或直接调用 VaspEngine
 3. 验证关键输出文件存在且格式正确
 4. **不提交 CHGCAR/WAVECAR/POTCAR 内容**
 
@@ -1148,8 +1148,8 @@ ls -la .tmp/vasp_real_smoke/*/
 
 **文件修改/创建**:
 ```
-src/quantumvitas/engine/vasp_parser.py        # 扩展现有解析器
-src/quantumvitas/history/digests.py           # 添加 VASP digest 支持
+src/qmatsuite/engine/vasp_parser.py        # 扩展现有解析器
+src/qmatsuite/history/digests.py           # 添加 VASP digest 支持
 tests/unit/test_vasp_parser.py                # 扩展测试
 tests/fixtures/vasp/                          # 新增 fixture 文件
 ```
@@ -1194,7 +1194,7 @@ pytest tests/unit/test_*digest*.py -v --tb=short -k vasp
 - **不硬编码** step 名称
 - 显式 `run_step` 仍返回 hard error（已在 Phase 3.2 实现）
 
-**实现位置**: `src/quantumvitas/api.py` 或相关 listing 函数
+**实现位置**: `src/qmatsuite/api.py` 或相关 listing 函数
 
 **逻辑伪码**:
 ```python

@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useJobs, useJobDetail } from '../../hooks/useJobs';
-import type { JobSummary, JobInfo, JobStatus, JobStepInfo } from '../../types/qv';
+import type { JobSummary, JobInfo, JobStatus, JobStepInfo } from '../../types/qms';
 import './JobsPanel.css';
 
 // =============================================================================
@@ -28,7 +28,7 @@ function StatusBadge({ status, size = 'medium' }: StatusBadgeProps) {
   return (
     <span 
       className={`status-badge status-badge--${status} status-badge--${size}`}
-      data-testid="qv-job-status"
+      data-testid="qms-job-status"
     >
       <span className="status-badge__icon">{icon}</span>
       <span className="status-badge__label">{status}</span>
@@ -153,7 +153,7 @@ function JobListItem({ job, isSelected, onSelect }: JobListItemProps) {
     <button
       className={`job-list-item ${isSelected ? 'job-list-item--selected' : ''}`}
       onClick={() => onSelect(job)}
-      data-testid="qv-job-row"
+      data-testid="qms-job-row"
       data-job-id={job.ulid}
     >
       <div className="job-list-item__header">
@@ -259,7 +259,7 @@ function JobDetailPanel({ jobId, onClose, onViewAnalysis, onJobUpdate }: JobDeta
   };
   
   return (
-    <div className="job-detail-panel" data-testid="qv-job-detail">
+    <div className="job-detail-panel" data-testid="qms-job-detail">
       <div className="job-detail-panel__header">
         <div className="job-detail-panel__title">
           <code>#{shortId}</code>
@@ -315,7 +315,7 @@ function JobDetailPanel({ jobId, onClose, onViewAnalysis, onJobUpdate }: JobDeta
                   </code>
                   <button
                     className="job-detail-path-reveal"
-                    onClick={() => window.qv?.revealPath?.(job.io_dir!)}
+                    onClick={() => window.qms?.revealPath?.(job.io_dir!)}
                     title={`Reveal in Finder: ${job.io_dir}`}
                   >
                     📂 Reveal
@@ -512,7 +512,7 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
   };
   
   return (
-    <div className="jobs-panel" data-testid="qv-jobs-view">
+    <div className="jobs-panel" data-testid="qms-jobs-view">
       {/* Header */}
       <div className="jobs-panel__header">
         <div className="jobs-panel__title">
@@ -559,20 +559,20 @@ export function JobsPanel({ projectRoot, onViewAnalysis }: JobsPanelProps) {
       {/* Content */}
       <div className="jobs-panel__content">
         {/* Job List */}
-        <div className="jobs-panel__list" data-testid="qv-jobs-list">
+        <div className="jobs-panel__list" data-testid="qms-jobs-list">
           {isLoading && jobs.length === 0 ? (
-            <div className="jobs-panel__loading" data-testid="qv-jobs-loading">
+            <div className="jobs-panel__loading" data-testid="qms-jobs-loading">
               <div className="loading-spinner" />
               <p>Loading jobs...</p>
             </div>
           ) : error && jobs.length === 0 ? (
-            <div className="jobs-panel__empty" data-testid="qv-jobs-error">
+            <div className="jobs-panel__empty" data-testid="qms-jobs-error">
               <span className="jobs-panel__empty-icon">⚠️</span>
               <h3>Error Loading Jobs</h3>
               <p>{error}</p>
             </div>
           ) : jobs.length === 0 ? (
-            <div className="jobs-panel__empty" data-testid="qv-jobs-empty">
+            <div className="jobs-panel__empty" data-testid="qms-jobs-empty">
               <span className="jobs-panel__empty-icon">📋</span>
               <h3>No Jobs</h3>
               <p>Run a calculation to create jobs.</p>

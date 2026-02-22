@@ -7,8 +7,8 @@ This test suite verifies that no key overlap exists between dimensions.
 
 import pytest
 
-from quantumvitas.presets.spaces_registry import SPACES
-from quantumvitas.presets.paramspace import _KEY_OWNERSHIP
+from qmatsuite.presets.spaces_registry import SPACES
+from qmatsuite.presets.paramspace import _KEY_OWNERSHIP
 
 
 class TestKeyOwnershipUniqueness:

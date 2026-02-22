@@ -177,7 +177,7 @@ Apply:
   - Improved error messages
 
 ### Backend
-- `src/quantumvitas/core/pseudo_config.py`:
+- `src/qmatsuite/core/pseudo_config.py`:
   - Added corrupted tar detection
   - Deletes corrupted files and returns clear error
 

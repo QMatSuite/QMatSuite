@@ -42,11 +42,11 @@
 
 ### True/False 进入 IR 的位置
 
-1. **ParamSpace profiles**: `src/quantumvitas/presets/paramspace.py`
+1. **ParamSpace profiles**: `src/qmatsuite/presets/paramspace.py`
    - 行 818-843: profiles 中使用 `Cell.VALUE(True)` 和 `Cell.VALUE(False)`
    - 这些是 Python bool 值
 
-2. **compile_profile_patch**: `src/quantumvitas/presets/paramspace.py`
+2. **compile_profile_patch**: `src/qmatsuite/presets/paramspace.py`
    - 行 604: `patch[key.section][key.key] = value`
    - 直接写入 Python bool，未转换为 IR canonical 格式
 
@@ -59,7 +59,7 @@
 
 ### A. 建立 IR Canonical Boolean Encoder（单点 SSOT）
 
-**文件**: `src/quantumvitas/ir/backends/qe/mapping.py`  
+**文件**: `src/qmatsuite/ir/backends/qe/mapping.py`  
 **函数**: `ir_bool(v: bool | str) -> str`
 
 **职责**:
@@ -86,10 +86,10 @@
 
 ### 修改文件清单
 
-1. **src/quantumvitas/ir/backends/qe/mapping.py**
+1. **src/qmatsuite/ir/backends/qe/mapping.py**
    - 新增 `ir_bool()` 函数
 
-2. **src/quantumvitas/presets/paramspace.py**
+2. **src/qmatsuite/presets/paramspace.py**
    - 修复 `compile_profile_patch()` 中的值写入
    - 修复 `apply_invariants()` 中的值写入（如果有）
 

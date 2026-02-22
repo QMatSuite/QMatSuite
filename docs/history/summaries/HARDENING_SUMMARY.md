@@ -6,11 +6,11 @@
 
 **Result**: ✅ **Only cleanup/validation code** (acceptable)
 
-- `src/quantumvitas/core/pseudo_libinfo.py`: 3 occurrences
+- `src/qmatsuite/core/pseudo_libinfo.py`: 3 occurrences
   - All in validation error messages (checking for legacy fields)
   - Lines 280, 285, 293: Error messages when `sha_token` is detected
 
-- `src/quantumvitas/project/snapshot.py`: 5 occurrences
+- `src/qmatsuite/project/snapshot.py`: 5 occurrences
   - All in cleanup code (removing legacy fields during materialization)
   - Lines 725, 732, 733, 735: Comments and code removing `pseudo_sha_token`
 
@@ -23,9 +23,9 @@
 ### Family Match Warnings
 
 **Result**: ✅ **Present and correct**
-- `src/quantumvitas/core/pseudo_options.py`: 4 occurrences
+- `src/qmatsuite/core/pseudo_options.py`: 4 occurrences
 - `gui/src/components/common_cards/CommonCardPseudo.tsx`: 5 occurrences
-- `gui/src/types/qv.ts`: 1 occurrence
+- `gui/src/types/qms.ts`: 1 occurrence
 
 ---
 
@@ -50,7 +50,7 @@
 
 ### Core Fix
 
-**File**: `src/quantumvitas/project/snapshot.py`
+**File**: `src/qmatsuite/project/snapshot.py`
 
 - **`export_project_to_snapshot()`** (lines 393-442):
   - Enhanced to compute `pseudo_sha256` and `pseudo_sha_family` from files if missing
@@ -76,7 +76,7 @@ grep -r "pseudo_sha_token" resources/demo_projects/*.yml   # 0 matches
 
 ### Changes
 
-**File**: `src/quantumvitas/core/pseudo_libinfo.py`
+**File**: `src/qmatsuite/core/pseudo_libinfo.py`
 
 **Function**: `load_pseudo_libinfo_bundle()` (lines 261-308)
 
@@ -135,8 +135,8 @@ python -m pytest tests/unit/test_demo_snapshot_pseudo_family.py -v
 ### Files Modified
 
 **Core Implementation**:
-- `src/quantumvitas/project/snapshot.py` (+88 lines)
-- `src/quantumvitas/core/pseudo_libinfo.py` (+107 lines)
+- `src/qmatsuite/project/snapshot.py` (+88 lines)
+- `src/qmatsuite/core/pseudo_libinfo.py` (+107 lines)
 
 **Tests**:
 - `tests/unit/test_pseudo_libinfo_loader.py` (+18 lines)

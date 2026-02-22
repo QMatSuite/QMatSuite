@@ -7,7 +7,7 @@ This document contains **mechanical test creation tasks (M1–M5)** for the mult
 1. **Follow the VASP test template EXACTLY.** The patterns are in:
    - `tests/drivers/vasp/test_vasp_bands_parser.py` — bands test template
    - `tests/drivers/vasp/test_vasp_dos_parser.py` — DOS test template
-2. **Every test imports from the provider module directly** (e.g., `from quantumvitas.drivers.gpaw.parsers.bands import GPAWBandsProvider`)
+2. **Every test imports from the provider module directly** (e.g., `from qmatsuite.drivers.gpaw.parsers.bands import GPAWBandsProvider`)
 3. **FIXTURE_DIR** uses `Path(__file__).resolve().parents[2] / "data" / "<fixture_dir>"`
 4. **EvidenceBundle** pattern:
    ```python
@@ -31,8 +31,8 @@ This document contains **mechanical test creation tasks (M1–M5)** for the mult
    - SHA determinism via `compute_canonical_sha()`
 6. **Import pattern at top of every test file:**
    ```python
-   from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-   from quantumvitas.core.analysis.evidence import EvidenceBundle
+   from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+   from qmatsuite.core.analysis.evidence import EvidenceBundle
    ```
 7. **No sensitive paths** — never use absolute paths, only relative via `Path(__file__)`
 8. **Run verification** after writing all tests:
@@ -47,8 +47,8 @@ This document contains **mechanical test creation tasks (M1–M5)** for the mult
 **File:** `tests/drivers/qe/test_qe_dos_parser.py`
 **Fixture dir:** `tests/data/analysis_qe_dos/`
 **Fixture files:** `si.dos.dat` (82KB, 2501 data lines, QE dos.x output)
-**Provider:** `quantumvitas.drivers.qe.parsers.dos.QEDOSProvider`
-**Model:** `quantumvitas.core.analysis.dos.DOS`
+**Provider:** `qmatsuite.drivers.qe.parsers.dos.QEDOSProvider`
+**Model:** `qmatsuite.core.analysis.dos.DOS`
 
 ### Known fixture values (from smoke test):
 - energies: 2501 points
@@ -66,10 +66,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.dos import DOS
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.qe.parsers.dos import QEDOSProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.dos import DOS
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.qe.parsers.dos import QEDOSProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_qe_dos"
@@ -100,8 +100,8 @@ FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_qe_dos"
 **File:** `tests/drivers/abinit/test_abinit_bands_parser.py`
 **Fixture dir:** `tests/data/analysis_abinit_bands/`
 **Fixture files:** `si_bands_fixedo_DS2_EIG` (41 kpts, 8 bands, Hartree eigenvalues), `si_bands.abo`
-**Provider:** `quantumvitas.drivers.abinit.parsers.bands.ABINITBandsProvider`
-**Model:** `quantumvitas.core.analysis.band_structure.BandStructure`
+**Provider:** `qmatsuite.drivers.abinit.parsers.bands.ABINITBandsProvider`
+**Model:** `qmatsuite.core.analysis.band_structure.BandStructure`
 
 ### Known fixture values:
 - eigenvalues shape: (41, 8) — 41 k-points, 8 bands
@@ -120,10 +120,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.band_structure import BandStructure
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.abinit.parsers.bands import ABINITBandsProvider
+from qmatsuite.core.analysis.band_structure import BandStructure
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.abinit.parsers.bands import ABINITBandsProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_abinit_bands"
@@ -149,8 +149,8 @@ FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_abinit_ba
 **File:** `tests/drivers/abinit/test_abinit_dos_parser.py`
 **Fixture dir:** `tests/data/analysis_abinit_dos/`
 **Fixture files:** `si_doso_DS2_DOS` (1201 pts, Ha energies, Fermi in header), `si_dos.abo`
-**Provider:** `quantumvitas.drivers.abinit.parsers.dos.ABINITDOSProvider`
-**Model:** `quantumvitas.core.analysis.dos.DOS`
+**Provider:** `qmatsuite.drivers.abinit.parsers.dos.ABINITDOSProvider`
+**Model:** `qmatsuite.core.analysis.dos.DOS`
 
 ### Known fixture values:
 - energies: 1201 points
@@ -168,10 +168,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.dos import DOS
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.abinit.parsers.dos import ABINITDOSProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.dos import DOS
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.abinit.parsers.dos import ABINITDOSProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_abinit_dos"
@@ -195,8 +195,8 @@ FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_abinit_do
 **File:** `tests/drivers/siesta/test_siesta_bands_parser.py`
 **Fixture dir:** `tests/data/analysis_siesta_bands/`
 **Fixture files:** `si_bands.EIG` (32 kpts, 26 bands, eV eigenvalues), `si_bands.out` (Fermi, BandLines)
-**Provider:** `quantumvitas.drivers.siesta.parsers.bands.SiestaBandsProvider`
-**Model:** `quantumvitas.core.analysis.band_structure.BandStructure`
+**Provider:** `qmatsuite.drivers.siesta.parsers.bands.SiestaBandsProvider`
+**Model:** `qmatsuite.core.analysis.band_structure.BandStructure`
 
 ### Known fixture values:
 - eigenvalues shape: (32, 26) — 32 k-points, 26 bands
@@ -214,10 +214,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.band_structure import BandStructure
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.siesta.parsers.bands import SiestaBandsProvider
+from qmatsuite.core.analysis.band_structure import BandStructure
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.siesta.parsers.bands import SiestaBandsProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_siesta_bands"
@@ -237,8 +237,8 @@ FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_siesta_ba
 **File:** `tests/drivers/siesta/test_siesta_dos_parser.py`
 **Fixture dir:** `tests/data/analysis_siesta_dos/`
 **Fixture files:** `si_dos.DOS` (500 pts), `si_dos.PDOS.xml` (2 atoms, s/p/d orbitals), `si_dos.out` (Fermi)
-**Provider:** `quantumvitas.drivers.siesta.parsers.dos.SiestaDOSProvider`
-**Model:** `quantumvitas.core.analysis.dos.DOS`
+**Provider:** `qmatsuite.drivers.siesta.parsers.dos.SiestaDOSProvider`
+**Model:** `qmatsuite.core.analysis.dos.DOS`
 
 ### Known fixture values:
 - energies: 500 points
@@ -258,10 +258,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.dos import DOS
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.siesta.parsers.dos import SiestaDOSProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.dos import DOS
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.siesta.parsers.dos import SiestaDOSProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_siesta_dos"
@@ -287,8 +287,8 @@ FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_siesta_do
 **File:** `tests/drivers/cp2k/test_cp2k_bands_parser.py`
 **Fixture dir:** `tests/data/analysis_cp2k_bands/`
 **Fixture files:** `si_bands.bs` (5 sets, 80 total k-points, 4 bands, eV), `si_bands.out` (no Fermi)
-**Provider:** `quantumvitas.drivers.cp2k.parsers.bands.CP2KBandsProvider`
-**Model:** `quantumvitas.core.analysis.band_structure.BandStructure`
+**Provider:** `qmatsuite.drivers.cp2k.parsers.bands.CP2KBandsProvider`
+**Model:** `qmatsuite.core.analysis.band_structure.BandStructure`
 
 ### Known fixture values:
 - eigenvalues shape: (80, 4) — 80 k-points across 5 sets, 4 bands
@@ -307,10 +307,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.band_structure import BandStructure
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.cp2k.parsers.bands import CP2KBandsProvider
+from qmatsuite.core.analysis.band_structure import BandStructure
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.cp2k.parsers.bands import CP2KBandsProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_cp2k_bands"
@@ -332,8 +332,8 @@ FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_cp2k_band
 **File:** `tests/drivers/cp2k/test_cp2k_dos_parser.py`
 **Fixture dir:** `tests/data/analysis_cp2k_dos/`
 **Fixture files:** `si_dos-k1-1.pdos` (8 eigenvalues, Si kind, per-orbital projections), `si_dos.out` (Fermi)
-**Provider:** `quantumvitas.drivers.cp2k.parsers.dos.CP2KDOSProvider`
-**Model:** `quantumvitas.core.analysis.dos.DOS`
+**Provider:** `qmatsuite.drivers.cp2k.parsers.dos.CP2KDOSProvider`
+**Model:** `qmatsuite.core.analysis.dos.DOS`
 
 ### Known fixture values:
 - energies: 8 points (CP2K PDOS lists discrete eigenvalues, not a smoothed grid)
@@ -353,10 +353,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.dos import DOS
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.cp2k.parsers.dos import CP2KDOSProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.dos import DOS
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.cp2k.parsers.dos import CP2KDOSProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_cp2k_dos"
@@ -381,8 +381,8 @@ FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_cp2k_dos"
 **File:** `tests/drivers/gpaw/test_gpaw_bands_parser.py`
 **Fixture dir:** `tests/data/analysis_gpaw_bands/`
 **Fixture files:** `bandstructure.json` (ASE format, 60 kpts, 8 bands, eV)
-**Provider:** `quantumvitas.drivers.gpaw.parsers.bands.GPAWBandsProvider`
-**Model:** `quantumvitas.core.analysis.band_structure.BandStructure`
+**Provider:** `qmatsuite.drivers.gpaw.parsers.bands.GPAWBandsProvider`
+**Model:** `qmatsuite.core.analysis.band_structure.BandStructure`
 
 ### Known fixture values:
 - eigenvalues shape: (60, 8) — 60 k-points, 8 bands
@@ -401,10 +401,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.band_structure import BandStructure
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.gpaw.parsers.bands import GPAWBandsProvider
+from qmatsuite.core.analysis.band_structure import BandStructure
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.gpaw.parsers.bands import GPAWBandsProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_gpaw_bands"
@@ -426,8 +426,8 @@ FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_gpaw_band
 **File:** `tests/drivers/gpaw/test_gpaw_dos_parser.py`
 **Fixture dir:** `tests/data/analysis_gpaw_dos/`
 **Fixture files:** `dos.json` (301 points, fermi_eV=5.358)
-**Provider:** `quantumvitas.drivers.gpaw.parsers.dos.GPAWDOSProvider`
-**Model:** `quantumvitas.core.analysis.dos.DOS`
+**Provider:** `qmatsuite.drivers.gpaw.parsers.dos.GPAWDOSProvider`
+**Model:** `qmatsuite.core.analysis.dos.DOS`
 
 ### Known fixture values:
 - energies: 301 points
@@ -445,10 +445,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.dos import DOS
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.gpaw.parsers.dos import GPAWDOSProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.dos import DOS
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.gpaw.parsers.dos import GPAWDOSProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_gpaw_dos"

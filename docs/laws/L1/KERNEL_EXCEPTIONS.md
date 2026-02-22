@@ -26,8 +26,8 @@ This document records all approved exceptions to the [Kernel Dependency Spec](./
 ### EXC-001: workflow → engine capability query
 
 - **Law Excepted**: K2 (cross-domain import rules), Dependency DAG (engines at L2 should not be imported by L1 workflow)
-- **From**: `quantumvitas.workflow.registry`
-- **To**: `quantumvitas.engine.registry`
+- **From**: `qmatsuite.workflow.registry`
+- **To**: `qmatsuite.engine.registry`
 - **Reason**: Preset validation requires engine capability information to determine which presets are available for a given engine/step-type combination. Without this, the workflow registry cannot validate preset–engine compatibility at registration time.
 - **Alternatives considered**:
   1. *Callback/interface injection*: Workflow registry accepts a `get_supported_presets(engine_name)` callable. Adds indirection without reducing coupling. Rejected: premature abstraction.
@@ -37,7 +37,7 @@ This document records all approved exceptions to the [Kernel Dependency Spec](./
   - ONLY the following access patterns are allowed:
     ```python
     # ALLOWED in workflow/registry.py:
-    from quantumvitas.engine.registry import create_default_registry
+    from qmatsuite.engine.registry import create_default_registry
     engine = registry.get(engine_name)
     presets = engine.supported_presets  # Property access ONLY
     ```
@@ -77,7 +77,7 @@ def save_yaml_doc(doc, path):
     # LAZY IMPORT: breaks circular yaml_io -> journal -> yaml_io
     # Restructuring not feasible: journal needs yaml_io for save hooks,
     # yaml_io needs journal for recording changes.
-    from quantumvitas.core.journal import get_journal
+    from qmatsuite.core.journal import get_journal
     ...
 ```
 
@@ -105,7 +105,7 @@ def save_yaml_doc(doc, path):
 ### EXC-003: Legacy package temporary bypass (DELETION SCHEDULED)
 
 - **Law Excepted**: All kernel dependency rules (K0–K9)
-- **From**: `quantumvitas.legacy.*`
+- **From**: `qmatsuite.legacy.*`
 - **To**: Any kernel module (and API)
 - **Policy**: Our stance is **delete legacy; no compat**. This exception exists solely to allow a controlled deletion window. It is NOT a license to maintain or extend legacy code.
 
@@ -119,7 +119,7 @@ No other files in `legacy/` may be added to this list. No new code SHALL be writ
 
 #### Constraints
 
-- ONLY files in `quantumvitas/legacy/` may use this exception.
+- ONLY files in `qmatsuite/legacy/` may use this exception.
 - Legacy code MUST NOT be called from new code paths (no reverse dependency from kernel → legacy).
 - Legacy code MUST NOT introduce new SSOT write patterns.
 - No new files SHALL be added to `legacy/`.
@@ -132,14 +132,14 @@ No other files in `legacy/` may be added to this list. No new code SHALL be writ
 |-------|--------|----------|
 | Phase 1 (current) | Legacy code exists; exception active | Now |
 | Phase 2 | Remove all callers of `legacy/` from kernel and frontends | 2026-04-01 |
-| Phase 3 | Delete `quantumvitas/legacy/` directory entirely | 2026-05-01 |
+| Phase 3 | Delete `qmatsuite/legacy/` directory entirely | 2026-05-01 |
 | Phase 4 | Remove EXC-003 from this document; remove gate allowlist entries | 2026-05-01 |
 
 #### CI Enforcement
 
 - **Hard deadline**: 2026-05-01.
 - After this date, `test_kernel_no_api_import.py` and all gate tests SHALL remove `legacy/` from their allowlists.
-- If `quantumvitas/legacy/` still exists after 2026-05-01, CI SHALL fail.
+- If `qmatsuite/legacy/` still exists after 2026-05-01, CI SHALL fail.
 - Gate test `test_no_legacy_imports.py` (existing) SHALL be updated to enforce zero imports from `legacy/` after the deadline.
 
 - **Added**: 2026-02-02
@@ -171,7 +171,7 @@ No other files in `legacy/` may be added to this list. No new code SHALL be writ
    **Strictness**: All patterns are relative to the resolved project root. The target path MUST resolve to a descendant of the project root. Writing outside the project root from kernel code is FORBIDDEN (user-facing exports outside the project are the facade layer's responsibility per API Constitution H9.3, out of scope here). Paths outside these zones are FORBIDDEN for `yaml.safe_dump`.
 
 3. **The target path MUST NOT match any SSOT pattern**:
-   - `project.qv.yml`
+   - `project.qms.yml`
    - `calculation.yaml`
    - `*.step.yaml`
    - Any path under the SSOT resource tree that is read by `load_yaml_doc()` or `_load_yaml_raw()`

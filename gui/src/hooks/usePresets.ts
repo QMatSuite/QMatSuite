@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useQVClient } from './useQVClient';
+import { useQMSClient } from './useQMSClient';
 import type {
   WorkflowType,
   PresetDetectionResult,
@@ -16,7 +16,7 @@ import type {
   StepPresetFootprint,
   ApplyPresetsToCalcResult,
   StepApplyResult,
-} from '../types/qv';
+} from '../types/qms';
 import { normalizeProjectRoot } from '../utils/pathUtils';
 
 export interface PresetState {
@@ -84,7 +84,7 @@ export function usePresets(
   projectRoot: string | null,
   calculationSlug: string | null,
 ): PresetsHook {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   
   const [state, setState] = useState<PresetsHookState>({
     presets: null,
@@ -148,15 +148,15 @@ export function usePresets(
     try {
       // Fetch presets, workflow, and footprints in parallel
       const [presetsResponse, workflowResponse, footprintsResponse] = await Promise.all([
-        qv.call('detect_presets', {
+        qms.call('detect_presets', {
           project_root: normalizedRoot,
           calculation: calculationSlug,
         }),
-        qv.call('detect_workflow', {
+        qms.call('detect_workflow', {
           project_root: normalizedRoot,
           calculation: calculationSlug,
         }),
-        qv.call('get_step_preset_footprints', {
+        qms.call('get_step_preset_footprints', {
           project_root: normalizedRoot,
           calculation: calculationSlug,
         }),
@@ -211,7 +211,7 @@ export function usePresets(
         }));
       }
     }
-  }, [projectRoot, calculationSlug, qv]);
+  }, [projectRoot, calculationSlug, qms]);
   
   // Auto-fetch on mount and when calculation changes
   useEffect(() => {
@@ -250,7 +250,7 @@ export function usePresets(
     try {
       const presets: Record<string, string> = { [dimension]: value };
       
-      const response = await qv.call('apply_presets_to_calculation', {
+      const response = await qms.call('apply_presets_to_calculation', {
         project_root: normalizedRoot,
         calculation: calculationSlug,
         presets,
@@ -307,7 +307,7 @@ export function usePresets(
       }
       return errorResult;
     }
-  }, [projectRoot, calculationSlug, qv, refresh]);
+  }, [projectRoot, calculationSlug, qms, refresh]);
   
   // Apply multiple presets at once
   const applyPresets = useCallback(async (
@@ -340,7 +340,7 @@ export function usePresets(
     }
     
     try {
-      const response = await qv.call('apply_presets_to_calculation', {
+      const response = await qms.call('apply_presets_to_calculation', {
         project_root: normalizedRoot,
         calculation: calculationSlug,
         presets: presetsToApply as Record<string, string>,
@@ -396,7 +396,7 @@ export function usePresets(
       }
       return errorResult;
     }
-  }, [projectRoot, calculationSlug, qv, refresh]);
+  }, [projectRoot, calculationSlug, qms, refresh]);
   
   return {
     ...state,

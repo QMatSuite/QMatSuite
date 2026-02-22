@@ -79,7 +79,7 @@ These principles must be respected in all v0 implementations and future evolutio
 
 **step.yaml**: The on-disk Single Source of Truth (SSOT) for execution. Contains engine-specific parameters (e.g., QE namelist parameters) in a structured YAML format. Execution consumes step.yaml directly; presets and IR are derived from step.yaml (detection) or compiled into step.yaml (application).
 
-**ParamSpace**: A mathematically reversible matrix-based system for mapping preset intents (dimension 1: rows/profiles) to IR parameters (dimension 2: columns/keys) with cell types (VALUE, NOT_APPLICABLE, WILDCARD). Defined in `src/quantumvitas/presets/paramspace.py`. **ParamSpace operates ONLY on IR keys**; it does NOT perform engine translation.
+**ParamSpace**: A mathematically reversible matrix-based system for mapping preset intents (dimension 1: rows/profiles) to IR parameters (dimension 2: columns/keys) with cell types (VALUE, NOT_APPLICABLE, WILDCARD). Defined in `src/qmatsuite/presets/paramspace.py`. **ParamSpace operates ONLY on IR keys**; it does NOT perform engine translation.
 
 **IR↔QE Adapter**: A mechanical mapping layer that converts IR parameter names to QE parameter names (module/section/key). In v0, IR base units align with QE (Ry, Bohr), so no unit conversion is performed. This layer is explicitly engine-specific and separate from the IR definition itself. **IR→QE mapping MUST live in a QE-specific adapter/compiler layer, NOT inside ParamSpace**.
 
@@ -113,7 +113,7 @@ Only the engine-specific layer is written to disk and executed.
 **What it is**:
 - High-level, subjective intent bundles (e.g., "high precision", "collinear magnetism")
 - Strategy-like selections that group multiple IR parameters
-- Defined in `src/quantumvitas/presets/dimensions.py` as enums (`MagnetismOption`, `PrecisionOption`, `OccupationsSchemeOption`, `ConvergenceOption`)
+- Defined in `src/qmatsuite/presets/dimensions.py` as enums (`MagnetismOption`, `PrecisionOption`, `OccupationsSchemeOption`, `ConvergenceOption`)
 
 **What it can contain**:
 - Named enum values that map to ParamSpace profiles (e.g., `MagnetismOption.COLLINEAR_LSDA` → "COL" profile)
@@ -125,7 +125,7 @@ Only the engine-specific layer is written to disk and executed.
 - Persistent state (presets are runtime-only, never persisted)
 
 **Storage**: Presets are NOT persisted in step.yaml. They are:
-- Computed from step.yaml via detection (`src/quantumvitas/presets/detector.py`)
+- Computed from step.yaml via detection (`src/qmatsuite/presets/detector.py`)
 - Recorded in history/provenance metadata only
 - Compiled into step.yaml when applied by users
 
@@ -172,11 +172,11 @@ Only the engine-specific layer is written to disk and executed.
 
 **Storage**: Persisted in `steps/{step_id}.step.yaml`. Authoritative for execution.
 
-**Location**: Defined in `src/quantumvitas/calculation/structure_steps.py` as `StructureStepSpec`.
+**Location**: Defined in `src/qmatsuite/calculation/structure_steps.py` as `StructureStepSpec`.
 
 **Round-Trip Uniqueness (QE)**: For QE, step.yaml ⇄ `*.in` is a unique, deterministic round-trip mapping:
-- `step.yaml` → `*.in`: `src/quantumvitas/io/generator/qe_generator.py` (`QEInputGenerator`)
-- `*.in` → `step.yaml`: `src/quantumvitas/io/parser/qe_parser.py` (import functionality)
+- `step.yaml` → `*.in`: `src/qmatsuite/io/generator/qe_generator.py` (`QEInputGenerator`)
+- `*.in` → `step.yaml`: `src/qmatsuite/io/parser/qe_parser.py` (import functionality)
 - This uniqueness must be documented and tested in v0 Phase 2.
 
 ---
@@ -187,23 +187,23 @@ Only the engine-specific layer is written to disk and executed.
 
 IR v0 MUST include all IR parameters required by the four existing preset dimensions:
 
-**Magnetism** (`src/quantumvitas/presets/paramspace.py:545-634`):
+**Magnetism** (`src/qmatsuite/presets/paramspace.py:545-634`):
 - `nspin` (QE-equivalent; maps to QE `SYSTEM.nspin`)
 - `noncolin` (QE-equivalent; maps to QE `SYSTEM.noncolin`)
 - `lspinorb` (QE-equivalent; maps to QE `SYSTEM.lspinorb`)
 
-**OccupationsScheme** (`src/quantumvitas/presets/paramspace.py:460-526`):
+**OccupationsScheme** (`src/qmatsuite/presets/paramspace.py:460-526`):
 - `occupations` (QE-equivalent; maps to QE `SYSTEM.occupations`)
 - `smearing` (QE-equivalent; maps to QE `SYSTEM.smearing`)
 - `degauss` (QE-equivalent; maps to QE `SYSTEM.degauss`)
 
-**Precision** (`src/quantumvitas/presets/paramspace.py:652-727`):
+**Precision** (`src/qmatsuite/presets/paramspace.py:652-727`):
 - `ecutwfc` (QE-equivalent; maps to QE `SYSTEM.ecutwfc`)
 - `ecutrho` (QE-equivalent; maps to QE `SYSTEM.ecutrho`)
 - `conv_thr` (QE-equivalent; maps to QE `ELECTRONS.conv_thr`)
 - `K_POINTS` (QE-equivalent card; maps to QE `cards.K_POINTS`)
 
-**Convergence** (`src/quantumvitas/presets/paramspace.py:829-936`):
+**Convergence** (`src/qmatsuite/presets/paramspace.py:829-936`):
 - `mixing_beta` (QE-equivalent; maps to QE `ELECTRONS.mixing_beta`)
 - `electron_maxstep` (QE-equivalent; maps to QE `ELECTRONS.electron_maxstep`)
 - `mixing_mode` (QE-equivalent; maps to QE `ELECTRONS.mixing_mode`)
@@ -262,7 +262,7 @@ For each IR parameter in v0, define:
 - Energy: Ry (Rydberg) - aligns with QE for v0 (no conversion)
 - Length: Bohr - aligns with QE for v0 (no conversion)
 - Do NOT introduce Ry↔eV conversion or any unit system in v0
-- NOTE: Structure uses Angstrom elsewhere (`src/quantumvitas/io/structure_io.py`); out of scope for IR v0
+- NOTE: Structure uses Angstrom elsewhere (`src/qmatsuite/io/structure_io.py`); out of scope for IR v0
 
 **type** (Python type):
 - `float` (energy parameters, dimensionless ratios)
@@ -272,7 +272,7 @@ For each IR parameter in v0, define:
 - `dict` (structured cards like `kpoint_mesh`)
 
 **comment/docs text**:
-- Can be copied from QE metadata initially (`src/quantumvitas/data/qe_module_parameters.json`)
+- Can be copied from QE metadata initially (`src/qmatsuite/data/qe_module_parameters.json`)
 - Is IR-owned (may diverge from QE descriptions as IR evolves)
 - Must NOT reference QE-specific terminology (e.g., "namelist", "Fortran")
 
@@ -295,7 +295,7 @@ comment: "Higher values improve accuracy but increase computational cost. Typica
 
 ### A.4 IR↔QE Adapter Layer (Separate from IR and ParamSpace)
 
-**Location**: `src/quantumvitas/ir/backends/qe/mapping.py` or QE engine adapter/compiler (conceptual; implementation in v0 Phase 1)
+**Location**: `src/qmatsuite/ir/backends/qe/mapping.py` or QE engine adapter/compiler (conceptual; implementation in v0 Phase 1)
 
 **Purpose**: Mechanical mapping between IR parameter names and QE parameter names.
 
@@ -343,7 +343,7 @@ comment: "Higher values improve accuracy but increase computational cost. Typica
 3. **Engine-Specific → step.yaml**: QE parameters written to `step.yaml["parameters"]` as SSOT
 
 **Preset/IR Derivation** (Detection - Reverse Flow):
-- Presets and IR parameters may be derived from `step.yaml` via detector (`src/quantumvitas/presets/detector.py`)
+- Presets and IR parameters may be derived from `step.yaml` via detector (`src/qmatsuite/presets/detector.py`)
 - Detection flow: QE parameters (step.yaml) → IR↔QE adapter → IR parameters → ParamSpace matching → preset enum
 - Derived values are recorded in history/journal only (NOT in step.yaml)
 - Detection uses ParamSpace matching with IR keys (after v0 Phase 1 migration)
@@ -357,7 +357,7 @@ comment: "Higher values improve accuracy but increase computational cost. Typica
 
 **Expert Edits** (Direct step.yaml editing):
 - If the user edits engine-specific parameters directly in `step.yaml` (expert mode), detector may fail to match any preset profile
-- In that case, preset/IR derivation returns `CUSTOM` (defined in `src/quantumvitas/presets/dimensions.py`)
+- In that case, preset/IR derivation returns `CUSTOM` (defined in `src/qmatsuite/presets/dimensions.py`)
 - Do NOT guess or infer presets/IR from non-matching parameters
 
 **No Double Truth Guarantee**:
@@ -394,7 +394,7 @@ There are TWO distinct step layers:
 
 ### B.1 Minimal Generalized Physical Step Taxonomy
 
-**Current Step Types** (from `src/quantumvitas/calculation/types.py:StepType`):
+**Current Step Types** (from `src/qmatsuite/calculation/types.py:StepType`):
 
 Existing step types that v0 must support:
 - `SCF` (Self-Consistent Field)
@@ -467,9 +467,9 @@ For v0, do NOT merge step categories. Separate step types remain distinct:
 - Engine registry maps `(engine_id, step_type)` → executable/runner entrypoint
 
 **Current Implementation**:
-- Engine selection: `src/quantumvitas/core/engines/qe.py` (`QuantumEspressoEngine`)
+- Engine selection: `src/qmatsuite/core/engines/qe.py` (`QuantumEspressoEngine`)
 - Executable mapping: `QuantumEspressoEngine.EXECUTABLE_MAP` (maps step types to QE executables)
-- Step type → executable binding: `src/quantumvitas/core/engines/qe.py:build_command()`
+- Step type → executable binding: `src/qmatsuite/core/engines/qe.py:build_command()`
 
 **v0 Requirement**:
 - Document that `engine_id` in `step.yaml` selects the engine backend
@@ -491,11 +491,11 @@ For file-based engines like QE, many steps read/write within a shared `outdir`:
 - DOS reads from `outdir` (requires NSCF outputs)
 - **Granularity**: "requires/produces" may not be perfectly granular in v0
 
-**Current Step Completion Detection** (`src/quantumvitas/calculation/step_done.py`):
+**Current Step Completion Detection** (`src/qmatsuite/calculation/step_done.py`):
 - Determines if a step is "done" based on output file existence and content markers
 - For QE: checks for "JOB DONE" in primary output file
 - For Wannier90: checks for `.wout` file existence
-- **Location**: `src/quantumvitas/calculation/step_done.py:is_step_done()`
+- **Location**: `src/qmatsuite/calculation/step_done.py:is_step_done()`
 
 #### v0 Approach
 
@@ -507,15 +507,15 @@ For file-based engines like QE, many steps read/write within a shared `outdir`:
 
 **Engine-Specific Success Criteria Remain Engine-Specific**:
 - In v0, success/done remains engine-specific
-- QE: File existence + "JOB DONE" marker (`src/quantumvitas/calculation/step_done.py`)
+- QE: File existence + "JOB DONE" marker (`src/qmatsuite/calculation/step_done.py`)
 - PySCF: `results.json` + checkpoint files (if implemented)
 - Wannier90: `.wout` file existence
 - **v0**: Engine-specific success criteria remain engine-specific
 
 **What v0 Will Use**:
-- Current implementation in `src/quantumvitas/calculation/step_done.py` determines step completion
+- Current implementation in `src/qmatsuite/calculation/step_done.py` determines step completion
 - For QE: Primary output file existence + "JOB DONE" marker
-- For PySCF: `results.json` existence (current implementation in `src/quantumvitas/engine/pyscf.py`)
+- For PySCF: `results.json` existence (current implementation in `src/qmatsuite/engine/pyscf.py`)
 - For Wannier90: `.wout` file existence
 
 **What Remains Future Work**:
@@ -546,14 +546,14 @@ For file-based engines like QE, many steps read/write within a shared `outdir`:
 - Restart artifacts exist on disk (e.g., `*.wfc`, `*.charge-density`)
 
 **Examples**:
-- QE: `pw.x`, `bands.x`, `dos.x`, `ph.x` (via `src/quantumvitas/core/engines/qe.py`)
-- Wannier90: `wannier90.x` (via `src/quantumvitas/core/engines/wannier90.py`)
+- QE: `pw.x`, `bands.x`, `dos.x`, `ph.x` (via `src/qmatsuite/core/engines/qe.py`)
+- Wannier90: `wannier90.x` (via `src/qmatsuite/core/engines/wannier90.py`)
 
 **Current Implementation**:
-- Input materialization: `src/quantumvitas/io/generator/qe_generator.py` (`QEInputGenerator`)
-- Command building: `src/quantumvitas/core/engines/qe.py:build_command()`
-- Subprocess execution: `src/quantumvitas/core/engines/qe_calculation.py:run_step()`
-- Working directory: `calculations/{calc_id}/raw/` (via `src/quantumvitas/calculation/runner.py:compute_io_dir_from_calculation_model()`)
+- Input materialization: `src/qmatsuite/io/generator/qe_generator.py` (`QEInputGenerator`)
+- Command building: `src/qmatsuite/core/engines/qe.py:build_command()`
+- Subprocess execution: `src/qmatsuite/core/engines/qe_calculation.py:run_step()`
+- Working directory: `calculations/{calc_id}/raw/` (via `src/qmatsuite/calculation/runner.py:compute_io_dir_from_calculation_model()`)
 
 #### Python-Library Engines (PySCF-like)
 
@@ -564,10 +564,10 @@ For file-based engines like QE, many steps read/write within a shared `outdir`:
 - In-memory state is cache only; correctness depends on disk artifacts
 
 **Examples**:
-- PySCF: `src/quantumvitas/engine/pyscf.py` (`PySCFEngine`)
+- PySCF: `src/qmatsuite/engine/pyscf.py` (`PySCFEngine`)
 
 **Current Implementation**:
-- Runner: `src/quantumvitas/engines/pyscf/runner.py` (executes PySCF via subprocess)
+- Runner: `src/qmatsuite/engines/pyscf/runner.py` (executes PySCF via subprocess)
 - Communication: `job.json` → runner → `results.json` (file-based, restartable)
 - Artifacts: `results.json` + `pyscf_input.py` (if generated) stored in working directory
 
@@ -586,12 +586,12 @@ All engines must provide the following minimal set of concepts (interfaces to be
 **File-Based Engines** (QE):
 - Input: `step.yaml` `parameters:` section
 - Output: Engine input files (e.g., `*.in` for QE) written to working directory
-- Implementation: `src/quantumvitas/io/generator/qe_generator.py` (`QEInputGenerator.generate()`)
+- Implementation: `src/qmatsuite/io/generator/qe_generator.py` (`QEInputGenerator.generate()`)
 
 **Python-Library Engines** (PySCF):
 - Input: `step.yaml` `parameters:` section
 - Output: Structured plan data (`job.json` for PySCF) written to working directory
-- Implementation: `src/quantumvitas/engine/pyscf.py:run_step()` writes `job.json`
+- Implementation: `src/qmatsuite/engine/pyscf.py:run_step()` writes `job.json`
 
 **v0 Requirement**: Document that materialize prepares inputs from `step.yaml`; engine-specific format.
 
@@ -604,12 +604,12 @@ All engines must provide the following minimal set of concepts (interfaces to be
 **File-Based Engines** (QE):
 - Command: Subprocess invocation (e.g., `mpirun -np 4 pw.x < input.in`)
 - Outputs: stdout/stderr captured, files written to working directory
-- Implementation: `src/quantumvitas/core/engines/qe_calculation.py:run_step()`
+- Implementation: `src/qmatsuite/core/engines/qe_calculation.py:run_step()`
 
 **Python-Library Engines** (PySCF):
-- Command: Python runner subprocess (e.g., `python -m quantumvitas.engines.pyscf.runner`)
+- Command: Python runner subprocess (e.g., `python -m qmatsuite.engines.pyscf.runner`)
 - Outputs: `results.json` written to working directory, stdout/stderr captured
-- Implementation: `src/quantumvitas/engine/pyscf.py:run_step()` invokes runner subprocess
+- Implementation: `src/qmatsuite/engine/pyscf.py:run_step()` invokes runner subprocess
 
 **v0 Requirement**: Document that run executes the step; engine-specific mechanism (subprocess vs. Python worker).
 
@@ -622,7 +622,7 @@ All engines must provide the following minimal set of concepts (interfaces to be
 **File-Based Engines** (QE):
 - Artifacts: Primary output file (e.g., `*.out`), restart files (e.g., `*.wfc`), logs
 - Location: Working directory (e.g., `calculations/{calc_id}/raw/`)
-- Detection: `src/quantumvitas/calculation/step_done.py:is_step_done()` checks for "JOB DONE"
+- Detection: `src/qmatsuite/calculation/step_done.py:is_step_done()` checks for "JOB DONE"
 
 **Python-Library Engines** (PySCF):
 - Artifacts: `results.json` (summary), `pyscf_input.py` (if generated), logs
@@ -638,7 +638,7 @@ All engines must provide the following minimal set of concepts (interfaces to be
 **Purpose**: Engine-specific parsing to canonical analysis outputs.
 
 **File-Based Engines** (QE):
-- Parser: `src/quantumvitas/analysis/parsers.py` (`parse_scf_output_text()`)
+- Parser: `src/qmatsuite/analysis/parsers.py` (`parse_scf_output_text()`)
 - Output: `SCFResult` dataclass (energies, convergence, timing)
 
 **Python-Library Engines** (PySCF):
@@ -681,7 +681,7 @@ All engines must provide the following minimal set of concepts (interfaces to be
 - Worker restart reads artifacts from disk, not from memory
 
 **Current Implementation** (PySCF):
-- `src/quantumvitas/engine/pyscf.py:run_step()` writes `results.json` after each step
+- `src/qmatsuite/engine/pyscf.py:run_step()` writes `results.json` after each step
 - Runner subprocess is invoked per step (no long-lived worker yet in v0)
 - **v0**: Document session-restartable requirement; full long-lived worker implementation is future work
 
@@ -704,7 +704,7 @@ All engines must provide the following minimal set of concepts (interfaces to be
 - Document current step.yaml SSOT role (authoritative for execution)
 - Document current QE step.yaml ⇄ `*.in` round-trip mapping (via `QEInputGenerator` and parser)
 - Document current ParamSpace structure and reversibility (matrix-based, `match_profile()` / `compile_profile_patch()`)
-- Document current preset detection/compilation paths (`src/quantumvitas/presets/detector.py`, `src/quantumvitas/presets/compiler.py`)
+- Document current preset detection/compilation paths (`src/qmatsuite/presets/detector.py`, `src/qmatsuite/presets/compiler.py`)
 
 **Deliverables**: Documentation only; no code changes.
 
@@ -718,19 +718,19 @@ All engines must provide the following minimal set of concepts (interfaces to be
 
 **Tasks**:
 - Create IR parameter registry (IR definitions only; no `qe_key` references)
-  - Location: `src/quantumvitas/ir/parameters.py` (conceptual)
+  - Location: `src/qmatsuite/ir/parameters.py` (conceptual)
   - Define all 18 IR parameters (15 from presets + 3 low-hanging: `nbnd`, `nosym`, `noinv`)
 - Create IR↔QE adapter layer (mechanical mapping)
-  - Location: `src/quantumvitas/ir/backends/qe/mapping.py` (conceptual)
+  - Location: `src/qmatsuite/ir/backends/qe/mapping.py` (conceptual)
   - `IR_TO_QE_MAPPING`: `ir_key` → `(qe_module, qe_section, qe_key)`
   - `QE_TO_IR_MAPPING`: `(qe_module, qe_section, qe_key)` → `ir_key`
   - No unit conversion in v0 (IR base units align with QE)
 - Switch ParamSpace dimension-2 keys from QE keys to IR keys
-  - Location: `src/quantumvitas/presets/paramspace.py`
+  - Location: `src/qmatsuite/presets/paramspace.py`
   - Replace `ParamKey.key` (QE parameter name) with IR parameter name
   - All other ParamSpace logic unchanged (matrices, cells, reversibility preserved)
 - Update preset compilation/detection to use IR keys
-  - Location: `src/quantumvitas/presets/compiler.py`, `src/quantumvitas/presets/detector.py`
+  - Location: `src/qmatsuite/presets/compiler.py`, `src/qmatsuite/presets/detector.py`
   - YAML access layer converts IR YAML ↔ QE YAML at boundary
 
 **Deliverables**: IR registry, IR↔QE adapter, ParamSpace uses IR keys, compilation/detection work with IR keys.
@@ -773,7 +773,7 @@ All engines must provide the following minimal set of concepts (interfaces to be
   - Artifacts must persist after each step
   - Worker memory is cache only
 - Skeleton implementation (no full long-lived worker yet)
-  - Current: `src/quantumvitas/engine/pyscf.py` already implements subprocess runner
+  - Current: `src/qmatsuite/engine/pyscf.py` already implements subprocess runner
   - Document that long-lived worker is future work
 
 **Deliverables**: Runner contract documentation, skeleton implementation (if not already present).
@@ -844,37 +844,37 @@ Complete list of IR parameters for v0, with dimension and base unit. IR keys ful
 Key modules and paths referenced in this charter:
 
 **Presets**:
-- `src/quantumvitas/presets/paramspace.py`: ParamSpace matrix-based system
-- `src/quantumvitas/presets/spaces_registry.py`: ParamSpace registry
-- `src/quantumvitas/presets/variants_registry.py`: Step-specific variants
-- `src/quantumvitas/presets/dimensions.py`: Preset enum definitions
-- `src/quantumvitas/presets/detector.py`: Preset detection from step.yaml
-- `src/quantumvitas/presets/compiler.py`: Preset compilation to step.yaml
+- `src/qmatsuite/presets/paramspace.py`: ParamSpace matrix-based system
+- `src/qmatsuite/presets/spaces_registry.py`: ParamSpace registry
+- `src/qmatsuite/presets/variants_registry.py`: Step-specific variants
+- `src/qmatsuite/presets/dimensions.py`: Preset enum definitions
+- `src/qmatsuite/presets/detector.py`: Preset detection from step.yaml
+- `src/qmatsuite/presets/compiler.py`: Preset compilation to step.yaml
 
 **QE Metadata**:
-- `src/quantumvitas/data/qe_module_parameters.json`: QE parameter metadata (types, defaults, descriptions)
+- `src/qmatsuite/data/qe_module_parameters.json`: QE parameter metadata (types, defaults, descriptions)
 
 **Steps**:
-- `src/quantumvitas/calculation/types.py`: `StepType` enum
-- `src/quantumvitas/calculation/structure_steps.py`: `StructureStepSpec` (step.yaml structure)
-- `src/quantumvitas/calculation/step_done.py`: Step completion detection
+- `src/qmatsuite/calculation/types.py`: `StepType` enum
+- `src/qmatsuite/calculation/structure_steps.py`: `StructureStepSpec` (step.yaml structure)
+- `src/qmatsuite/calculation/step_done.py`: Step completion detection
 
 **Engines**:
-- `src/quantumvitas/core/engines/qe.py`: Quantum ESPRESSO engine
-- `src/quantumvitas/core/engines/qe_calculation.py`: QE execution runner
-- `src/quantumvitas/engine/pyscf.py`: PySCF engine adapter
-- `src/quantumvitas/engines/pyscf/runner.py`: PySCF runner subprocess
+- `src/qmatsuite/core/engines/qe.py`: Quantum ESPRESSO engine
+- `src/qmatsuite/core/engines/qe_calculation.py`: QE execution runner
+- `src/qmatsuite/engine/pyscf.py`: PySCF engine adapter
+- `src/qmatsuite/engines/pyscf/runner.py`: PySCF runner subprocess
 
 **I/O**:
-- `src/quantumvitas/io/generator/qe_generator.py`: QE input file generation (step.yaml → *.in)
-- `src/quantumvitas/io/parser/qe_parser.py`: QE input parsing (*.in → step.yaml)
+- `src/qmatsuite/io/generator/qe_generator.py`: QE input file generation (step.yaml → *.in)
+- `src/qmatsuite/io/parser/qe_parser.py`: QE input parsing (*.in → step.yaml)
 
 **Analysis**:
-- `src/quantumvitas/analysis/parsers.py`: QE output parsing
+- `src/qmatsuite/analysis/parsers.py`: QE output parsing
 
 **Execution**:
-- `src/quantumvitas/calculation/runner.py`: Calculation execution orchestration
-- `src/quantumvitas/calculation/manifest.py`: Incremental run tracking
+- `src/qmatsuite/calculation/runner.py`: Calculation execution orchestration
+- `src/qmatsuite/calculation/manifest.py`: Incremental run tracking
 
 ---
 

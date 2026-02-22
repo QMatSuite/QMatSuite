@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 
-from quantumvitas.drivers.cp2k.parsers.output import (
+from qmatsuite.drivers.cp2k.parsers.output import (
     CP2KDigest,
     CP2KOutputParser,
     parse_cp2k_output_text,
@@ -222,7 +222,7 @@ class TestParserRegistration:
     """Test parser registry integration."""
 
     def test_registered_in_registry(self):
-        from quantumvitas.parsers.registry import get_parser
+        from qmatsuite.parsers.registry import get_parser
         parser = get_parser("cp2k", "scf_digest")
         assert parser is not None
         assert parser.engine == "cp2k"

@@ -126,7 +126,7 @@ const handleScanValuesChange = useCallback((scanId: string, values: unknown[]) =
 
 **关键代码** (line 755-761):
 ```typescript
-const response = await window.qv.request<StepDetail>('update_step_params', {
+const response = await window.qms.request<StepDetail>('update_step_params', {
   project_root: normalizedProjectRoot,
   calculation: calculationSelector,
   step: stepSelector,
@@ -146,7 +146,7 @@ const response = await window.qv.request<StepDetail>('update_step_params', {
 **证据链**:
 - `handleSaveParams` 构建 payload (line 755-761)
 - `parameter_scan: editedParameterScan` (如果非空)
-- 发送到 backend: `window.qv.request('update_step_params', payload)`
+- 发送到 backend: `window.qms.request('update_step_params', payload)`
 
 **预期 payload 结构** (如果 `editedParameterScan` 正确):
 ```json
@@ -175,7 +175,7 @@ const response = await window.qv.request<StepDetail>('update_step_params', {
 
 ### D. Backend 收到后的处理与返回
 
-**文件**: `src/quantumvitas/api.py`
+**文件**: `src/qmatsuite/api.py`
 
 **关键代码** (line 4599-4601):
 ```python
@@ -187,7 +187,7 @@ if parameter_scan is not None:
 **关键代码** (line 4608-4614):
 ```python
 # Return the updated step detail (pass cached index/config to avoid rebuilding)
-result = QVService.get_step_detail(
+result = QMSService.get_step_detail(
     project_root=project_root,
     calculation_ulid=calculation_ulid,
     step_selector=step_selector,
@@ -202,7 +202,7 @@ result = QVService.get_step_detail(
   - 只会更新/添加 `scan003`，**不会删除** `scan001` 和 `scan002`
 - ✅ **返回完整数据**: `get_step_detail` 会读取整个 `step.yaml`，包括所有 `parameter_scan` 定义 (line 4484-4485)
 
-**apply_patch 行为** (参考 `src/quantumvitas/core/yamldoc.py` line 383-396):
+**apply_patch 行为** (参考 `src/qmatsuite/core/yamldoc.py` line 383-396):
 ```python
 def _apply_patch_recursive(self, patch: dict, current_path: list[str]) -> None:
     for key, value in patch.items():
@@ -366,7 +366,7 @@ const params = useMemo(() => {
 
 ### 当前实现：Patch Merge 语义
 
-**文件**: `src/quantumvitas/api.py` (line 4600-4601)
+**文件**: `src/qmatsuite/api.py` (line 4600-4601)
 
 ```python
 if parameter_scan is not None:
@@ -384,7 +384,7 @@ if parameter_scan is not None:
 
 ### 对比：K_POINTS 的处理方式
 
-**文件**: `src/quantumvitas/api.py` (line 4767)
+**文件**: `src/qmatsuite/api.py` (line 4767)
 
 ```python
 step_doc.set(["cards", "K_POINTS"], card_data)

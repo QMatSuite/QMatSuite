@@ -31,14 +31,14 @@ This document provides a comprehensive analysis of the engine driver migration w
 **Objective**: Eliminate the critical vulnerability where unknown step types silently fell back to QE execution.
 
 **Changes Made**:
-- Modified `src/quantumvitas/core/calc_identity.py::_infer_engine_family_from_machine_types()`:
+- Modified `src/qmatsuite/core/calc_identity.py::_infer_engine_family_from_machine_types()`:
   - Removed hardcoded prefix-based detection (`step_type.startswith("qe_")`)
   - Removed silent QE fallback (`return "qe"` for unknown types)
   - Replaced with `DriverRegistry.is_step_type_registered()` and `DriverRegistry.get_engine_for_step_type()`
   - Now returns `None` for unknown/mixed step types instead of silently defaulting to QE
 
 **Files Modified**:
-- `src/quantumvitas/core/calc_identity.py` (lines 79-111)
+- `src/qmatsuite/core/calc_identity.py` (lines 79-111)
 
 **Impact**: This fix ensures that unknown step types fail fast with clear error messages rather than silently executing with the wrong engine.
 
@@ -49,57 +49,57 @@ This document provides a comprehensive analysis of the engine driver migration w
 **Objective**: Create the central `DriverRegistry` infrastructure and refactor all kernel routing to use it.
 
 **Files Created**:
-1. `src/quantumvitas/core/driver_protocol.py`:
+1. `src/qmatsuite/core/driver_protocol.py`:
    - `WorkdirPolicy` enum (ISOLATED, CLEANUP, SHARED)
    - `ErrorClass` enum (CONVERGENCE, MEMORY, TIMEOUT, etc.)
    - `StepTypeSpec` dataclass (id, engine, executable, description, category, etc.)
    - `EngineDriver` Protocol (MUST interface: 3 properties, 4 methods)
    - `BaseEngineDriver` class (SHOULD/PLUGIN defaults)
 
-2. `src/quantumvitas/core/driver_exceptions.py`:
+2. `src/qmatsuite/core/driver_exceptions.py`:
    - `UnknownStepTypeError` (with similarity matching)
    - `UnknownEngineError`
    - `UnknownMaterializationError`
    - `DuplicateStepTypeError`
    - `DuplicateEngineError`
 
-3. `src/quantumvitas/core/driver_registry.py`:
+3. `src/qmatsuite/core/driver_registry.py`:
    - `DriverRegistry` singleton class
    - Driver registration and validation
    - Step type lookup and routing
    - Handler and recipe class retrieval
    - Materialization mapping (GEN→SPEC)
 
-4. `src/quantumvitas/drivers/__init__.py`:
+4. `src/qmatsuite/drivers/__init__.py`:
    - Auto-imports all driver packages to trigger registration
 
-5. `src/quantumvitas/drivers/qe_shim/__init__.py`:
+5. `src/qmatsuite/drivers/qe_shim/__init__.py`:
    - `QELegacyDriver` class (minimal shim for QE until full migration)
    - Registers all QE step types including `w90_preproc`
 
 **Files Modified**:
-1. `src/quantumvitas/execution/handlers.py`:
+1. `src/qmatsuite/execution/handlers.py`:
    - `create_handler_map()`: Now delegates to `DriverRegistry.get_handler()`
    - Added `get_handler_for_step()`: Preferred entry point for handler lookup
    - Removed hardcoded engine-specific handler registration
 
-2. `src/quantumvitas/execution/recipes.py`:
+2. `src/qmatsuite/execution/recipes.py`:
    - `get_recipe_for_engine()`: Now delegates to `DriverRegistry.get_recipe_class()`
    - Removed hardcoded recipe class mapping
 
-3. `src/quantumvitas/workflow/generalized_steps.py`:
+3. `src/qmatsuite/workflow/generalized_steps.py`:
    - `materialize_step()`: Now uses `DriverRegistry.materialize_step_type()`
    - Falls back to legacy `MATERIALIZATION_MAP` for backward compatibility
 
-4. `src/quantumvitas/calculation/structure_steps.py`:
+4. `src/qmatsuite/calculation/structure_steps.py`:
    - Removed hardcoded `*_STEP_TYPES` sets (PYSCF_STEP_TYPES, ORCA_STEP_TYPES, etc.)
    - Replaced `is_*_step()` functions to query `DriverRegistry` by engine family
 
-5. `src/quantumvitas/calculation/step_done.py`:
+5. `src/qmatsuite/calculation/step_done.py`:
    - Removed hardcoded `VASP_STEP_TYPES` and `LAMMPS_STEP_TYPES`
    - Modified `is_vasp_step()` and `is_lammps_step()` to use registry
 
-6. `src/quantumvitas/core/calc_identity.py`:
+6. `src/qmatsuite/core/calc_identity.py`:
    - Already modified in PR1, now fully uses registry
 
 **Tests Created**:
@@ -112,7 +112,7 @@ This document provides a comprehensive analysis of the engine driver migration w
   - Kernel integration
 
 **Key Technical Decisions**:
-- **Eager Driver Loading**: Drivers register at import time via `quantumvitas.drivers` package
+- **Eager Driver Loading**: Drivers register at import time via `qmatsuite.drivers` package
 - **Protocol vs ABC**: Used `Protocol` for `EngineDriver` to allow duck typing
 - **Backward Compatibility**: Maintained one minor version compatibility with deprecation warnings
 - **Module Reloading Fix**: Enhanced test setup to explicitly remove driver modules from `sys.modules` to ensure fresh registration
@@ -121,40 +121,40 @@ This document provides a comprehensive analysis of the engine driver migration w
 
 ### 1.3 VASP Migration (PR 20)
 
-**Objective**: Extract all VASP-specific code into `src/quantumvitas/drivers/vasp/`.
+**Objective**: Extract all VASP-specific code into `src/qmatsuite/drivers/vasp/`.
 
 **Files Created**:
-1. `src/quantumvitas/drivers/vasp/driver.py`:
+1. `src/qmatsuite/drivers/vasp/driver.py`:
    - `VASPDriver` class with 6 step types (scf, relax, md, bands, dos, neb)
    - Materialization map (GEN_SCF → vasp_scf, etc.)
    - WorkdirPolicy.CLEANUP (isolated workdirs with cleanup)
    - Capabilities: chgcar_restart, wavecar_restart
 
-2. `src/quantumvitas/drivers/vasp/handler.py`:
+2. `src/qmatsuite/drivers/vasp/handler.py`:
    - Moved `vasp_step_handler` from `execution/handlers.py`
    - Handles CHGCAR/WAVECAR staging from reference SCF
    - Uses `find_reference_scf()` for continuation
 
-3. `src/quantumvitas/drivers/vasp/recipe.py`:
+3. `src/qmatsuite/drivers/vasp/recipe.py`:
    - Moved `VASPRecipe` from `execution/recipes.py`
    - Creates isolated workdir per step
 
-4. `src/quantumvitas/drivers/vasp/staging.py`:
+4. `src/qmatsuite/drivers/vasp/staging.py`:
    - Moved from `execution/vasp_staging.py`
    - `stage_chgcar()`: Prerequisite for non-SCF, optional for SCF
    - `stage_wavecar()`: Optional for all steps, warning if fails
 
-5. `src/quantumvitas/drivers/vasp/reference.py`:
+5. `src/qmatsuite/drivers/vasp/reference.py`:
    - Wrapper for `find_reference_scf()` from `execution/reference_resolver`
 
-6. `src/quantumvitas/drivers/vasp/__init__.py`:
+6. `src/qmatsuite/drivers/vasp/__init__.py`:
    - Registers `VASPDriver` at import time
 
 **Files Modified**:
-- `src/quantumvitas/execution/handlers.py`: Removed `vasp_step_handler`
-- `src/quantumvitas/execution/recipes.py`: Removed `VASPRecipe`
-- `src/quantumvitas/execution/__init__.py`: Removed `vasp_step_handler` export
-- `src/quantumvitas/drivers/__init__.py`: Added VASP import
+- `src/qmatsuite/execution/handlers.py`: Removed `vasp_step_handler`
+- `src/qmatsuite/execution/recipes.py`: Removed `VASPRecipe`
+- `src/qmatsuite/execution/__init__.py`: Removed `vasp_step_handler` export
+- `src/qmatsuite/drivers/__init__.py`: Added VASP import
 
 **Tests Created**:
 - `tests/drivers/vasp/test_vasp_driver.py`: Driver properties, registration, isolation tests
@@ -163,28 +163,28 @@ This document provides a comprehensive analysis of the engine driver migration w
 
 ### 1.4 ORCA Migration (PR 21)
 
-**Objective**: Extract all ORCA-specific code into `src/quantumvitas/drivers/orca/`.
+**Objective**: Extract all ORCA-specific code into `src/qmatsuite/drivers/orca/`.
 
 **Files Created**:
-1. `src/quantumvitas/drivers/orca/driver.py`:
+1. `src/qmatsuite/drivers/orca/driver.py`:
    - `ORCADriver` class with step types (scf, opt, freq, td, etc.)
    - Materialization map (GEN_SCF → orca_scf, etc.)
    - WorkdirPolicy.ISOLATED
    - Capabilities: chain (multi-step workflows)
 
-2. `src/quantumvitas/drivers/orca/handler.py`:
+2. `src/qmatsuite/drivers/orca/handler.py`:
    - Moved `orca_chain_handler` from `execution/handlers.py`
 
-3. `src/quantumvitas/drivers/orca/recipe.py`:
+3. `src/qmatsuite/drivers/orca/recipe.py`:
    - Moved `ORCARecipe` from `execution/recipes.py`
 
-4. `src/quantumvitas/drivers/orca/__init__.py`:
+4. `src/qmatsuite/drivers/orca/__init__.py`:
    - Registers `ORCADriver` at import time
 
 **Files Modified**:
-- `src/quantumvitas/execution/handlers.py`: Removed ORCA handler
-- `src/quantumvitas/execution/recipes.py`: Removed `ORCARecipe`
-- `src/quantumvitas/drivers/__init__.py`: Added ORCA import
+- `src/qmatsuite/execution/handlers.py`: Removed ORCA handler
+- `src/qmatsuite/execution/recipes.py`: Removed `ORCARecipe`
+- `src/qmatsuite/drivers/__init__.py`: Added ORCA import
 
 **Tests Created**:
 - `tests/drivers/orca/test_orca_driver.py`: Driver tests with isolation checks
@@ -193,28 +193,28 @@ This document provides a comprehensive analysis of the engine driver migration w
 
 ### 1.5 PySCF Migration (PR 22)
 
-**Objective**: Extract all PySCF-specific code into `src/quantumvitas/drivers/pyscf/`.
+**Objective**: Extract all PySCF-specific code into `src/qmatsuite/drivers/pyscf/`.
 
 **Files Created**:
-1. `src/quantumvitas/drivers/pyscf/driver.py`:
+1. `src/qmatsuite/drivers/pyscf/driver.py`:
    - `PySCFDriver` class with step types (scf, mp2, td, freq, etc.)
    - Materialization map (GEN_SCF → pyscf_scf, etc.)
    - WorkdirPolicy.ISOLATED
    - Capabilities: python_native
 
-2. `src/quantumvitas/drivers/pyscf/handler.py`:
+2. `src/qmatsuite/drivers/pyscf/handler.py`:
    - Moved `pyscf_chain_handler` from `execution/handlers.py`
 
-3. `src/quantumvitas/drivers/pyscf/recipe.py`:
+3. `src/qmatsuite/drivers/pyscf/recipe.py`:
    - Moved `PySCFRecipe` from `execution/recipes.py`
 
-4. `src/quantumvitas/drivers/pyscf/__init__.py`:
+4. `src/qmatsuite/drivers/pyscf/__init__.py`:
    - Registers `PySCFDriver` at import time
 
 **Files Modified**:
-- `src/quantumvitas/execution/handlers.py`: Removed PySCF handler
-- `src/quantumvitas/execution/recipes.py`: Removed `PySCFRecipe`
-- `src/quantumvitas/drivers/__init__.py`: Added PySCF import
+- `src/qmatsuite/execution/handlers.py`: Removed PySCF handler
+- `src/qmatsuite/execution/recipes.py`: Removed `PySCFRecipe`
+- `src/qmatsuite/drivers/__init__.py`: Added PySCF import
 
 **Tests Created**:
 - `tests/drivers/pyscf/test_pyscf_driver.py`: Driver tests with isolation checks
@@ -223,41 +223,41 @@ This document provides a comprehensive analysis of the engine driver migration w
 
 ### 1.6 LAMMPS Migration (PR 23)
 
-**Objective**: Extract all LAMMPS-specific code into `src/quantumvitas/drivers/lammps/`.
+**Objective**: Extract all LAMMPS-specific code into `src/qmatsuite/drivers/lammps/`.
 
 **Files Created**:
-1. `src/quantumvitas/drivers/lammps/driver.py`:
+1. `src/qmatsuite/drivers/lammps/driver.py`:
    - `LAMMPSDriver` class with 8 step types (minimize, md, nve, nvt, npt, relax, equilibrate, deform)
    - Materialization map (GEN_MINIMIZE → lammps_minimize, etc.)
    - WorkdirPolicy.ISOLATED (accumulates trajectory files)
    - Capabilities: restart, trajectory
    - `supports_incremental_skip()`: Returns False for MD steps (continuation matters)
 
-2. `src/quantumvitas/drivers/lammps/handler.py`:
+2. `src/qmatsuite/drivers/lammps/handler.py`:
    - Moved `lammps_step_handler` from `execution/handlers.py` (lines 295-590)
    - Includes restart/checkpoint handling logic
    - Handles `final.data` artifact for relax steps
 
-3. `src/quantumvitas/drivers/lammps/recipe.py`:
+3. `src/qmatsuite/drivers/lammps/recipe.py`:
    - Moved `LAMMPSRecipe` from `execution/recipes.py` (lines 237-369)
    - Handles `restart_from` dependency resolution
 
-4. `src/quantumvitas/drivers/lammps/restart.py`:
+4. `src/qmatsuite/drivers/lammps/restart.py`:
    - `find_restart_file()`: Finds latest restart file by mtime
    - `stage_restart_file()`: Stages restart file for reading
    - `resolve_restart_source()`: Resolves source step for restart
 
-5. `src/quantumvitas/drivers/lammps/data_file.py`:
+5. `src/qmatsuite/drivers/lammps/data_file.py`:
    - `write_data_file()`: Placeholder for LAMMPS data file creation
 
-6. `src/quantumvitas/drivers/lammps/__init__.py`:
+6. `src/qmatsuite/drivers/lammps/__init__.py`:
    - Registers `LAMMPSDriver` at import time
 
 **Files Modified**:
-- `src/quantumvitas/execution/handlers.py`: Removed `lammps_step_handler` (296 lines)
-- `src/quantumvitas/execution/recipes.py`: Removed `LAMMPSRecipe` (133 lines)
-- `src/quantumvitas/execution/__init__.py`: Removed `lammps_step_handler` export
-- `src/quantumvitas/drivers/__init__.py`: Added LAMMPS import
+- `src/qmatsuite/execution/handlers.py`: Removed `lammps_step_handler` (296 lines)
+- `src/qmatsuite/execution/recipes.py`: Removed `LAMMPSRecipe` (133 lines)
+- `src/qmatsuite/execution/__init__.py`: Removed `lammps_step_handler` export
+- `src/qmatsuite/drivers/__init__.py`: Added LAMMPS import
 
 **Tests Created**:
 - `tests/drivers/lammps/test_lammps_driver.py`: Driver tests, restart handling tests
@@ -266,36 +266,36 @@ This document provides a comprehensive analysis of the engine driver migration w
 
 ### 1.7 CP2K Migration (PR 24)
 
-**Objective**: Extract all CP2K-specific code into `src/quantumvitas/drivers/cp2k/`.
+**Objective**: Extract all CP2K-specific code into `src/qmatsuite/drivers/cp2k/`.
 
 **Files Created**:
-1. `src/quantumvitas/drivers/cp2k/driver.py`:
+1. `src/qmatsuite/drivers/cp2k/driver.py`:
    - `CP2KDriver` class with 8 step types (scf, relax, geo_opt, cell_opt, md, bands, dos, vibrational)
    - Materialization map (GEN_SCF → cp2k_scf, etc.)
    - WorkdirPolicy.ISOLATED (NO cleanup - artifacts accumulate)
    - Capabilities: restart, wfn_continuation
    - `supports_incremental_skip()`: Returns False for MD steps
 
-2. `src/quantumvitas/drivers/cp2k/handler.py`:
+2. `src/qmatsuite/drivers/cp2k/handler.py`:
    - Moved `cp2k_step_handler` from `execution/handlers.py` (lines 663-875)
    - Includes preflight checks for restart files
    - Handles `_resolve_cp2k_restart_artifacts()` helper function
    - **ISSUE**: Line 50 imports `CP2KRecipe` from old location
 
-3. `src/quantumvitas/drivers/cp2k/recipe.py`:
+3. `src/qmatsuite/drivers/cp2k/recipe.py`:
    - Moved `CP2KRecipe` from `execution/recipes.py` (lines 372-473)
    - Includes `get_preflight_requirements()` for restart policy
 
-4. `src/quantumvitas/drivers/cp2k/input_writer.py`:
+4. `src/qmatsuite/drivers/cp2k/input_writer.py`:
    - `write_section()`: Helper for CP2K hierarchical input format
 
-5. `src/quantumvitas/drivers/cp2k/__init__.py`:
+5. `src/qmatsuite/drivers/cp2k/__init__.py`:
    - Registers `CP2KDriver` at import time
 
 **Files Modified**:
-- `src/quantumvitas/execution/handlers.py`: Removed `cp2k_step_handler` and `_resolve_cp2k_restart_artifacts()`
-- `src/quantumvitas/execution/recipes.py`: Removed `CP2KRecipe` (104 lines)
-- `src/quantumvitas/drivers/__init__.py`: Added CP2K import
+- `src/qmatsuite/execution/handlers.py`: Removed `cp2k_step_handler` and `_resolve_cp2k_restart_artifacts()`
+- `src/qmatsuite/execution/recipes.py`: Removed `CP2KRecipe` (104 lines)
+- `src/qmatsuite/drivers/__init__.py`: Added CP2K import
 
 **Tests Created**:
 - `tests/drivers/cp2k/test_cp2k_driver.py`: Driver tests, isolation checks
@@ -306,10 +306,10 @@ This document provides a comprehensive analysis of the engine driver migration w
 
 ### 1.8 Wannier90 Migration (PR 25)
 
-**Objective**: Extract Wannier90 code into `src/quantumvitas/drivers/w90/`, handling cross-engine dependencies.
+**Objective**: Extract Wannier90 code into `src/qmatsuite/drivers/w90/`, handling cross-engine dependencies.
 
 **Files Created**:
-1. `src/quantumvitas/drivers/w90/driver.py`:
+1. `src/qmatsuite/drivers/w90/driver.py`:
    - `W90Driver` class with 1 step type: `w90_run`
    - **Note**: `w90_preproc` remains in QE shim (runs via `pw2wannier90.x`)
    - Empty materialization map (no generalized steps)
@@ -317,29 +317,29 @@ This document provides a comprehensive analysis of the engine driver migration w
    - Capabilities: cross_engine (requires DFT output)
    - Preflight requirements: .amn, .mmn, .eig files from preprocessing
 
-2. `src/quantumvitas/drivers/w90/handler.py`:
+2. `src/qmatsuite/drivers/w90/handler.py`:
    - `w90_run_handler`: Handles main Wannier90 execution
    - Resolves input artifacts (.amn, .mmn, .eig) from previous steps
    - Stages .win file via recipe
 
-3. `src/quantumvitas/drivers/w90/recipe.py`:
+3. `src/qmatsuite/drivers/w90/recipe.py`:
    - `W90Recipe` class with `materialize()` method
    - `stage()`: Generates .win file from config
    - `_generate_win_file()`: Creates Wannier90 input format
 
-4. `src/quantumvitas/drivers/w90/artifact_resolver.py`:
+4. `src/qmatsuite/drivers/w90/artifact_resolver.py`:
    - `resolve_w90_inputs()`: Cross-engine artifact resolution
    - `_find_artifacts_in_dir()`: Finds .amn, .mmn, .eig files
    - Searches completed steps for preprocessing output
 
-5. `src/quantumvitas/drivers/w90/__init__.py`:
+5. `src/qmatsuite/drivers/w90/__init__.py`:
    - Registers `W90Driver` at import time
 
 **Files Modified**:
-- `src/quantumvitas/drivers/qe_shim/__init__.py`:
+- `src/qmatsuite/drivers/qe_shim/__init__.py`:
   - Removed `w90_run` step type (now in W90 driver)
   - Kept `w90_preproc` (engine="qe", executable="pw2wannier90.x")
-- `src/quantumvitas/drivers/__init__.py`: Added W90 import
+- `src/qmatsuite/drivers/__init__.py`: Added W90 import
 
 **Tests Created**:
 - `tests/drivers/w90/test_w90_driver.py`: Driver tests, artifact resolver tests, recipe tests
@@ -377,24 +377,24 @@ This document provides a comprehensive analysis of the engine driver migration w
 
 **Error Message**:
 ```
-ImportError: cannot import name 'CP2KRecipe' from 'quantumvitas.execution.recipes'
+ImportError: cannot import name 'CP2KRecipe' from 'qmatsuite.execution.recipes'
 ```
 
 **Root Cause**:
-In `src/quantumvitas/drivers/cp2k/handler.py` line 50:
+In `src/qmatsuite/drivers/cp2k/handler.py` line 50:
 ```python
-from quantumvitas.execution.recipes import CP2KRecipe
+from qmatsuite.execution.recipes import CP2KRecipe
 ```
 
-`CP2KRecipe` was moved to `src/quantumvitas/drivers/cp2k/recipe.py` during migration, but the handler still imports from the old location.
+`CP2KRecipe` was moved to `src/qmatsuite/drivers/cp2k/recipe.py` during migration, but the handler still imports from the old location.
 
 **Evidence**:
 ```python
-# src/quantumvitas/drivers/cp2k/handler.py:50
-from quantumvitas.execution.recipes import CP2KRecipe  # ❌ Wrong location
+# src/qmatsuite/drivers/cp2k/handler.py:50
+from qmatsuite.execution.recipes import CP2KRecipe  # ❌ Wrong location
 
 # Should be:
-from quantumvitas.drivers.cp2k.recipe import CP2KRecipe  # ✅ Correct location
+from qmatsuite.drivers.cp2k.recipe import CP2KRecipe  # ✅ Correct location
 ```
 
 **Impact**: All CP2K integration tests fail because the handler cannot instantiate the recipe for preflight checks.
@@ -409,8 +409,8 @@ from quantumvitas.drivers.cp2k.recipe import CP2KRecipe  # ✅ Correct location
 
 **Error Messages**:
 ```
-ImportError: cannot import name 'ORCARecipe' from 'quantumvitas.execution.recipes'
-ImportError: cannot import name 'VASPRecipe' from 'quantumvitas.execution.recipes'
+ImportError: cannot import name 'ORCARecipe' from 'qmatsuite.execution.recipes'
+ImportError: cannot import name 'VASPRecipe' from 'qmatsuite.execution.recipes'
 ```
 
 **Root Cause**:
@@ -421,7 +421,7 @@ These test files import recipe classes from the old location:
 **Evidence**:
 ```python
 # tests/unit/execution/test_recipes.py:14-17
-from quantumvitas.execution.recipes import (
+from qmatsuite.execution.recipes import (
     QERecipe,
     ORCARecipe,  # ❌ Moved to drivers/orca/recipe.py
     PySCFRecipe,  # ❌ Moved to drivers/pyscf/recipe.py
@@ -429,7 +429,7 @@ from quantumvitas.execution.recipes import (
 )
 
 # tests/unit/test_vasp_recipe.py:5
-from quantumvitas.execution.recipes import VASPRecipe  # ❌ Moved to drivers/vasp/recipe.py
+from qmatsuite.execution.recipes import VASPRecipe  # ❌ Moved to drivers/vasp/recipe.py
 ```
 
 **Impact**: These test modules cannot be imported, causing 2 import errors and preventing all tests in these files from running.
@@ -466,13 +466,13 @@ NameError: name 'UnknownEngineError' is not defined
 ```
 
 **Root Cause**:
-These tests use `UnknownEngineError` in `pytest.raises()` or exception handling, but do not import it. The exception is defined in `quantumvitas.core.driver_exceptions`, but tests are not importing it.
+These tests use `UnknownEngineError` in `pytest.raises()` or exception handling, but do not import it. The exception is defined in `qmatsuite.core.driver_exceptions`, but tests are not importing it.
 
 **Evidence**:
 ```python
 # Example from tests/unit/test_vasp_registry.py
 # Missing import:
-# from quantumvitas.core.driver_exceptions import UnknownEngineError
+# from qmatsuite.core.driver_exceptions import UnknownEngineError
 
 # Then used in test:
 with pytest.raises(UnknownEngineError):  # ❌ NameError
@@ -515,7 +515,7 @@ The test expects `w90_run` to be detected as part of the QE family, but `w90_run
 
 **Evidence**:
 ```python
-# src/quantumvitas/drivers/w90/driver.py:60-67
+# src/qmatsuite/drivers/w90/driver.py:60-67
 StepTypeSpec(
     id="w90_run",
     engine="w90",  # ❌ Registered as "w90", not "qe"
@@ -523,7 +523,7 @@ StepTypeSpec(
     ...
 )
 
-# src/quantumvitas/core/calc_identity.py:99-103
+# src/qmatsuite/core/calc_identity.py:99-103
 families = set()
 for step_type in machine_types:
     if DriverRegistry.is_step_type_registered(step_type):
@@ -536,7 +536,7 @@ for step_type in machine_types:
 **Design Intent**:
 According to the test comment and `generalized_steps.py` line 74, Wannier90 is considered part of the QE family toolchain:
 ```python
-# src/quantumvitas/workflow/generalized_steps.py:74
+# src/qmatsuite/workflow/generalized_steps.py:74
 ("qe", "WANNIER"): "w90_run",  # wannier90 is part of qe family toolchain
 ```
 
@@ -569,7 +569,7 @@ The test expects VASP DOS to return `None` (zero-mapping) because VASP DOS is in
 
 **Evidence**:
 ```python
-# src/quantumvitas/drivers/vasp/driver.py:47-52
+# src/qmatsuite/drivers/vasp/driver.py:47-52
 StepTypeSpec(
     id="vasp_dos",
     engine="vasp",
@@ -578,7 +578,7 @@ StepTypeSpec(
     ...
 )
 
-# src/quantumvitas/drivers/vasp/driver.py:75-81
+# src/qmatsuite/drivers/vasp/driver.py:75-81
 def get_materialization_map(self) -> dict[str, str]:
     return {
         "GEN_SCF": "vasp_scf",
@@ -592,7 +592,7 @@ def get_materialization_map(self) -> dict[str, str]:
 
 **Legacy Mapping**:
 ```python
-# src/quantumvitas/workflow/generalized_steps.py:98
+# src/qmatsuite/workflow/generalized_steps.py:98
 ("vasp", "DOS"): None,  # 0-mapping: VASP DOS integrated in nscf output
 ```
 
@@ -639,9 +639,9 @@ The error is raised from `calc_identity.py` when `_infer_engine_family_from_mach
 **Shared Cause**: Recipe classes were moved to driver bundles, but some code still references old import paths.
 
 **Affected Components**:
-1. **CP2K Handler** (`src/quantumvitas/drivers/cp2k/handler.py:50`):
-   - Imports `CP2KRecipe` from `quantumvitas.execution.recipes`
-   - Should import from `quantumvitas.drivers.cp2k.recipe`
+1. **CP2K Handler** (`src/qmatsuite/drivers/cp2k/handler.py:50`):
+   - Imports `CP2KRecipe` from `qmatsuite.execution.recipes`
+   - Should import from `qmatsuite.drivers.cp2k.recipe`
 
 2. **Test Files**:
    - `tests/unit/execution/test_recipes.py`: Imports `ORCARecipe`, `PySCFRecipe` from old location
@@ -649,11 +649,11 @@ The error is raised from `calc_identity.py` when `_infer_engine_family_from_mach
 
 **Evidence**:
 - All recipe classes exist in their driver bundles:
-  - `src/quantumvitas/drivers/cp2k/recipe.py` contains `CP2KRecipe`
-  - `src/quantumvitas/drivers/orca/recipe.py` contains `ORCARecipe`
-  - `src/quantumvitas/drivers/vasp/recipe.py` contains `VASPRecipe`
-  - `src/quantumvitas/drivers/pyscf/recipe.py` contains `PySCFRecipe`
-- `src/quantumvitas/execution/recipes.py` no longer contains these classes (verified by grep)
+  - `src/qmatsuite/drivers/cp2k/recipe.py` contains `CP2KRecipe`
+  - `src/qmatsuite/drivers/orca/recipe.py` contains `ORCARecipe`
+  - `src/qmatsuite/drivers/vasp/recipe.py` contains `VASPRecipe`
+  - `src/qmatsuite/drivers/pyscf/recipe.py` contains `PySCFRecipe`
+- `src/qmatsuite/execution/recipes.py` no longer contains these classes (verified by grep)
 
 **Impact**: 5 failures (3 CP2K integration + 2 import errors)
 
@@ -661,7 +661,7 @@ The error is raised from `calc_identity.py` when `_infer_engine_family_from_mach
 
 ### 3.2 Missing Exception Imports in Tests
 
-**Shared Cause**: Tests use `UnknownEngineError` without importing it from `quantumvitas.core.driver_exceptions`.
+**Shared Cause**: Tests use `UnknownEngineError` without importing it from `qmatsuite.core.driver_exceptions`.
 
 **Affected Files**:
 - `tests/unit/test_vasp_registry.py`
@@ -672,7 +672,7 @@ The error is raised from `calc_identity.py` when `_infer_engine_family_from_mach
 - `tests/integration/vasp/test_vasp_project_e2e.py`
 
 **Evidence**:
-- `UnknownEngineError` is defined in `src/quantumvitas/core/driver_exceptions.py:60-69`
+- `UnknownEngineError` is defined in `src/qmatsuite/core/driver_exceptions.py:60-69`
 - Tests reference it in `pytest.raises(UnknownEngineError)` but don't import it
 - Only `tests/gates/test_registry_routing.py` correctly imports it (line 241)
 
@@ -781,15 +781,15 @@ The error is raised from `calc_identity.py` when `_infer_engine_family_from_mach
 
 #### Fix 4.1.1: CP2K Handler Import
 
-**File**: `src/quantumvitas/drivers/cp2k/handler.py`
+**File**: `src/qmatsuite/drivers/cp2k/handler.py`
 
 **Change**:
 ```python
 # Line 50: Change from
-from quantumvitas.execution.recipes import CP2KRecipe
+from qmatsuite.execution.recipes import CP2KRecipe
 
 # To:
-from quantumvitas.drivers.cp2k.recipe import CP2KRecipe
+from qmatsuite.drivers.cp2k.recipe import CP2KRecipe
 ```
 
 **Rationale**: `CP2KRecipe` was moved to the CP2K driver bundle during migration. The handler must import from the new location.
@@ -805,7 +805,7 @@ from quantumvitas.drivers.cp2k.recipe import CP2KRecipe
 **Change**:
 ```python
 # Lines 14-17: Change from
-from quantumvitas.execution.recipes import (
+from qmatsuite.execution.recipes import (
     QERecipe,
     ORCARecipe,
     PySCFRecipe,
@@ -813,9 +813,9 @@ from quantumvitas.execution.recipes import (
 )
 
 # To:
-from quantumvitas.execution.recipes import QERecipe, get_recipe_for_engine
-from quantumvitas.drivers.orca.recipe import ORCARecipe
-from quantumvitas.drivers.pyscf.recipe import PySCFRecipe
+from qmatsuite.execution.recipes import QERecipe, get_recipe_for_engine
+from qmatsuite.drivers.orca.recipe import ORCARecipe
+from qmatsuite.drivers.pyscf.recipe import PySCFRecipe
 ```
 
 **File**: `tests/unit/test_vasp_recipe.py`
@@ -823,10 +823,10 @@ from quantumvitas.drivers.pyscf.recipe import PySCFRecipe
 **Change**:
 ```python
 # Line 5: Change from
-from quantumvitas.execution.recipes import VASPRecipe
+from qmatsuite.execution.recipes import VASPRecipe
 
 # To:
-from quantumvitas.drivers.vasp.recipe import VASPRecipe
+from qmatsuite.drivers.vasp.recipe import VASPRecipe
 ```
 
 **Rationale**: Recipe classes were moved to driver bundles. Tests must import from new locations.
@@ -850,7 +850,7 @@ from quantumvitas.drivers.vasp.recipe import VASPRecipe
 **Change Pattern**:
 ```python
 # Add at top of file:
-from quantumvitas.core.driver_exceptions import UnknownEngineError
+from qmatsuite.core.driver_exceptions import UnknownEngineError
 ```
 
 **Rationale**: Tests use `UnknownEngineError` in exception handling but don't import it. The exception is defined in `driver_exceptions.py` and must be imported.
@@ -865,7 +865,7 @@ from quantumvitas.core.driver_exceptions import UnknownEngineError
 
 #### Option A: Special Case in Detection Logic (Recommended)
 
-**File**: `src/quantumvitas/core/calc_identity.py`
+**File**: `src/qmatsuite/core/calc_identity.py`
 
 **Change**:
 ```python
@@ -888,7 +888,7 @@ for step_type in machine_types:
 
 #### Option B: Register w90_run with engine="qe"
 
-**File**: `src/quantumvitas/drivers/w90/driver.py`
+**File**: `src/qmatsuite/drivers/w90/driver.py`
 
 **Change**:
 ```python
@@ -937,11 +937,11 @@ assert result is None  # w90 is separate engine family
 #### Option A: Remove vasp_dos from Driver (Recommended)
 
 **Files to Modify**:
-1. `src/quantumvitas/drivers/vasp/driver.py`:
+1. `src/qmatsuite/drivers/vasp/driver.py`:
    - Remove `vasp_dos` from `get_step_type_specs()`
    - Remove `"GEN_DOS": "vasp_dos"` from `get_materialization_map()`
 
-2. `src/quantumvitas/workflow/generalized_steps.py`:
+2. `src/qmatsuite/workflow/generalized_steps.py`:
    - Ensure `("vasp", "DOS"): None` mapping is used (already present)
 
 **Rationale**: VASP DOS is integrated in nscf output and doesn't need a separate step type. This aligns with the legacy zero-mapping design.
@@ -980,7 +980,7 @@ def test_vasp_dos_zero_mapping(self):
 
 **Approach**: Ensure public step types are properly materialized to machine types before engine detection.
 
-**File**: `src/quantumvitas/core/calc_identity.py`
+**File**: `src/qmatsuite/core/calc_identity.py`
 
 **Potential Issue**: The `_infer_identity_from_step_types()` function uses the workflow registry to convert public types to machine types, but this may not work for all cases.
 
@@ -1053,24 +1053,24 @@ If public types are not being materialized correctly, enhance `_infer_identity_f
 ## Appendix: Code Locations Reference
 
 ### Recipe Classes (New Locations)
-- `CP2KRecipe`: `src/quantumvitas/drivers/cp2k/recipe.py`
-- `ORCARecipe`: `src/quantumvitas/drivers/orca/recipe.py`
-- `VASPRecipe`: `src/quantumvitas/drivers/vasp/recipe.py`
-- `PySCFRecipe`: `src/quantumvitas/drivers/pyscf/recipe.py`
-- `LAMMPSRecipe`: `src/quantumvitas/drivers/lammps/recipe.py`
-- `W90Recipe`: `src/quantumvitas/drivers/w90/recipe.py`
-- `QERecipe`: `src/quantumvitas/execution/recipes.py` (still in kernel)
+- `CP2KRecipe`: `src/qmatsuite/drivers/cp2k/recipe.py`
+- `ORCARecipe`: `src/qmatsuite/drivers/orca/recipe.py`
+- `VASPRecipe`: `src/qmatsuite/drivers/vasp/recipe.py`
+- `PySCFRecipe`: `src/qmatsuite/drivers/pyscf/recipe.py`
+- `LAMMPSRecipe`: `src/qmatsuite/drivers/lammps/recipe.py`
+- `W90Recipe`: `src/qmatsuite/drivers/w90/recipe.py`
+- `QERecipe`: `src/qmatsuite/execution/recipes.py` (still in kernel)
 
 ### Exception Classes
-- `UnknownEngineError`: `src/quantumvitas/core/driver_exceptions.py:60-69`
-- `UnknownStepTypeError`: `src/quantumvitas/core/driver_exceptions.py:11-58`
-- `UnknownMaterializationError`: `src/quantumvitas/core/driver_exceptions.py:72-89`
+- `UnknownEngineError`: `src/qmatsuite/core/driver_exceptions.py:60-69`
+- `UnknownStepTypeError`: `src/qmatsuite/core/driver_exceptions.py:11-58`
+- `UnknownMaterializationError`: `src/qmatsuite/core/driver_exceptions.py:72-89`
 
 ### Driver Registry
-- `DriverRegistry`: `src/quantumvitas/core/driver_registry.py`
-- Registration: `src/quantumvitas/drivers/__init__.py`
+- `DriverRegistry`: `src/qmatsuite/core/driver_registry.py`
+- Registration: `src/qmatsuite/drivers/__init__.py`
 
 ### Engine Detection
-- `_infer_engine_family_from_machine_types()`: `src/quantumvitas/core/calc_identity.py:79-111`
-- `_infer_identity_from_step_types()`: `src/quantumvitas/core/calc_identity.py:130-183`
+- `_infer_engine_family_from_machine_types()`: `src/qmatsuite/core/calc_identity.py:79-111`
+- `_infer_identity_from_step_types()`: `src/qmatsuite/core/calc_identity.py:130-183`
 

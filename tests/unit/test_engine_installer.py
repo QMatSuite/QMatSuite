@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.engines import engine_installer
-from quantumvitas.core.engines.engine_registry import EngineRegistry
+from qmatsuite.core.engines import engine_installer
+from qmatsuite.core.engines.engine_registry import EngineRegistry
 
 
 def _make_executable(path: Path, text: str) -> Path:

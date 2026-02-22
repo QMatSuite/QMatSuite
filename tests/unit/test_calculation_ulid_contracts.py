@@ -11,13 +11,13 @@ import json
 import tempfile
 import shutil
 
-from quantumvitas.api import QVService
-from quantumvitas.core.resolution import build_resource_index, resolve_calculation
-from quantumvitas.core.resources import generate_resource_id, slugify
-from quantumvitas.core.models import CalculationModel, CalculationStepEntry
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc, StepDoc
-from quantumvitas.core.resolution import validate_ulid, _is_ulid_like
+from qmatsuite.api import QMSService
+from qmatsuite.core.resolution import build_resource_index, resolve_calculation
+from qmatsuite.core.resources import generate_resource_id, slugify
+from qmatsuite.core.models import CalculationModel, CalculationStepEntry
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc, StepDoc
+from qmatsuite.core.resolution import validate_ulid, _is_ulid_like
 
 
 class TestCalculationULIDContracts:
@@ -29,7 +29,7 @@ class TestCalculationULIDContracts:
         project_root = tmp_path / "test_project"
         project_root.mkdir()
         
-        # Create project.qv.yml
+        # Create project.qms.yml
         config = {
             "project": {
                 "name": "test_project",
@@ -38,7 +38,7 @@ class TestCalculationULIDContracts:
             "structures": [],
             "calculations": [],
         }
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config, sort_keys=False))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config, sort_keys=False))
         
         return project_root
     
@@ -65,7 +65,7 @@ class TestCalculationULIDContracts:
         calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
         
         # Update project config (API format: meta with ulid, name, slug, path)
-        config = yaml.safe_load((project_root / "project.qv.yml").read_text())
+        config = yaml.safe_load((project_root / "project.qms.yml").read_text())
         config["calculations"].append({
             "meta": {
                 "ulid": calc_id,
@@ -75,9 +75,9 @@ class TestCalculationULIDContracts:
                 "kind": "calculation",
             }
         })
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config, sort_keys=False))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config, sort_keys=False))
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
 
         # Test: ULID should work
         result = svc.calculation.get(calc_id)
@@ -133,7 +133,7 @@ class TestCalculationULIDContracts:
         step_yaml.write_text(yaml.safe_dump(step_data, sort_keys=False))
         
         # Update project config (API format: meta with ulid, name, slug, path)
-        config = yaml.safe_load((project_root / "project.qv.yml").read_text())
+        config = yaml.safe_load((project_root / "project.qms.yml").read_text())
         config["calculations"].append({
             "meta": {
                 "ulid": calc_id,
@@ -143,12 +143,12 @@ class TestCalculationULIDContracts:
                 "kind": "calculation",
             }
         })
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config, sort_keys=False))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config, sort_keys=False))
 
         # Build index
         index = build_resource_index(project_root)
         
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         
         # Test: ULID should work (even with slug collision)
         result = svc.calculation.get_step(calc_id, step_id)
@@ -161,7 +161,7 @@ class TestCalculationULIDContracts:
     
     def test_resolve_id_with_expected_kind_filters_by_kind(self, project_root):
         """Test that resolve_id with expected_kind filters by resource kind."""
-        from quantumvitas.core.resolution import ResourceIndex, ResourceMeta
+        from qmatsuite.core.resolution import ResourceIndex, ResourceMeta
         
         # Create index with slug collision: calculation and step both have slug "bands"
         calc_id = generate_resource_id()
@@ -205,7 +205,7 @@ class TestCalculationULIDContracts:
     
     def test_workflow_detection_uses_step_type_from_calculation_yaml(self, project_root):
         """Test that workflow detection uses step type from calculation.yaml."""
-        from quantumvitas.workflow.templates import get_workflow_service
+        from qmatsuite.workflow.templates import get_workflow_service
         
         # Create calculation with steps that have type in calculation.yaml
         calc_id = generate_resource_id()
@@ -257,7 +257,7 @@ class TestCalculationULIDContracts:
         calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
         
         # Update project config (API format: meta with ulid, name, slug, path)
-        config = yaml.safe_load((project_root / "project.qv.yml").read_text())
+        config = yaml.safe_load((project_root / "project.qms.yml").read_text())
         config["calculations"].append({
             "meta": {
                 "ulid": calc_id,
@@ -267,7 +267,7 @@ class TestCalculationULIDContracts:
                 "kind": "calculation",
             }
         })
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config, sort_keys=False))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config, sort_keys=False))
 
         # Test workflow detection
         service = get_workflow_service()
@@ -281,7 +281,7 @@ class TestCalculationULIDContracts:
     
     def test_workflow_detection_fallback_to_step_yaml_when_type_missing(self, project_root):
         """Test that workflow detection falls back to step YAML when type is missing."""
-        from quantumvitas.workflow.templates import get_workflow_service
+        from qmatsuite.workflow.templates import get_workflow_service
         
         # Create calculation with steps that DON'T have type in calculation.yaml
         calc_id = generate_resource_id()
@@ -333,7 +333,7 @@ class TestCalculationULIDContracts:
         calc_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
         
         # Update project config (API format: meta with ulid, name, slug, path)
-        config = yaml.safe_load((project_root / "project.qv.yml").read_text())
+        config = yaml.safe_load((project_root / "project.qms.yml").read_text())
         config["calculations"].append({
             "meta": {
                 "ulid": calc_id,
@@ -343,7 +343,7 @@ class TestCalculationULIDContracts:
                 "kind": "calculation",
             }
         })
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config, sort_keys=False))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config, sort_keys=False))
 
         # Test workflow detection (should fallback to step YAML)
         service = get_workflow_service()

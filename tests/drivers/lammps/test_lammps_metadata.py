@@ -30,7 +30,7 @@ REQUIRED_FIELDS = {"name", "type", "default", "category", "description", "status
 @pytest.fixture(scope="module")
 def raw_catalog() -> dict:
     """Load the raw JSON catalog."""
-    data_path = resources.files("quantumvitas.drivers.lammps.data").joinpath(
+    data_path = resources.files("qmatsuite.drivers.lammps.data").joinpath(
         "lammps_commands.json"
     )
     with resources.as_file(data_path) as path:
@@ -106,45 +106,45 @@ class TestMetadataAccessLayer:
     """Test lammps_metadata.py API."""
 
     def test_safe_load_metadata(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import safe_load_metadata
+        from qmatsuite.drivers.lammps.data.lammps_metadata import safe_load_metadata
         data = safe_load_metadata()
         assert "commands" in data
         assert len(data["commands"]) >= 100
 
     def test_get_tag_info_units(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import get_tag_info
+        from qmatsuite.drivers.lammps.data.lammps_metadata import get_tag_info
         info = get_tag_info("units")
         assert info is not None
         assert info["type"] == "command"
         assert info["category"] == "setup"
 
     def test_get_tag_info_case_insensitive(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import get_tag_info
+        from qmatsuite.drivers.lammps.data.lammps_metadata import get_tag_info
         info = get_tag_info("UNITS")
         assert info is not None
         assert info["name"] == "units"
 
     def test_get_tag_info_missing(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import get_tag_info
+        from qmatsuite.drivers.lammps.data.lammps_metadata import get_tag_info
         info = get_tag_info("nonexistent_command_xyz")
         assert info is None
 
     def test_list_tags_all(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import list_tags
+        from qmatsuite.drivers.lammps.data.lammps_metadata import list_tags
         tags = list_tags()
         assert len(tags) >= 100
         assert "units" in tags
         assert "run" in tags
 
     def test_list_tags_by_category(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import list_tags
+        from qmatsuite.drivers.lammps.data.lammps_metadata import list_tags
         setup_tags = list_tags(category="setup")
         assert len(setup_tags) >= 3
         assert "units" in setup_tags
         assert "run" not in setup_tags  # run_control
 
     def test_list_categories(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import list_categories
+        from qmatsuite.drivers.lammps.data.lammps_metadata import list_categories
         cats = list_categories()
         assert len(cats) >= 10
         assert "setup" in cats
@@ -152,18 +152,18 @@ class TestMetadataAccessLayer:
         assert "fix" in cats
 
     def test_validate_params_all_valid(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import validate_params
+        from qmatsuite.drivers.lammps.data.lammps_metadata import validate_params
         unknowns = validate_params({"units": "metal", "run": 1000, "thermo": 100})
         assert unknowns == []
 
     def test_validate_params_unknown_flagged(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import validate_params
+        from qmatsuite.drivers.lammps.data.lammps_metadata import validate_params
         unknowns = validate_params({"units": "metal", "fakecmd": 42})
         assert "fakecmd" in unknowns
         assert "units" not in unknowns
 
     def test_validate_params_ignores_internal_keys(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import validate_params
+        from qmatsuite.drivers.lammps.data.lammps_metadata import validate_params
         unknowns = validate_params({
             "units": "metal",
             "_commands": [],
@@ -172,7 +172,7 @@ class TestMetadataAccessLayer:
         assert unknowns == []
 
     def test_reload_metadata(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import (
+        from qmatsuite.drivers.lammps.data.lammps_metadata import (
             reload_metadata, safe_load_metadata,
         )
         reload_metadata()
@@ -180,19 +180,19 @@ class TestMetadataAccessLayer:
         assert len(data["commands"]) >= 100
 
     def test_metadata_debug_info(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import get_metadata_file_info
+        from qmatsuite.drivers.lammps.data.lammps_metadata import get_metadata_file_info
         info = get_metadata_file_info()
         assert "metadata_path_abs" in info
         assert "schema_version" in info
 
     def test_get_tag_type(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import get_tag_type
+        from qmatsuite.drivers.lammps.data.lammps_metadata import get_tag_type
         assert get_tag_type("units") == "command"
         assert get_tag_type("pair_style") == "style"
         assert get_tag_type("nonexistent") is None
 
     def test_get_tag_default(self):
-        from quantumvitas.drivers.lammps.data.lammps_metadata import get_tag_default
+        from qmatsuite.drivers.lammps.data.lammps_metadata import get_tag_default
         default = get_tag_default("units")
         assert default is not None  # "lj"
         assert get_tag_default("nonexistent") is None

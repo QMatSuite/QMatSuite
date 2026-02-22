@@ -147,4 +147,4 @@ When adding new curated samples:
 
 - ORCA 6.0 Manual: https://www.faccts.de/docs/orca/6.0/manual/
 - ORCA Input Library: https://sites.google.com/site/orcainputlibrary/
-- Metadata catalog: `src/quantumvitas/drivers/orca/data/orca_keywords.json`
+- Metadata catalog: `src/qmatsuite/drivers/orca/data/orca_keywords.json`

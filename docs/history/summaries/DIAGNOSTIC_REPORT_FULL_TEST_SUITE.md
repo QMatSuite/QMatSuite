@@ -22,17 +22,17 @@
 
 ## B) Failure/ERROR Bucketing (Root Cause Analysis)
 
-### Bucket 1: Missing QVService Static/Instance Methods (HIGH CONFIDENCE - PRIMARY ROOT CAUSE)
+### Bucket 1: Missing QMSService Static/Instance Methods (HIGH CONFIDENCE - PRIMARY ROOT CAUSE)
 
 **Count:** ~200+ failing tests  
 **Confidence:** High  
-**Root Cause:** PR10 API slimming removed many methods from `QVService` that tests still expect. These methods were likely moved to domain services or removed entirely, but tests haven't been updated.
+**Root Cause:** PR10 API slimming removed many methods from `QMSService` that tests still expect. These methods were likely moved to domain services or removed entirely, but tests haven't been updated.
 
 **Representative Traceback:**
 ```
-AttributeError: type object 'QVService' has no attribute 'init_step'
-AttributeError: type object 'QVService' has no attribute 'add_step_to_calculation'
-AttributeError: type object 'QVService' has no attribute '_detect_prefix_outdir_injection'
+AttributeError: type object 'QMSService' has no attribute 'init_step'
+AttributeError: type object 'QMSService' has no attribute 'add_step_to_calculation'
+AttributeError: type object 'QMSService' has no attribute '_detect_prefix_outdir_injection'
 ```
 
 **Top Missing Methods (by impact):**
@@ -77,17 +77,17 @@ AttributeError: type object 'QVService' has no attribute '_detect_prefix_outdir_
 - `tests/unit/test_analysis_artifacts.py` - Analysis tests
 
 **Why This Is The Root Cause:**
-- PR10 explicitly removed many methods from `quantumvitas.api.__all__` and `QVService`
+- PR10 explicitly removed many methods from `qmatsuite.api.__all__` and `QMSService`
 - Tests were written against the old API surface
-- These methods likely exist in domain services (e.g., `calculation`, `structure`, `step`) but need thin wrapper methods in `QVService` for backward compatibility
+- These methods likely exist in domain services (e.g., `calculation`, `structure`, `step`) but need thin wrapper methods in `QMSService` for backward compatibility
 - This is a **compatibility layer gap**, not a functional bug
 
 **Fix Direction:**
-Add thin `@staticmethod` wrappers in `QVService` that delegate to domain services. Example:
+Add thin `@staticmethod` wrappers in `QMSService` that delegate to domain services. Example:
 ```python
 @staticmethod
 def init_step(project_root: str, step_type: str, ...) -> ...:
-    from quantumvitas.api.calculation import CalculationService
+    from qmatsuite.api.calculation import CalculationService
     return CalculationService(project_root).init_step(...)
 ```
 
@@ -97,13 +97,13 @@ def init_step(project_root: str, step_type: str, ...) -> ...:
 
 **Count:** ~30 failing tests  
 **Confidence:** High  
-**Root Cause:** PR10 removed type/class exports from `quantumvitas.api.__init__.__all__`. Tests import these types directly from `quantumvitas.api`, but they're no longer exported.
+**Root Cause:** PR10 removed type/class exports from `qmatsuite.api.__init__.__all__`. Tests import these types directly from `qmatsuite.api`, but they're no longer exported.
 
 **Representative Traceback:**
 ```
-ImportError: cannot import name 'StructureStepSpec' from 'quantumvitas.api'
-ImportError: cannot import name 'QECardType' from 'quantumvitas.api'
-ImportError: cannot import name 'ParameterOverride' from 'quantumvitas.api'
+ImportError: cannot import name 'StructureStepSpec' from 'qmatsuite.api'
+ImportError: cannot import name 'QECardType' from 'qmatsuite.api'
+ImportError: cannot import name 'ParameterOverride' from 'qmatsuite.api'
 ```
 
 **Missing Exports (by frequency):**
@@ -129,13 +129,13 @@ ImportError: cannot import name 'ParameterOverride' from 'quantumvitas.api'
 
 **Why This Is The Root Cause:**
 - PR10 explicitly slimmed `api.__all__` to remove internal types
-- Tests expect these types to be importable from `quantumvitas.api`
+- Tests expect these types to be importable from `qmatsuite.api`
 - These types still exist in their source modules but aren't re-exported
 
 **Fix Direction:**
 Either:
 1. Add these types back to `api.__init__.__all__` (if they're part of public API)
-2. Update tests to import from source modules (e.g., `from quantumvitas.ir.parameters import ParameterOverride`)
+2. Update tests to import from source modules (e.g., `from qmatsuite.ir.parameters import ParameterOverride`)
 3. Create type aliases in `api.__init__` that re-export without adding to `__all__` (if they're needed for backward compat)
 
 ---
@@ -212,7 +212,7 @@ NotADirectoryError: [Errno 20] Not a directory: '/path/to/calculations/h2o-scf/c
 - `tests/integration/test_incremental_run.py` - Concurrency tests
 
 **Why This Is Likely Secondary:**
-- Many CLI failures are likely cascading from missing `QVService` methods
+- Many CLI failures are likely cascading from missing `QMSService` methods
 - Assertion failures may be test expectation issues (e.g., status string format changed)
 - Some may be legitimate bugs, but most are likely test compatibility issues
 
@@ -248,13 +248,13 @@ NotADirectoryError: [Errno 20] Not a directory: '/path/to/calculations/h2o-scf/c
 
 ## C) Top 10 Actionable "Primary" Issues
 
-### 1. Add `QVService.init_step()` wrapper (UNBLOCKS 96 TESTS)
+### 1. Add `QMSService.init_step()` wrapper (UNBLOCKS 96 TESTS)
 **Priority:** CRITICAL  
 **Risk:** Low (thin wrapper)  
 **Fix:** Add `@staticmethod` wrapper delegating to `CalculationService.init_step()`  
 **Impact:** Unblocks all step creation/management tests
 
-### 2. Add `QVService.add_step_to_calculation()` wrapper (UNBLOCKS 42 TESTS)
+### 2. Add `QMSService.add_step_to_calculation()` wrapper (UNBLOCKS 42 TESTS)
 **Priority:** CRITICAL  
 **Risk:** Low (thin wrapper)  
 **Fix:** Add `@staticmethod` wrapper delegating to `CalculationService.add_step()`  
@@ -266,7 +266,7 @@ NotADirectoryError: [Errno 20] Not a directory: '/path/to/calculations/h2o-scf/c
 **Fix:** Update test fixtures to use correct calculation path structure (remove double `calculation.yaml`)  
 **Impact:** Unblocks all integration tests with path issues
 
-### 4. Add `QVService._detect_prefix_outdir_injection()` wrapper (UNBLOCKS 22 TESTS)
+### 4. Add `QMSService._detect_prefix_outdir_injection()` wrapper (UNBLOCKS 22 TESTS)
 **Priority:** HIGH  
 **Risk:** Low (internal method, thin wrapper)  
 **Fix:** Add `@staticmethod` wrapper delegating to domain service  
@@ -278,19 +278,19 @@ NotADirectoryError: [Errno 20] Not a directory: '/path/to/calculations/h2o-scf/c
 **Fix:** Add missing types to `api.__init__.__all__` or create type aliases  
 **Impact:** Unblocks API facade re-export tests
 
-### 6. Add `QVService._preflight_check_and_seed_pseudos()` wrapper (UNBLOCKS 18 TESTS)
+### 6. Add `QMSService._preflight_check_and_seed_pseudos()` wrapper (UNBLOCKS 18 TESTS)
 **Priority:** MEDIUM  
 **Risk:** Low (internal method)  
 **Fix:** Add `@staticmethod` wrapper delegating to pseudo service  
 **Impact:** Unblocks pseudo preflight tests
 
-### 7. Add `QVService._build_structure_vis_payload()` wrapper (UNBLOCKS 16 TESTS)
+### 7. Add `QMSService._build_structure_vis_payload()` wrapper (UNBLOCKS 16 TESTS)
 **Priority:** MEDIUM  
 **Risk:** Low (internal method)  
 **Fix:** Add `@staticmethod` wrapper delegating to structure service  
 **Impact:** Unblocks structure visualization tests
 
-### 8. Add `QVService.calc_set_steps()` wrapper (UNBLOCKS 12 TESTS)
+### 8. Add `QMSService.calc_set_steps()` wrapper (UNBLOCKS 12 TESTS)
 **Priority:** MEDIUM  
 **Risk:** Low (thin wrapper)  
 **Fix:** Add `@staticmethod` wrapper delegating to workflow service  
@@ -299,7 +299,7 @@ NotADirectoryError: [Errno 20] Not a directory: '/path/to/calculations/h2o-scf/c
 ### 9. Add instance method wrappers (UNBLOCKS 20 TESTS)
 **Priority:** MEDIUM  
 **Risk:** Low (thin wrappers)  
-**Fix:** Add instance methods to `QVService` that delegate to domain services:
+**Fix:** Add instance methods to `QMSService` that delegate to domain services:
 - `require_calculation_ref`
 - `detect_context`
 - `resolve_calculation_ref`
@@ -323,7 +323,7 @@ NotADirectoryError: [Errno 20] Not a directory: '/path/to/calculations/h2o-scf/c
 
 **MUST NOT VIOLATE:**
 
-1. **Do NOT re-expand `quantumvitas.api.__init__.__all__` beyond PR10 rules**
+1. **Do NOT re-expand `qmatsuite.api.__init__.__all__` beyond PR10 rules**
    - Only add types that are genuinely part of the public API
    - Prefer type aliases or re-exports without adding to `__all__` if backward compat is needed
 
@@ -349,12 +349,12 @@ NotADirectoryError: [Errno 20] Not a directory: '/path/to/calculations/h2o-scf/c
 
 ### E.1) Raw Failure List by Bucket
 
-#### Bucket 1: Missing QVService Methods (Partial List)
+#### Bucket 1: Missing QMSService Methods (Partial List)
 ```
-FAILED tests/unit/test_api_service.py::TestQVServiceStep::test_init_step
-FAILED tests/unit/test_api_service.py::TestQVServiceStep::test_init_step_inherits_structure
-FAILED tests/unit/test_api_service.py::TestQVServiceStep::test_list_steps
-FAILED tests/unit/test_api_service.py::TestQVServiceStep::test_delete_step
+FAILED tests/unit/test_api_service.py::TestQMSServiceStep::test_init_step
+FAILED tests/unit/test_api_service.py::TestQMSServiceStep::test_init_step_inherits_structure
+FAILED tests/unit/test_api_service.py::TestQMSServiceStep::test_list_steps
+FAILED tests/unit/test_api_service.py::TestQMSServiceStep::test_delete_step
 ERROR tests/daemon/test_si_bands_calculation_daemon.py::TestDaemonCalculationExecution::test_list_calculations
 ERROR tests/daemon/test_si_bands_calculation_daemon.py::TestDaemonCalculationExecution::test_run_calculation_via_job_manager
 ERROR tests/daemon/test_si_bands_calculation_daemon.py::TestDaemonCalculationExecution::test_get_band_structure_data
@@ -430,7 +430,7 @@ ERROR tests/integration/test_incremental_run.py::test_manifest_stores_ulid_not_s
 
 ## Summary
 
-**Primary Root Cause:** PR10 API slimming removed many `QVService` methods that tests still expect. These need thin compatibility wrappers.
+**Primary Root Cause:** PR10 API slimming removed many `QMSService` methods that tests still expect. These need thin compatibility wrappers.
 
 **Secondary Issues:**
 - Missing API type exports (30 tests)
@@ -438,8 +438,8 @@ ERROR tests/integration/test_incremental_run.py::test_manifest_stores_ulid_not_s
 - CLI/assertion expectation mismatches (46 tests)
 
 **Recommended Fix Order:**
-1. Add `QVService.init_step()` wrapper (unblocks 96 tests)
-2. Add `QVService.add_step_to_calculation()` wrapper (unblocks 42 tests)
+1. Add `QMSService.init_step()` wrapper (unblocks 96 tests)
+2. Add `QMSService.add_step_to_calculation()` wrapper (unblocks 42 tests)
 3. Fix calculation path resolution in test fixtures (unblocks 94 tests)
 4. Add remaining missing method wrappers (unblocks ~100 tests)
 5. Re-export missing API types (unblocks 30 tests)

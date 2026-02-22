@@ -522,19 +522,19 @@ class TestPySCFStepType:
     
     def test_pyscf_scf_registered(self):
         """PYSCF_SCF step type is registered."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
         assert registry.has("pyscf_scf")
     
     def test_pyscf_scf_engine(self):
         """PYSCF_SCF uses pyscf engine."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         spec = get_registry().get("pyscf_scf")
         assert spec.engine == "pyscf"
     
     def test_pyscf_scf_molecular_only(self):
         """PYSCF_SCF only allows molecular systems."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         spec = get_registry().get("pyscf_scf")
         assert SystemKind.MOLECULAR in spec.allowed_system_kinds
         assert SystemKind.PERIODIC not in spec.allowed_system_kinds
@@ -545,7 +545,7 @@ class TestPySCFEngine:
     
     def test_pyscf_check(self):
         """Check if pyscf is available."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         engine = PySCFEngine()
         # Should not raise, just return True/False
         assert isinstance(engine._pyscf_available, bool)
@@ -554,7 +554,7 @@ class TestPySCFEngine:
         """Molecule building from parameters."""
         pytest.importorskip("pyscf")
         
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         engine = PySCFEngine()
         
         params = {
@@ -587,7 +587,7 @@ class TestPySCFExecution:
     
     def test_h2o_rhf(self, tmp_path):
         """Run H2O RHF calculation."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -618,11 +618,11 @@ class TestPySCFExecution:
         """Graceful error when PySCF not installed."""
         # Mock pyscf as unavailable
         monkeypatch.setattr(
-            "quantumvitas.engine.pyscf_engine.PySCFEngine._check_pyscf",
+            "qmatsuite.engine.pyscf_engine.PySCFEngine._check_pyscf",
             lambda self: False
         )
         
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         engine = PySCFEngine()
         
         result = engine.run_step(None, tmp_path)
@@ -692,9 +692,9 @@ def _pyscf_available() -> bool:
 | File | Action | Description |
 |------|--------|-------------|
 | `docs/design/engine_integration/PYSCF_INTEGRATION_SPEC.md` | Create | This spec |
-| `src/quantumvitas/calculation/types.py` | Modify | Add PYSCF_SCF to StepType |
-| `src/quantumvitas/workflow/registry.py` | Modify | Add PYSCF_SCF StepTypeSpec |
-| `src/quantumvitas/engine/pyscf_engine.py` | Create | PySCF engine adapter |
+| `src/qmatsuite/calculation/types.py` | Modify | Add PYSCF_SCF to StepType |
+| `src/qmatsuite/workflow/registry.py` | Modify | Add PYSCF_SCF StepTypeSpec |
+| `src/qmatsuite/engine/pyscf_engine.py` | Create | PySCF engine adapter |
 | `tools/generate_pyscf_demo.py` | Create | Demo generator |
 | `resources/demo_projects/water_pyscf_scf.yml` | Create | Demo project |
 | `tests/unit/test_pyscf_integration.py` | Create | Unit tests |

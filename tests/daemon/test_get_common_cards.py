@@ -10,9 +10,9 @@ import pytest
 from pathlib import Path
 import yaml
 
-from quantumvitas.core.resources import generate_resource_id
-from quantumvitas.core.resolution import build_resource_index
-from quantumvitas.api import QVService
+from qmatsuite.core.resources import generate_resource_id
+from qmatsuite.core.resolution import build_resource_index
+from qmatsuite.api import QMSService
 
 
 @pytest.mark.unit
@@ -21,15 +21,15 @@ class TestGetCommonCards:
     
     def test_get_common_cards_resolves_selector_to_ulid(self, tmp_path):
         """get_common_cards resolves calculation selector to ULID at boundary."""
-        from quantumvitas.daemon.server import QVDaemon
+        from qmatsuite.daemon.server import QMSDaemon
         
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         
         # Create minimal project with calculation
         project_root = tmp_path / "project"
         project_root.mkdir()
         calc_ulid = generate_resource_id()
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump({
                 "project": {"name": "Test", "ulid": generate_resource_id()},
                 "calculations": [{
@@ -84,12 +84,12 @@ class TestGetCommonCards:
         assert "k_points" in response or "error" not in response
     
     def test_get_common_cards_service_uses_ulid(self, tmp_path):
-        """QVService.get_common_cards uses calculation_ulid parameter."""
+        """QMSService.get_common_cards uses calculation_ulid parameter."""
         # Create minimal project with calculation
         project_root = tmp_path / "project"
         project_root.mkdir()
         calc_ulid = generate_resource_id()
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump({
                 "project": {"name": "Test", "ulid": generate_resource_id()},
                 "calculations": [{
@@ -133,9 +133,9 @@ class TestGetCommonCards:
         # Build index
         index = build_resource_index(project_root)
 
-        # Call service method via domain accessor (QVService)
-        from quantumvitas.api import QVService
-        svc = QVService(project_root)
+        # Call service method via domain accessor (QMSService)
+        from qmatsuite.api import QMSService
+        svc = QMSService(project_root)
         result = svc.calculation.get_common_cards(
             calc_selector=calc_ulid,  # ULID as selector
             step_selector=step_ulid,

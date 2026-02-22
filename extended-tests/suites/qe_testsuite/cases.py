@@ -55,8 +55,8 @@ class QECategoryTestCase(TestCase):
     
     def run(self) -> TestResult:
         """Run the test category."""
-        from quantumvitas.core.engines.qe import QuantumEspressoEngine
-        from quantumvitas.core.engines.base import EngineConfig
+        from qmatsuite.core.engines.qe import QuantumEspressoEngine
+        from qmatsuite.core.engines.base import EngineConfig
         
         try:
             # Setup engine
@@ -133,8 +133,8 @@ class QESingleTestCase(TestCase):
     
     def run(self) -> TestResult:
         """Run the single test."""
-        from quantumvitas.core.engines.qe import QuantumEspressoEngine
-        from quantumvitas.core.engines.base import EngineConfig
+        from qmatsuite.core.engines.qe import QuantumEspressoEngine
+        from qmatsuite.core.engines.base import EngineConfig
         from tests.core.qe_step_runner import run_and_verify_step
         import tempfile
         

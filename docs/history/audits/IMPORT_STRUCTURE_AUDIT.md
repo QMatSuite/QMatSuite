@@ -12,7 +12,7 @@
 
 **VIOLATION**: `import_structure()` contains a Molecule hash fork that bypasses the canonical fingerprint entrypoint.
 
-**Location**: `src/quantumvitas/api.py:437-446`
+**Location**: `src/qmatsuite/api.py:437-446`
 
 **Current Code**:
 ```python
@@ -21,7 +21,7 @@ if isinstance(structure, Molecule):
     import hashlib
     structure_dict = structure.as_dict()
     # Remove metadata if present
-    structure_dict.pop("__qv_meta__", None)
+    structure_dict.pop("__qms_meta__", None)
     structure_str = json.dumps(structure_dict, sort_keys=True)
     fingerprint = hashlib.sha256(structure_str.encode('utf-8')).hexdigest()
 else:
@@ -42,21 +42,21 @@ else:
 
 | File | Function | Line Range | Purpose |
 |------|----------|------------|---------|
-| `src/quantumvitas/core/structure_fingerprint.py` | `structure_fingerprint()` | 73-137 | Canonical PBC fingerprint |
-| `src/quantumvitas/core/structure_fingerprint.py` | `canonicalize_structure_for_identity()` | **DELETED (2026-01-18)** | Was: PBC canonicalization for fingerprint |
-| `src/quantumvitas/core/structure_fingerprint.py` | `structures_semantically_equal()` | **DELETED (2026-01-18)** | Was: Semantic equality check |
-| `src/quantumvitas/io/structure_io.py` | `structure_fingerprint()` | 433-498 | **DUPLICATE** - demo fingerprint (should be removed) |
+| `src/qmatsuite/core/structure_fingerprint.py` | `structure_fingerprint()` | 73-137 | Canonical PBC fingerprint |
+| `src/qmatsuite/core/structure_fingerprint.py` | `canonicalize_structure_for_identity()` | **DELETED (2026-01-18)** | Was: PBC canonicalization for fingerprint |
+| `src/qmatsuite/core/structure_fingerprint.py` | `structures_semantically_equal()` | **DELETED (2026-01-18)** | Was: Semantic equality check |
+| `src/qmatsuite/io/structure_io.py` | `structure_fingerprint()` | 433-498 | **DUPLICATE** - demo fingerprint (should be removed) |
 
 ### 2.2 Molecule Hash Fork
 
 | File | Function | Line Range | Issue |
 |------|----------|------------|-------|
-| `src/quantumvitas/api.py` | `import_structure()` | 437-446 | **VIOLATION**: Separate Molecule hashing |
+| `src/qmatsuite/api.py` | `import_structure()` | 437-446 | **VIOLATION**: Separate Molecule hashing |
 
 **Full Context** (`api.py:431-447`):
 ```python
 # Compute fingerprint for storage (even if not using for dedup)
-from quantumvitas.core.structure_fingerprint import structure_fingerprint
+from qmatsuite.core.structure_fingerprint import structure_fingerprint
 from pymatgen.core import Molecule
 # structure_fingerprint only works for Structure, not Molecule
 # For Molecule, we use a simple hash of the structure dict
@@ -65,7 +65,7 @@ if isinstance(structure, Molecule):
     import hashlib
     structure_dict = structure.as_dict()
     # Remove metadata if present
-    structure_dict.pop("__qv_meta__", None)
+    structure_dict.pop("__qms_meta__", None)
     structure_str = json.dumps(structure_dict, sort_keys=True)
     fingerprint = hashlib.sha256(structure_str.encode('utf-8')).hexdigest()
 else:
@@ -80,9 +80,9 @@ else:
 
 | File | Function/Line | Context |
 |------|---------------|---------|
-| `src/quantumvitas/daemon/server.py:2204` | `_handle_import_structure()` | Daemon RPC for GUI |
-| `src/quantumvitas/cli/main.py:1316-1393` | `import_structure_command()` | CLI command |
-| `src/quantumvitas/api.py:4747` | `promote_relax_structure()` | Promote relax output |
+| `src/qmatsuite/daemon/server.py:2204` | `_handle_import_structure()` | Daemon RPC for GUI |
+| `src/qmatsuite/cli/main.py:1316-1393` | `import_structure_command()` | CLI command |
+| `src/qmatsuite/api.py:4747` | `promote_relax_structure()` | Promote relax output |
 | `tests/unit/test_structure_fingerprint.py` | Multiple test methods | Unit tests |
 | `tests/unit/test_api_service.py` | Multiple test methods | API tests |
 | `tests/daemon/test_*` | Multiple daemon tests | Integration tests |
@@ -91,12 +91,12 @@ else:
 
 | File | Line | Context |
 |------|------|---------|
-| `src/quantumvitas/api.py:399` | Dedup check in `import_structure()` | `dedup_by_fingerprint=True` path |
-| `src/quantumvitas/api.py:406` | Dedup check in `import_structure()` | Structure fingerprint comparison |
-| `src/quantumvitas/api.py:446` | Fingerprint for storage | **After Molecule fork** |
-| `src/quantumvitas/api.py:5866` | `create_structure()` | Structure creation |
-| `src/quantumvitas/execution/executor.py:47` | Import at module level | For effective_structure_sha |
-| `src/quantumvitas/execution/executor.py:751` | `_load_effective_structure_for_step()` | Compute effective_structure_sha |
+| `src/qmatsuite/api.py:399` | Dedup check in `import_structure()` | `dedup_by_fingerprint=True` path |
+| `src/qmatsuite/api.py:406` | Dedup check in `import_structure()` | Structure fingerprint comparison |
+| `src/qmatsuite/api.py:446` | Fingerprint for storage | **After Molecule fork** |
+| `src/qmatsuite/api.py:5866` | `create_structure()` | Structure creation |
+| `src/qmatsuite/execution/executor.py:47` | Import at module level | For effective_structure_sha |
+| `src/qmatsuite/execution/executor.py:751` | `_load_effective_structure_for_step()` | Compute effective_structure_sha |
 | `tests/unit/test_structure_fingerprint.py:256` | Test assertion | Fingerprint verification |
 
 ### 3.3 Critical Path: promote_relax_structure()
@@ -120,7 +120,7 @@ When promoting a Molecule (from ORCA/PySCF relax), the fork path is taken, produ
 
 ### 4.1 Location
 
-**File**: `src/quantumvitas/io/structure_io.py`  
+**File**: `src/qmatsuite/io/structure_io.py`  
 **Function**: `structure_fingerprint()`  
 **Lines**: 433-498
 
@@ -130,7 +130,7 @@ This is a **DUPLICATE** of the function in `core/structure_fingerprint.py`.
 
 | Aspect | `core/structure_fingerprint.py` | `io/structure_io.py` |
 |--------|--------------------------------|---------------------|
-| Import path | `from quantumvitas.core.structure_fingerprint` | `from quantumvitas.io.structure_io` |
+| Import path | `from qmatsuite.core.structure_fingerprint` | `from qmatsuite.io.structure_io` |
 | Quantization | `round(x / tol)` → int64 | `round(x / tol) * tol` → float |
 | Payload format | `"lattice:" + ints + "sites:" + ints` | Float strings with 10 decimal places |
 | Used by | All production code | Appears unused |
@@ -189,7 +189,7 @@ Molecules are not canonicalized anywhere in the codebase. The new spec requires:
 
 ### 7.1 ORCA Handler
 
-**File**: `src/quantumvitas/execution/orca_relax_parser.py:118-222`
+**File**: `src/qmatsuite/execution/orca_relax_parser.py:118-222`
 
 **Function**: `handle_orca_relax_output()`
 
@@ -203,7 +203,7 @@ Molecules are not canonicalized anywhere in the codebase. The new spec requires:
 
 ### 7.2 PySCF Handler
 
-**File**: `src/quantumvitas/execution/pyscf_relax_handler.py:19-76`
+**File**: `src/qmatsuite/execution/pyscf_relax_handler.py:19-76`
 
 **Function**: `handle_pyscf_relax_output()`
 
@@ -244,10 +244,10 @@ This is acceptable IF fingerprinting applies canonicalization (COG centering) du
 
 | File | Changes Required |
 |------|------------------|
-| `src/quantumvitas/core/structure_fingerprint.py` | Add `structure_like_fingerprint()`, `_fingerprint_molecule()` |
-| `src/quantumvitas/api.py:437-446` | Remove Molecule hash fork, call unified function |
-| `src/quantumvitas/execution/executor.py:751` | Use `structure_like_fingerprint()` for Molecules |
-| `src/quantumvitas/io/structure_io.py:433-498` | Remove duplicate or make wrapper |
+| `src/qmatsuite/core/structure_fingerprint.py` | Add `structure_like_fingerprint()`, `_fingerprint_molecule()` |
+| `src/qmatsuite/api.py:437-446` | Remove Molecule hash fork, call unified function |
+| `src/qmatsuite/execution/executor.py:751` | Use `structure_like_fingerprint()` for Molecules |
+| `src/qmatsuite/io/structure_io.py:433-498` | Remove duplicate or make wrapper |
 | `tests/unit/test_structure_fingerprint.py` | Add Molecule tests |
 
 ---

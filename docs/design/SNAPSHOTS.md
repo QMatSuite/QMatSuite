@@ -2,7 +2,7 @@
 
 ## Overview
 
-Snapshots in QuantumVITAS are **templates**, not bit-for-bit backups. When a snapshot is materialized (imported), all ULIDs are regenerated, preserving the graph structure but creating a new independent project with distinct identifiers.
+Snapshots in QMatSuite are **templates**, not bit-for-bit backups. When a snapshot is materialized (imported), all ULIDs are regenerated, preserving the graph structure but creating a new independent project with distinct identifiers.
 
 ## Behavior
 

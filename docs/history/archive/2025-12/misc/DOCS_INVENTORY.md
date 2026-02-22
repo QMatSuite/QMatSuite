@@ -1,6 +1,6 @@
 # Documentation Inventory
 
-This document provides a comprehensive inventory of all Markdown documentation files in the QuantumVITAS repository, organized by location with metadata about purpose, status, and key topics.
+This document provides a comprehensive inventory of all Markdown documentation files in the QMatSuite repository, organized by location with metadata about purpose, status, and key topics.
 
 **Last Updated**: 2025-01-XX
 
@@ -11,20 +11,20 @@ This document provides a comprehensive inventory of all Markdown documentation f
 ### README.md
 
 - **Path:** README.md
-- **Title:** QuantumVITAS (Python v2) - Main project README
+- **Title:** QMatSuite (Python v2) - Main project README
 - **Purpose:** Main entry point for the repository. Describes the project overview, installation, CLI usage, testing structure, and links to detailed documentation. Includes a "Testing Overview (for Contributors)" section derived from `docs/testing_guide.md`.
 - **Type:** meta/notes, cli-usage
 - **Status:** canonical-current
 - **Mentions schema?:** No explicit schema examples, but references DAG + ID-only model via links to `docs/STRUCTURE_AND_CLI_USAGE.md`
-- **Mentions snapshots?:** Yes - briefly mentions `qv init project --snapshot` and `qv save-project` commands
-- **Mentions standalone QE?:** Yes - mentions `qv run step` with `--standalone` flag for running QE input files in isolation
+- **Mentions snapshots?:** Yes - briefly mentions `qms init project --snapshot` and `qms save-project` commands
+- **Mentions standalone QE?:** Yes - mentions `qms run step` with `--standalone` flag for running QE input files in isolation
 - **Mentions tests/CI?:** Yes - describes quick tests, extended tests, GUI E2E tests, and pytest markers
 - **Overlaps with:** `docs/STRUCTURE_AND_CLI_USAGE.md` (CLI details), `docs/testing_guide.md` (testing info), `PROJECT_ARCHITECTURE.md` (high-level architecture)
 
 ### PROJECT_ARCHITECTURE.md
 
 - **Path:** PROJECT_ARCHITECTURE.md
-- **Title:** QuantumVITAS Python Architecture (v2)
+- **Title:** QMatSuite Python Architecture (v2)
 - **Purpose:** High-level architectural overview of the Python v2 rewrite. Describes layered structure (io/, engine/, calculation/, project/, analysis/), key concepts (Resource model, project structure, calculation/step YAML), and testing approach.
 - **Type:** architecture-spec
 - **Status:** canonical-current
@@ -38,7 +38,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** SCHEMA_REFACTOR_PLAN.md
 - **Title:** Schema Refactor Plan: DAG + ID-only References
-- **Purpose:** Design document describing the target schema for DAG + ID-only model. Shows current schema (with duplication issues) vs target schema (ID-only references). Describes how project.qv.yml, calculation.yaml, and step YAML should be structured.
+- **Purpose:** Design document describing the target schema for DAG + ID-only model. Shows current schema (with duplication issues) vs target schema (ID-only references). Describes how project.qms.yml, calculation.yaml, and step YAML should be structured.
 - **Type:** schema-spec, refactor-plan
 - **Status:** partially-outdated (plan document, but refactor is largely complete)
 - **Mentions schema?:** Yes - explicitly describes current vs target schema, shows examples of ID-only references (`structure_id`, `step_id`), mentions removal of `parent_workflow_id` from step YAML
@@ -90,7 +90,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** CONSISTENCY_SWEEP_REPORT.md
 - **Title:** ID-Only Cross-Resource References: Consistency Sweep Report
-- **Purpose:** Verification report confirming that all cross-resource references use ID-only format per DAG + ID-only invariants. Audits project.qv.yml, calculation.yaml, step YAML, and snapshot format. Finds mostly clean with minor in-memory issues that don't affect YAML serialization.
+- **Purpose:** Verification report confirming that all cross-resource references use ID-only format per DAG + ID-only invariants. Audits project.qms.yml, calculation.yaml, step YAML, and snapshot format. Finds mostly clean with minor in-memory issues that don't affect YAML serialization.
 - **Type:** schema-spec, refactor-summary
 - **Status:** canonical-current
 - **Mentions schema?:** Yes - primary focus. Verifies ID-only references in all YAML files. Notes that step YAML should NOT contain `structure_id` or `parent_workflow_id` (DAG model). Confirms snapshots use ID-only references.
@@ -103,7 +103,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** REFACTORING_PLAN.md
 - **Title:** test_qe_roundtrip_execution.py 重构计划 (Chinese)
-- **Purpose:** Refactoring plan (in Chinese) for reorganizing test utilities. Describes moving functions from `extended-tests/utils/test_qe_roundtrip_execution.py` to appropriate locations (`src/quantumvitas/core/engines/` for core functionality, `tests/core/` for test-specific utilities).
+- **Purpose:** Refactoring plan (in Chinese) for reorganizing test utilities. Describes moving functions from `extended-tests/utils/test_qe_roundtrip_execution.py` to appropriate locations (`src/qmatsuite/core/engines/` for core functionality, `tests/core/` for test-specific utilities).
 - **Type:** refactor-plan, meta/notes
 - **Status:** mostly-historical (refactor is complete)
 - **Mentions schema?:** No
@@ -116,7 +116,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** REFACTORING_SUMMARY.md
 - **Title:** test_qe_roundtrip_execution.py 重构总结 (Chinese)
-- **Purpose:** Summary (in Chinese) of completed refactoring of test utilities. Documents functions moved to `src/quantumvitas/core/engines/qe_pseudopotentials.py` and `tests/core/qe_test_utils.py`. Describes new import patterns.
+- **Purpose:** Summary (in Chinese) of completed refactoring of test utilities. Documents functions moved to `src/qmatsuite/core/engines/qe_pseudopotentials.py` and `tests/core/qe_test_utils.py`. Describes new import patterns.
 - **Type:** refactor-summary, meta/notes
 - **Status:** mostly-historical (refactor is complete)
 - **Mentions schema?:** No
@@ -167,7 +167,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 ### AI_understanding.md
 
 - **Path:** AI_understanding.md
-- **Title:** AI Understanding of QuantumVITAS (Python v2)
+- **Title:** AI Understanding of QMatSuite (Python v2)
 - **Purpose:** Comprehensive architectural knowledge base for AI assistants. Covers project overview, core concepts (Resource model, project structure, calculation/step YAML), CLI commands, daemon/GUI architecture, QE engine integration, analysis, snapshots, standalone mode, testing, and many implementation details. Very detailed (4500+ lines).
 - **Type:** architecture-spec, meta/notes, api-reference, cli-usage, daemon-gui-contract, snapshot-doc, standalone-qe-doc, testing-overview
 - **Status:** canonical-current (actively maintained)
@@ -211,21 +211,21 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** docs/CLI_API_REFERENCE.md
 - **Title:** CLI & API Quick Reference
-- **Purpose:** Comprehensive reference for all `qv` CLI commands with quick examples. Organized by command category (init, configure, run, analyze, delete, etc.). Also includes Python API methods from `QVService` that are meant for direct use.
+- **Purpose:** Comprehensive reference for all `qms` CLI commands with quick examples. Organized by command category (init, configure, run, analyze, delete, etc.). Also includes Python API methods from `QMSService` that are meant for direct use.
 - **Type:** cli-usage, api-reference
 - **Status:** canonical-current
 - **Mentions schema?:** No explicit schema examples, but commands work with DAG + ID-only model
-- **Mentions snapshots?:** Yes - documents `qv save-project` and `qv init project --snapshot` commands
-- **Mentions standalone QE?:** Yes - documents `qv run step --standalone` command
+- **Mentions snapshots?:** Yes - documents `qms save-project` and `qms init project --snapshot` commands
+- **Mentions standalone QE?:** Yes - documents `qms run step --standalone` command
 - **Mentions tests/CI?:** No
 - **Overlaps with:** `docs/STRUCTURE_AND_CLI_USAGE.md` (more detailed examples), `README.md` (brief CLI overview)
 
-**Note on standalone mode:** The CLI reference documents `qv run step` with `--standalone` flag, but detailed standalone implementation is documented in `STANDALONE_STEP_IMPLEMENTATION.md`.
+**Note on standalone mode:** The CLI reference documents `qms run step` with `--standalone` flag, but detailed standalone implementation is documented in `STANDALONE_STEP_IMPLEMENTATION.md`.
 
 ### DAEMON_API_REFERENCE.md
 
 - **Path:** docs/DAEMON_API_REFERENCE.md
-- **Title:** QuantumVITAS Daemon API Reference
+- **Title:** QMatSuite Daemon API Reference
 - **Purpose:** Complete reference for the JSON-RPC daemon interface used by the GUI. Documents request/response format, all available RPC methods (project operations, CRUD, visualization, job management), error handling, and protocol details.
 - **Type:** daemon-gui-contract, api-reference
 - **Status:** canonical-current
@@ -238,7 +238,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 ### GUI_ARCHITECTURE.md
 
 - **Path:** docs/GUI_ARCHITECTURE.md
-- **Title:** QuantumVITAS GUI Architecture
+- **Title:** QMatSuite GUI Architecture
 - **Purpose:** Comprehensive documentation of the Electron + React + TypeScript GUI. Covers technology stack, architecture diagram, daemon communication, component structure, IPC handlers, state management, error handling, and UI/UX features.
 - **Type:** architecture-spec, daemon-gui-contract
 - **Status:** canonical-current
@@ -278,7 +278,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 
 - **Path:** docs/STRUCTURE_AND_CLI_USAGE.md
 - **Title:** Structure I/O and CLI Usage Guide
-- **Purpose:** Detailed examples and usage patterns for QuantumVITAS structure handling and CLI commands. Covers structure I/O functions, CLI commands, parameter overrides, complete calculation examples, and API reference.
+- **Purpose:** Detailed examples and usage patterns for QMatSuite structure handling and CLI commands. Covers structure I/O functions, CLI commands, parameter overrides, complete calculation examples, and API reference.
 - **Type:** cli-usage, api-reference
 - **Status:** canonical-current
 - **Mentions schema?:** No explicit schema, but examples show DAG + ID-only model usage
@@ -1000,7 +1000,7 @@ This document provides a comprehensive inventory of all Markdown documentation f
 **Canonical standalone docs:**
 - `STANDALONE_STEP_IMPLEMENTATION.md` - Primary documentation for standalone mode
 - `AI_understanding.md` - Section on standalone mode (more detailed)
-- `README.md` - Brief mention of `qv run step --standalone`
+- `README.md` - Brief mention of `qms run step --standalone`
 
 **Standalone semantics:**
 - Standalone mode works on raw input files without creating Step resources in the DAG

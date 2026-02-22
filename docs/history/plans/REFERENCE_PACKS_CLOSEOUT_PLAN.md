@@ -140,15 +140,15 @@ When a demo project has ref packs but no run data:
 - **MODIFY**: `gui/src/components/panels/CalculationAnalysisPanel.tsx`
   - Add `useEffect` for "reference-only mode": when no run_ulid, probe for reference types
   - When `showReference && referenceData`, pass `referenceData` as the `bundle` to AnalysisVizPanel
-  - Add `data-testid="qv-analysis-reference-banner"` when showing reference data
+  - Add `data-testid="qms-analysis-reference-banner"` when showing reference data
   - The reference data (now in PrimitiveBundleData format from Step 1) has `series`, `render_meta` — directly usable
 
-- **MODIFY**: `src/quantumvitas/api/service.py` (lines 1122-1175)
+- **MODIFY**: `src/qmatsuite/api/service.py` (lines 1122-1175)
   - `get_reference_analysis()` already returns the raw ref pack dict
   - With Step 1's new format, this dict IS in PrimitiveBundleData format
   - Wrap it with `{bundle: data, object_type: analysis_type, _is_reference: true}` to match the `AnalysisResponse` shape the frontend expects
 
-- **MODIFY**: `src/quantumvitas/daemon/server.py` (lines 4639-4678)
+- **MODIFY**: `src/qmatsuite/daemon/server.py` (lines 4639-4678)
   - No changes needed — it just passes through to service
 
 ### Frontend Data Flow (after changes)
@@ -175,12 +175,12 @@ No run → probe ANALYSIS_OBJECT_TYPES via get_reference_analysis
 - **CREATE**: `gui/tests/e2e/integrity/ref_sweep.spec.ts`
   - Read `resources/demo_projects/ref_packs/` to get list of demos with ref packs
   - For each demo with a ref pack:
-    1. Create demo project via `qv.request('create_demo_project', {target_dir, demo_id})`
-    2. Open the project via `qv.request('open_project', {project_root})`
+    1. Create demo project via `qms.request('create_demo_project', {target_dir, demo_id})`
+    2. Open the project via `qms.request('open_project', {project_root})`
     3. Navigate to analysis panel (click first calculation, click "Plot" tab)
     4. Wait for reference-only mode to activate (reference types probed)
-    5. Assert `data-testid="qv-analysis-reference-banner"` is visible
-    6. Assert chart container `data-testid="qv-analysis-{type}-chart"` has at least one `<path>` element (SVG line)
+    5. Assert `data-testid="qms-analysis-reference-banner"` is visible
+    6. Assert chart container `data-testid="qms-analysis-{type}-chart"` has at least one `<path>` element (SVG line)
   - For demos WITHOUT ref packs: only assert materialization (like existing integrity sweep)
   - Generate `docs/demo_store/GUI_E2E_REFERENCE_SWEEP_REPORT.md`
 
@@ -208,14 +208,14 @@ test('reference sweep', async ({ appPage }) => {
       await appPage.evaluate(/* open_project RPC */);
 
       // 3. Navigate to analysis
-      await appPage.getByTestId('qv-analysis-step-tab-scf').click(); // or first tab
-      await appPage.locator('[data-testid^="qv-analysis-"][data-testid$="-tab--active"]').click();
+      await appPage.getByTestId('qms-analysis-step-tab-scf').click(); // or first tab
+      await appPage.locator('[data-testid^="qms-analysis-"][data-testid$="-tab--active"]').click();
 
       // 4. Assert reference banner
-      await expect(appPage.getByTestId('qv-analysis-reference-banner')).toBeVisible({ timeout: 10000 });
+      await expect(appPage.getByTestId('qms-analysis-reference-banner')).toBeVisible({ timeout: 10000 });
 
       // 5. Assert chart has data
-      const chartLocator = appPage.locator('[data-testid^="qv-analysis-"][data-testid$="-chart"]');
+      const chartLocator = appPage.locator('[data-testid^="qms-analysis-"][data-testid$="-chart"]');
       await expect(chartLocator).toBeVisible({ timeout: 10000 });
       const pathCount = await chartLocator.locator('path').count();
       expect(pathCount).toBeGreaterThan(0);
@@ -272,14 +272,14 @@ Final:  pytest + tsc + playwright verification
 
 ### Python (Backend)
 - `tools/demo_store/generate_ref_packs.py` — REWRITE: use analysis providers
-- `src/quantumvitas/api/service.py:1122-1175` — MODIFY: wrap ref pack in bundle format
-- `src/quantumvitas/demo_store/ref_packs.py` — READ-ONLY (loader, no changes)
-- `src/quantumvitas/core/analysis/evidence.py` — REUSE: EvidenceBundle dataclass
-- `src/quantumvitas/core/analysis/bundles.py` — REUSE: CanonicalPrimitiveBundle.to_dict()
-- `src/quantumvitas/core/analysis/convergence/model.py` — REUSE: Convergence.to_primitives()
-- `src/quantumvitas/core/analysis/dos/model.py` — REUSE: DOS.to_primitives()
-- `src/quantumvitas/core/analysis/band_structure/model.py` — REUSE: BandStructure.to_primitives()
-- `src/quantumvitas/parsers/registry.py` — REUSE: get_parser(engine, object_type)
+- `src/qmatsuite/api/service.py:1122-1175` — MODIFY: wrap ref pack in bundle format
+- `src/qmatsuite/demo_store/ref_packs.py` — READ-ONLY (loader, no changes)
+- `src/qmatsuite/core/analysis/evidence.py` — REUSE: EvidenceBundle dataclass
+- `src/qmatsuite/core/analysis/bundles.py` — REUSE: CanonicalPrimitiveBundle.to_dict()
+- `src/qmatsuite/core/analysis/convergence/model.py` — REUSE: Convergence.to_primitives()
+- `src/qmatsuite/core/analysis/dos/model.py` — REUSE: DOS.to_primitives()
+- `src/qmatsuite/core/analysis/band_structure/model.py` — REUSE: BandStructure.to_primitives()
+- `src/qmatsuite/parsers/registry.py` — REUSE: get_parser(engine, object_type)
 
 ### TypeScript (Frontend)
 - `gui/src/components/panels/CalculationAnalysisPanel.tsx` — MODIFY: reference-only mode

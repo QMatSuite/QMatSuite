@@ -12,9 +12,9 @@ import sys
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from quantumvitas.io import QEInputParser, QEInputGenerator, QEModule
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.io import QEInputParser, QEInputGenerator, QEModule
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 
 class TestRealModuleExamples:

@@ -172,7 +172,7 @@ Ownership categories:
 **Who should own**: **API** - Installation diagnostics for setup/troubleshooting.
 
 **Usage scenarios**:
-- CLI: `qv doctor` or similar health check
+- CLI: `qms doctor` or similar health check
 - GUI: Settings page showing engine status
 - Agent: Check if engine is available before creating calculation
 

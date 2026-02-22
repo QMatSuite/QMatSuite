@@ -6,8 +6,8 @@ Tests for StructureDTO.
 
 import pytest
 
-from quantumvitas.api.types.common import MetaDTO
-from quantumvitas.api.types.structure import StructureDTO
+from qmatsuite.api.types.common import MetaDTO
+from qmatsuite.api.types.structure import StructureDTO
 
 
 def test_structure_dto_required_fields():

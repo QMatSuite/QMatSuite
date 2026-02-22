@@ -2,7 +2,7 @@
  * ProjectSummaryPanel - Displays project overview in a structured format
  */
 
-import type { ProjectSummary } from '../../types/qv';
+import type { ProjectSummary } from '../../types/qms';
 import { DemoGalleryPanel } from './DemoGalleryPanel';
 import './ProjectSummaryPanel.css';
 
@@ -98,10 +98,10 @@ export function ProjectSummaryPanel({
   
   if (!summary) {
     return (
-      <div className="project-summary-panel project-summary-panel--empty" data-testid="qv-welcome">
+      <div className="project-summary-panel project-summary-panel--empty" data-testid="qms-welcome">
         <div className="welcome-card">
           <div className="welcome-icon">⚛️</div>
-          <h2 className="welcome-title" data-testid="qv-welcome-title">Welcome to QuantumVITAS</h2>
+          <h2 className="welcome-title" data-testid="qms-welcome-title">Welcome to QMatSuite</h2>
           <p className="welcome-subtitle">
             Manage Quantum ESPRESSO calculations with ease
           </p>
@@ -111,7 +111,7 @@ export function ProjectSummaryPanel({
               <button 
                 className="welcome-button welcome-button--primary" 
                 onClick={onBrowseAndLoad}
-                data-testid="qv-welcome-btn-open-project"
+                data-testid="qms-welcome-btn-open-project"
               >
                 <span className="welcome-button__icon">📂</span>
                 <span className="welcome-button__content">
@@ -124,7 +124,7 @@ export function ProjectSummaryPanel({
               <button 
                 className="welcome-button" 
                 onClick={onCreateProject}
-                data-testid="qv-welcome-btn-create-new-project"
+                data-testid="qms-welcome-btn-create-new-project"
               >
                 <span className="welcome-button__icon">✨</span>
                 <span className="welcome-button__content">
@@ -137,7 +137,7 @@ export function ProjectSummaryPanel({
               <button 
                 className="welcome-button welcome-button--demo" 
                 onClick={onOpenDemoGallery}
-                data-testid="qv-welcome-btn-demo-gallery"
+                data-testid="qms-welcome-btn-demo-gallery"
               >
                 <span className="welcome-button__icon">🎨</span>
                 <span className="welcome-button__content">
@@ -189,9 +189,9 @@ export function ProjectSummaryPanel({
   }
   
   return (
-    <div className="project-summary-panel" data-testid="qv-home-project">
+    <div className="project-summary-panel" data-testid="qms-home-project">
       <div className="panel-header">
-        <h2 className="panel-title" data-testid="qv-project-name">
+        <h2 className="panel-title" data-testid="qms-project-name">
           <span className="panel-icon">📁</span>
           {summary.name}
         </h2>
@@ -202,7 +202,7 @@ export function ProjectSummaryPanel({
               className="close-project-btn"
               onClick={onCloseProject}
               title="Close this project"
-              data-testid="qv-btn-close-project"
+              data-testid="qms-btn-close-project"
             >
               ✕ Close
             </button>
@@ -216,7 +216,7 @@ export function ProjectSummaryPanel({
         pathParts.pop(); // Remove project name
         const workspace = pathParts.join('/') || '/';
         return (
-          <div className="project-summary-panel__context" data-testid="qv-project-context">
+          <div className="project-summary-panel__context" data-testid="qms-project-context">
             <span className="context-label">Workspace:</span>
             <code className="context-value">{workspace}</code>
             <span className="context-separator">·</span>
@@ -293,12 +293,12 @@ export function ProjectSummaryPanel({
           <div className="detail-row">
             <span className="detail-label">Path</span>
             <div className="detail-path-container">
-              <code className="detail-value detail-value--path" title={summary.path} data-testid="qv-project-path">{summary.path}</code>
+              <code className="detail-value detail-value--path" title={summary.path} data-testid="qms-project-path">{summary.path}</code>
               <button 
                 className="reveal-btn"
-                onClick={() => window.qv?.revealPath?.(summary.path)}
+                onClick={() => window.qms?.revealPath?.(summary.path)}
                 title="Reveal in Finder"
-                data-testid="qv-btn-project-reveal"
+                data-testid="qms-btn-project-reveal"
               >
                 📂 Reveal
               </button>

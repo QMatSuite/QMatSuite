@@ -8,7 +8,7 @@ Add 4 read-only discovery tools to the MCP server so an agent can explore QMatSu
 ### Code Review Findings
 
 **Engine Registry**
-- `DriverRegistry` at `core/driver_registry.py` — singleton, side-effect registration via `import quantumvitas.drivers`
+- `DriverRegistry` at `core/driver_registry.py` — singleton, side-effect registration via `import qmatsuite.drivers`
 - `get_all_engines()` returns 15 families, `get_driver(family)` returns driver with `display_name`, `SUPPORTED_GEN_STEPS`, `get_capabilities()`
 
 **Workflow Templates**
@@ -93,11 +93,11 @@ QE special: module-structured JSON at `data/qe_module_parameters.json` (schema v
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `src/quantumvitas/mcp/tools/list_engines.py` | ~95 | list_engines tool |
-| `src/quantumvitas/mcp/tools/list_workflows.py` | ~55 | list_workflows tool |
-| `src/quantumvitas/mcp/tools/get_presets.py` | ~115 | get_presets tool |
-| `src/quantumvitas/mcp/tools/search_parameters.py` | ~50 | search_parameters tool |
-| `src/quantumvitas/mcp/search_index.py` | ~195 | BM25 index + tag loading |
+| `src/qmatsuite/mcp/tools/list_engines.py` | ~95 | list_engines tool |
+| `src/qmatsuite/mcp/tools/list_workflows.py` | ~55 | list_workflows tool |
+| `src/qmatsuite/mcp/tools/get_presets.py` | ~115 | get_presets tool |
+| `src/qmatsuite/mcp/tools/search_parameters.py` | ~50 | search_parameters tool |
+| `src/qmatsuite/mcp/search_index.py` | ~195 | BM25 index + tag loading |
 | `tests/mcp/conftest.py` | ~5 | Skip MCP tests when fastmcp not installed |
 | `tests/mcp/test_stage1.py` | ~150 | 14 Stage 1 tests |
 
@@ -105,8 +105,8 @@ QE special: module-structured JSON at `data/qe_module_parameters.json` (schema v
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/mcp/envelope.py` | Added `status` field + `make_error()` |
-| `src/quantumvitas/mcp/server.py` | 4 new tool module imports |
+| `src/qmatsuite/mcp/envelope.py` | Added `status` field + `make_error()` |
+| `src/qmatsuite/mcp/server.py` | 4 new tool module imports |
 | `tests/mcp/test_stage0.py` | Updated envelope shape + ping status assertions |
 
 ## Test Results
@@ -132,7 +132,7 @@ matching the pattern used for other optional dependencies (`requires_orca`, `req
 
 2. **`installed` field is always `True`**: Real binary detection is deferred. The `installed_only` parameter is a no-op.
 
-3. **QE metadata path**: QE parameters JSON is at `data/qe_module_parameters.json` (under `src/quantumvitas/data/`), not under `drivers/qe/data/`. The `qe_metadata.py` module handles this via `importlib.resources`.
+3. **QE metadata path**: QE parameters JSON is at `data/qe_module_parameters.json` (under `src/qmatsuite/data/`), not under `drivers/qe/data/`. The `qe_metadata.py` module handles this via `importlib.resources`.
 
 4. **Search index size**: ~1000 documents from 11 engines. Performance is not a concern at this scale, but if engines grow significantly, consider caching the serialized index.
 

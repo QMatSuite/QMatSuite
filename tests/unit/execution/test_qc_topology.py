@@ -7,8 +7,8 @@ topologies for QC engines (ORCA/PySCF) with relax steps.
 
 import pytest
 from unittest.mock import MagicMock
-from quantumvitas.execution.recipes import verify_qc_topology, TopologyError
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.execution.recipes import verify_qc_topology, TopologyError
+from qmatsuite.workflow.registry import get_registry
 
 
 class TestQCTopologyVerification:

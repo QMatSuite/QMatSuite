@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).parent.parent.parent
-GENERALIZED_STEPS_PATH = REPO_ROOT / "src" / "quantumvitas" / "workflow" / "generalized_steps.py"
+GENERALIZED_STEPS_PATH = REPO_ROOT / "src" / "qmatsuite" / "workflow" / "generalized_steps.py"
 
 
 def test_no_step_type_registry_in_materialize():
@@ -39,8 +39,8 @@ def test_no_step_type_registry_in_materialize():
 
 def test_companion_routing_for_qe():
     """QE companion steps resolve through DriverRegistry, not first-match."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     # w90 is a companion of QE
     result = DriverRegistry.resolve_companion_step("qe", "wannierprep")
@@ -60,8 +60,8 @@ def test_companion_routing_for_qe():
 
 def test_no_companion_routing_for_vasp():
     """VASP has no companions. Companion steps should return None."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     result = DriverRegistry.resolve_companion_step("vasp", "wannierprep")
     assert result is None, f"Expected None for VASP+wannierprep, got '{result}'"
@@ -72,8 +72,8 @@ def test_no_companion_routing_for_vasp():
 
 def test_base_steps_still_resolve():
     """Base engine steps still resolve normally through companion routing."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     assert DriverRegistry.resolve_companion_step("qe", "scf") == "qe_scf"
     assert DriverRegistry.resolve_companion_step("vasp", "scf") == "vasp_scf"

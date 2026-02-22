@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.drivers.vasp.engine.vasp_runner import (
+from qmatsuite.drivers.vasp.engine.vasp_runner import (
     RunResult,
     find_vasp_binary,
     run_vasp_case,

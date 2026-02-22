@@ -8,7 +8,7 @@ sort order, limit semantics, and field presence.
 import pytest
 from pathlib import Path
 
-from quantumvitas.provenance import (
+from qmatsuite.provenance import (
     OperationContext,
     OperationType,
     ActorType,
@@ -18,14 +18,14 @@ from quantumvitas.provenance import (
     record_run_complete,
     ensure_provenance_initialized,
 )
-from quantumvitas.api.service import QVService
+from qmatsuite.api.service import QMSService
 
 
 def _make_project(tmp_path: Path) -> Path:
     """Create minimal project structure with provenance initialized."""
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     ensure_provenance_initialized(project_root)
     return project_root
 
@@ -57,7 +57,7 @@ class TestTimelineEmpty:
     def test_timeline_empty_project(self, tmp_path):
         """get_timeline() returns empty timeline on fresh project."""
         project_root = _make_project(tmp_path)
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_timeline()
         assert result["timeline"] == []
         assert result["total"] == 0
@@ -70,7 +70,7 @@ class TestTimelineWithOperations:
         _record_op(project_root, OperationType.STEP_ADD, "2025-01-01T00:00:00Z", "Added step")
         _record_op(project_root, OperationType.PRESET_APPLY, "2025-01-01T00:01:00Z", "Applied preset")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_timeline()
         assert len(result["timeline"]) == 2
         # Newest first
@@ -82,7 +82,7 @@ class TestTimelineWithOperations:
         project_root = _make_project(tmp_path)
         _record_op(project_root, OperationType.STEP_UPDATE, "2025-01-01T00:00:00Z", "Updated params")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_timeline()
         entry = result["timeline"][0]
         assert entry["op_type"] == "step_update"
@@ -97,7 +97,7 @@ class TestTimelineWithOperations:
         record_run_start(project_root, "RUN001", "CALC01")
         record_run_complete(project_root, "RUN001", "success")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_timeline()
 
         kinds = {e.get("kind") for e in result["timeline"]}
@@ -115,7 +115,7 @@ class TestTimelineWithOperations:
                                  OperationType.PRESET_APPLY, OperationType.CALC_CREATE]):
             _record_op(project_root, op, f"2025-01-01T00:0{i}:00Z")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_timeline()
         for entry in result["timeline"]:
             assert entry["event_type"] == "edit"
@@ -125,7 +125,7 @@ class TestTimelineWithOperations:
         project_root = _make_project(tmp_path)
         _record_op(project_root, OperationType.STRUCTURE_IMPORT, "2025-01-01T00:00:00Z", "Imported structure")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_timeline()
         entry = result["timeline"][0]
         assert entry["event_type"] == "operation"
@@ -145,7 +145,7 @@ class TestTimelineMerged:
         # Op at T=2
         _record_op(project_root, OperationType.STEP_UPDATE, "2025-01-01T00:02:00Z", "step update")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_timeline()
 
         timestamps = [e["timestamp"] for e in result["timeline"]]
@@ -165,7 +165,7 @@ class TestTimelineMerged:
             record_run_start(project_root, run_id, "CALC01")
             record_run_complete(project_root, run_id, "success")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_timeline(limit=5)
         assert len(result["timeline"]) == 5
         assert result["total"] == 5
@@ -176,9 +176,9 @@ class TestStorageSummary:
         """Returns zeros on fresh project (no .provenance)."""
         project_root = tmp_path / "test_project"
         project_root.mkdir()
-        (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+        (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_storage_summary()
         assert result["total_objects"] == 0
         assert result["run_count"] == 0
@@ -192,7 +192,7 @@ class TestStorageSummary:
         record_run_start(project_root, "RUN001", "CALC01")
         record_run_complete(project_root, "RUN001", "success")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_storage_summary()
         assert result["run_count"] == 1
         assert result["operation_count"] == 2
@@ -205,7 +205,7 @@ class TestGetRunRevision:
         record_run_start(project_root, "RUN001", "CALC01")
         record_run_complete(project_root, "RUN001", "success")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.history.get_run_revision("RUN001")
         assert result["revision"] is not None
         assert result["revision"]["ulid"] == "RUN001"

@@ -10,9 +10,9 @@ import json
 from pathlib import Path
 from pymatgen.core import Structure, Lattice
 
-from quantumvitas.core.project_utils import load_project_config, save_project_config, collect_slugs
-from quantumvitas.core.resources import generate_unique_name_and_slug
-from quantumvitas.io.structure_io import write_structure, read_structure
+from qmatsuite.core.project_utils import load_project_config, save_project_config, collect_slugs
+from qmatsuite.core.resources import generate_unique_name_and_slug
+from qmatsuite.io.structure_io import write_structure, read_structure
 
 
 def test_import_online_candidate_unique_slug():
@@ -42,7 +42,7 @@ def test_import_online_candidate_unique_slug():
         }
         
         # Write project config
-        config_path = project_root / "project.qv.yml"
+        config_path = project_root / "project.qms.yml"
         import yaml
         with open(config_path, 'w') as f:
             yaml.dump(project_config, f)

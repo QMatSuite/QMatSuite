@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from quantumvitas.core.driver_protocol import WorkdirPolicy
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.drivers.xtb import XTBDriver
+from qmatsuite.core.driver_protocol import WorkdirPolicy
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.drivers.xtb import XTBDriver
 
 
 class TestXTBDriver:
@@ -45,14 +45,14 @@ class TestXTBDriver:
 
 class TestXTBRegistration:
     def test_xtb_registered(self):
-        import quantumvitas.drivers  # noqa: F401
+        import qmatsuite.drivers  # noqa: F401
 
         assert DriverRegistry.is_engine_registered("xtb")
         driver = DriverRegistry.get_driver("xtb")
         assert driver.engine_family == "xtb"
 
     def test_xtb_step_type_registered(self):
-        import quantumvitas.drivers  # noqa: F401
+        import qmatsuite.drivers  # noqa: F401
 
         assert DriverRegistry.is_step_type_registered("xtb_relax")
 
@@ -62,7 +62,7 @@ class TestXTBLeafIsolation:
         io_path = (
             Path(__file__).resolve().parents[3]
             / "src"
-            / "quantumvitas"
+            / "qmatsuite"
             / "drivers"
             / "xtb"
             / "io"
@@ -70,10 +70,10 @@ class TestXTBLeafIsolation:
         )
         source = io_path.read_text(encoding="utf-8")
         forbidden = [
-            "from quantumvitas.core",
-            "from quantumvitas.calculation",
-            "from quantumvitas.execution",
-            "from quantumvitas.api",
+            "from qmatsuite.core",
+            "from qmatsuite.calculation",
+            "from qmatsuite.execution",
+            "from qmatsuite.api",
         ]
         for text in forbidden:
             assert text not in source
@@ -82,7 +82,7 @@ class TestXTBLeafIsolation:
         meta_path = (
             Path(__file__).resolve().parents[3]
             / "src"
-            / "quantumvitas"
+            / "qmatsuite"
             / "drivers"
             / "xtb"
             / "data"
@@ -90,10 +90,10 @@ class TestXTBLeafIsolation:
         )
         source = meta_path.read_text(encoding="utf-8")
         forbidden = [
-            "from quantumvitas.core",
-            "from quantumvitas.calculation",
-            "from quantumvitas.execution",
-            "from quantumvitas.api",
+            "from qmatsuite.core",
+            "from qmatsuite.calculation",
+            "from qmatsuite.execution",
+            "from qmatsuite.api",
         ]
         for text in forbidden:
             assert text not in source

@@ -2,7 +2,7 @@
 
 ## Scope
 - Engine: `yambo`
-- Driver paths only: `src/quantumvitas/drivers/yambo/`, `tests/`, `docs/engines/yambo/`, `.tmp/engine_research/yambo/`
+- Driver paths only: `src/qmatsuite/drivers/yambo/`, `tests/`, `docs/engines/yambo/`, `.tmp/engine_research/yambo/`
 - Constraint from user: isolate work to Yambo; run Yambo-focused tests only.
 
 ## Baseline (2026-02-07)

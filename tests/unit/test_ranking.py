@@ -6,7 +6,7 @@ PR2: Tests for ranking/scoring of candidates.
 
 import pytest
 
-from quantumvitas.io.providers.optimade import (
+from qmatsuite.io.providers.optimade import (
     ProviderConfig,
     Candidate,
     AggregatedCandidate,

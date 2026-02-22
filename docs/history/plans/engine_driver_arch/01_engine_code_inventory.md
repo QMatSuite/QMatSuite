@@ -24,14 +24,14 @@ This document provides a complete inventory of engine-specific code across QMatS
 
 | File | Lines | Purpose | Coupling |
 |------|-------|---------|----------|
-| `src/quantumvitas/core/qe/` | (directory) | QE-specific modules | **Isolated** |
-| `src/quantumvitas/core/qe/input_file.py` | all | Input file generation | Isolated |
-| `src/quantumvitas/core/qe/output_parser.py` | all | Output parsing | Isolated |
-| `src/quantumvitas/core/qe/pw_pseudopotentials.py` | all | Pseudopotential handling | Isolated |
-| `src/quantumvitas/core/qe/structure_parser.py` | all | Structure I/O | Isolated |
-| `src/quantumvitas/execution/handlers.py` | 68-190 | `qe_step_handler` | **Kernel-embedded** |
-| `src/quantumvitas/execution/recipes.py` | 45-240 | `QERecipe` class | Kernel-embedded |
-| `src/quantumvitas/workflow/registry.py` | 50-180 | QE step types | Registry (good) |
+| `src/qmatsuite/core/qe/` | (directory) | QE-specific modules | **Isolated** |
+| `src/qmatsuite/core/qe/input_file.py` | all | Input file generation | Isolated |
+| `src/qmatsuite/core/qe/output_parser.py` | all | Output parsing | Isolated |
+| `src/qmatsuite/core/qe/pw_pseudopotentials.py` | all | Pseudopotential handling | Isolated |
+| `src/qmatsuite/core/qe/structure_parser.py` | all | Structure I/O | Isolated |
+| `src/qmatsuite/execution/handlers.py` | 68-190 | `qe_step_handler` | **Kernel-embedded** |
+| `src/qmatsuite/execution/recipes.py` | 45-240 | `QERecipe` class | Kernel-embedded |
+| `src/qmatsuite/workflow/registry.py` | 50-180 | QE step types | Registry (good) |
 
 **Coupling Notes**:
 - QE is the oldest engine with deepest kernel integration
@@ -46,13 +46,13 @@ This document provides a complete inventory of engine-specific code across QMatS
 
 | File | Lines | Purpose | Coupling |
 |------|-------|---------|----------|
-| `src/quantumvitas/engine/vasp_engine.py` | all | Engine class | **Isolated** |
-| `src/quantumvitas/execution/vasp_staging.py` | all | Input staging | **Isolated** |
-| `src/quantumvitas/execution/handlers.py` | 330-450 | `vasp_step_handler` | Kernel-embedded |
-| `src/quantumvitas/execution/recipes.py` | 560-680 | `VASPRecipe` class | Kernel-embedded |
-| `src/quantumvitas/execution/reference_resolver.py` | all | SCF reference finding | **VASP-specific** |
-| `src/quantumvitas/workflow/registry.py` | 220-280 | VASP step types | Registry (good) |
-| `src/quantumvitas/calculation/step_done.py` | 145-160 | `VASP_STEP_TYPES` set | **Kernel-embedded** |
+| `src/qmatsuite/engine/vasp_engine.py` | all | Engine class | **Isolated** |
+| `src/qmatsuite/execution/vasp_staging.py` | all | Input staging | **Isolated** |
+| `src/qmatsuite/execution/handlers.py` | 330-450 | `vasp_step_handler` | Kernel-embedded |
+| `src/qmatsuite/execution/recipes.py` | 560-680 | `VASPRecipe` class | Kernel-embedded |
+| `src/qmatsuite/execution/reference_resolver.py` | all | SCF reference finding | **VASP-specific** |
+| `src/qmatsuite/workflow/registry.py` | 220-280 | VASP step types | Registry (good) |
+| `src/qmatsuite/calculation/step_done.py` | 145-160 | `VASP_STEP_TYPES` set | **Kernel-embedded** |
 
 **Coupling Notes**:
 - Engine class is well-isolated in `engine/` directory
@@ -67,13 +67,13 @@ This document provides a complete inventory of engine-specific code across QMatS
 
 | File | Lines | Purpose | Coupling |
 |------|-------|---------|----------|
-| `src/quantumvitas/engine/orca_engine.py` | all | Engine class | **Isolated** |
-| `src/quantumvitas/engine/orca_writer.py` | all | Input generation | Isolated |
-| `src/quantumvitas/engine/orca_parser.py` | all | Output parsing | Isolated |
-| `src/quantumvitas/execution/handlers.py` | 860-1020 | `orca_chain_handler` | Kernel-embedded |
-| `src/quantumvitas/execution/recipes.py` | 410-520 | `ORCARecipe` class | Kernel-embedded |
-| `src/quantumvitas/workflow/registry.py` | 320-380 | ORCA step types | Registry (good) |
-| `src/quantumvitas/calculation/structure_steps.py` | 758-770 | `ORCA_STEP_TYPES` set | **Kernel-embedded** |
+| `src/qmatsuite/engine/orca_engine.py` | all | Engine class | **Isolated** |
+| `src/qmatsuite/engine/orca_writer.py` | all | Input generation | Isolated |
+| `src/qmatsuite/engine/orca_parser.py` | all | Output parsing | Isolated |
+| `src/qmatsuite/execution/handlers.py` | 860-1020 | `orca_chain_handler` | Kernel-embedded |
+| `src/qmatsuite/execution/recipes.py` | 410-520 | `ORCARecipe` class | Kernel-embedded |
+| `src/qmatsuite/workflow/registry.py` | 320-380 | ORCA step types | Registry (good) |
+| `src/qmatsuite/calculation/structure_steps.py` | 758-770 | `ORCA_STEP_TYPES` set | **Kernel-embedded** |
 
 **Coupling Notes**:
 - Engine code well-isolated in `engine/` directory
@@ -87,13 +87,13 @@ This document provides a complete inventory of engine-specific code across QMatS
 
 | File | Lines | Purpose | Coupling |
 |------|-------|---------|----------|
-| `src/quantumvitas/engine/pyscf_engine.py` | all | Engine class | **Isolated** |
-| `src/quantumvitas/engine/pyscf_writer.py` | all | Input generation | Isolated |
-| `src/quantumvitas/engine/pyscf_parser.py` | all | Output parsing | Isolated |
-| `src/quantumvitas/execution/handlers.py` | 720-850 | `pyscf_chain_handler` | Kernel-embedded |
-| `src/quantumvitas/execution/recipes.py` | 300-400 | `PySCFRecipe` class | Kernel-embedded |
-| `src/quantumvitas/workflow/registry.py` | 400-460 | PySCF step types | Registry (good) |
-| `src/quantumvitas/calculation/structure_steps.py` | 758-765 | `PYSCF_STEP_TYPES` set | **Kernel-embedded** |
+| `src/qmatsuite/engine/pyscf_engine.py` | all | Engine class | **Isolated** |
+| `src/qmatsuite/engine/pyscf_writer.py` | all | Input generation | Isolated |
+| `src/qmatsuite/engine/pyscf_parser.py` | all | Output parsing | Isolated |
+| `src/qmatsuite/execution/handlers.py` | 720-850 | `pyscf_chain_handler` | Kernel-embedded |
+| `src/qmatsuite/execution/recipes.py` | 300-400 | `PySCFRecipe` class | Kernel-embedded |
+| `src/qmatsuite/workflow/registry.py` | 400-460 | PySCF step types | Registry (good) |
+| `src/qmatsuite/calculation/structure_steps.py` | 758-765 | `PYSCF_STEP_TYPES` set | **Kernel-embedded** |
 
 **Coupling Notes**:
 - Engine code well-isolated
@@ -107,12 +107,12 @@ This document provides a complete inventory of engine-specific code across QMatS
 
 | File | Lines | Purpose | Coupling |
 |------|-------|---------|----------|
-| `src/quantumvitas/engine/lammps_engine.py` | all | Engine class + restart resolution | **Isolated** |
-| `src/quantumvitas/execution/handlers.py` | 480-620 | `lammps_step_handler` | Kernel-embedded |
-| `src/quantumvitas/execution/recipes.py` | 700-780 | `LAMMPSRecipe` class | Kernel-embedded |
-| `src/quantumvitas/workflow/registry.py` | 480-520 | LAMMPS step types | Registry (good) |
-| `src/quantumvitas/calculation/structure_steps.py` | 772-775 | `LAMMPS_STEP_TYPES` set | **Kernel-embedded** |
-| `src/quantumvitas/calculation/step_done.py` | 165-175 | `LAMMPS_STEP_TYPES` set | **Kernel-embedded** |
+| `src/qmatsuite/engine/lammps_engine.py` | all | Engine class + restart resolution | **Isolated** |
+| `src/qmatsuite/execution/handlers.py` | 480-620 | `lammps_step_handler` | Kernel-embedded |
+| `src/qmatsuite/execution/recipes.py` | 700-780 | `LAMMPSRecipe` class | Kernel-embedded |
+| `src/qmatsuite/workflow/registry.py` | 480-520 | LAMMPS step types | Registry (good) |
+| `src/qmatsuite/calculation/structure_steps.py` | 772-775 | `LAMMPS_STEP_TYPES` set | **Kernel-embedded** |
+| `src/qmatsuite/calculation/step_done.py` | 165-175 | `LAMMPS_STEP_TYPES` set | **Kernel-embedded** |
 
 **Coupling Notes**:
 - Engine class is well-isolated
@@ -126,13 +126,13 @@ This document provides a complete inventory of engine-specific code across QMatS
 
 | File | Lines | Purpose | Coupling |
 |------|-------|---------|----------|
-| `src/quantumvitas/engine/cp2k_engine.py` | all | Engine class | **Isolated** |
-| `src/quantumvitas/engine/cp2k_writer.py` | all | Input generation | Isolated |
-| `src/quantumvitas/engine/cp2k_parser.py` | all | Output parsing | Isolated |
-| `src/quantumvitas/execution/handlers.py` | 1100-1250 | `cp2k_step_handler` | Kernel-embedded |
-| `src/quantumvitas/execution/recipes.py` | 800-900 | `CP2KRecipe` class | Kernel-embedded |
-| `src/quantumvitas/workflow/registry.py` | 540-600 | CP2K step types | Registry (good) |
-| `src/quantumvitas/calculation/structure_steps.py` | 778-780 | `CP2K_STEP_TYPES` set | **Kernel-embedded** |
+| `src/qmatsuite/engine/cp2k_engine.py` | all | Engine class | **Isolated** |
+| `src/qmatsuite/engine/cp2k_writer.py` | all | Input generation | Isolated |
+| `src/qmatsuite/engine/cp2k_parser.py` | all | Output parsing | Isolated |
+| `src/qmatsuite/execution/handlers.py` | 1100-1250 | `cp2k_step_handler` | Kernel-embedded |
+| `src/qmatsuite/execution/recipes.py` | 800-900 | `CP2KRecipe` class | Kernel-embedded |
+| `src/qmatsuite/workflow/registry.py` | 540-600 | CP2K step types | Registry (good) |
+| `src/qmatsuite/calculation/structure_steps.py` | 778-780 | `CP2K_STEP_TYPES` set | **Kernel-embedded** |
 
 **Coupling Notes**:
 - Engine code well-isolated (follows LAMMPS pattern)
@@ -146,11 +146,11 @@ This document provides a complete inventory of engine-specific code across QMatS
 
 | File | Lines | Purpose | Coupling |
 |------|-------|---------|----------|
-| `src/quantumvitas/core/w90/` | (directory) | W90-specific modules | **Isolated** |
-| `src/quantumvitas/core/w90/input_file.py` | all | Input file generation | Isolated |
-| `src/quantumvitas/core/w90/output_parser.py` | all | Output parsing | Isolated |
-| `src/quantumvitas/execution/handlers.py` | 200-320 | W90 handler (QE-coupled) | **Cross-engine** |
-| `src/quantumvitas/workflow/registry.py` | 600-640 | W90 step types | Registry (good) |
+| `src/qmatsuite/core/w90/` | (directory) | W90-specific modules | **Isolated** |
+| `src/qmatsuite/core/w90/input_file.py` | all | Input file generation | Isolated |
+| `src/qmatsuite/core/w90/output_parser.py` | all | Output parsing | Isolated |
+| `src/qmatsuite/execution/handlers.py` | 200-320 | W90 handler (QE-coupled) | **Cross-engine** |
+| `src/qmatsuite/workflow/registry.py` | 600-640 | W90 step types | Registry (good) |
 
 **Coupling Notes**:
 - Isolated in `core/w90/` directory
@@ -165,12 +165,12 @@ This document provides a complete inventory of engine-specific code across QMatS
 
 | File | Lines | Engines | Concern |
 |------|-------|---------|---------|
-| `src/quantumvitas/core/calc_identity.py` | 78-116 | ALL | **CRITICAL: prefix-based inference** |
-| `src/quantumvitas/calculation/structure_steps.py` | 758-792 | ORCA, PySCF, LAMMPS, CP2K | Hardcoded step type sets |
-| `src/quantumvitas/calculation/step_done.py` | 115-200 | VASP, LAMMPS | Hardcoded step type sets |
-| `src/quantumvitas/workflow/generalized_steps.py` | 364-389 | ALL | MATERIALIZATION_MAP inference |
-| `src/quantumvitas/execution/handlers.py` | 1335-1342 | ALL | Handler dispatch map |
-| `src/quantumvitas/execution/recipes.py` | 798-827 | ALL | Recipe selection map |
+| `src/qmatsuite/core/calc_identity.py` | 78-116 | ALL | **CRITICAL: prefix-based inference** |
+| `src/qmatsuite/calculation/structure_steps.py` | 758-792 | ORCA, PySCF, LAMMPS, CP2K | Hardcoded step type sets |
+| `src/qmatsuite/calculation/step_done.py` | 115-200 | VASP, LAMMPS | Hardcoded step type sets |
+| `src/qmatsuite/workflow/generalized_steps.py` | 364-389 | ALL | MATERIALIZATION_MAP inference |
+| `src/qmatsuite/execution/handlers.py` | 1335-1342 | ALL | Handler dispatch map |
+| `src/qmatsuite/execution/recipes.py` | 798-827 | ALL | Recipe selection map |
 
 ### 3.2 Critical Coupling Points
 

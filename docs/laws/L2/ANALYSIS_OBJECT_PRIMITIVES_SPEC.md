@@ -279,7 +279,7 @@ Forbidden everywhere in bundles:
 > Kernel provides pure capabilities. API owns orchestration and persistence. Frontend interacts only with API.
 
 - **Kernel** provides: engine analysis providers, AnalysisObject types, `to_primitives()`, PrimitiveTransform implementations, and pure rendering functions.
-- **API/QVService** owns: request routing, canonical-only in-memory memoization, ALL writes to SQLite and CAS (including overwrite/dedup policies for Tier-0.8 snapshots), and post-run pipeline orchestration.
+- **API/QMSService** owns: request routing, canonical-only in-memory memoization, ALL writes to SQLite and CAS (including overwrite/dedup policies for Tier-0.8 snapshots), and post-run pipeline orchestration.
 - **Frontend** (Electron or Jupyter) interacts ONLY with the API layer. It MUST NOT import kernel modules directly, call parsers, or access SQLite/CAS.
 
 ### Inv-A13: No Engine Branching in the Universal Layer
@@ -1186,7 +1186,7 @@ Kernel MUST NOT:
 - Write to SQLite or CAS.
 - Hold memoization state.
 
-### 11.2 API / QVService Layer
+### 11.2 API / QMSService Layer
 
 Owns orchestration, caching, and persistence.
 
@@ -1225,7 +1225,7 @@ Pure consumer. No analysis logic.
 ### 11.4 Request Flow (On-Demand, Post-Initial-Run)
 
 ```
-Frontend                        API/QVService                     Kernel
+Frontend                        API/QMSService                     Kernel
    │                                │                                │
    │  GET /analysis                 │                                │
    │  {run_ulid, object_type,       │                                │
@@ -1293,9 +1293,9 @@ Frontend                        API/QVService                     Kernel
 | **Inv-A6** | `test_bundle_no_view_params.py` | Neither bundle type defines fields matching view-parameter patterns |
 | **Inv-A6** | `test_render_meta_no_provenance.py` | RenderMeta type has no fields for engine_name, run_ulid, step_ulids, parser_name, source_files, or warnings |
 | **Inv-A7** | `test_transform_no_raw_access.py` | AST scan: no transform module imports `pathlib.Path`, `open()`, or `drivers/` modules |
-| **Inv-A7** | `test_transform_no_engine_imports.py` | AST scan: no transform module imports from `quantumvitas.drivers` |
+| **Inv-A7** | `test_transform_no_engine_imports.py` | AST scan: no transform module imports from `qmatsuite.drivers` |
 | **Inv-A8** | `test_viz_no_raw_access.py` | AST scan: no renderer/viz module reads files or imports engine parsers |
-| **Inv-A8** | `test_viz_no_engine_logic.py` | AST scan: no renderer/viz module imports from `quantumvitas.drivers` |
+| **Inv-A8** | `test_viz_no_engine_logic.py` | AST scan: no renderer/viz module imports from `qmatsuite.drivers` |
 | **Inv-A8** | `test_viz_no_transforms.py` | AST scan: no renderer/viz module imports from `core/analysis/transforms/` |
 | **Inv-A8** | `test_viz_no_provenance_meta_access.py` | AST scan: no renderer/viz module accesses `.provenance_meta` or any ProvenanceMeta field for rendering logic |
 | **Inv-A9** | `test_no_lazy_payloads.py` | AST scan: no `LazyArray`, `LateList`, or deferred-proxy classes in `core/analysis/` |

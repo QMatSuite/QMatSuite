@@ -2,15 +2,15 @@
 
 **Generated:** 2026-01-27
 **Baseline Commit:** 0873ebf
-**Symptom:** `AttributeError: type object 'QVService' has no attribute 'list_demo_projects'`
+**Symptom:** `AttributeError: type object 'QMSService' has no attribute 'list_demo_projects'`
 
 ---
 
 ## Executive Summary
 
-PR10's API slimming refactoring broke the daemon→QVService RPC contract. The baseline `api.py` file contained ~95+ static methods; the refactored `api/service.py` contains only ~16 static methods plus domain accessor patterns. The daemon calls QVService static methods directly, but most of them no longer exist.
+PR10's API slimming refactoring broke the daemon→QMSService RPC contract. The baseline `api.py` file contained ~95+ static methods; the refactored `api/service.py` contains only ~16 static methods plus domain accessor patterns. The daemon calls QMSService static methods directly, but most of them no longer exist.
 
-**Root Cause:** Methods moved to `_api_legacy.py` (LegacyService) but daemon imports from `quantumvitas.api.QVService` only.
+**Root Cause:** Methods moved to `_api_legacy.py` (LegacyService) but daemon imports from `qmatsuite.api.QMSService` only.
 
 ---
 
@@ -20,7 +20,7 @@ PR10's API slimming refactoring broke the daemon→QVService RPC contract. The b
 
 The daemon at baseline defines **112 RPC handlers** grouped into 16 categories:
 
-| Category | Handlers | QVService Calls |
+| Category | Handlers | QMSService Calls |
 |----------|----------|-----------------|
 | Core/System | 6 | 0 (direct module calls) |
 | Environment/QE | 5 | 5 |
@@ -39,9 +39,9 @@ The daemon at baseline defines **112 RPC handlers** grouped into 16 categories:
 | Job Mgmt | 8 | 3 |
 | History/Journal | 11 | 0 (direct module calls) |
 
-### A.2 QVService Methods Called by Daemon
+### A.2 QMSService Methods Called by Daemon
 
-The daemon makes **90+ unique QVService static method calls**. Current `service.py` has only **16 static methods**.
+The daemon makes **90+ unique QMSService static method calls**. Current `service.py` has only **16 static methods**.
 
 **Missing methods (called by daemon but not in service.py):**
 
@@ -160,7 +160,7 @@ The following handlers are critical for GUI E2E tests:
 | Handler | Response Shape | Status |
 |---------|---------------|--------|
 | `_handle_list_demo_projects` | `{demos: [{id, name, description, ...}], count: int}` | **BROKEN** |
-| `_handle_get_env_info` | `{python_version, qv_version, qe_home, ...}` | **BROKEN** |
+| `_handle_get_env_info` | `{python_version, qms_version, qe_home, ...}` | **BROKEN** |
 | `_handle_create_demo_project` | `{project_root, demo_id}` | **BROKEN** |
 | `_handle_get_project_summary` | Project summary dict | OK |
 | `_handle_list_structures` | `{structures: [...]}` | OK |
@@ -179,26 +179,26 @@ tests/
   contracts/
     __init__.py
     test_daemon_rpc_contract.py      # Core RPC contract tests
-    test_qvservice_static_methods.py # Static method existence tests
+    test_qmsservice_static_methods.py # Static method existence tests
     conftest.py                      # Shared fixtures
 ```
 
 ### B.2 Contract Test: Static Method Existence
 
 ```python
-# tests/contracts/test_qvservice_static_methods.py
+# tests/contracts/test_qmsservice_static_methods.py
 """
-Contract Test: Ensure QVService exposes all static methods the daemon requires.
+Contract Test: Ensure QMSService exposes all static methods the daemon requires.
 
-This test prevents API drift by asserting that QVService has all methods
-that daemon handlers call via QVService.method_name().
+This test prevents API drift by asserting that QMSService has all methods
+that daemon handlers call via QMSService.method_name().
 """
 
 import pytest
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
-# Methods daemon calls as QVService.method_name(...)
+# Methods daemon calls as QMSService.method_name(...)
 DAEMON_REQUIRED_STATIC_METHODS = [
     # Environment/QE
     "detect_qe",
@@ -326,15 +326,15 @@ DAEMON_REQUIRED_STATIC_METHODS = [
 
 
 @pytest.mark.parametrize("method_name", DAEMON_REQUIRED_STATIC_METHODS)
-def test_qvservice_has_static_method(method_name):
-    """Verify QVService exposes each method the daemon requires."""
-    assert hasattr(QVService, method_name), (
-        f"QVService missing required static method: {method_name}\n"
-        f"The daemon calls QVService.{method_name}() but it doesn't exist.\n"
-        f"Either add it to QVService or update the daemon to use domain accessors."
+def test_qmsservice_has_static_method(method_name):
+    """Verify QMSService exposes each method the daemon requires."""
+    assert hasattr(QMSService, method_name), (
+        f"QMSService missing required static method: {method_name}\n"
+        f"The daemon calls QMSService.{method_name}() but it doesn't exist.\n"
+        f"Either add it to QMSService or update the daemon to use domain accessors."
     )
-    attr = getattr(QVService, method_name)
-    assert callable(attr), f"QVService.{method_name} must be callable"
+    attr = getattr(QMSService, method_name)
+    assert callable(attr), f"QMSService.{method_name} must be callable"
 ```
 
 ### B.3 Contract Test: RPC Response Shape
@@ -373,7 +373,7 @@ class TestEnvironmentInfoContract:
         """Response must have version information."""
         response = daemon_client.call("get_env_info", {})
         assert "python_version" in response
-        assert "qv_version" in response
+        assert "qms_version" in response
 ```
 
 ---
@@ -384,17 +384,17 @@ class TestEnvironmentInfoContract:
 
 | Aspect | Baseline (0873ebf) | Current HEAD |
 |--------|-------------------|--------------|
-| API Location | `quantumvitas/api.py` (single file) | `quantumvitas/api/service.py` (package) |
-| Static Methods | ~95+ methods on QVService | ~16 methods on QVService |
+| API Location | `qmatsuite/api.py` (single file) | `qmatsuite/api/service.py` (package) |
+| Static Methods | ~95+ methods on QMSService | ~16 methods on QMSService |
 | Domain Accessors | None | `svc.calculation.*`, `svc.structure.*`, etc. |
 | Legacy Methods | N/A | Moved to `_api_legacy.py` (LegacyService) |
 
 ### C.2 What Happened
 
-1. **Refactoring Goal:** Introduce domain accessor pattern (`svc.calculation.get()` instead of `QVService.get_calculation()`)
+1. **Refactoring Goal:** Introduce domain accessor pattern (`svc.calculation.get()` instead of `QMSService.get_calculation()`)
 2. **Implementation:** Split `api.py` into `api/service.py` with accessors + utilities
-3. **Migration Gap:** ~75 static methods moved to `_api_legacy.py` but daemon still imports from `quantumvitas.api.QVService`
-4. **Contract Break:** Daemon calls `QVService.list_demo_projects()` → method doesn't exist → `AttributeError`
+3. **Migration Gap:** ~75 static methods moved to `_api_legacy.py` but daemon still imports from `qmatsuite.api.QMSService`
+4. **Contract Break:** Daemon calls `QMSService.list_demo_projects()` → method doesn't exist → `AttributeError`
 
 ### C.3 Capability Surface Decisions
 
@@ -404,7 +404,7 @@ class TestEnvironmentInfoContract:
 - Cons: Defeats purpose of refactoring, LegacyService persists
 
 **Option B: Migrate Daemon to Domain Accessors (Proper Fix)**
-- Update daemon to instantiate `QVService(project_root)` and use accessors
+- Update daemon to instantiate `QMSService(project_root)` and use accessors
 - Requires daemon architecture changes (project context management)
 - Pros: Clean API, matches refactoring goals
 - Cons: Larger change, more risk
@@ -412,7 +412,7 @@ class TestEnvironmentInfoContract:
 **Option C: Hybrid Approach (Recommended)**
 - Re-export **project-agnostic** methods directly (list_demo_projects, detect_qe, etc.)
 - Keep **project-specific** methods on domain accessors
-- Daemon uses static methods for global ops, instantiates QVService for project ops
+- Daemon uses static methods for global ops, instantiates QMSService for project ops
 
 ### C.4 Classification of Missing Methods
 
@@ -442,128 +442,128 @@ ensure_calculation_analysis, get_dos_data, list_step_artifacts
 
 ### Phase 1: Re-export Missing Static Methods (Critical)
 
-**File:** `src/quantumvitas/api/service.py`
+**File:** `src/qmatsuite/api/service.py`
 
 Add imports from `_api_legacy.py` for all project-agnostic methods:
 
 ```python
-# At the bottom of service.py, after QVService class definition
+# At the bottom of service.py, after QMSService class definition
 
 # Re-export project-agnostic methods from LegacyService for daemon compatibility
-from quantumvitas._api_legacy import LegacyService as _Legacy
+from qmatsuite._api_legacy import LegacyService as _Legacy
 
 # Environment/QE
-QVService.detect_qe = staticmethod(_Legacy.detect_qe)
-QVService.get_environment_info = staticmethod(_Legacy.get_environment_info)
-QVService.list_qe_engines = staticmethod(_Legacy.list_qe_engines)
-QVService.discover_qe_engines = staticmethod(_Legacy.discover_qe_engines)
-QVService.set_qe_engine = staticmethod(_Legacy.set_qe_engine)
+QMSService.detect_qe = staticmethod(_Legacy.detect_qe)
+QMSService.get_environment_info = staticmethod(_Legacy.get_environment_info)
+QMSService.list_qe_engines = staticmethod(_Legacy.list_qe_engines)
+QMSService.discover_qe_engines = staticmethod(_Legacy.discover_qe_engines)
+QMSService.set_qe_engine = staticmethod(_Legacy.set_qe_engine)
 
 # Pseudo configuration
-QVService.get_pseudo_config = staticmethod(_Legacy.get_pseudo_config)
-QVService.set_pseudo_config = staticmethod(_Legacy.set_pseudo_config)
-QVService.validate_pseudo_config = staticmethod(_Legacy.validate_pseudo_config)
-QVService.init_pseudo_dirs = staticmethod(_Legacy.init_pseudo_dirs)
-QVService.load_pseudo_config = staticmethod(_Legacy.load_pseudo_config)
-QVService.list_installed_sssp = staticmethod(_Legacy.list_installed_sssp)
-QVService.list_seed_archives = staticmethod(_Legacy.list_seed_archives)
-QVService.download_sssp_library = staticmethod(_Legacy.download_sssp_library)
-QVService.download_all_sssp = staticmethod(_Legacy.download_all_sssp)
-QVService.import_seed_archives = staticmethod(_Legacy.import_seed_archives)
-QVService.install_sssp_from_seed = staticmethod(_Legacy.install_sssp_from_seed)
-QVService.install_all_sssp_from_seed = staticmethod(_Legacy.install_all_sssp_from_seed)
-QVService.list_pseudo_libraries = staticmethod(_Legacy.list_pseudo_libraries)
-QVService.get_library_status = staticmethod(_Legacy.get_library_status)
-QVService.install_pseudo_library = staticmethod(_Legacy.install_pseudo_library)
-QVService.remove_pseudo_library = staticmethod(_Legacy.remove_pseudo_library)
-QVService.repair_pseudo_library = staticmethod(_Legacy.repair_pseudo_library)
-QVService.compute_store_size = staticmethod(_Legacy.compute_store_size)
-QVService.load_manifest_archives = staticmethod(_Legacy.load_manifest_archives)
-QVService.check_archives_status = staticmethod(_Legacy.check_archives_status)
-QVService.is_pseudo_archive_installed = staticmethod(_Legacy.is_pseudo_archive_installed)
-QVService.install_pseudo_archive = staticmethod(_Legacy.install_pseudo_archive)
+QMSService.get_pseudo_config = staticmethod(_Legacy.get_pseudo_config)
+QMSService.set_pseudo_config = staticmethod(_Legacy.set_pseudo_config)
+QMSService.validate_pseudo_config = staticmethod(_Legacy.validate_pseudo_config)
+QMSService.init_pseudo_dirs = staticmethod(_Legacy.init_pseudo_dirs)
+QMSService.load_pseudo_config = staticmethod(_Legacy.load_pseudo_config)
+QMSService.list_installed_sssp = staticmethod(_Legacy.list_installed_sssp)
+QMSService.list_seed_archives = staticmethod(_Legacy.list_seed_archives)
+QMSService.download_sssp_library = staticmethod(_Legacy.download_sssp_library)
+QMSService.download_all_sssp = staticmethod(_Legacy.download_all_sssp)
+QMSService.import_seed_archives = staticmethod(_Legacy.import_seed_archives)
+QMSService.install_sssp_from_seed = staticmethod(_Legacy.install_sssp_from_seed)
+QMSService.install_all_sssp_from_seed = staticmethod(_Legacy.install_all_sssp_from_seed)
+QMSService.list_pseudo_libraries = staticmethod(_Legacy.list_pseudo_libraries)
+QMSService.get_library_status = staticmethod(_Legacy.get_library_status)
+QMSService.install_pseudo_library = staticmethod(_Legacy.install_pseudo_library)
+QMSService.remove_pseudo_library = staticmethod(_Legacy.remove_pseudo_library)
+QMSService.repair_pseudo_library = staticmethod(_Legacy.repair_pseudo_library)
+QMSService.compute_store_size = staticmethod(_Legacy.compute_store_size)
+QMSService.load_manifest_archives = staticmethod(_Legacy.load_manifest_archives)
+QMSService.check_archives_status = staticmethod(_Legacy.check_archives_status)
+QMSService.is_pseudo_archive_installed = staticmethod(_Legacy.is_pseudo_archive_installed)
+QMSService.install_pseudo_archive = staticmethod(_Legacy.install_pseudo_archive)
 
 # Demo projects
-QVService.create_demo_project = staticmethod(_Legacy.create_demo_project)
-QVService.list_demo_projects = staticmethod(_Legacy.list_demo_projects)
+QMSService.create_demo_project = staticmethod(_Legacy.create_demo_project)
+QMSService.list_demo_projects = staticmethod(_Legacy.list_demo_projects)
 
 # Settings
-QVService.set_settings = staticmethod(_Legacy.set_settings)
+QMSService.set_settings = staticmethod(_Legacy.set_settings)
 
 # Online search
-QVService.search_online_structures = staticmethod(_Legacy.search_online_structures)
-QVService.fetch_structure_from_optimade = staticmethod(_Legacy.fetch_structure_from_optimade)
-QVService.reduce_formula = staticmethod(_Legacy.reduce_formula)
-QVService.score_candidate = staticmethod(_Legacy.score_candidate)
-QVService.extract_provenance = staticmethod(_Legacy.extract_provenance)
+QMSService.search_online_structures = staticmethod(_Legacy.search_online_structures)
+QMSService.fetch_structure_from_optimade = staticmethod(_Legacy.fetch_structure_from_optimade)
+QMSService.reduce_formula = staticmethod(_Legacy.reduce_formula)
+QMSService.score_candidate = staticmethod(_Legacy.score_candidate)
+QMSService.extract_provenance = staticmethod(_Legacy.extract_provenance)
 
 # Structure utilities
-QVService.canonicalize_structure = staticmethod(_Legacy.canonicalize_structure)
-QVService.generate_unique_name_and_slug = staticmethod(_Legacy.generate_unique_name_and_slug)
-QVService.meta_from_name = staticmethod(_Legacy.meta_from_name)
-QVService.read_structure = staticmethod(_Legacy.read_structure)
+QMSService.canonicalize_structure = staticmethod(_Legacy.canonicalize_structure)
+QMSService.generate_unique_name_and_slug = staticmethod(_Legacy.generate_unique_name_and_slug)
+QMSService.meta_from_name = staticmethod(_Legacy.meta_from_name)
+QMSService.read_structure = staticmethod(_Legacy.read_structure)
 
 # Calculation utilities
-QVService.list_calculation_templates = staticmethod(_Legacy.list_calculation_templates)
-QVService.validate_ulid = staticmethod(_Legacy.validate_ulid)
-QVService.load_calculation = staticmethod(_Legacy.load_calculation)
-QVService.compute_io_dir_from_calculation_model = staticmethod(_Legacy.compute_io_dir_from_calculation_model)
+QMSService.list_calculation_templates = staticmethod(_Legacy.list_calculation_templates)
+QMSService.validate_ulid = staticmethod(_Legacy.validate_ulid)
+QMSService.load_calculation = staticmethod(_Legacy.load_calculation)
+QMSService.compute_io_dir_from_calculation_model = staticmethod(_Legacy.compute_io_dir_from_calculation_model)
 
 # Step utilities
-QVService.set_common_card = staticmethod(_Legacy.set_common_card)
-QVService.get_pseudo_mapping = staticmethod(_Legacy.get_pseudo_mapping)
-QVService.set_pseudo_mapping = staticmethod(_Legacy.set_pseudo_mapping)
-QVService.import_pseudo_files = staticmethod(_Legacy.import_pseudo_files)
-QVService.search_legacy_pseudos = staticmethod(_Legacy.search_legacy_pseudos)
-QVService.download_pseudo_by_filename = staticmethod(_Legacy.download_pseudo_by_filename)
-QVService.download_pseudo_from_url = staticmethod(_Legacy.download_pseudo_from_url)
-QVService.reset_step_params = staticmethod(_Legacy.reset_step_params)
-QVService.reorder_calculation_steps = staticmethod(_Legacy.reorder_calculation_steps)
-QVService.import_step_from_qe_input = staticmethod(_Legacy.import_step_from_qe_input)
+QMSService.set_common_card = staticmethod(_Legacy.set_common_card)
+QMSService.get_pseudo_mapping = staticmethod(_Legacy.get_pseudo_mapping)
+QMSService.set_pseudo_mapping = staticmethod(_Legacy.set_pseudo_mapping)
+QMSService.import_pseudo_files = staticmethod(_Legacy.import_pseudo_files)
+QMSService.search_legacy_pseudos = staticmethod(_Legacy.search_legacy_pseudos)
+QMSService.download_pseudo_by_filename = staticmethod(_Legacy.download_pseudo_by_filename)
+QMSService.download_pseudo_from_url = staticmethod(_Legacy.download_pseudo_from_url)
+QMSService.reset_step_params = staticmethod(_Legacy.reset_step_params)
+QMSService.reorder_calculation_steps = staticmethod(_Legacy.reorder_calculation_steps)
+QMSService.import_step_from_qe_input = staticmethod(_Legacy.import_step_from_qe_input)
 
 # Pseudo mapping
-QVService.get_calculation_pseudo_mapping = staticmethod(_Legacy.get_calculation_pseudo_mapping)
-QVService.update_calculation_species_map = staticmethod(_Legacy.update_calculation_species_map)
-QVService.analyze_project_pseudo_effects = staticmethod(_Legacy.analyze_project_pseudo_effects)
-QVService.materialize_pseudo_file = staticmethod(_Legacy.materialize_pseudo_file)
-QVService.get_pseudo_options_for_elements = staticmethod(_Legacy.get_pseudo_options_for_elements)
-QVService.resolve_pseudo_provenance = staticmethod(_Legacy.resolve_pseudo_provenance)
+QMSService.get_calculation_pseudo_mapping = staticmethod(_Legacy.get_calculation_pseudo_mapping)
+QMSService.update_calculation_species_map = staticmethod(_Legacy.update_calculation_species_map)
+QMSService.analyze_project_pseudo_effects = staticmethod(_Legacy.analyze_project_pseudo_effects)
+QMSService.materialize_pseudo_file = staticmethod(_Legacy.materialize_pseudo_file)
+QMSService.get_pseudo_options_for_elements = staticmethod(_Legacy.get_pseudo_options_for_elements)
+QMSService.resolve_pseudo_provenance = staticmethod(_Legacy.resolve_pseudo_provenance)
 
 # Relax
-QVService.get_relax_final_structure_preview = staticmethod(_Legacy.get_relax_final_structure_preview)
-QVService.save_relax_final_structure = staticmethod(_Legacy.save_relax_final_structure)
+QMSService.get_relax_final_structure_preview = staticmethod(_Legacy.get_relax_final_structure_preview)
+QMSService.save_relax_final_structure = staticmethod(_Legacy.save_relax_final_structure)
 
 # Presets
-QVService.get_preset_catalog = staticmethod(_Legacy.get_preset_catalog)
-QVService.detect_engine_for_calculation = staticmethod(_Legacy.detect_engine_for_calculation)
-QVService.detect_presets_from_calculation = staticmethod(_Legacy.detect_presets_from_calculation)
-QVService.detect_workflow_type = staticmethod(_Legacy.detect_workflow_type)
-QVService.apply_presets_to_step = staticmethod(_Legacy.apply_presets_to_step)
-QVService.get_step_preset_footprints = staticmethod(_Legacy.get_step_preset_footprints)
-QVService.resolve_precision_context = staticmethod(_Legacy.resolve_precision_context)
-QVService.create_precision_advisor = staticmethod(_Legacy.create_precision_advisor)
+QMSService.get_preset_catalog = staticmethod(_Legacy.get_preset_catalog)
+QMSService.detect_engine_for_calculation = staticmethod(_Legacy.detect_engine_for_calculation)
+QMSService.detect_presets_from_calculation = staticmethod(_Legacy.detect_presets_from_calculation)
+QMSService.detect_workflow_type = staticmethod(_Legacy.detect_workflow_type)
+QMSService.apply_presets_to_step = staticmethod(_Legacy.apply_presets_to_step)
+QMSService.get_step_preset_footprints = staticmethod(_Legacy.get_step_preset_footprints)
+QMSService.resolve_precision_context = staticmethod(_Legacy.resolve_precision_context)
+QMSService.create_precision_advisor = staticmethod(_Legacy.create_precision_advisor)
 
 # Analysis
-QVService.ensure_calculation_analysis = staticmethod(_Legacy.ensure_calculation_analysis)
-QVService.get_dos_data = staticmethod(_Legacy.get_dos_data)
-QVService.get_reference_analysis = staticmethod(_Legacy.get_reference_analysis)
-QVService.parse_volume_artifact = staticmethod(_Legacy.parse_volume_artifact)
-QVService.list_step_artifacts = staticmethod(_Legacy.list_step_artifacts)
-QVService.read_step_artifact_text = staticmethod(_Legacy.read_step_artifact_text)
-QVService.create_blob_store = staticmethod(_Legacy.create_blob_store)
+QMSService.ensure_calculation_analysis = staticmethod(_Legacy.ensure_calculation_analysis)
+QMSService.get_dos_data = staticmethod(_Legacy.get_dos_data)
+QMSService.get_reference_analysis = staticmethod(_Legacy.get_reference_analysis)
+QMSService.parse_volume_artifact = staticmethod(_Legacy.parse_volume_artifact)
+QMSService.list_step_artifacts = staticmethod(_Legacy.list_step_artifacts)
+QMSService.read_step_artifact_text = staticmethod(_Legacy.read_step_artifact_text)
+QMSService.create_blob_store = staticmethod(_Legacy.create_blob_store)
 
 # Other
-QVService.find_path_context_from_pwd = staticmethod(_Legacy.find_path_context_from_pwd)
-QVService.get_journal = staticmethod(_Legacy.get_journal)
-QVService.rename_structure = staticmethod(_Legacy.rename_structure)
-QVService.can_delete_structure = staticmethod(_Legacy.can_delete_structure)
-QVService.delete_structure = staticmethod(_Legacy.delete_structure)
-QVService.rename_calculation = staticmethod(_Legacy.rename_calculation)
+QMSService.find_path_context_from_pwd = staticmethod(_Legacy.find_path_context_from_pwd)
+QMSService.get_journal = staticmethod(_Legacy.get_journal)
+QMSService.rename_structure = staticmethod(_Legacy.rename_structure)
+QMSService.can_delete_structure = staticmethod(_Legacy.can_delete_structure)
+QMSService.delete_structure = staticmethod(_Legacy.delete_structure)
+QMSService.rename_calculation = staticmethod(_Legacy.rename_calculation)
 ```
 
 ### Phase 2: Add Contract Test
 
-**File:** `tests/contracts/test_qvservice_static_methods.py`
+**File:** `tests/contracts/test_qmsservice_static_methods.py`
 
 Create the contract test from Part B.2 above.
 
@@ -583,10 +583,10 @@ python -m pytest tests/gates/test_import_gate.py -v
 
 ## Verification Checklist
 
-- [ ] `QVService.list_demo_projects()` is callable
-- [ ] `QVService.get_environment_info()` is callable
-- [ ] `QVService.create_demo_project(demo_id)` is callable
-- [ ] All 90+ daemon-called methods exist on QVService
+- [ ] `QMSService.list_demo_projects()` is callable
+- [ ] `QMSService.get_environment_info()` is callable
+- [ ] `QMSService.create_demo_project(demo_id)` is callable
+- [ ] All 90+ daemon-called methods exist on QMSService
 - [ ] Contract test passes
 - [ ] Import gate test passes
 - [ ] All 2500+ existing tests pass
@@ -608,6 +608,6 @@ python -m pytest tests/gates/test_import_gate.py -v
 
 1. **Do NOT modify daemon code** - fix is in `api/service.py` only
 2. **Use dynamic attribute assignment** - cleaner than defining all methods inline
-3. **Keep LegacyService import internal** - daemon continues importing `QVService` from `quantumvitas.api`
+3. **Keep LegacyService import internal** - daemon continues importing `QMSService` from `qmatsuite.api`
 4. **Test incrementally** - run contract test after adding each batch of methods
-5. **Import gate exemption not needed** - we're re-exporting TO QVService, not FROM LegacyService in daemon
+5. **Import gate exemption not needed** - we're re-exporting TO QMSService, not FROM LegacyService in daemon

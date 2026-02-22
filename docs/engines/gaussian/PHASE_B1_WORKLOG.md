@@ -117,7 +117,7 @@ Each run has: `run_manifest.json`, `digest.json`, `output.log`
   - 30 methods, 11 job types, 7 properties, 11 control keywords, 7 composites
   - 35 built-in basis sets, 11 Link0 directives
 - Created `drivers/gaussian/data/gaussian_metadata.py` — access layer following VASP pattern
-  - Module-level caching with hot-reload support (QV_GAUSSIAN_METADATA_HOT_RELOAD)
+  - Module-level caching with hot-reload support (QMS_GAUSSIAN_METADATA_HOT_RELOAD)
   - importlib.resources-based loading
   - Public API: get_keyword_info, list_keywords, list_categories, list_builtin_basis_sets
   - get_link0_info for Link0 directives
@@ -191,11 +191,11 @@ Each run has: `run_manifest.json`, `digest.json`, `output.log`
   - TestValidation (5): all_known, unknown_detected, method_basis_skipped, parenthetical_skipped, prefixed_methods
 
 ### Files Created (10 new)
-1. `src/quantumvitas/drivers/gaussian/data/__init__.py`
-2. `src/quantumvitas/drivers/gaussian/data/gaussian_route_keywords.json`
-3. `src/quantumvitas/drivers/gaussian/data/gaussian_metadata.py`
-4. `src/quantumvitas/drivers/gaussian/parsers/__init__.py`
-5. `src/quantumvitas/drivers/gaussian/parsers/output.py`
+1. `src/qmatsuite/drivers/gaussian/data/__init__.py`
+2. `src/qmatsuite/drivers/gaussian/data/gaussian_route_keywords.json`
+3. `src/qmatsuite/drivers/gaussian/data/gaussian_metadata.py`
+4. `src/qmatsuite/drivers/gaussian/parsers/__init__.py`
+5. `src/qmatsuite/drivers/gaussian/parsers/output.py`
 6. `tests/inputformat/samples/gaussian/water_hf_sp.gjf`
 7. `tests/inputformat/samples/gaussian/water_b3lyp_opt.gjf`
 8. `tests/inputformat/samples/gaussian/methanol_solvation.gjf`
@@ -207,8 +207,8 @@ Each run has: `run_manifest.json`, `digest.json`, `output.log`
 14. `tests/inputformat/test_gaussian_metadata.py`
 
 ### Files Modified (2)
-1. `src/quantumvitas/drivers/gaussian/__init__.py` — added parser registration import
-2. `src/quantumvitas/drivers/gaussian/inputspec.py` — full rewrite with custom_parser
+1. `src/qmatsuite/drivers/gaussian/__init__.py` — added parser registration import
+2. `src/qmatsuite/drivers/gaussian/inputspec.py` — full rewrite with custom_parser
 
 ### Phase B1 Stages 4–8 COMPLETE
 
@@ -265,17 +265,17 @@ Identified and remediated all gaps.
 - Phase 7 (execution framework) is optional per playbook — existing real_run evidence adequate
 
 ### Files Created (this session)
-1. `src/quantumvitas/drivers/gaussian/io/__init__.py`
-2. `src/quantumvitas/drivers/gaussian/io/gaussian_input.py`
+1. `src/qmatsuite/drivers/gaussian/io/__init__.py`
+2. `src/qmatsuite/drivers/gaussian/io/gaussian_input.py`
 3. `tests/inputformat/samples/gaussian/{ethylene_mp2,o2_triplet_uhf,water_opt_freq,multi_step_link1}/input.gjf`
 4. `tests/inputformat/samples/gaussian/*/case.yaml` (10 files)
 5. `tests/drivers/gaussian/test_gaussian_driver.py`
 6. `docs/engines/gaussian/CURATED_INDEX.md`
 
 ### Files Modified (this session)
-1. `src/quantumvitas/drivers/gaussian/data/gaussian_route_keywords.json` — 66→130 keywords
-2. `src/quantumvitas/drivers/gaussian/data/gaussian_metadata.py` — +4 functions
-3. `src/quantumvitas/drivers/gaussian/inputspec.py` — delegates to io/
+1. `src/qmatsuite/drivers/gaussian/data/gaussian_route_keywords.json` — 66→130 keywords
+2. `src/qmatsuite/drivers/gaussian/data/gaussian_metadata.py` — +4 functions
+3. `src/qmatsuite/drivers/gaussian/inputspec.py` — delegates to io/
 4. `tests/inputformat/test_gaussian_parse.py` — subdirectory paths + 4 new tests
 
 ### Definition of Done Checklist

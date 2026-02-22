@@ -44,23 +44,23 @@
 | `gui/src/components/panels/SettingsPanel.tsx` | 111, 146, 174, 438, 481 | Engine detection & config | Calls `list_qe_engines`, `detect_qe`, `set_qe_engine` — all QE-only RPCs |
 | `gui/src/components/panels/QEParameterBrowserPanel.tsx` | entire file | Parameter browser | Entirely QE: calls `list_qe_parameter_metadata` throughout |
 | `gui/src/hooks/useQEParameterMetadata.ts` | entire file | QE param metadata hook | Types named `QEModuleMeta`, `QESectionMeta`, `QEParameterMeta` |
-| `gui/src/hooks/useQVClient.ts` | 54, 58, 382, 390 | RPC client methods | `listQeUiParameters`, `listQeParameterMetadata` — QE-only methods |
-| `gui/src/types/qv.ts` | 493-525, 696-714 | RPC type definitions | `detect_qe`, `list_qe_engines`, `discover_qe_engines`, `set_qe_engine`, `list_qe_ui_parameters`, `list_qe_parameter_metadata` |
+| `gui/src/hooks/useQMSClient.ts` | 54, 58, 382, 390 | RPC client methods | `listQeUiParameters`, `listQeParameterMetadata` — QE-only methods |
+| `gui/src/types/qms.ts` | 493-525, 696-714 | RPC type definitions | `detect_qe`, `list_qe_engines`, `discover_qe_engines`, `set_qe_engine`, `list_qe_ui_parameters`, `list_qe_parameter_metadata` |
 
 #### Daemon/Backend (Python)
 
 | File | Lines | What It Does | QE-Specific? |
 |------|-------|-------------|--------------|
-| `src/quantumvitas/daemon/server.py` | 718-771 | RPC handlers | `_handle_detect_qe`, `_handle_get_env_info`, `_handle_list_qe_engines`, `_handle_discover_qe_engines`, `_handle_set_qe_engine` |
-| `src/quantumvitas/daemon/server.py` | 1432-1993 | Parameter metadata RPCs | `_handle_list_qe_ui_parameters`, `_handle_list_qe_parameter_metadata`, `_handle_reload_qe_parameter_metadata`, `_handle_get_qe_parameter_metadata_debug_info` |
-| `src/quantumvitas/daemon/server.py` | 4157-4196 | QE input import | `_handle_import_step_from_qe_input` — only QE |
-| `src/quantumvitas/api/service.py` | 3689-3756 | Common card fetch | `get_common_cards()` only handles K_POINTS (QE concept). Imports `from quantumvitas.calculation.k_points_view` |
-| `src/quantumvitas/api/service.py` | 4302-4372 | Common card write | `set_common_card()` only handles K_POINTS. Raises error for all other cards |
-| `src/quantumvitas/api/service.py` | 2796-2801 | Step detail extraction | Checks `"CONTROL" in spec.parameters` and extracts `calculation`, `outdir` — QE namelist structure |
-| `src/quantumvitas/api/service.py` | 4436-4441 | Pseudo dir extraction | `control_params = parameters.get("CONTROL", {})` for `pseudo_dir` |
-| `src/quantumvitas/api/service.py` | 6244 | Engine default | `engine_family = "pyscf" if structure_kind == "molecule" else "qe"` |
-| `src/quantumvitas/calculation/importers.py` | entire file | Step import from input | Entirely QE: imports `QEInputGenerator`, `QEInputParser`, `QEInput`, `QECardType`, `QEModule` |
-| `src/quantumvitas/calculation/k_points_view.py` | entire file | K-points view model | Entirely QE: K_POINTS card modes (gamma, automatic, tpiba, crystal) |
+| `src/qmatsuite/daemon/server.py` | 718-771 | RPC handlers | `_handle_detect_qe`, `_handle_get_env_info`, `_handle_list_qe_engines`, `_handle_discover_qe_engines`, `_handle_set_qe_engine` |
+| `src/qmatsuite/daemon/server.py` | 1432-1993 | Parameter metadata RPCs | `_handle_list_qe_ui_parameters`, `_handle_list_qe_parameter_metadata`, `_handle_reload_qe_parameter_metadata`, `_handle_get_qe_parameter_metadata_debug_info` |
+| `src/qmatsuite/daemon/server.py` | 4157-4196 | QE input import | `_handle_import_step_from_qe_input` — only QE |
+| `src/qmatsuite/api/service.py` | 3689-3756 | Common card fetch | `get_common_cards()` only handles K_POINTS (QE concept). Imports `from qmatsuite.calculation.k_points_view` |
+| `src/qmatsuite/api/service.py` | 4302-4372 | Common card write | `set_common_card()` only handles K_POINTS. Raises error for all other cards |
+| `src/qmatsuite/api/service.py` | 2796-2801 | Step detail extraction | Checks `"CONTROL" in spec.parameters` and extracts `calculation`, `outdir` — QE namelist structure |
+| `src/qmatsuite/api/service.py` | 4436-4441 | Pseudo dir extraction | `control_params = parameters.get("CONTROL", {})` for `pseudo_dir` |
+| `src/qmatsuite/api/service.py` | 6244 | Engine default | `engine_family = "pyscf" if structure_kind == "molecule" else "qe"` |
+| `src/qmatsuite/calculation/importers.py` | entire file | Step import from input | Entirely QE: imports `QEInputGenerator`, `QEInputParser`, `QEInput`, `QECardType`, `QEModule` |
+| `src/qmatsuite/calculation/k_points_view.py` | entire file | K-points view model | Entirely QE: K_POINTS card modes (gamma, automatic, tpiba, crystal) |
 
 #### Constitutional Violations in Backend
 
@@ -74,10 +74,10 @@
 
 | Component | File | Assessment |
 |-----------|------|------------|
-| Runner | `src/quantumvitas/calculation/runner.py` | Fully engine-agnostic. Uses `DriverRegistry.get_handler()` |
-| Executor | `src/quantumvitas/execution/executor.py` | Fully engine-agnostic. Pluggable handler dispatch |
-| DriverRegistry | `src/quantumvitas/core/driver_registry.py` | Correct: all 15 engines registered |
-| Compat layer | `src/quantumvitas/daemon/compat.py` | No QE-specific response shaping found |
+| Runner | `src/qmatsuite/calculation/runner.py` | Fully engine-agnostic. Uses `DriverRegistry.get_handler()` |
+| Executor | `src/qmatsuite/execution/executor.py` | Fully engine-agnostic. Pluggable handler dispatch |
+| DriverRegistry | `src/qmatsuite/core/driver_registry.py` | Correct: all 15 engines registered |
+| Compat layer | `src/qmatsuite/daemon/compat.py` | No QE-specific response shaping found |
 | Demo gallery | `gui/src/components/panels/DemoGalleryPanel.tsx` | Engine-agnostic: lists all demos, creates any |
 
 ---
@@ -180,7 +180,7 @@ Also present:
 ```
 User opens GUI
   -> Welcome screen shows "Demo Gallery" button
-     (testid: qv-welcome-btn-demo-gallery)
+     (testid: qms-welcome-btn-demo-gallery)
   -> Click opens DemoGalleryPanel
      (gui/src/components/panels/DemoGalleryPanel.tsx)
   -> Panel calls RPC: list_demo_projects
@@ -204,7 +204,7 @@ User clicks "Create Project" on a demo card
      -> Generates new ULIDs for all entities
      -> Creates directory structure:
         project_root/
-          project.qv.yml
+          project.qms.yml
           structures/*.json
           calculations/*/calculation.yaml
           calculations/*/steps/*.step.yaml

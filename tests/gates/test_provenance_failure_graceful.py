@@ -22,17 +22,17 @@ def test_yaml_write_succeeds_despite_provenance_failure(tmp_path):
 
     Simulates a provenance failure and verifies the YAML write still completes.
     """
-    from quantumvitas.core.yamldoc import YamlDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.provenance import (
+    from qmatsuite.core.yamldoc import YamlDoc
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.provenance import (
         OperationContext,
         OperationType,
         ActorType,
         ScopeType,
     )
 
-    # Create a project.qv.yml to mark as project root
-    project_file = tmp_path / "project.qv.yml"
+    # Create a project.qms.yml to mark as project root
+    project_file = tmp_path / "project.qms.yml"
     project_file.write_text("project:\n  meta:\n    ulid: PROJ123\n")
 
     yaml_path = tmp_path / "test.yaml"
@@ -48,7 +48,7 @@ def test_yaml_write_succeeds_despite_provenance_failure(tmp_path):
 
     # Patch record_operation_event to raise an exception
     with patch(
-        "quantumvitas.provenance.recording.record_operation_event"
+        "qmatsuite.provenance.recording.record_operation_event"
     ) as mock_record:
         mock_record.side_effect = Exception("Simulated provenance failure")
 
@@ -71,9 +71,9 @@ def test_yaml_write_with_database_corruption(tmp_path):
     This tests a more realistic failure scenario where the SQLite database
     is corrupted or locked.
     """
-    from quantumvitas.core.yamldoc import YamlDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.provenance import (
+    from qmatsuite.core.yamldoc import YamlDoc
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.provenance import (
         OperationContext,
         OperationType,
         ActorType,
@@ -81,8 +81,8 @@ def test_yaml_write_with_database_corruption(tmp_path):
         ensure_provenance_initialized,
     )
 
-    # Create a project.qv.yml to mark as project root
-    project_file = tmp_path / "project.qv.yml"
+    # Create a project.qms.yml to mark as project root
+    project_file = tmp_path / "project.qms.yml"
     project_file.write_text("project:\n  meta:\n    ulid: PROJ123\n")
 
     # Initialize provenance
@@ -118,15 +118,15 @@ def test_yaml_write_without_opctx_no_provenance(tmp_path):
 
     When opctx is None, provenance recording is skipped entirely.
     """
-    from quantumvitas.core.yamldoc import YamlDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yamldoc import YamlDoc
+    from qmatsuite.core.yaml_io import save_yaml_doc
 
     yaml_path = tmp_path / "test.yaml"
     doc = YamlDoc({"key": "value"})
 
     # Save without opctx - no provenance recording attempted
     with patch(
-        "quantumvitas.provenance.recording.record_operation_event"
+        "qmatsuite.provenance.recording.record_operation_event"
     ) as mock_record:
         save_yaml_doc(doc, yaml_path)  # No opctx
 
@@ -145,17 +145,17 @@ def test_provenance_error_is_logged(tmp_path, caplog):
     """
     import logging
 
-    from quantumvitas.core.yamldoc import YamlDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.provenance import (
+    from qmatsuite.core.yamldoc import YamlDoc
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.provenance import (
         OperationContext,
         OperationType,
         ActorType,
         ScopeType,
     )
 
-    # Create a project.qv.yml to mark as project root
-    project_file = tmp_path / "project.qv.yml"
+    # Create a project.qms.yml to mark as project root
+    project_file = tmp_path / "project.qms.yml"
     project_file.write_text("project:\n  meta:\n    ulid: PROJ123\n")
 
     yaml_path = tmp_path / "test.yaml"
@@ -170,7 +170,7 @@ def test_provenance_error_is_logged(tmp_path, caplog):
     )
 
     with patch(
-        "quantumvitas.provenance.recording.record_operation_event"
+        "qmatsuite.provenance.recording.record_operation_event"
     ) as mock_record:
         mock_record.side_effect = Exception("Simulated failure")
 

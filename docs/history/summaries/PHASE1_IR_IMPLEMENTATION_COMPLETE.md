@@ -21,13 +21,13 @@ Phase 1 IR landing has been **fully implemented** as specified in the v0 charter
 
 ### ✅ A2: IR Registry  
 - **Status**: COMPLETE
-- **Files**: `src/quantumvitas/ir/parameters.py`
+- **Files**: `src/qmatsuite/ir/parameters.py`
 - **Result**: 18 IRParameter definitions with physical meaning, dimension, IR base unit, type, comment
 - **Validation**: Registry validation function ensures all parameters are valid
 
 ### ✅ A3: IR↔QE Adapter
 - **Status**: COMPLETE
-- **Files**: `src/quantumvitas/ir/backends/qe/mapping.py`
+- **Files**: `src/qmatsuite/ir/backends/qe/mapping.py`
 - **Result**: 
   - Explicit bijective mapping table (IR_TO_QE_MAPPING, QE_TO_IR_MAPPING)
   - Conversion functions: `ir_to_qe_param()`, `qe_to_ir_param()`, `ir_patch_to_qe_patch()`, `qe_yaml_to_ir_yaml()`
@@ -36,7 +36,7 @@ Phase 1 IR landing has been **fully implemented** as specified in the v0 charter
 
 ### ✅ A4: ParamSpace Migration
 - **Status**: COMPLETE
-- **Files**: `src/quantumvitas/presets/paramspace.py`
+- **Files**: `src/qmatsuite/presets/paramspace.py`
 - **Result**: 
   - ParamSpace `ParamKey.key` is conceptually IR key (documentation updated)
   - ParamSpace logic **UNCHANGED** (no rewrites, no semantic changes)
@@ -44,7 +44,7 @@ Phase 1 IR landing has been **fully implemented** as specified in the v0 charter
 
 ### ✅ A5: Preset Compiler/Detector Updates
 - **Status**: COMPLETE
-- **Files**: `src/quantumvitas/presets/spaces_registry.py`, `src/quantumvitas/presets/variants_registry.py`
+- **Files**: `src/qmatsuite/presets/spaces_registry.py`, `src/qmatsuite/presets/variants_registry.py`
 - **Result**:
   - Detection: QE YAML → IR YAML conversion before `match_profile()` ✅
   - Compilation: IR patch → QE patch conversion after `compile_profile_patch()` ✅
@@ -54,7 +54,7 @@ Phase 1 IR landing has been **fully implemented** as specified in the v0 charter
 
 ### ✅ A6: Integration Layer Updates
 - **Status**: COMPLETE
-- **Files**: `src/quantumvitas/presets/integration.py` (unchanged, benefits from updates)
+- **Files**: `src/qmatsuite/presets/integration.py` (unchanged, benefits from updates)
 - **Result**:
   - `apply_presets_to_step()` routes through updated `compile_dimension_patch_for_step()` ✅
   - step.yaml remains SSOT - only QE params written ✅
@@ -73,11 +73,11 @@ Phase 1 IR landing has been **fully implemented** as specified in the v0 charter
 ## Files Created/Modified
 
 ### New Files (5)
-1. `src/quantumvitas/ir/__init__.py`
-2. `src/quantumvitas/ir/parameters.py` (460 lines)
-3. `src/quantumvitas/ir/backends/__init__.py`
-4. `src/quantumvitas/ir/backends/qe/__init__.py`
-5. `src/quantumvitas/ir/backends/qe/mapping.py`
+1. `src/qmatsuite/ir/__init__.py`
+2. `src/qmatsuite/ir/parameters.py` (460 lines)
+3. `src/qmatsuite/ir/backends/__init__.py`
+4. `src/qmatsuite/ir/backends/qe/__init__.py`
+5. `src/qmatsuite/ir/backends/qe/mapping.py`
 
 ### Test Files (4)
 1. `tests/ir/__init__.py`
@@ -87,9 +87,9 @@ Phase 1 IR landing has been **fully implemented** as specified in the v0 charter
 5. `tests/presets/test_integration_ir.py` (5 test methods)
 
 ### Modified Files (3)
-1. `src/quantumvitas/presets/paramspace.py` - Documentation only
-2. `src/quantumvitas/presets/spaces_registry.py` - IR↔QE conversion at boundaries
-3. `src/quantumvitas/presets/variants_registry.py` - IR↔QE conversion at boundaries
+1. `src/qmatsuite/presets/paramspace.py` - Documentation only
+2. `src/qmatsuite/presets/spaces_registry.py` - IR↔QE conversion at boundaries
+3. `src/qmatsuite/presets/variants_registry.py` - IR↔QE conversion at boundaries
 
 ## Key Implementation Details
 

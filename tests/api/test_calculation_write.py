@@ -1,14 +1,14 @@
 """
 Test calculation write capabilities.
 
-Tests for the calculation write domain in QVService.
+Tests for the calculation write domain in QMSService.
 """
 
 import pytest
 from pathlib import Path
 
-from quantumvitas.api.service import QVService
-from quantumvitas.api.types.calculation import CalculationDTO, StepDTO
+from qmatsuite.api.service import QMSService
+from qmatsuite.api.types.calculation import CalculationDTO, StepDTO
 
 
 def test_calculation_create_returns_dto(tmp_path):
@@ -16,9 +16,9 @@ def test_calculation_create_returns_dto(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\nstructures: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\nstructures: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     # This will fail because we need proper project setup, but tests the structure
     try:
@@ -36,9 +36,9 @@ def test_calculation_update_meta_returns_dto(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         calc = svc.calculation.update_meta("test_calc", name="updated_name")
@@ -54,9 +54,9 @@ def test_calculation_update_step_params_returns_dto(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         step = svc.calculation.update_step_params("test_calc", "step1", {"key": "value"})
@@ -71,7 +71,7 @@ def test_duplicate_calculation_happy_path(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\nstructures: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\nstructures: []\n")
     
     # Create source calculation
     calc_dir = project_root / "calculations" / "original_calc"
@@ -120,9 +120,9 @@ parameters:
         }],
         "structures": []
     }
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     # Duplicate calculation
     dup_calc = svc.calculation.duplicate("original_calc", new_name="Duplicated Calculation")
@@ -150,7 +150,7 @@ parameters:
     assert new_step_data["meta"]["ulid"] != "01TESTSTEP1234567890123"
     
     # Verify calculation is in project config
-    config_after = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    config_after = yaml.safe_load((project_root / "project.qms.yml").read_text())
     calc_ids = [(c.get("meta") or {}).get("ulid") for c in config_after.get("calculations", [])]
     assert dup_calc.calc_id in calc_ids
     assert "01TESTORIGINAL1234567890" in calc_ids  # Original still there
@@ -160,11 +160,11 @@ def test_duplicate_unknown_selector_raises_not_found(tmp_path):
     """duplicate() raises NotFoundError for unknown selector."""
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\nstructures: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\nstructures: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
-    from quantumvitas.api.errors import NotFoundError
+    from qmatsuite.api.errors import NotFoundError
     with pytest.raises(NotFoundError):
         svc.calculation.duplicate("nonexistent_calc", new_name="Copy")
 
@@ -203,12 +203,12 @@ structure_kind: periodic
         }],
         "structures": []
     }
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     # Try to duplicate with conflicting slug
-    from quantumvitas.api.errors import ConflictError
+    from qmatsuite.api.errors import ConflictError
     with pytest.raises(ConflictError) as exc_info:
         svc.calculation.duplicate("existing_calc", new_slug="existing_calc")
     
@@ -248,9 +248,9 @@ structure_kind: periodic
         }],
         "structures": []
     }
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
 
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
 
     # Duplicate with custom slug
     dup_calc = svc.calculation.duplicate("original", new_name="Custom Name", new_slug="custom-slug")
@@ -268,9 +268,9 @@ def test_calculation_delete_returns_none(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         result = svc.calculation.delete("test_calc")
@@ -316,9 +316,9 @@ steps: []
         }],
         "structures": []
     }
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
 
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
 
     # Add step
     step = svc.calculation.add_step("test_calc", "scf", name="scf1")
@@ -409,9 +409,9 @@ steps:
         }],
         "structures": []
     }
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
 
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
 
     # Verify step exists
     assert step_yaml.exists()
@@ -438,11 +438,11 @@ def test_add_step_unknown_calc_raises_not_found(tmp_path):
     """add_step() raises NotFoundError for unknown calculation."""
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\nstructures: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\nstructures: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
-    from quantumvitas.api.errors import NotFoundError
+    from qmatsuite.api.errors import NotFoundError
     with pytest.raises(NotFoundError):
         svc.calculation.add_step("nonexistent_calc", "scf")
 
@@ -481,11 +481,11 @@ steps: []
         }],
         "structures": []
     }
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
 
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
 
-    from quantumvitas.api.errors import NotFoundError
+    from qmatsuite.api.errors import NotFoundError
     with pytest.raises(NotFoundError):
         svc.calculation.remove_step("test_calc", "nonexistent_step_ulid")
 

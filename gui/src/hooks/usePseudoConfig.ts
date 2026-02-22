@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { QVResult } from '../types/qv';
+import type { QMSResult } from '../types/qms';
 
 export interface PseudoConfig {
   store_dir: string;
@@ -113,13 +113,13 @@ export function usePseudoConfig(): UsePseudoConfigResult {
   const downloadInFlightRef = useRef(false);
   
   const loadConfig = useCallback(async () => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await window.qv.request<QVResult<'get_pseudo_config'>>('get_pseudo_config', {});
+      const response = await window.qms.request<QMSResult<'get_pseudo_config'>>('get_pseudo_config', {});
       if (response.ok && response.data) {
         setConfig(response.data);
       } else {
@@ -135,13 +135,13 @@ export function usePseudoConfig(): UsePseudoConfigResult {
   const updateConfig = useCallback(async (
     updates: Partial<Pick<PseudoConfig, 'store_dir' | 'seed_dir' | 'allow_download'>>
   ) => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await window.qv.request<QVResult<'set_pseudo_config'>>('set_pseudo_config', updates);
+      const response = await window.qms.request<QMSResult<'set_pseudo_config'>>('set_pseudo_config', updates);
       if (response.ok && response.data) {
         setConfig(response.data);
       } else {
@@ -165,12 +165,12 @@ export function usePseudoConfig(): UsePseudoConfigResult {
   }, [config, updateConfig]);
   
   const validate = useCallback(async (): Promise<PseudoValidationResult | null> => {
-    if (!window.qv) return null;
+    if (!window.qms) return null;
     
     setIsValidating(true);
     
     try {
-      const response = await window.qv.request<QVResult<'validate_pseudo_config'>>('validate_pseudo_config', {});
+      const response = await window.qms.request<QMSResult<'validate_pseudo_config'>>('validate_pseudo_config', {});
       if (response.ok && response.data) {
         setValidationResult(response.data);
         return response.data;
@@ -187,12 +187,12 @@ export function usePseudoConfig(): UsePseudoConfigResult {
   }, []);
   
   const initDirs = useCallback(async (): Promise<{ success: boolean; messages: string[]; errors: string[] }> => {
-    if (!window.qv) return { success: false, messages: [], errors: ['No connection'] };
+    if (!window.qms) return { success: false, messages: [], errors: ['No connection'] };
     
     setIsLoading(true);
     
     try {
-      const response = await window.qv.request<QVResult<'init_pseudo_dirs'>>('init_pseudo_dirs', {});
+      const response = await window.qms.request<QMSResult<'init_pseudo_dirs'>>('init_pseudo_dirs', {});
       if (response.ok && response.data) {
         const result = {
           success: response.data.store_dir_created || response.data.seed_dir_created,
@@ -224,12 +224,12 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     version?: string,
     flavor?: string
   ): Promise<{ success: boolean; messages: string[] }> => {
-    if (!window.qv) return { success: false, messages: ['No connection'] };
+    if (!window.qms) return { success: false, messages: ['No connection'] };
     
     setIsLoading(true);
     
     try {
-      const response = await window.qv.request<QVResult<'install_seed_to_store'>>(
+      const response = await window.qms.request<QMSResult<'install_seed_to_store'>>(
         'install_seed_to_store',
         { version, flavor }
       );
@@ -257,10 +257,10 @@ export function usePseudoConfig(): UsePseudoConfigResult {
   }, []);
   
   const listInstalledLibraries = useCallback(async () => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     try {
-      const response = await window.qv.request<QVResult<'list_installed_sssp'>>('list_installed_sssp', {});
+      const response = await window.qms.request<QMSResult<'list_installed_sssp'>>('list_installed_sssp', {});
       if (response.ok && response.data) {
         setInstalledLibraries(response.data.libraries);
       }
@@ -270,10 +270,10 @@ export function usePseudoConfig(): UsePseudoConfigResult {
   }, []);
   
   const listSeedArchives = useCallback(async () => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     try {
-      const response = await window.qv.request<QVResult<'list_seed_archives'>>('list_seed_archives', {});
+      const response = await window.qms.request<QMSResult<'list_seed_archives'>>('list_seed_archives', {});
       if (response.ok && response.data) {
         setSeedArchives(response.data.archives || []);
       }
@@ -286,7 +286,7 @@ export function usePseudoConfig(): UsePseudoConfigResult {
     flavor: 'efficiency' | 'precision',
     enableIfDisabled: boolean = false
   ): Promise<DownloadResult> => {
-    if (!window.qv) return { success: false, messages: [], errors: ['No connection'], warnings: [] };
+    if (!window.qms) return { success: false, messages: [], errors: ['No connection'], warnings: [] };
     
     // Concurrency guard: prevent multiple simultaneous downloads
     if (downloadInFlightRef.current) {
@@ -309,7 +309,7 @@ export function usePseudoConfig(): UsePseudoConfigResult {
         await updateConfig({ allow_download: true });
       }
       
-      const response = await window.qv.request<QVResult<'download_sssp_library'>>(
+      const response = await window.qms.request<QMSResult<'download_sssp_library'>>(
         'download_sssp_library',
         { flavor, force: enableIfDisabled }
       );
@@ -383,7 +383,7 @@ export function usePseudoConfig(): UsePseudoConfigResult {
   const downloadAll = useCallback(async (
     enableIfDisabled: boolean = false
   ): Promise<DownloadResult> => {
-    if (!window.qv) return { success: false, messages: [], errors: ['No connection'], warnings: [] };
+    if (!window.qms) return { success: false, messages: [], errors: ['No connection'], warnings: [] };
     
     // Concurrency guard: prevent multiple simultaneous downloads
     if (downloadInFlightRef.current) {
@@ -406,7 +406,7 @@ export function usePseudoConfig(): UsePseudoConfigResult {
         await updateConfig({ allow_download: true });
       }
       
-      const response = await window.qv.request<QVResult<'download_all_sssp'>>(
+      const response = await window.qms.request<QMSResult<'download_all_sssp'>>(
         'download_all_sssp',
         { force: enableIfDisabled }
       );
@@ -480,13 +480,13 @@ export function usePseudoConfig(): UsePseudoConfigResult {
   const importSeedArchives = useCallback(async (
     filePaths: string[]
   ): Promise<{ imported: any[]; skipped: string[]; errors: string[] }> => {
-    if (!window.qv) return { imported: [], skipped: [], errors: ['No connection'] };
+    if (!window.qms) return { imported: [], skipped: [], errors: ['No connection'] };
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await window.qv.request<QVResult<'import_seed_archives'>>(
+      const response = await window.qms.request<QMSResult<'import_seed_archives'>>(
         'import_seed_archives',
         { file_paths: filePaths }
       );

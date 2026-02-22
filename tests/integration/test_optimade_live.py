@@ -16,7 +16,7 @@ import pytest
 import requests
 from pymatgen.core import Structure as PMGStructure
 
-from quantumvitas.io.online_search import (
+from qmatsuite.io.online_search import (
     OPTIMADE_BASES,
     extract_provenance,
     fetch_structure_from_optimade,
@@ -493,7 +493,7 @@ def test_optimade_live_viewer_payload_builder():
     assert structure is not None
     
     # Use shared payload builder (same as production)
-    from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
+    from qmatsuite.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
 
     params = DisplayModeParams(
         mode="primitive",

@@ -9,7 +9,7 @@ with explicit engine coverage.
 
 import pytest
 
-from quantumvitas.presets.dimensions import (
+from qmatsuite.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
     PrecisionOption,
@@ -261,9 +261,9 @@ class TestRoundtripInvariants:
         """QC Precision LOW on PySCF scf: apply → detect → same option."""
         # For qc_precision, use full patch (includes all keys: scf, dft, engine.orca.scf)
         # Detection needs all keys to match correctly
-        from quantumvitas.presets.qc_precision import get_qc_precision_paramspace
-        from quantumvitas.presets.paramspace import compile_profile_patch
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.qc_precision import get_qc_precision_paramspace
+        from qmatsuite.presets.paramspace import compile_profile_patch
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         
         space = get_qc_precision_paramspace()
         step_yaml = {}
@@ -280,9 +280,9 @@ class TestRoundtripInvariants:
     @pytest.mark.skipif(not is_pyscf_available(), reason="PySCF not installed")
     def test_roundtrip_qc_precision_med_pyscf(self):
         """QC Precision MED on PySCF scf: apply → detect → same option."""
-        from quantumvitas.presets.qc_precision import get_qc_precision_paramspace
-        from quantumvitas.presets.paramspace import compile_profile_patch
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.qc_precision import get_qc_precision_paramspace
+        from qmatsuite.presets.paramspace import compile_profile_patch
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         
         space = get_qc_precision_paramspace()
         step_yaml = {}
@@ -295,9 +295,9 @@ class TestRoundtripInvariants:
     @pytest.mark.skipif(not is_pyscf_available(), reason="PySCF not installed")
     def test_roundtrip_qc_precision_high_pyscf(self):
         """QC Precision HIGH on PySCF scf: apply → detect → same option."""
-        from quantumvitas.presets.qc_precision import get_qc_precision_paramspace
-        from quantumvitas.presets.paramspace import compile_profile_patch
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.qc_precision import get_qc_precision_paramspace
+        from qmatsuite.presets.paramspace import compile_profile_patch
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         
         space = get_qc_precision_paramspace()
         step_yaml = {}
@@ -312,9 +312,9 @@ class TestRoundtripInvariants:
     @pytest.mark.skipif(not is_orca_available(), reason="ORCA not in registry")
     def test_roundtrip_qc_precision_low_orca(self):
         """QC Precision LOW on ORCA scf: apply → detect → same option."""
-        from quantumvitas.presets.qc_precision import get_qc_precision_paramspace
-        from quantumvitas.presets.paramspace import compile_profile_patch
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.qc_precision import get_qc_precision_paramspace
+        from qmatsuite.presets.paramspace import compile_profile_patch
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         
         space = get_qc_precision_paramspace()
         step_yaml = {}
@@ -327,9 +327,9 @@ class TestRoundtripInvariants:
     @pytest.mark.skipif(not is_orca_available(), reason="ORCA not in registry")
     def test_roundtrip_qc_precision_med_orca(self):
         """QC Precision MED on ORCA scf: apply → detect → same option."""
-        from quantumvitas.presets.qc_precision import get_qc_precision_paramspace
-        from quantumvitas.presets.paramspace import compile_profile_patch
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.qc_precision import get_qc_precision_paramspace
+        from qmatsuite.presets.paramspace import compile_profile_patch
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         
         space = get_qc_precision_paramspace()
         step_yaml = {}
@@ -342,9 +342,9 @@ class TestRoundtripInvariants:
     @pytest.mark.skipif(not is_orca_available(), reason="ORCA not in registry")
     def test_roundtrip_qc_precision_high_orca(self):
         """QC Precision HIGH on ORCA scf: apply → detect → same option."""
-        from quantumvitas.presets.qc_precision import get_qc_precision_paramspace
-        from quantumvitas.presets.paramspace import compile_profile_patch
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.qc_precision import get_qc_precision_paramspace
+        from qmatsuite.presets.paramspace import compile_profile_patch
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         
         space = get_qc_precision_paramspace()
         step_yaml = {}

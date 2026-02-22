@@ -11,28 +11,28 @@ import pytest
 from pathlib import Path
 import json
 
-from quantumvitas.workflow.registry import (
+from qmatsuite.workflow.registry import (
     StepTypeSpec,
     StepTypeRegistry,
     get_registry,
     reset_registry,
 )
-from quantumvitas.workflow.templates import (
+from qmatsuite.workflow.templates import (
     WorkflowTemplate,
     WorkflowMatch,
     WorkflowService,
     get_workflow_service,
     reset_workflow_service,
 )
-from quantumvitas.workflow.step_factory import (
+from qmatsuite.workflow.step_factory import (
     create_step_doc,
     save_step_doc,
     create_and_save_step,
 )
 import yaml
 
-from quantumvitas.core.yamldoc import StepDoc
-from quantumvitas.core.yaml_io import _save_yaml_raw
+from qmatsuite.core.yamldoc import StepDoc
+from qmatsuite.core.yaml_io import _save_yaml_raw
 
 
 # =============================================================================
@@ -51,7 +51,7 @@ class TestStepTypeRegistry:
     
     def test_registry_has_required_step_types(self, registry):
         """Registry has all v0 required step types."""
-        from quantumvitas.workflow.registry import normalize_step_type
+        from qmatsuite.workflow.registry import normalize_step_type
         
         # VC is a parameter, not a step type. No vc-relax.
         required = ["scf", "nscf", "relax", "bandspw", "dos", "bands"]
@@ -124,15 +124,15 @@ class TestStepTypeRegistry:
     
     def test_pw_dimensions_consistent(self, registry):
         """PW step types have consistent preset dimensions (via ParamSpace)."""
-        from quantumvitas.presets.variants_registry import list_dimensions_for_gen_step
-        from quantumvitas.engine.qe_engine import QeEngine
+        from qmatsuite.presets.variants_registry import list_dimensions_for_gen_step
+        from qmatsuite.engine.qe_engine import QeEngine
         
         # Get QE engine supported presets
         engine = QeEngine()
         engine_supported = set(engine.supported_presets)
         
         # For each PW gen step, check that ParamSpace dimensions match engine capability
-        from quantumvitas.workflow.registry import normalize_step_type
+        from qmatsuite.workflow.registry import normalize_step_type
         
         # VC is a parameter, not a step type. No vc-relax.
         for step_type in ["scf", "nscf", "relax", "bandspw"]:
@@ -381,7 +381,7 @@ class TestStepFactoryJournal:
     @pytest.fixture
     def test_journal(self, tmp_path):
         """Set up test journal."""
-        from quantumvitas.core.journal import Journal, set_journal, reset_journal
+        from qmatsuite.core.journal import Journal, set_journal, reset_journal
         
         journal = Journal(journal_dir=tmp_path / "journal")
         set_journal(journal)
@@ -437,7 +437,7 @@ class TestWorkflowInstantiation:
     @pytest.fixture
     def test_journal(self, tmp_path):
         """Set up test journal."""
-        from quantumvitas.core.journal import Journal, set_journal, reset_journal
+        from qmatsuite.core.journal import Journal, set_journal, reset_journal
         
         journal = Journal(journal_dir=tmp_path / "journal")
         set_journal(journal)
@@ -447,7 +447,7 @@ class TestWorkflowInstantiation:
     
     def test_instantiate_scf_workflow(self, tmp_path, service, test_journal):
         """Instantiate SCF workflow creates one step."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         # Generate proper ULIDs (26 characters)
         calc_ulid = generate_resource_id()
@@ -468,7 +468,7 @@ class TestWorkflowInstantiation:
                 }
             }]
         }
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump(project_config, sort_keys=False)
         )
 
@@ -489,7 +489,7 @@ class TestWorkflowInstantiation:
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
         # Build resource index to ensure calculation is discoverable
-        from quantumvitas.core.resolution import build_resource_index
+        from qmatsuite.core.resolution import build_resource_index
         build_resource_index(project_root)
         
         paths = service.instantiate_workflow(
@@ -508,7 +508,7 @@ class TestWorkflowInstantiation:
     
     def test_instantiate_dos_workflow(self, tmp_path, service, test_journal):
         """Instantiate DOS workflow creates three steps."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         # Generate proper ULIDs (26 characters)
         calc_ulid = generate_resource_id()
@@ -529,7 +529,7 @@ class TestWorkflowInstantiation:
                 }
             }]
         }
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump(project_config, sort_keys=False)
         )
 
@@ -550,7 +550,7 @@ class TestWorkflowInstantiation:
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
         # Build resource index to ensure calculation is discoverable
-        from quantumvitas.core.resolution import build_resource_index
+        from qmatsuite.core.resolution import build_resource_index
         build_resource_index(project_root)
         
         paths = service.instantiate_workflow(
@@ -572,7 +572,7 @@ class TestWorkflowInstantiation:
     
     def test_instantiate_bands_workflow(self, tmp_path, service, test_journal):
         """Instantiate Bands workflow creates three steps."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         # Generate proper ULIDs (26 characters)
         calc_ulid = generate_resource_id()
@@ -593,7 +593,7 @@ class TestWorkflowInstantiation:
                 }
             }]
         }
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump(project_config, sort_keys=False)
         )
 
@@ -614,7 +614,7 @@ class TestWorkflowInstantiation:
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
         # Build resource index to ensure calculation is discoverable
-        from quantumvitas.core.resolution import build_resource_index
+        from qmatsuite.core.resolution import build_resource_index
         build_resource_index(project_root)
         
         paths = service.instantiate_workflow(
@@ -631,7 +631,7 @@ class TestWorkflowInstantiation:
     
     def test_instantiate_unknown_raises(self, tmp_path, service):
         """Instantiate unknown workflow raises ValueError."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         calc_dir = tmp_path / "calc"
         calc_dir.mkdir()
@@ -646,7 +646,7 @@ class TestWorkflowInstantiation:
     
     def test_instantiate_all_journaled(self, tmp_path, service, test_journal):
         """All instantiated steps produce journal entries."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         # Generate proper ULIDs (26 characters)
         calc_ulid = generate_resource_id()
@@ -667,7 +667,7 @@ class TestWorkflowInstantiation:
                 }
             }]
         }
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump(project_config, sort_keys=False)
         )
 
@@ -688,7 +688,7 @@ class TestWorkflowInstantiation:
         _save_yaml_raw(calc_yaml_data, calc_dir / "calculation.yaml")
         
         # Build resource index to ensure calculation is discoverable
-        from quantumvitas.core.resolution import build_resource_index
+        from qmatsuite.core.resolution import build_resource_index
         build_resource_index(project_root)
         
         service.instantiate_workflow(

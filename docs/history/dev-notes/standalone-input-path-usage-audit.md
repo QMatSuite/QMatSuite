@@ -18,7 +18,7 @@ This audit identifies all code paths that either use standalone QE input executi
 4. **Risk**: `calculation.yaml` step entries with `input:` field can trigger Path S merge logic, potentially violating SSOT
 
 **Critical Entry Points**:
-- **CLI**: `qv run step --standalone --input` (Path S - standalone only)
+- **CLI**: `qms run step --standalone --input` (Path S - standalone only)
 - **calculation.yaml**: Step entry with `input:` or `file:` field (Path S - rare in production)
 - **GUI**: `import_step_from_qe_input` (Path S - but only for import, not execution)
 - **Tests**: Various uses of `prepare_input_step`/`run_input_step` directly
@@ -109,7 +109,7 @@ merged spec_preview (existing input takes precedence over step.yaml)
 
 ### 1. prepare_input_step()
 
-**File**: `src/quantumvitas/calculation/input_runner.py:199-400`
+**File**: `src/qmatsuite/calculation/input_runner.py:199-400`
 
 **Signature**:
 ```python
@@ -141,7 +141,7 @@ def prepare_input_step(
 
 ### 2. run_input_step()
 
-**File**: `src/quantumvitas/calculation/input_runner.py:458-514`
+**File**: `src/qmatsuite/calculation/input_runner.py:458-514`
 
 **Signature**:
 ```python
@@ -170,7 +170,7 @@ def run_input_step(
 
 ### 3. QEInputParser.parse_file()
 
-**File**: `src/quantumvitas/io/parser/qe_parser.py`
+**File**: `src/qmatsuite/io/parser/qe_parser.py`
 
 **Purpose**: Parse QE input file (`.in`) into `QEInput` object
 
@@ -184,7 +184,7 @@ def run_input_step(
 
 ### 4. generate_qe_input_from_spec()
 
-**File**: `src/quantumvitas/calculation/structure_steps.py:487-578`
+**File**: `src/qmatsuite/calculation/structure_steps.py:487-578`
 
 **Signature**:
 ```python
@@ -210,7 +210,7 @@ def generate_qe_input_from_spec(
 
 ### 5. materialize_step_spec()
 
-**File**: `src/quantumvitas/calculation/structure_steps.py:648-1190`
+**File**: `src/qmatsuite/calculation/structure_steps.py:648-1190`
 
 **Purpose**: Generate `.in` file from StructureStepSpec (Path P materialization)
 
@@ -224,7 +224,7 @@ def generate_qe_input_from_spec(
 
 ### 6. _build_step_from_spec()
 
-**File**: `src/quantumvitas/calculation/calculation.py:558-765`
+**File**: `src/qmatsuite/calculation/calculation.py:558-765`
 
 **Purpose**: Build `Step` from step spec file, optionally merging existing input file
 
@@ -247,7 +247,7 @@ generated_input, spec = materialize_step_spec(spec_preview, ...)
 
 ### 7. _build_step_spec_from_qe_input_data()
 
-**File**: `src/quantumvitas/calculation/importers.py:49-92`
+**File**: `src/qmatsuite/calculation/importers.py:49-92`
 
 **Purpose**: Extract parameters and cards from parsed QEInput
 
@@ -261,7 +261,7 @@ generated_input, spec = materialize_step_spec(spec_preview, ...)
 
 ### 8. run_standalone_step()
 
-**File**: `src/quantumvitas/calculation/standalone.py:44-152`
+**File**: `src/qmatsuite/calculation/standalone.py:44-152`
 
 **Purpose**: Run QE step without project context (standalone mode)
 
@@ -276,7 +276,7 @@ generated_input, spec = materialize_step_spec(spec_preview, ...)
 
 ### 9. Step.run()
 
-**File**: `src/quantumvitas/calculation/step.py:62-127`
+**File**: `src/qmatsuite/calculation/step.py:62-127`
 
 **Purpose**: Execute step using engine
 
@@ -293,7 +293,7 @@ generated_input, spec = materialize_step_spec(spec_preview, ...)
 
 ### 10. resolve_input_path() / existing_input_file resolution
 
-**File**: `src/quantumvitas/calculation/calculation.py:336-357`
+**File**: `src/qmatsuite/calculation/calculation.py:336-357`
 
 **Purpose**: Resolve `input:` field from calculation.yaml step entry to file path
 
@@ -313,11 +313,11 @@ if input_path_value:
 
 ## Entry Points & Call Graph
 
-### Entry Point 1: CLI `qv run step --standalone --input`
+### Entry Point 1: CLI `qms run step --standalone --input`
 
-**Command**: `qv run step --standalone --input <file.in>`
+**Command**: `qms run step --standalone --input <file.in>`
 
-**File**: `src/quantumvitas/cli/main.py:1423-1500`
+**File**: `src/qmatsuite/cli/main.py:1423-1500`
 
 **Call Chain (Path S)**:
 ```
@@ -344,11 +344,11 @@ runner execution
 
 **Evidence**: `cli/main.py:1476-1499`
 
-### Entry Point 2: CLI `qv run structure`
+### Entry Point 2: CLI `qms run structure`
 
-**Command**: `qv run structure <structure_id> [--type <step_type>]`
+**Command**: `qms run structure <structure_id> [--type <step_type>]`
 
-**File**: `src/quantumvitas/cli/main.py:1704-1778`
+**File**: `src/qmatsuite/cli/main.py:1704-1778`
 
 **Call Chain (Path P)**:
 ```
@@ -369,18 +369,18 @@ runner execution
 
 **Evidence**: `cli/main.py:1751-1772`
 
-### Entry Point 3: CLI `qv run step` (Project mode)
+### Entry Point 3: CLI `qms run step` (Project mode)
 
-**Command**: `qv run step --calculation <calc> --step <step>`
+**Command**: `qms run step --calculation <calc> --step <step>`
 
-**File**: `src/quantumvitas/cli/main.py:1427-1599`
+**File**: `src/qmatsuite/cli/main.py:1427-1599`
 
 **Call Chain (Path P)**:
 ```
 run_step_command(calculation=..., step=..., standalone=False)
   ↓ ProjectContext.load()
   ↓ resolve_step_for_cli()
-  ↓ QVService.run_step(project_root, calculation_selector, step_selector)
+  ↓ QMSService.run_step(project_root, calculation_selector, step_selector)
   ↓ Calculation.from_yaml() → materialize_steps=True
   ↓ _build_step(step_data, ...)  (calculation.py:247)
   ↓ _build_step_from_spec(..., existing_input_file=None)  (calculation.py:378)  # No existing_input_file
@@ -395,7 +395,7 @@ runner execution
 
 **Classification**: CLI, production path, Path P (unless calculation.yaml has `input:` field)
 
-**Evidence**: `cli/main.py:1506-1599`, `api.py` (QVService.run_step)
+**Evidence**: `cli/main.py:1506-1599`, `api.py` (QMSService.run_step)
 
 ### Entry Point 4: Calculation.yaml step entry with `input:` field
 
@@ -438,15 +438,15 @@ merged spec_preview (existing input data overwrites step.yaml)
 
 **File**: 
 - GUI: `gui/src/components/panels/CalculationListPanel.tsx:667-693`
-- Daemon: `src/quantumvitas/daemon/server.py:4228-4268`
-- API: `src/quantumvitas/api.py:5550-5648`
+- Daemon: `src/qmatsuite/daemon/server.py:4228-4268`
+- API: `src/qmatsuite/api.py:5550-5648`
 
 **Call Chain (Path S - Import only, no execution)**:
 ```
 GUI: handleImportStep()
-  ↓ window.qv.request('import_step_from_qe_input', {input_file: ...})
+  ↓ window.qms.request('import_step_from_qe_input', {input_file: ...})
   ↓ Daemon: _handle_import_step_from_qe_input()
-  ↓ QVService.import_step_from_qe_input(project_root, calculation_ulid, input_file, ...)
+  ↓ QMSService.import_step_from_qe_input(project_root, calculation_ulid, input_file, ...)
   ↓ build_step_spec_from_qe_input(input_file, ..., apply_defaults=False)  (importers.py:95)
   ↓ QEInputParser.parse_file(input_file)  (parse existing .in)
   ↓ _build_step_spec_from_qe_input_data(qe_input, step_type, apply_defaults=False)  (importers.py:49)
@@ -472,15 +472,15 @@ NO EXECUTION - just creates step.yaml from .in file
 
 **File**:
 - GUI: `gui/src/App.tsx:1748`
-- Daemon: `src/quantumvitas/daemon/server.py:5356-5419`
-- API: `src/quantumvitas/api.py` (QVService.run_calculation)
+- Daemon: `src/qmatsuite/daemon/server.py:5356-5419`
+- API: `src/qmatsuite/api.py` (QMSService.run_calculation)
 
 **Call Chain (Path P)**:
 ```
 GUI: handleRunCalculation()
-  ↓ window.qv.call('run_calculation', {calculation: ...})
+  ↓ window.qms.call('run_calculation', {calculation: ...})
   ↓ Daemon: _handle_run_calculation()
-  ↓ QVService.run_calculation(project_root, calculation_selector, ...)
+  ↓ QMSService.run_calculation(project_root, calculation_selector, ...)
   ↓ Calculation.from_yaml() → materialize_steps=True
   ↓ _build_step() → _build_step_from_spec(..., existing_input_file=None)  # No existing_input_file
   ↓ materialize_step_spec() → generate_qe_input_from_spec()  (Path P)
@@ -501,14 +501,14 @@ runner execution
 
 **File**:
 - GUI: `gui/src/components/panels/StepDetailPanel.tsx:590`
-- Daemon: `src/quantumvitas/daemon/server.py:5450-5508`
+- Daemon: `src/qmatsuite/daemon/server.py:5450-5508`
 
 **Call Chain (Path P)**:
 ```
 GUI: handleRunStep()
-  ↓ window.qv.request('run_step', {calculation: ..., step: ...})
+  ↓ window.qms.request('run_step', {calculation: ..., step: ...})
   ↓ Daemon: _handle_run_step()
-  ↓ QVService.run_step(project_root, calculation_selector, step_selector, ...)
+  ↓ QMSService.run_step(project_root, calculation_selector, step_selector, ...)
   ↓ Calculation.from_yaml() → materialize_steps=True
   ↓ _build_step() → _build_step_from_spec(..., existing_input_file=None)  # Path P
   ↓ JobRunner → Step.run()
@@ -544,9 +544,9 @@ runner execution
 
 | Entry Point | Path | Requires Project? | Accepts Overrides? | Audience | Recommendation |
 |------------|------|-------------------|-------------------|----------|----------------|
-| CLI `qv run step --standalone --input` | S | No | No (standalone only) | User (CLI) | CLI-only, keep but document as non-production |
-| CLI `qv run structure` | P | Yes (optional) | Yes (parameters/cards/species) | User (CLI) | CLI-only, production |
-| CLI `qv run step` (project mode) | P* | Yes | Via step.yaml | User (CLI) | Production (Path S only if calculation.yaml has `input:`) |
+| CLI `qms run step --standalone --input` | S | No | No (standalone only) | User (CLI) | CLI-only, keep but document as non-production |
+| CLI `qms run structure` | P | Yes (optional) | Yes (parameters/cards/species) | User (CLI) | CLI-only, production |
+| CLI `qms run step` (project mode) | P* | Yes | Via step.yaml | User (CLI) | Production (Path S only if calculation.yaml has `input:`) |
 | calculation.yaml `input:` field | S | Yes | Via merge | Internal | **Risk**: SSOT violation. Should be deprecated/removed |
 | GUI `import_step_from_qe_input` | S (import only) | Yes | No | User (GUI) | Production (import only, no execution) |
 | GUI `run_calculation` | P | Yes | Via step.yaml | User (GUI) | Production |
@@ -667,7 +667,7 @@ if input_path_value:
 
 **Symptom**: If calculation.yaml has `input:` field (from import or manual edit), GUI `run_calculation` would trigger Path S.
 
-**Evidence**: GUI uses `QVService.run_calculation()` → `Calculation.from_yaml()` → `_build_step()` which checks for `input:` field.
+**Evidence**: GUI uses `QMSService.run_calculation()` → `Calculation.from_yaml()` → `_build_step()` which checks for `input:` field.
 
 **Current Usage**: GUI does not set `input:` field, but it could be set manually or via import.
 
@@ -677,7 +677,7 @@ if input_path_value:
 
 **Location**: `cli/main.py:1476-1499`
 
-**Symptom**: Users may use `qv run step --standalone --input` in production workflows, bypassing YAML SSOT.
+**Symptom**: Users may use `qms run step --standalone --input` in production workflows, bypassing YAML SSOT.
 
 **Recommendation**: Document that standalone mode is for one-off testing, not production workflows.
 
@@ -713,7 +713,7 @@ if input_path_value:
 **Policy**: Ensure GUI workflows never create or modify calculation.yaml step entries with `input:` field.
 
 **Action** (no code changes, documentation):
-- Document that `QVService` methods should not set `input:` field
+- Document that `QMSService` methods should not set `input:` field
 - Add static check (future) preventing `input:` field in new calculations
 
 ### Recommendation 4: Rename for Clarity (Optional)
@@ -737,14 +737,14 @@ if input_path_value:
 
 ### Snippet 1: CLI Standalone Entry Point
 
-**File**: `src/quantumvitas/cli/main.py:1476-1499`
+**File**: `src/qmatsuite/cli/main.py:1476-1499`
 
 ```python
 if standalone:
     if not input:
         raise typer.BadParameter(
             "--input is required in standalone mode. "
-            "Example: qv run step --standalone --input pw.in"
+            "Example: qms run step --standalone --input pw.in"
         )
     _run_standalone_step(
         input_file=input,
@@ -756,7 +756,7 @@ if standalone:
 
 ### Snippet 2: Standalone Step Execution
 
-**File**: `src/quantumvitas/calculation/standalone.py:88-152`
+**File**: `src/qmatsuite/calculation/standalone.py:88-152`
 
 ```python
 # Parse original input and generate normalized version
@@ -782,7 +782,7 @@ result, prepared = run_input_step(
 
 ### Snippet 3: Existing Input File Resolution
 
-**File**: `src/quantumvitas/calculation/calculation.py:336-357`
+**File**: `src/qmatsuite/calculation/calculation.py:336-357`
 
 ```python
 input_path_value = step_data.get("input") or step_data.get("file")
@@ -801,7 +801,7 @@ if input_path_value:
 
 ### Snippet 4: Merge Logic (Path S)
 
-**File**: `src/quantumvitas/calculation/calculation.py:644-666`
+**File**: `src/qmatsuite/calculation/calculation.py:644-666`
 
 ```python
 # Extract all parameters and cards from the existing input file
@@ -829,7 +829,7 @@ if extracted_cards:
 
 ### Snippet 5: GUI Import (Non-Execution)
 
-**File**: `src/quantumvitas/api.py:5550-5648`
+**File**: `src/qmatsuite/api.py:5550-5648`
 
 ```python
 def import_step_from_qe_input(
@@ -853,7 +853,7 @@ def import_step_from_qe_input(
 
 ### Snippet 6: GUI Run Calculation (Path P)
 
-**File**: `src/quantumvitas/daemon/server.py:5356-5419`
+**File**: `src/qmatsuite/daemon/server.py:5356-5419`
 
 ```python
 def _handle_run_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -861,7 +861,7 @@ def _handle_run_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
     project_root = self._require_path(payload, "project_root")
     calculation_selector = self._require_str(payload, "calculation")
     
-    result = QVService.run_calculation(
+    result = QMSService.run_calculation(
         project_root=project_root,
         calculation_selector=calculation_selector,
         ...
@@ -871,14 +871,14 @@ def _handle_run_calculation(self, payload: Dict[str, Any]) -> Dict[str, Any]:
 
 ### Snippet 7: Step.run() Card Overrides Forwarding
 
-**File**: `src/quantumvitas/calculation/step.py:100-123`
+**File**: `src/qmatsuite/calculation/step.py:100-123`
 
 ```python
 # Load cards from step.yaml if available
 card_overrides = None
 if self.meta.path:
     try:
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from qmatsuite.calculation.structure_steps import StructureStepSpec
         step_yaml_path = (project_root / self.meta.path).resolve()
         if step_yaml_path.exists():
             spec = StructureStepSpec.from_yaml(step_yaml_path)
@@ -895,7 +895,7 @@ result, _ = run_input_step(
 
 ### Snippet 8: prepare_input_step() Always Parses
 
-**File**: `src/quantumvitas/calculation/input_runner.py:371-380`
+**File**: `src/qmatsuite/calculation/input_runner.py:371-380`
 
 ```python
 try:
@@ -911,7 +911,7 @@ try:
 
 ### Snippet 9: Path P Materialization
 
-**File**: `src/quantumvitas/calculation/structure_steps.py:487-578`
+**File**: `src/qmatsuite/calculation/structure_steps.py:487-578`
 
 ```python
 def generate_qe_input_from_spec(...) -> tuple[QEInput, list[ParameterOverride]]:
@@ -930,7 +930,7 @@ def generate_qe_input_from_spec(...) -> tuple[QEInput, list[ParameterOverride]]:
 
 ### Snippet 10: Branch Condition for Path S
 
-**File**: `src/quantumvitas/calculation/calculation.py:592-594`
+**File**: `src/qmatsuite/calculation/calculation.py:592-594`
 
 ```python
 # If there's an existing input file, extract structure, parameters, cards, and pseudopotentials from it
@@ -941,13 +941,13 @@ if existing_input_file and existing_input_file.exists():  # ← Branch condition
 
 ### Snippet 11: GUI Import Handler
 
-**File**: `src/quantumvitas/daemon/server.py:4228-4268`
+**File**: `src/qmatsuite/daemon/server.py:4228-4268`
 
 ```python
 def _handle_import_step_from_qe_input(self, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Import a QE input file as a step (preserves original parameters, no defaults)."""
     # ...
-    result = QVService.import_step_from_qe_input(
+    result = QMSService.import_step_from_qe_input(
         project_root=project_root,
         calculation_ulid=calculation_ulid,
         input_file=input_file,
@@ -960,7 +960,7 @@ def _handle_import_step_from_qe_input(self, payload: Dict[str, Any]) -> Dict[str
 
 ### Snippet 12: Path P in Calculation.from_yaml()
 
-**File**: `src/quantumvitas/calculation/calculation.py:213-217`
+**File**: `src/qmatsuite/calculation/calculation.py:213-217`
 
 ```python
 # Execution mode: fully materialize steps (calls materialize_step_spec, requires pseudos)

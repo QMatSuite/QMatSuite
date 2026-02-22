@@ -4,7 +4,7 @@ Tests for relax/vc-relax structure extraction from QE output.
 
 import pytest
 from pathlib import Path
-from quantumvitas.calculation.geometry import (
+from qmatsuite.calculation.geometry import (
     read_final_geometry_from_output_text,
     structure_from_qe_geometry_snapshot,
 )
@@ -48,7 +48,7 @@ def test_read_final_geometry_from_output_text():
 
 def test_structure_from_qe_geometry_snapshot():
     """Test conversion from QEGeometrySnapshot to pymatgen Structure with canonization."""
-    from quantumvitas.calculation.geometry import QEGeometrySnapshot, QEAtomicPosition
+    from qmatsuite.calculation.geometry import QEGeometrySnapshot, QEAtomicPosition
     
     # Create a simple snapshot (Si diamond structure)
     snapshot = QEGeometrySnapshot(
@@ -72,7 +72,7 @@ def test_structure_from_qe_geometry_snapshot():
     assert structure.composition.formula == "Si2"
     
     # Verify canonization was applied (fractional coords should be in canonical range)
-    from quantumvitas.analysis.structure_viz import WRAP_TOL
+    from qmatsuite.analysis.structure_viz import WRAP_TOL
     for site in structure:
         for coord in site.frac_coords:
             assert -WRAP_TOL <= coord < 1 - WRAP_TOL, f"Coordinate {coord} not in canonical range"

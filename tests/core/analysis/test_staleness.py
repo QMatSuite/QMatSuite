@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat, check_staleness
+from qmatsuite.core.analysis.base import AnalysisObjectMeta, SourceFileStat, check_staleness
 
 
 def test_check_staleness_detects_source_change(tmp_path: Path) -> None:

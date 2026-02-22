@@ -22,7 +22,7 @@
    - **Result**: `canonicalize_structure_in_place()` is now called exactly once
 
 **Files Modified**:
-- `src/quantumvitas/analysis/structure_viz.py`:
+- `src/qmatsuite/analysis/structure_viz.py`:
   - `plot_structure_3d()`: Added `structure_canon` parameter (lines 1520, 1536-1538)
   - `visualize_structure()`: Removed duplicate canonicalization, passes pre-canonicalized structure (lines 1762-1764, 1770)
   - Updated documentation comment (line 161)
@@ -31,7 +31,7 @@
 
 **New Function**: `wrap_fractional_coords_shifted()`
 
-**Location**: `src/quantumvitas/analysis/structure_viz.py:351`
+**Location**: `src/qmatsuite/analysis/structure_viz.py:351`
 
 **Signature**:
 ```python

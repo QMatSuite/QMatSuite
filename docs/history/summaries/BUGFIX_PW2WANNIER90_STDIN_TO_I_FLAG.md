@@ -25,7 +25,7 @@ Error [Errno 21] Is a directory: '.'
 
 ## 修复
 
-### 1. 修改命令构建 (`src/quantumvitas/core/engines/qe.py`)
+### 1. 修改命令构建 (`src/qmatsuite/core/engines/qe.py`)
 
 **Before**:
 ```python
@@ -47,7 +47,7 @@ elif step_type == "pw2wannier90":
     command.append(str(input_file))
 ```
 
-### 2. 更新 `uses_stdin` 方法 (`src/quantumvitas/core/engines/qe.py`)
+### 2. 更新 `uses_stdin` 方法 (`src/qmatsuite/core/engines/qe.py`)
 
 **Before**:
 ```python
@@ -69,7 +69,7 @@ def uses_stdin(self, step_type: str) -> bool:
     return step_type not in ["w90_preproc", "w90_run", "pw2wannier90"]
 ```
 
-### 3. 添加详细日志 (`src/quantumvitas/core/engines/qe_calculation.py`)
+### 3. 添加详细日志 (`src/qmatsuite/core/engines/qe_calculation.py`)
 
 在 `run_step` 方法中添加了详细的日志记录：
 - 步骤开始和参数
@@ -156,6 +156,6 @@ pw2wannier90.x -i pw2wan.in > pw2wan.out 2> pw2wan.stderr
 
 ## 相关文件
 
-- `src/quantumvitas/core/engines/qe.py`: 命令构建和 stdin 判断
-- `src/quantumvitas/core/engines/qe_calculation.py`: 执行逻辑和日志
+- `src/qmatsuite/core/engines/qe.py`: 命令构建和 stdin 判断
+- `src/qmatsuite/core/engines/qe_calculation.py`: 执行逻辑和日志
 

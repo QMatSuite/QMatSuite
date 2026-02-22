@@ -9,7 +9,7 @@ import pytest
 
 def test_dialects_module_imports():
     """Test that dialects module can be imported."""
-    from quantumvitas.ir import dialects
+    from qmatsuite.ir import dialects
     
     assert dialects is not None
     assert hasattr(dialects, "pw")
@@ -18,7 +18,7 @@ def test_dialects_module_imports():
 
 def test_pw_dialect_imports():
     """Test that pw dialect can be imported and re-exports work."""
-    from quantumvitas.ir.dialects import pw
+    from qmatsuite.ir.dialects import pw
     
     # Verify main exports exist
     assert hasattr(pw, "mapping")
@@ -30,7 +30,7 @@ def test_pw_dialect_imports():
     assert hasattr(pw, "qe_yaml_to_ir_yaml")
     
     # Verify these are the same as backends/qe
-    from quantumvitas.ir.backends.qe.mapping import (
+    from qmatsuite.ir.backends.qe.mapping import (
         IR_TO_QE_MAPPING as QE_IR_TO_QE_MAPPING,
     )
     
@@ -39,13 +39,13 @@ def test_pw_dialect_imports():
 
 def test_qc_dialect_imports():
     """Test that qc dialect can be imported and has expected parameters."""
-    from quantumvitas.ir.dialects import qc
+    from qmatsuite.ir.dialects import qc
     
     assert qc is not None
     assert hasattr(qc, "parameters")
     
     # Verify QC_IR_PARAMETERS exists and has expected keys
-    from quantumvitas.ir.dialects.qc.parameters import QC_IR_PARAMETERS
+    from qmatsuite.ir.dialects.qc.parameters import QC_IR_PARAMETERS
     
     assert QC_IR_PARAMETERS is not None
     assert isinstance(QC_IR_PARAMETERS, dict)
@@ -68,10 +68,10 @@ def test_qc_dialect_imports():
 
 def test_dialect_import_from_top_level():
     """Test that dialects can be imported from ir module."""
-    from quantumvitas.ir import dialects
+    from qmatsuite.ir import dialects
     
     # Test direct import path
-    from quantumvitas.ir.dialects import pw, qc
+    from qmatsuite.ir.dialects import pw, qc
     
     assert pw is not None
     assert qc is not None
@@ -79,7 +79,7 @@ def test_dialect_import_from_top_level():
 
 def test_pw_dialect_functionality():
     """Test that pw dialect functions work correctly."""
-    from quantumvitas.ir.dialects.pw import ir_to_qe_param
+    from qmatsuite.ir.dialects.pw import ir_to_qe_param
     
     # Test ir_to_qe_param function (booleans stay as bool)
     qe_module, qe_section, qe_key, qe_value = ir_to_qe_param("noncolin", True)
@@ -91,7 +91,7 @@ def test_pw_dialect_functionality():
 
 def test_dialect_separation():
     """Test that pw and qc dialects are separate namespaces."""
-    from quantumvitas.ir.dialects import pw, qc
+    from qmatsuite.ir.dialects import pw, qc
     
     # They should be different modules
     assert pw is not qc

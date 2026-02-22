@@ -12,7 +12,7 @@ import pytest
 from pathlib import Path
 import json
 
-from quantumvitas.core.journal import (
+from qmatsuite.core.journal import (
     Journal,
     JournalEntry,
     get_journal,
@@ -22,8 +22,8 @@ from quantumvitas.core.journal import (
     extract_target_ulid,
     generate_summary,
 )
-from quantumvitas.core.yamldoc import YamlDoc, StepDoc
-from quantumvitas.core.yaml_io import save_yaml_doc, load_yaml_doc
+from qmatsuite.core.yamldoc import YamlDoc, StepDoc
+from qmatsuite.core.yaml_io import save_yaml_doc, load_yaml_doc
 
 
 # =============================================================================

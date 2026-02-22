@@ -34,7 +34,7 @@ The implementation largely follows the Constitution, but contains **critical tec
 
 **Evidence**:
 - Registry enforces uniqueness: `tests/unit/test_step_type_mapping.py:48-73` tests that no two step types within an engine share the same `public_type`.
-- All step types in `src/quantumvitas/workflow/registry.py:181-558` use SPEC keys (engine-prefixed).
+- All step types in `src/qmatsuite/workflow/registry.py:181-558` use SPEC keys (engine-prefixed).
 - Engine field is non-empty for all specs: `tests/unit/test_step_type_mapping.py:32-38`.
 
 **Compliance**: ✅ No violations detected.
@@ -48,21 +48,21 @@ The implementation largely follows the Constitution, but contains **critical tec
 **Evidence of Violations**:
 
 1. **Step YAML Write Path** ✅ CORRECT:
-   - `src/quantumvitas/workflow/step_factory.py:73` correctly writes `machine_step_type` (SPEC) to `step.yaml`.
+   - `src/qmatsuite/workflow/step_factory.py:73` correctly writes `machine_step_type` (SPEC) to `step.yaml`.
    - No GEN types written to persisted YAML.
 
 2. **Step YAML Read Path** ❌ VIOLATION:
-   - `src/quantumvitas/calculation/structure_steps.py:105-106`:
+   - `src/qmatsuite/calculation/structure_steps.py:105-106`:
      ```python
-     from quantumvitas.workflow.registry import normalize_step_type_to_public
+     from qmatsuite.workflow.registry import normalize_step_type_to_public
      step_type = normalize_step_type_to_public(str(step_type))
      ```
      This normalizes SPEC → GEN when loading step specs into `StructureStepSpec`. The in-memory model uses GEN, but YAML contains SPEC. This creates ambiguity.
 
 3. **SHA Computation Path** ❌ VIOLATION:
-   - `src/quantumvitas/calculation/hash_utils.py:187-188`:
+   - `src/qmatsuite/calculation/hash_utils.py:187-188`:
      ```python
-     from quantumvitas.workflow.registry import normalize_step_type_to_public
+     from qmatsuite.workflow.registry import normalize_step_type_to_public
      step_data["step_type"] = normalize_step_type_to_public(step_data["step_type"])
      ```
      SHA computation normalizes SPEC → GEN before hashing. This means hashes are computed on GEN types, not SPEC types. This could cause hash mismatches if the same step is loaded with different normalization paths.
@@ -83,11 +83,11 @@ The implementation largely follows the Constitution, but contains **critical tec
 **Evidence of Violations**:
 
 1. **Registry Mapping** ✅ CORRECT:
-   - `src/quantumvitas/workflow/registry.py:734-798` provides `resolve_engine_for_step()` which uses explicit registry lookup.
+   - `src/qmatsuite/workflow/registry.py:734-798` provides `resolve_engine_for_step()` which uses explicit registry lookup.
    - Tests enforce completeness: `tests/unit/test_step_type_mapping.py` (10 tests, all passing).
 
 2. **Runner Engine Family Inference** ❌ VIOLATION:
-   - `src/quantumvitas/calculation/runner.py:854-859`:
+   - `src/qmatsuite/calculation/runner.py:854-859`:
      ```python
      if step_type_str.startswith("pyscf_"):
          engine_family = "pyscf"
@@ -99,7 +99,7 @@ The implementation largely follows the Constitution, but contains **critical tec
      This infers engine family from string prefix instead of using registry mapping. While this is used only for recipe selection (not execution dispatch), it violates the spirit of Constitution §C.
 
 3. **Other Prefix Inference** ⚠️ ACCEPTABLE:
-   - `src/quantumvitas/core/models.py:86` and `src/quantumvitas/core/calc_identity.py:97` use prefix inference for backward compatibility recovery (inferring engine_family from legacy data). This is acceptable as it's only for migration/recovery, not execution dispatch.
+   - `src/qmatsuite/core/models.py:86` and `src/qmatsuite/core/calc_identity.py:97` use prefix inference for backward compatibility recovery (inferring engine_family from legacy data). This is acceptable as it's only for migration/recovery, not execution dispatch.
 
 **Impact**:
 - Recipe selection uses prefix inference, which could break if step type naming changes. Should use registry to determine engine family from step types.
@@ -115,23 +115,23 @@ The implementation largely follows the Constitution, but contains **critical tec
 **Evidence**:
 
 1. **Unified Pipeline** ✅ CORRECT:
-   - `src/quantumvitas/api.py:1319-1453` (`run_step()`) calls `runner.run()` with `target_step_id` parameter.
-   - `src/quantumvitas/api.py:1146-1176` (`run_calculation()`) calls `runner.run()` without `target_step_id` (selection=ALL).
+   - `src/qmatsuite/api.py:1319-1453` (`run_step()`) calls `runner.run()` with `target_step_id` parameter.
+   - `src/qmatsuite/api.py:1146-1176` (`run_calculation()`) calls `runner.run()` without `target_step_id` (selection=ALL).
    - Both use the same `CalculationRunner.run()` method.
 
 2. **Selection Mode** ✅ CORRECT:
-   - `src/quantumvitas/calculation/runner.py:873` sets `selection = SelectionMode.TARGET if target_step_id else SelectionMode.ALL`.
-   - `src/quantumvitas/execution/executor.py:99-104` correctly handles both modes.
+   - `src/qmatsuite/calculation/runner.py:873` sets `selection = SelectionMode.TARGET if target_step_id else SelectionMode.ALL`.
+   - `src/qmatsuite/execution/executor.py:99-104` correctly handles both modes.
 
 3. **Target Step Always Runs** ✅ CORRECT:
-   - `src/quantumvitas/execution/executor.py:173-175` enforces that target job is never skipped:
+   - `src/qmatsuite/execution/executor.py:173-175` enforces that target job is never skipped:
      ```python
      if is_target_job:
          return False  # Never skip target
      ```
 
 4. **Legacy Code** ⚠️ PRESENT BUT UNREACHABLE:
-   - `src/quantumvitas/api.py:1456-1465` contains `run_step_legacy()` marked as "LEGACY" and kept for reference. This is acceptable as it's not called by production code.
+   - `src/qmatsuite/api.py:1456-1465` contains `run_step_legacy()` marked as "LEGACY" and kept for reference. This is acceptable as it's not called by production code.
 
 **Compliance**: ✅ **PASS** - One pipeline correctly implemented with selection mode.
 
@@ -144,15 +144,15 @@ The implementation largely follows the Constitution, but contains **critical tec
 **Evidence**:
 
 1. **JobGraph Not Persisted** ✅ CORRECT:
-   - No YAML/JSON write operations found in `src/quantumvitas/execution/` (grep for `save.*jobgraph|write.*jobgraph|dump.*jobgraph|persist.*jobgraph` returned no matches).
-   - JobGraph is materialized each run: `src/quantumvitas/execution/recipes.py:40-57` defines `materialize()` method that creates JobGraph from steps.
+   - No YAML/JSON write operations found in `src/qmatsuite/execution/` (grep for `save.*jobgraph|write.*jobgraph|dump.*jobgraph|persist.*jobgraph` returned no matches).
+   - JobGraph is materialized each run: `src/qmatsuite/execution/recipes.py:40-57` defines `materialize()` method that creates JobGraph from steps.
 
 2. **Manifest is Only Persisted Truth** ✅ CORRECT:
-   - `src/quantumvitas/calculation/runner.py:936-951` updates manifest entries after job execution.
-   - Manifest entries use SPEC types: `src/quantumvitas/calculation/runner.py:942` sets `kind=step_type_str` (which is SPEC from step.yaml).
+   - `src/qmatsuite/calculation/runner.py:936-951` updates manifest entries after job execution.
+   - Manifest entries use SPEC types: `src/qmatsuite/calculation/runner.py:942` sets `kind=step_type_str` (which is SPEC from step.yaml).
 
 3. **Job Fingerprint Not Persisted** ✅ CORRECT:
-   - `src/quantumvitas/execution/job_graph.py:compute_job_fingerprint()` is used only for runtime skip logic, not persisted.
+   - `src/qmatsuite/execution/job_graph.py:compute_job_fingerprint()` is used only for runtime skip logic, not persisted.
 
 4. **Locks** ✅ CORRECT:
    - Two locks maintained: `calc_run_lock` (outer, long-held) and `calc_edit_lock` (inner, short-held). No new locks added.
@@ -168,17 +168,17 @@ The implementation largely follows the Constitution, but contains **critical tec
 **Evidence**:
 
 1. **YAML Content Uses SPEC** ✅ CORRECT:
-   - `src/quantumvitas/workflow/step_factory.py:73` writes `machine_step_type` (SPEC) to `step.yaml`.
-   - Manifest entries use SPEC: `src/quantumvitas/calculation/runner.py:942` sets `kind=step_type_str` (SPEC).
+   - `src/qmatsuite/workflow/step_factory.py:73` writes `machine_step_type` (SPEC) to `step.yaml`.
+   - Manifest entries use SPEC: `src/qmatsuite/calculation/runner.py:942` sets `kind=step_type_str` (SPEC).
 
 2. **Filenames Use GEN** ✅ CORRECT:
-   - `src/quantumvitas/execution/recipes.py:128` uses `public_type` for input filenames: `input_file = f"{public_type}.in"`.
-   - `src/quantumvitas/calculation/naming.py:82-133` uses step_type (GEN) for filenames.
+   - `src/qmatsuite/execution/recipes.py:128` uses `public_type` for input filenames: `input_file = f"{public_type}.in"`.
+   - `src/qmatsuite/calculation/naming.py:82-133` uses step_type (GEN) for filenames.
 
 3. **ORCA Subchain Basenames** ✅ CORRECT:
-   - `src/quantumvitas/execution/recipes.py:227` uses `generate_subchain_basename(public_types)` which uses stable tokens from `PUBLIC_TYPE_TOKENS` registry.
-   - `src/quantumvitas/workflow/registry.py:81-88` defines stable token map.
-   - Tokens come from registry, not runtime sorting: `src/quantumvitas/workflow/registry.py:113-143` uses `get_token_for_public_type()` which looks up from `PUBLIC_TYPE_TOKENS`.
+   - `src/qmatsuite/execution/recipes.py:227` uses `generate_subchain_basename(public_types)` which uses stable tokens from `PUBLIC_TYPE_TOKENS` registry.
+   - `src/qmatsuite/workflow/registry.py:81-88` defines stable token map.
+   - Tokens come from registry, not runtime sorting: `src/qmatsuite/workflow/registry.py:113-143` uses `get_token_for_public_type()` which looks up from `PUBLIC_TYPE_TOKENS`.
 
 **Compliance**: ✅ **PASS** - Naming rules correctly implemented.
 
@@ -188,23 +188,23 @@ The implementation largely follows the Constitution, but contains **critical tec
 
 ### Run Calc Flow
 
-1. **Entry**: `src/quantumvitas/api.py:1146` → `run_calculation()`
-2. **Runner**: `src/quantumvitas/api.py:1355` → `CalculationRunner(engine_registry)`
-3. **Execute**: `src/quantumvitas/api.py:1407` → `runner.run(calculation, target_step_id=None)`
-4. **JobGraph Path**: `src/quantumvitas/calculation/runner.py:332` → `_execute_with_jobgraph()`
-5. **Recipe**: `src/quantumvitas/calculation/runner.py:866` → `get_recipe_for_engine(engine_family)`
-6. **Materialize**: `src/quantumvitas/calculation/runner.py:868` → `recipe.materialize(calculation.steps, raw_dir, step_shas)`
-7. **Executor**: `src/quantumvitas/calculation/runner.py:885` → `JobExecutor(engine_handlers)`
-8. **Execute**: `src/quantumvitas/calculation/runner.py:891` → `executor.execute(job_graph, calculation, selection=ALL)`
-9. **Handler**: `src/quantumvitas/execution/handlers.py:37-143` → `qe_step_handler()` / `pyscf_chain_handler()` / `orca_chain_handler()`
-10. **Engine**: `src/quantumvitas/execution/handlers.py:112` → `step.run(engine, ...)`
+1. **Entry**: `src/qmatsuite/api.py:1146` → `run_calculation()`
+2. **Runner**: `src/qmatsuite/api.py:1355` → `CalculationRunner(engine_registry)`
+3. **Execute**: `src/qmatsuite/api.py:1407` → `runner.run(calculation, target_step_id=None)`
+4. **JobGraph Path**: `src/qmatsuite/calculation/runner.py:332` → `_execute_with_jobgraph()`
+5. **Recipe**: `src/qmatsuite/calculation/runner.py:866` → `get_recipe_for_engine(engine_family)`
+6. **Materialize**: `src/qmatsuite/calculation/runner.py:868` → `recipe.materialize(calculation.steps, raw_dir, step_shas)`
+7. **Executor**: `src/qmatsuite/calculation/runner.py:885` → `JobExecutor(engine_handlers)`
+8. **Execute**: `src/qmatsuite/calculation/runner.py:891` → `executor.execute(job_graph, calculation, selection=ALL)`
+9. **Handler**: `src/qmatsuite/execution/handlers.py:37-143` → `qe_step_handler()` / `pyscf_chain_handler()` / `orca_chain_handler()`
+10. **Engine**: `src/qmatsuite/execution/handlers.py:112` → `step.run(engine, ...)`
 
 ### Run Step Flow
 
-1. **Entry**: `src/quantumvitas/api.py:1319` → `run_step()`
-2. **Resolve**: `src/quantumvitas/api.py:1374` → `require_step(...)`
-3. **Runner**: `src/quantumvitas/api.py:1397` → `CalculationRunner(engine_registry)`
-4. **Execute**: `src/quantumvitas/api.py:1407` → `runner.run(calculation, target_step_id=step_id)`
+1. **Entry**: `src/qmatsuite/api.py:1319` → `run_step()`
+2. **Resolve**: `src/qmatsuite/api.py:1374` → `require_step(...)`
+3. **Runner**: `src/qmatsuite/api.py:1397` → `CalculationRunner(engine_registry)`
+4. **Execute**: `src/qmatsuite/api.py:1407` → `runner.run(calculation, target_step_id=step_id)`
 5. **JobGraph Path**: Same as Run Calc from step 4 onwards, but with `selection=TARGET`.
 
 **Key Difference**: Only the `target_step_id` parameter differs. Same pipeline, different selection mode.
@@ -218,8 +218,8 @@ The implementation largely follows the Constitution, but contains **critical tec
 **Severity**: 🔴 **BLOCKER**
 
 **Location**:
-- `src/quantumvitas/calculation/structure_steps.py:105-106`
-- `src/quantumvitas/calculation/hash_utils.py:187-188`
+- `src/qmatsuite/calculation/structure_steps.py:105-106`
+- `src/qmatsuite/calculation/hash_utils.py:187-188`
 
 **Why It Violates**:
 - Constitution §B requires persisted truth = SPEC. Normalization creates in-memory models with GEN types while YAML contains SPEC types.
@@ -236,7 +236,7 @@ The implementation largely follows the Constitution, but contains **critical tec
 
 **Severity**: 🟠 **HIGH**
 
-**Location**: `src/quantumvitas/calculation/runner.py:854-859`
+**Location**: `src/qmatsuite/calculation/runner.py:854-859`
 
 **Why It Violates**:
 - Constitution §C requires explicit dispatch mapping. Prefix inference (`startswith("pyscf_")`) is fragile and could break if naming changes.
@@ -260,7 +260,7 @@ engine_family = spec.engine if spec else "qe"
 
 **Severity**: 🟠 **HIGH**
 
-**Location**: `src/quantumvitas/calculation/runner.py:378-800`
+**Location**: `src/qmatsuite/calculation/runner.py:378-800`
 
 **Why It Violates**:
 - Constitution requires "no backward-compat shims". Legacy loop is kept as "fallback" but could be accidentally invoked.
@@ -276,7 +276,7 @@ engine_family = spec.engine if spec else "qe"
 
 **Severity**: 🟡 **MEDIUM**
 
-**Location**: `src/quantumvitas/api.py:1456-1465`
+**Location**: `src/qmatsuite/api.py:1456-1465`
 
 **Why It Violates**:
 - Marked as "LEGACY" but still present in public API. Could be accidentally called.
@@ -291,7 +291,7 @@ engine_family = spec.engine if spec else "qe"
 
 **Severity**: 🟡 **MEDIUM**
 
-**Location**: `src/quantumvitas/core/models.py:35-86`, `src/quantumvitas/core/calc_identity.py:78-97`
+**Location**: `src/qmatsuite/core/models.py:35-86`, `src/qmatsuite/core/calc_identity.py:78-97`
 
 **Why It's Acceptable**:
 - Used only for backward compatibility recovery (inferring engine_family from legacy data).

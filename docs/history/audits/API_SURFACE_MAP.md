@@ -138,7 +138,7 @@
 
 ## api.utils Functions (Transparent Re-exports)
 
-**File**: `src/quantumvitas/api/utils.py`
+**File**: `src/qmatsuite/api/utils.py`
 
 ### Pure Utilities (No project_root, Transparent Re-exports)
 
@@ -170,7 +170,7 @@
 
 ---
 
-## QVService Static Methods (TEMP SHIMs)
+## QMSService Static Methods (TEMP SHIMs)
 
 ### Project-Scoped Static Methods (MUST DELEGATE)
 

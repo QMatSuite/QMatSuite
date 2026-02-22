@@ -23,16 +23,16 @@
 git diff --name-status baac796..HEAD
 
 # ParamSpace核心模块对比
-git diff baac796..HEAD -- src/quantumvitas/presets/paramspace.py
-git diff baac796..HEAD -- src/quantumvitas/presets/variants_registry.py
-git diff baac796..HEAD -- src/quantumvitas/presets/integration.py
+git diff baac796..HEAD -- src/qmatsuite/presets/paramspace.py
+git diff baac796..HEAD -- src/qmatsuite/presets/variants_registry.py
+git diff baac796..HEAD -- src/qmatsuite/presets/integration.py
 
 # IR层存在性检查
 git ls-tree -r baac796 --name-only | grep -E "(ir|IR)"
-git show baac796:src/quantumvitas/presets/paramspace.py | head -200
+git show baac796:src/qmatsuite/presets/paramspace.py | head -200
 
 # 关键接口搜索
-rg -n "ir_|qe_yaml_to_ir|IR_TO_QE|StepDoc|GeneralizedStep|public_type|machine_type|apply_invariants|oracle" -S src/quantumvitas
+rg -n "ir_|qe_yaml_to_ir|IR_TO_QE|StepDoc|GeneralizedStep|public_type|machine_type|apply_invariants|oracle" -S src/qmatsuite
 ```
 
 ---
@@ -45,7 +45,7 @@ rg -n "ir_|qe_yaml_to_ir|IR_TO_QE|StepDoc|GeneralizedStep|public_type|machine_ty
 
 **证据**:
 1. **文件系统检查**: `git ls-tree -r baac796 --name-only | grep -E "(ir|IR)"` 返回结果中没有IR相关文件
-2. **ParamSpace实现**: `git show baac796:src/quantumvitas/presets/paramspace.py` 显示ParamSpace直接操作QE参数（section/key），没有IR转换层
+2. **ParamSpace实现**: `git show baac796:src/qmatsuite/presets/paramspace.py` 显示ParamSpace直接操作QE参数（section/key），没有IR转换层
 3. **ParamKey定义**: 旧版ParamKey的`key`字段注释为"Parameter key name (lowercase canonical)"，没有提到IR概念
 
 **结论**: baac796时代，ParamSpace直接操作QE参数（如`SYSTEM.nspin`），没有IR中间层。
@@ -55,9 +55,9 @@ rg -n "ir_|qe_yaml_to_ir|IR_TO_QE|StepDoc|GeneralizedStep|public_type|machine_ty
 **答案**: IR层已完全实现，边界清晰。
 
 **证据位置**:
-- `src/quantumvitas/ir/parameters.py`: IR参数定义（IRParameter dataclass）
-- `src/quantumvitas/ir/backends/qe/mapping.py`: IR↔QE映射表（IR_TO_QE_MAPPING, QE_TO_IR_MAPPING）
-- `src/quantumvitas/presets/variants_registry.py:311-343`: 编译流程中的IR转换
+- `src/qmatsuite/ir/parameters.py`: IR参数定义（IRParameter dataclass）
+- `src/qmatsuite/ir/backends/qe/mapping.py`: IR↔QE映射表（IR_TO_QE_MAPPING, QE_TO_IR_MAPPING）
+- `src/qmatsuite/presets/variants_registry.py:311-343`: 编译流程中的IR转换
 
 **关键发现**:
 
@@ -65,11 +65,11 @@ rg -n "ir_|qe_yaml_to_ir|IR_TO_QE|StepDoc|GeneralizedStep|public_type|machine_ty
 
 **答案**: ParamSpace编译输出**IR patch**，然后通过`ir_patch_to_qe_patch()`转换为QE patch。
 
-**证据**: `src/quantumvitas/presets/variants_registry.py:311-343`
+**证据**: `src/qmatsuite/presets/variants_registry.py:311-343`
 ```python
 # 标准ParamSpace编译
 # 转换 QE YAML → IR YAML 在编译前（ParamSpace操作IR keys）
-from quantumvitas.ir.backends.qe.mapping import qe_yaml_to_ir_yaml, ir_patch_to_qe_patch
+from qmatsuite.ir.backends.qe.mapping import qe_yaml_to_ir_yaml, ir_patch_to_qe_patch
 ir_yaml = qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")
 
 ir_patch, deletions = compile_profile_patch(
@@ -86,7 +86,7 @@ patch = ir_patch_to_qe_patch(ir_patch)
 
 **答案**: ✅ **YES - 当前是1:1映射**
 
-**证据**: `src/quantumvitas/ir/backends/qe/mapping.py:16-44`
+**证据**: `src/qmatsuite/ir/backends/qe/mapping.py:16-44`
 ```python
 IR_TO_QE_MAPPING: Dict[str, Tuple[str, str, str]] = {
     "nspin": ("pw", "SYSTEM", "nspin"),
@@ -102,10 +102,10 @@ IR_TO_QE_MAPPING: Dict[str, Tuple[str, str, str]] = {
 
 **答案**: runner消费**engine params**（QE parameters），不消费IR。
 
-**证据**: `src/quantumvitas/calculation/runner.py:132-480`
+**证据**: `src/qmatsuite/calculation/runner.py:132-480`
 - runner读取`step.yaml`的`parameters`字段（QE格式）
 - 没有IR相关的读取逻辑
-- `src/quantumvitas/workflow/step_factory.py:106-118`显示`step.yaml`存储的是QE parameters
+- `src/qmatsuite/workflow/step_factory.py:106-118`显示`step.yaml`存储的是QE parameters
 
 **结论**: runner完全独立于IR层，只消费已落盘的QE parameters。
 
@@ -230,7 +230,7 @@ CalculationRunner.run()
    - ❌ **不会** - runner只消费已落盘的参数
    - preset apply发生在step创建/修改时（`apply_presets_to_step()`），不在运行时
 
-**证据**: `src/quantumvitas/calculation/runner.py:132-480`
+**证据**: `src/qmatsuite/calculation/runner.py:132-480`
 - runner加载calculation和steps
 - 对每个step，调用`step.run(engine, ...)`
 - `step.run()`读取`step.spec.parameters`（已落盘的QE parameters）
@@ -244,7 +244,7 @@ CalculationRunner.run()
 - 无论ParamSpace内部如何变化（QE直接操作 vs IR转换），最终写入`step.yaml`的格式都是QE parameters
 - `step.yaml`的schema未变：`{parameters: {SYSTEM: {...}, ELECTRONS: {...}}, cards: {...}}`
 
-**证据**: `src/quantumvitas/workflow/step_factory.py:106-118`
+**证据**: `src/qmatsuite/workflow/step_factory.py:106-118`
 - `step.yaml`存储的是QE parameters（不是IR）
 - IR只是中间态，在YAML I/O边界转换
 
@@ -266,7 +266,7 @@ CalculationRunner.run()
 **答案**: baac796时代是**qe-only step_type**（没有gen/spec分化）
 
 **证据**:
-- `git show baac796:src/quantumvitas/presets/integration.py`显示`step_type`是简单字符串（如`"scf"`, `"nscf"`）
+- `git show baac796:src/qmatsuite/presets/integration.py`显示`step_type`是简单字符串（如`"scf"`, `"nscf"`）
 - 没有`public_type`/`machine_type`概念
 - `ParamSpaceVariant.applies_to_step_types`使用简单字符串集合（如`frozenset({"scf", "nscf"})`）
 
@@ -280,7 +280,7 @@ CalculationRunner.run()
 
 **答案**: 现在有**gen/spec分化**（public_type vs machine_type）
 
-**证据**: `src/quantumvitas/workflow/registry.py:24-50`
+**证据**: `src/qmatsuite/workflow/registry.py:24-50`
 ```python
 @dataclass(frozen=True)
 class StepTypeSpec:
@@ -296,7 +296,7 @@ class StepTypeSpec:
 - **public_type**: 通用step类型（如`"scf"`, `"nscf"`），用于API/UI
 - **machine_type**: 引擎特定step类型（如`"qe_scf"`, `"w90_run"`），用于`step.yaml`存储
 
-**证据**: `src/quantumvitas/workflow/step_factory.py:48-55`
+**证据**: `src/qmatsuite/workflow/step_factory.py:48-55`
 ```python
 # Phase 2: Normalize step_type to machine_type for step.yaml
 # step.yaml stores machine types only (qe_scf, w90_run, etc.)
@@ -309,7 +309,7 @@ if spec:
 
 **答案**: 绑定**spec step types**（machine_type）
 
-**证据**: `src/quantumvitas/presets/variants_registry.py:70-89`
+**证据**: `src/qmatsuite/presets/variants_registry.py:70-89`
 ```python
 PRECISION_PW_DEFAULT_VARIANT = ParamSpaceVariant(
     name="PRECISION_PW_DEFAULT",
@@ -330,7 +330,7 @@ PRECISION_PW_DEFAULT_VARIANT = ParamSpaceVariant(
 - 新版`step.yaml`存储machine_type（如`"qe_scf"`）
 - 如果旧版ParamSpace的`applies_to`是`{"scf"}`，而新版的`step_type`是`"qe_scf"`，匹配会失败
 
-**证据**: `src/quantumvitas/presets/variants_registry.py:245-258`
+**证据**: `src/qmatsuite/presets/variants_registry.py:245-258`
 ```python
 def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
     """
@@ -366,7 +366,7 @@ def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
 
 **答案**: ✅ **存在**
 
-**证据**: `git show baac796:src/quantumvitas/presets/oracle.py`
+**证据**: `git show baac796:src/qmatsuite/presets/oracle.py`
 ```python
 class Oracle:
     """Read-only helper for semantic prerequisite queries."""
@@ -382,7 +382,7 @@ class Oracle:
 
 **答案**: ✅ **存在（在ParamSpace类中）**
 
-**证据**: `git show baac796:src/quantumvitas/presets/paramspace.py`显示`ParamSpace`类有`apply_invariants()`方法：
+**证据**: `git show baac796:src/qmatsuite/presets/paramspace.py`显示`ParamSpace`类有`apply_invariants()`方法：
 ```python
 def apply_invariants(self, yaml_state: dict[str, dict[str, Any]], oracle: Any) -> None:
     """
@@ -429,22 +429,22 @@ if oracle.degauss_applicability():
 
 **答案**: ✅ **仍然存在**
 
-**证据**: `grep -r "class Oracle" src/quantumvitas/presets/`显示Oracle类仍然存在。
+**证据**: `grep -r "class Oracle" src/qmatsuite/presets/`显示Oracle类仍然存在。
 
 #### apply_invariants()
 
 **答案**: ❌ **已删除**
 
-**证据**: `git diff baac796..HEAD -- src/quantumvitas/presets/paramspace.py`显示删除了`apply_invariants()`方法。
+**证据**: `git diff baac796..HEAD -- src/qmatsuite/presets/paramspace.py`显示删除了`apply_invariants()`方法。
 
 #### prerequisite检查（degauss）
 
 **答案**: ⚠️ **已删除，但可能有替代**
 
-**证据**: `git diff baac796..HEAD -- src/quantumvitas/presets/variants_registry.py`显示删除了degauss的Oracle检查代码：
+**证据**: `git diff baac796..HEAD -- src/qmatsuite/presets/variants_registry.py`显示删除了degauss的Oracle检查代码：
 ```diff
 - # Per ParamSpace Constitution v1 §7: degauss is owned by Precision ParamSpace
-- from quantumvitas.presets.oracle import Oracle
+- from qmatsuite.presets.oracle import Oracle
 - oracle = Oracle(step_yaml)
 - if oracle.degauss_applicability():
 -     patch["SYSTEM"]["degauss"] = degauss_map[profile_name]
@@ -458,10 +458,10 @@ if oracle.degauss_applicability():
 
 **分析**:
 - `apply_invariants()`应该在preset apply时调用，而不是在runner执行时
-- 最佳挂载点：`apply_presets_to_step()`函数（`src/quantumvitas/presets/integration.py:327`）
+- 最佳挂载点：`apply_presets_to_step()`函数（`src/qmatsuite/presets/integration.py:327`）
 - 在应用patch后、保存前，调用每个dimension的`apply_invariants()`
 
-**证据**: `src/quantumvitas/presets/integration.py:327-569`
+**证据**: `src/qmatsuite/presets/integration.py:327-569`
 - `apply_presets_to_step()`是preset apply的入口点
 - 已经处理了多个dimension的apply顺序
 - 可以在这里插入`apply_invariants()`调用
@@ -478,7 +478,7 @@ if oracle.degauss_applicability():
 
 **答案**: ✅ **存在**
 
-**证据**: `src/quantumvitas/core/yamldoc.py:454-505`显示`StepDoc`类定义，但需要确认baac796时代是否已有。
+**证据**: `src/qmatsuite/core/yamldoc.py:454-505`显示`StepDoc`类定义，但需要确认baac796时代是否已有。
 
 **假设**: StepDoc在baac796时代已存在（因为它是YAML I/O的基础抽象）。
 
@@ -486,7 +486,7 @@ if oracle.degauss_applicability():
 
 **答案**: ❌ **不包含IR字段**
 
-**证据**: `src/quantumvitas/core/yamldoc.py:454-505`
+**证据**: `src/qmatsuite/core/yamldoc.py:454-505`
 - `StepDoc`继承自`YamlDoc`，是通用的YAML文档包装器
 - 没有专门的IR字段
 - `step.yaml`的schema是：`{meta: {...}, step_type: "...", parameters: {...}, cards: {...}}`
@@ -497,7 +497,7 @@ if oracle.degauss_applicability():
 
 **答案**: 在`step_factory.py`生成，包含gen/spec、engine params，但不包含IR。
 
-**证据**: `src/quantumvitas/workflow/step_factory.py:24-118`
+**证据**: `src/qmatsuite/workflow/step_factory.py:24-118`
 ```python
 def create_step_doc(
     step_type: str,  # 可以是public_type或machine_type
@@ -523,7 +523,7 @@ def create_step_doc(
 
 **答案**: **之后** - ParamSpace apply修改已存在的StepDoc
 
-**证据**: `src/quantumvitas/presets/integration.py:327-569`
+**证据**: `src/qmatsuite/presets/integration.py:327-569`
 ```python
 def apply_presets_to_step(
     step_path: Path,  # step.yaml已存在
@@ -572,7 +572,7 @@ def apply_presets_to_step(
 
 #### 坑点1: IR↔QE转换适配层缺失
 
-**位置**: `src/quantumvitas/presets/variants_registry.py:311-343`
+**位置**: `src/qmatsuite/presets/variants_registry.py:311-343`
 
 **问题**: 旧版ParamSpace接受QE YAML，输出QE patch。新版调用链期望IR YAML输入，IR patch输出。
 
@@ -584,7 +584,7 @@ def apply_presets_to_step(
 
 #### 坑点2: key ownership enforcement与IR keys不兼容
 
-**位置**: `src/quantumvitas/presets/paramspace.py`（旧版的`check_key_access()`）
+**位置**: `src/qmatsuite/presets/paramspace.py`（旧版的`check_key_access()`）
 
 **问题**: 旧版有key ownership机制，如果IR层引入新keys但未在ownership registry注册，会报`KeyAccessError`。
 
@@ -598,7 +598,7 @@ def apply_presets_to_step(
 
 #### 坑点3: step_type匹配失败（gen vs spec）
 
-**位置**: `src/quantumvitas/presets/variants_registry.py:245-258` (`get_variant()`)
+**位置**: `src/qmatsuite/presets/variants_registry.py:245-258` (`get_variant()`)
 
 **问题**: 旧版`applies_to_step_types`使用qe-only step_type（如`"scf"`），新版`step.yaml`存储machine_type（如`"qe_scf"`），匹配会失败。
 
@@ -610,7 +610,7 @@ def apply_presets_to_step(
 
 #### 坑点4: apply_invariants()调用点缺失
 
-**位置**: `src/quantumvitas/presets/integration.py:327-569` (`apply_presets_to_step()`)
+**位置**: `src/qmatsuite/presets/integration.py:327-569` (`apply_presets_to_step()`)
 
 **问题**: 旧版有`apply_invariants()`机制，新版已删除。恢复后需要在合适位置调用。
 
@@ -622,7 +622,7 @@ def apply_presets_to_step(
 
 #### 坑点5: ParamKey.key字段语义变化
 
-**位置**: `src/quantumvitas/presets/paramspace.py` (`ParamKey`类)
+**位置**: `src/qmatsuite/presets/paramspace.py` (`ParamKey`类)
 
 **问题**: 旧版`key`是QE key，新版`key`是IR key（虽然v0中值相同）。如果代码中有地方假设`key`是QE key，会出问题。
 
@@ -635,23 +635,23 @@ def apply_presets_to_step(
 ### 7.3 最小实现路径（3-6步）
 
 **步骤1**: 恢复旧版ParamSpace代码
-- **模块**: `src/quantumvitas/presets/paramspace.py`
+- **模块**: `src/qmatsuite/presets/paramspace.py`
 - **操作**: 从baac796恢复ParamSpace类定义（包括key ownership enforcement）
 
 **步骤2**: 在variants_registry插入IR↔QE转换适配层
-- **模块**: `src/quantumvitas/presets/variants_registry.py`
+- **模块**: `src/qmatsuite/presets/variants_registry.py`
 - **操作**: 在`compile_dimension_patch_for_step()`中，调用`compile_profile_patch()`前插入`qe_yaml_to_ir_yaml()`，输出后插入`ir_patch_to_qe_patch()`
 
 **步骤3**: 处理step_type匹配问题
-- **模块**: `src/quantumvitas/presets/variants_registry.py`
+- **模块**: `src/qmatsuite/presets/variants_registry.py`
 - **操作**: 在`get_variant()`中，如果step_type是machine_type，转换为public_type（通过registry）
 
 **步骤4**: 恢复apply_invariants()调用
-- **模块**: `src/quantumvitas/presets/integration.py`
+- **模块**: `src/qmatsuite/presets/integration.py`
 - **操作**: 在`apply_presets_to_step()`中，每个dimension apply后调用`apply_invariants()`
 
 **步骤5**: 处理key ownership与IR keys兼容性
-- **模块**: `src/quantumvitas/presets/paramspace.py`
+- **模块**: `src/qmatsuite/presets/paramspace.py`
 - **操作**: 选项A（推荐）: 禁用key ownership enforcement（如果IR层不需要）；选项B: 确保所有IR keys注册
 
 **步骤6**: 测试与验证
@@ -676,7 +676,7 @@ def apply_presets_to_step(
 ### 问题2: StepType(enum)是否必须退场？如果退场，边界在哪？
 
 **为什么关键**: 
-- 代码中仍有`StepType`枚举（`src/quantumvitas/calculation/types.py`）
+- 代码中仍有`StepType`枚举（`src/qmatsuite/calculation/types.py`）
 - 但registry使用字符串（`public_type`/`machine_type`）
 - 如果恢复旧ParamSpace，需要明确：`applies_to_step_types`应该用枚举还是字符串？
 

@@ -7,11 +7,11 @@
 
 ## Summary
 
-All imports and calls to `quantumvitas._api_legacy` and `LegacyService` have been eliminated from:
+All imports and calls to `qmatsuite._api_legacy` and `LegacyService` have been eliminated from:
 - Product code (`src/`)
 - All test files (`tests/`)
 
-**Note:** The file `src/quantumvitas/_api_legacy.py` is NOT deleted per user request (to be used as reference when later clearing daemon calls of non-existing QVService methods).
+**Note:** The file `src/qmatsuite/_api_legacy.py` is NOT deleted per user request (to be used as reference when later clearing daemon calls of non-existing QMSService methods).
 
 ---
 
@@ -22,7 +22,7 @@ All imports and calls to `quantumvitas._api_legacy` and `LegacyService` have bee
 | File | Original | Migration |
 |------|----------|-----------|
 | `workflow/templates.py:535,549` | `LegacyService.calc_set_steps()` | Added `set_calculation_steps()` to `core/models.py`, import from kernel |
-| `api/_mapping/exc_mapping.py:364` | String ref to `QVServiceError` | Removed mapping + dead code handling QVServiceError |
+| `api/_mapping/exc_mapping.py:364` | String ref to `QMSServiceError` | Removed mapping + dead code handling QMSServiceError |
 
 ### Daemon Tests (tests/daemon/**)
 
@@ -38,9 +38,9 @@ All imports and calls to `quantumvitas._api_legacy` and `LegacyService` have bee
 |------|----------|-----------|
 | `test_project_snapshot.py:211,234,263` | `LegacyService.save_project_snapshot()` | Use kernel `export_project_to_snapshot()` directly |
 | `test_project_snapshot.py:245` | `LegacyService.create_project_from_snapshot()` | Use kernel `materialize_project_from_snapshot()` directly |
-| `test_project_snapshot.py:472,499` | `LegacyService.create_demo_project()` | Use `QVService.create_demo_project()` (added method) |
+| `test_project_snapshot.py:472,499` | `LegacyService.create_demo_project()` | Use `QMSService.create_demo_project()` (added method) |
 | `test_api_service.py:40,46` | `LegacyService.configure_project()` | Use `svc.project.update_config()` |
-| `test_api_service.py:77,86` | `LegacyService.create_demo_project()` | Use `QVService.create_demo_project()` (added method) |
+| `test_api_service.py:77,86` | `LegacyService.create_demo_project()` | Use `QMSService.create_demo_project()` (added method) |
 | `test_api_service.py:173,187` | `LegacyService.delete_structure()` | Use `svc.structure.delete()` (added method) |
 | `test_api_service.py:256,280` | `LegacyService.change_calculation_structure()` | Use `svc.calculation.set_structure()` |
 | `test_analysis_artifacts.py` | `LegacyService.get_reference_analysis()` | Inlined as local helper function `_get_reference_analysis()` |
@@ -52,11 +52,11 @@ All imports and calls to `quantumvitas._api_legacy` and `LegacyService` have bee
 
 | File | Original | Migration |
 |------|----------|-----------|
-| `test_relax_structure_save.py:16,133,161` | `LegacyService.save_relax_final_structure()` | Use `QVService.save_relax_final_structure()` (added method) |
+| `test_relax_structure_save.py:16,133,161` | `LegacyService.save_relax_final_structure()` | Use `QMSService.save_relax_final_structure()` (added method) |
 
 ---
 
-## New Methods Added to QVService (api/service.py)
+## New Methods Added to QMSService (api/service.py)
 
 ### Static Methods Added
 
@@ -86,11 +86,11 @@ All imports and calls to `quantumvitas._api_legacy` and `LegacyService` have bee
 
 ```bash
 # Check src/ for _api_legacy imports
-grep -rn "from quantumvitas._api_legacy\|import.*_api_legacy" src/
+grep -rn "from qmatsuite._api_legacy\|import.*_api_legacy" src/
 # Result: No matches found
 
 # Check tests/ for _api_legacy imports
-grep -rn "from quantumvitas._api_legacy\|import.*_api_legacy" tests/
+grep -rn "from qmatsuite._api_legacy\|import.*_api_legacy" tests/
 # Result: Only test_import_gate.py:62 - this is the FORBIDDEN imports list (correct)
 
 # Check for LegacyService usage
@@ -100,22 +100,22 @@ grep -rn "LegacyService" src/ tests/
 
 ### Import Gate Test
 
-The file `tests/gates/test_import_gate.py` correctly lists `quantumvitas._api_legacy` in its forbidden imports list (line 62). This ensures CLI/daemon cannot import from legacy.
+The file `tests/gates/test_import_gate.py` correctly lists `qmatsuite._api_legacy` in its forbidden imports list (line 62). This ensures CLI/daemon cannot import from legacy.
 
 ---
 
 ## Files Modified
 
-1. `src/quantumvitas/workflow/templates.py` - Changed import from `_api_legacy` to `core.models`
-2. `src/quantumvitas/api/_mapping/exc_mapping.py` - Removed QVServiceError mapping and dead code
-3. `src/quantumvitas/api/service.py` - Added `create_demo_project`, `list_demo_projects`, `save_relax_final_structure`, `structure.delete`
-4. `src/quantumvitas/core/models.py` - Added `set_calculation_steps` kernel function
+1. `src/qmatsuite/workflow/templates.py` - Changed import from `_api_legacy` to `core.models`
+2. `src/qmatsuite/api/_mapping/exc_mapping.py` - Removed QMSServiceError mapping and dead code
+3. `src/qmatsuite/api/service.py` - Added `create_demo_project`, `list_demo_projects`, `save_relax_final_structure`, `structure.delete`
+4. `src/qmatsuite/core/models.py` - Added `set_calculation_steps` kernel function
 5. `tests/daemon/test_get_common_cards.py` - Migrated to domain accessor
 6. `tests/daemon/test_qe_detection.py` - Migrated to domain accessor
 7. `tests/daemon/test_gui_calculation_detail.py` - Migrated to domain accessor
-8. `tests/unit/test_project_snapshot.py` - Migrated to kernel functions and QVService
-9. `tests/unit/test_api_service.py` - Migrated to domain accessors and QVService
-10. `tests/integration/test_relax_structure_save.py` - Migrated to QVService
+8. `tests/unit/test_project_snapshot.py` - Migrated to kernel functions and QMSService
+9. `tests/unit/test_api_service.py` - Migrated to domain accessors and QMSService
+10. `tests/integration/test_relax_structure_save.py` - Migrated to QMSService
 
 ---
 
@@ -146,7 +146,7 @@ The 8 failing tests are in **unmodified files** and are unrelated to the legacy 
 
 1. **`service.py:structure.delete()`** - Fixed `calculations_using_structure()` call to use correct signature `(project_root, config, struct_entry)` instead of `(config, structure_id)`
 
-2. **`test_gui_calculation_detail.py`** - Removed redundant local import of `QVService` that was shadowing module-level import, causing `UnboundLocalError`
+2. **`test_gui_calculation_detail.py`** - Removed redundant local import of `QMSService` that was shadowing module-level import, causing `UnboundLocalError`
 
 ---
 

@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useQVClient } from './useQVClient';
+import { useQMSClient } from './useQMSClient';
 
 export interface PresetCatalogDimension {
   dimension: string;
@@ -68,7 +68,7 @@ export interface PresetCatalogHook {
  * }
  */
 export function usePresetCatalog(): PresetCatalogHook {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   
   const [catalog, setCatalog] = useState<PresetCatalog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,7 +92,7 @@ export function usePresetCatalog(): PresetCatalogHook {
     }
     
     try {
-      const response = await qv.call('get_preset_catalog', {});
+      const response = await qms.call('get_preset_catalog', {});
       
       if (!mountedRef.current) return;
       
@@ -118,7 +118,7 @@ export function usePresetCatalog(): PresetCatalogHook {
         setCatalog(null);
       }
     }
-  }, [qv]);
+  }, [qms]);
   
   // Auto-fetch on mount
   useEffect(() => {

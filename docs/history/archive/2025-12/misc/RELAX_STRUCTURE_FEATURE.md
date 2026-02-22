@@ -13,10 +13,10 @@ This feature allows users to extract the final relaxed structure from QE relax/v
 
 ### Backend Changes
 
-1. **Step Types** (`src/quantumvitas/calculation/types.py`):
+1. **Step Types** (`src/qmatsuite/calculation/types.py`):
    - Added `RELAX = "relax"` and `VC_RELAX = "vc-relax"` to `StepType` enum
 
-2. **Geometry Parsing** (`src/quantumvitas/calculation/geometry.py`):
+2. **Geometry Parsing** (`src/qmatsuite/calculation/geometry.py`):
    - `read_final_geometry_from_output_text(text: str) -> (QEGeometrySnapshot, species: list[str])`:
      - Parses the LAST "Begin final coordinates ... End final coordinates" block from QE output
      - Extracts alat (from CELL_PARAMETERS or celldm(1) earlier in output)
@@ -29,11 +29,11 @@ This feature allows users to extract the final relaxed structure from QE relax/v
      - **CRITICAL**: Applies canonization via `canonicalize_structure_in_place()` exactly once
      - This ensures the structure follows the same canonization path as structures loaded from JSON
 
-3. **Step Results** (`src/quantumvitas/calculation/results.py`):
+3. **Step Results** (`src/qmatsuite/calculation/results.py`):
    - Added `produced_structure_ulid: Optional[str]` field to `StepResultSummary`
    - Serialized in `to_dict()` method
 
-4. **API Service** (`src/quantumvitas/api.py`):
+4. **API Service** (`src/qmatsuite/api.py`):
    - `get_relax_final_structure_preview()`: Preview-only RPC (no side effects)
      - Validates step type is relax/vc-relax
      - Finds output file in calculation/raw/
@@ -49,16 +49,16 @@ This feature allows users to extract the final relaxed structure from QE relax/v
      - Adds structure to project config
      - Updates registry
 
-5. **Daemon RPC Handlers** (`src/quantumvitas/daemon/server.py`):
+5. **Daemon RPC Handlers** (`src/qmatsuite/daemon/server.py`):
    - `_handle_get_relax_final_structure_preview()`: Preview handler
    - `_handle_save_relax_final_structure()`: Save handler (rebuilds registry after save)
 
 ### Frontend Changes
 
-1. **TypeScript Types** (`gui/src/types/qv.ts`):
-   - Added `get_relax_final_structure_preview` and `save_relax_final_structure` to `QVCommandMap`
+1. **TypeScript Types** (`gui/src/types/qms.ts`):
+   - Added `get_relax_final_structure_preview` and `save_relax_final_structure` to `QMSCommandMap`
 
-2. **RPC Client Hook** (`gui/src/hooks/useQVClient.ts`):
+2. **RPC Client Hook** (`gui/src/hooks/useQMSClient.ts`):
    - Added `getRelaxFinalStructurePreview()` and `saveRelaxFinalStructure()` methods
 
 3. **Step Detail Panel** (`gui/src/components/panels/StepDetailPanel.tsx`):
@@ -84,15 +84,15 @@ This feature allows users to extract the final relaxed structure from QE relax/v
 ## Files Changed
 
 ### Python Backend
-- `src/quantumvitas/calculation/types.py`: Added RELAX, VC_RELAX step types
-- `src/quantumvitas/calculation/geometry.py`: Added parser and structure converter
-- `src/quantumvitas/calculation/results.py`: Added `produced_structure_ulid` field
-- `src/quantumvitas/api.py`: Added preview and save RPC methods
-- `src/quantumvitas/daemon/server.py`: Added RPC handlers
+- `src/qmatsuite/calculation/types.py`: Added RELAX, VC_RELAX step types
+- `src/qmatsuite/calculation/geometry.py`: Added parser and structure converter
+- `src/qmatsuite/calculation/results.py`: Added `produced_structure_ulid` field
+- `src/qmatsuite/api.py`: Added preview and save RPC methods
+- `src/qmatsuite/daemon/server.py`: Added RPC handlers
 
 ### TypeScript Frontend
-- `gui/src/types/qv.ts`: Added RPC type definitions
-- `gui/src/hooks/useQVClient.ts`: Added RPC client methods
+- `gui/src/types/qms.ts`: Added RPC type definitions
+- `gui/src/hooks/useQMSClient.ts`: Added RPC client methods
 - `gui/src/components/panels/StepDetailPanel.tsx`: Added "Relaxed Structure" UI section
 
 ### Tests

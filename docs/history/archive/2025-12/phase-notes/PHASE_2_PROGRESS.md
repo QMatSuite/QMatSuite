@@ -4,7 +4,7 @@
 
 ### Backend (Python)
 
-1. **K_POINTS View Model Module** (`src/quantumvitas/calculation/k_points_view.py`)
+1. **K_POINTS View Model Module** (`src/qmatsuite/calculation/k_points_view.py`)
    - `KPointsViewModel` dataclass with mode, automatic, points, warnings
    - `parse_k_points(raw: str)` - Parses raw QE text to view model
    - `format_k_points(view_model)` - Formats view model to canonical QE text
@@ -12,11 +12,11 @@
    - `k_points_to_card_data()` - Converts raw text to YAML card data
    - Supports: gamma, automatic, tpiba, crystal, tpiba_b, crystal_b, tpiba_c, crystal_c, custom
 
-2. **QVService Methods** (`src/quantumvitas/api.py`)
+2. **QMSService Methods** (`src/qmatsuite/api.py`)
    - `get_common_cards()` - Returns view models for all common cards
    - `set_common_card()` - Updates card from view model, writes YAML as string
 
-3. **RPC Handlers** (`src/quantumvitas/daemon/server.py`)
+3. **RPC Handlers** (`src/qmatsuite/daemon/server.py`)
    - `get_common_cards` RPC handler
    - `set_common_card` RPC handler
    - Registered in `_handlers` dict
@@ -38,11 +38,11 @@
    - Show K_POINTS card editor (only for pw module steps)
    - Handle Apply/Cancel with step detail refresh
 
-3. **TypeScript Types** (`gui/src/types/qv.ts`)
+3. **TypeScript Types** (`gui/src/types/qms.ts`)
    - Add `CommonCardsResponse` type
    - Add `KPointsViewModel` type
 
-4. **RPC Client** (`gui/src/hooks/useQVClient.ts`)
+4. **RPC Client** (`gui/src/hooks/useQMSClient.ts`)
    - Add `getCommonCards()` method
    - Add `setCommonCard()` method
 

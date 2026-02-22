@@ -9,8 +9,8 @@ These tests ensure that:
 
 import pytest
 
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.workflow.generalized_steps import (
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.workflow.generalized_steps import (
     materialize_step,
     dematerialize_step,
     dematerialize_to_generalized_step,
@@ -21,7 +21,7 @@ from quantumvitas.workflow.generalized_steps import (
 
 
 # Ensure drivers are loaded
-import quantumvitas.drivers
+import qmatsuite.drivers
 
 
 class TestDriverMaterializationCompleteness:

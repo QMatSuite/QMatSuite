@@ -27,7 +27,7 @@ The engine driver migration has been **largely completed** with driver bundles p
 
 ### Status: ✅ FULLY COMPLIANT
 
-**Evidence**: `src/quantumvitas/core/driver_registry.py`
+**Evidence**: `src/qmatsuite/core/driver_registry.py`
 
 The DriverRegistry implementation fully conforms to spec:
 
@@ -43,7 +43,7 @@ The DriverRegistry implementation fully conforms to spec:
 | Duplicate engine rejection | `DuplicateEngineError` | 108-111 |
 | Duplicate step type rejection | `DuplicateStepTypeError` | 119-123 |
 
-**Error Classes** (`src/quantumvitas/core/driver_exceptions.py`):
+**Error Classes** (`src/qmatsuite/core/driver_exceptions.py`):
 - `UnknownStepTypeError` with Levenshtein suggestions: ✅ Lines 11-57
 - `UnknownEngineError` with available engines: ✅ Lines 60-69
 - `UnknownMaterializationError`: ✅ Lines 72-86
@@ -65,7 +65,7 @@ The DriverRegistry implementation fully conforms to spec:
 | CP2K | `drivers/cp2k/` | ✅ Line 12 | ✅ All 7 |
 | W90 | `drivers/w90/` | ✅ Line 15 | ✅ All 7 |
 
-**Evidence** (VASP driver as example): `src/quantumvitas/drivers/vasp/driver.py`
+**Evidence** (VASP driver as example): `src/qmatsuite/drivers/vasp/driver.py`
 
 ```python
 # Lines 26-36: MUST properties
@@ -80,7 +80,7 @@ def get_recipe_class(self): from .recipe import VASPRecipe; return VASPRecipe
 def get_materialization_map(self) -> dict[str, str]: ...  # 5 mappings
 ```
 
-**Auto-registration** (`src/quantumvitas/drivers/__init__.py`):
+**Auto-registration** (`src/qmatsuite/drivers/__init__.py`):
 - All 7 drivers imported at lines 21-39
 - Each `__init__.py` calls `DriverRegistry.register()` on import
 
@@ -91,7 +91,7 @@ def get_materialization_map(self) -> dict[str, str]: ...  # 5 mappings
 ### VIOLATION C1: QE Fallback in `models.py`
 
 **Severity**: 🔴 CRITICAL
-**Location**: `src/quantumvitas/core/models.py:35-95`
+**Location**: `src/qmatsuite/core/models.py:35-95`
 **Function**: `_infer_engine_family_from_steps()`
 
 ```python
@@ -118,7 +118,7 @@ elif not step_type.startswith(("qe_", "w90_", "pyscf_")):
 ### VIOLATION C2: QE Fallback in `handlers.py`
 
 **Severity**: 🔴 CRITICAL
-**Location**: `src/quantumvitas/execution/handlers.py:220-230`
+**Location**: `src/qmatsuite/execution/handlers.py:220-230`
 **Function**: `create_handler_map()`
 
 ```python
@@ -143,7 +143,7 @@ if "qe" not in handler_map:
 ### VIOLATION D1: startswith() Patterns in `generalized_steps.py`
 
 **Severity**: 🟠 HIGH
-**Location**: `src/quantumvitas/workflow/generalized_steps.py:372-414`
+**Location**: `src/qmatsuite/workflow/generalized_steps.py:372-414`
 **Function**: `get_generalized_step_from_engine_specific()`
 
 ```python
@@ -171,7 +171,7 @@ elif engine_specific_step.startswith("orca_"):
 ### VIOLATION D2: W90-QE Coupling in `generalized_steps.py`
 
 **Severity**: 🟠 HIGH
-**Location**: `src/quantumvitas/workflow/generalized_steps.py:286`
+**Location**: `src/qmatsuite/workflow/generalized_steps.py:286`
 
 ```python
 # Line 286: Special case for w90
@@ -188,7 +188,7 @@ if spec_engine_family == "qe" and engine_family == "qe" and spec.machine_type.st
 ### ISSUE E1: Hardcoded Engine List in `calculation.py`
 
 **Severity**: 🟡 MEDIUM
-**Location**: `src/quantumvitas/calculation/calculation.py:396, 555`
+**Location**: `src/qmatsuite/calculation/calculation.py:396, 555`
 
 ```python
 # Lines 396, 555 (duplicated code)
@@ -207,7 +207,7 @@ for engine_family in ["qe", "vasp", "orca", "pyscf", "cp2k", "lammps", "w90"]:
 ### F1: calc_identity.py `_infer_engine_family_from_machine_types()`
 
 **Status**: ✅ COMPLIANT
-**Location**: `src/quantumvitas/core/calc_identity.py:79-111`
+**Location**: `src/qmatsuite/core/calc_identity.py:79-111`
 
 ```python
 # Uses registry correctly
@@ -220,11 +220,11 @@ if DriverRegistry.is_step_type_registered(step_type):
 ### F2: recipes.py `get_recipe_for_engine()`
 
 **Status**: ✅ COMPLIANT
-**Location**: `src/quantumvitas/execution/recipes.py:237-254`
+**Location**: `src/qmatsuite/execution/recipes.py:237-254`
 
 ```python
 def get_recipe_for_engine(engine_family: str) -> BaseRecipe:
-    import quantumvitas.drivers
+    import qmatsuite.drivers
     recipe_class = DriverRegistry.get_recipe_class(engine_family)  # Hard error
     return recipe_class()
 ```

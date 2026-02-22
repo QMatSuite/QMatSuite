@@ -18,7 +18,7 @@ to extract parameter metadata including:
 - allowed values / enums (from spans.flag, dl structures)
 - free-text description (rendered from HTML structure)
 
-Output: src/quantumvitas/data/qe_module_parameters.json (schema v3)
+Output: src/qmatsuite/data/qe_module_parameters.json (schema v3)
 
 V3 ALGORITHM SUMMARY:
 ====================
@@ -154,7 +154,7 @@ except ImportError:
     ]
     
     def build_request(url: str) -> request.Request:
-        return request.Request(url, headers={"User-Agent": "QuantumVITAS-DocExtractor/3.0"})
+        return request.Request(url, headers={"User-Agent": "QMatSuite-DocExtractor/3.0"})
     
     def fetch_html(url: str) -> str:
         with request.urlopen(build_request(url), timeout=30) as response:
@@ -2153,7 +2153,7 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path(__file__).parent.parent / "src" / "quantumvitas" / "data" / "qe_module_parameters.json",
+        default=Path(__file__).parent.parent / "src" / "qmatsuite" / "data" / "qe_module_parameters.json",
         help="Output path for v3 JSON file",
     )
     parser.add_argument(

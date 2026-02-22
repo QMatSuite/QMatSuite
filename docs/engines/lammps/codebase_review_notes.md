@@ -10,7 +10,7 @@
 
 ### 1.1 Engine Discovery Pattern
 
-**Location**: `src/quantumvitas/core/engines/`
+**Location**: `src/qmatsuite/core/engines/`
 
 | File | Purpose | LAMMPS Relevance |
 |------|---------|------------------|
@@ -39,7 +39,7 @@ def resolve_vasp_bin(variant: str = "std") -> Path:
 
 ### 1.2 Materialize Pattern
 
-**Location**: `src/quantumvitas/engine/`
+**Location**: `src/qmatsuite/engine/`
 
 | File | Purpose | LAMMPS Relevance |
 |------|---------|------------------|
@@ -67,7 +67,7 @@ def materialize_inputs(self, step, working_dir, calculation):
 
 ### 1.3 Run Pattern
 
-**Location**: `src/quantumvitas/calculation/runner.py`
+**Location**: `src/qmatsuite/calculation/runner.py`
 
 **Key Method**: `CalculationRunner.run()`
 
@@ -86,7 +86,7 @@ def materialize_inputs(self, step, working_dir, calculation):
 
 ### 1.4 JobGraph Execution
 
-**Location**: `src/quantumvitas/execution/`
+**Location**: `src/qmatsuite/execution/`
 
 | File | Purpose | LAMMPS Relevance |
 |------|---------|------------------|
@@ -117,7 +117,7 @@ class LammpsHandler(EngineHandler):
 
 ### 2.1 Pseudopotential System
 
-**Location**: `src/quantumvitas/core/`
+**Location**: `src/qmatsuite/core/`
 
 | File | Purpose | LAMMPS Parallel |
 |------|---------|-----------------|
@@ -180,7 +180,7 @@ potential_map:
 
 ### 3.1 Manifest Structure
 
-**Location**: `src/quantumvitas/calculation/manifest.py`
+**Location**: `src/qmatsuite/calculation/manifest.py`
 
 **Current Schema:**
 ```python
@@ -217,7 +217,7 @@ def should_skip_step(entry, current_kind, pseudo_sha, struct_sha, step_sha):
 
 ### 3.2 Digest Computation
 
-**Location**: `src/quantumvitas/calculation/hash_utils.py`
+**Location**: `src/qmatsuite/calculation/hash_utils.py`
 
 **Functions:**
 - `compute_pseudo_set_sha()` - Hash pseudo files
@@ -267,7 +267,7 @@ class Frame:
 
 ### 4.2 Parser Structure
 
-**Location**: `src/quantumvitas/parsers/`
+**Location**: `src/qmatsuite/parsers/`
 
 **Current:**
 ```
@@ -295,7 +295,7 @@ parsers/
 
 ### 5.1 Step Type Registration
 
-**Location**: `src/quantumvitas/workflow/registry.py`
+**Location**: `src/qmatsuite/workflow/registry.py`
 
 **Current Pattern:**
 ```python
@@ -341,21 +341,21 @@ StepTypeSpec(
 
 | Path | Purpose |
 |------|---------|
-| `src/quantumvitas/engine/lammps_engine.py` | Main engine class |
-| `src/quantumvitas/core/engines/lammps_resolver.py` | Binary discovery |
-| `src/quantumvitas/io/lammps/` | Data file I/O |
-| `src/quantumvitas/parsers/lammps/` | Output parsers |
+| `src/qmatsuite/engine/lammps_engine.py` | Main engine class |
+| `src/qmatsuite/core/engines/lammps_resolver.py` | Binary discovery |
+| `src/qmatsuite/io/lammps/` | Data file I/O |
+| `src/qmatsuite/parsers/lammps/` | Output parsers |
 | `resources/calculation_templates/lammps/` | Input templates |
 
 ### 6.2 Files to Modify (Minimal)
 
 | Path | Change |
 |------|--------|
-| `src/quantumvitas/engine/registry.py` | Register LammpsEngine |
-| `src/quantumvitas/workflow/registry.py` | Add step types |
-| `src/quantumvitas/calculation/manifest.py` | Add potential_assets_sha |
-| `src/quantumvitas/execution/handlers.py` | Add LammpsHandler |
-| `src/quantumvitas/execution/recipes.py` | Add LAMMPS recipe |
+| `src/qmatsuite/engine/registry.py` | Register LammpsEngine |
+| `src/qmatsuite/workflow/registry.py` | Add step types |
+| `src/qmatsuite/calculation/manifest.py` | Add potential_assets_sha |
+| `src/qmatsuite/execution/handlers.py` | Add LammpsHandler |
+| `src/qmatsuite/execution/recipes.py` | Add LAMMPS recipe |
 
 ---
 

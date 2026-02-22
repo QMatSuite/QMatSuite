@@ -15,19 +15,19 @@ There are **two operational paths** through the service layer:
 ```
 svc.analysis.get_analysis(run_ulid, object_type, transforms=[])
 ```
-File: `src/quantumvitas/api/service.py:1062`
+File: `src/qmatsuite/api/service.py:1062`
 
 Internally calls:
 1. `_resolve_run_analysis_context(run_ulid)` — resolves calc, engine, driver, and ordered gen-steps from provenance DB
 2. `_derive_canonical_for_run_object(run_ulid, object_type)` — orchestrates the full pipeline
-3. `run_post_run_analysis(engine, driver, ordered_gen_steps, ...)` — the kernel-layer orchestrator at `src/quantumvitas/core/analysis/orchestrator.py:22`
+3. `run_post_run_analysis(engine, driver, ordered_gen_steps, ...)` — the kernel-layer orchestrator at `src/qmatsuite/core/analysis/orchestrator.py:22`
 4. Returns `{"run_ulid", "object_type", "canonical_sha", "bundle": {...}}`
 
 **Path B — Replay from cache:**
 ```
 svc.analysis.get_analysis_snapshot(run_ulid, object_type)
 ```
-File: `src/quantumvitas/api/service.py:1093`
+File: `src/qmatsuite/api/service.py:1093`
 
 Reads pre-computed canonical bundle from CAS (`.provenance/.cas/analysis/<sha>.json.gz`) using SQLite linkage in `analysis_snapshots` table.
 
@@ -35,7 +35,7 @@ Reads pre-computed canonical bundle from CAS (`.provenance/.cas/analysis/<sha>.j
 ```
 svc.analysis.get_analysis_instances_for_step(calc_selector, step_ulid)
 ```
-File: `src/quantumvitas/api/service.py:1105`
+File: `src/qmatsuite/api/service.py:1105`
 
 Lists ALL analysis instances whose matched step_ulids include the given step. Used by the GUI to show "what analyses are available for this step."
 
@@ -43,7 +43,7 @@ Lists ALL analysis instances whose matched step_ulids include the given step. Us
 
 Each engine driver declares `ANALYSIS_CAPABILITIES: List[AnalysisCapability]` as a class attribute on its driver class. This is a static declaration — no computation needed to enumerate what's possible.
 
-**AnalysisCapability** (`src/quantumvitas/core/analysis/capability.py:42`):
+**AnalysisCapability** (`src/qmatsuite/core/analysis/capability.py:42`):
 ```python
 @dataclass(frozen=True)
 class AnalysisCapability:
@@ -52,7 +52,7 @@ class AnalysisCapability:
     evidence_files: list[str]    # Glob patterns for expected output files
 ```
 
-Example from QE driver (`src/quantumvitas/drivers/qe/driver.py`):
+Example from QE driver (`src/qmatsuite/drivers/qe/driver.py`):
 ```python
 ANALYSIS_CAPABILITIES = [
     AnalysisCapability(object_type="bands", gen_step_sequence=["bandspw"], evidence_files=["*.bands.dat.gnu"]),
@@ -68,7 +68,7 @@ ANALYSIS_CAPABILITIES = [
 
 ### Q3: Can availability be checked without parsing?
 
-**Yes.** The `enumerate_all_matches()` function (`src/quantumvitas/core/analysis/capability.py`) performs pure capability-to-step matching using only step type sequences. No file I/O is needed. This provides the lightweight "this step COULD produce X" check.
+**Yes.** The `enumerate_all_matches()` function (`src/qmatsuite/core/analysis/capability.py`) performs pure capability-to-step matching using only step type sequences. No file I/O is needed. This provides the lightweight "this step COULD produce X" check.
 
 The heavier `can_parse()` method on each provider does check for actual file existence (glob-based) but still doesn't parse content.
 
@@ -77,7 +77,7 @@ The heavier `can_parse()` method on each provider does check for actual file exi
 The kernel-layer entry point is:
 
 ```python
-# src/quantumvitas/core/analysis/orchestrator.py:22
+# src/qmatsuite/core/analysis/orchestrator.py:22
 def run_post_run_analysis(
     engine: str,
     driver: Any,                          # Driver instance with ANALYSIS_CAPABILITIES
@@ -315,8 +315,8 @@ QMatSuite has **two** visualization layers, serving different purposes:
 
 ```python
 # Example usage
-from quantumvitas.analysis.parsers import parse_dos_data
-from quantumvitas.analysis.plotting import plot_dos, save_figure
+from qmatsuite.analysis.parsers import parse_dos_data
+from qmatsuite.analysis.plotting import plot_dos, save_figure
 
 dos_data = parse_dos_data("si.dos.dat")
 fig, ax = plot_dos(dos_data, shift_fermi=True)
@@ -349,7 +349,7 @@ Separate from the analysis pipeline — renders atomic structures:
 
 **System 1**: Yes, fully programmatic:
 ```python
-from quantumvitas.analysis.plotting import plot_dos, save_figure
+from qmatsuite.analysis.plotting import plot_dos, save_figure
 fig, ax = plot_dos(dos_data)
 save_figure(fig, "output.png")
 ```
@@ -371,7 +371,7 @@ fig.savefig("convergence.png")
 
 ### Where is it created?
 
-The `results/` directory is created inside `analyze_calculation()` at `src/quantumvitas/analysis/calculation_analysis.py:17`:
+The `results/` directory is created inside `analyze_calculation()` at `src/qmatsuite/analysis/calculation_analysis.py:17`:
 
 ```python
 def analyze_calculation(calculation: Calculation, result: CalculationResult) -> None:
@@ -404,10 +404,10 @@ No formal naming conventions documented. The legacy system uses descriptive name
 
 ```
 1. User calls: svc.analysis.get_analysis(run_ulid="01ABC...", object_type="dos")
-   File: src/quantumvitas/api/service.py:1062
+   File: src/qmatsuite/api/service.py:1062
 
 2. _resolve_run_analysis_context(run_ulid)
-   File: src/quantumvitas/api/service.py:379
+   File: src/qmatsuite/api/service.py:379
    -> Loads calc from provenance DB
    -> Gets engine="qe", driver=QEDriver
    -> Builds ordered_gen_steps = [
@@ -417,38 +417,38 @@ No formal naming conventions documented. The legacy system uses descriptive name
       ]
 
 3. _derive_canonical_for_run_object(run_ulid, "dos")
-   File: src/quantumvitas/api/service.py:441
+   File: src/qmatsuite/api/service.py:441
    -> Calls run_post_run_analysis(...)
 
 4. run_post_run_analysis("qe", qe_driver, ordered_gen_steps)
-   File: src/quantumvitas/core/analysis/orchestrator.py:22
+   File: src/qmatsuite/core/analysis/orchestrator.py:22
    -> capabilities = qe_driver.ANALYSIS_CAPABILITIES
    -> matches = enumerate_all_matches(capabilities, ordered_gen_steps)
       -> Finds AnalysisCapability(object_type="dos", gen_step_sequence=["dos"])
       -> Match: step_ulids=["step2_ulid"], evidence_dirs=[/path/to/raw/dos/]
 
 5. get_parser("qe", "dos")
-   File: src/quantumvitas/parsers/registry.py
+   File: src/qmatsuite/parsers/registry.py
    -> Returns QEDOSProvider class
 
 6. provider.can_parse(evidence_dir)
-   File: src/quantumvitas/drivers/qe/parsers/dos.py
+   File: src/qmatsuite/drivers/qe/parsers/dos.py
    -> Checks for *.dos.dat files in evidence dir
 
 7. provider.parse(evidence_bundle)
-   File: src/quantumvitas/drivers/qe/parsers/dos.py
+   File: src/qmatsuite/drivers/qe/parsers/dos.py
    -> Reads si.dos.dat: energy grid, total DOS, integrated DOS
    -> If PDOS files exist, reads per-atom projections
    -> Constructs DOS(meta=..., energies=..., total_dos=..., fermi_energy=...)
 
 8. dos_obj.to_primitives()
-   File: src/quantumvitas/core/analysis/dos/model.py
+   File: src/qmatsuite/core/analysis/dos/model.py
    -> Creates Series1D(x=energies, y=total_dos, x_label="Energy", y_label="DOS", ...)
    -> Sets render_meta.reference_energy = fermi_energy
    -> Returns CanonicalPrimitiveBundle(object_type="dos", series=[...], ...)
 
 9. write_canonical_to_cas(canonical, cas_dir)
-   File: src/quantumvitas/core/analysis/cas_writer.py
+   File: src/qmatsuite/core/analysis/cas_writer.py
    -> Computes SHA of serialized bundle
    -> Writes .provenance/.cas/analysis/<sha>.json.gz
 
@@ -471,14 +471,14 @@ No formal naming conventions documented. The legacy system uses descriptive name
    -> Returns QEConvergenceProvider
 
 5. provider.parse(evidence_bundle)
-   File: src/quantumvitas/drivers/qe/parsers/convergence.py
+   File: src/qmatsuite/drivers/qe/parsers/convergence.py
    -> Reads *.out file
    -> Extracts per-SCF-iteration: step index, energy (Ry->eV), dE
    -> Extracts per-ionic-step: energy, max force
    -> Returns Convergence(scf_step=[...], scf_energy=[...], ...)
 
 6. convergence.to_primitives()
-   File: src/quantumvitas/core/analysis/convergence/model.py
+   File: src/qmatsuite/core/analysis/convergence/model.py
    -> Series1D: SCF energy vs step
    -> Series1D: SCF dE vs step
    -> Series1D: Ionic energy vs step (if relax)
@@ -508,7 +508,7 @@ No formal naming conventions documented. The legacy system uses descriptive name
    -> Returns QEBandsProvider
 
 5. provider.parse(evidence_bundle)
-   File: src/quantumvitas/drivers/qe/parsers/bands.py
+   File: src/qmatsuite/drivers/qe/parsers/bands.py
    -> Reads *.bands.dat.gnu (gnuplot format)
    -> Extracts k_distances, eigenvalues per band
    -> Reads high_symmetry_points from bands.x output
@@ -517,7 +517,7 @@ No formal naming conventions documented. The legacy system uses descriptive name
                             high_symmetry_points=[...], fermi_energy=...)
 
 6. bands.to_primitives()
-   File: src/quantumvitas/core/analysis/band_structure/model.py
+   File: src/qmatsuite/core/analysis/band_structure/model.py
    -> Series1D per band: x=k_distances, y=eigenvalues[band_i]
    -> Markers from high_symmetry_points (Gamma, X, L, etc.)
    -> render_meta.reference_energy = fermi_energy
@@ -536,16 +536,16 @@ No formal naming conventions documented. The legacy system uses descriptive name
 **Yes.** All imports are headless-safe:
 ```python
 # Verified working (2026-02-19):
-from quantumvitas.core.analysis.convergence.model import Convergence     # OK
-from quantumvitas.core.analysis.dos.model import DOS                      # OK
-from quantumvitas.core.analysis.band_structure.model import BandStructure # OK
-from quantumvitas.core.analysis.trajectory.model import Trajectory        # OK
-from quantumvitas.core.analysis.field3d import Field3D                    # OK
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle   # OK
-from quantumvitas.core.analysis.orchestrator import run_post_run_analysis # OK
-from quantumvitas.core.analysis.transforms.fermi_shift import FermiShift  # OK
-from quantumvitas.analysis.plotting import plot_dos, save_figure          # OK (Agg backend)
-from quantumvitas.parsers.registry import get_parser                      # OK
+from qmatsuite.core.analysis.convergence.model import Convergence     # OK
+from qmatsuite.core.analysis.dos.model import DOS                      # OK
+from qmatsuite.core.analysis.band_structure.model import BandStructure # OK
+from qmatsuite.core.analysis.trajectory.model import Trajectory        # OK
+from qmatsuite.core.analysis.field3d import Field3D                    # OK
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle   # OK
+from qmatsuite.core.analysis.orchestrator import run_post_run_analysis # OK
+from qmatsuite.core.analysis.transforms.fermi_shift import FermiShift  # OK
+from qmatsuite.analysis.plotting import plot_dos, save_figure          # OK (Agg backend)
+from qmatsuite.parsers.registry import get_parser                      # OK
 ```
 
 No circular dependencies or GUI imports block headless use.
@@ -592,84 +592,84 @@ These are **parallel systems** that don't share data structures. For MCP integra
 ### Core Analysis Framework
 | File | Description |
 |---|---|
-| `src/quantumvitas/core/analysis/__init__.py` | Public API exports |
-| `src/quantumvitas/core/analysis/base.py` | AnalysisObjectMeta, SourceFileStat |
-| `src/quantumvitas/core/analysis/capability.py` | AnalysisCapability, CapabilityMatch, AnalysisResult, ResultState |
-| `src/quantumvitas/core/analysis/evidence.py` | EvidenceBundle passed to parsers |
-| `src/quantumvitas/core/analysis/orchestrator.py` | run_post_run_analysis() kernel orchestrator |
-| `src/quantumvitas/core/analysis/cas_writer.py` | CAS + SQLite persistence |
-| `src/quantumvitas/core/analysis/primitives.py` | Series1D, GeometryFrame, GeometryFrames, Marker |
-| `src/quantumvitas/core/analysis/bundles.py` | CanonicalPrimitiveBundle, DerivedPrimitiveBundle, RenderMeta |
+| `src/qmatsuite/core/analysis/__init__.py` | Public API exports |
+| `src/qmatsuite/core/analysis/base.py` | AnalysisObjectMeta, SourceFileStat |
+| `src/qmatsuite/core/analysis/capability.py` | AnalysisCapability, CapabilityMatch, AnalysisResult, ResultState |
+| `src/qmatsuite/core/analysis/evidence.py` | EvidenceBundle passed to parsers |
+| `src/qmatsuite/core/analysis/orchestrator.py` | run_post_run_analysis() kernel orchestrator |
+| `src/qmatsuite/core/analysis/cas_writer.py` | CAS + SQLite persistence |
+| `src/qmatsuite/core/analysis/primitives.py` | Series1D, GeometryFrame, GeometryFrames, Marker |
+| `src/qmatsuite/core/analysis/bundles.py` | CanonicalPrimitiveBundle, DerivedPrimitiveBundle, RenderMeta |
 
 ### Analysis Object Models
 | File | Description |
 |---|---|
-| `src/quantumvitas/core/analysis/convergence/model.py` | Convergence dataclass + to_primitives() |
-| `src/quantumvitas/core/analysis/dos/model.py` | DOS dataclass + to_primitives() |
-| `src/quantumvitas/core/analysis/band_structure/model.py` | BandStructure + HighSymPoint + to_primitives() |
-| `src/quantumvitas/core/analysis/trajectory/model.py` | Trajectory, Frame + to_primitives() |
-| `src/quantumvitas/core/analysis/field3d.py` | Field3D + primitive-by-reference |
+| `src/qmatsuite/core/analysis/convergence/model.py` | Convergence dataclass + to_primitives() |
+| `src/qmatsuite/core/analysis/dos/model.py` | DOS dataclass + to_primitives() |
+| `src/qmatsuite/core/analysis/band_structure/model.py` | BandStructure + HighSymPoint + to_primitives() |
+| `src/qmatsuite/core/analysis/trajectory/model.py` | Trajectory, Frame + to_primitives() |
+| `src/qmatsuite/core/analysis/field3d.py` | Field3D + primitive-by-reference |
 
 ### Transforms
 | File | Description |
 |---|---|
-| `src/quantumvitas/core/analysis/transforms/base.py` | PrimitiveTransform ABC |
-| `src/quantumvitas/core/analysis/transforms/fermi_shift.py` | Shift energies by Fermi level |
-| `src/quantumvitas/core/analysis/transforms/energy_crop.py` | Window to energy range |
-| `src/quantumvitas/core/analysis/transforms/smoothing.py` | Running average |
-| `src/quantumvitas/core/analysis/transforms/frame_slice.py` | Subset trajectory frames |
-| `src/quantumvitas/core/analysis/transforms/msd.py` | Mean square displacement |
-| `src/quantumvitas/core/analysis/transforms/rdf.py` | Radial distribution function |
-| `src/quantumvitas/core/analysis/transforms/vacf.py` | Velocity autocorrelation |
-| `src/quantumvitas/core/analysis/transforms/diffusion.py` | Diffusion coefficient |
+| `src/qmatsuite/core/analysis/transforms/base.py` | PrimitiveTransform ABC |
+| `src/qmatsuite/core/analysis/transforms/fermi_shift.py` | Shift energies by Fermi level |
+| `src/qmatsuite/core/analysis/transforms/energy_crop.py` | Window to energy range |
+| `src/qmatsuite/core/analysis/transforms/smoothing.py` | Running average |
+| `src/qmatsuite/core/analysis/transforms/frame_slice.py` | Subset trajectory frames |
+| `src/qmatsuite/core/analysis/transforms/msd.py` | Mean square displacement |
+| `src/qmatsuite/core/analysis/transforms/rdf.py` | Radial distribution function |
+| `src/qmatsuite/core/analysis/transforms/vacf.py` | Velocity autocorrelation |
+| `src/qmatsuite/core/analysis/transforms/diffusion.py` | Diffusion coefficient |
 
 ### Parser Registry
 | File | Description |
 |---|---|
-| `src/quantumvitas/parsers/registry.py` | Global parser registry (engine, type) -> class |
-| `src/quantumvitas/parsers/__init__.py` | Re-exports ParserRegistry |
+| `src/qmatsuite/parsers/registry.py` | Global parser registry (engine, type) -> class |
+| `src/qmatsuite/parsers/__init__.py` | Re-exports ParserRegistry |
 
 ### Per-Engine Parsers (representative)
 | File | Description |
 |---|---|
-| `src/quantumvitas/drivers/qe/parsers/output.py` | QE scf_digest parser |
-| `src/quantumvitas/drivers/qe/parsers/convergence.py` | QE convergence parser |
-| `src/quantumvitas/drivers/qe/parsers/dos.py` | QE DOS parser |
-| `src/quantumvitas/drivers/qe/parsers/bands.py` | QE band structure parser |
-| `src/quantumvitas/drivers/vasp/parsers/output.py` | VASP scf_digest (vasprun.xml + OUTCAR) |
-| `src/quantumvitas/drivers/vasp/parsers/bands.py` | VASP band structure parser |
-| `src/quantumvitas/drivers/vasp/parsers/dos.py` | VASP DOS parser (DOSCAR) |
+| `src/qmatsuite/drivers/qe/parsers/output.py` | QE scf_digest parser |
+| `src/qmatsuite/drivers/qe/parsers/convergence.py` | QE convergence parser |
+| `src/qmatsuite/drivers/qe/parsers/dos.py` | QE DOS parser |
+| `src/qmatsuite/drivers/qe/parsers/bands.py` | QE band structure parser |
+| `src/qmatsuite/drivers/vasp/parsers/output.py` | VASP scf_digest (vasprun.xml + OUTCAR) |
+| `src/qmatsuite/drivers/vasp/parsers/bands.py` | VASP band structure parser |
+| `src/qmatsuite/drivers/vasp/parsers/dos.py` | VASP DOS parser (DOSCAR) |
 
 ### Visualization
 | File | Description |
 |---|---|
-| `src/quantumvitas/analysis/plotting.py` | Legacy matplotlib plots (DOS, bands, SCF conv) |
-| `src/quantumvitas/analysis/parsers.py` | Legacy QE parsers (SCFResult, DOSData, BandStructureData) |
-| `src/quantumvitas/analysis/structure_viz.py` | 3D structure visualization (ball-and-stick) |
-| `src/quantumvitas/analysis/calculation_analysis.py` | Legacy results/ directory writer |
-| `src/quantumvitas/viz/data_models.py` | High-level viz data models |
+| `src/qmatsuite/analysis/plotting.py` | Legacy matplotlib plots (DOS, bands, SCF conv) |
+| `src/qmatsuite/analysis/parsers.py` | Legacy QE parsers (SCFResult, DOSData, BandStructureData) |
+| `src/qmatsuite/analysis/structure_viz.py` | 3D structure visualization (ball-and-stick) |
+| `src/qmatsuite/analysis/calculation_analysis.py` | Legacy results/ directory writer |
+| `src/qmatsuite/viz/data_models.py` | High-level viz data models |
 
 ### Service Layer
 | File | Description |
 |---|---|
-| `src/quantumvitas/api/service.py` | QVService.analysis.* methods (lines 1062-1300+) |
-| `src/quantumvitas/provenance/schema.py` | analysis_snapshots SQLite table definition |
+| `src/qmatsuite/api/service.py` | QMSService.analysis.* methods (lines 1062-1300+) |
+| `src/qmatsuite/provenance/schema.py` | analysis_snapshots SQLite table definition |
 
 ### Driver Declarations (ANALYSIS_CAPABILITIES)
 | File | Description |
 |---|---|
-| `src/quantumvitas/drivers/qe/driver.py` | QE: 9 capabilities (most complete) |
-| `src/quantumvitas/drivers/vasp/driver.py` | VASP: 8 capabilities |
-| `src/quantumvitas/drivers/abinit/driver.py` | ABINIT: 7 capabilities |
-| `src/quantumvitas/drivers/cp2k/driver.py` | CP2K: 7 capabilities |
-| `src/quantumvitas/drivers/siesta/driver.py` | Siesta: 7 capabilities |
-| `src/quantumvitas/drivers/gpaw/driver.py` | GPAW: 7 capabilities |
-| `src/quantumvitas/drivers/orca/driver.py` | ORCA: 4 capabilities |
-| `src/quantumvitas/drivers/gaussian/driver.py` | Gaussian: 8 capabilities |
-| `src/quantumvitas/drivers/lammps/driver.py` | LAMMPS: 2 capabilities |
-| `src/quantumvitas/drivers/xtb/driver.py` | xTB: 2 capabilities |
-| `src/quantumvitas/drivers/w90/driver.py` | Wannier90: 1 capability |
-| `src/quantumvitas/drivers/qmcpack/driver.py` | QMCPACK: 2 capabilities |
-| `src/quantumvitas/drivers/pyscf/driver.py` | PySCF: 4 capabilities |
-| `src/quantumvitas/drivers/psi4/driver.py` | Psi4: 4 capabilities |
-| `src/quantumvitas/drivers/yambo/driver.py` | Yambo: 0 capabilities |
+| `src/qmatsuite/drivers/qe/driver.py` | QE: 9 capabilities (most complete) |
+| `src/qmatsuite/drivers/vasp/driver.py` | VASP: 8 capabilities |
+| `src/qmatsuite/drivers/abinit/driver.py` | ABINIT: 7 capabilities |
+| `src/qmatsuite/drivers/cp2k/driver.py` | CP2K: 7 capabilities |
+| `src/qmatsuite/drivers/siesta/driver.py` | Siesta: 7 capabilities |
+| `src/qmatsuite/drivers/gpaw/driver.py` | GPAW: 7 capabilities |
+| `src/qmatsuite/drivers/orca/driver.py` | ORCA: 4 capabilities |
+| `src/qmatsuite/drivers/gaussian/driver.py` | Gaussian: 8 capabilities |
+| `src/qmatsuite/drivers/lammps/driver.py` | LAMMPS: 2 capabilities |
+| `src/qmatsuite/drivers/xtb/driver.py` | xTB: 2 capabilities |
+| `src/qmatsuite/drivers/w90/driver.py` | Wannier90: 1 capability |
+| `src/qmatsuite/drivers/qmcpack/driver.py` | QMCPACK: 2 capabilities |
+| `src/qmatsuite/drivers/pyscf/driver.py` | PySCF: 4 capabilities |
+| `src/qmatsuite/drivers/psi4/driver.py` | Psi4: 4 capabilities |
+| `src/qmatsuite/drivers/yambo/driver.py` | Yambo: 0 capabilities |

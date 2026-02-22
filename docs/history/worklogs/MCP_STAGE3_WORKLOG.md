@@ -9,10 +9,10 @@ Stage 3 adds 4 execution tools to the MCP server, completing the Phase 1 chain:
 
 | Tool | File | Purpose |
 |------|------|---------|
-| `run_calculation` | `src/quantumvitas/mcp/tools/run_calculation.py` | Synchronous engine execution |
-| `get_status` | `src/quantumvitas/mcp/tools/get_status.py` | Query historical run state |
-| `get_results_summary` | `src/quantumvitas/mcp/tools/get_results_summary.py` | Compact results (energy, convergence) |
-| `quick_run` | `src/quantumvitas/mcp/tools/quick_run.py` | Create + configure + run in one shot |
+| `run_calculation` | `src/qmatsuite/mcp/tools/run_calculation.py` | Synchronous engine execution |
+| `get_status` | `src/qmatsuite/mcp/tools/get_status.py` | Query historical run state |
+| `get_results_summary` | `src/qmatsuite/mcp/tools/get_results_summary.py` | Compact results (energy, convergence) |
+| `quick_run` | `src/qmatsuite/mcp/tools/quick_run.py` | Create + configure + run in one shot |
 
 ## Key Design Decisions
 
@@ -23,15 +23,15 @@ Stage 3 adds 4 execution tools to the MCP server, completing the Phase 1 chain:
 
 ## Files Created (5)
 
-- `src/quantumvitas/mcp/tools/run_calculation.py`
-- `src/quantumvitas/mcp/tools/get_status.py`
-- `src/quantumvitas/mcp/tools/get_results_summary.py`
-- `src/quantumvitas/mcp/tools/quick_run.py`
+- `src/qmatsuite/mcp/tools/run_calculation.py`
+- `src/qmatsuite/mcp/tools/get_status.py`
+- `src/qmatsuite/mcp/tools/get_results_summary.py`
+- `src/qmatsuite/mcp/tools/quick_run.py`
 - `tests/mcp/test_stage3.py`
 
 ## Files Modified (1)
 
-- `src/quantumvitas/mcp/server.py` — 4 new tool module imports
+- `src/qmatsuite/mcp/server.py` — 4 new tool module imports
 
 ## Test Results
 
@@ -41,7 +41,7 @@ Stage 3 adds 4 execution tools to the MCP server, completing the Phase 1 chain:
 
 ## Backend API Mappings
 
-| MCP Tool | QVService Method |
+| MCP Tool | QMSService Method |
 |----------|-----------------|
 | run_calculation | `svc.run.run_calculation(calc_ulid)` |
 | get_status | `svc.calculation.get_detail()` + `svc.history.get_latest_run_for_step()` |

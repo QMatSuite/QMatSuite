@@ -18,12 +18,12 @@ The test failure is caused by a **race condition** where the test checks for the
 
 **Test:** `demo_calculation_run.spec.ts:63:3` - "run calculation once and verify all computation-dependent behavior"
 
-**Failure:** The test fails at line 285 when trying to locate the bands chart element with test ID `qv-analysis-bands-chart`. The element is not found within the 30-second timeout.
+**Failure:** The test fails at line 285 when trying to locate the bands chart element with test ID `qms-analysis-bands-chart`. The element is not found within the 30-second timeout.
 
 **Error Message:**
 ```
 Error: expect(locator).toBeVisible() failed
-Locator: getByTestId('qv-analysis-bands-chart')
+Locator: getByTestId('qms-analysis-bands-chart')
 Expected: visible
 Timeout: 30000ms
 Error: element(s) not found
@@ -41,18 +41,18 @@ The test follows this sequence:
 5. Switches to Analysis tab
 6. Clicks the 'bands' step chip
 7. Clicks the "Plot" view mode tab
-8. **FAILS HERE:** Waits for `qv-analysis-bands-chart` to be visible
+8. **FAILS HERE:** Waits for `qms-analysis-bands-chart` to be visible
 
 ### 2. Code Flow Analysis
 
 #### Chart Rendering Conditions
 
-The bands chart (`qv-analysis-bands-chart`) is rendered in `AnalysisVizPanel.tsx` (line 124) with the test ID:
+The bands chart (`qms-analysis-bands-chart`) is rendered in `AnalysisVizPanel.tsx` (line 124) with the test ID:
 ```typescript
-data-testid={`qv-analysis-${selectedObjectType ?? 'unknown'}-chart`}
+data-testid={`qms-analysis-${selectedObjectType ?? 'unknown'}-chart`}
 ```
 
-**Critical Finding:** The test ID depends on `selectedObjectType`. If `selectedObjectType` is `null`, the test ID would be `qv-analysis-unknown-chart`, NOT `qv-analysis-bands-chart`.
+**Critical Finding:** The test ID depends on `selectedObjectType`. If `selectedObjectType` is `null`, the test ID would be `qms-analysis-unknown-chart`, NOT `qms-analysis-bands-chart`.
 
 The chart only renders when ALL of these conditions are met (AnalysisVizPanel.tsx:114):
 ```typescript
@@ -84,7 +84,7 @@ The test clicks the "Plot" tab (line 282) and immediately checks for the chart (
 
 **Potential Failure Scenarios:**
 
-1. **`selectedObjectType` is null**: The chart test ID would be `qv-analysis-unknown-chart`, not `qv-analysis-bands-chart`
+1. **`selectedObjectType` is null**: The chart test ID would be `qms-analysis-unknown-chart`, not `qms-analysis-bands-chart`
 2. **`availableObjectTypes` is empty**: The panel shows "No analysis object is available for this step in the current run" instead of the chart
 3. **`loading` is still true**: The panel shows "Loading analysis..." instead of the chart
 4. **`error` is set**: The panel shows an error message instead of the chart
@@ -100,7 +100,7 @@ The test at line 282-285:
 await plotTab.click();
 
 // Wait for bands chart to appear (loading may take time)
-await expect(appPage.getByTestId('qv-analysis-bands-chart')).toBeVisible({ timeout: 30000 });
+await expect(appPage.getByTestId('qms-analysis-bands-chart')).toBeVisible({ timeout: 30000 });
 ```
 
 **Issues:**
@@ -143,7 +143,7 @@ if (payload.bundle.provenance_meta.step_ulids.includes(selectedStepId)) {
 
 #### Step ULID Matching
 
-The test selects the step by clicking the chip with `data-testid="qv-analysis-step-tab-bands"` (line 268), which sets `selectedStepId` to `step.ulid` (line 368). However, the analysis bundle's `provenance_meta.step_ulids` must include this exact ULID for the match to work.
+The test selects the step by clicking the chip with `data-testid="qms-analysis-step-tab-bands"` (line 268), which sets `selectedStepId` to `step.ulid` (line 368). However, the analysis bundle's `provenance_meta.step_ulids` must include this exact ULID for the match to work.
 
 ### 7. Recommendations
 

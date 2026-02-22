@@ -17,9 +17,9 @@
 
 | Frozen Layer | Governing Document | What This Means |
 |--------------|--------------------|-----------------|
-| `quantumvitas.api.*` | `API_CONSTITUTION.md` v2.1 | No changes to `api/service.py`, `api/utils.py`, `api/__init__.py`, `api/errors.py` |
-| `quantumvitas.cli.*` | `API_CONSTITUTION.md` H1 | No CLI changes |
-| `quantumvitas.daemon.*` | `API_CONSTITUTION.md` H1 | No daemon changes |
+| `qmatsuite.api.*` | `API_CONSTITUTION.md` v2.1 | No changes to `api/service.py`, `api/utils.py`, `api/__init__.py`, `api/errors.py` |
+| `qmatsuite.cli.*` | `API_CONSTITUTION.md` H1 | No CLI changes |
+| `qmatsuite.daemon.*` | `API_CONSTITUTION.md` H1 | No daemon changes |
 | Step type system | `step_type_gen_spec_constitution.md` v1.1 | No new aliases, no legacy bare `step_type`, no manual join/split, no new mapping tables, no drift |
 
 **Kernel public naming**: All domain entrypoints are `<domain>/public.py`. No `*_public.py` filenames anywhere in code or docs.
@@ -54,7 +54,7 @@ This plan was validated against `CONSTITUTION_ZH.md` (repo root). Key alignments
 **Tasks**:
 
 1. **`tests/gates/test_kernel_no_api_import.py`** (G-K0)
-   - AST-scan all kernel packages for `from quantumvitas.api`
+   - AST-scan all kernel packages for `from qmatsuite.api`
    - Allowlist (initial, 10 entries):
      ```
      engine/pyscf_engine.py:385
@@ -70,7 +70,7 @@ This plan was validated against `CONSTITUTION_ZH.md` (repo root). Key alignments
    - Allowlist MUST shrink to 0 after PR-K1
 
 2. **`tests/gates/test_kernel_no_frontend_import.py`** (G-K1)
-   - AST-scan kernel for `from quantumvitas.cli` / `from quantumvitas.daemon`
+   - AST-scan kernel for `from qmatsuite.cli` / `from qmatsuite.daemon`
    - Expected: empty allowlist (no known violations)
 
 3. **`tests/gates/test_yaml_write_single_entry.py`** (G-K3)
@@ -82,10 +82,10 @@ This plan was validated against `CONSTITUTION_ZH.md` (repo root). Key alignments
 4. **`tests/gates/test_engine_no_ssot_import.py`** (G-K6)
    - Scan `engine/` for:
      - `yaml.safe_load` on any path
-     - `from quantumvitas.core.yaml_io`
-     - `from quantumvitas.core.yamldoc`
-     - `from quantumvitas.core.locking`
-     - `from quantumvitas.core.journal`
+     - `from qmatsuite.core.yaml_io`
+     - `from qmatsuite.core.yamldoc`
+     - `from qmatsuite.core.locking`
+     - `from qmatsuite.core.journal`
    - Also scan for manual step-type manipulation: `split("_"`, `"_" in step_type`, `"_" in target_step`, `f"{prefix}_`
    - Allowlist (initial, 6 entries):
      ```
@@ -121,28 +121,28 @@ This plan was validated against `CONSTITUTION_ZH.md` (repo root). Key alignments
 
 ### PR-K1: Fix Kernel → API Reverse Imports (Law K0)
 
-**Goal**: Eliminate all `from quantumvitas.api` imports inside kernel. Zero allowlist for G-K0.
+**Goal**: Eliminate all `from qmatsuite.api` imports inside kernel. Zero allowlist for G-K0.
 
 **Violations addressed** (from Review Report §5.2, §6.2):
 
 | # | File:Line | Current Import | Replacement |
 |---|-----------|---------------|-------------|
-| 1 | `engine/pyscf_engine.py:385` | `from quantumvitas.api import get_step_type_gen` | `from quantumvitas.workflow.step_type_convert import gen_from` |
+| 1 | `engine/pyscf_engine.py:385` | `from qmatsuite.api import get_step_type_gen` | `from qmatsuite.workflow.step_type_convert import gen_from` |
 | 2 | `engine/pyscf_engine.py:515` | same | same |
 | 3 | `engine/pyscf_engine.py:544` | same | same |
-| 4 | `workflow/registry.py:930` | same | `from quantumvitas.workflow.step_type_convert import gen_from` |
+| 4 | `workflow/registry.py:930` | same | `from qmatsuite.workflow.step_type_convert import gen_from` |
 | 5 | `workflow/templates.py:516` | same | same |
 | 6 | `presets/integration.py:314` | same | same |
 | 7 | `presets/integration.py:379` | same | same |
 | 8 | `drivers/qe/handler.py:168` | same | same |
-| 9 | `calculation/folder_import.py:15` | `from quantumvitas.api import QVService` | Extract kernel-level functions (see below) |
+| 9 | `calculation/folder_import.py:15` | `from qmatsuite.api import QMSService` | Extract kernel-level functions (see below) |
 
 **folder_import.py refactoring strategy**:
 
-`folder_import.py` calls `QVService.init_project()`, `QVService.init_calculation()`, and `QVService.import_step_from_qe_input()`. These are facade orchestration methods. Options:
+`folder_import.py` calls `QMSService.init_project()`, `QMSService.init_calculation()`, and `QMSService.import_step_from_qe_input()`. These are facade orchestration methods. Options:
 
-- **Option A (preferred)**: Move `folder_import.py` to the facade layer (`quantumvitas.api.folder_import`) since it *is* a facade-level orchestration function. This removes the K0 violation without touching API internals — it's a file move, not an API change.
-- **Option B**: Extract the kernel-level functions that `QVService` delegates to, and call them directly. This requires understanding `QVService` internals, which is more invasive.
+- **Option A (preferred)**: Move `folder_import.py` to the facade layer (`qmatsuite.api.folder_import`) since it *is* a facade-level orchestration function. This removes the K0 violation without touching API internals — it's a file move, not an API change.
+- **Option B**: Extract the kernel-level functions that `QMSService` delegates to, and call them directly. This requires understanding `QMSService` internals, which is more invasive.
 
 Decision: **Option A** — move file to `api/` directory (it's already a facade-level concern). No API surface change.
 
@@ -210,7 +210,7 @@ Create in `core/yaml_io.py`:
 def load_yaml_meta_subtree(path: Path) -> dict:
     """Load a YAML file and return ONLY the 'meta' subtree.
 
-    Returns the dict under the 'meta' key (or '__qv_meta__' for
+    Returns the dict under the 'meta' key (or '__qms_meta__' for
     legacy structure files). All other top-level keys are discarded.
     Uses _load_yaml_raw() internally.
 
@@ -218,7 +218,7 @@ def load_yaml_meta_subtree(path: Path) -> dict:
     should call during index building and resolution.
     """
     data = _load_yaml_raw(path)
-    return data.get("meta") or data.get("__qv_meta__") or {}
+    return data.get("meta") or data.get("__qms_meta__") or {}
 ```
 
 #### Part B: Migrate resolution.py YAML reads
@@ -309,7 +309,7 @@ In `calculation/runner.py` and/or `execution/executor.py`:
 | 387 | `get_step_type_gen(target_step_type) if "_" in target_step_type else target_step_type` | `engine_input.step_type_gen` |
 | 498 | `yaml.safe_load(step_yaml_path)["step_type_spec"]` | `chain_entry.step_type_spec` |
 | 518 | `get_step_type_gen(step_type_spec) if "_" in step_type_spec else step_type_spec` | `chain_entry.step_type_gen` |
-| 385, 515, 544 | `from quantumvitas.api import get_step_type_gen` | DELETE (no longer needed — gen is pre-resolved on EngineInput) |
+| 385, 515, 544 | `from qmatsuite.api import get_step_type_gen` | DELETE (no longer needed — gen is pre-resolved on EngineInput) |
 
 **Semantic invariant**: The PySCF engine still builds `job_chain.json` with the same data. It still launches a Python subprocess. It still re-executes the entire chain in one session. The ONLY change is the data source: `EngineInput.chain` instead of `yaml.safe_load`.
 
@@ -344,8 +344,8 @@ All engine implementations must be updated to accept `EngineInput` instead of `(
 **Acceptance criteria**:
 - `test_engine_no_ssot_import.py` passes with empty allowlist
 - No `yaml.safe_load` in `engine/` directory
-- No `from quantumvitas.core.yaml_io` or `from quantumvitas.core.yamldoc` in `engine/`
-- No `from quantumvitas.api` in `engine/`
+- No `from qmatsuite.core.yaml_io` or `from qmatsuite.core.yamldoc` in `engine/`
+- No `from qmatsuite.api` in `engine/`
 - No manual `"_" in step_type` checks in `engine/`
 - All existing engine tests pass (PySCF, ORCA, QE, etc.)
 - `job_chain.json` contents for PySCF are identical before/after
@@ -368,12 +368,12 @@ All engine implementations must be updated to accept `EngineInput` instead of `(
 
 | File | Exports |
 |------|---------|
-| `quantumvitas/core/public.py` | **ssot**: `load_yaml_doc`, `save_yaml_doc`, `load_yaml_meta_subtree`, `YamlDoc`, `StepDoc`, `CalcDoc`, `ProjectDoc`, `calc_edit_lock`, `calc_run_lock`; **resources**: `require_calculation`, `require_step`, `require_structure`, `list_calculations`, `list_structures`, `build_resource_index` |
-| `quantumvitas/calculation/public.py` | `Calculation`, `Step`, `CalculationRunner` |
-| `quantumvitas/execution/public.py` | `JobExecutor`, `JobGraph`, `get_recipe_for_engine` |
-| `quantumvitas/engine/public.py` | `EngineRegistry`, `create_default_registry`, `Engine`, `EngineInput`, `ChainStepEntry` |
-| `quantumvitas/workflow/public.py` | `get_registry`, `StepTypeRegistry`, `StepTypeSpec`, `spec_from`, `gen_from`, `prefix_from` |
-| `quantumvitas/analysis/public.py` | `read_artifact`, `artifact_exists`, `AnalysisType` |
+| `qmatsuite/core/public.py` | **ssot**: `load_yaml_doc`, `save_yaml_doc`, `load_yaml_meta_subtree`, `YamlDoc`, `StepDoc`, `CalcDoc`, `ProjectDoc`, `calc_edit_lock`, `calc_run_lock`; **resources**: `require_calculation`, `require_step`, `require_structure`, `list_calculations`, `list_structures`, `build_resource_index` |
+| `qmatsuite/calculation/public.py` | `Calculation`, `Step`, `CalculationRunner` |
+| `qmatsuite/execution/public.py` | `JobExecutor`, `JobGraph`, `get_recipe_for_engine` |
+| `qmatsuite/engine/public.py` | `EngineRegistry`, `create_default_registry`, `Engine`, `EngineInput`, `ChainStepEntry` |
+| `qmatsuite/workflow/public.py` | `get_registry`, `StepTypeRegistry`, `StepTypeSpec`, `spec_from`, `gen_from`, `prefix_from` |
+| `qmatsuite/analysis/public.py` | `read_artifact`, `artifact_exists`, `AnalysisType` |
 
 > **Reminder**: These `public.py` files are kernel-internal cross-domain entrypoints for dependency DAG hygiene. They are NOT the facade API and NOT externally stable contracts. See KERNEL_DEPENDENCY_SPEC.md §3.5.
 
@@ -457,7 +457,7 @@ Per `step_type_gen_spec_constitution.md`, the following rules apply throughout A
 
 When all PRs land:
 
-- [x] **K0**: Zero `from quantumvitas.api` imports in kernel. Gate G-K0 passes with empty allowlist.
+- [x] **K0**: Zero `from qmatsuite.api` imports in kernel. Gate G-K0 passes with empty allowlist.
 - [x] **K1**: No import cycles. Lazy imports documented per EXC-002.
 - [x] **K2**: `public.py` exists for all 6 domains. Deep import migration pending (PR-K6).
 - [x] **K3**: All YAML writes through `save_yaml_doc()` (or EXC-004 whitelist with assertions). Gate G-K3 passes.

@@ -112,7 +112,7 @@ except FileNotFoundError:
    ```bash
    brew --prefix lammps
    ls -l /opt/homebrew/opt/lammps/bin
-   python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
+   python -c "from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
    ```
 
 2. **再修复**：修 discovery/marker，不改 tests 去 skip
@@ -121,10 +121,10 @@ except FileNotFoundError:
 
 ```python
 # ✅ 正确（从 pseudo_provenance 导入）
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from qmatsuite.core.pseudo_provenance import compute_sha256_file
 
 # ❌ 错误（不存在的函数）
-from quantumvitas.calculation.hash_utils import compute_file_sha256
+from qmatsuite.calculation.hash_utils import compute_file_sha256
 ```
 
 ---

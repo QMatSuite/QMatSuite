@@ -14,9 +14,9 @@ from typing import Any
 
 import pytest
 
-from quantumvitas.core.engines.vasp_resolver import get_potcar_dir, resolve_vasp_bin
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
-from quantumvitas.provenance.db import get_db_path
+from qmatsuite.core.engines.vasp_resolver import get_potcar_dir, resolve_vasp_bin
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
+from qmatsuite.provenance.db import get_db_path
 
 
 pytestmark = pytest.mark.vasp_core
@@ -75,7 +75,7 @@ def _require_real_vasp() -> None:
         pytest.skip(f"VASP golden daemon test skipped: {message}")
 
 
-def _send_request(daemon: QVDaemon, request_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+def _send_request(daemon: QMSDaemon, request_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     response = daemon.handle_request(
         RPCRequest(
             id="test",
@@ -88,7 +88,7 @@ def _send_request(daemon: QVDaemon, request_type: str, payload: dict[str, Any]) 
     return response.data
 
 
-def _wait_for_job(daemon: QVDaemon, job_id: str, timeout: float = 1200.0) -> dict[str, Any]:
+def _wait_for_job(daemon: QMSDaemon, job_id: str, timeout: float = 1200.0) -> dict[str, Any]:
     deadline = time.time() + timeout
     while time.time() < deadline:
         status = _send_request(daemon, "get_job_status", {"job_id": job_id})
@@ -99,8 +99,8 @@ def _wait_for_job(daemon: QVDaemon, job_id: str, timeout: float = 1200.0) -> dic
 
 
 @pytest.fixture()
-def daemon() -> QVDaemon:
-    d = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+def daemon() -> QMSDaemon:
+    d = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
     try:
         yield d
     finally:
@@ -108,7 +108,7 @@ def daemon() -> QVDaemon:
 
 
 def test_vasp_bands_demo_runs_new_analysis_pipeline_end_to_end(
-    daemon: QVDaemon,
+    daemon: QMSDaemon,
     tmp_path: Path,
 ) -> None:
     workspace = tmp_path / "demo_workspace"
@@ -124,7 +124,7 @@ def test_vasp_bands_demo_runs_new_analysis_pipeline_end_to_end(
         },
     )
     project_root = Path(created["project_root"])
-    assert (project_root / "project.qv.yml").exists()
+    assert (project_root / "project.qms.yml").exists()
 
     calc_listing = _send_request(daemon, "list_calculations", {"project_root": str(project_root)})
     calculations = calc_listing.get("calculations", [])

@@ -10,8 +10,8 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from quantumvitas.calculation.structure_steps import materialize_step_spec, StructureStepSpec
-from quantumvitas.core.resources import ResourceMeta
+from qmatsuite.calculation.structure_steps import materialize_step_spec, StructureStepSpec
+from qmatsuite.core.resources import ResourceMeta
 from pymatgen.core import Structure, Lattice
 
 

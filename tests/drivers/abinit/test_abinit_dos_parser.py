@@ -7,10 +7,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.dos import DOS
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.abinit.parsers.dos import ABINITDOSProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.dos import DOS
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.abinit.parsers.dos import ABINITDOSProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_abinit_dos"

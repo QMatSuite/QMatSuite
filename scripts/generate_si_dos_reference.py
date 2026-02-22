@@ -11,10 +11,10 @@ import shutil
 
 project_root = Path(__file__).parent
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine, EngineConfig
-from quantumvitas.io import QEInputParser, QEInputGenerator
-from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
-from quantumvitas.calculation.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
+from qmatsuite.core.engines.qe import QuantumEspressoEngine, EngineConfig
+from qmatsuite.io import QEInputParser, QEInputGenerator
+from qmatsuite.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+from qmatsuite.calculation.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core import run_and_verify_step_with_assert
 
 def generate_reference_outputs():
@@ -60,7 +60,7 @@ def generate_reference_outputs():
     current = Path(scf_file).parent
     project_root = None
     while current != current.parent:
-        if (current / "pseudo").exists() or (current / "project.qv.yml").exists():
+        if (current / "pseudo").exists() or (current / "project.qms.yml").exists():
             project_root = current
             break
         current = current.parent

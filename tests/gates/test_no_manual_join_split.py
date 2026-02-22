@@ -27,12 +27,12 @@ SCAN_DIRS = [
 # Files to skip (canonical implementation)
 ALLOWLIST_PATTERNS = [
     # Canonical implementation of split functions
-    "src/quantumvitas/workflow/step_type_convert.py",
+    "src/qmatsuite/workflow/step_type_convert.py",
     # Legacy archive
-    "src/quantumvitas/_vault/*",
+    "src/qmatsuite/_vault/*",
     # Non step-type splitting (slug/filename parsing)
-    "src/quantumvitas/calculation/compat_executor.py",  # calculation_slug parsing
-    "src/quantumvitas/core/pseudo_config.py",  # filename parsing
+    "src/qmatsuite/calculation/compat_executor.py",  # calculation_slug parsing
+    "src/qmatsuite/core/pseudo_config.py",  # filename parsing
 ]
 
 

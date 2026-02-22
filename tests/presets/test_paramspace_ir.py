@@ -7,18 +7,18 @@ Tests that ParamSpace reversibility (compile→detect round-trip) is preserved.
 
 import pytest
 
-from quantumvitas.presets.paramspace import (
+from qmatsuite.presets.paramspace import (
     ParamSpace,
     ParamKey,
     get_magnetism_paramspace,
     get_occupations_scheme_paramspace,
     get_convergence_paramspace,
 )
-from quantumvitas.presets.spaces_registry import (
+from qmatsuite.presets.spaces_registry import (
     detect_dimension,
     compile_dimension_patch,
 )
-from quantumvitas.presets.dimensions import (
+from qmatsuite.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
     ConvergenceOption,

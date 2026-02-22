@@ -44,7 +44,7 @@ This plan implements a full UI for the workflow + preset system, allowing users 
   - Auto-refresh when calculation changes
 
 - [x] **2.2** Add TypeScript types
-  - File: `gui/src/types/qv.ts`
+  - File: `gui/src/types/qms.ts`
   - Types: `PresetState`, `PresetDimension`, `PresetValue`
   - Added command types for `detect_presets`, `detect_workflow`, `apply_presets_to_calculation`
 
@@ -154,7 +154,7 @@ Merged into Phase 8F (CUSTOM UX hints).
   - Post-processing steps: accept none
   
 - [x] **8A.2** Create step_type → receiver mapping registry
-  - File: `src/quantumvitas/presets/receivers.py`
+  - File: `src/qmatsuite/presets/receivers.py`
   - `PresetReceiverRegistry` class with dimension mapping
   - `filter_presets_for_step()` helper function
   - `is_receiver()` check for step types
@@ -247,16 +247,16 @@ Merged into Phase 8F (CUSTOM UX hints).
 | `gui/src/components/presets/PresetSection.tsx` | Presets section component |
 | `gui/src/components/presets/PresetSection.css` | Styles |
 | `gui/src/components/presets/PresetDimensionRow.tsx` | Individual dimension |
-| `src/quantumvitas/presets/broadcast.py` | BROADCAST apply logic |
+| `src/qmatsuite/presets/broadcast.py` | BROADCAST apply logic |
 
 ### Modified Files
 | File | Changes |
 |------|---------|
-| `gui/src/types/qv.ts` | Add preset types |
+| `gui/src/types/qms.ts` | Add preset types |
 | `gui/src/components/panels/CalculationListPanel.tsx` | Add PresetSection, step footprints |
 | `gui/src/components/panels/CalculationOverviewTab.tsx` | Pass preset props |
-| `gui/src/hooks/useQVClient.ts` | Add preset RPC methods |
-| `src/quantumvitas/daemon/server.py` | Add BROADCAST handler |
+| `gui/src/hooks/useQMSClient.ts` | Add preset RPC methods |
+| `src/qmatsuite/daemon/server.py` | Add BROADCAST handler |
 
 ---
 

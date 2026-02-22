@@ -11,15 +11,15 @@ Auto completed LAMMPS integration Phases 0-5 with **25+ unit tests passing**. Ho
 ### 1.1 Engine Discovery
 | File | Status | Notes |
 |------|--------|-------|
-| `src/quantumvitas/core/engines/lammps_resolver.py` | ✅ Created | Binary discovery logic (brew/apt/conda/PATH) |
-| `src/quantumvitas/engine/registry.py` | ✅ Modified | Added `LammpsEngine` to `create_default_registry()` |
+| `src/qmatsuite/core/engines/lammps_resolver.py` | ✅ Created | Binary discovery logic (brew/apt/conda/PATH) |
+| `src/qmatsuite/engine/registry.py` | ✅ Modified | Added `LammpsEngine` to `create_default_registry()` |
 
 ### 1.2 Materialize
 | File | Status | Notes |
 |------|--------|-------|
-| `src/quantumvitas/io/lammps_data.py` | ✅ Created | `write_lammps_data()`, `read_lammps_data()` |
-| `src/quantumvitas/engine/lammps_writer.py` | ✅ Created | Template rendering |
-| `src/quantumvitas/engine/lammps_potentials.py` | ✅ Created | Potential file staging |
+| `src/qmatsuite/io/lammps_data.py` | ✅ Created | `write_lammps_data()`, `read_lammps_data()` |
+| `src/qmatsuite/engine/lammps_writer.py` | ✅ Created | Template rendering |
+| `src/qmatsuite/engine/lammps_potentials.py` | ✅ Created | Potential file staging |
 | `resources/calculation_templates/lammps/minimize.in.j2` | ✅ Created | Minimize template |
 | `resources/calculation_templates/lammps/md_nvt.in.j2` | ✅ Created | NVT template |
 | `resources/calculation_templates/lammps/md_npt.in.j2` | ✅ Created | NPT template |
@@ -28,24 +28,24 @@ Auto completed LAMMPS integration Phases 0-5 with **25+ unit tests passing**. Ho
 ### 1.3 Run
 | File | Status | Notes |
 |------|--------|-------|
-| `src/quantumvitas/engine/lammps_engine.py` | ✅ Created | `materialize_inputs()`, `run_step()` |
+| `src/qmatsuite/engine/lammps_engine.py` | ✅ Created | `materialize_inputs()`, `run_step()` |
 
 ### 1.4 Parse
 | File | Status | Notes |
 |------|--------|-------|
-| `src/quantumvitas/engine/lammps_parser.py` | ✅ Created | `parse_lammps_log()`, `parse_lammps_dump()` |
+| `src/qmatsuite/engine/lammps_parser.py` | ✅ Created | `parse_lammps_log()`, `parse_lammps_dump()` |
 
 ### 1.5 Manifest / Integration
 | File | Status | Notes |
 |------|--------|-------|
-| `src/quantumvitas/calculation/hash_utils.py` | ✅ Modified | Added `compute_potential_assets_sha()` |
-| `src/quantumvitas/calculation/runner.py` | ✅ Modified | LAMMPS integration in runner loop |
-| `src/quantumvitas/execution/lammps_relax_handler.py` | ✅ Created | Relax artifact handler |
+| `src/qmatsuite/calculation/hash_utils.py` | ✅ Modified | Added `compute_potential_assets_sha()` |
+| `src/qmatsuite/calculation/runner.py` | ✅ Modified | LAMMPS integration in runner loop |
+| `src/qmatsuite/execution/lammps_relax_handler.py` | ✅ Created | Relax artifact handler |
 
 ### 1.6 Step Types / Registry
 | File | Status | Deviation |
 |------|--------|-----------|
-| `src/quantumvitas/workflow/registry.py` | ⚠️ Deviation | Uses `lammps_minimize` instead of `lammps_relax`, has `lammps_restart` |
+| `src/qmatsuite/workflow/registry.py` | ⚠️ Deviation | Uses `lammps_minimize` instead of `lammps_relax`, has `lammps_restart` |
 
 ### 1.7 Tests
 | File | Status | Notes |
@@ -84,7 +84,7 @@ Auto completed LAMMPS integration Phases 0-5 with **25+ unit tests passing**. Ho
 
 **Auto Implementation:**
 ```python
-# src/quantumvitas/workflow/registry.py lines 545-575
+# src/qmatsuite/workflow/registry.py lines 545-575
 "lammps_minimize": StepTypeSpec(  # ❌ Should be "lammps_relax"
     id="relax",
     machine_type="lammps_minimize",  # ❌ Should be "lammps_relax"
@@ -104,10 +104,10 @@ Auto completed LAMMPS integration Phases 0-5 with **25+ unit tests passing**. Ho
 **Affected Files:**
 | File | Location | Current | Required |
 |------|----------|---------|----------|
-| `src/quantumvitas/workflow/registry.py` | Lines 545-556 | `lammps_minimize` | `lammps_relax` |
-| `src/quantumvitas/workflow/registry.py` | Lines 568-578 | `lammps_restart` exists | DELETE |
-| `src/quantumvitas/engine/lammps_writer.py` | Line 45 | `lammps_minimize` | `lammps_relax` |
-| `src/quantumvitas/execution/lammps_relax_handler.py` | Line 20 | `lammps_minimize` | `lammps_relax` |
+| `src/qmatsuite/workflow/registry.py` | Lines 545-556 | `lammps_minimize` | `lammps_relax` |
+| `src/qmatsuite/workflow/registry.py` | Lines 568-578 | `lammps_restart` exists | DELETE |
+| `src/qmatsuite/engine/lammps_writer.py` | Line 45 | `lammps_minimize` | `lammps_relax` |
+| `src/qmatsuite/execution/lammps_relax_handler.py` | Line 20 | `lammps_minimize` | `lammps_relax` |
 | `tests/unit/test_lammps_engine.py` | Multiple | `lammps_minimize`, `lammps_restart` | Update/Remove |
 | `tests/unit/test_lammps_writer.py` | Multiple | `lammps_minimize` | `lammps_relax` |
 | `docs/engines/lammps/*.md` | Multiple | `lammps_minimize` | `lammps_relax` |
@@ -132,7 +132,7 @@ valid_prefixes = ("qe_", "w90_", "pyscf_", "orca_", "vasp_")  # ❌ Missing "lam
 ### 2.3 Integration Test API Usage (CRITICAL)
 
 **Specification Requirement:**
-- Integration tests MUST use Service API (`QVService`) to create resources
+- Integration tests MUST use Service API (`QMSService`) to create resources
 - Must NOT use non-existent methods like `Project.from_directory()`
 
 **Auto Implementation:**
@@ -144,17 +144,17 @@ project = Project.from_directory(lammps_project)  # ❌ Method doesn't exist!
 **Correct Pattern (from existing tests):**
 ```python
 # From tests/integration/vasp/test_vasp_project_e2e.py
-project_root = QVService.init_project(target_dir=tmp_path / "project", name="Test")
-calc_resolved = QVService.init_calculation(project_root=project_root, ...)
-step_resolved = QVService.init_step(project_root=project_root, calculation_selector=calc_id, ...)
+project_root = QMSService.init_project(target_dir=tmp_path / "project", name="Test")
+calc_resolved = QMSService.init_calculation(project_root=project_root, ...)
+step_resolved = QMSService.init_step(project_root=project_root, calculation_selector=calc_id, ...)
 ```
 
 **Affected Files:**
 | File | Line | Current | Required |
 |------|------|---------|----------|
-| `tests/integration/test_lammps_lj_minimize.py` | 56 | `Project.from_directory()` | `QVService.init_project()` pattern |
-| `tests/integration/test_lammps_eam_md.py` | 56 | `Project.from_directory()` | `QVService.init_project()` pattern |
-| `tests/integration/test_lammps_chain.py` | 56 | `Project.from_directory()` | `QVService.init_project()` pattern |
+| `tests/integration/test_lammps_lj_minimize.py` | 56 | `Project.from_directory()` | `QMSService.init_project()` pattern |
+| `tests/integration/test_lammps_eam_md.py` | 56 | `Project.from_directory()` | `QMSService.init_project()` pattern |
+| `tests/integration/test_lammps_chain.py` | 56 | `Project.from_directory()` | `QMSService.init_project()` pattern |
 
 ---
 

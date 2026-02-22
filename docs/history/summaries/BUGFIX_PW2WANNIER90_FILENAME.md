@@ -25,7 +25,7 @@ pw2wannier90.x < pw2wan.in > pw2wan.out
 
 ## Fixes Applied
 
-### 1. Input File Naming (`src/quantumvitas/calculation/structure_steps.py`)
+### 1. Input File Naming (`src/qmatsuite/calculation/structure_steps.py`)
 
 **Before**:
 ```python
@@ -39,14 +39,14 @@ filename = f"{seedname}.pw2wan"
 # Generate filename - Use standard QE naming: pw2wan.in (not seedname.pw2wan)
 # The seedname inside the file (e.g., 'diamond') controls output file names (diamond.mmn, etc.)
 # But the input file itself should be pw2wan.in for consistency with other QE steps
-from quantumvitas.calculation.naming import CalculationFileNaming
+from qmatsuite.calculation.naming import CalculationFileNaming
 if input_name:
     filename = input_name
 else:
     filename = CalculationFileNaming.input_filename("pw2wannier90")  # Returns "pw2wan.in"
 ```
 
-### 2. Output File Naming (`src/quantumvitas/core/engines/qe_calculation.py`)
+### 2. Output File Naming (`src/qmatsuite/core/engines/qe_calculation.py`)
 
 **Before**:
 ```python
@@ -71,7 +71,7 @@ else:
     output_filename = f"{input_stem}.out"
 ```
 
-### 3. Stderr File Naming (`src/quantumvitas/core/engines/qe_calculation.py`)
+### 3. Stderr File Naming (`src/qmatsuite/core/engines/qe_calculation.py`)
 
 **Before**:
 ```python
@@ -86,7 +86,7 @@ if step_type == "pw2wannier90":
     stderr_file = working_dir / "pw2wan.stderr"
 ```
 
-### 4. Naming Convention Support (`src/quantumvitas/calculation/naming.py`)
+### 4. Naming Convention Support (`src/qmatsuite/calculation/naming.py`)
 
 Added special case handling for `pw2wannier90`:
 
@@ -112,9 +112,9 @@ Also added `pw2wannier90` to `POST_PROCESSING_TYPES` to ensure it's treated as a
 
 ## Files Modified
 
-1. `src/quantumvitas/calculation/structure_steps.py`: Changed pw2wannier90 input filename generation
-2. `src/quantumvitas/core/engines/qe_calculation.py`: Changed output and stderr filenames
-3. `src/quantumvitas/calculation/naming.py`: Added special cases for pw2wannier90
+1. `src/qmatsuite/calculation/structure_steps.py`: Changed pw2wannier90 input filename generation
+2. `src/qmatsuite/core/engines/qe_calculation.py`: Changed output and stderr filenames
+3. `src/qmatsuite/calculation/naming.py`: Added special cases for pw2wannier90
 
 ## Verification
 

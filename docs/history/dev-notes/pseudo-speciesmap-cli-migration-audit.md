@@ -10,14 +10,14 @@
 - Standalone mode (tests/dev only) may still use `step.yaml` `species_overrides` (unchanged).
 - Compat input playback remains unchanged.
 
-The new `qv configure species --from-input <qe.in>` command provides an explicit configuration step that extracts ATOMIC_SPECIES from a QE input file and writes it to `calculation.yaml` `species_map`.
+The new `qms configure species --from-input <qe.in>` command provides an explicit configuration step that extracts ATOMIC_SPECIES from a QE input file and writes it to `calculation.yaml` `species_map`.
 
 ## CLI Command Spec
 
 ### Syntax
 
 ```bash
-qv configure species --from-input <path> [--calc <calc_slug>] [--project <project_root>]
+qms configure species --from-input <path> [--calc <calc_slug>] [--project <project_root>]
 ```
 
 ### Behavior
@@ -49,18 +49,18 @@ qv configure species --from-input <path> [--calc <calc_slug>] [--project <projec
 
 ```bash
 # Auto-detect calculation from current directory
-qv configure species --from-input scf.in
+qms configure species --from-input scf.in
 
 # Specify calculation explicitly
-qv configure species --from-input scf.in --calc si_bands
+qms configure species --from-input scf.in --calc si_bands
 
 # Specify project root
-qv configure species --from-input scf.in --project /path/to/project
+qms configure species --from-input scf.in --project /path/to/project
 ```
 
 ### Implementation Details
 
-- **File:** `src/quantumvitas/cli/main.py`
+- **File:** `src/qmatsuite/cli/main.py`
 - **Function:** `configure_species_command()` (lines ~3069-3167)
 - **Dependencies:**
   - `QEInputParser.parse_file()` - parses QE input
@@ -161,55 +161,55 @@ The `create_calculation_project()` utility function already extracts `species_ma
 ## Removal of Test-Side Species Map Workarounds
 
 ### Summary
-All direct YAML manipulation and `species_map` injection workarounds have been replaced with the official CLI command `qv configure species --from-input <qe.in>` in CLI tests. Unit tests for standalone mode correctly use `species_overrides` and were not changed.
+All direct YAML manipulation and `species_map` injection workarounds have been replaced with the official CLI command `qms configure species --from-input <qe.in>` in CLI tests. Unit tests for standalone mode correctly use `species_overrides` and were not changed.
 
 ### Cleaned Files
 
 #### 1. `tests/cli/test_si_dos_calculation_comprehensive.py`
 - **Workaround removed:** YAML extraction from step's `species_overrides` (lines 177-196)
-- **Replaced with:** `qv configure species --from-input <scf_in>` after all steps created
+- **Replaced with:** `qms configure species --from-input <scf_in>` after all steps created
 - **Input file used:** `test_project_dir / "si.0_scf.in"` (created in `project_with_structure` fixture)
 - **Placement:** After step creation, before calculation run
 
 #### 2. `tests/cli/test_si_bands_manual_calculation_cli.py`
 - **Workaround removed:** YAML extraction from step's `species_overrides` (lines 204-223)
-- **Replaced with:** `qv configure species --from-input <scf_in>` after all steps created
+- **Replaced with:** `qms configure species --from-input <scf_in>` after all steps created
 - **Input file used:** `project_dir.parent / "si.0_scf.in"` (created in `project_with_structure` fixture)
 - **Placement:** After step creation, before calculation run
 
 #### 3. `tests/cli/test_si_bands_auto_calculation_cli.py`
 - **Workaround removed:** YAML extraction from step's `species_overrides` (lines 211-229)
-- **Replaced with:** `qv configure species --from-input <scf_in>` after all steps created
+- **Replaced with:** `qms configure species --from-input <scf_in>` after all steps created
 - **Input file used:** `project_dir.parent / "si.0_scf.in"` (created in `project_with_structure` fixture)
 - **Placement:** After step creation, before calculation run
 
 #### 4. `tests/cli/test_template_calculation.py`
 - **Workaround removed:** YAML extraction from step's `species_overrides` (lines 33-48)
-- **Replaced with:** `qv configure species --from-input <scf_in>` using CliRunner
+- **Replaced with:** `qms configure species --from-input <scf_in>` using CliRunner
 - **Input file used:** `project_dir / "calculations" / "si-dos" / "raw" / "scf.in"` (from example project)
 - **Placement:** In `template_project` fixture after copying example project
 
 #### 5. `tests/cli/test_cli_show_command_integration.py`
 - **Workaround removed:** YAML extraction from step's `species_overrides` (lines 171-183)
-- **Replaced with:** `qv configure species --from-input <input_path>` using original input file
+- **Replaced with:** `qms configure species --from-input <input_path>` using original input file
 - **Input file used:** Original `input_path` from test case loop
 - **Placement:** After step creation via `init step`, before running step
 
 #### 6. `tests/unit/test_project_and_cli.py`
 - **Workaround removed #1:** Direct `species_map` dict in `calculation.yaml` (lines 111-113 in `sample_project` fixture)
-- **Replaced with:** `qv configure species --from-input <scf_in>` after creating calculation
+- **Replaced with:** `qms configure species --from-input <scf_in>` after creating calculation
 - **Input file used:** Minimal SCF input file created in fixture: `calculation_dir / "raw" / "scf.in"` with ATOMIC_SPECIES
 - **Placement:** After creating calculation.yaml and scf.in, before returning fixture
 - **Workaround removed #2:** YAML extraction in `test_cli_show_command_import_preserves_original_parameters` (lines 973-985)
-- **Replaced with:** `qv configure species --from-input <input_path>` using original input file
+- **Replaced with:** `qms configure species --from-input <input_path>` using original input file
 - **Input file used:** Original `input_path` from test case loop
 - **Placement:** After step creation, before running step
 
 #### 7. `tests/daemon/test_gui_job_and_step_flows.py`
 - **Workaround removed #1:** YAML extraction from step's `species_overrides` (lines 647-666)
-- **Replaced with #1:** `qv configure species --from-input <scf_in>` using temporary input file (initial cleanup)
+- **Replaced with #1:** `qms configure species --from-input <scf_in>` using temporary input file (initial cleanup)
 - **Workaround removed #2:** `NamedTemporaryFile` creating dummy `.in` file with ATOMIC_SPECIES (lines 651-676)
-- **Replaced with #2:** `qv configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF"` (final cleanup with --set)
+- **Replaced with #2:** `qms configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF"` (final cleanup with --set)
 - **Rationale:** Daemon tests don't have easy access to original input files; `--set` avoids dummy file creation
 - **Placement:** After all steps added via daemon RPC, before running calculation
 - **Note:** Daemon tests use RPC, not CLI, but still use CLI command for consistency
@@ -243,19 +243,19 @@ Daemon/GUI flows often lack access to original `.in` files. The `--set` option a
 
 **Syntax:**
 ```bash
-qv configure species --set "ELEMENT:MASS:PSEUDOPOT" [--set "ELEMENT2:MASS2:PSEUDOPOT2" ...] [--calc <calc>] [--project <project>]
+qms configure species --set "ELEMENT:MASS:PSEUDOPOT" [--set "ELEMENT2:MASS2:PSEUDOPOT2" ...] [--calc <calc>] [--project <project>]
 ```
 
 **Examples:**
 ```bash
 # Single element
-qv configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+qms configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF"
 
 # Multiple elements
-qv configure species --set "Si:28.0855:Si...UPF" --set "O:15.999:O...UPF"
+qms configure species --set "Si:28.0855:Si...UPF" --set "O:15.999:O...UPF"
 
 # Combined with --from-input (--set overrides same elements)
-qv configure species --from-input scf.in --set "Si:28.086:Si.new.UPF"
+qms configure species --from-input scf.in --set "Si:28.086:Si.new.UPF"
 ```
 
 **Parsing:**
@@ -275,21 +275,21 @@ qv configure species --from-input scf.in --set "Si:28.086:Si.new.UPF"
 
 #### 1. `tests/daemon/test_gui_job_and_step_flows.py`
 - **Workaround removed:** `NamedTemporaryFile` creating dummy `.in` file with ATOMIC_SPECIES (lines 651-676)
-- **Replaced with:** `qv configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF"`
+- **Replaced with:** `qms configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF"`
 - **Rationale:** Daemon tests don't have easy access to original input files; `--set` avoids dummy file creation
 - **Placement:** After all steps added via daemon RPC, before running calculation
-- **CLI command used:** `qv configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF" --calc <slug> --project <project>`
+- **CLI command used:** `qms configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF" --calc <slug> --project <project>`
 
 #### 2. `tests/unit/test_project_and_cli.py` (`sample_project` fixture)
 - **Workaround removed:** Creating dummy `.in` file with ATOMIC_SPECIES just for `--from-input` (lines 114-121)
-- **Replaced with:** `qv configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF"`
+- **Replaced with:** `qms configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF"`
 - **Rationale:** Avoid creating dummy `.in` file when explicit triple is sufficient
 - **Note:** Minimal `.in` file still created for other test purposes, but species config uses `--set`
-- **CLI command used:** `qv configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF" --calc wf --project <project>`
+- **CLI command used:** `qms configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF" --calc wf --project <project>`
 
 ### Implementation Details
 
-- **File:** `src/quantumvitas/cli/main.py`
+- **File:** `src/qmatsuite/cli/main.py`
 - **Function:** `configure_species_command()` (updated)
 - **Changes:**
   - Made `--from-input` optional (was required)
@@ -303,8 +303,8 @@ qv configure species --from-input scf.in --set "Si:28.086:Si.new.UPF"
 
 ## Files Changed List
 
-### 1. `src/quantumvitas/cli/main.py`
-- **Rationale:** Added new CLI command `qv configure species` with `--from-input` and `--set` options
+### 1. `src/qmatsuite/cli/main.py`
+- **Rationale:** Added new CLI command `qms configure species` with `--from-input` and `--set` options
 - **Changes:**
   - Added `configure_species_command()` function (lines ~3069-3200+)
   - `--from-input`: Optional, extracts ATOMIC_SPECIES from QE input file
@@ -331,15 +331,15 @@ qv configure species --from-input scf.in --set "Si:28.086:Si.new.UPF"
 
 ### Rationale
 
-CLI and QVService/daemon must share the same implementation for updating species_map. Warnings (not errors) should be emitted when step-level species_overrides are detected in project runs, guiding users to use calculation-level species_map configuration.
+CLI and QMSService/daemon must share the same implementation for updating species_map. Warnings (not errors) should be emitted when step-level species_overrides are detected in project runs, guiding users to use calculation-level species_map configuration.
 
 ### Shared Species Map Configuration API
 
-#### New Module: `src/quantumvitas/calculation/species_config.py`
+#### New Module: `src/qmatsuite/calculation/species_config.py`
 
 **Function:** `configure_species_map()`
 
-**Purpose:** Unified API for updating calculation.yaml species_map, used by both CLI and QVService/daemon.
+**Purpose:** Unified API for updating calculation.yaml species_map, used by both CLI and QMSService/daemon.
 
 **Signature:**
 ```python
@@ -365,11 +365,11 @@ def configure_species_map(
 - Raises `ValueError` if calculation not found or invalid arguments
 - Raises `ValueError` if neither `from_qe_input` nor `set_entries` provided
 
-### QVService Integration
+### QMSService Integration
 
-#### New Method: `QVService.configure_species_map()`
+#### New Method: `QMSService.configure_species_map()`
 
-**File:** `src/quantumvitas/api.py`
+**File:** `src/qmatsuite/api.py`
 
 **Signature:**
 ```python
@@ -386,12 +386,12 @@ def configure_species_map(
 
 **Implementation:**
 - Calls shared `configure_species_map()` function
-- Wraps `ValueError` in `QVServiceError`
+- Wraps `ValueError` in `QMSServiceError`
 - Returns dict with `success`, `species_map`, and `elements` keys
 
 **Usage by daemon/GUI:**
 ```python
-QVService.configure_species_map(
+QMSService.configure_species_map(
     project_root=project_dir,
     calculation="bands_daemon",
     set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
@@ -400,9 +400,9 @@ QVService.configure_species_map(
 
 ### CLI Integration
 
-#### Updated: `qv configure species` Command
+#### Updated: `qms configure species` Command
 
-**File:** `src/quantumvitas/cli/main.py`
+**File:** `src/qmatsuite/cli/main.py`
 
 **Changes:**
 - Refactored to call shared `configure_species_map()` function
@@ -412,14 +412,14 @@ QVService.configure_species_map(
 
 **Usage:**
 ```bash
-qv configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF" --calc bands_daemon
+qms configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF" --calc bands_daemon
 ```
 
 ### Warnings for Step-Level Species Overrides
 
 #### Warning in Project Runs: `materialize_step_spec()`
 
-**File:** `src/quantumvitas/calculation/structure_steps.py`
+**File:** `src/qmatsuite/calculation/structure_steps.py`
 
 **Location:** Lines ~1134-1143 (before validation)
 
@@ -428,7 +428,7 @@ qv configure species --set "Si:28.0855:Si.pbe-n-rrkjus_psl.1.0.0.UPF" --calc ban
 warnings.warn(
     "Step-level species_overrides detected in step.yaml. "
     "Project runs ignore step species_overrides and use calculation.yaml species_map instead. "
-    "Configure species via `qv configure species ...`.",
+    "Configure species via `qms configure species ...`.",
     UserWarning,
     stacklevel=2,
 )
@@ -441,7 +441,7 @@ warnings.warn(
 
 #### Warning in CLI Step Creation: `init_step_command()`
 
-**File:** `src/quantumvitas/cli/main.py`
+**File:** `src/qmatsuite/cli/main.py`
 
 **Location:** Lines ~1186-1194 (after parsing species_overrides)
 
@@ -450,7 +450,7 @@ warnings.warn(
 warnings.warn(
     "Step-level species_overrides detected (--SPECIES.* flags). "
     "Project runs ignore step-level species_overrides and use calculation.yaml species_map instead. "
-    "Configure species via `qv configure species ...` to set calculation-level species_map.",
+    "Configure species via `qms configure species ...` to set calculation-level species_map.",
     UserWarning,
     stacklevel=2,
 )
@@ -466,11 +466,11 @@ warnings.warn(
 #### Updated: `tests/daemon/test_si_bands_calculation_daemon.py`
 
 **Changes:**
-- **Removed:** `species_overrides` from all `QVService.configure_step()` calls (3 occurrences)
-- **Added:** `QVService.configure_species_map()` call after calculation creation
+- **Removed:** `species_overrides` from all `QMSService.configure_step()` calls (3 occurrences)
+- **Added:** `QMSService.configure_species_map()` call after calculation creation
 - **Usage:**
   ```python
-  QVService.configure_species_map(
+  QMSService.configure_species_map(
       project_root=project_dir,
       calculation="bands_daemon",
       set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
@@ -485,11 +485,11 @@ warnings.warn(
 #### Updated: `tests/daemon/test_gui_job_and_step_flows.py`
 
 **Changes:**
-- **Removed:** CLI call to `qv configure species --set ...` (via `CliRunner`)
-- **Replaced with:** Direct call to `QVService.configure_species_map()`
+- **Removed:** CLI call to `qms configure species --set ...` (via `CliRunner`)
+- **Replaced with:** Direct call to `QMSService.configure_species_map()`
 - **Usage:**
   ```python
-  QVService.configure_species_map(
+  QMSService.configure_species_map(
       project_root=temp_project,
       calculation=calculation_slug,
       set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
@@ -497,7 +497,7 @@ warnings.warn(
   ```
 
 **Rationale:**
-- Tests should use QVService API directly (not CLI wrapper)
+- Tests should use QMSService API directly (not CLI wrapper)
 - Consistent with daemon/GUI usage patterns
 
 ### Test Results
@@ -513,7 +513,7 @@ warnings.warn(
 2. Collect failure list
 3. Fix failures by:
    - Updating test fixtures to include `species_map` in `calculation.yaml`
-   - Adding `qv configure species --from-input` calls in CLI test flows
+   - Adding `qms configure species --from-input` calls in CLI test flows
    - Using internal function in helper code that creates test projects
 4. Document each failure with:
    - Test name
@@ -533,7 +533,7 @@ The test `tests/unit/test_pw2wannier90_stderr_output.py::test_pw2wannier90_actua
 
 ### Solution
 
-**Created reusable binary locator:** `src/quantumvitas/core/engines/qe_binary_locator.py`
+**Created reusable binary locator:** `src/qmatsuite/core/engines/qe_binary_locator.py`
 
 **Functions:**
 - `locate_qe_executable(executable_name: str) -> Optional[Path]`: Generic function to locate any QE executable
@@ -563,7 +563,7 @@ The test `tests/unit/test_pw2wannier90_stderr_output.py::test_pw2wannier90_actua
 - Verifies executable exists and produces stderr/error output
 
 **Files Changed:**
-1. `src/quantumvitas/core/engines/qe_binary_locator.py` (new): Reusable binary locator
+1. `src/qmatsuite/core/engines/qe_binary_locator.py` (new): Reusable binary locator
 2. `tests/unit/test_pw2wannier90_stderr_output.py`: Removed hard skip, added conditional execution
 
 **Test Results:**

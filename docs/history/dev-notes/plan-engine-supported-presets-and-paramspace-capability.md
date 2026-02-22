@@ -40,15 +40,15 @@ Hard uniqueness rules:
 
 | Finding | Evidence Location | Notes |
 |---------|-------------------|-------|
-| `StepTypeSpec.accepts_presets` defined | `src/quantumvitas/workflow/registry.py:49-50` | Dataclass field |
-| `StepTypeSpec.allowed_dimensions` defined | `src/quantumvitas/workflow/registry.py:51-52` | Dataclass field |
-| `list_accepting_presets()` uses StepTypeSpec | `src/quantumvitas/workflow/registry.py:646-651` | Returns spec.id where spec.accepts_presets |
-| ParamSpace gen-step availability | `src/quantumvitas/presets/space_variant.py:34` | `applies_to_step_types: FrozenSet[str]` |
-| Variant index by (step, dimension) | `src/quantumvitas/presets/variants_registry.py:149-158` | `VARIANT_BY_STEP_AND_DIMENSION` dict |
-| QC precision variant applies to "scf" | `src/quantumvitas/presets/variants_registry.py:110` | `frozenset({"scf"})` |
-| Dual-path materialization implemented | `src/quantumvitas/presets/variants_registry.py:367-399` | `engine.*` prefix check |
-| Engine base class | `src/quantumvitas/engine/base.py:17-26` | `Engine` abstract class |
-| Engine registry | `src/quantumvitas/engine/registry.py:15-35` | `EngineRegistry` class |
+| `StepTypeSpec.accepts_presets` defined | `src/qmatsuite/workflow/registry.py:49-50` | Dataclass field |
+| `StepTypeSpec.allowed_dimensions` defined | `src/qmatsuite/workflow/registry.py:51-52` | Dataclass field |
+| `list_accepting_presets()` uses StepTypeSpec | `src/qmatsuite/workflow/registry.py:646-651` | Returns spec.id where spec.accepts_presets |
+| ParamSpace gen-step availability | `src/qmatsuite/presets/space_variant.py:34` | `applies_to_step_types: FrozenSet[str]` |
+| Variant index by (step, dimension) | `src/qmatsuite/presets/variants_registry.py:149-158` | `VARIANT_BY_STEP_AND_DIMENSION` dict |
+| QC precision variant applies to "scf" | `src/qmatsuite/presets/variants_registry.py:110` | `frozenset({"scf"})` |
+| Dual-path materialization implemented | `src/qmatsuite/presets/variants_registry.py:367-399` | `engine.*` prefix check |
+| Engine base class | `src/qmatsuite/engine/base.py:17-26` | `Engine` abstract class |
+| Engine registry | `src/qmatsuite/engine/registry.py:15-35` | `EngineRegistry` class |
 | **`supported_presets` does NOT exist** | N/A | Must be added to engine classes |
 | No UI/CLI/API usage of accepts_presets | grep confirmed | Only registry + tests use it |
 
@@ -88,11 +88,11 @@ Hard uniqueness rules:
 **Scope**: Add `supported_presets` property to engine classes; mark StepTypeSpec fields as legacy
 
 **Files to Touch**:
-- [ ] `src/quantumvitas/engine/base.py` - Add abstract `supported_presets` property
-- [ ] `src/quantumvitas/engine/qe_engine.py` - Implement `supported_presets` (return PW dimensions)
-- [ ] `src/quantumvitas/engine/pyscf_engine.py` - Implement `supported_presets` (return `["qc_precision"]`)
-- [ ] `src/quantumvitas/engine/orca_engine.py` - Implement `supported_presets` (return `["qc_precision"]`)
-- [ ] `src/quantumvitas/workflow/registry.py` - Add deprecation comment to StepTypeSpec fields
+- [ ] `src/qmatsuite/engine/base.py` - Add abstract `supported_presets` property
+- [ ] `src/qmatsuite/engine/qe_engine.py` - Implement `supported_presets` (return PW dimensions)
+- [ ] `src/qmatsuite/engine/pyscf_engine.py` - Implement `supported_presets` (return `["qc_precision"]`)
+- [ ] `src/qmatsuite/engine/orca_engine.py` - Implement `supported_presets` (return `["qc_precision"]`)
+- [ ] `src/qmatsuite/workflow/registry.py` - Add deprecation comment to StepTypeSpec fields
 
 **New Tests**:
 - [ ] `tests/unit/test_engine_supported_presets.py` - Test each engine declares correct presets
@@ -112,9 +112,9 @@ pytest tests/engine/test_pyscf_engine.py tests/engine/test_orca_engine.py -v --i
 **Scope**: Add function that computes available presets from engine.supported_presets ∩ ParamSpace applicability
 
 **Files to Touch**:
-- [ ] `src/quantumvitas/presets/variants_registry.py` - Add `list_dimensions_for_gen_step()` helper
-- [ ] `src/quantumvitas/presets/catalog.py` - Add `list_presets_for_engine()` function
-- [ ] `src/quantumvitas/workflow/registry.py` - Add `list_accepting_presets_for_engine()` that calls new function
+- [ ] `src/qmatsuite/presets/variants_registry.py` - Add `list_dimensions_for_gen_step()` helper
+- [ ] `src/qmatsuite/presets/catalog.py` - Add `list_presets_for_engine()` function
+- [ ] `src/qmatsuite/workflow/registry.py` - Add `list_accepting_presets_for_engine()` that calls new function
 
 **New Tests**:
 - [ ] `tests/unit/test_preset_capability_contract.py` - Test new contract functions
@@ -194,8 +194,8 @@ pytest tests/unit/ -v
 **Scope**: Remove `accepts_presets` and `allowed_dimensions` from StepTypeSpec after all tests migrated
 
 **Files to Touch**:
-- [ ] `src/quantumvitas/workflow/registry.py` - Remove fields from dataclass
-- [ ] `src/quantumvitas/workflow/registry.py` - Remove `list_accepting_presets()` method (replaced)
+- [ ] `src/qmatsuite/workflow/registry.py` - Remove fields from dataclass
+- [ ] `src/qmatsuite/workflow/registry.py` - Remove `list_accepting_presets()` method (replaced)
 - [ ] Remove field assignments from all step type definitions
 
 **Pytest Commands**:

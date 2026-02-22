@@ -3,7 +3,7 @@ Integration tests for step slug consistency.
 
 These tests verify that step.meta.slug is consistent between:
 1. The YAML file on disk (authoritative source)
-2. The in-memory Step/ResolvedResource object returned by QVService/require_step
+2. The in-memory Step/ResolvedResource object returned by QMSService/require_step
 3. ResourceIndex entries
 
 This is a constitutional requirement: YAML is the single source of truth.
@@ -12,11 +12,11 @@ import yaml
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.core.resolution import require_step, build_resource_index
-from quantumvitas.core.models import load_calculation
-from quantumvitas.core.yamldoc import CalcDoc
-from quantumvitas.core.yaml_io import save_yaml_doc
+from qmatsuite.api import QMSService
+from qmatsuite.core.resolution import require_step, build_resource_index
+from qmatsuite.core.models import load_calculation
+from qmatsuite.core.yamldoc import CalcDoc
+from qmatsuite.core.yaml_io import save_yaml_doc
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def lammps_project(tmp_path: Path):
     project_root.mkdir()
     
     # Init project
-    QVService.init_project(target_dir=project_root, name="test")
+    QMSService.init_project(target_dir=project_root, name="test")
     
     # Create structure
     structure_path = project_root / "structures" / "test.json"
@@ -36,10 +36,10 @@ def lammps_project(tmp_path: Path):
     s.to(filename=structure_path, fmt="json")
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(structure_path)
+    struct_result = QMSService(project_root).structure.import_file(structure_path)
     
     # Init calculation
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="test_calc",
         structure_selector=struct_result.meta.ulid,
     )
@@ -70,7 +70,7 @@ def test_step_slug_uniqueness_and_consistency(lammps_project):
     steps_dir = calc_dir / "steps"
 
     # Create two MD steps (same step_type) using domain API
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     s1 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
     s2 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
 
@@ -121,7 +121,7 @@ def test_require_step_by_ulid_returns_correct_slug(lammps_project):
     calc_dir = lammps_project["calc_dir"]
 
     # Create two MD steps using domain API
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     s1 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
     s2 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
 
@@ -144,7 +144,7 @@ def test_require_step_by_slug_returns_correct_step(lammps_project):
     calc_id = lammps_project["calc_id"]
 
     # Create two MD steps using domain API
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     s1 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
     s2 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
 
@@ -171,7 +171,7 @@ def test_resource_index_matches_yaml(lammps_project):
     steps_dir = calc_dir / "steps"
 
     # Create steps using domain API
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     s1 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
     s2 = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md")
 
@@ -203,7 +203,7 @@ def test_three_steps_same_type(lammps_project):
     calc_id = lammps_project["calc_id"]
 
     # Create three MD steps using domain API
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     steps = [svc.calculation.add_step(calc_selector=calc_id, step_type_gen="md") for _ in range(3)]
 
     # Verify IDs are unique

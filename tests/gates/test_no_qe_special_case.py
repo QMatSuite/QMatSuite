@@ -42,9 +42,9 @@ ALLOWED_DAEMON_RPCS = {
 
 def test_daemon_dispatch_no_forbidden_qe_rpcs():
     """Daemon dispatch dict must not register forbidden QE RPCs."""
-    from quantumvitas.daemon.server import QVDaemon
+    from qmatsuite.daemon.server import QMSDaemon
 
-    daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+    daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
     registered = set(daemon._handlers.keys())
 
     violations = registered & FORBIDDEN_DAEMON_RPCS
@@ -56,9 +56,9 @@ def test_daemon_dispatch_no_forbidden_qe_rpcs():
 
 def test_daemon_dispatch_keeps_allowed_qe_rpcs():
     """Daemon dispatch dict must still have engine-detection RPCs."""
-    from quantumvitas.daemon.server import QVDaemon
+    from qmatsuite.daemon.server import QMSDaemon
 
-    daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+    daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
     registered = set(daemon._handlers.keys())
 
     missing = ALLOWED_DAEMON_RPCS - registered

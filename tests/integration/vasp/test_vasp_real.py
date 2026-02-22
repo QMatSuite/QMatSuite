@@ -22,7 +22,7 @@ def check_real_vasp() -> tuple[bool, str]:
     """Check for real VASP binary. Returns (available, message)."""
     import subprocess
     try:
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
         bin_path = resolve_vasp_bin("std")
         if not bin_path.exists():
             return False, f"VASP binary does not exist: {bin_path}"
@@ -56,7 +56,7 @@ def check_real_vasp() -> tuple[bool, str]:
 def check_real_potcar() -> tuple[bool, str]:
     """Check for real POTCAR directory. Returns (available, message)."""
     try:
-        from quantumvitas.core.engines.vasp_resolver import get_potcar_dir
+        from qmatsuite.core.engines.vasp_resolver import get_potcar_dir
         potcar_dir = get_potcar_dir("PBE")
         si_potcar = potcar_dir / "Si" / "POTCAR"
         if not si_potcar.exists():
@@ -118,10 +118,10 @@ class TestRealVASPSmoke:
     def test_scf_smoke(self, real_vasp_required):
         """Run real SCF and verify basic outputs."""
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.engine.vasp_writer import write_poscar, write_incar, write_kpoints, write_potcar
-        from quantumvitas.engine.vasp_parser import parse_oszicar
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
-        from quantumvitas.core.paths import get_qmatsuite_tmp_root
+        from qmatsuite.engine.vasp_writer import write_poscar, write_incar, write_kpoints, write_potcar
+        from qmatsuite.engine.vasp_parser import parse_oszicar
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.paths import get_qmatsuite_tmp_root
         import subprocess
         
         # Create minimal Si structure
@@ -175,10 +175,10 @@ class TestRealVASPSmoke:
     def test_bands_smoke(self, real_vasp_required):
         """Run real Bands and verify EIGENVAL."""
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.engine.vasp_writer import write_poscar, write_incar, write_kpoints, write_potcar
-        from quantumvitas.engine.vasp_parser import parse_eigenval
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
-        from quantumvitas.core.paths import get_qmatsuite_tmp_root
+        from qmatsuite.engine.vasp_writer import write_poscar, write_incar, write_kpoints, write_potcar
+        from qmatsuite.engine.vasp_parser import parse_eigenval
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.paths import get_qmatsuite_tmp_root
         import subprocess
         import shutil
         
@@ -247,10 +247,10 @@ class TestRealVASPSmoke:
     def test_dos_smoke(self, real_vasp_required):
         """Run real DOS and verify DOSCAR."""
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.engine.vasp_writer import write_poscar, write_incar, write_kpoints, write_potcar
-        from quantumvitas.engine.vasp_parser import parse_doscar
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
-        from quantumvitas.core.paths import get_qmatsuite_tmp_root
+        from qmatsuite.engine.vasp_writer import write_poscar, write_incar, write_kpoints, write_potcar
+        from qmatsuite.engine.vasp_parser import parse_doscar
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.paths import get_qmatsuite_tmp_root
         import subprocess
         import shutil
         

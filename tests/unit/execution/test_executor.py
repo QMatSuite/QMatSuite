@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock
 
-from quantumvitas.execution.job_graph import Job, JobGraph, SelectionMode
-from quantumvitas.execution.executor import (
+from qmatsuite.execution.job_graph import Job, JobGraph, SelectionMode
+from qmatsuite.execution.executor import (
     JobExecutor,
     JobResult,
     ExecutionResult,

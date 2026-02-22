@@ -210,7 +210,7 @@ Error [Errno 21] Is a directory: '.'
 
 **File naming rules** live in the engine/service layer:
 - `qe_calculation.run_step()` sets `StepResult.output_file` and `StepResult.stdout_file`
-- `QVService.run_step()` returns these paths in the response
+- `QMSService.run_step()` returns these paths in the response
 
 **CLI** only selects by priority:
 - Reads `response.output_file` (primary artifact)
@@ -248,7 +248,7 @@ For QE steps, `output_file` and `stdout_file` point to the same file (`{step_typ
 
 ### Service Response
 
-`QVService.run_step()` returns:
+`QMSService.run_step()` returns:
 
 - `output_file`: Primary artifact path (may not exist if execution failed)
 - `stdout_file`: Stdout capture file path
@@ -258,7 +258,7 @@ All paths are always returned (even if files don't exist), ensuring CLI/UI can d
 
 ### Artifacts Recognition
 
-The artifacts recognition system (`src/quantumvitas/calculation/step_artifacts.py`) provides:
+The artifacts recognition system (`src/qmatsuite/calculation/step_artifacts.py`) provides:
 
 - `get_step_artifacts(step_type, params, raw_dir)`: Returns list of expected artifact filenames
 - `get_default_artifact(step_type, params, raw_dir, artifacts_list)`: Returns the default artifact for GUI display

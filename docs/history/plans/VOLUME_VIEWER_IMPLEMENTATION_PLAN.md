@@ -8,7 +8,7 @@
 
 ### 1.1 Existing Analysis Artifacts System
 
-**Location:** `src/quantumvitas/analysis/artifacts.py`
+**Location:** `src/qmatsuite/analysis/artifacts.py`
 
 **Current Pattern:**
 - **Storage:** `<calculation_dir>/analysis/<type>.json` (JSON artifacts)
@@ -17,13 +17,13 @@
   - `read_artifact(calc_dir, type)` → reads JSON, returns dict
   - `get_analysis_dir(calc_dir)` → returns `calc_dir / "analysis"`
 - **Types:** `AnalysisType` enum: `SCF`, `DOS`, `BANDS`
-- **Metadata:** Each artifact includes `_artifact_meta: {analysis_type, created_at, qv_version}`
+- **Metadata:** Each artifact includes `_artifact_meta: {analysis_type, created_at, qms_version}`
 
 **Finding:** Artifacts are JSON-only. No binary blob storage yet. Need new directory: `<calc_dir>/analysis/blobs/` for binary data.
 
 ### 1.2 RPC Daemon Implementation
 
-**Location:** `src/quantumvitas/daemon/server.py`
+**Location:** `src/qmatsuite/daemon/server.py`
 
 **Current Pattern:**
 - **Protocol:** JSON-RPC via stdin/stdout (one JSON per line)
@@ -41,9 +41,9 @@
 **Location:** `gui/electron/preload.ts`
 
 **Current Pattern:**
-- **API:** `window.qv.request(type, payload)` → Promise<QVResponse>
-- **Context Bridge:** `contextBridge.exposeInMainWorld('qv', qvApi)`
-- **No Binary API:** Currently only has `qv.request()` for JSON-RPC, no file reading API
+- **API:** `window.qms.request(type, payload)` → Promise<QMSResponse>
+- **Context Bridge:** `contextBridge.exposeInMainWorld('qms', qmsApi)`
+- **No Binary API:** Currently only has `qms.request()` for JSON-RPC, no file reading API
 
 **Finding:** Need to add `readBlob(blob_id: string)` → Promise<ArrayBuffer> via IPC to main process. Main process must validate blob_id against allowlist before reading.
 
@@ -65,11 +65,11 @@
 
 ```
 Backend (Python):
-├── src/quantumvitas/analysis/
+├── src/qmatsuite/analysis/
 │   ├── volume_parsers.py          # NEW: parse_xsf(), parse_bxsf()
 │   ├── blob_store.py              # NEW: BlobStore (blob_id → path, allowlist)
 │   └── volume_artifacts.py        # NEW: VolumeMetadata, VolumeArtifact, FermiSurfaceArtifact
-├── src/quantumvitas/daemon/
+├── src/qmatsuite/daemon/
 │   └── server.py                  # MODIFY: Add volume compilation RPC handlers
 └── tests/unit/
     ├── test_volume_parsers.py     # NEW: Parser tests
@@ -84,7 +84,7 @@ Frontend (TypeScript/React):
     │   ├── VolumeViewerSandbox.tsx    # NEW: Dev sandbox viewer
     │   └── VolumeViewer3D.tsx         # NEW: 3D isosurface viewer (can be reused later)
     └── types/
-        └── qv.ts                  # MODIFY: Add VolumeMetadata, BlobId types
+        └── qms.ts                  # MODIFY: Add VolumeMetadata, BlobId types
 ```
 
 **Dependency Direction:**
@@ -110,7 +110,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 ### Phase 1: Backend - Blob Compiler Foundation
 
 #### Task 1.1: Create BlobStore with Security Allowlist (index.json)
-- **File:** `src/quantumvitas/analysis/blob_store.py` (NEW)
+- **File:** `src/qmatsuite/analysis/blob_store.py` (NEW)
 - **Deliverable:**
   - `BlobStore` class: Manages blob_id → path mapping via persistent index.json
   - `register_blob(blob_id: str, calc_dir: Path, filename: str) -> Path` - Creates blob file, registers in index.json
@@ -124,7 +124,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 - **Tests:** `tests/unit/test_blob_store.py` - Registration, index.json persistence, validation, path resolution, security (reject unregistered blob_id, reject path traversal)
 
 #### Task 1.2: Create VolumeMetadata Contract
-- **File:** `src/quantumvitas/analysis/volume_artifacts.py` (NEW)
+- **File:** `src/qmatsuite/analysis/volume_artifacts.py` (NEW)
 - **Deliverable:**
   - `@dataclass VolumeMetadata` with fields:
     - `grid_shape: Tuple[int, int, int]`
@@ -146,7 +146,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 - **Tests:** `tests/unit/test_volume_artifacts.py` - Metadata validation, to_dict serialization
 
 #### Task 1.3: Implement XSF Parser
-- **File:** `src/quantumvitas/io/parser/volume_parsers.py` (NEW, or extend existing `io/parser/`)
+- **File:** `src/qmatsuite/io/parser/volume_parsers.py` (NEW, or extend existing `io/parser/`)
 - **Function:** `parse_xsf_datagrid_3d(path: Path, calc_dir: Path, blob_store: BlobStore) -> VolumeMetadata`
 - **Requirements:**
   - Parse `CRYSTAL` or `ATOMS` block (structure)
@@ -174,7 +174,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
   - Test structure extraction (GaAs: 2 atoms)
 
 #### Task 1.4: Implement BXSF Parser
-- **File:** `src/quantumvitas/io/parser/volume_parsers.py`
+- **File:** `src/qmatsuite/io/parser/volume_parsers.py`
 - **Function:** `parse_bxsf_bandgrid_3d(path: Path, calc_dir: Path, blob_store: BlobStore) -> Dict[str, Any]`
 - **Requirements:**
   - Parse `BEGIN_INFO` block (optional, extract Fermi Energy if present)
@@ -208,7 +208,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
   - Verify band 1 blob is written and count matches
 
 #### Task 1.5: Downsampling Utility (with grid_vectors scaling)
-- **File:** `src/quantumvitas/analysis/volume_parsers.py` (or separate `volume_utils.py`)
+- **File:** `src/qmatsuite/analysis/volume_parsers.py` (or separate `volume_utils.py`)
 - **Function:** `downsample_grid(data: np.ndarray, grid_shape: Tuple[int, int, int], grid_vectors_cart: np.ndarray, factor: int = 4) -> Tuple[np.ndarray, Tuple[int, int, int], np.ndarray]`
 - **Requirements:**
   - Block average: Group `factor×factor×factor` voxels, average values
@@ -225,7 +225,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 ### Phase 2: Backend - RPC Handlers
 
 #### Task 2.1: Add RPC Handler for Fixture Compilation
-- **File:** `src/quantumvitas/daemon/server.py`
+- **File:** `src/qmatsuite/daemon/server.py`
 - **Handler:** `_handle_compile_fixture_volume(self, payload: Dict) -> Dict`
 - **Payload:** `{"file_path": str, "calc_dir": str}` (calc_dir is dev sandbox directory)
 - **Logic:**
@@ -237,7 +237,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 - **Tests:** `tests/integration/test_volume_rpc.py` - Call RPC, verify response format, verify blob files exist
 
 #### Task 2.2: Add RPC Handler for Listing Fixtures
-- **File:** `src/quantumvitas/daemon/server.py`
+- **File:** `src/qmatsuite/daemon/server.py`
 - **Handler:** `_handle_list_wannier_3d_fixtures(self, payload: Dict) -> Dict`
 - **Payload:** (none required, or `{"fixture_dir": str}` for custom path)
 - **Logic:**
@@ -251,7 +251,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 
 #### Task 3.1: Add IPC Handler in Main Process (index.json allowlist)
 - **File:** `gui/electron/main.ts`
-- **IPC Handler:** `ipcMain.handle('qv-read-blob', async (event, blob_id: string, calc_dir: string) => ArrayBuffer)`
+- **IPC Handler:** `ipcMain.handle('qms-read-blob', async (event, blob_id: string, calc_dir: string) => ArrayBuffer)`
 - **Security Logic (MANDATORY):**
   1. Read `<calc_dir>/analysis/blobs/index.json`
   2. Lookup `blob_id` → get `relative_path` (must be relative, no `../`)
@@ -266,10 +266,10 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 #### Task 3.2: Add readBlob API to Preload (no token)
 - **File:** `gui/electron/preload.ts`
 - **API:** `readBlob(blob_id: string, calc_dir: string): Promise<ArrayBuffer>`
-- **Implementation:** `return ipcRenderer.invoke('qv-read-blob', blob_id, calc_dir)`
-- **Expose:** Add to `qvApi` object, expose via `contextBridge`
-- **TypeScript:** Update `gui/src/types/qv.ts` to include `readBlob` signature
-- **Frontend usage:** After receiving blob_id from RPC, call `qv.readBlob(blob_id, calc_dir)` directly (no token needed)
+- **Implementation:** `return ipcRenderer.invoke('qms-read-blob', blob_id, calc_dir)`
+- **Expose:** Add to `qmsApi` object, expose via `contextBridge`
+- **TypeScript:** Update `gui/src/types/qms.ts` to include `readBlob` signature
+- **Frontend usage:** After receiving blob_id from RPC, call `qms.readBlob(blob_id, calc_dir)` directly (no token needed)
 
 ### Phase 4: Frontend - Dev Sandbox Viewer
 
@@ -281,9 +281,9 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
   - Main area: 3D Canvas with isosurface
   - Right sidebar: Controls (iso value, ±iso toggle, opacity, structure overlay)
 - **Data Flow:**
-  - User clicks fixture → call `qv.request('compile_fixture_volume', {file_path, calc_dir})`
+  - User clicks fixture → call `qms.request('compile_fixture_volume', {file_path, calc_dir})`
   - Receive metadata + blob_id_preview
-  - Call `qv.readBlob(blob_id_preview, calc_dir)` → load ArrayBuffer (no token needed)
+  - Call `qms.readBlob(blob_id_preview, calc_dir)` → load ArrayBuffer (no token needed)
   - Parse ArrayBuffer to Float32Array (raw float32 little-endian, shape from metadata)
   - Render isosurface in Three.js
 
@@ -422,7 +422,7 @@ VolumeViewerSandbox.tsx → preload.ts (uses readBlob)
 ## Step 5: Final Delivery Instructions
 
 ### How to Start Dev Sandbox
-1. Start daemon: `python -m quantumvitas.daemon.server` (or via Electron main process)
+1. Start daemon: `python -m qmatsuite.daemon.server` (or via Electron main process)
 2. Start frontend: `npm run dev` (in `gui/` directory)
 3. Open browser: Navigate to `http://localhost:5173/dev/volume-viewer` (or route as configured)
 
@@ -487,7 +487,7 @@ pytest -q tests/integration/test_volume_rpc.py::test_rpc_compile_fixture_returns
 ```
 
 **How to verify:**
-1. Start daemon: `python -m quantumvitas.daemon.server`
+1. Start daemon: `python -m qmatsuite.daemon.server`
 2. Start frontend: `cd gui && npm run dev`
 3. Open browser: `http://localhost:5173/dev/volume-viewer`
 4. Click "gaas_00001.xsf" → wait → see isosurface

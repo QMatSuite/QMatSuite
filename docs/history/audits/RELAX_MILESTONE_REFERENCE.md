@@ -49,7 +49,7 @@ This document verifies:
 - Idempotency tests correctly verify the contract
 - No unintended changes to PBC canonicalization, quantization, or relax execution
 
-**All PRs touching fingerprint tolerance must use `DEFAULT_FINGERPRINT_TOL_ANG` from `src/quantumvitas/core/structure_fingerprint.py`.**
+**All PRs touching fingerprint tolerance must use `DEFAULT_FINGERPRINT_TOL_ANG` from `src/qmatsuite/core/structure_fingerprint.py`.**
 
 ---
 

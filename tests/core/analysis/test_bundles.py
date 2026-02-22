@@ -4,8 +4,8 @@ import json
 
 import numpy as np
 
-from quantumvitas.core.analysis.base import SourceFileStat
-from quantumvitas.core.analysis.bundles import (
+from qmatsuite.core.analysis.base import SourceFileStat
+from qmatsuite.core.analysis.bundles import (
     CanonicalPrimitiveBundle,
     DerivedPrimitiveBundle,
     ProvenanceMeta,
@@ -13,7 +13,7 @@ from quantumvitas.core.analysis.bundles import (
     TransformRecord,
     compute_canonical_sha,
 )
-from quantumvitas.core.analysis.primitives import GeometryFrame, GeometryFrames, Marker, Series1D
+from qmatsuite.core.analysis.primitives import GeometryFrame, GeometryFrames, Marker, Series1D
 
 
 def _make_render_meta() -> RenderMeta:

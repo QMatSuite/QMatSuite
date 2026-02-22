@@ -7,7 +7,7 @@ This gate ensures engines only declare support for registered gen steps.
 """
 
 import pytest
-from quantumvitas.workflow.gen_steps import GenStepRegistry
+from qmatsuite.workflow.gen_steps import GenStepRegistry
 
 
 def get_all_engine_supported_steps():
@@ -16,13 +16,13 @@ def get_all_engine_supported_steps():
     
     try:
         # Import all drivers
-        from quantumvitas.drivers.qe.driver import QEDriver
-        from quantumvitas.drivers.vasp.driver import VASPDriver
-        from quantumvitas.drivers.pyscf.driver import PySCFDriver
-        from quantumvitas.drivers.orca.driver import ORCADriver
-        from quantumvitas.drivers.cp2k.driver import CP2KDriver
-        from quantumvitas.drivers.lammps.driver import LAMMPSDriver
-        from quantumvitas.drivers.w90.driver import W90Driver
+        from qmatsuite.drivers.qe.driver import QEDriver
+        from qmatsuite.drivers.vasp.driver import VASPDriver
+        from qmatsuite.drivers.pyscf.driver import PySCFDriver
+        from qmatsuite.drivers.orca.driver import ORCADriver
+        from qmatsuite.drivers.cp2k.driver import CP2KDriver
+        from qmatsuite.drivers.lammps.driver import LAMMPSDriver
+        from qmatsuite.drivers.w90.driver import W90Driver
         
         drivers = [
             QEDriver(),

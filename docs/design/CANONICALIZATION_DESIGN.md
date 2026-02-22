@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document explains the canonicalization design for fractional coordinates in QuantumVITAS structure visualization. Canonicalization ensures stable, deterministic bond counts and correct visualization behavior across different input coordinate representations.
+This document explains the canonicalization design for fractional coordinates in QMatSuite structure visualization. Canonicalization ensures stable, deterministic bond counts and correct visualization behavior across different input coordinate representations.
 
 ## Core Design Principle
 
@@ -33,7 +33,7 @@ Canonicalization happens at these top-level entry points only:
 
 1. **`build_display_atoms()`** (line 1123)
    - Main entry for GUI visualization
-   - Called from `QVService.get_structure_vis_data()`
+   - Called from `QMSService.get_structure_vis_data()`
 
 2. **`visualize_structure()`** (line 1520)
    - High-level API entry point
@@ -56,7 +56,7 @@ The following functions **MUST NOT** canonicalize:
 
 ### Function: `canonicalize_frac_coords()`
 
-Located at: `src/quantumvitas/analysis/structure_viz.py:204`
+Located at: `src/qmatsuite/analysis/structure_viz.py:204`
 
 **Algorithm Steps**:
 
@@ -169,22 +169,22 @@ After robust canonicalization:
 
 ### Canonicalization Functions
 
-- `canonicalize_structure_in_place()`: `src/quantumvitas/analysis/structure_viz.py:181`
-- `canonicalize_frac_coords()`: `src/quantumvitas/analysis/structure_viz.py:204`
-- `wrap_fractional_coords()`: `src/quantumvitas/analysis/structure_viz.py:268` (thin wrapper)
+- `canonicalize_structure_in_place()`: `src/qmatsuite/analysis/structure_viz.py:181`
+- `canonicalize_frac_coords()`: `src/qmatsuite/analysis/structure_viz.py:204`
+- `wrap_fractional_coords()`: `src/qmatsuite/analysis/structure_viz.py:268` (thin wrapper)
 
 ### Entry Points
 
-- `build_display_atoms()`: `src/quantumvitas/analysis/structure_viz.py:1097` (line 1123)
-- `visualize_structure()`: `src/quantumvitas/analysis/structure_viz.py:1478` (line 1520)
-- `plot_structure_3d()`: `src/quantumvitas/analysis/structure_viz.py:1266` (line 1287)
+- `build_display_atoms()`: `src/qmatsuite/analysis/structure_viz.py:1097` (line 1123)
+- `visualize_structure()`: `src/qmatsuite/analysis/structure_viz.py:1478` (line 1520)
+- `plot_structure_3d()`: `src/qmatsuite/analysis/structure_viz.py:1266` (line 1287)
 
 ### Bond Detection Functions
 
-- `detect_bonds()`: `src/quantumvitas/analysis/structure_viz.py:693`
-- `build_bonds()`: `src/quantumvitas/analysis/structure_viz.py:591`
-- `build_bonds_bruteforce()`: `src/quantumvitas/analysis/structure_viz.py:386`
-- `build_bonds_cell_list()`: `src/quantumvitas/analysis/structure_viz.py:461`
+- `detect_bonds()`: `src/qmatsuite/analysis/structure_viz.py:693`
+- `build_bonds()`: `src/qmatsuite/analysis/structure_viz.py:591`
+- `build_bonds_bruteforce()`: `src/qmatsuite/analysis/structure_viz.py:386`
+- `build_bonds_cell_list()`: `src/qmatsuite/analysis/structure_viz.py:461`
 
 ## Constants
 

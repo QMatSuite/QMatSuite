@@ -10,10 +10,10 @@
 
 **Problem**: Step ULIDs were changing between fixture creation and execution because `_build_step` was calling `_build_step_meta()` which generated new ULIDs instead of using the ULID from step.yaml.
 
-**Solution**: Modified `_build_step()` in `src/quantumvitas/calculation/calculation.py` to use `step_resolved.meta` directly (from step.yaml) instead of calling `_build_step_meta()` with `step_data` from calculation.yaml. Added assertion to ensure ULID consistency.
+**Solution**: Modified `_build_step()` in `src/qmatsuite/calculation/calculation.py` to use `step_resolved.meta` directly (from step.yaml) instead of calling `_build_step_meta()` with `step_data` from calculation.yaml. Added assertion to ensure ULID consistency.
 
 **Files Changed**:
-- `src/quantumvitas/calculation/calculation.py`: `_build_step()` function
+- `src/qmatsuite/calculation/calculation.py`: `_build_step()` function
 
 **Documentation**: See `docs/design/CONTRACT_I1_STEP_ULID_FIX.md`
 
@@ -22,7 +22,7 @@
 
 **Requirement**: Artifact paths must be `raw/step_artifacts/{step_ulid}/`, keyed by step ULID (not step_type).
 
-**Status**: Confirmed correct implementation in `src/quantumvitas/calculation/runner.py`:
+**Status**: Confirmed correct implementation in `src/qmatsuite/calculation/runner.py`:
 ```python
 step_artifacts_dir = raw_dir / "step_artifacts" / step.meta.id
 ```
@@ -34,7 +34,7 @@ This ensures multiple steps of the same type have separate artifact directories.
 
 **Requirement**: Structure is defined ONLY at calculation level. Engine must resolve structure via canonical structure loader (`read_structure`), NOT via `step.options` hacks.
 
-**Status**: Verified correct implementation in `src/quantumvitas/engine/pyscf_engine.py`:
+**Status**: Verified correct implementation in `src/qmatsuite/engine/pyscf_engine.py`:
 - Structure is resolved canonically using `structure_id` and `project_root` from `step.options`
 - Engine calls `require_structure()` and `read_structure()` (canonical resolution)
 - No structure data stored in step.yaml
@@ -47,7 +47,7 @@ This ensures multiple steps of the same type have separate artifact directories.
 
 **Requirement**: Verification logic should be engine-driven (e.g., `Engine.verify_step_done(step_dir, step_spec)`), not step-type string matching.
 
-**Current State**: `evaluate_step_result()` in `src/quantumvitas/calculation/verification.py` uses step-type string matching:
+**Current State**: `evaluate_step_result()` in `src/qmatsuite/calculation/verification.py` uses step-type string matching:
 - Lines 127-147: Hardcoded set of PySCF step type strings
 - Lines 106-124: Hardcoded set of Wannier90 step type strings
 - Lines 149+: QE steps (default path)

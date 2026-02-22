@@ -18,7 +18,7 @@
 
 **规范要求** (§4.2): 每次 job 开始只清理"该 job 覆盖到的 relax steps"的 `current.json`
 
-**当前实现**: `src/quantumvitas/execution/relax_artifacts.py`
+**当前实现**: `src/qmatsuite/execution/relax_artifacts.py`
 
 ```python:110:126
 def clean_generated_structure(calc_dir: Path, step_ulid: str) -> bool:
@@ -37,7 +37,7 @@ def clean_generated_structure(calc_dir: Path, step_ulid: str) -> bool:
 
 **状态**: ❌ **Must-fix** - 需要在 executor 的 job 执行前添加 scoped cleanup
 
-**定位点**: `src/quantumvitas/execution/executor.py:140-229` (job 执行循环)
+**定位点**: `src/qmatsuite/execution/executor.py:140-229` (job 执行循环)
 
 ---
 
@@ -45,7 +45,7 @@ def clean_generated_structure(calc_dir: Path, step_ulid: str) -> bool:
 
 **规范要求** (§4.3): relax 成功后必须生成 `current.json`，否则 fail-fast
 
-**当前实现**: `src/quantumvitas/execution/relax_artifacts.py`
+**当前实现**: `src/qmatsuite/execution/relax_artifacts.py`
 
 ```python:37:81
 def write_generated_structure(
@@ -65,7 +65,7 @@ def write_generated_structure(
 
 **状态**: ❌ **Must-fix** - 需要在 relax handler 中集成输出解析和 current.json 写入
 
-**定位点**: `src/quantumvitas/execution/handlers.py` (添加 relax 后处理)
+**定位点**: `src/qmatsuite/execution/handlers.py` (添加 relax 后处理)
 
 ---
 
@@ -73,7 +73,7 @@ def write_generated_structure(
 
 **规范要求** (§5.2): 需要 effective structure 时若 current.json 不存在，触发 MissingArtifactError
 
-**当前实现**: `src/quantumvitas/core/exceptions.py`
+**当前实现**: `src/qmatsuite/core/exceptions.py`
 
 ```python:24:32
 class MissingArtifactError(Exception):
@@ -88,7 +88,7 @@ class MissingArtifactError(Exception):
 
 **状态**: ❌ **Must-fix** - 需要在 executor 中添加 missing artifact 检查
 
-**定位点**: `src/quantumvitas/execution/executor.py` (在依赖 effective structure 前检查)
+**定位点**: `src/qmatsuite/execution/executor.py` (在依赖 effective structure 前检查)
 
 ---
 
@@ -96,7 +96,7 @@ class MissingArtifactError(Exception):
 
 **规范要求** (§6.1): relax 视为 chain breaker，non-relax step 的 SCF 追溯不能穿过 relax
 
-**当前实现**: `src/quantumvitas/execution/recipes.py`
+**当前实现**: `src/qmatsuite/execution/recipes.py`
 
 ```python:38:103
 def verify_qc_topology(steps: List["Step"], registry) -> None:
@@ -121,7 +121,7 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
 
 **状态**: ✅ **Compliant**
 
-**定位点**: `src/quantumvitas/execution/recipes.py:278` (ORCA), `src/quantumvitas/execution/recipes.py:388` (PySCF)
+**定位点**: `src/qmatsuite/execution/recipes.py:278` (ORCA), `src/qmatsuite/execution/recipes.py:388` (PySCF)
 
 ---
 
@@ -129,7 +129,7 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
 
 **规范要求** (§6.2): QE 不执行 strong-chain topology check
 
-**当前实现**: `src/quantumvitas/execution/recipes.py`
+**当前实现**: `src/qmatsuite/execution/recipes.py`
 
 ```python:156:233
 class QERecipe(BaseRecipe):
@@ -154,17 +154,17 @@ class QERecipe(BaseRecipe):
 
 **当前实现**:
 
-1. `src/quantumvitas/calculation/geometry.py:461-506`
+1. `src/qmatsuite/calculation/geometry.py:461-506`
 ```python
 def structure_from_qe_geometry_snapshot(snapshot, species) -> PMGStructure:
     ...
     # CRITICAL: Canonicalize exactly once
-    from quantumvitas.analysis.structure_viz import canonicalize_structure_in_place
+    from qmatsuite.analysis.structure_viz import canonicalize_structure_in_place
     canonicalize_structure_in_place(structure)
     return structure
 ```
 
-2. `src/quantumvitas/core/structure_fingerprint.py`
+2. `src/qmatsuite/core/structure_fingerprint.py`
 ```python
 def structure_fingerprint(structure: Structure, tol: float = 1e-5) -> str:
     """Generate stable fingerprint (SHA256) for a structure."""
@@ -182,7 +182,7 @@ def structure_fingerprint(structure: Structure, tol: float = 1e-5) -> str:
 
 **规范要求** (§7.1): promote 使用 step_selector (dropdown)，而非 latest
 
-**当前实现**: `src/quantumvitas/api.py`
+**当前实现**: `src/qmatsuite/api.py`
 
 ```python
 @staticmethod
@@ -202,7 +202,7 @@ def promote_relax_structure(
 
 **状态**: ✅ **Compliant**
 
-**定位点**: `src/quantumvitas/api.py` (promote_relax_structure 方法)
+**定位点**: `src/qmatsuite/api.py` (promote_relax_structure 方法)
 
 ---
 
@@ -210,7 +210,7 @@ def promote_relax_structure(
 
 **规范要求**: GEN step 只有一个 public type: `relax`
 
-**当前实现**: `src/quantumvitas/engine/qc_engine_base.py`
+**当前实现**: `src/qmatsuite/engine/qc_engine_base.py`
 
 ```python:23:25
 # Step types that are structure transforms (relax/opt)

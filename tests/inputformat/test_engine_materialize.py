@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.inputformat import write_engine_inputs
+from qmatsuite.inputformat import write_engine_inputs
 
 # ─────────────────────────────────────────────────────────────────────
 # Shared test data
@@ -41,7 +41,7 @@ class TestVASPMaterialize:
 
     @pytest.fixture
     def vasp_spec(self):
-        from quantumvitas.drivers.vasp.inputspec import get_vasp_input_spec
+        from qmatsuite.drivers.vasp.inputspec import get_vasp_input_spec
         return get_vasp_input_spec()
 
     def test_produces_three_files(self, tmp_path, vasp_spec):
@@ -99,7 +99,7 @@ class TestGaussianMaterialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.gaussian.inputspec import get_gaussian_input_spec
+        from qmatsuite.drivers.gaussian.inputspec import get_gaussian_input_spec
         return get_gaussian_input_spec()
 
     def test_produces_gjf(self, tmp_path, spec):
@@ -137,7 +137,7 @@ class TestXTBMaterialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.xtb.inputspec import get_xtb_input_spec
+        from qmatsuite.drivers.xtb.inputspec import get_xtb_input_spec
         return get_xtb_input_spec()
 
     def test_produces_xyz(self, tmp_path, spec):
@@ -163,7 +163,7 @@ class TestSiestaMaterialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.siesta.inputspec import get_siesta_input_spec
+        from qmatsuite.drivers.siesta.inputspec import get_siesta_input_spec
         return get_siesta_input_spec(system_label="si_test")
 
     def test_produces_fdf(self, tmp_path, spec):
@@ -191,7 +191,7 @@ class TestQEMaterialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.qe.inputspec import get_qe_input_spec
+        from qmatsuite.drivers.qe.inputspec import get_qe_input_spec
         return get_qe_input_spec(gen_type="pw")
 
     def test_produces_pw_in(self, tmp_path, spec):
@@ -218,7 +218,7 @@ class TestQEMaterialize:
         assert "Si" in content
 
     def test_dynamic_filename(self):
-        from quantumvitas.drivers.qe.inputspec import get_qe_input_spec
+        from qmatsuite.drivers.qe.inputspec import get_qe_input_spec
         spec = get_qe_input_spec(gen_type="ph")
         assert spec.input_files[0].filename == "ph.in"
 
@@ -233,7 +233,7 @@ class TestABINITMaterialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.abinit.inputspec import get_abinit_input_spec
+        from qmatsuite.drivers.abinit.inputspec import get_abinit_input_spec
         return get_abinit_input_spec(step_prefix="scf")
 
     def test_produces_abi(self, tmp_path, spec):
@@ -261,7 +261,7 @@ class TestW90Materialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.w90.inputspec import get_w90_input_spec
+        from qmatsuite.drivers.w90.inputspec import get_w90_input_spec
         return get_w90_input_spec()
 
     def test_produces_win(self, tmp_path, spec):
@@ -289,7 +289,7 @@ class TestCP2KMaterialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.cp2k.inputspec import get_cp2k_input_spec
+        from qmatsuite.drivers.cp2k.inputspec import get_cp2k_input_spec
         return get_cp2k_input_spec()
 
     def test_produces_inp(self, tmp_path, spec):
@@ -321,7 +321,7 @@ class TestLAMMPSMaterialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.lammps.inputspec import get_lammps_input_spec
+        from qmatsuite.drivers.lammps.inputspec import get_lammps_input_spec
         return get_lammps_input_spec()
 
     def test_produces_two_files(self, tmp_path, spec):
@@ -357,7 +357,7 @@ class TestQMCPACKMaterialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.qmcpack.inputspec import get_qmcpack_input_spec
+        from qmatsuite.drivers.qmcpack.inputspec import get_qmcpack_input_spec
         return get_qmcpack_input_spec()
 
     def test_produces_xml(self, tmp_path, spec):
@@ -385,7 +385,7 @@ class TestORCAMaterialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.orca.inputspec import get_orca_input_spec
+        from qmatsuite.drivers.orca.inputspec import get_orca_input_spec
         return get_orca_input_spec(basename="si_calc")
 
     def test_produces_inp(self, tmp_path, spec):
@@ -412,13 +412,13 @@ class TestYamboMaterialize:
     """Test Yambo input file generation."""
 
     def test_setup_spec_empty(self, tmp_path):
-        from quantumvitas.drivers.yambo.inputspec import get_yambo_input_spec
+        from qmatsuite.drivers.yambo.inputspec import get_yambo_input_spec
         spec = get_yambo_input_spec(gen_type="setup")
         written = write_engine_inputs(spec, tmp_path)
         assert written == []
 
     def test_gw_produces_file(self, tmp_path):
-        from quantumvitas.drivers.yambo.inputspec import get_yambo_input_spec
+        from qmatsuite.drivers.yambo.inputspec import get_yambo_input_spec
         spec = get_yambo_input_spec(gen_type="gw")
         params = {"gen_type": "gw", "polarization_bands": (1, 20)}
         written = write_engine_inputs(spec, tmp_path, params=params)
@@ -437,7 +437,7 @@ class TestGPAWMaterialize:
 
     @pytest.fixture
     def spec(self):
-        from quantumvitas.drivers.gpaw.inputspec import get_gpaw_input_spec
+        from qmatsuite.drivers.gpaw.inputspec import get_gpaw_input_spec
         return get_gpaw_input_spec(gen_type="scf")
 
     def test_produces_two_files(self, tmp_path, spec):
@@ -466,7 +466,7 @@ class TestPsi4Materialize:
     """Test Psi4 input spec (no files)."""
 
     def test_empty_spec(self, tmp_path):
-        from quantumvitas.drivers.psi4.inputspec import get_psi4_input_spec
+        from qmatsuite.drivers.psi4.inputspec import get_psi4_input_spec
         spec = get_psi4_input_spec()
         written = write_engine_inputs(spec, tmp_path)
         assert written == []
@@ -478,7 +478,7 @@ class TestPySCFMaterialize:
     """Test PySCF input spec (no files)."""
 
     def test_empty_spec(self, tmp_path):
-        from quantumvitas.drivers.pyscf.inputspec import get_pyscf_input_spec
+        from qmatsuite.drivers.pyscf.inputspec import get_pyscf_input_spec
         spec = get_pyscf_input_spec()
         written = write_engine_inputs(spec, tmp_path)
         assert written == []
@@ -495,27 +495,27 @@ class TestDriverGetInputSpec:
     """Test that all drivers return a valid EngineInputSpec via get_input_spec."""
 
     DRIVERS = [
-        "quantumvitas.drivers.vasp.driver:VASPDriver",
-        "quantumvitas.drivers.qe.driver:QEDriver",
-        "quantumvitas.drivers.abinit.driver:AbinitDriver",
-        "quantumvitas.drivers.cp2k.driver:CP2KDriver",
-        "quantumvitas.drivers.orca.driver:ORCADriver",
-        "quantumvitas.drivers.gaussian.driver:GaussianDriver",
-        "quantumvitas.drivers.lammps.driver:LAMMPSDriver",
-        "quantumvitas.drivers.siesta.driver:SiestaDriver",
-        "quantumvitas.drivers.w90.driver:W90Driver",
-        "quantumvitas.drivers.gpaw.driver:GPAWDriver",
-        "quantumvitas.drivers.psi4.driver:Psi4Driver",
-        "quantumvitas.drivers.pyscf.driver:PySCFDriver",
-        "quantumvitas.drivers.xtb.driver:XTBDriver",
-        "quantumvitas.drivers.qmcpack.driver:QMCPACKDriver",
-        "quantumvitas.drivers.yambo.driver:YamboDriver",
+        "qmatsuite.drivers.vasp.driver:VASPDriver",
+        "qmatsuite.drivers.qe.driver:QEDriver",
+        "qmatsuite.drivers.abinit.driver:AbinitDriver",
+        "qmatsuite.drivers.cp2k.driver:CP2KDriver",
+        "qmatsuite.drivers.orca.driver:ORCADriver",
+        "qmatsuite.drivers.gaussian.driver:GaussianDriver",
+        "qmatsuite.drivers.lammps.driver:LAMMPSDriver",
+        "qmatsuite.drivers.siesta.driver:SiestaDriver",
+        "qmatsuite.drivers.w90.driver:W90Driver",
+        "qmatsuite.drivers.gpaw.driver:GPAWDriver",
+        "qmatsuite.drivers.psi4.driver:Psi4Driver",
+        "qmatsuite.drivers.pyscf.driver:PySCFDriver",
+        "qmatsuite.drivers.xtb.driver:XTBDriver",
+        "qmatsuite.drivers.qmcpack.driver:QMCPACKDriver",
+        "qmatsuite.drivers.yambo.driver:YamboDriver",
     ]
 
     @pytest.mark.parametrize("driver_path", DRIVERS)
     def test_get_input_spec_returns_spec(self, driver_path):
         """Every driver.get_input_spec() returns an EngineInputSpec."""
-        from quantumvitas.inputformat.core import EngineInputSpec
+        from qmatsuite.inputformat.core import EngineInputSpec
         import importlib
 
         module_path, class_name = driver_path.rsplit(":", 1)

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.orca.inputspec import (
+from qmatsuite.drivers.orca.inputspec import (
     _parse_orca_text,
     _write_orca_text,
     get_orca_input_spec,
@@ -192,7 +192,7 @@ class TestORCAOrchestrator:
 
     def test_orchestrator_roundtrip(self, tmp_path):
         """Write via orchestrator -> parse via orchestrator -> compare."""
-        from quantumvitas.inputformat import write_engine_inputs, parse_engine_inputs
+        from qmatsuite.inputformat import write_engine_inputs, parse_engine_inputs
 
         spec = get_orca_input_spec()
 

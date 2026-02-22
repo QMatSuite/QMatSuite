@@ -1,8 +1,8 @@
 import pytest
 import warnings
 
-from quantumvitas.io import QEInput, QENamelist
-from quantumvitas.calculation.input_runner import (
+from qmatsuite.io import QEInput, QENamelist
+from qmatsuite.calculation.input_runner import (
     ParameterOverride,
     _apply_parameter_overrides,
 )

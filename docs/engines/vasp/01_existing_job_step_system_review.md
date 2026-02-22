@@ -31,7 +31,7 @@ QMatSuite currently supports three distinct engine execution models:
 
 **Where it should live**:
 ```
-src/quantumvitas/execution/reference_resolver.py  (NEW)
+src/qmatsuite/execution/reference_resolver.py  (NEW)
 ```
 
 **Why new module**: This is cross-engine logic (QE could also use it for restart from SCF). Not engine-specific, so shouldn't be in `vasp_engine.py`.
@@ -40,7 +40,7 @@ src/quantumvitas/execution/reference_resolver.py  (NEW)
 
 **Existing code to examine**:
 ```python
-# src/quantumvitas/execution/executor.py
+# src/qmatsuite/execution/executor.py
 def _load_effective_structure_for_step(self, step_idx, calculation):
     """Find relax step and load generated structure."""
     # This already walks backwards to find relax steps
@@ -80,14 +80,14 @@ def find_reference_scf(
 
 **Where it should live**:
 ```
-src/quantumvitas/execution/vasp_staging.py  (NEW)
+src/qmatsuite/execution/vasp_staging.py  (NEW)
 ```
 
 **Why new module**: VASP-specific staging logic (CHGCAR/WAVECAR). Other engines have different staging needs.
 
 **Existing code to examine**:
 ```python
-# src/quantumvitas/calculation/manifest.py
+# src/qmatsuite/calculation/manifest.py
 @dataclass
 class ManifestStepEntry:
     done: bool  # ← This is the flag we need to check
@@ -140,7 +140,7 @@ def check_staging_prerequisites(
 
 **Existing code to examine**:
 ```python
-# src/quantumvitas/execution/handlers.py
+# src/qmatsuite/execution/handlers.py
 def qe_step_handler(...):
     raw_dir.mkdir(parents=True, exist_ok=True)
     # NO cleaning - QE shares the directory
@@ -170,13 +170,13 @@ def vasp_step_handler(...):
 
 **Where modification is needed**:
 ```
-src/quantumvitas/workflow/generalized_steps.py  (MODIFY)
-src/quantumvitas/api.py  (MODIFY - for explicit run_step error)
+src/qmatsuite/workflow/generalized_steps.py  (MODIFY)
+src/qmatsuite/api.py  (MODIFY - for explicit run_step error)
 ```
 
 **Existing code to examine**:
 ```python
-# src/quantumvitas/workflow/generalized_steps.py
+# src/qmatsuite/workflow/generalized_steps.py
 def materialize_workflow(generalized_steps, engine_family):
     result = []
     for gen_step in generalized_steps:
@@ -201,7 +201,7 @@ def materialize_workflow(generalized_steps, engine_family):
 
 **For explicit run_step**:
 ```python
-# src/quantumvitas/api.py (or wherever run_step is)
+# src/qmatsuite/api.py (or wherever run_step is)
 def run_step(project_root, calc_id, step_selector, ...):
     # NEW: Check if step_selector is GEN and maps to 0
     if looks_like_gen_step(step_selector):
@@ -219,7 +219,7 @@ def run_step(project_root, calc_id, step_selector, ...):
 ## 3. Main Execution Path Call Graph
 
 ```
-                    QVService.run_calculation() / run_step()
+                    QMSService.run_calculation() / run_step()
                                     │
                                     ▼
                     ┌──────────────────────────────────┐
@@ -275,7 +275,7 @@ def run_step(project_root, calc_id, step_selector, ...):
 ### 4.1 Current Recipes
 
 ```python
-# src/quantumvitas/execution/recipes.py
+# src/qmatsuite/execution/recipes.py
 
 class QERecipe(BaseRecipe):
     """One job per step, shared calc/raw/ directory"""
@@ -327,7 +327,7 @@ class VASPRecipe(BaseRecipe):
 ### 5.1 Current Handler Pattern
 
 ```python
-# src/quantumvitas/execution/handlers.py
+# src/qmatsuite/execution/handlers.py
 
 def qe_step_handler(job, calculation, engine_registry, context) -> JobResult:
     step = _find_step_by_ulid(calculation, job.step_ids[0])

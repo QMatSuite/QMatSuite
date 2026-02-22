@@ -102,7 +102,7 @@ jobs:
       - name: Check no startswith patterns
         run: |
           if grep -rn "startswith.*step\|startswith.*vasp\|startswith.*qe\|startswith.*orca" \
-             --include="*.py" src/quantumvitas/core/ src/quantumvitas/execution/; then
+             --include="*.py" src/qmatsuite/core/ src/qmatsuite/execution/; then
             echo "FAIL: Found prohibited startswith patterns"
             exit 1
           fi
@@ -145,7 +145,7 @@ class TestDriverRegistration:
     @pytest.mark.parametrize("engine", ["vasp", "qe", "orca", "pyscf", "lammps", "cp2k"])
     def test_driver_registered(self, engine):
         """Driver must be registered after import."""
-        from quantumvitas import drivers  # Triggers discovery
+        from qmatsuite import drivers  # Triggers discovery
         assert DriverRegistry.is_valid_engine(engine)
 
     @pytest.mark.parametrize("engine", ["vasp", "qe", "orca", "pyscf", "lammps", "cp2k"])
@@ -167,10 +167,10 @@ class TestNoKernelModification:
     """Verify engine-specific code not in kernel."""
 
     KERNEL_PATHS = [
-        "src/quantumvitas/core/",
-        "src/quantumvitas/execution/handlers.py",
-        "src/quantumvitas/execution/recipes.py",
-        "src/quantumvitas/workflow/generalized_steps.py",
+        "src/qmatsuite/core/",
+        "src/qmatsuite/execution/handlers.py",
+        "src/qmatsuite/execution/recipes.py",
+        "src/qmatsuite/workflow/generalized_steps.py",
     ]
 
     def test_no_engine_constants_in_kernel(self):
@@ -203,12 +203,12 @@ class TestNoKernelModification:
     CHANGED=$(git diff --name-only origin/main...HEAD)
 
     # Check for kernel file modifications
-    KERNEL_FILES="src/quantumvitas/core/calc_identity.py
-    src/quantumvitas/execution/handlers.py
-    src/quantumvitas/execution/recipes.py
-    src/quantumvitas/workflow/generalized_steps.py
-    src/quantumvitas/calculation/structure_steps.py
-    src/quantumvitas/calculation/step_done.py"
+    KERNEL_FILES="src/qmatsuite/core/calc_identity.py
+    src/qmatsuite/execution/handlers.py
+    src/qmatsuite/execution/recipes.py
+    src/qmatsuite/workflow/generalized_steps.py
+    src/qmatsuite/calculation/structure_steps.py
+    src/qmatsuite/calculation/step_done.py"
 
     for f in $KERNEL_FILES; do
       if echo "$CHANGED" | grep -q "$f"; then
@@ -330,7 +330,7 @@ tests/
 
 class TestVASPDriverRegistration:
     def test_vasp_driver_registered(self):
-        from quantumvitas import drivers
+        from qmatsuite import drivers
         assert DriverRegistry.is_valid_engine("vasp")
 
     def test_vasp_step_types_registered(self):

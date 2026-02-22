@@ -22,7 +22,7 @@ import pytest
 import yaml
 from pymatgen.core import Molecule
 
-from quantumvitas.core.engines.discovery import is_engine_available
+from qmatsuite.core.engines.discovery import is_engine_available
 
 # Repo root for .tmp directory
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -113,7 +113,7 @@ water molecule
         )
 
         # ── Parse and verify xtbopt.xyz ──
-        from quantumvitas.drivers.xtb.parser import parse_xtbopt_xyz
+        from qmatsuite.drivers.xtb.parser import parse_xtbopt_xyz
 
         geo = parse_xtbopt_xyz(workdir / "xtbopt.xyz")
         assert geo["n_atoms"] == 3
@@ -123,7 +123,7 @@ water molecule
         )
 
         # ── Parse and verify combined output ──
-        from quantumvitas.drivers.xtb.parser import parse_xtb_stdout
+        from qmatsuite.drivers.xtb.parser import parse_xtb_stdout
 
         parsed = parse_xtb_stdout(combined_output)
         assert parsed["converged"] is True
@@ -166,7 +166,7 @@ ethanol
         assert (workdir / "xtbopt.xyz").exists()
         assert (workdir / ".xtboptok").exists()
 
-        from quantumvitas.drivers.xtb.parser import parse_xtbopt_xyz
+        from qmatsuite.drivers.xtb.parser import parse_xtbopt_xyz
 
         geo = parse_xtbopt_xyz(workdir / "xtbopt.xyz")
         assert geo["n_atoms"] == 9
@@ -184,8 +184,8 @@ class TestXTBDriverRegistration:
 
     def test_driver_registry_lookup(self):
         """Verify xTB driver is accessible via DriverRegistry."""
-        import quantumvitas.drivers.xtb  # noqa: F401 — triggers registration
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.xtb  # noqa: F401 — triggers registration
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("xtb")
         assert driver is not None
@@ -197,8 +197,8 @@ class TestXTBDriverRegistration:
 
     def test_step_type_lookup(self):
         """Verify xtb_relax step type resolves through registry."""
-        import quantumvitas.drivers.xtb  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.xtb  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         handler = DriverRegistry.get_handler("xtb_relax")
         assert handler is not None
@@ -206,8 +206,8 @@ class TestXTBDriverRegistration:
 
     def test_materialization_map(self):
         """Verify relax -> xtb_relax materialization."""
-        import quantumvitas.drivers.xtb  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.xtb  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         spec = DriverRegistry.materialize_step_type("xtb", "relax")
         assert spec == "xtb_relax"
@@ -237,8 +237,8 @@ class TestXTBRelaxPromote:
         7. Promote relaxed structure
         8. Verify promoted structure differs from original
         """
-        from quantumvitas.api import QVService
-        from quantumvitas.execution.relax_artifacts import (
+        from qmatsuite.api import QMSService
+        from qmatsuite.execution.relax_artifacts import (
             get_generated_structure_path,
             read_generated_structure,
         )
@@ -248,7 +248,7 @@ class TestXTBRelaxPromote:
         test_dir = _REPO_ROOT / ".tmp" / "xtb" / unique_id
         test_dir.mkdir(parents=True, exist_ok=True)
 
-        project_root = QVService.init_project(test_dir / "xtb_relax_project")
+        project_root = QMSService.init_project(test_dir / "xtb_relax_project")
 
         # ── Import H2O molecule via API ──
         # Write a temp XYZ file, then import through the proper API
@@ -263,7 +263,7 @@ class TestXTBRelaxPromote:
         h2o_xyz = tmp_path / "h2o.xyz"
         h2o.to(str(h2o_xyz), fmt="xyz")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         imported = svc.structure.import_file(h2o_xyz, name="H2O")
         structure_ulid = imported.meta.ulid
 

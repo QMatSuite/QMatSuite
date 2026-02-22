@@ -14,11 +14,11 @@ from typing import Any, Dict
 
 import pytest
 
-from quantumvitas.api import QVService
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
+from qmatsuite.api import QMSService
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
 
 
-def send_request(daemon: QVDaemon, request_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def send_request(daemon: QMSDaemon, request_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Send a request to the daemon and return the response data."""
     response = daemon.handle_request(RPCRequest(
         id="test",
@@ -39,7 +39,7 @@ def temp_project(tmp_path: Path) -> Path:
     project_dir.mkdir()
     
     # Initialize project
-    QVService.init_project(project_dir, name="test_calculation_detail")
+    QMSService.init_project(project_dir, name="test_calculation_detail")
     
     # Import structures (using test data if available)
     test_data = Path(__file__).parent.parent / "data" / "calculation_bands"
@@ -47,14 +47,14 @@ def temp_project(tmp_path: Path) -> Path:
     if test_data.exists():
         scf_in = test_data / "si.0_scf.in"
         if scf_in.exists():
-            structure1 = QVService(project_dir).structure.import_file(
+            structure1 = QMSService(project_dir).structure.import_file(
                 source=scf_in,
                 name="Si",
             )
             structures["Si"] = structure1.meta.ulid
 
             # Create a second structure for testing structure change
-            structure2 = QVService(project_dir).structure.import_file(
+            structure2 = QMSService(project_dir).structure.import_file(
                 source=scf_in,
                 name="Si2",
             )
@@ -65,7 +65,7 @@ def temp_project(tmp_path: Path) -> Path:
         pytest.skip("Test data not available")
     
     # Create a calculation with structure
-    calculation_result = QVService(project_dir).project.init_calculation(
+    calculation_result = QMSService(project_dir).project.init_calculation(
         name="test_calculation",
         structure_selector=structures["Si"],
         engine_family="qe",
@@ -73,7 +73,7 @@ def temp_project(tmp_path: Path) -> Path:
     calculation_id = calculation_result.meta.ulid
     
     # Use domain accessor API for step creation
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
     
     # Add steps to the calculation
     svc.calculation.add_step(
@@ -92,18 +92,18 @@ def temp_project(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def daemon() -> QVDaemon:
+def daemon() -> QMSDaemon:
     """Create a daemon instance for testing."""
-    return QVDaemon()
+    return QMSDaemon()
 
 
 class TestGetCalculationDetail:
     """Test get_calculation_detail returns calculations with steps."""
     
-    def test_get_calculation_detail_has_steps(self, temp_project: Path, daemon: QVDaemon):
+    def test_get_calculation_detail_has_steps(self, temp_project: Path, daemon: QMSDaemon):
         """Test that get_calculation_detail returns a calculation with non-empty steps list."""
         # Get calculation slug via nested service method (DTO)
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         calculations = svc.calculation.list()
         assert len(calculations) > 0, "Project should have at least one calculation"
         calculation = calculations[0]
@@ -138,18 +138,18 @@ class TestGetCalculationDetail:
         
         # Verify step IDs match calculation model
         # Get calculation detail directly via domain accessor to compare
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         direct_result = svc.calculation.get_detail(calculation_slug)
         assert len(direct_result["steps"]) == len(result["steps"]), \
-            "Daemon result should match direct QVService result"
+            "Daemon result should match direct QMSService result"
         
         # Verify step IDs are consistent
         daemon_step_ids = {s.get("step_ulid") or s.get("ulid") for s in result["steps"]}
         direct_step_ids = {s.get("step_ulid") or s.get("ulid") for s in direct_result["steps"]}
         assert daemon_step_ids == direct_step_ids, \
-            "Step IDs from daemon should match direct QVService call"
+            "Step IDs from daemon should match direct QMSService call"
     
-    def test_multi_step_calculation_ulid_only_selectors(self, temp_project: Path, daemon: QVDaemon):
+    def test_multi_step_calculation_ulid_only_selectors(self, temp_project: Path, daemon: QMSDaemon):
         """
         Test that multi-step calculations use ULID-only selectors and preserve order from calculation.yaml.
         
@@ -160,7 +160,7 @@ class TestGetCalculationDetail:
         - The entire chain (calculation.yaml → API → GUI → daemon → API) is ULID-based
         """
         # Get calculation slug via nested service method (DTO)
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         calculations = svc.calculation.list()
         assert len(calculations) > 0, "Project should have at least one calculation"
         calculation = calculations[0]
@@ -168,7 +168,7 @@ class TestGetCalculationDetail:
 
         # Add more steps to create a multi-step calculation (scf, nscf, bandspw, bands)
         # The temp_project fixture already has scf and nscf, so add bandspw and bands
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         svc.calculation.add_step(
             calc_selector=calculation_slug,
             step_type_gen="bandspw",
@@ -254,9 +254,9 @@ class TestGetCalculationDetail:
         
         # Verify step order is preserved from calculation.yaml
         # Load calculation model directly to compare order
-        from quantumvitas.core.models import load_calculation
-        from quantumvitas.core.project_utils import load_project_config
-        from quantumvitas.core.resolution import make_structure_selector_resolver
+        from qmatsuite.core.models import load_calculation
+        from qmatsuite.core.project_utils import load_project_config
+        from qmatsuite.core.resolution import make_structure_selector_resolver
         
         config = load_project_config(temp_project)
         resolver = make_structure_selector_resolver(temp_project, config=config)
@@ -274,9 +274,9 @@ class TestGetCalculationDetail:
             f"Step order mismatch. calculation.yaml: {calculation_yaml_step_ids}, API: {api_step_ids}"
 
 
-    def test_get_calculation_detail_has_engine_family_and_paths(self, temp_project: Path, daemon: QVDaemon):
+    def test_get_calculation_detail_has_engine_family_and_paths(self, temp_project: Path, daemon: QMSDaemon):
         """Test that get_calculation_detail returns engine_family, absolute_path, and path fields."""
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         calculations = svc.calculation.list()
         assert len(calculations) > 0
         calculation_slug = calculations[0].slug
@@ -302,13 +302,13 @@ class TestGetCalculationDetail:
 class TestChangeCalculationStructure:
     """Test change_calculation_structure endpoint."""
     
-    def test_change_calculation_structure_via_daemon(self, temp_project: Path, daemon: QVDaemon):
+    def test_change_calculation_structure_via_daemon(self, temp_project: Path, daemon: QMSDaemon):
         """Test that change_calculation_structure correctly updates calculation structure."""
         # Load structure IDs
         structures = json.loads((temp_project / ".test_structures.json").read_text())
 
         # Get calculation slug via nested service method (DTO)
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         calculations = svc.calculation.list()
         assert len(calculations) > 0, "Project should have at least one calculation"
         calculation = calculations[0]
@@ -354,10 +354,10 @@ class TestChangeCalculationStructure:
             "Calculation should still have steps after structure change"
     
     def test_change_calculation_structure_rejects_project_root_as_selector(
-        self, temp_project: Path, daemon: QVDaemon
+        self, temp_project: Path, daemon: QMSDaemon
     ):
         """Test that change_calculation_structure rejects project_root as structure selector."""
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         calculations = svc.calculation.list()
         assert len(calculations) > 0
         calculation_slug = calculations[0].slug

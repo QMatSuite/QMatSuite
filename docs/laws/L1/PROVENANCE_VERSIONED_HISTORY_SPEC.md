@@ -38,7 +38,7 @@ QMatSuite currently maintains a clean filesystem UX where `calc/raw/` contains o
 
 This system follows a **"behind-the-scenes"** approach:
 
-1. **Present World SSOT Unchanged**: The authoritative truth remains the YAML/JSON file tree (`project.qv.yml`, `calculation.yaml`, `step.yaml`, structure resources). This is what gets read at runtime.
+1. **Present World SSOT Unchanged**: The authoritative truth remains the YAML/JSON file tree (`project.qms.yml`, `calculation.yaml`, `step.yaml`, structure resources). This is what gets read at runtime.
 
 2. **History World is Auxiliary**: SQLite database and Content-Addressed Store (CAS) are historical records. Deleting them must leave the project fully runnable—just losing history/rollback/analytics.
 
@@ -59,7 +59,7 @@ This system follows a **"behind-the-scenes"** approach:
 │  │         PRESENT WORLD (SSOT)        │  │       HISTORY WORLD          │ │
 │  │  (Runtime reads/writes; canonical)  │  │   (Provenance/rollback)      │ │
 │  ├─────────────────────────────────────┤  ├──────────────────────────────┤ │
-│  │  project.qv.yml                     │  │  .provenance/                │ │
+│  │  project.qms.yml                     │  │  .provenance/                │ │
 │  │  calculations/                      │  │  ├── provenance.db (SQLite)  │ │
 │  │  ├── <calc_ulid>/                   │  │  ├── provenance.lock         │ │
 │  │  │   ├── calculation.yaml           │  │  └── .cas/                   │ │
@@ -213,7 +213,7 @@ project_root/
 │       │   └── ...
 │       ├── tmp/                          # Temp staging for atomic writes
 │       └── gc.lock                       # Lock for GC operations
-├── project.qv.yml                        # Present World SSOT
+├── project.qms.yml                        # Present World SSOT
 ├── calculations/                         # Present World SSOT
 │   └── <calc_ulid>/
 │       ├── calculation.yaml
@@ -937,7 +937,7 @@ Recovery options (MVP: none required):
 Each engine driver MUST define artifact handling policy. This is the ONLY place artifact policy is defined (Law P9).
 
 ```python
-# src/quantumvitas/drivers/<engine>/recipe.py
+# src/qmatsuite/drivers/<engine>/recipe.py
 
 class EngineRecipe(BaseRecipe):
 
@@ -1032,7 +1032,7 @@ class ArtifactPolicy:
 The artifact scanner is implemented ONLY in the Runner. Handlers and engines MUST NOT implement their own scanners.
 
 ```python
-# src/quantumvitas/provenance/scanner.py
+# src/qmatsuite/provenance/scanner.py
 
 @dataclass
 class ScannedFile:
@@ -1291,7 +1291,7 @@ def test_manifest_no_provenance_imports():
     """Law P3: Skip logic must not import from provenance module."""
     import ast
 
-    manifest_path = Path("src/quantumvitas/calculation/manifest.py")
+    manifest_path = Path("src/qmatsuite/calculation/manifest.py")
     tree = ast.parse(manifest_path.read_text())
 
     for node in ast.walk(tree):
@@ -1312,7 +1312,7 @@ def test_no_nested_locks(tmp_project):
     """Law P6: Provenance lock must not be acquired inside edit lock."""
     # This test inspects save_yaml_doc implementation
     import inspect
-    from quantumvitas.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yaml_io import save_yaml_doc
 
     source = inspect.getsource(save_yaml_doc)
 
@@ -1331,7 +1331,7 @@ def test_handler_no_scanner_import():
     """Law P9: Handlers must not import artifact scanner."""
     import ast
 
-    handler_files = Path("src/quantumvitas/drivers").rglob("handler.py")
+    handler_files = Path("src/qmatsuite/drivers").rglob("handler.py")
 
     for handler_path in handler_files:
         tree = ast.parse(handler_path.read_text())
@@ -1584,13 +1584,13 @@ recent_runs = query.runs().calc(calc_ulid).since(days=7).status("success").limit
 
 | Component | Path |
 |-----------|------|
-| Provenance module | `src/quantumvitas/provenance/` |
-| OperationContext | `src/quantumvitas/provenance/opctx.py` |
-| SQLite schema | `src/quantumvitas/provenance/schema.py` |
-| Database operations | `src/quantumvitas/provenance/db.py` |
-| CAS implementation | `src/quantumvitas/provenance/cas.py` |
-| Artifact scanner | `src/quantumvitas/provenance/scanner.py` |
-| Lock utilities | `src/quantumvitas/provenance/locks.py` |
+| Provenance module | `src/qmatsuite/provenance/` |
+| OperationContext | `src/qmatsuite/provenance/opctx.py` |
+| SQLite schema | `src/qmatsuite/provenance/schema.py` |
+| Database operations | `src/qmatsuite/provenance/db.py` |
+| CAS implementation | `src/qmatsuite/provenance/cas.py` |
+| Artifact scanner | `src/qmatsuite/provenance/scanner.py` |
+| Lock utilities | `src/qmatsuite/provenance/locks.py` |
 | Gate tests | `tests/gates/test_provenance_*.py` |
 | Integration tests | `tests/integration/test_provenance_*.py` |
 

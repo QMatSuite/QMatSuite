@@ -16,7 +16,7 @@ Implemented robust prefix/outdir propagation rules for QE-related steps, fixed W
 - Ignored `input_name` parameter override for Wannier90 steps (seedname requirement takes precedence)
 
 **Files Changed**:
-- `src/quantumvitas/calculation/structure_steps.py` (lines ~624, ~658)
+- `src/qmatsuite/calculation/structure_steps.py` (lines ~624, ~658)
 
 ### 2. pw2wannier90 Schema Mapping (Issue R6)
 
@@ -32,7 +32,7 @@ Implemented robust prefix/outdir propagation rules for QE-related steps, fixed W
 - Verified via `get_module_param_sections('pp')` that prefix exists in `&INPUTPP`
 
 **Files Changed**:
-- `src/quantumvitas/calculation/structure_steps.py` (lines ~256-266)
+- `src/qmatsuite/calculation/structure_steps.py` (lines ~256-266)
 
 ### 3. Errno 21 Prevention (Issue B)
 
@@ -44,8 +44,8 @@ Implemented robust prefix/outdir propagation rules for QE-related steps, fixed W
 - Both checks provide clear error messages with actionable diagnostics
 
 **Files Changed**:
-- `src/quantumvitas/calculation/step.py` (lines ~41-58)
-- `src/quantumvitas/core/engines/qe_calculation.py` (lines ~225-232)
+- `src/qmatsuite/calculation/step.py` (lines ~41-58)
+- `src/qmatsuite/core/engines/qe_calculation.py` (lines ~225-232)
 
 ### 4. Calculation-Level Prefix/Outdir Injection (Requirements R1-R4)
 
@@ -74,7 +74,7 @@ Implemented robust prefix/outdir propagation rules for QE-related steps, fixed W
 - **All QE steps**: Prefix/outdir injected via `_inject_calculation_prefix_outdir()` before file writing
 
 **Files Changed**:
-- `src/quantumvitas/calculation/structure_steps.py`:
+- `src/qmatsuite/calculation/structure_steps.py`:
   - Added `_inject_calculation_prefix_outdir()` function (lines ~268-370)
   - Modified `materialize_step_spec()` to load calculation context and inject prefix/outdir (lines ~679-731, ~748-775)
   - Modified pw2wannier90 path to inject calculation prefix (lines ~705-728)
@@ -83,7 +83,7 @@ Implemented robust prefix/outdir propagation rules for QE-related steps, fixed W
 
 ### pw2wannier90 Schema Verification
 ```bash
-$ python -c "from quantumvitas.data import get_module_param_sections; sections = get_module_param_sections('pp'); print('&INPUTPP parameters:', [p for p in sections.get('&INPUTPP', []) if 'prefix' in p.lower()])"
+$ python -c "from qmatsuite.data import get_module_param_sections; sections = get_module_param_sections('pp'); print('&INPUTPP parameters:', [p for p in sections.get('&INPUTPP', []) if 'prefix' in p.lower()])"
 &INPUTPP parameters: ['prefix']
 ```
 

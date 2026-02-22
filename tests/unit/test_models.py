@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from quantumvitas.core.models import (
+from qmatsuite.core.models import (
     CalculationModel,
     CalculationStepEntry,
     ProjectModel,
@@ -20,7 +20,7 @@ from quantumvitas.core.models import (
     save_structure_model,
     ensure_calculation_meta,
 )
-from quantumvitas.core.resources import ResourceMeta
+from qmatsuite.core.resources import ResourceMeta
 
 
 class TestCalculationStepEntry:
@@ -50,7 +50,7 @@ class TestCalculationStepEntry:
 
     def test_from_dict_valid_dag_entry(self):
         """Parse entry from dict with valid DAG format (step_ulid ULID)."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
 
         step_ulid = generate_resource_id()
         data = {"step_ulid": step_ulid, "step_type_spec": "qe_nscf", "input": "raw/nscf.in"}
@@ -61,7 +61,7 @@ class TestCalculationStepEntry:
     
     def test_from_dict_legacy_format_raises_error(self):
         """Parse entry from dict with legacy format raises LegacyProjectError."""
-        from quantumvitas.core.exceptions import LegacyProjectError
+        from qmatsuite.core.exceptions import LegacyProjectError
 
         # Legacy format: has "type" but no "step_type_spec"
         data = {"step_ulid": "01TESTSTEPID123456789", "step_type_gen": "nscf", "file": "raw/nscf.in"}
@@ -86,7 +86,7 @@ class TestCalculationModel:
     
     def test_from_dict_with_steps(self):
         """Parse calculation with steps (DAG + ULID model)."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         structure_ulid = generate_resource_id()
         step1_ulid = generate_resource_id()
@@ -109,7 +109,7 @@ class TestCalculationModel:
     
     def test_from_dict_legacy_format_raises_error(self):
         """Legacy format (structure selector without structure_ulid) should raise LegacyProjectError."""
-        from quantumvitas.core.exceptions import LegacyProjectError
+        from qmatsuite.core.exceptions import LegacyProjectError
         
         data = {
             "ulid": "si-dos",
@@ -124,7 +124,7 @@ class TestCalculationModel:
     
     def test_to_dict_roundtrip(self):
         """Convert to dict and back (ID-only model)."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         step_ulid = generate_resource_id()
         meta = ResourceMeta(ulid="01CALCULATION_ID_HERE______",
@@ -163,7 +163,7 @@ class TestCalculationIO:
     @pytest.fixture
     def calculation_dir(self, tmp_path):
         """Create a calculation directory with DAG + ULID format."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         wf_dir = tmp_path / "calculations" / "test-calculation"
         wf_dir.mkdir(parents=True)
@@ -191,7 +191,7 @@ class TestCalculationIO:
     
     def test_load_calculation(self, calculation_dir):
         """Load calculation from directory."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         wf_dir, project_root = calculation_dir
         model = load_calculation(wf_dir, project_root)
@@ -244,7 +244,7 @@ class TestCalculationIO:
     
     def test_roundtrip(self, tmp_path):
         """Save and load produces equivalent model."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         wf_dir = tmp_path / "calculations" / "roundtrip"
         wf_dir.mkdir(parents=True)
@@ -375,7 +375,7 @@ class TestProjectIO:
                 {"name": "DOS", "path": "calculations/dos"},
             ],
         }
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
         
         return project_root
     
@@ -406,7 +406,7 @@ class TestProjectIO:
         
         save_project(model)
         
-        config_file = project_root / "project.qv.yml"
+        config_file = project_root / "project.qms.yml"
         assert config_file.exists()
         
         loaded = yaml.safe_load(config_file.read_text())
@@ -475,7 +475,7 @@ class TestEnsureCalculationMeta:
     
     def test_preserves_existing_meta(self, tmp_path):
         """Preserves meta from existing calculation.yaml (DAG + ULID format)."""
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
         
         project_root = tmp_path / "project"
         project_root.mkdir()

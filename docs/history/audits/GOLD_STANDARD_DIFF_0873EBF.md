@@ -8,12 +8,12 @@
 ## Gold Standard Properties (from 0873ebf)
 
 ### 1. Frontend Import Isolation
-**Requirement**: CLI and daemon must NOT import kernel modules directly. They may import ONLY from `quantumvitas.api.*` (plus stdlib/third-party).
+**Requirement**: CLI and daemon must NOT import kernel modules directly. They may import ONLY from `qmatsuite.api.*` (plus stdlib/third-party).
 
 **Current Status**: ✅ **PASS**
 - Zero forbidden imports found in CLI
 - Zero forbidden imports found in daemon
-- All imports are from `quantumvitas.api.*` or `quantumvitas.api.utils.*`
+- All imports are from `qmatsuite.api.*` or `qmatsuite.api.utils.*`
 
 ### 2. API Single Source of Truth (SSOT)
 **Requirement**: For any capability used by cli/daemon, there must be exactly ONE canonical entrypoint in the API layer (either instance-style method or pure transparent re-export).
@@ -52,18 +52,18 @@
 
 #### Handlers Using Static Methods (VIOLATIONS)
 - ❌ 13 handlers use static methods instead of instance methods:
-  - `_handle_get_project_summary` → `QVService.get_project_summary(project_root)`
-  - `_handle_list_structures` → `QVService.list_structures_data(project_root)`
-  - `_handle_list_calculations` → `QVService.list_calculations_data(project_root)`
-  - `_handle_import_structure` → `QVService.import_structure(...)`
-  - `_handle_init_calculation` → `QVService.init_calculation(...)`
-  - `_handle_run_calculation` → `func=QVService.run_calculation`
-  - `_handle_run_step` → `func=QVService.run_step`
-  - `_handle_promote_relax_structure` → `QVService.promote_relax_structure(...)`
-  - `_handle_save_relax_final_structure` → `QVService.save_relax_final_structure(...)`
-  - `_handle_analyze_project_pseudo_effects` → `QVService.analyze_project_pseudo_effects(...)`
-  - `_handle_materialize_pseudo_file` → `QVService.materialize_pseudo_file(...)`
-  - `_handle_get_pseudo_options_for_elements` → `QVService.get_pseudo_options_for_elements(...)`
+  - `_handle_get_project_summary` → `QMSService.get_project_summary(project_root)`
+  - `_handle_list_structures` → `QMSService.list_structures_data(project_root)`
+  - `_handle_list_calculations` → `QMSService.list_calculations_data(project_root)`
+  - `_handle_import_structure` → `QMSService.import_structure(...)`
+  - `_handle_init_calculation` → `QMSService.init_calculation(...)`
+  - `_handle_run_calculation` → `func=QMSService.run_calculation`
+  - `_handle_run_step` → `func=QMSService.run_step`
+  - `_handle_promote_relax_structure` → `QMSService.promote_relax_structure(...)`
+  - `_handle_save_relax_final_structure` → `QMSService.save_relax_final_structure(...)`
+  - `_handle_analyze_project_pseudo_effects` → `QMSService.analyze_project_pseudo_effects(...)`
+  - `_handle_materialize_pseudo_file` → `QMSService.materialize_pseudo_file(...)`
+  - `_handle_get_pseudo_options_for_elements` → `QMSService.get_pseudo_options_for_elements(...)`
 
 ### CLI Commands
 
@@ -75,9 +75,9 @@
 
 #### Commands Using Static Methods (VIOLATIONS)
 - ❌ 3 commands use static methods:
-  - `run step` → `QVService.run_step(...)`
-  - `configure species-map` → `QVService.configure_species_map(...)`
-  - `run calculation` → `QVService.run_calculation(...)`
+  - `run step` → `QMSService.run_step(...)`
+  - `configure species-map` → `QMSService.configure_species_map(...)`
+  - `run calculation` → `QMSService.run_calculation(...)`
 
 ---
 

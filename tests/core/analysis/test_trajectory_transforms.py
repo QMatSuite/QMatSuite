@@ -6,20 +6,20 @@ import json
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.base import SourceFileStat
-from quantumvitas.core.analysis.bundles import (
+from qmatsuite.core.analysis.base import SourceFileStat
+from qmatsuite.core.analysis.bundles import (
     CanonicalPrimitiveBundle,
     DerivedPrimitiveBundle,
     ProvenanceMeta,
     RenderMeta,
 )
-from quantumvitas.core.analysis.primitives import GeometryFrame, GeometryFrames, Series1D
-from quantumvitas.core.analysis.transforms.diffusion import DiffusionCoefficient
-from quantumvitas.core.analysis.transforms.frame_slice import FrameSlice
-from quantumvitas.core.analysis.transforms.msd import MSD
-from quantumvitas.core.analysis.transforms.rdf import RDF
-from quantumvitas.core.analysis.transforms.smoothing import Smoothing
-from quantumvitas.core.analysis.transforms.vacf import VACF
+from qmatsuite.core.analysis.primitives import GeometryFrame, GeometryFrames, Series1D
+from qmatsuite.core.analysis.transforms.diffusion import DiffusionCoefficient
+from qmatsuite.core.analysis.transforms.frame_slice import FrameSlice
+from qmatsuite.core.analysis.transforms.msd import MSD
+from qmatsuite.core.analysis.transforms.rdf import RDF
+from qmatsuite.core.analysis.transforms.smoothing import Smoothing
+from qmatsuite.core.analysis.transforms.vacf import VACF
 
 
 def _make_trajectory_bundle(n_frames: int = 10) -> CanonicalPrimitiveBundle:

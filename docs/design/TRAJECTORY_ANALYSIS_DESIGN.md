@@ -233,7 +233,7 @@ Complete mapping of trajectory-producing output files across all 15 engines:
 
 #### Frame (16 fields)
 
-`src/quantumvitas/core/analysis/trajectory/model.py`
+`src/qmatsuite/core/analysis/trajectory/model.py`
 
 ```
 @dataclass
@@ -300,7 +300,7 @@ class Trajectory:
 
 #### GeometryFrame (6 fields) — Primitive subset of Frame
 
-`src/quantumvitas/core/analysis/primitives.py`
+`src/qmatsuite/core/analysis/primitives.py`
 
 ```
 @dataclass
@@ -340,7 +340,7 @@ provider.parse(evidence: EvidenceBundle) -> Trajectory
 trajectory.to_primitives() -> CanonicalPrimitiveBundle
 ```
 
-**Registration:** `@register_parser("engine", "trajectory")` in `src/quantumvitas/parsers/registry.py`.
+**Registration:** `@register_parser("engine", "trajectory")` in `src/qmatsuite/parsers/registry.py`.
 
 **EvidenceBundle** (8 fields): `primary_raw_dir`, `calc_dir`, `run_ulid`, `calc_ulid`, `step_ulids`, `gen_steps`, `engine_name`, `evidence_steps`.
 
@@ -376,7 +376,7 @@ trajectory.to_primitives() -> CanonicalPrimitiveBundle
 
 #### Convergence model (9 fields)
 
-`src/quantumvitas/core/analysis/convergence/model.py`
+`src/qmatsuite/core/analysis/convergence/model.py`
 
 ```
 @dataclass
@@ -423,7 +423,7 @@ A relaxation produces both objects from the same run. They are independent: neit
 
 ### 2.5 VASP Parser as Template
 
-The VASP trajectory parser (`src/quantumvitas/drivers/vasp/parsers/trajectory.py`, 300 lines) is the template for all future engine trajectory parsers.
+The VASP trajectory parser (`src/qmatsuite/drivers/vasp/parsers/trajectory.py`, 300 lines) is the template for all future engine trajectory parsers.
 
 **Architecture:**
 
@@ -833,18 +833,18 @@ These engines do not produce trajectory data. No trajectory parser needed.
 
 | File | Role |
 |------|------|
-| `src/quantumvitas/core/analysis/trajectory/model.py` | Frame (16 fields) + Trajectory dataclasses |
-| `src/quantumvitas/core/analysis/primitives.py` | GeometryFrame, GeometryFrames, Series1D |
-| `src/quantumvitas/core/analysis/bundles.py` | CanonicalPrimitiveBundle, DerivedPrimitiveBundle, RenderMeta, ProvenanceMeta |
-| `src/quantumvitas/core/analysis/orchestrator.py` | `run_post_run_analysis()` — evidence-based dispatch |
-| `src/quantumvitas/core/analysis/capability.py` | AnalysisCapability, CapabilityMatch, `find_contiguous_match()` |
-| `src/quantumvitas/core/analysis/convergence/model.py` | Convergence dataclass (boundary reference) |
-| `src/quantumvitas/core/analysis/evidence.py` | EvidenceBundle (8 fields) |
-| `src/quantumvitas/core/analysis/base.py` | AnalysisObjectMeta (13 fields), SourceFileStat |
-| `src/quantumvitas/parsers/registry.py` | `@register_parser`, `get_parser()` |
-| `src/quantumvitas/drivers/vasp/parsers/trajectory.py` | **TEMPLATE** — VASPTrajectoryProvider (300 lines) |
-| `src/quantumvitas/drivers/qe/parsers/trajectory.py` | QETrajectoryParser — partial, needs fixes |
-| `src/quantumvitas/drivers/siesta/parser.py` | `parse_mde_file()` — raw dict, scalars only |
+| `src/qmatsuite/core/analysis/trajectory/model.py` | Frame (16 fields) + Trajectory dataclasses |
+| `src/qmatsuite/core/analysis/primitives.py` | GeometryFrame, GeometryFrames, Series1D |
+| `src/qmatsuite/core/analysis/bundles.py` | CanonicalPrimitiveBundle, DerivedPrimitiveBundle, RenderMeta, ProvenanceMeta |
+| `src/qmatsuite/core/analysis/orchestrator.py` | `run_post_run_analysis()` — evidence-based dispatch |
+| `src/qmatsuite/core/analysis/capability.py` | AnalysisCapability, CapabilityMatch, `find_contiguous_match()` |
+| `src/qmatsuite/core/analysis/convergence/model.py` | Convergence dataclass (boundary reference) |
+| `src/qmatsuite/core/analysis/evidence.py` | EvidenceBundle (8 fields) |
+| `src/qmatsuite/core/analysis/base.py` | AnalysisObjectMeta (13 fields), SourceFileStat |
+| `src/qmatsuite/parsers/registry.py` | `@register_parser`, `get_parser()` |
+| `src/qmatsuite/drivers/vasp/parsers/trajectory.py` | **TEMPLATE** — VASPTrajectoryProvider (300 lines) |
+| `src/qmatsuite/drivers/qe/parsers/trajectory.py` | QETrajectoryParser — partial, needs fixes |
+| `src/qmatsuite/drivers/siesta/parser.py` | `parse_mde_file()` — raw dict, scalars only |
 
 ## Appendix B: Data Flow Diagram
 

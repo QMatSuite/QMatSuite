@@ -2,7 +2,7 @@
 
 Generates QMCPACK XML input files from structured parameters.
 This is a standalone utility for testing; will be deleted after
-integration into src/quantumvitas/drivers/qmcpack/.
+integration into src/qmatsuite/drivers/qmcpack/.
 """
 
 from __future__ import annotations

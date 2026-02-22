@@ -94,10 +94,10 @@ export function useLibraryManager(): UseLibraryManagerResult {
   const installInFlightRef = useRef(false);
   
   const loadLibraries = useCallback(async () => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     try {
-      const response = await window.qv.request<{ libraries: LibraryMetadata[] }>('list_libraries', {});
+      const response = await window.qms.request<{ libraries: LibraryMetadata[] }>('list_libraries', {});
       if (response.ok && response.data) {
         setLibraries(response.data.libraries || []);
       } else {
@@ -111,10 +111,10 @@ export function useLibraryManager(): UseLibraryManagerResult {
   }, []);
   
   const loadLibraryStatus = useCallback(async (libraryId: string) => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     try {
-      const response = await window.qv.request<{ ok: boolean; data?: LibraryStatus; error?: any }>(
+      const response = await window.qms.request<{ ok: boolean; data?: LibraryStatus; error?: any }>(
         'get_library_status',
         { library_id: libraryId }
       );
@@ -131,11 +131,11 @@ export function useLibraryManager(): UseLibraryManagerResult {
   }, []);
   
   const loadAllStatuses = useCallback(async () => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     // Load config first to get store_dir
     try {
-      const configResponse = await window.qv.request<{ ok: boolean; data?: { store_dir?: string; seed_dir?: string; allow_download?: boolean }; error?: any }>('get_pseudo_config', {});
+      const configResponse = await window.qms.request<{ ok: boolean; data?: { store_dir?: string; seed_dir?: string; allow_download?: boolean }; error?: any }>('get_pseudo_config', {});
       if (configResponse.ok && configResponse.data) {
         const data = configResponse.data as { store_dir?: string; seed_dir?: string; allow_download?: boolean };
         setStoreDir(data.store_dir || null);
@@ -153,10 +153,10 @@ export function useLibraryManager(): UseLibraryManagerResult {
   }, [libraries, loadLibraryStatus]);
   
   const loadStoreSize = useCallback(async () => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     try {
-      const response = await window.qv.request<{ ok: boolean; data?: { size_bytes?: number | null }; error?: any }>('compute_store_size', {});
+      const response = await window.qms.request<{ ok: boolean; data?: { size_bytes?: number | null }; error?: any }>('compute_store_size', {});
       if (response.ok && response.data) {
         const data = response.data as { size_bytes?: number | null };
         setStoreSize(data.size_bytes ?? null);
@@ -173,7 +173,7 @@ export function useLibraryManager(): UseLibraryManagerResult {
     localArchivePaths?: string[],
     force: boolean = false
   ): Promise<InstallResult> => {
-    if (!window.qv) {
+    if (!window.qms) {
       return { success: false, messages: [], errors: ['No connection'], warnings: [] };
     }
     
@@ -193,7 +193,7 @@ export function useLibraryManager(): UseLibraryManagerResult {
     setError(null);
     
     try {
-      const response = await window.qv.request<{ ok: boolean; data?: InstallResult; error?: any }>(
+      const response = await window.qms.request<{ ok: boolean; data?: InstallResult; error?: any }>(
         'install_library',
         {
           library_id: libraryId,
@@ -262,7 +262,7 @@ export function useLibraryManager(): UseLibraryManagerResult {
     libraryId: string,
     variants: string[]
   ): Promise<RemoveResult> => {
-    if (!window.qv) {
+    if (!window.qms) {
       return { success: false, messages: [], errors: ['No connection'] };
     }
     
@@ -270,7 +270,7 @@ export function useLibraryManager(): UseLibraryManagerResult {
     setError(null);
     
     try {
-      const response = await window.qv.request<{ ok: boolean; data?: RemoveResult; error?: any }>(
+      const response = await window.qms.request<{ ok: boolean; data?: RemoveResult; error?: any }>(
         'remove_library',
         { library_id: libraryId, variants }
       );
@@ -306,7 +306,7 @@ export function useLibraryManager(): UseLibraryManagerResult {
     libraryId: string,
     variants: string[]
   ): Promise<InstallResult> => {
-    if (!window.qv) {
+    if (!window.qms) {
       return { success: false, messages: [], errors: ['No connection'], warnings: [] };
     }
     
@@ -315,7 +315,7 @@ export function useLibraryManager(): UseLibraryManagerResult {
     setError(null);
     
     try {
-      const response = await window.qv.request<{ ok: boolean; data?: InstallResult; error?: any }>(
+      const response = await window.qms.request<{ ok: boolean; data?: InstallResult; error?: any }>(
         'repair_library',
         { library_id: libraryId, variants }
       );

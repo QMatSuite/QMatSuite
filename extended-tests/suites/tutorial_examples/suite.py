@@ -74,7 +74,7 @@ class QETutorialTestCase(TestCase):
         
         try:
             # Parse input file
-            from quantumvitas.io import QEInputParser
+            from qmatsuite.io import QEInputParser
             qe_input = QEInputParser.parse_file(self.input_file)
             
             # Basic validation

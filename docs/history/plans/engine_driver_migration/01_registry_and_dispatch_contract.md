@@ -12,7 +12,7 @@ This document defines the **exact contract** for routing step types to drivers. 
 
 ### 1.1 Current Dangerous Code
 
-**File**: `src/quantumvitas/core/calc_identity.py`
+**File**: `src/qmatsuite/core/calc_identity.py`
 **Function**: `_infer_engine_family_from_machine_types()`
 **Lines**: 96-108
 
@@ -174,7 +174,7 @@ def get_driver(engine_family: str) -> EngineDriver:
 ### 3.1 Exception Hierarchy
 
 ```python
-# src/quantumvitas/core/driver_exceptions.py
+# src/qmatsuite/core/driver_exceptions.py
 
 class DriverError(Exception):
     """Base class for driver-related errors."""
@@ -236,7 +236,7 @@ All error messages MUST include:
 ### 4.1 DriverRegistry Class
 
 ```python
-# src/quantumvitas/core/driver_registry.py
+# src/qmatsuite/core/driver_registry.py
 
 class DriverRegistry:
     """
@@ -360,7 +360,7 @@ class DriverRegistry:
 
 ### 5.1 Handler Dispatch
 
-**File to modify**: `src/quantumvitas/execution/handlers.py`
+**File to modify**: `src/qmatsuite/execution/handlers.py`
 
 **Current** (after migration):
 ```python
@@ -386,7 +386,7 @@ def get_handler_for_engine(engine_family: str) -> HandlerFunc:
 
 ### 5.2 Recipe Dispatch
 
-**File to modify**: `src/quantumvitas/execution/recipes.py`
+**File to modify**: `src/qmatsuite/execution/recipes.py`
 
 **Current** (after migration):
 ```python
@@ -412,7 +412,7 @@ def get_recipe_class(engine_family: str) -> Type[BaseRecipe]:
 
 ### 5.3 Materialization Dispatch
 
-**File to modify**: `src/quantumvitas/workflow/generalized_steps.py`
+**File to modify**: `src/qmatsuite/workflow/generalized_steps.py`
 
 **Current** (after migration):
 ```python
@@ -478,7 +478,7 @@ class TestRegistryContract:
     def test_no_silent_qe_default(self):
         """No routing path should silently default to QE."""
         # This verifies calc_identity fix
-        from quantumvitas.core.calc_identity import _infer_engine_family_from_machine_types
+        from qmatsuite.core.calc_identity import _infer_engine_family_from_machine_types
         # Unknown type should return None, not "qe"
         result = _infer_engine_family_from_machine_types(["unknown_xyz"])
         assert result is None or result != "qe"  # Either None or explicit error
@@ -492,7 +492,7 @@ class TestMigrationPrereq:
         import ast
         from pathlib import Path
 
-        source = Path("src/quantumvitas/core/calc_identity.py").read_text()
+        source = Path("src/qmatsuite/core/calc_identity.py").read_text()
         tree = ast.parse(source)
 
         # Check for .startswith() calls on step types
@@ -516,11 +516,11 @@ class TestMigrationPrereq:
 - name: Check no QE fallback
   run: |
     # Search for silent QE fallbacks
-    if grep -rn 'families.add("qe")' src/quantumvitas/core/calc_identity.py; then
+    if grep -rn 'families.add("qe")' src/qmatsuite/core/calc_identity.py; then
       echo "FAIL: Silent QE fallback still exists"
       exit 1
     fi
-    if grep -rn '\.get("engine", "qe")' src/quantumvitas/calculation/; then
+    if grep -rn '\.get("engine", "qe")' src/qmatsuite/calculation/; then
       echo "FAIL: Silent engine=qe default found"
       exit 1
     fi

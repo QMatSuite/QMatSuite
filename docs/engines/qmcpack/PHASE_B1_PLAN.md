@@ -3,7 +3,7 @@
 **Status**: COMPLETE
 **Started**: 2026-02-06
 **Baseline**: 3921 passed, 24 skipped (post-Gaussian)
-**Constraint Stages 1-3**: Exploration only — no src/quantumvitas/ changes
+**Constraint Stages 1-3**: Exploration only — no src/qmatsuite/ changes
 **Stages 4-8**: Implementation — parser/writer, output digest, tests
 
 ---
@@ -170,7 +170,7 @@ Run frequently to confirm no regressions.
 
 ### 4a. Parser (`_parse_qmcpack_text`)
 
-**File**: `src/quantumvitas/drivers/qmcpack/inputspec.py`
+**File**: `src/qmatsuite/drivers/qmcpack/inputspec.py`
 
 XML parser using `xml.etree.ElementTree` that returns `{"params": {...}, "structure": {...}}`
 for content_role="combined" convention. Extracts:
@@ -204,8 +204,8 @@ Reconstructs full XML from params + structure:
 ## Stage 5: Output Digest (Parser Registry)
 
 **New files**:
-- `src/quantumvitas/drivers/qmcpack/parsers/__init__.py`
-- `src/quantumvitas/drivers/qmcpack/parsers/output.py`
+- `src/qmatsuite/drivers/qmcpack/parsers/__init__.py`
+- `src/qmatsuite/drivers/qmcpack/parsers/output.py`
 
 `QMCPACKDigest` dataclass (14 fields) + `QMCPACKOutputParser` registered as
 `("qmcpack", "scf_digest")`. Reuses existing `parser.py` functions. Includes

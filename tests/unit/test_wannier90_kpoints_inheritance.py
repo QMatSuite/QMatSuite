@@ -13,10 +13,10 @@ import tempfile
 import yaml
 from pymatgen.core import Structure, Lattice
 
-from quantumvitas.calculation.structure_steps import materialize_step_spec, StructureStepSpec
-from quantumvitas.core.models import ResourceMeta
-from quantumvitas.io.wannier90_input import Wannier90Input
-from quantumvitas.calculation.wannier90_kpoints import (
+from qmatsuite.calculation.structure_steps import materialize_step_spec, StructureStepSpec
+from qmatsuite.core.models import ResourceMeta
+from qmatsuite.io.wannier90_input import Wannier90Input
+from qmatsuite.calculation.wannier90_kpoints import (
     extract_kpoints_from_qe_input,
     canonicalize_kpoint,
     format_kpoint_for_w90,
@@ -24,7 +24,7 @@ from quantumvitas.calculation.wannier90_kpoints import (
     extract_kpoints_from_nscf_step,
     infer_mp_grid_from_kpoints,
 )
-from quantumvitas.io.parser.qe_parser import QEInputParser
+from qmatsuite.io.parser.qe_parser import QEInputParser
 
 
 @pytest.fixture

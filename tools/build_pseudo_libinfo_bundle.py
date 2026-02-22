@@ -4,7 +4,7 @@ Download and install pseudo library identification metadata bundle.
 
 This script downloads PSEUDO_FILE_INDEX.json and MANIFEST_PSEUDO_SEED.json
 from a GitHub release, verifies checksums, and installs them into
-src/quantumvitas/resources/pseudo_libinfo/<tag>/ with a CURRENT pointer file.
+src/qmatsuite/resources/pseudo_libinfo/<tag>/ with a CURRENT pointer file.
 
 Usage:
     python tools/build_pseudo_libinfo_bundle.py --tag assets-2025-12-26
@@ -61,13 +61,13 @@ def download_file(url: str, output_path: Path) -> None:
 
 
 def find_repo_root() -> Path:
-    """Find repository root (containing pyproject.toml and src/quantumvitas)."""
+    """Find repository root (containing pyproject.toml and src/qmatsuite)."""
     current = Path(__file__).parent.parent
     while current != current.parent:
-        if (current / "pyproject.toml").exists() and (current / "src" / "quantumvitas").exists():
+        if (current / "pyproject.toml").exists() and (current / "src" / "qmatsuite").exists():
             return current
         current = current.parent
-    raise RuntimeError("Could not find repository root (pyproject.toml + src/quantumvitas)")
+    raise RuntimeError("Could not find repository root (pyproject.toml + src/qmatsuite)")
 
 
 def main() -> int:
@@ -83,7 +83,7 @@ def main() -> int:
     
     tag = args.tag
     repo_root = find_repo_root()
-    resources_root = repo_root / "src" / "quantumvitas" / "resources"
+    resources_root = repo_root / "src" / "qmatsuite" / "resources"
     
     # URLs
     base_url = f"https://github.com/QMatSuite/qmatsuite-assets/releases/download/{tag}"

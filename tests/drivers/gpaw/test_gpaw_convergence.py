@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.gpaw.parsers.convergence import (
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.gpaw.parsers.convergence import (
     GPAWConvergenceProvider,
     parse_gpaw_convergence,
 )
-from quantumvitas.parsers.registry import get_parser
+from qmatsuite.parsers.registry import get_parser
 
 
 GPAW_SCF_OUTPUT = """\

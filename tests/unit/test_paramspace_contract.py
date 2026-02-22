@@ -16,20 +16,20 @@ Note: Magnetism tests are in test_magnetism_paramspace_contract.py
 
 import pytest
 
-from quantumvitas.presets.dimensions import (
+from qmatsuite.presets.dimensions import (
     OccupationsSchemeOption,
     PrecisionOption,
     CUSTOM,
 )
-from quantumvitas.presets.compiler import (
+from qmatsuite.presets.compiler import (
     compile_occupations_scheme,
     compile_precision,
 )
-from quantumvitas.presets.detector import (
+from qmatsuite.presets.detector import (
     detect_occupations_scheme,
     detect_precision,
 )
-from quantumvitas.presets.precision import (
+from qmatsuite.presets.precision import (
     PRECISION_CONSTANTS,
     compute_kmesh,
     round_cutoff_integer,

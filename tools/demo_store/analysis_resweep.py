@@ -3,7 +3,7 @@
 Re-sweep analysis over preserved demo workdirs (no engine re-runs).
 
 For each preserved project in .tmp/refpack_runs/<slug>/:
-1. Re-instantiate QVService(project_root)
+1. Re-instantiate QMSService(project_root)
 2. Find latest run_ulid from calculation
 3. Probe all analysis types via run_post_run_analysis
 4. Emit per-demo coverage report with expected vs actual counts
@@ -41,8 +41,8 @@ def _get_expected_analysis_count(engine: str, gen_steps: list[str]) -> tuple[int
 
     Returns (expected_count, list of expected "object_type(gen_steps)" descriptions).
     """
-    from quantumvitas.core.analysis.capability import enumerate_all_matches
-    from quantumvitas.core.driver_registry import DriverRegistry
+    from qmatsuite.core.analysis.capability import enumerate_all_matches
+    from qmatsuite.core.driver_registry import DriverRegistry
 
     try:
         driver = DriverRegistry.get_driver(engine)
@@ -64,9 +64,9 @@ def _get_expected_analysis_count(engine: str, gen_steps: list[str]) -> tuple[int
 
 def resweep_one_demo(slug: str) -> dict[str, Any]:
     """Re-sweep analysis for one preserved demo workdir."""
-    from quantumvitas.api.service import QVService
-    from quantumvitas.core.analysis.capability import ResultState
-    from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
+    from qmatsuite.api.service import QMSService
+    from qmatsuite.core.analysis.capability import ResultState
+    from qmatsuite.core.analysis.orchestrator import run_post_run_analysis
 
     work_dir = WORK_DIR / slug
     result: dict[str, Any] = {
@@ -85,19 +85,19 @@ def resweep_one_demo(slug: str) -> dict[str, Any]:
         "details": [],
     }
 
-    # Find project root (subdirectory with project.qv.yml)
+    # Find project root (subdirectory with project.qms.yml)
     project_root = None
     for child in work_dir.iterdir():
-        if child.is_dir() and (child / "project.qv.yml").exists():
+        if child.is_dir() and (child / "project.qms.yml").exists():
             project_root = child
             break
     if project_root is None:
         result["status"] = "NO_PROJECT"
-        result["error"] = "No project.qv.yml found"
+        result["error"] = "No project.qms.yml found"
         return result
 
     try:
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
 
         # List calculations
         calcs = svc.calculation.list()
@@ -111,9 +111,9 @@ def resweep_one_demo(slug: str) -> dict[str, Any]:
         result["engine"] = engine
 
         # Load full calculation model for step details
-        from quantumvitas.core.models import load_calculation
-        from quantumvitas.core.project_utils import load_project_config
-        from quantumvitas.core.resolution import make_structure_selector_resolver
+        from qmatsuite.core.models import load_calculation
+        from qmatsuite.core.project_utils import load_project_config
+        from qmatsuite.core.resolution import make_structure_selector_resolver
 
         # Find calc dir by globbing (avoids index lookup issues)
         calc_yamls = list(project_root.glob("calculations/*/calculation.yaml"))
@@ -145,7 +145,7 @@ def resweep_one_demo(slug: str) -> dict[str, Any]:
         # Find run_ulid from provenance DB
         run_ulid = None
         try:
-            from quantumvitas.provenance.db import get_db_path
+            from qmatsuite.provenance.db import get_db_path
             import sqlite3
             db_path = get_db_path(project_root)
             if db_path.exists():
@@ -253,7 +253,7 @@ def main() -> int:
     log.info("Re-sweeping %d demos from %s", len(slugs), WORK_DIR)
 
     # Ensure all drivers registered
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
 
     results = []
     for i, slug in enumerate(slugs, 1):

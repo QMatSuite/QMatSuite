@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from io import StringIO
 from typing import Any
 
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 
 
 @dataclass
@@ -26,7 +26,7 @@ def get_all_rpc_methods() -> list[RPCMethodInfo]:
     Returns:
         List of RPCMethodInfo objects sorted by name.
     """
-    daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+    daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
     methods = []
 
     for name, handler in daemon._handlers.items():

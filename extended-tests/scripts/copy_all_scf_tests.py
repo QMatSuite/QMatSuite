@@ -17,9 +17,9 @@ import sys
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from quantumvitas.io import QEInputParser, QEModule
-from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.io import QEInputParser, QEModule
+from qmatsuite.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
 
 
 def find_test_suite_dir() -> Optional[Path]:

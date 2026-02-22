@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.analysis.parsers import (
+from qmatsuite.analysis.parsers import (
     parse_scf_output,
     parse_dos_data,
     parse_bands_gnu,

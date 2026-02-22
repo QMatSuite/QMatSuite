@@ -7,7 +7,7 @@ and the generator manifest.
 
 Usage: python tools/demo_store/generate_all.py [--dry-run]
 
-This is the SINGLE WRITER for src/quantumvitas/resources/demo_projects/ (Rule T1).
+This is the SINGLE WRITER for src/qmatsuite/resources/demo_projects/ (Rule T1).
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 CORPUS_ROOT = REPO_ROOT / "tests" / "inputformat" / "samples"
-RESOURCES_DIR = REPO_ROOT / "src" / "quantumvitas" / "resources"
+RESOURCES_DIR = REPO_ROOT / "src" / "qmatsuite" / "resources"
 DEMO_DIR = RESOURCES_DIR / "demo_projects"
 
 # Mapping: old demo filename stem -> new demo_slug
@@ -45,8 +45,8 @@ OLD_TO_NEW_SLUG = {
     "formaldehyde_orca_tddft": "orca_formaldehyde_tddft",
     "si_bands_vasp_demo": "vasp_si_bands",
     "water_pyscf_scf": "pyscf_water_scf",
-    "copper_wannier90_demo": "qe_w90_copper",
-    "diamond_wannier90_demo": "qe_w90_diamond",
+    "copper_wannier90_demo": "qe_copper_wannier",
+    "diamond_wannier90_demo": "qe_diamond_wannier",
     "silicon_wannier90_demo": "qe_w90_silicon",
 }
 
@@ -89,9 +89,9 @@ def generate_demo_from_existing(
     deterministic ULIDs and updated gallery metadata while preserving
     the core project data (structure, steps, parameters).
     """
-    from quantumvitas.demo_store.ulid_seed import deterministic_ulid
-    from quantumvitas.demo_store.manifest import _compute_dir_checksum, GENERATOR_VERSION
-    from quantumvitas.demo_store.translator import _strip_managed_params
+    from qmatsuite.demo_store.ulid_seed import deterministic_ulid
+    from qmatsuite.demo_store.manifest import _compute_dir_checksum, GENERATOR_VERSION
+    from qmatsuite.demo_store.translator import _strip_managed_params
 
     with open(existing_demo_path) as f:
         existing = yaml.safe_load(f)
@@ -194,7 +194,7 @@ def generate_demo_via_translator(
     index_entry: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Generate a demo snapshot using the full translator pipeline."""
-    from quantumvitas.demo_store.translator import translate_corpus_case
+    from qmatsuite.demo_store.translator import translate_corpus_case
 
     return translate_corpus_case(case_dir, case_data, index_entry, REPO_ROOT)
 
@@ -258,7 +258,7 @@ def main():
                     demo_slug, existing_path, case_data, case_dir
                 )
             elif case_data.get("parser_mode") == "direct_snapshot":
-                from quantumvitas.demo_store.direct_snapshot import build_direct_snapshot
+                from qmatsuite.demo_store.direct_snapshot import build_direct_snapshot
                 snapshot = build_direct_snapshot(case_data, entry, REPO_ROOT)
             else:
                 snapshot = generate_demo_via_translator(case_data, case_dir, entry)
@@ -272,14 +272,14 @@ def main():
             print(f"  [{engine}/{dir_name}] -> {demo_slug}.yml")
 
             # Build manifest entry
-            from quantumvitas.demo_store.manifest import _compute_dir_checksum
+            from qmatsuite.demo_store.manifest import _compute_dir_checksum
             demo_manifest[demo_slug] = {
                 "engine": engine,
                 "case_id": case_id,
                 "dir_name": dir_name,
                 "corpus_path": f"tests/inputformat/samples/{engine}/{dir_name}",
                 "corpus_checksum": _compute_dir_checksum(case_dir),
-                "output_file": f"src/quantumvitas/resources/demo_projects/{demo_slug}.yml",
+                "output_file": f"resources/demo_projects/{demo_slug}.yml",
                 "output_checksum": _compute_file_checksum(output_path) if not dry_run else "",
                 "asset_policy": entry.get("asset_policy", "none"),
             }
@@ -315,7 +315,7 @@ def main():
 
     # Write manifest
     if not dry_run:
-        from quantumvitas.demo_store.manifest import write_manifest
+        from qmatsuite.demo_store.manifest import write_manifest
         corpus_index_checksum = _compute_file_checksum(CORPUS_ROOT / "corpus_index.yaml")
         write_manifest(DEMO_DIR, demo_manifest, corpus_index_checksum)
         print(f"\n  Wrote .generator_manifest.json")

@@ -9,16 +9,16 @@ Build "paired real-QE smoke tests" — same workflow tested at both RPC (pytest)
 - Plan: `docs/design/gui-testing-realrun-plan.md`
 - RPC Test: `tests/daemon/contract/test_realrun_si_scf.py` (2 tests, PASSING)
 - Fixtures: `tests/daemon/contract/conftest.py` (3 new fixtures)
-- Server fix: `src/quantumvitas/daemon/server.py` (engine_family passthrough)
+- Server fix: `src/qmatsuite/daemon/server.py` (engine_family passthrough)
 
 ---
 
 ### Iteration Log: Pair 1 (Si SCF) RPC Test
 
-#### Attempt 1 — QVService.init_project returns Path, not service
+#### Attempt 1 — QMSService.init_project returns Path, not service
 **Error:** `AttributeError: 'PosixPath' object has no attribute 'structure'`
-**Root cause:** Fixture did `svc = QVService.init_project(...)` but init_project returns a Path.
-**Fix:** Split into two lines: `QVService.init_project(dir)` then `svc = QVService(dir)`.
+**Root cause:** Fixture did `svc = QMSService.init_project(...)` but init_project returns a Path.
+**Fix:** Split into two lines: `QMSService.init_project(dir)` then `svc = QMSService(dir)`.
 
 #### Attempt 2 — engine_family not passed through RPC
 **Error:** `Cannot add step 'scf' to calculation without engine_family`
@@ -113,9 +113,9 @@ Unblock Pair 1 E2E (`gui/tests/e2e/realrun_si_scf.spec.ts`) where the test hangs
 
 #### Attempt 3 — Pseudo modal options failing (secondary blocker)
 **Observed in daemon logs:** `get_pseudo_options_for_calculation` crashed with:
-`AttributeError: type object 'QVService' has no attribute 'get_calculation_detail'`.
-**Root cause:** Debug instrumentation in daemon handler inspected a non-existent class method (`QVService.get_calculation_detail`), causing pseudo option load failure.
-**Fix:** Removed that invalid inspect/signature call from `_handle_get_pseudo_options_for_calculation` in `src/quantumvitas/daemon/server.py`.
+`AttributeError: type object 'QMSService' has no attribute 'get_calculation_detail'`.
+**Root cause:** Debug instrumentation in daemon handler inspected a non-existent class method (`QMSService.get_calculation_detail`), causing pseudo option load failure.
+**Fix:** Removed that invalid inspect/signature call from `_handle_get_pseudo_options_for_calculation` in `src/qmatsuite/daemon/server.py`.
 
 #### Attempt 4 — Prevent silent hangs in e2e
 **Issue:** Test previously called `selectOption({ value: 'scf' })` without asserting dropdown population; on empty palette it appeared to hang.
@@ -132,8 +132,8 @@ This forces fast, actionable failures with screenshots instead of long idle wait
 ### Additional Attempts (Same Session)
 
 #### Attempt 5 — Run button selector mismatch in Step Focus mode
-**Observed:** After step creation/edit, test failed to find `qv-btn-run-calculation`.
-**Root cause:** UI was in Step Focus mode; run button there is `qv-btn-run-calculation-focus`.
+**Observed:** After step creation/edit, test failed to find `qms-btn-run-calculation`.
+**Root cause:** UI was in Step Focus mode; run button there is `qms-btn-run-calculation-focus`.
 **Fix:** Updated e2e to click focus-mode run button when present, fallback to overview run button.
 
 #### Attempt 6 — QE run fails after GUI parameter edit
@@ -148,8 +148,8 @@ This forces fast, actionable failures with screenshots instead of long idle wait
 **Interpretation:** Flow is stalling in UI interaction/actionability before step-add RPC is sent.
 **Fix applied in spec:** Added explicit click timeouts and hard checks in Add Step path:
 - enforce pseudo modal overlay is hidden before continuing,
-- `qv-add-step-btn` click with explicit timeout,
-- `qv-confirm-add-step` click with explicit timeout,
+- `qms-add-step-btn` click with explicit timeout,
+- `qms-confirm-add-step` click with explicit timeout,
 - explicit poll that step row count becomes `> 0` after add.
 This guarantees fail-fast with screenshot at the exact blocker instead of long idle polling.
 
@@ -192,7 +192,7 @@ npx playwright test tests/e2e/realrun_si_scf.spec.ts --project=electron --report
 **Request:** Explicitly assert `Analysis → SCF → Plot` and verify real convergence chart content (not empty).
 
 **Changes:**
-- Added `data-testid="qv-analysis-reference-toggle"` to the Analysis reference checkbox in `CalculationAnalysisPanel`.
+- Added `data-testid="qms-analysis-reference-toggle"` to the Analysis reference checkbox in `CalculationAnalysisPanel`.
 - In Pair 1 e2e:
   - explicitly select `SCF` step tab and `Plot` mode,
   - force reference toggle off (if shown) and assert reference banner is absent,
@@ -322,7 +322,7 @@ calculation = '''vc-relax'''
 ```
 QE rejected it: `calculation "'vc-relax'" not allowed`.
 
-**Fix:** in e2e, switch `CONTROL.calculation` editor to raw mode (`✏️`) and type `vc-relax` directly (`qv-param-input-control-calculation`). This avoids enum double-quoting.
+**Fix:** in e2e, switch `CONTROL.calculation` editor to raw mode (`✏️`) and type `vc-relax` directly (`qms-param-input-control-calculation`). This avoids enum double-quoting.
 
 #### Attempt 2 — PASS
 **Verification command:**
@@ -356,7 +356,7 @@ Stabilize Pair 3 E2E (`realrun_si_bands.spec.ts`) after recurring Analysis-tab f
   - frequent `get_analysis` RPC churn in daemon logs.
 
 #### Root cause
-- The test treated `qv-analysis-no-objects` as a terminal state too early.
+- The test treated `qms-analysis-no-objects` as a terminal state too early.
 - In this UI, `no objects` can render transiently while step digest and analysis-object discovery are still resolving asynchronously.
 - As a result, the test advanced across step tabs before the bands object was surfaced.
 
@@ -380,7 +380,7 @@ Result:
 - PASS (`1 passed`, ~56s)
 
 ### Lessons Learned
-- In `CalculationAnalysisPanel`, `qv-analysis-no-objects` is not always a final state; treat it as provisional until digest/analysis discovery settles.
+- In `CalculationAnalysisPanel`, `qms-analysis-no-objects` is not always a final state; treat it as provisional until digest/analysis discovery settles.
 - For multi-step QE workflows, analysis may be attached to intermediate post-processing steps (`bandspw`) rather than the final wrapper step (`bands`), so step-tab probing should be ordered and bounded.
 
 ---
@@ -678,7 +678,7 @@ npx playwright test tests/e2e/realrun_qe_wannier.spec.ts --project=electron --re
 ```
 Result: FAIL at artifact assertion (`pw2wannier.out` missing `JOB DONE`).
 
-Forensics from failing run (`/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qv_e2e_projects/realrun-qe-wannier-1771195059936/...`):
+Forensics from failing run (`/private/var/folders/pd/s3v190_j3j56dq7lycv4myn40000gr/T/qms_e2e_projects/realrun-qe-wannier-1771195059936/...`):
 1. `nscf.step.yaml` correctly persisted logicals as native booleans:
    - `SYSTEM.nosym: true`
    - `SYSTEM.noinv: true`
@@ -691,7 +691,7 @@ Forensics from failing run (`/private/var/folders/pd/s3v190_j3j56dq7lycv4myn4000
    - `numk=64  iknum=8`
 
 ### Root cause discovered
-- In `src/quantumvitas/calculation/wannier90_kpoints.py`, `find_nscf_input_file()` only matches steps by `step_type_gen == "nscf"`.
+- In `src/qmatsuite/calculation/wannier90_kpoints.py`, `find_nscf_input_file()` only matches steps by `step_type_gen == "nscf"`.
 - Current `calculation.yaml` stores step entries as `step_type_spec` (`qe_nscf`, etc.), so nscf step discovery can fail in this path.
 - When nscf k-points are not inherited, Wannier materialization falls back to default `mp_grid=[4,4,4]`, producing a `.win/.nnkp` k-grid incompatible with the 8-point NSCF run.
 
@@ -777,7 +777,7 @@ Root cause:
 ### Fix C — Step-aware convergence output selection
 
 Updated:
-- `src/quantumvitas/drivers/qe/parsers/convergence.py`
+- `src/qmatsuite/drivers/qe/parsers/convergence.py`
 - `tests/drivers/qe/test_qe_convergence_parser.py`
 
 Changes:
@@ -902,9 +902,9 @@ Fix direction chosen:
 Update to Attempt 6 (user-directed path policy):
 - Replaced the temporary OS-temp workaround.
 - Kept all test project roots under `<repo>/.tmp/...` per instruction.
-- Implemented compatibility fix in `QVService.init_project` to allow nested project creation only under `<enclosing_project>/.tmp/...` while preserving the nested-project guard elsewhere.
+- Implemented compatibility fix in `QMSService.init_project` to allow nested project creation only under `<enclosing_project>/.tmp/...` while preserving the nested-project guard elsewhere.
 - Added unit coverage:
-  - `tests/unit/test_api_service.py::TestQVServiceProject::test_init_project_allows_tmp_subdir_inside_project`
+  - `tests/unit/test_api_service.py::TestQMSServiceProject::test_init_project_allows_tmp_subdir_inside_project`
 
 Additional stability policy applied:
 - Do not clear global `<repo>/.tmp`.
@@ -916,8 +916,8 @@ Validation run (repo `.tmp` mode):
 ```bash
 source .venv/bin/activate
 python -m pytest -q \
-  tests/unit/test_api_service.py::TestQVServiceProject::test_init_project_prevents_nested_project \
-  tests/unit/test_api_service.py::TestQVServiceProject::test_init_project_allows_tmp_subdir_inside_project \
+  tests/unit/test_api_service.py::TestQMSServiceProject::test_init_project_prevents_nested_project \
+  tests/unit/test_api_service.py::TestQMSServiceProject::test_init_project_allows_tmp_subdir_inside_project \
   tests/cli/test_si_bands_manual_calculation_cli.py \
   tests/integration/test_relax_promote_e2e.py \
   tests/integration/test_orca_relax_real.py \

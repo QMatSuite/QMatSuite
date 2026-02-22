@@ -360,14 +360,14 @@ for ptype in [path_type, "hinuma", "setyawan_curtarolo"]:
 ### Appendix B: File:Line Reference Summary
 
 **Source Files (Production)**:
-- `src/quantumvitas/analysis/structure_viz.py`: 60, 62, 253, 372, 378, 1076, 1101-1102, 1364
-- `src/quantumvitas/io/structure_io.py`: 15-17, 57, 63, 91, 104, 143, 160, 174, 184, 253-258, 327
-- `src/quantumvitas/calculation/structure_steps.py`: 10
-- `src/quantumvitas/analysis/kpath.py`: 15-17, 169-172, 180, 182-187
-- `src/quantumvitas/io/online_search.py`: 21-22, 25-28, 97-98, 192, 196, 220, 234, 274-275, 287, 433, 449, 453, 532, 556
-- `src/quantumvitas/io/online_cache.py`: 24, 145, 157
-- `src/quantumvitas/analysis/parsers.py`: 741-742, 746-747, 753
-- `src/quantumvitas/daemon/server.py`: 1544
+- `src/qmatsuite/analysis/structure_viz.py`: 60, 62, 253, 372, 378, 1076, 1101-1102, 1364
+- `src/qmatsuite/io/structure_io.py`: 15-17, 57, 63, 91, 104, 143, 160, 174, 184, 253-258, 327
+- `src/qmatsuite/calculation/structure_steps.py`: 10
+- `src/qmatsuite/analysis/kpath.py`: 15-17, 169-172, 180, 182-187
+- `src/qmatsuite/io/online_search.py`: 21-22, 25-28, 97-98, 192, 196, 220, 234, 274-275, 287, 433, 449, 453, 532, 556
+- `src/qmatsuite/io/online_cache.py`: 24, 145, 157
+- `src/qmatsuite/analysis/parsers.py`: 741-742, 746-747, 753
+- `src/qmatsuite/daemon/server.py`: 1544
 
 **Test Files**:
 - `tests/unit/test_structure_viz.py`: Multiple Structure() constructors

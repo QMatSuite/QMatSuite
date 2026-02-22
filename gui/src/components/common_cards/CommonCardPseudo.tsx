@@ -26,8 +26,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useQVClient } from '../../hooks/useQVClient';
-import type { PseudoVariant } from '../../types/qv';
+import { useQMSClient } from '../../hooks/useQMSClient';
+import type { PseudoVariant } from '../../types/qms';
 import './CommonCardPseudo.css';
 
 type LibraryPreference = 'internal' | 'precision' | 'efficiency';
@@ -92,7 +92,7 @@ interface PseudoOption {
 }
 
 // PseudoVariant (sha256-keyed, filename-first, constitution-compliant)
-// Imported from types/qv.ts - using PseudoVariant interface
+// Imported from types/qms.ts - using PseudoVariant interface
 
 interface CommonCardPseudoProps {
   mapping: PseudoMapping | null;
@@ -124,7 +124,7 @@ export function CommonCardPseudo({
   projectRoot,
   calculation,
 }: CommonCardPseudoProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   // Store sha256 + basename for pinned selections
   const [localMapping, setLocalMapping] = useState<Record<string, string>>({});
   const [localMappingSha256, setLocalMappingSha256] = useState<Record<string, string>>({});
@@ -281,7 +281,7 @@ export function CommonCardPseudo({
     }
     
     setIsLoadingOptions(true);
-    qv.getPseudoOptionsForCalculation(projectRoot, calculation)
+    qms.getPseudoOptionsForCalculation(projectRoot, calculation)
       .then(response => {
         if (response.ok && response.data) {
           const optionsByElement = response.data.options_by_element || {};
@@ -338,7 +338,7 @@ export function CommonCardPseudo({
       .finally(() => {
         setIsLoadingOptions(false);
       });
-  }, [useNewAPI, projectRoot, calculation, qv]);
+  }, [useNewAPI, projectRoot, calculation, qms]);
 
   // Initial fetch
   useEffect(() => {
@@ -549,7 +549,7 @@ export function CommonCardPseudo({
         source_kind: entry.source_kind,
         source_path: entry.source_path,
       }));
-      const response = await qv.analyzeProjectPseudoEffects(projectRoot, speciesMapArray);
+      const response = await qms.analyzeProjectPseudoEffects(projectRoot, speciesMapArray);
       if (response.ok && response.data) {
         const warnings: Record<string, string[]> = {};
         const errors: Record<string, string[]> = {};
@@ -596,7 +596,7 @@ export function CommonCardPseudo({
     } catch (err) {
       console.error('[CommonCardPseudo] Failed to analyze selections', err);
     }
-  }, [projectRoot, calculation, qv, pseudoVariants, selectedSha256ByElement]);
+  }, [projectRoot, calculation, qms, pseudoVariants, selectedSha256ByElement]);
   
   const handlePseudoChange = useCallback((species: string, variant: PseudoVariant) => {
     // Update local state
@@ -1020,7 +1020,7 @@ export function CommonCardPseudo({
                                       !currentPseudo ? 'common-card-pseudo__select--unset' : ''
                                     }`}
                                     style={{ width: 'max-content', maxWidth: '520px' }}
-                                    data-testid={`qv-pseudo-select-${species}`}
+                                    data-testid={`qms-pseudo-select-${species}`}
                                   >
                                     <option value="">— Select —</option>
                                     {useVariants ? (
@@ -1468,7 +1468,7 @@ export function CommonCardPseudo({
               disabled={!canApply()}
               className="common-card-pseudo__apply-btn"
               title={!canApply() ? "Selected pseudo(s) require installing archive(s). Go to Settings → Pseudopotentials." : undefined}
-              data-testid="qv-pseudo-apply"
+              data-testid="qms-pseudo-apply"
             >
               Apply
             </button>

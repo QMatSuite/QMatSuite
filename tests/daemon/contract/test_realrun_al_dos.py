@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 import yaml
 
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 
 from .conftest import send_request
 
@@ -25,7 +25,7 @@ class TestRealRunAlDOS:
     def test_al_dos_complete_workflow(
         self,
         qe_project_with_al: tuple[Path, str],
-        daemon: QVDaemon,
+        daemon: QMSDaemon,
         wait_for_job,
     ) -> None:
         project_root, local_al_ulid = qe_project_with_al

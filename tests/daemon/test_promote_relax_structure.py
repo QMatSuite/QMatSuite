@@ -2,7 +2,7 @@
 Tests for promote_relax_structure daemon RPC.
 
 NOTE: These tests are skipped because promote_relax_structure is not yet
-implemented in the new domain API (QVService). The functionality exists
+implemented in the new domain API (QMSService). The functionality exists
 in the legacy API but needs migration.
 """
 
@@ -11,13 +11,13 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from quantumvitas.api import QVService
-from quantumvitas.api.errors import APIError
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
-from quantumvitas.execution.relax_artifacts import write_generated_structure
+from qmatsuite.api import QMSService
+from qmatsuite.api.errors import APIError
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
+from qmatsuite.execution.relax_artifacts import write_generated_structure
 
 
-def send_request(daemon: QVDaemon, method: str, payload: dict) -> dict:
+def send_request(daemon: QMSDaemon, method: str, payload: dict) -> dict:
     """Helper to send RPC request and get response."""
     request = RPCRequest(
         id="test-request",
@@ -40,7 +40,7 @@ class TestPromoteRelaxStructureAPI:
         from pymatgen.core import Structure, Lattice
         
         # Create project
-        project_root = QVService.init_project(tmp_path / "project")
+        project_root = QMSService.init_project(tmp_path / "project")
         
         # Import structure - use pymatgen to create proper JSON
         from pymatgen.core import Structure, Lattice
@@ -50,14 +50,14 @@ class TestPromoteRelaxStructureAPI:
         
         source = tmp_path / "si.json"
         source.write_text(json.dumps(structure.as_dict()))
-        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
+        struct_result = QMSService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
+        calc_result = QMSService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
         calc_ulid = calc_result.ulid
         
         # Create relax step
-        step_result = QVService(project_root).calculation.add_step(calc_ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
+        step_result = QMSService(project_root).calculation.add_step(calc_ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         step_ulid = step_result.ulid
         
         # Write generated structure
@@ -75,7 +75,7 @@ class TestPromoteRelaxStructureAPI:
         )
         
         # Promote
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.structure.promote_relax_structure(
             calculation_selector=calc_ulid,
             step_selector=step_ulid,
@@ -90,14 +90,14 @@ class TestPromoteRelaxStructureAPI:
         assert structure_path.exists()
 
         # Verify structure content - read back using pymatgen
-        from quantumvitas.io import read_structure
+        from qmatsuite.io import read_structure
         loaded_structure = read_structure(structure_path)
         assert loaded_structure.lattice.a == pytest.approx(5.5)
 
     def test_promote_requires_current_json(self, tmp_path):
         """Promote fails if current.json doesn't exist."""
         # Create project
-        project_root = QVService.init_project(tmp_path / "project")
+        project_root = QMSService.init_project(tmp_path / "project")
         
         # Import structure - use pymatgen to create proper JSON
         from pymatgen.core import Structure, Lattice
@@ -107,14 +107,14 @@ class TestPromoteRelaxStructureAPI:
         
         source = tmp_path / "si.json"
         source.write_text(json.dumps(structure.as_dict()))
-        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
+        struct_result = QMSService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and step
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
-        step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
+        calc_result = QMSService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
+        step_result = QMSService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Try to promote without current.json
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         with pytest.raises(APIError) as exc_info:
             svc.structure.promote_relax_structure(
                 calculation_selector=calc_result.ulid,
@@ -126,7 +126,7 @@ class TestPromoteRelaxStructureAPI:
     def test_promote_requires_relax_step(self, tmp_path):
         """Promote fails if step is not a relax step."""
         # Create project
-        project_root = QVService.init_project(tmp_path / "project")
+        project_root = QMSService.init_project(tmp_path / "project")
         
         # Import structure - use pymatgen to create proper JSON
         from pymatgen.core import Structure, Lattice
@@ -136,14 +136,14 @@ class TestPromoteRelaxStructureAPI:
         
         source = tmp_path / "si.json"
         source.write_text(json.dumps(structure.as_dict()))
-        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
+        struct_result = QMSService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and SCF step (not relax)
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
-        step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
+        calc_result = QMSService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
+        step_result = QMSService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
         
         # Try to promote non-relax step
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         with pytest.raises(APIError) as exc_info:
             svc.structure.promote_relax_structure(
                 calculation_selector=calc_result.ulid,
@@ -161,7 +161,7 @@ class TestPromoteRelaxStructureDaemonRPC:
         from pymatgen.core import Structure, Lattice
         
         # Create project
-        project_root = QVService.init_project(tmp_path / "project")
+        project_root = QMSService.init_project(tmp_path / "project")
         
         # Import structure - use pymatgen to create proper JSON
         from pymatgen.core import Structure, Lattice
@@ -171,11 +171,11 @@ class TestPromoteRelaxStructureDaemonRPC:
         
         source = tmp_path / "si.json"
         source.write_text(json.dumps(structure.as_dict()))
-        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
+        struct_result = QMSService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and relax step
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
-        step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
+        calc_result = QMSService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
+        step_result = QMSService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Write generated structure
         lattice = Lattice.cubic(5.5)
@@ -190,7 +190,7 @@ class TestPromoteRelaxStructureDaemonRPC:
         )
         
         # Call via daemon
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         response = send_request(daemon, "promote_relax_structure", {
             "project_root": str(project_root),
             "calculation": calc_result.ulid,

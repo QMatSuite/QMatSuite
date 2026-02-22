@@ -1,13 +1,13 @@
 """
 Test project capabilities.
 
-Tests for the project domain in QVService.
+Tests for the project domain in QMSService.
 """
 
 import pytest
 from pathlib import Path
 
-from quantumvitas.api.service import QVService
+from qmatsuite.api.service import QMSService
 
 
 def test_project_get_config_returns_dict(tmp_path):
@@ -15,9 +15,9 @@ def test_project_get_config_returns_dict(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         config = svc.project.get_config()
@@ -33,9 +33,9 @@ def test_project_update_config_returns_dict(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         config = svc.project.update_config({"description": "test project"})
@@ -51,9 +51,9 @@ def test_project_species_map_via_config(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
 
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
 
     try:
         config = svc.project.get_config()
@@ -69,9 +69,9 @@ def test_project_potential_map_via_config(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
 
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
 
     try:
         config = svc.project.get_config()
@@ -87,9 +87,9 @@ def test_project_list_calculations_returns_list(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
 
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
 
     try:
         calcs = svc.calculation.list()

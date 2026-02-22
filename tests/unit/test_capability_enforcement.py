@@ -13,15 +13,15 @@ from pathlib import Path
 import tempfile
 import yaml
 
-from quantumvitas.presets.capability import (
+from qmatsuite.presets.capability import (
     list_presets_for_engine,
     validate_preset_capability,
     require_preset_capability,
     CapabilityError,
     resolve_engine_for_step,
 )
-from quantumvitas.presets.integration import apply_presets_to_step
-from quantumvitas.engine.orca_engine import ORCAEngine
+from qmatsuite.presets.integration import apply_presets_to_step
+from qmatsuite.engine.orca_engine import ORCAEngine
 
 
 class TestEngineNotDeclaredNotListed:

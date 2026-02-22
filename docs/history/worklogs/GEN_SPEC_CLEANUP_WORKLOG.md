@@ -273,7 +273,7 @@ Created `tests/gates/test_no_legacy_identity_fields.py` - hard CI gate to enforc
 2. **Resource file fixes:**
    - Demo projects: `structure_id:` → `structure_ulid:` (20 files)
    - Golden fixtures JSON: `step_id`, `calculation_id`, `project_id`, `run_id` → `*_ulid` variants
-   - Structure JSON files: `"id":` → `"ulid":` in `__qv_meta__` blocks
+   - Structure JSON files: `"id":` → `"ulid":` in `__qms_meta__` blocks
 
 3. **Python source fixes:**
    - `WorkflowIssue.step_type` → `WorkflowIssue.step_type_gen`
@@ -310,7 +310,7 @@ Created `tests/gates/test_no_legacy_identity_fields.py` - hard CI gate to enforc
 
 **More fixes applied:**
 6. `test_calc_identity.py` - CalculationStepEntry uses `step_ulid=` and `step_type_spec=`
-7. `test_qvservice_gui.py` - Changed `"id" in` → `"ulid" in`
+7. `test_qmsservice_gui.py` - Changed `"id" in` → `"ulid" in`
 8. `daemon/server.py` - Fixed `_handle_list_qe_ui_parameters` to use `step_type_gen` key and restore `type` field for parameter metadata
 9. `test_daemon_qe_ui_parameters.py` - Updated error message expectation
 10. `test_orca_macro_materialization.py` - MockStep uses `step_type_gen` and `ulid`
@@ -325,7 +325,7 @@ During ULID migration, `id` field was incorrectly renamed to `ulid` in OPTIMADE-
 However, `id` in OPTIMADE context is an **external API field** (OPTIMADE standard), NOT our internal ULID.
 
 ##### Files Fixed:
-1. **src/quantumvitas/io/online_search.py**:
+1. **src/qmatsuite/io/online_search.py**:
    - Line 204: `"ulid": f"cod_{entry_id}"` → `"id": f"cod_{entry_id}"`
    - Line 238: Same fix for COD entries list
    - Line 762: `entry.get("ulid", "")` → `entry.get("id", "")` for OPTIMADE entries
@@ -381,7 +381,7 @@ Added explicit documentation in `tests/gates/test_no_legacy_identity_fields.py` 
    - Fixed YAML fixtures to use `step_type_spec: qe_scf` instead of `step_type_gen: scf`
    - YAML files must ONLY contain `step_type_spec` per LAW
 
-2. **src/quantumvitas/presets/integration.py**:
+2. **src/qmatsuite/presets/integration.py**:
    - Fixed `_load_step_parameters` and `_load_step_parameters_with_types` to convert SPEC to GEN
    - Added `get_step_type_gen()` call after reading `step_type_spec` from YAML
    - Receiver registry uses GEN types, so conversion is required
@@ -424,24 +424,24 @@ Fixed files using wrong format for step_type keys:
    - `test_relax_structure_save.py`: `"vc-relax"` → `"qe_vc-relax"`
 
 ##### Source Code Fixes:
-1. **src/quantumvitas/cli/main.py**: `step_type_spec="bands_pw"` → `"qe_bands_pw"`
-2. **src/quantumvitas/calculation/folder_import.py**: `step_type_spec="scf"` → `"qe_scf"`
-3. **src/quantumvitas/frontends/cli/app.py**: `step_type_spec="bands_pw"` → `"qe_bands_pw"`
+1. **src/qmatsuite/cli/main.py**: `step_type_spec="bands_pw"` → `"qe_bands_pw"`
+2. **src/qmatsuite/calculation/folder_import.py**: `step_type_spec="scf"` → `"qe_scf"`
+3. **src/qmatsuite/frontends/cli/app.py**: `step_type_spec="bands_pw"` → `"qe_bands_pw"`
 
 ##### Core Fixes for SPEC→GEN Conversion:
 
-1. **src/quantumvitas/workflow/registry.py - normalize_step_type_to_gen()**:
+1. **src/qmatsuite/workflow/registry.py - normalize_step_type_to_gen()**:
    - Added fallback: strip known engine prefixes if registry lookup fails
    - Handles types like "qe_vc-relax" → "vc-relax" that aren't in registry
 
-2. **src/quantumvitas/calculation/structure_steps.py - generate_qe_input_from_structure()**:
+2. **src/qmatsuite/calculation/structure_steps.py - generate_qe_input_from_structure()**:
    - Fixed to strip engine prefix WITHOUT applying aliases
    - Aliases (vc-relax → relax) are for workflow lookup, NOT QE calculation parameter
 
-3. **src/quantumvitas/calculation/structure_steps.py - generate_qe_input_from_spec()**:
+3. **src/qmatsuite/calculation/structure_steps.py - generate_qe_input_from_spec()**:
    - Changed to pass GEN type (not SPEC type) to generate_qe_input_from_structure
 
-4. **src/quantumvitas/api/service.py - save_relax_final_structure()**:
+4. **src/qmatsuite/api/service.py - save_relax_final_structure()**:
    - Added SPEC→GEN conversion before checking if step is relax/vc-relax
    - Uses GEN type for output filename lookup (e.g., "vc-relax.out" not "qe_vc-relax.out")
 

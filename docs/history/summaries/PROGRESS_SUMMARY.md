@@ -30,27 +30,27 @@
 **Problem:** `calculation.yaml/calculation.yaml` double-append causing 94 test failures
 
 **Fixes:**
-1. `src/quantumvitas/core/resolution.py` - `_calculation_to_resolved()` now returns directory path
-2. `src/quantumvitas/api/service.py` - `init_calculation()` now returns directory path
-3. `src/quantumvitas/core/models.py` - `load_calculation()` detects and fixes double-append
+1. `src/qmatsuite/core/resolution.py` - `_calculation_to_resolved()` now returns directory path
+2. `src/qmatsuite/api/service.py` - `init_calculation()` now returns directory path
+3. `src/qmatsuite/core/models.py` - `load_calculation()` detects and fixes double-append
 
 **Result:** 0 double-append errors remaining
 
-### 🔄 Bucket A: Missing QVService Methods (IN PROGRESS)
+### 🔄 Bucket A: Missing QMSService Methods (IN PROGRESS)
 
-**Problem:** ~200+ tests fail with `AttributeError: type object 'QVService' has no attribute '...'`
+**Problem:** ~200+ tests fail with `AttributeError: type object 'QMSService' has no attribute '...'`
 
-**Solution:** Created compatibility layer in `src/quantumvitas/api/compat.py`
+**Solution:** Created compatibility layer in `src/qmatsuite/api/compat.py`
 
 **Completed:**
-- Created `QVServiceCompat` class with `init_step()` and `add_step_to_calculation()`
+- Created `QMSServiceCompat` class with `init_step()` and `add_step_to_calculation()`
 - Returns wrapper objects with both DTO attributes and `absolute_path` for backward compatibility
 - Updated `tests/integration/test_incremental_run.py` to use compat layer
 - 1 test now passing: `test_run_lock_blocks_concurrent_runs`
 
 **Remaining:**
 - ~200+ tests still need migration to compat layer
-- Need to add more compatibility methods for other missing QVService methods
+- Need to add more compatibility methods for other missing QMSService methods
 
 ---
 
@@ -66,7 +66,7 @@
 - `tests/unit/test_api_get_band_structure_data.py` (4 tests)
 - `tests/daemon/test_update_step_params_persistence.py` (3 tests)
 
-**Action:** Update these files to use `from quantumvitas.api.compat import init_step, add_step_to_calculation`
+**Action:** Update these files to use `from qmatsuite.api.compat import init_step, add_step_to_calculation`
 
 ### 2. Add More Compatibility Methods (MEDIUM PRIORITY)
 
@@ -86,32 +86,32 @@
 
 ### 3. Fix Bucket B: Missing API Exports (MEDIUM PRIORITY)
 
-**Problem:** ~30 tests fail with `ImportError: cannot import name '...' from 'quantumvitas.api'`
+**Problem:** ~30 tests fail with `ImportError: cannot import name '...' from 'qmatsuite.api'`
 
-**Solution:** Update tests to import from source modules instead of `quantumvitas.api`
+**Solution:** Update tests to import from source modules instead of `qmatsuite.api`
 
 **Target Types:**
-- `StructureStepSpec` → `from quantumvitas.calculation.structure_steps import StructureStepSpec`
-- `QECardType` → `from quantumvitas.drivers.qe.io.model import QECardType`
-- `ParameterOverride` → `from quantumvitas.ir.parameters import ParameterOverride`
+- `StructureStepSpec` → `from qmatsuite.calculation.structure_steps import StructureStepSpec`
+- `QECardType` → `from qmatsuite.drivers.qe.io.model import QECardType`
+- `ParameterOverride` → `from qmatsuite.ir.parameters import ParameterOverride`
 - etc.
 
 ### 4. Create Gate Tests (HIGH PRIORITY)
 
 **File:** `tests/gates/test_no_daemon_cli_import_api_compat.py`
 
-**Purpose:** Prevent daemon/cli from importing `quantumvitas.api.compat`
+**Purpose:** Prevent daemon/cli from importing `qmatsuite.api.compat`
 
 **Implementation:**
-- Scan `src/quantumvitas/daemon/**` and `src/quantumvitas/cli/**`
-- Fail if `import quantumvitas.api.compat` or `from quantumvitas.api.compat` found
+- Scan `src/qmatsuite/daemon/**` and `src/qmatsuite/cli/**`
+- Fail if `import qmatsuite.api.compat` or `from qmatsuite.api.compat` found
 - Allow in comments/docstrings
 
 ---
 
 ## Constraints Maintained
 
-✅ **PR10:** No kernel symbols exported to `quantumvitas.api`  
+✅ **PR10:** No kernel symbols exported to `qmatsuite.api`  
 ✅ **PR6:** No manual dict construction in daemon handlers  
 ✅ **No API surface expansion:** Compat module not in `api.__all__`  
 ✅ **Lazy imports:** All kernel imports inside functions  
@@ -121,10 +121,10 @@
 
 ## Files Modified
 
-1. `src/quantumvitas/core/resolution.py` - Fixed path resolution
-2. `src/quantumvitas/api/service.py` - Fixed `init_calculation()` return path
-3. `src/quantumvitas/core/models.py` - Added double-append detection
-4. `src/quantumvitas/api/compat.py` - **NEW** - Compatibility layer
+1. `src/qmatsuite/core/resolution.py` - Fixed path resolution
+2. `src/qmatsuite/api/service.py` - Fixed `init_calculation()` return path
+3. `src/qmatsuite/core/models.py` - Added double-append detection
+4. `src/qmatsuite/api/compat.py` - **NEW** - Compatibility layer
 5. `tests/integration/test_incremental_run.py` - Migrated to compat layer
 
 ---

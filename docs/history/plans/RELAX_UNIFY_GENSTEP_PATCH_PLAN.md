@@ -28,7 +28,7 @@
 
 ### 2.2 RELAX_STEP_TYPES 常量
 
-**文件**: `src/quantumvitas/engine/qc_engine_base.py:25`
+**文件**: `src/qmatsuite/engine/qc_engine_base.py:25`
 
 ```python
 RELAX_STEP_TYPES = {"relax", "vc-relax", "opt", "geomopt"}
@@ -38,7 +38,7 @@ RELAX_STEP_TYPES = {"relax", "vc-relax", "opt", "geomopt"}
 
 ### 2.3 Topology Verify 检查
 
-**文件**: `src/quantumvitas/execution/recipes.py:67,87`
+**文件**: `src/qmatsuite/execution/recipes.py:67,87`
 
 检查 `step_public_type in RELAX_STEP_TYPES`，若常量包含多种，逻辑正确。
 统一后仍正确，但更简洁。
@@ -51,7 +51,7 @@ RELAX_STEP_TYPES = {"relax", "vc-relax", "opt", "geomopt"}
 
 **目标**: 将 `qe_vc_relax` 合并到 `qe_relax`，通过参数区分
 
-**文件修改**: `src/quantumvitas/workflow/registry.py`
+**文件修改**: `src/qmatsuite/workflow/registry.py`
 
 **Before**:
 ```python
@@ -100,7 +100,7 @@ parameters:
 
 **目标**: 添加 `orca_relax` 和 `pyscf_relax` machine types
 
-**文件修改**: `src/quantumvitas/workflow/registry.py`
+**文件修改**: `src/qmatsuite/workflow/registry.py`
 
 **新增**:
 ```python
@@ -134,7 +134,7 @@ parameters:
 
 **目标**: 常量只包含 `relax`
 
-**文件修改**: `src/quantumvitas/engine/qc_engine_base.py`
+**文件修改**: `src/qmatsuite/engine/qc_engine_base.py`
 
 **Before**:
 ```python
@@ -150,7 +150,7 @@ RELAX_STEP_TYPES = {"relax"}
 
 **目标**: 向后兼容旧的 `vc-relax` step type
 
-**文件修改**: `src/quantumvitas/workflow/registry.py`
+**文件修改**: `src/qmatsuite/workflow/registry.py`
 
 **添加别名映射**:
 ```python
@@ -182,31 +182,31 @@ def normalize_step_type(step_type: str) -> str:
 
 | 文件 | 修改 |
 |------|------|
-| `src/quantumvitas/workflow/registry.py` | 删除 `qe_vc_relax`，更新 `qe_relax` 描述 |
+| `src/qmatsuite/workflow/registry.py` | 删除 `qe_vc_relax`，更新 `qe_relax` 描述 |
 | `tests/unit/test_step_type_mapping.py` | 更新测试，移除 `vc-relax` 检查 |
 
 ### 4.2 PR-PATCH-2: ORCA/PySCF Relax
 
 | 文件 | 修改 |
 |------|------|
-| `src/quantumvitas/workflow/registry.py` | 添加 `orca_relax`, `pyscf_relax` |
-| `src/quantumvitas/engine/orca_engine.py` | 添加 `orca_relax` 到 `supported_step_types()` |
-| `src/quantumvitas/engine/pyscf_engine.py` | (无需修改，通过 runner 支持) |
+| `src/qmatsuite/workflow/registry.py` | 添加 `orca_relax`, `pyscf_relax` |
+| `src/qmatsuite/engine/orca_engine.py` | 添加 `orca_relax` 到 `supported_step_types()` |
+| `src/qmatsuite/engine/pyscf_engine.py` | (无需修改，通过 runner 支持) |
 | `tests/unit/test_step_type_mapping.py` | 添加新 step type 测试 |
 
 ### 4.3 PR-PATCH-3: 简化常量
 
 | 文件 | 修改 |
 |------|------|
-| `src/quantumvitas/engine/qc_engine_base.py` | 简化 `RELAX_STEP_TYPES` |
+| `src/qmatsuite/engine/qc_engine_base.py` | 简化 `RELAX_STEP_TYPES` |
 | `tests/unit/execution/test_qc_topology.py` | 更新测试用例 |
 
 ### 4.4 PR-PATCH-4: Compat Shim
 
 | 文件 | 修改 |
 |------|------|
-| `src/quantumvitas/workflow/registry.py` | 添加 `STEP_TYPE_ALIASES`, `normalize_step_type()` |
-| `src/quantumvitas/core/resolution.py` | 在解析时调用 `normalize_step_type()` |
+| `src/qmatsuite/workflow/registry.py` | 添加 `STEP_TYPE_ALIASES`, `normalize_step_type()` |
+| `src/qmatsuite/core/resolution.py` | 在解析时调用 `normalize_step_type()` |
 | `tests/unit/test_registry_compat.py` | 新增兼容性测试 |
 
 ---

@@ -36,7 +36,7 @@ ValueError: Pseudopotential not configured for element(s): Si. This is a configu
 
 From CLI test error log:
 ```
-ERROR quantumvitas.core.pseudo:pseudo.py:274 [PSEUDO_CONFIG_ERROR] Pseudopotential not configured for element(s): Si
+ERROR qmatsuite.core.pseudo:pseudo.py:274 [PSEUDO_CONFIG_ERROR] Pseudopotential not configured for element(s): Si
   Resolution source: QE input ATOMIC_SPECIES (legacy/standalone)
   qe_input_file=<HOME>/QMatSuite/.tmp/test_outputs/cli_si_dos_project/calculations/si_dos/raw/.temp_input_for_pseudo_resolution.in
   project_pseudo_dir=<HOME>/QMatSuite/.tmp/test_outputs/cli_si_dos_project/pseudo
@@ -108,8 +108,8 @@ ERROR quantumvitas.core.pseudo:pseudo.py:274 [PSEUDO_CONFIG_ERROR] Pseudopotenti
 **Answer**: **YES**
 
 **Where defined**:
-- `get_system_pseudo_dir()` in `src/quantumvitas/core/pseudo.py:480-490`
-- Returns `repo_root / "resources" / "pseudo"` if quantumvitas root is found
+- `get_system_pseudo_dir()` in `src/qmatsuite/core/pseudo.py:480-490`
+- Returns `repo_root / "resources" / "pseudo"` if qmatsuite root is found
 
 **Used in**:
 - `ensure_qe_pseudos()`: `system_pseudo_dir` parameter (defaults to `get_system_pseudo_dir()` if None) (pseudo.py:312-318)
@@ -184,9 +184,9 @@ CalculationRunner._execute_with_jobgraph()
 
 **Files**:
 - `tests/integration/test_si_bands_calculation.py:51-59`
-- `src/quantumvitas/calculation/runner.py:483-653`
-- `src/quantumvitas/calculation/structure_steps.py:648-1193`
-- `src/quantumvitas/core/pseudo.py:67-477`
+- `src/qmatsuite/calculation/runner.py:483-653`
+- `src/qmatsuite/calculation/structure_steps.py:648-1193`
+- `src/qmatsuite/core/pseudo.py:67-477`
 
 ### CLI Test Call Chain
 
@@ -196,7 +196,7 @@ CalculationRunner._execute_with_jobgraph()
 test_cli_run_calculation()
   ↓ CliRunner.invoke(cli_app, ["run", "calculation", "si_dos", ...])
   ↓ run_calculation_command()
-  ↓ QVService.run_calculation()
+  ↓ QMSService.run_calculation()
   ↓ CalculationRunner.run(calculation)
   ↓ (same materialization path as integration test)
 ```
@@ -236,8 +236,8 @@ test_cli_run_calculation()
 
 **Exact function where regression occurs**:
 - **Primary**: `tests/utils/calculation_projects.py:148` - `_build_step_spec_from_qe_input_data()` does not extract species_overrides
-- **Secondary**: `src/quantumvitas/calculation/structure_steps.py:1112` - `generate_qe_input_from_spec()` receives empty `species_map`
-- **Tertiary**: `src/quantumvitas/core/pseudo.py:214-300` - `ensure_qe_pseudos()` raises ValueError on placeholders
+- **Secondary**: `src/qmatsuite/calculation/structure_steps.py:1112` - `generate_qe_input_from_spec()` receives empty `species_map`
+- **Tertiary**: `src/qmatsuite/core/pseudo.py:214-300` - `ensure_qe_pseudos()` raises ValueError on placeholders
 
 **Why it worked before**:
 - **Old path (Path S)**: `prepare_input_step()` parsed existing `.in` files which had real filenames
@@ -255,7 +255,7 @@ test_cli_run_calculation()
 
 **Type C: project_root / resource root resolution changed** - **NO**
 - `get_system_pseudo_dir()` still correctly resolves `resources/pseudo` (pseudo.py:480-490)
-- `_find_quantumvitas_root()` still works (verified in error logs)
+- `_find_qmatsuite_root()` still works (verified in error logs)
 
 ---
 
@@ -334,7 +334,7 @@ if atomic_species_card and atomic_species_card.data:
 
 ### Option 2: Auto-resolve from system_pseudo_dir when species_overrides empty (NOT RECOMMENDED)
 
-**Location**: `src/quantumvitas/calculation/structure_steps.py:575-576` or `src/quantumvitas/io/structure_io.py:199`
+**Location**: `src/qmatsuite/calculation/structure_steps.py:575-576` or `src/qmatsuite/io/structure_io.py:199`
 
 **Change**: When `effective_species_overrides` is empty, scan `system_pseudo_dir` for matching element files (e.g., `Si.*.UPF`) and use first match.
 
@@ -455,7 +455,7 @@ if cards:
 
 ### Snippet 2: _build_step_spec_from_qe_input_data only extracts parameters and cards
 
-**File**: `src/quantumvitas/calculation/importers.py:49-92`
+**File**: `src/qmatsuite/calculation/importers.py:49-92`
 ```python
 def _build_step_spec_from_qe_input_data(
     qe_input: QEInput,
@@ -479,7 +479,7 @@ def _build_step_spec_from_qe_input_data(
 
 ### Snippet 3: build_step_spec_from_qe_input DOES extract species_overrides (but not called by fixture)
 
-**File**: `src/quantumvitas/calculation/importers.py:198-223`
+**File**: `src/qmatsuite/calculation/importers.py:198-223`
 ```python
 # Extract species_overrides from ATOMIC_SPECIES card (if present)
 # ATOMIC_SPECIES should not be in cards - it should be in species_overrides
@@ -497,7 +497,7 @@ if atomic_species_card and atomic_species_card.data:
             if mass is not None:
                 override["mass"] = float(mass)
             if pseudo_filename:
-                from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+                from qmatsuite.core.pseudo import is_missing_pseudo_placeholder
                 if not is_missing_pseudo_placeholder(pseudo_filename):
                     override["pseudopot"] = pseudo_filename
             
@@ -507,11 +507,11 @@ if atomic_species_card and atomic_species_card.data:
 
 ### Snippet 4: QE input generation creates placeholders
 
-**File**: `src/quantumvitas/io/structure_io.py:191-200`
+**File**: `src/qmatsuite/io/structure_io.py:191-200`
 ```python
 # ATOMIC_SPECIES: element symbol, atomic mass, pseudo file name (placeholder).
 # Use obvious placeholder to indicate missing configuration (not a real file)
-from quantumvitas.core.pseudo import make_missing_pseudo_placeholder
+from qmatsuite.core.pseudo import make_missing_pseudo_placeholder
 species: List[Element] = unique_species
 atomic_species_data: List[list] = []
 for el in species:
@@ -523,7 +523,7 @@ for el in species:
 
 ### Snippet 5: apply_species_overrides does nothing when overrides empty
 
-**File**: `src/quantumvitas/calculation/input_runner.py:682-690`
+**File**: `src/qmatsuite/calculation/input_runner.py:682-690`
 ```python
 def apply_species_overrides_to_qe_input(
     qe_input: QEInput, overrides: Optional[Mapping[str, Mapping[str, Any]]]
@@ -538,7 +538,7 @@ def apply_species_overrides_to_qe_input(
 
 ### Snippet 6: ensure_qe_pseudos raises ValueError on placeholders
 
-**File**: `src/quantumvitas/core/pseudo.py:214-300`
+**File**: `src/qmatsuite/core/pseudo.py:214-300`
 ```python
 # Fail early with clear configuration error if placeholders or empty pseudos are found
 if missing_placeholders:
@@ -556,7 +556,7 @@ if missing_placeholders:
 
 ### Snippet 7: materialize_step_spec passes empty species_map
 
-**File**: `src/quantumvitas/calculation/structure_steps.py:1112, 1166-1170**
+**File**: `src/qmatsuite/calculation/structure_steps.py:1112, 1166-1170**
 ```python
 # Pass species_map to generate_qe_input_from_spec so it populates ATOMIC_SPECIES correctly
 qe_input, _ = generate_qe_input_from_spec(structure, spec_obj, species_map=calculation_species_map)
@@ -601,18 +601,18 @@ ATOMIC_SPECIES
 
 ### Snippet 10: system_pseudo_dir is correctly resolved
 
-**File**: `src/quantumvitas/core/pseudo.py:480-490`
+**File**: `src/qmatsuite/core/pseudo.py:480-490`
 ```python
 def get_system_pseudo_dir() -> Optional[Path]:
     """
     Get the system-wide pseudopotential cache directory.
     
     Returns:
-        Path to quantumvitas resources/pseudo, or None if quantumvitas root not found
+        Path to qmatsuite resources/pseudo, or None if qmatsuite root not found
     """
-    qv_root = _find_quantumvitas_root()
-    if qv_root:
-        return qv_root / "resources" / "pseudo"
+    qms_root = _find_qmatsuite_root()
+    if qms_root:
+        return qms_root / "resources" / "pseudo"
     return None
 ```
 

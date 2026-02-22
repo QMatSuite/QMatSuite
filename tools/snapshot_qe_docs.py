@@ -13,7 +13,7 @@ The snapshots are intended for:
 - Reference when the QE website is unavailable
 
 Usage:
-    python tools/snapshot_qe_docs.py [--output-dir src/quantumvitas/resources/qe_docs_raw]
+    python tools/snapshot_qe_docs.py [--output-dir src/qmatsuite/resources/qe_docs_raw]
 
 The output directory will contain HTML files like:
     INPUT_PW.html
@@ -32,7 +32,7 @@ from typing import List
 # Note: This is a stub implementation. Full download logic would go here.
 # For now, we're just establishing the structure and intent.
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUTPUT_DIR = REPO_ROOT / "src" / "quantumvitas" / "resources" / "qe_docs_raw"
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "src" / "qmatsuite" / "resources" / "qe_docs_raw"
 
 
 def main() -> int:
@@ -43,7 +43,7 @@ def main() -> int:
         "--output-dir",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
-        help="Output directory for HTML snapshots (default: src/quantumvitas/resources/qe_docs_raw)",
+        help="Output directory for HTML snapshots (default: src/qmatsuite/resources/qe_docs_raw)",
     )
     parser.add_argument(
         "--modules",

@@ -30,7 +30,7 @@ The `set_parameters` MCP tool hardcodes all user input into the `parameters:` na
 
 ### Root Cause
 
-**File:** `src/quantumvitas/mcp/tools/set_parameters.py`, line 53
+**File:** `src/qmatsuite/mcp/tools/set_parameters.py`, line 53
 
 ```python
 svc.calculation.update_step_params(
@@ -70,7 +70,7 @@ An agent cannot set K_POINTS for a band structure calculation via MCP. If it pas
 - C1: set_parameters cards support
   Layer: MCP tool
   Fix: Add namespace parameter or auto-detect card keys
-  Files: src/quantumvitas/mcp/tools/set_parameters.py (line 53)
+  Files: src/qmatsuite/mcp/tools/set_parameters.py (line 53)
 ```
 
 ---
@@ -83,7 +83,7 @@ QMatSuite manages three runtime keys (`prefix`, `outdir`, `pseudo_dir`) that are
 
 ### Root Cause
 
-**Runtime keys defined at:** `src/quantumvitas/calculation/structure_steps.py`, line 309
+**Runtime keys defined at:** `src/qmatsuite/calculation/structure_steps.py`, line 309
 
 ```python
 RUNTIME_KEYS = {"prefix", "outdir", "pseudo_dir"}
@@ -100,12 +100,12 @@ RUNTIME_KEYS = {"prefix", "outdir", "pseudo_dir"}
 ### Prefix Convention
 
 - Function: `stable_short_calc_prefix(ulid)` at line 327
-- Formula: `"qv" + ulid[-6:].lower()` (e.g., ULID ending `...PTB4B2` -> prefix `"qvtb4b2"`)
+- Formula: `"qms" + ulid[-6:].lower()` (e.g., ULID ending `...PTB4B2` -> prefix `"qmstb4b2"`)
 - Stable across slug changes (ULID-derived, not name-derived)
 
 ### Evidence File Pattern
 
-QE driver declares: `evidence_files=["*.bands.dat.gnu"]` (driver.py, line 20). This matches files like `qvtb4b2.bands.dat.gnu`, which are produced when prefix is injected. If filband were also managed (e.g., set to `"bands.dat"`), the output would be `<prefix>.bands.dat.gnu`, matching the evidence glob.
+QE driver declares: `evidence_files=["*.bands.dat.gnu"]` (driver.py, line 20). This matches files like `qmstb4b2.bands.dat.gnu`, which are produced when prefix is injected. If filband were also managed (e.g., set to `"bands.dat"`), the output would be `<prefix>.bands.dat.gnu`, matching the evidence glob.
 
 ### Impact
 
@@ -123,8 +123,8 @@ If the user does not set `filband`, QE uses default `"bands.out"`. The output fi
 - C2: filband runtime injection
   Layer: Kernel (structure_steps.py)
   Fix: Add filband injection for BANDS module, or widen evidence glob
-  Files: src/quantumvitas/calculation/structure_steps.py (RUNTIME_KEYS + _inject_calculation_prefix_outdir)
-         src/quantumvitas/drivers/qe/driver.py (evidence_files glob)
+  Files: src/qmatsuite/calculation/structure_steps.py (RUNTIME_KEYS + _inject_calculation_prefix_outdir)
+         src/qmatsuite/drivers/qe/driver.py (evidence_files glob)
 ```
 
 ---
@@ -137,22 +137,22 @@ QMatSuite has a complete k-path generation module (`analysis/kpath.py`, 296 line
 
 ### Existing Implementation
 
-**File:** `src/quantumvitas/analysis/kpath.py`
+**File:** `src/qmatsuite/analysis/kpath.py`
 
 - `generate_kpath(structure, points_per_segment=20, path_type="hinuma")` -> `KPathResult`
 - `KPathResult.to_qe_kpoints_crystal_b()` -> QE K_POINTS card format
 - Supports all crystal systems via pymatgen's `HighSymmKpath` + `SpacegroupAnalyzer`
 - Three path algorithms: `"hinuma"`, `"seekpath"`, `"setyawan_curtarolo"` (with fallback cascade)
-- API wrapper: `QVService.generate_kpath()` at `api/service.py:8375-8398`
+- API wrapper: `QMSService.generate_kpath()` at `api/service.py:8375-8398`
 
 **CLI usage:**
 ```bash
-qv init step bandspw --structure si --auto-kpath --kpath-points 20
+qms init step bandspw --structure si --auto-kpath --kpath-points 20
 ```
 
 ### Why It's Not an MCP Tool
 
-The CLI directly calls `QVService.generate_kpath()` and stores the result in step.yaml (both the K_POINTS card data and `kpath_metadata`). No MCP tool wrapper was created during Phase 1 or Phase 2A because band structure was not in scope.
+The CLI directly calls `QMSService.generate_kpath()` and stores the result in step.yaml (both the K_POINTS card data and `kpath_metadata`). No MCP tool wrapper was created during Phase 1 or Phase 2A because band structure was not in scope.
 
 ### k-path Metadata Storage
 
@@ -190,9 +190,9 @@ Returns: path_string, labels, coords, K_POINTS card data ready for `set_paramete
 ```
 - C3: generate_kpath MCP tool
   Layer: MCP tool (new)
-  Fix: Wrap existing QVService.generate_kpath() as MCP tool
-  Files: New: src/quantumvitas/mcp/tools/generate_kpath.py
-         Existing: src/quantumvitas/analysis/kpath.py, src/quantumvitas/api/service.py:8375
+  Fix: Wrap existing QMSService.generate_kpath() as MCP tool
+  Files: New: src/qmatsuite/mcp/tools/generate_kpath.py
+         Existing: src/qmatsuite/analysis/kpath.py, src/qmatsuite/api/service.py:8375
 ```
 
 ---
@@ -205,7 +205,7 @@ The QE parameter `nbnd` (number of bands) is not set in any preset dimension. Fo
 
 ### Investigation
 
-Grep of `src/quantumvitas/presets/` for `nbnd`: **zero matches**. The preset system handles `ecutwfc`, `ecutrho`, `smearing`, `degauss`, `conv_thr`, etc., but not `nbnd`.
+Grep of `src/qmatsuite/presets/` for `nbnd`: **zero matches**. The preset system handles `ecutwfc`, `ecutrho`, `smearing`, `degauss`, `conv_thr`, etc., but not `nbnd`.
 
 ### QE Default Behavior
 
@@ -229,7 +229,7 @@ An agent using presets to configure a band structure calculation will get a band
 - C4: nbnd preset/knowledge
   Layer: Preset + Knowledge
   Fix: Add knowledge entry about nbnd for band structure, consider preset dimension
-  Files: src/quantumvitas/presets/ (new dimension), src/quantumvitas/mcp/knowledge/ (new insight)
+  Files: src/qmatsuite/presets/ (new dimension), src/qmatsuite/mcp/knowledge/ (new insight)
 ```
 
 ---
@@ -242,7 +242,7 @@ Constitution section 5.3 specifies: "Run Single Step: The target step must alway
 
 ### Root Cause
 
-**File:** `src/quantumvitas/calculation/runner.py`
+**File:** `src/qmatsuite/calculation/runner.py`
 
 The runner's `_execute_with_jobgraph()` method (lines 477-667) handles target step execution but does not call `clear_manifest_from_step()` after successful target step completion. The function exists at `calculation/manifest.py:227-256` and is tested in `tests/integration/test_incremental_run.py:745`, but it's never called from the runner.
 
@@ -286,8 +286,8 @@ If an agent re-runs a single step (e.g., bandspw) after parameter changes, downs
 - M1: cascade invalidation for Run Step
   Layer: Kernel (runner.py)
   Fix: Call clear_manifest_from_step() after successful target step execution (~5 lines)
-  Files: src/quantumvitas/calculation/runner.py (_execute_with_jobgraph, ~line 575)
-         Infrastructure exists: src/quantumvitas/calculation/manifest.py:227-256
+  Files: src/qmatsuite/calculation/runner.py (_execute_with_jobgraph, ~line 575)
+         Infrastructure exists: src/qmatsuite/calculation/manifest.py:227-256
   Also: Consider exposing run_mode/target_step_ulid in MCP run_calculation tool
 ```
 
@@ -301,14 +301,14 @@ The `inspect_calculation` dry-run (`dry_run=True`) uses a different materializat
 
 ### Root Cause
 
-**Dry-run path:** `src/quantumvitas/mcp/tools/inspect_calculation.py`
+**Dry-run path:** `src/qmatsuite/mcp/tools/inspect_calculation.py`
 - `_run_dry_run()` (lines 192-244) calls `_merge_cards_into_params()` (lines 303-327)
 - `_merge_cards_into_params()` converts K_POINTS card into flat `params["kpoints"] = {mesh, shift}`
 - Only extracts the first row of card data (line 323)
 - **Loses** the K_POINTS `option` field (e.g., `"tpiba_b"`, `"crystal_b"`)
 - The inputformat writer (`drivers/qe/inputspec.py:135-140`) then hardcodes `K_POINTS (automatic)`
 
-**Runtime path:** `src/quantumvitas/calculation/structure_steps.py`
+**Runtime path:** `src/qmatsuite/calculation/structure_steps.py`
 - Calls `apply_card_overrides_to_qe_input()` (in `input_runner.py:741-780`)
 - Preserves the full QECard object with `card.option` field
 - Uses `QEInputGenerator` which reads `card.option` to produce correct header (e.g., `K_POINTS {tpiba_b}`)
@@ -338,8 +338,8 @@ When an agent uses `inspect_calculation(dry_run=True)` to preview a band structu
 - M2: dry-run materializer card handling
   Layer: MCP tool (inspect_calculation.py)
   Fix: Reuse runtime materializer or fix card conversion to preserve option field
-  Files: src/quantumvitas/mcp/tools/inspect_calculation.py (_run_dry_run, _merge_cards_into_params)
-         src/quantumvitas/drivers/qe/inputspec.py (hardcoded K_POINTS automatic)
+  Files: src/qmatsuite/mcp/tools/inspect_calculation.py (_run_dry_run, _merge_cards_into_params)
+         src/qmatsuite/drivers/qe/inputspec.py (hardcoded K_POINTS automatic)
 ```
 
 ---
@@ -402,8 +402,8 @@ Current ASCII rendering is adequate for convergence verification but provides po
 - Q1: ASCII renderer upgrade to 2D charts
   Layer: MCP renderer
   Fix: Create TerminalChart class with axes, ticks, smart downsampling
-  Files: New: src/quantumvitas/mcp/renderers/terminal_chart.py
-         Modify: src/quantumvitas/mcp/renderers/ascii_renderer.py
+  Files: New: src/qmatsuite/mcp/renderers/terminal_chart.py
+         Modify: src/qmatsuite/mcp/renderers/ascii_renderer.py
 ```
 
 ---
@@ -488,16 +488,16 @@ Note: Q3 (bands `evidence_available=false`) is a direct symptom of C2 and requir
 
 | File | Role |
 |------|------|
-| `src/quantumvitas/mcp/tools/set_parameters.py:53` | C1: hardcoded namespace |
-| `src/quantumvitas/calculation/structure_steps.py:309` | C2: RUNTIME_KEYS definition |
-| `src/quantumvitas/calculation/structure_steps.py:353-461` | C2: prefix/outdir injection |
-| `src/quantumvitas/analysis/kpath.py` | C3: k-path generation (296 lines) |
-| `src/quantumvitas/api/service.py:8375-8398` | C3: QVService.generate_kpath() |
-| `src/quantumvitas/presets/` | C4: preset dimensions (no nbnd) |
-| `src/quantumvitas/calculation/runner.py:477-667` | M1: _execute_with_jobgraph() |
-| `src/quantumvitas/calculation/manifest.py:227-256` | M1: clear_manifest_from_step() (exists, unused) |
-| `src/quantumvitas/mcp/tools/inspect_calculation.py:192-327` | M2: dry-run materializer |
-| `src/quantumvitas/calculation/input_runner.py:741-799` | M2: runtime card application |
-| `src/quantumvitas/mcp/renderers/ascii_renderer.py` | Q1: current ASCII renderer |
-| `src/quantumvitas/mcp/tools/plot_analysis.py:134` | Q2: .scratch/ path |
-| `src/quantumvitas/drivers/qe/driver.py:17-37` | C2/Q3: ANALYSIS_CAPABILITIES (evidence_files glob) |
+| `src/qmatsuite/mcp/tools/set_parameters.py:53` | C1: hardcoded namespace |
+| `src/qmatsuite/calculation/structure_steps.py:309` | C2: RUNTIME_KEYS definition |
+| `src/qmatsuite/calculation/structure_steps.py:353-461` | C2: prefix/outdir injection |
+| `src/qmatsuite/analysis/kpath.py` | C3: k-path generation (296 lines) |
+| `src/qmatsuite/api/service.py:8375-8398` | C3: QMSService.generate_kpath() |
+| `src/qmatsuite/presets/` | C4: preset dimensions (no nbnd) |
+| `src/qmatsuite/calculation/runner.py:477-667` | M1: _execute_with_jobgraph() |
+| `src/qmatsuite/calculation/manifest.py:227-256` | M1: clear_manifest_from_step() (exists, unused) |
+| `src/qmatsuite/mcp/tools/inspect_calculation.py:192-327` | M2: dry-run materializer |
+| `src/qmatsuite/calculation/input_runner.py:741-799` | M2: runtime card application |
+| `src/qmatsuite/mcp/renderers/ascii_renderer.py` | Q1: current ASCII renderer |
+| `src/qmatsuite/mcp/tools/plot_analysis.py:134` | Q2: .scratch/ path |
+| `src/qmatsuite/drivers/qe/driver.py:17-37` | C2/Q3: ANALYSIS_CAPABILITIES (evidence_files glob) |

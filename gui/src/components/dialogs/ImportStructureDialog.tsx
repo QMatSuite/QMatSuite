@@ -4,7 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { Modal } from './Modal';
-import { useQVClient } from '../../hooks/useQVClient';
+import { useQMSClient } from '../../hooks/useQMSClient';
 
 interface ImportStructureDialogProps {
   isOpen: boolean;
@@ -19,7 +19,7 @@ export function ImportStructureDialog({
   onClose, 
   onSuccess,
 }: ImportStructureDialogProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   
   const [sourceFile, setSourceFile] = useState('');
   const [structureName, setStructureName] = useState('');
@@ -27,8 +27,8 @@ export function ImportStructureDialog({
   const [error, setError] = useState<string | null>(null);
   
   const handleBrowse = useCallback(async () => {
-    if (window.qv?.openFile) {
-      const path = await window.qv.openFile({
+    if (window.qms?.openFile) {
+      const path = await window.qms.openFile({
         title: 'Select Structure File',
         filters: [
           { name: 'Structure Files', extensions: ['cif', 'json', 'in', 'xsf', 'xyz', 'poscar', 'vasp'] },
@@ -63,7 +63,7 @@ export function ImportStructureDialog({
     setIsImporting(true);
     setError(null);
     
-    const response = await qv.call('import_structure', {
+    const response = await qms.call('import_structure', {
       project_root: projectRoot,
       source_file: sourceFile,
       name: structureName || undefined,
@@ -77,7 +77,7 @@ export function ImportStructureDialog({
     } else {
       setError(response.error?.message || 'Failed to import structure');
     }
-  }, [qv, projectRoot, sourceFile, structureName, onSuccess]);
+  }, [qms, projectRoot, sourceFile, structureName, onSuccess]);
   
   const handleClose = useCallback(() => {
     setSourceFile('');
@@ -94,21 +94,21 @@ export function ImportStructureDialog({
       size="medium"
       footer={
         <>
-          <button className="btn btn--secondary" onClick={handleClose} data-testid="qv-btn-cancel-import-structure">
+          <button className="btn btn--secondary" onClick={handleClose} data-testid="qms-btn-cancel-import-structure">
             Cancel
           </button>
           <button
             className={`btn btn--primary ${isImporting ? 'btn--loading' : ''}`}
             onClick={handleImport}
             disabled={isImporting || !sourceFile}
-            data-testid="qv-btn-confirm-import-structure"
+            data-testid="qms-btn-confirm-import-structure"
           >
             Import
           </button>
         </>
       }
     >
-      <div className="modal-form" data-testid="qv-import-structure-dialog">
+      <div className="modal-form" data-testid="qms-import-structure-dialog">
         <div className="form-group">
           <label className="form-label form-label--required">
             Structure File
@@ -120,14 +120,14 @@ export function ImportStructureDialog({
               value={sourceFile}
               onChange={(e) => setSourceFile(e.target.value)}
               placeholder="Select a CIF, XSF, or QE input file..."
-              data-testid="qv-import-structure-file"
+              data-testid="qms-import-structure-file"
             />
-            <button className="form-button" onClick={handleBrowse} data-testid="qv-import-structure-browse">
+            <button className="form-button" onClick={handleBrowse} data-testid="qms-import-structure-browse">
               📂
             </button>
           </div>
           <span className="form-hint">
-            Supported: CIF, XSF, XYZ, POSCAR, QE input (.in), QV JSON
+            Supported: CIF, XSF, XYZ, POSCAR, QE input (.in), QMS JSON
           </span>
         </div>
         
@@ -141,7 +141,7 @@ export function ImportStructureDialog({
             value={structureName}
             onChange={(e) => setStructureName(e.target.value)}
             placeholder="Silicon bulk"
-            data-testid="qv-import-structure-name"
+            data-testid="qms-import-structure-name"
           />
           <span className="form-hint">
             Optional. Defaults to the filename.

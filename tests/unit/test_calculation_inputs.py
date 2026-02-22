@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.io import QEInputParser
+from qmatsuite.io import QEInputParser
 from tests.core.test_data import load_test_cases
 
 pytestmark = pytest.mark.unit

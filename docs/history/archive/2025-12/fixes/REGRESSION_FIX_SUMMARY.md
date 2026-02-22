@@ -7,7 +7,7 @@
 **Problem**: `build_bonds()` signature changed, breaking unit tests that called it with old signature `build_bonds(atoms_cart, species, radii_map, ...)`.
 
 **Solution**:
-1. **Created `build_bonds_cartesian()` legacy function** (`src/quantumvitas/analysis/structure_viz.py:824`)
+1. **Created `build_bonds_cartesian()` legacy function** (`src/qmatsuite/analysis/structure_viz.py:824`)
    - Accepts raw arrays: `atoms_cart`, `species`, `radii_map`
    - Calls internal `_build_bonds()` function
    - **For unit tests only** - not for production code
@@ -31,7 +31,7 @@
 **Root Cause**: Backend payload missing required fields (`structure_id`, `structure_name`, `formula`) that frontend expects.
 
 **Solution**:
-1. **Enhanced `_build_structure_vis_payload()`** (`src/quantumvitas/api.py:2137-2160`)
+1. **Enhanced `_build_structure_vis_payload()`** (`src/qmatsuite/api.py:2137-2160`)
    - Ensures `structure_id`, `structure_name`, `formula` always exist
    - Computes formula from atoms if not provided
    - Sets `supercell` and `display_mode` defaults
@@ -57,8 +57,8 @@
 **Verification**:
 - Electron main process (`gui/electron/main.ts:284`) already captures `daemonProcess.stderr`
 - Logs are forwarded via `safeSend('daemon-log', message)` to renderer
-- Python logging is configured in `QVDaemon._configure_logging()` to output to stderr
-- Formatter: `[qv-daemon] [%(levelname)s] [%(name)s] %(message)s`
+- Python logging is configured in `QMSDaemon._configure_logging()` to output to stderr
+- Formatter: `[qms-daemon] [%(levelname)s] [%(name)s] %(message)s`
 
 **Status**: ✅ Logging configuration is correct. Logs should be visible. If not visible, it may be a timing issue or the logs are being filtered.
 
@@ -90,13 +90,13 @@
 
 ## Files Changed
 
-1. `src/quantumvitas/analysis/structure_viz.py`
+1. `src/qmatsuite/analysis/structure_viz.py`
    - Added `build_bonds_cartesian()` legacy function
 
 2. `tests/unit/test_structure_viz.py`
    - Updated 3 tests to use `build_bonds_cartesian()`
 
-3. `src/quantumvitas/api.py`
+3. `src/qmatsuite/api.py`
    - Enhanced `_build_structure_vis_payload()` to ensure required fields exist
 
 4. `gui/src/App.tsx`

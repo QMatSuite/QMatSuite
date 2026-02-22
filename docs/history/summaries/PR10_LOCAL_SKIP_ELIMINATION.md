@@ -25,13 +25,13 @@ plus undefined functions `init_step`, `configure_step`, `run_step` (not imported
 
 ### Fix Applied
 1. Removed module-level skip markers
-2. Replaced `init_step(` with `QVService.init_step(`
+2. Replaced `init_step(` with `QMSService.init_step(`
 3. Replaced `configure_step(...)` with domain accessor pattern:
    ```python
-   svc = QVService(project_root)
+   svc = QMSService(project_root)
    svc.calculation.update_step_params(calc_id, step_id, {"parameters": {...}})
    ```
-4. Replaced `run_step(` with `QVService.run_step(`
+4. Replaced `run_step(` with `QMSService.run_step(`
 
 ### Proof
 ```
@@ -54,9 +54,9 @@ Same pattern - module-level skip markers + undefined `init_step`/`configure_step
 
 ### Fix Applied
 1. Removed module-level skip markers
-2. Replaced `init_step(` with `QVService.init_step(`
+2. Replaced `init_step(` with `QMSService.init_step(`
 3. Replaced `configure_step(...)` with domain accessor pattern
-4. Replaced `run_step(` with `QVService.run_step(`
+4. Replaced `run_step(` with `QMSService.run_step(`
 
 ### Proof
 ```
@@ -78,7 +78,7 @@ Same pattern - module-level skip markers + undefined `init_step`/`configure_step
 
 ### Fix Applied
 1. Removed module-level skip markers (8 occurrences)
-2. Replaced `init_step(` with `QVService.init_step(`
+2. Replaced `init_step(` with `QMSService.init_step(`
 3. Replaced `configure_step(...)` with domain accessor pattern
 
 ### Proof
@@ -102,11 +102,11 @@ Same pattern - module-level skip markers + undefined `init_step`/`configure_step
 
 ### Fix Applied
 1. Removed module-level skip markers (9 occurrences per file)
-2. Replaced `init_step(` with `QVService.init_step(`
+2. Replaced `init_step(` with `QMSService.init_step(`
 3. Added helper function `configure_step()` that wraps domain accessor:
    ```python
    def configure_step(project_root, calculation_selector, step_selector, parameters):
-       svc = QVService(project_root)
+       svc = QMSService(project_root)
        svc.calculation.update_step_params(
            calc_selector=calculation_selector,
            step_selector=step_selector,
@@ -134,8 +134,8 @@ Same pattern - module-level skip markers + undefined `init_step`/`run_step` func
 
 ### Fix Applied
 1. Removed module-level skip markers (3 occurrences)
-2. Replaced `init_step(` with `QVService.init_step(`
-3. Replaced `run_step(` with `QVService.run_step(`
+2. Replaced `init_step(` with `QMSService.init_step(`
+3. Replaced `run_step(` with `QMSService.run_step(`
 
 ### Proof
 ```

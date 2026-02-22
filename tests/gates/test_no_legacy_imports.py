@@ -9,12 +9,12 @@ from pathlib import Path
 
 
 LEGACY_PATTERNS = [
-    r"from quantumvitas\._api_legacy import",
-    r"from quantumvitas\.api_legacy import",
-    r"from quantumvitas\._vault import",
-    r"import quantumvitas\._api_legacy",
-    r"import quantumvitas\.api_legacy",
-    r"import quantumvitas\._vault",
+    r"from qmatsuite\._api_legacy import",
+    r"from qmatsuite\.api_legacy import",
+    r"from qmatsuite\._vault import",
+    r"import qmatsuite\._api_legacy",
+    r"import qmatsuite\.api_legacy",
+    r"import qmatsuite\._vault",
 ]
 
 
@@ -23,7 +23,7 @@ def test_no_legacy_imports():
     violations = []
     
     # Check src/ directory
-    src = Path("src/quantumvitas")
+    src = Path("src/qmatsuite")
     for py_file in src.rglob("*.py"):
         # Skip vault directory (it's allowed to import itself for reference, but will be deleted)
         if "_vault" in str(py_file):
@@ -71,6 +71,6 @@ def test_no_legacy_imports():
         error_msg = "ERROR: Legacy import detected in production code or tests:\n"
         for violation in violations:
             error_msg += f"  - {violation}\n"
-        error_msg += "\nProduction code and tests must not import from quantumvitas._vault"
+        error_msg += "\nProduction code and tests must not import from qmatsuite._vault"
         assert False, error_msg
 

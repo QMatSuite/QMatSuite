@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from quantumvitas.core.analysis.band_structure import BandStructure
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
-from quantumvitas.core.analysis.transforms.fermi_shift import FermiShift
-from quantumvitas.drivers.qe.driver import QEDriver
-from quantumvitas.drivers.qe.parsers.bands import QEBandsProvider
+from qmatsuite.core.analysis.band_structure import BandStructure
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.core.analysis.orchestrator import run_post_run_analysis
+from qmatsuite.core.analysis.transforms.fermi_shift import FermiShift
+from qmatsuite.drivers.qe.driver import QEDriver
+from qmatsuite.drivers.qe.parsers.bands import QEBandsProvider
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -77,7 +77,7 @@ def test_qe_bands_orchestrator_integration() -> None:
         calc_dir=raw_dir.parent,
     )
 
-    from quantumvitas.core.analysis.capability import ResultState
+    from qmatsuite.core.analysis.capability import ResultState
 
     ok_results = [r for r in results if r.state == ResultState.OK]
     assert len(ok_results) >= 1

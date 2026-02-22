@@ -7,11 +7,11 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from quantumvitas.execution.orca_relax_parser import (
+from qmatsuite.execution.orca_relax_parser import (
     parse_orca_optimized_xyz,
     handle_orca_relax_output,
 )
-from quantumvitas.execution.relax_artifacts import get_generated_structure_path, read_generated_structure
+from qmatsuite.execution.relax_artifacts import get_generated_structure_path, read_generated_structure
 
 
 class TestParseOrcaOptimizedXyz:
@@ -94,17 +94,17 @@ H    -0.757160     0.000000    -0.468000
         
         # Verify content
         data = json.loads(artifact_path.read_text())
-        assert "__qv_meta__" in data
-        assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == step_type_spec
-        assert data["__qv_meta__"]["provenance"]["calculation_ulid"] == calculation_ulid
-        assert data["__qv_meta__"]["provenance"]["input_structure_ulid"] == input_structure_ulid
+        assert "__qms_meta__" in data
+        assert data["__qms_meta__"]["source_step_ulid"] == step_ulid
+        assert data["__qms_meta__"]["provenance"]["method"] == step_type_spec
+        assert data["__qms_meta__"]["provenance"]["calculation_ulid"] == calculation_ulid
+        assert data["__qms_meta__"]["provenance"]["input_structure_ulid"] == input_structure_ulid
         
         # Verify structure can be read
         # Note: For molecules, we need to read as Molecule, not Structure
         from pymatgen.core import Molecule
         structure_dict = json.loads(artifact_path.read_text())
-        structure_dict.pop("__qv_meta__", None)
+        structure_dict.pop("__qms_meta__", None)
         loaded = Molecule.from_dict(structure_dict)
         assert loaded is not None
         assert len(loaded) == 3  # 3 atoms (O, H, H)

@@ -12,7 +12,7 @@ import pytest
 
 def test_init_project_does_not_require_qe_metadata(monkeypatch, tmp_path):
     """Test that `init project` works even if QE metadata is broken or missing."""
-    from quantumvitas.data import qe_metadata
+    from qmatsuite.data import qe_metadata
 
     def broken_load():
         raise RuntimeError("metadata broken")
@@ -23,7 +23,7 @@ def test_init_project_does_not_require_qe_metadata(monkeypatch, tmp_path):
 
     # Running `init project` should still succeed
     result = subprocess.run(
-        [sys.executable, "-m", "quantumvitas.cli.main", "init", "project", "--name", "meta_free"],
+        [sys.executable, "-m", "qmatsuite.cli.main", "init", "project", "--name", "meta_free"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -33,14 +33,14 @@ def test_init_project_does_not_require_qe_metadata(monkeypatch, tmp_path):
     # Verify project was created
     project_dir = tmp_path / "meta_free"
     assert project_dir.exists(), "Project directory was not created"
-    assert (project_dir / "project.qv.yml").exists(), "Project config file was not created"
+    assert (project_dir / "project.qms.yml").exists(), "Project config file was not created"
 
 
 def test_init_project_import_does_not_load_metadata():
     """Test that importing the CLI module doesn't trigger metadata loading."""
     # This should not raise even if metadata is missing
-    from quantumvitas.cli.main import init_project_command
-    from quantumvitas.data import qe_metadata
+    from qmatsuite.cli.main import init_project_command
+    from qmatsuite.data import qe_metadata
     
     # Verify that importing doesn't call load functions
     # (they should only be called when the function is invoked, not at import time)

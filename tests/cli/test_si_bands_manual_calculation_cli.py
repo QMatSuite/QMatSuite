@@ -6,7 +6,7 @@ This test creates a project with a manual k-path band structure calculation:
 - NSCF calculation (pw.x calculation='nscf', K_POINTS automatic denser)
 - Bands calculation (pw.x calculation='bands', K_POINTS crystal_b k-path)
 - Bands post-processing (bands.x)
-- Band structure analysis (qv analyze band)
+- Band structure analysis (qms analyze band)
 
 Requires QE to be installed.
 """
@@ -21,15 +21,15 @@ import uuid
 from pathlib import Path
 
 import pytest
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 # Mark all tests as requiring QE
 pytestmark = pytest.mark.qe_core
 
 
-def run_qv(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
-    """Run qv CLI command."""
-    cmd = [sys.executable, "-m", "quantumvitas.cli.main"] + args
+def run_qms(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
+    """Run qms CLI command."""
+    cmd = [sys.executable, "-m", "qmatsuite.cli.main"] + args
     result = subprocess.run(
         cmd,
         cwd=cwd,
@@ -93,7 +93,7 @@ def project_with_structure(test_project_dir: Path, project_root_path: Path) -> P
     scf_in.write_text(QE_INPUT_CONTENT)
     
     # Initialize MANUAL project
-    run_qv(["init", "project", "--name", "si_bands_manual"], cwd=test_project_dir)
+    run_qms(["init", "project", "--name", "si_bands_manual"], cwd=test_project_dir)
     
     project_dir = test_project_dir / "si_bands_manual"
     assert project_dir.exists(), f"Project not created at {project_dir}"
@@ -109,7 +109,7 @@ def project_with_structure(test_project_dir: Path, project_root_path: Path) -> P
         shutil.copy2(pp_file, pseudo_dst / pp_file.name)
     
     # Import structure from SCF input
-    run_qv(["import-structure", str(scf_in), "--name", "si"], cwd=project_dir)
+    run_qms(["import-structure", str(scf_in), "--name", "si"], cwd=project_dir)
     
     return project_dir
 
@@ -122,7 +122,7 @@ class TestSiBandsCalculationManualKpath:
         """Create calculation with manual k-path."""
         project_dir = project_with_structure
         
-        run_qv(["init", "calculation", "bands_manual", "--structure", "si", "--engine-family", "qe"], cwd=project_dir)
+        run_qms(["init", "calculation", "bands_manual", "--structure", "si", "--engine-family", "qe"], cwd=project_dir)
         
         calculation_dir = project_dir / "calculations" / "bands_manual"
         assert calculation_dir.exists()
@@ -135,7 +135,7 @@ class TestSiBandsCalculationManualKpath:
         project_dir = project_with_structure
         
         # Step 1: SCF (calculation='scf', K_POINTS automatic 8x8x8)
-        run_qv([
+        run_qms([
             "init", "step", "scf",
             "--structure", "si",
             "--calculation", "bands_manual",
@@ -150,7 +150,7 @@ class TestSiBandsCalculationManualKpath:
         ], cwd=project_dir)
         
         # Step 2: NSCF (calculation='nscf', K_POINTS automatic 12x12x12 denser)
-        run_qv([
+        run_qms([
             "init", "step", "nscf",
             "--structure", "si",
             "--calculation", "bands_manual",
@@ -177,7 +177,7 @@ class TestSiBandsCalculationManualKpath:
             [0.0, 0.0, 0.0, 0],        # Gamma (endpoint, 0 points)
         ]
         
-        run_qv([
+        run_qms([
             "init", "step", "bandspw",
             "--structure", "si",
             "--calculation", "bands_manual",
@@ -193,7 +193,7 @@ class TestSiBandsCalculationManualKpath:
         ], cwd=project_dir)
         
         # Step 4: Bands post-processing (bands.x)
-        run_qv([
+        run_qms([
             "init", "step", "bands",
             "--structure", "si",
             "--calculation", "bands_manual",
@@ -207,7 +207,7 @@ class TestSiBandsCalculationManualKpath:
         # The SCF input file was created in project_with_structure fixture at test_project_dir / "si.0_scf.in"
         # Since project_dir = test_project_dir / "si_bands_manual", the input is at project_dir.parent / "si.0_scf.in"
         scf_in = project_dir.parent / "si.0_scf.in"
-        run_qv([
+        run_qms([
             "configure", "species", "--from-input", str(scf_in),
             "--calc", "bands_manual",
         ], cwd=project_dir)
@@ -225,7 +225,7 @@ class TestSiBandsCalculationManualKpath:
         raw_dir = calculation_dir / "raw"
         
         # Run the calculation once
-        result = run_qv(
+        result = run_qms(
             ["run", "calculation", "bands_manual", "--verbose"],
             cwd=project_dir,
             check=False,
@@ -271,19 +271,19 @@ class TestSiBandsCalculationManualKpath:
             if scf_out:
                 fermi_file = scf_out[0]
         
-        # Run qv analyze band
+        # Run qms analyze band
         args = ["analyze", "band", str(bands_gnu), "--plot", "--format", "png"]
         if symmetry_file:
             args.extend(["--symmetry", str(symmetry_file)])
         if fermi_file:
             args.extend(["--scf", str(fermi_file)])
         
-        result = run_qv(args, cwd=project_dir, check=False)
+        result = run_qms(args, cwd=project_dir, check=False)
         
         # Check if analyze command failed
         if result.returncode != 0:
             pytest.fail(
-                "qv analyze band failed for manual k-path:\n"
+                "qms analyze band failed for manual k-path:\n"
                 f"STDOUT:\n{result.stdout}\n\n"
                 f"STDERR:\n{result.stderr}"
             )
@@ -310,7 +310,7 @@ class TestBandsCalculationDataModels:
     
     def test_parse_bands_gnu_from_test_data(self, test_data_dir: Path):
         """Test parsing bands.dat.gnu file."""
-        from quantumvitas.analysis.parsers import parse_bands_gnu
+        from qmatsuite.analysis.parsers import parse_bands_gnu
         
         bands_file = test_data_dir / "si.bands.dat.gnu"
         if not bands_file.exists():
@@ -330,7 +330,7 @@ class TestBandsCalculationDataModels:
     
     def test_parse_scf_from_test_data(self, test_data_dir: Path):
         """Test parsing SCF output file."""
-        from quantumvitas.analysis.parsers import parse_scf_output
+        from qmatsuite.analysis.parsers import parse_scf_output
         
         scf_file = test_data_dir / "reference_out" / "si.0_scf.out"
         if not scf_file.exists():
@@ -344,7 +344,7 @@ class TestBandsCalculationDataModels:
     
     def test_generate_kpath_for_si(self):
         """Test auto k-path generation for Si structure."""
-        from quantumvitas.analysis.kpath import generate_kpath
+        from qmatsuite.analysis.kpath import generate_kpath
         from pymatgen.core import Structure, Lattice
         
         # Create Si structure (diamond cubic)
@@ -367,8 +367,8 @@ class TestBandsCalculationDataModels:
     
     def test_plot_bands_from_test_data(self, test_data_dir: Path, tmp_path: Path):
         """Test plotting bands from test data."""
-        from quantumvitas.analysis.parsers import parse_bands_gnu
-        from quantumvitas.analysis.plotting import plot_bands, save_figure
+        from qmatsuite.analysis.parsers import parse_bands_gnu
+        from qmatsuite.analysis.plotting import plot_bands, save_figure
         
         bands_file = test_data_dir / "si.bands.dat.gnu"
         sym_file = test_data_dir / "reference_out" / "si.3_bands.pp.out"

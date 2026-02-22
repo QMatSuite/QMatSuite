@@ -13,8 +13,8 @@ import pytest
 from typer.testing import CliRunner
 from pathlib import Path
 
-from quantumvitas.cli.main import app
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.cli.main import app
+from qmatsuite.core.resources import get_resources_dir
 from tests.utils.calculation_projects import create_calculation_project
 
 

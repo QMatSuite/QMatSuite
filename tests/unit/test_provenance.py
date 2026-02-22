@@ -2,7 +2,7 @@
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.provenance import (
+from qmatsuite.core.provenance import (
     ProvenanceMap,
     ProvenanceEntry,
     load_provenance,

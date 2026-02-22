@@ -23,13 +23,13 @@ This document series proposes a **kernel-driver architecture** for QMatSuite's e
 
 | Engine | Family | Primary Location | Recipe Pattern |
 |--------|--------|------------------|----------------|
-| Quantum ESPRESSO | `qe` | `src/quantumvitas/core/qe/` | Directory-state |
-| VASP | `vasp` | `src/quantumvitas/engine/vasp_engine.py` | Per-step workdir |
-| ORCA | `orca` | `src/quantumvitas/engine/orca_engine.py` | Strong-chain |
-| PySCF | `pyscf` | `src/quantumvitas/engine/pyscf_engine.py` | Weak-chain |
-| LAMMPS | `lammps` | `src/quantumvitas/engine/lammps_engine.py` | Per-step workdir |
-| CP2K | `cp2k` | `src/quantumvitas/engine/cp2k_engine.py` | Per-step workdir |
-| Wannier90 | `w90` | `src/quantumvitas/core/w90/` | Chain (QE-coupled) |
+| Quantum ESPRESSO | `qe` | `src/qmatsuite/core/qe/` | Directory-state |
+| VASP | `vasp` | `src/qmatsuite/engine/vasp_engine.py` | Per-step workdir |
+| ORCA | `orca` | `src/qmatsuite/engine/orca_engine.py` | Strong-chain |
+| PySCF | `pyscf` | `src/qmatsuite/engine/pyscf_engine.py` | Weak-chain |
+| LAMMPS | `lammps` | `src/qmatsuite/engine/lammps_engine.py` | Per-step workdir |
+| CP2K | `cp2k` | `src/qmatsuite/engine/cp2k_engine.py` | Per-step workdir |
+| Wannier90 | `w90` | `src/qmatsuite/core/w90/` | Chain (QE-coupled) |
 
 ### 2.2 Architecture Patterns Observed
 
@@ -43,7 +43,7 @@ This document series proposes a **kernel-driver architecture** for QMatSuite's e
 
 **CRITICAL VULNERABILITY: Silent QE Fallback**
 
-File: `src/quantumvitas/core/calc_identity.py` (lines 78-116)
+File: `src/qmatsuite/core/calc_identity.py` (lines 78-116)
 
 ```python
 elif machine_type.startswith("pyscf_"):

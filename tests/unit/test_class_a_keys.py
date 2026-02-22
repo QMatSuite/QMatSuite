@@ -6,7 +6,7 @@ Class A keys are strict-typed parameters that participate in IR/Preset system.
 
 import pytest
 
-from quantumvitas.ir.backends.qe.mapping import (
+from qmatsuite.ir.backends.qe.mapping import (
     is_class_a_key,
     get_class_a_type,
     IR_TO_QE_MAPPING,

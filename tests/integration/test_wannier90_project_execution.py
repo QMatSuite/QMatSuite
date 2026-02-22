@@ -29,7 +29,7 @@ from typing import Dict, Any, Tuple, List, Optional
 
 import yaml
 
-from quantumvitas.core.paths import get_repo_root, tmp_runs_dir
+from qmatsuite.core.paths import get_repo_root, tmp_runs_dir
 
 
 # Get repo root and paths

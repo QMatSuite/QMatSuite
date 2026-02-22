@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 
-from quantumvitas.engine.lammps_writer import (
+from qmatsuite.engine.lammps_writer import (
     render_lammps_template,
     get_template_for_step_type,
     build_template_context,

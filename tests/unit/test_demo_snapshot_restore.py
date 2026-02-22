@@ -11,9 +11,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.api import QVService
-from quantumvitas.core.resources import get_resources_dir
-from quantumvitas.project.snapshot import ProjectSnapshot, materialize_project_from_snapshot
+from qmatsuite.api import QMSService
+from qmatsuite.core.resources import get_resources_dir
+from qmatsuite.project.snapshot import ProjectSnapshot, materialize_project_from_snapshot
 
 
 class TestDemoSnapshotRestore:
@@ -45,9 +45,9 @@ class TestDemoSnapshotRestore:
             assert project_root.exists(), f"Project root should exist: {project_root}"
             assert project_root.is_dir(), f"Project root should be a directory: {project_root}"
             
-            # Verify project.qv.yml exists
-            project_config = project_root / "project.qv.yml"
-            assert project_config.exists(), f"project.qv.yml should exist: {project_config}"
+            # Verify project.qms.yml exists
+            project_config = project_root / "project.qms.yml"
+            assert project_config.exists(), f"project.qms.yml should exist: {project_config}"
             
             # Verify structures directory exists and has files
             structures_dir = project_root / "structures"
@@ -94,9 +94,9 @@ class TestDemoSnapshotRestore:
             # Verify project root exists
             assert project_root.exists(), f"Project root should exist: {project_root}"
             
-            # Verify project.qv.yml exists
-            project_config = project_root / "project.qv.yml"
-            assert project_config.exists(), f"project.qv.yml should exist: {project_config}"
+            # Verify project.qms.yml exists
+            project_config = project_root / "project.qms.yml"
+            assert project_config.exists(), f"project.qms.yml should exist: {project_config}"
             
             # Verify structures directory exists
             structures_dir = project_root / "structures"
@@ -107,9 +107,9 @@ class TestDemoSnapshotRestore:
             assert calculations_dir.exists(), f"calculations directory should exist: {calculations_dir}"
     
     def test_create_demo_project_via_api(self):
-        """Test creating demo project via QVService.create_demo_project."""
+        """Test creating demo project via QMSService.create_demo_project."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            result = QVService.create_demo_project(
+            result = QMSService.create_demo_project(
                 target_dir=Path(tmpdir),
                 name="test_demo",
                 demo_id="si_bands_demo",
@@ -120,9 +120,9 @@ class TestDemoSnapshotRestore:
             # Verify project root exists
             assert project_root.exists(), f"Project root should exist: {project_root}"
 
-            # Verify project.qv.yml exists
-            project_config = project_root / "project.qv.yml"
-            assert project_config.exists(), f"project.qv.yml should exist: {project_config}"
+            # Verify project.qms.yml exists
+            project_config = project_root / "project.qms.yml"
+            assert project_config.exists(), f"project.qms.yml should exist: {project_config}"
 
             # Verify structures directory exists and has files
             structures_dir = project_root / "structures"
@@ -136,8 +136,8 @@ class TestDemoSnapshotRestore:
             calculation_yamls = list(calculations_dir.glob("*/calculation.yaml"))
             assert len(calculation_yamls) > 0, f"At least one calculation.yaml should exist"
 
-            # Verify project can be opened by QVService
-            svc = QVService(project_root)
+            # Verify project can be opened by QMSService
+            svc = QMSService(project_root)
             summary = svc.project.get_summary()
             assert summary is not None, "Project summary should be available"
             assert summary["n_structures"] > 0, "Project should have at least one structure"
@@ -147,7 +147,7 @@ class TestDemoSnapshotRestore:
         """Test that creating demo project with invalid demo_id raises error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             with pytest.raises(Exception) as exc_info:
-                QVService.create_demo_project(
+                QMSService.create_demo_project(
                     target_dir=Path(tmpdir),
                     name="test_demo",
                     demo_id="nonexistent_demo",

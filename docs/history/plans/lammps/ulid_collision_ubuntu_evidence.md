@@ -18,7 +18,7 @@ assert '01KFD0TV8H6ENQQR378FPFEC71' != '01KFD0TV8H6ENQQR378FPFEC71'
 
 ### The Bug Location
 
-In `src/quantumvitas/api.py`, `QVService.init_step()` line 946:
+In `src/qmatsuite/api.py`, `QMSService.init_step()` line 946:
 
 ```python
 # Line 846: Generate NEW step_id
@@ -123,7 +123,7 @@ This is NOT Ubuntu-specific - it would fail anywhere. However:
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/api.py` | Fix `init_step()` return value and slug assignment |
+| `src/qmatsuite/api.py` | Fix `init_step()` return value and slug assignment |
 
 ## 7. Verification
 
@@ -134,7 +134,7 @@ After fix, the test should pass because:
 
 ## 8. Fixes Applied
 
-### Fix 1: `src/quantumvitas/api.py` (line 924-951)
+### Fix 1: `src/qmatsuite/api.py` (line 924-951)
 
 ```python
 # BEFORE (BUG):
@@ -148,7 +148,7 @@ step_doc.set(["meta", "slug"], base_name)  # Unique: "md", "md-1", "md-2"
 return require_step(project_root, calculation_selector, step_id_from_doc)  # Uses unique ULID
 ```
 
-### Fix 2: `src/quantumvitas/core/resolution.py` (line 1466-1490)
+### Fix 2: `src/qmatsuite/core/resolution.py` (line 1466-1490)
 
 **Root Cause**: `_step_path_to_resolved()` was re-computing slug from name instead of reading from YAML.
 

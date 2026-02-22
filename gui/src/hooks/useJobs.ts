@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { JobSummary, JobInfo, JobLogs, JobCounts, JobStatus } from '../types/qv';
+import type { JobSummary, JobInfo, JobLogs, JobCounts, JobStatus } from '../types/qms';
 import { normalizeProjectRoot } from '../utils/pathUtils';
 
 interface UseJobsOptions {
@@ -73,7 +73,7 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
   }, [isPolling]);
   
   const fetchJobs = useCallback(async (isPollingCall = false) => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     // Prevent re-entrant calls
     if (inFlightRef.current) {
@@ -102,7 +102,7 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
       
       // Fetch jobs list
       // Backend contract: { project_root?: string (normalized absolute), limit?: int }
-      const listResponse = await window.qv.request<{ jobs: JobSummary[]; count: number }>(
+      const listResponse = await window.qms.request<{ jobs: JobSummary[]; count: number }>(
         'list_jobs',
         { 
           project_root: normalizedProjectRoot, // Only include if defined (backend handles None/undefined)
@@ -121,7 +121,7 @@ export function useJobs(options: UseJobsOptions = {}): UseJobsResult {
       }
       
       // Fetch counts
-      const countsResponse = await window.qv.request<JobCounts>('job_counts', {});
+      const countsResponse = await window.qms.request<JobCounts>('job_counts', {});
       if (countsResponse.ok && countsResponse.data) {
         setCounts(countsResponse.data);
       }
@@ -284,13 +284,13 @@ export function useJobDetail(options: UseJobDetailOptions): UseJobDetailResult {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const fetchJob = useCallback(async () => {
-    if (!window.qv || !jobId) return;
+    if (!window.qms || !jobId) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await window.qv.request<JobInfo>('get_job_status', { job_id: jobId });
+      const response = await window.qms.request<JobInfo>('get_job_status', { job_id: jobId });
       
       if (response.ok && response.data) {
         setJob(response.data);
@@ -305,10 +305,10 @@ export function useJobDetail(options: UseJobDetailOptions): UseJobDetailResult {
   }, [jobId]);
   
   const fetchLogs = useCallback(async () => {
-    if (!window.qv || !jobId) return;
+    if (!window.qms || !jobId) return;
     
     try {
-      const response = await window.qv.request<JobLogs>('get_job_logs', {
+      const response = await window.qms.request<JobLogs>('get_job_logs', {
         job_id: jobId,
         tail_lines: 200,
       });
@@ -322,10 +322,10 @@ export function useJobDetail(options: UseJobDetailOptions): UseJobDetailResult {
   }, [jobId]);
   
   const cancelJob = useCallback(async (): Promise<boolean> => {
-    if (!window.qv || !jobId) return false;
+    if (!window.qms || !jobId) return false;
     
     try {
-      const response = await window.qv.request<{ cancelled: boolean }>('cancel_job', { job_id: jobId });
+      const response = await window.qms.request<{ cancelled: boolean }>('cancel_job', { job_id: jobId });
       if (response.ok && response.data?.cancelled) {
         await fetchJob();
         return true;

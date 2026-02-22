@@ -13,15 +13,15 @@
 
 ### Evidence Summary
 
-1. **ParamSpace compiler output**: `src/quantumvitas/presets/paramspace.py:601-605`
+1. **ParamSpace compiler output**: `src/qmatsuite/presets/paramspace.py:601-605`
    - Converts Python `bool` to `.true.`/`.false.` strings using `ir_bool()`
    - Patch dicts contain IR canonical strings, not Python bool
 
-2. **Integration layer**: `src/quantumvitas/presets/integration.py:712-720`
+2. **Integration layer**: `src/qmatsuite/presets/integration.py:712-720`
    - Calls `ir_params_to_qe_params()` to ensure QE format before applying to StepDoc
    - Comment: "step.yaml is spec step, parameters must be engine-specific format (QE: .true./.false.)"
 
-3. **Step YAML storage**: `src/quantumvitas/core/yamldoc.py:apply_patch()` (lines 358-396)
+3. **Step YAML storage**: `src/qmatsuite/core/yamldoc.py:apply_patch()` (lines 358-396)
    - Stores values as-is via `set()` (line 396)
    - If patch contains `.true.` string, it is stored as string (preserved)
 
@@ -29,7 +29,7 @@
    - Expects `.false.` string in step.yaml after applying presets
    - Comment: "step.yaml stores QE strings, not Python bools"
 
-5. **QE writer**: `src/quantumvitas/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 118-122)
+5. **QE writer**: `src/qmatsuite/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 118-122)
    - Converts Python `bool` to `.true.`/`.false.` strings for boolean parameters
    - If input is already `.true.` string, it passes through unchanged
 
@@ -128,20 +128,20 @@ def test_yaml_boolean_parsing():
 
 ### IR Representation
 
-- `src/quantumvitas/presets/paramspace.py:601-605` - ParamSpace compiler converts bool to `.true.`/`.false.`
-- `src/quantumvitas/presets/integration.py:712-720` - Integration layer ensures QE format
-- `src/quantumvitas/ir/backends/qe/mapping.py:14-41` - `ir_bool()` encoder
-- `src/quantumvitas/ir/backends/qe/mapping.py:218-278` - `ir_params_to_qe_params()` converter
+- `src/qmatsuite/presets/paramspace.py:601-605` - ParamSpace compiler converts bool to `.true.`/`.false.`
+- `src/qmatsuite/presets/integration.py:712-720` - Integration layer ensures QE format
+- `src/qmatsuite/ir/backends/qe/mapping.py:14-41` - `ir_bool()` encoder
+- `src/qmatsuite/ir/backends/qe/mapping.py:218-278` - `ir_params_to_qe_params()` converter
 - `tests/presets/test_integration_ir.py:177` - Test expects `.false.` string
 
 ### Step Vocabulary
 
-- `src/quantumvitas/workflow/registry.py:StepTypeSpec` (lines 23-58) - Gen/public and spec/machine definitions
-- `src/quantumvitas/workflow/step_factory.py:73` - step.yaml stores machine_type
-- `src/quantumvitas/presets/variants_registry.py:257-265` - Presets use public_type
-- `src/quantumvitas/calculation/step.py:92` - Runner reads from step.yaml (machine_type)
-- `src/quantumvitas/calculation/types.py:StepType` (lines 10-30) - Enum definition
-- `src/quantumvitas/api.py:7756-7758` - Enum validation (SSOT violation)
+- `src/qmatsuite/workflow/registry.py:StepTypeSpec` (lines 23-58) - Gen/public and spec/machine definitions
+- `src/qmatsuite/workflow/step_factory.py:73` - step.yaml stores machine_type
+- `src/qmatsuite/presets/variants_registry.py:257-265` - Presets use public_type
+- `src/qmatsuite/calculation/step.py:92` - Runner reads from step.yaml (machine_type)
+- `src/qmatsuite/calculation/types.py:StepType` (lines 10-30) - Enum definition
+- `src/qmatsuite/api.py:7756-7758` - Enum validation (SSOT violation)
 
 ---
 

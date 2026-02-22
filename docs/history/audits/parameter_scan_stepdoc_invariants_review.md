@@ -20,7 +20,7 @@ Additionally, a UI persistence bug causes only the initial value to be saved in 
 
 ### A1) How `apply_patch()` Works
 
-**File**: `src/quantumvitas/core/yamldoc.py:364-406`
+**File**: `src/qmatsuite/core/yamldoc.py:364-406`
 
 ```python
 def apply_patch(self, patch: dict, base_path: PathType = ()) -> None:
@@ -57,7 +57,7 @@ def _apply_patch_recursive(self, patch: dict, current_path: list[str]) -> None:
 
 ### A2) `set()` Method and Leaf Replacement
 
-**File**: `src/quantumvitas/core/yamldoc.py:304-339`
+**File**: `src/qmatsuite/core/yamldoc.py:304-339`
 
 ```python
 def set(self, path: PathType, value: Any) -> None:
@@ -87,7 +87,7 @@ def set(self, path: PathType, value: Any) -> None:
 
 ### A3) The Exact Error: "Path component X is not a dict"
 
-**File**: `src/quantumvitas/core/yamldoc.py:108-149`
+**File**: `src/qmatsuite/core/yamldoc.py:108-149`
 
 ```python
 def _navigate_to_parent(self, path: PathType, *, create: bool = False) -> tuple[dict, str]:
@@ -127,7 +127,7 @@ The patch structure `{"parameters": {"SYSTEM": {"ecutrho": {"scan_ref": "scan001
 
 ### A4) How `update_step_params()` Uses Patches
 
-**File**: `src/quantumvitas/api.py:4540-4601`
+**File**: `src/qmatsuite/api.py:4540-4601`
 
 ```python
 def update_step_params(...):
@@ -194,7 +194,7 @@ def update_step_params(...):
 
 ### B1) How K_POINTS is Represented
 
-**File**: `src/quantumvitas/api.py:4760-4768`
+**File**: `src/qmatsuite/api.py:4760-4768`
 
 ```python
 def set_common_card(...):
@@ -223,7 +223,7 @@ cards:
 
 **Key Finding**: K_POINTS uses **`set()` directly**, not `apply_patch()`.
 
-**File**: `src/quantumvitas/api.py:4767`
+**File**: `src/qmatsuite/api.py:4767`
 ```python
 step_doc.set(["cards", "K_POINTS"], card_data)
 ```
@@ -425,7 +425,7 @@ const handleScanValuesChange = useCallback((scanId: string, values: unknown[]) =
 **File**: `gui/src/components/panels/StepDetailPanel.tsx:755-761`
 
 ```typescript
-const response = await window.qv.request<StepDetail>('update_step_params', {
+const response = await window.qms.request<StepDetail>('update_step_params', {
     project_root: normalizedProjectRoot,
     calculation: calculationSelector,
     step: stepSelector,
@@ -438,7 +438,7 @@ const response = await window.qv.request<StepDetail>('update_step_params', {
 
 ### D4) Backend Processing
 
-**File**: `src/quantumvitas/api.py:4599-4601`
+**File**: `src/qmatsuite/api.py:4599-4601`
 
 ```python
 # Update parameter_scan if provided
@@ -562,11 +562,11 @@ if (response.ok && response.data) {
 ## Appendix: Code References
 
 ### Key Files
-- `src/quantumvitas/core/yamldoc.py`: YamlDoc core mutation logic
-- `src/quantumvitas/api.py:4540-4601`: `update_step_params()` implementation
+- `src/qmatsuite/core/yamldoc.py`: YamlDoc core mutation logic
+- `src/qmatsuite/api.py:4540-4601`: `update_step_params()` implementation
 - `gui/src/components/panels/StepDetailPanel.tsx:830-927`: Scan toggle and values change handlers
 - `gui/src/components/step_parameters/ScanValuesEditor.tsx`: Scan values editor component
-- `src/quantumvitas/api.py:4760-4768`: K_POINTS card update (precedent)
+- `src/qmatsuite/api.py:4760-4768`: K_POINTS card update (precedent)
 
 ### Key Functions
 - `YamlDoc.apply_patch()`: Main patch application entry point
@@ -574,7 +574,7 @@ if (response.ok && response.data) {
 - `YamlDoc.set()`: Leaf value replacement
 - `YamlDoc._navigate_to_parent()`: Path navigation (raises "not a dict" error)
 - `YamlDoc._is_scanref_leaf_dict()`: Current workaround for ScanRef dicts
-- `QVService.update_step_params()`: Backend parameter update handler
+- `QMSService.update_step_params()`: Backend parameter update handler
 - `StepDetailPanel.handleScanToggle()`: UI scan enable/disable handler
 - `StepDetailPanel.handleScanValuesChange()`: UI scan values update handler
 

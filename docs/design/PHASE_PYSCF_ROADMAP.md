@@ -81,9 +81,9 @@ This document provides an incremental, checkable roadmap for expanding PySCF sup
 - Artifacts are written to per-step directories
 
 **Files to Review**:
-- `src/quantumvitas/engines/pyscf/runner.py` (checkpoint handling, unified method parameter)
-- `src/quantumvitas/calculation/manifest_reconcile.py` (incremental skip gating)
-- `src/quantumvitas/workflow/registry.py` (step type specs)
+- `src/qmatsuite/engines/pyscf/runner.py` (checkpoint handling, unified method parameter)
+- `src/qmatsuite/calculation/manifest_reconcile.py` (incremental skip gating)
+- `src/qmatsuite/workflow/registry.py` (step type specs)
 - `tests/integration/test_pyscf_execution.py` (integration tests)
 
 **Not Doing**:
@@ -107,7 +107,7 @@ This document provides an incremental, checkable roadmap for expanding PySCF sup
 
 ### C1: Step Type Registry
 - [ ] Add `pyscf_analysis` step type to registry
-  - File: `src/quantumvitas/workflow/registry.py`
+  - File: `src/qmatsuite/workflow/registry.py`
   - `id`: `"analysis"` (public type, string key)
   - `machine_type`: `"pyscf_analysis"`
   - `public_type`: `"analysis"`
@@ -117,11 +117,11 @@ This document provides an incremental, checkable roadmap for expanding PySCF sup
 
 ### C2: Workflow Materialization
 - [ ] Add `("pyscf", "analysis"): "pyscf_analysis"` to `MATERIALIZATION_MAP`
-  - File: `src/quantumvitas/workflow/generalized_steps.py`
+  - File: `src/qmatsuite/workflow/generalized_steps.py`
   - Use string key `"analysis"`, NOT enum value
 - [ ] Update `materialize_public_step_key()` to handle `"analysis"` public key
 - [ ] Add `scf_analysis` workflow template
-  - File: `src/quantumvitas/workflow/templates.py`
+  - File: `src/qmatsuite/workflow/templates.py`
   - `id`: `"scf_analysis"`
   - `name`: `"SCF + Analysis"`
   - `step_sequence`: `("scf", "analysis")`
@@ -129,15 +129,15 @@ This document provides an incremental, checkable roadmap for expanding PySCF sup
 
 ### C3: Step.yaml Generation
 - [ ] Add default parameters for `pyscf_analysis`
-  - File: `src/quantumvitas/calculation/step_defaults.py`
+  - File: `src/qmatsuite/calculation/step_defaults.py`
   - Defaults: `population_method="mulliken"`, `verbose=4`
   - **CRITICAL**: Do NOT include `scf_method`, `scf_xc`, `scf_chkfile` in defaults (these are inferred by runner from upstream artifacts)
 - [ ] Verify `create_step_doc()` handles `pyscf_analysis` correctly
-  - File: `src/quantumvitas/workflow/step_factory.py`
+  - File: `src/qmatsuite/workflow/step_factory.py`
 
 ### C4: Execution Engine
 - [ ] Implement `run_analysis()` function in PySCF runner
-  - File: `src/quantumvitas/engines/pyscf/runner.py`
+  - File: `src/qmatsuite/engines/pyscf/runner.py`
   - **SCF metadata inference**: Read upstream SCF step's `results.json` to get `method` and `xc` (if DFT). Construct checkpoint path from upstream step's artifacts directory.
   - Load SCF checkpoint (must exist, fail if missing/corrupt)
   - Rebuild `mol` and `mf` from checkpoint (conservative policy: rerun SCF kernel)
@@ -237,7 +237,7 @@ pytest tests/integration/test_pyscf_execution.py::TestPySCFAnalysis -v
 
 ### C1: Step Type Registry
 - [ ] Add `pyscf_td` step type to registry
-  - File: `src/quantumvitas/workflow/registry.py`
+  - File: `src/qmatsuite/workflow/registry.py`
   - `id`: `"td"` (public type, string key)
   - `machine_type`: `"pyscf_td"`
   - `public_type`: `"td"`
@@ -247,12 +247,12 @@ pytest tests/integration/test_pyscf_execution.py::TestPySCFAnalysis -v
 
 ### C2: Workflow Materialization
 - [ ] Add `("pyscf", "td"): "pyscf_td"` to `MATERIALIZATION_MAP`
-  - File: `src/quantumvitas/workflow/generalized_steps.py`
+  - File: `src/qmatsuite/workflow/generalized_steps.py`
   - Use string key `"td"`, NOT enum value
   - Do NOT add separate `"tddft"` or `"tdhf"` keys
 - [ ] Update `materialize_public_step_key()` to handle `"td"` public key
 - [ ] Add `scf_td` workflow template
-  - File: `src/quantumvitas/workflow/templates.py`
+  - File: `src/qmatsuite/workflow/templates.py`
   - `id`: `"scf_td"`
   - `name`: `"SCF + Excited States"`
   - `step_sequence`: `("scf", "td")`
@@ -260,14 +260,14 @@ pytest tests/integration/test_pyscf_execution.py::TestPySCFAnalysis -v
 
 ### C3: Step.yaml Generation
 - [ ] Add default parameters for `pyscf_td`
-  - File: `src/quantumvitas/calculation/step_defaults.py`
+  - File: `src/qmatsuite/calculation/step_defaults.py`
   - Defaults: `nroots=10`, `tda=False`, `conv_tol=1e-9`, `max_cycle=50`, `verbose=4`
   - **CRITICAL**: Do NOT include `scf_method`, `scf_xc`, `scf_chkfile` in defaults (these are inferred by runner from upstream artifacts)
 - [ ] Verify `create_step_doc()` handles `pyscf_td` correctly
 
 ### C4: Execution Engine
 - [ ] Implement `run_td()` function in PySCF runner
-  - File: `src/quantumvitas/engines/pyscf/runner.py`
+  - File: `src/qmatsuite/engines/pyscf/runner.py`
   - **SCF metadata inference**: Read upstream SCF step's `results.json` to get `method` and `xc` (if DFT). Construct checkpoint path from upstream step's artifacts directory.
   - Load SCF checkpoint (must exist, fail if missing/corrupt)
   - Rebuild `mol` and `mf` from checkpoint (conservative policy: rerun SCF kernel)
@@ -286,7 +286,7 @@ pytest tests/integration/test_pyscf_execution.py::TestPySCFAnalysis -v
 
 ### C5: Workflow Validation Rules
 - [ ] Add validation rule: DFT → TDHF is blocked (hard error)
-  - File: `src/quantumvitas/workflow/templates.py` (workflow validation layer)
+  - File: `src/qmatsuite/workflow/templates.py` (workflow validation layer)
   - Check: If upstream SCF method is DFT and TD step is used → ERROR (DFT → TDHF is meaningless)
   - Note: Workflow validation happens at materialization/instantiation time, NOT in runner
   - Runner does NOT enforce physics rules (steps are dumb, workflows are smart)
@@ -424,7 +424,7 @@ pytest tests/integration/test_pyscf_execution.py::TestPySCFTD -v
 **Reference**:
 - PySCF MP2 docs: https://pyscf.org/user/mp.html
 - Examples: `.tmp/pyscf-master/examples/mp/00-simple_mp2.py`
-- Phase 3C implementation: `src/quantumvitas/engines/pyscf/runner.py::run_mp2`
+- Phase 3C implementation: `src/qmatsuite/engines/pyscf/runner.py::run_mp2`
 
 ---
 
@@ -440,7 +440,7 @@ pytest tests/integration/test_pyscf_execution.py::TestPySCFTD -v
 
 ### C1: Step Type Registry
 - [ ] Add `pyscf_freq` step type to registry
-  - File: `src/quantumvitas/workflow/registry.py`
+  - File: `src/qmatsuite/workflow/registry.py`
   - `id`: `"freq"` (public type, string key)
   - `machine_type`: `"pyscf_freq"`
   - `public_type`: `"freq"`
@@ -450,11 +450,11 @@ pytest tests/integration/test_pyscf_execution.py::TestPySCFTD -v
 
 ### C2: Workflow Materialization
 - [ ] Add `("pyscf", "freq"): "pyscf_freq"` to `MATERIALIZATION_MAP`
-  - File: `src/quantumvitas/workflow/generalized_steps.py`
+  - File: `src/qmatsuite/workflow/generalized_steps.py`
   - Use string key `"freq"`, NOT enum value
 - [ ] Update `materialize_public_step_key()` to handle `"freq"` public key
 - [ ] Add `scf_freq` workflow template
-  - File: `src/quantumvitas/workflow/templates.py`
+  - File: `src/qmatsuite/workflow/templates.py`
   - `id`: `"scf_freq"`
   - `name`: `"SCF + Frequencies"`
   - `step_sequence`: `("scf", "freq")`
@@ -462,14 +462,14 @@ pytest tests/integration/test_pyscf_execution.py::TestPySCFTD -v
 
 ### C3: Step.yaml Generation
 - [ ] Add default parameters for `pyscf_freq`
-  - File: `src/quantumvitas/calculation/step_defaults.py`
+  - File: `src/qmatsuite/calculation/step_defaults.py`
   - Defaults: `thermo=False`, `temperature=298.15`, `pressure=101325`, `verbose=4`
   - **CRITICAL**: Do NOT include `scf_method`, `scf_xc`, `scf_chkfile` in defaults (these are inferred by runner from upstream artifacts)
 - [ ] Verify `create_step_doc()` handles `pyscf_freq` correctly
 
 ### C4: Execution Engine
 - [ ] Implement `run_freq()` function in PySCF runner
-  - File: `src/quantumvitas/engines/pyscf/runner.py`
+  - File: `src/qmatsuite/engines/pyscf/runner.py`
   - **SCF metadata inference**: Read upstream SCF step's `results.json` to get `method` and `xc` (if DFT). Construct checkpoint path from upstream step's artifacts directory.
   - Load SCF checkpoint (must exist, fail if missing/corrupt)
   - Rebuild `mol` and `mf` from checkpoint (conservative policy: rerun SCF kernel)

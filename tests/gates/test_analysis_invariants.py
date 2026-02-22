@@ -16,21 +16,21 @@ from typing import Iterable
 import numpy as np
 import pytest
 
-import quantumvitas.core.analysis.orchestrator as orchestrator_mod
-from quantumvitas.core.analysis.band_structure import BandStructure, HighSymPoint
-from quantumvitas.core.analysis.base import AnalysisObjectMeta
-from quantumvitas.core.analysis.bundles import RenderMeta
-from quantumvitas.core.analysis.capability import (
+import qmatsuite.core.analysis.orchestrator as orchestrator_mod
+from qmatsuite.core.analysis.band_structure import BandStructure, HighSymPoint
+from qmatsuite.core.analysis.base import AnalysisObjectMeta
+from qmatsuite.core.analysis.bundles import RenderMeta
+from qmatsuite.core.analysis.capability import (
     AnalysisCapability,
     MissingReason,
     ResultState,
     find_contiguous_match,
 )
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ANALYSIS_DIR = REPO_ROOT / "src" / "quantumvitas" / "core" / "analysis"
+ANALYSIS_DIR = REPO_ROOT / "src" / "qmatsuite" / "core" / "analysis"
 TRANSFORMS_DIR = ANALYSIS_DIR / "transforms"
 
 
@@ -241,12 +241,12 @@ def test_transform_no_engine_imports() -> None:
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 module = node.module or ""
-                assert not module.startswith("quantumvitas.drivers"), (
+                assert not module.startswith("qmatsuite.drivers"), (
                     f"{path}:{node.lineno} imports from driver module '{module}'"
                 )
             elif isinstance(node, ast.Import):
                 for alias in node.names:
-                    assert not alias.name.startswith("quantumvitas.drivers"), (
+                    assert not alias.name.startswith("qmatsuite.drivers"), (
                         f"{path}:{node.lineno} imports driver module '{alias.name}'"
                     )
 
@@ -280,7 +280,7 @@ def test_no_engine_branching_in_orchestrator() -> None:
 def test_analysis_capability_declaration() -> None:
     """§5.2: engines with analysis providers declare matching capabilities."""
     providers_by_engine: dict[str, set[str]] = {}
-    parser_dir = REPO_ROOT / "src" / "quantumvitas" / "drivers"
+    parser_dir = REPO_ROOT / "src" / "qmatsuite" / "drivers"
 
     for path in _python_files(parser_dir):
         if "/parsers/" not in str(path):
@@ -309,7 +309,7 @@ def test_analysis_capability_declaration() -> None:
 
     assert providers_by_engine, "No analysis providers discovered in parser decorators"
 
-    import quantumvitas.drivers  # noqa: F401 - ensure drivers are registered
+    import qmatsuite.drivers  # noqa: F401 - ensure drivers are registered
 
     for engine, object_types in providers_by_engine.items():
         driver = DriverRegistry.get_driver(engine)
@@ -521,9 +521,9 @@ def _iter_non_comment_lines(path: Path) -> Iterable[tuple[int, str]]:
 def test_no_tmp_corpus_in_runtime() -> None:
     """Inv-A14: analysis runtime paths do not reference .tmp corpus inputs."""
     runtime_roots = [
-        REPO_ROOT / "src" / "quantumvitas" / "core" / "analysis",
-        REPO_ROOT / "src" / "quantumvitas" / "drivers",
-        REPO_ROOT / "src" / "quantumvitas" / "api",
+        REPO_ROOT / "src" / "qmatsuite" / "core" / "analysis",
+        REPO_ROOT / "src" / "qmatsuite" / "drivers",
+        REPO_ROOT / "src" / "qmatsuite" / "api",
     ]
     runtime_files = sorted(
         path
@@ -543,24 +543,24 @@ def test_no_tmp_corpus_in_runtime() -> None:
 def test_no_legacy_analysis_artifact_imports() -> None:
     """Legacy analysis/artifacts.py must not be imported by runtime code."""
     runtime_roots = [
-        REPO_ROOT / "src" / "quantumvitas" / "api",
-        REPO_ROOT / "src" / "quantumvitas" / "daemon",
-        REPO_ROOT / "src" / "quantumvitas" / "core",
+        REPO_ROOT / "src" / "qmatsuite" / "api",
+        REPO_ROOT / "src" / "qmatsuite" / "daemon",
+        REPO_ROOT / "src" / "qmatsuite" / "core",
     ]
     for root in runtime_roots:
         for path in root.rglob("*.py"):
             text = path.read_text(encoding="utf-8")
-            assert "from quantumvitas.analysis.artifacts" not in text, (
+            assert "from qmatsuite.analysis.artifacts" not in text, (
                 f"{path} imports deprecated analysis/artifacts module"
             )
-            assert "quantumvitas.analysis.artifacts" not in text, (
+            assert "qmatsuite.analysis.artifacts" not in text, (
                 f"{path} references deprecated analysis/artifacts module"
             )
 
 
 def test_derived_never_persisted() -> None:
     """Inv-A11: API persistence paths must not write derived bundles."""
-    service_path = REPO_ROOT / "src" / "quantumvitas" / "api" / "service.py"
+    service_path = REPO_ROOT / "src" / "qmatsuite" / "api" / "service.py"
     source = service_path.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(service_path))
 
@@ -584,7 +584,7 @@ def test_derived_never_persisted() -> None:
 
 def test_operational_path_no_cas_read() -> None:
     """Inv-A11: operational get_analysis path must not read CAS snapshots."""
-    service_path = REPO_ROOT / "src" / "quantumvitas" / "api" / "service.py"
+    service_path = REPO_ROOT / "src" / "qmatsuite" / "api" / "service.py"
     source = service_path.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(service_path))
 
@@ -595,7 +595,7 @@ def test_operational_path_no_cas_read() -> None:
                 if isinstance(item, ast.FunctionDef) and item.name == "get_analysis":
                     analysis_get_analysis = item
                     break
-    assert analysis_get_analysis is not None, "QVService.Analysis.get_analysis not found"
+    assert analysis_get_analysis is not None, "QMSService.Analysis.get_analysis not found"
 
     forbidden_calls = {"_load_snapshot_bundle", "retrieve", "retrieve_json"}
     for subnode in ast.walk(analysis_get_analysis):
@@ -613,7 +613,7 @@ def test_operational_path_no_cas_read() -> None:
 
 def test_cas_is_content_addressed() -> None:
     """Inv-A11: analysis snapshots link runs to canonical_sha content hashes."""
-    schema_path = REPO_ROOT / "src" / "quantumvitas" / "provenance" / "schema.py"
+    schema_path = REPO_ROOT / "src" / "qmatsuite" / "provenance" / "schema.py"
     schema_src = schema_path.read_text(encoding="utf-8")
 
     assert "analysis_snapshots" in schema_src
@@ -640,7 +640,7 @@ def test_golden_daemon_tests_exist() -> None:
 
 def test_vasp_analysis_capabilities_cover_five_types() -> None:
     """VASP driver must declare capabilities for all five analysis types."""
-    from quantumvitas.drivers.vasp.driver import VASPDriver
+    from qmatsuite.drivers.vasp.driver import VASPDriver
 
     driver = VASPDriver()
     types = {cap.object_type for cap in driver.ANALYSIS_CAPABILITIES}
@@ -653,14 +653,14 @@ def test_vasp_analysis_capabilities_cover_five_types() -> None:
 def test_field3d_bundle_excludes_full_grid() -> None:
     """Gate: field3d bundle must NOT contain full grid_data in arrays."""
     import inspect
-    from quantumvitas.core.analysis.field3d import Field3D
+    from qmatsuite.core.analysis.field3d import Field3D
     source = inspect.getsource(Field3D.to_primitives)
     assert '"grid_data": self.grid_data' not in source
 
 
 def test_band_structure_supports_projections() -> None:
     """Gate: BandStructure must have projections + projection_labels fields."""
-    from quantumvitas.core.analysis.band_structure import BandStructure
+    from qmatsuite.core.analysis.band_structure import BandStructure
     fields = set(BandStructure.__dataclass_fields__)
     assert "projections" in fields
     assert "projection_labels" in fields
@@ -676,9 +676,9 @@ def test_band_structure_supports_projections() -> None:
 ])
 def test_bands_dos_parser_matrix(engine: str, object_type: str) -> None:
     """Gate: every engine in the bands/DOS matrix has a registered parser."""
-    import quantumvitas.drivers  # noqa: F401 — trigger registration
+    import qmatsuite.drivers  # noqa: F401 — trigger registration
 
-    from quantumvitas.parsers.registry import _PARSERS
+    from qmatsuite.parsers.registry import _PARSERS
 
     key = (engine, object_type)
     assert key in _PARSERS, (
@@ -690,7 +690,7 @@ def test_bands_dos_parser_matrix(engine: str, object_type: str) -> None:
 @pytest.mark.parametrize("engine", ["qe", "vasp", "abinit", "siesta", "cp2k", "gpaw"])
 def test_bands_dos_engine_has_analysis_capabilities(engine: str) -> None:
     """Gate: every engine with bands/dos parsers declares ANALYSIS_CAPABILITIES."""
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
 
     driver = DriverRegistry.get_driver(engine)
     caps = getattr(driver, "ANALYSIS_CAPABILITIES", [])
@@ -703,9 +703,9 @@ def test_bands_dos_engine_has_analysis_capabilities(engine: str) -> None:
 @pytest.mark.parametrize("engine", ["vasp", "qe"])
 def test_fatbands_parser_registers_with_bands(engine: str) -> None:
     """Gate: engines with fatband support register as (engine, bands) parser."""
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
 
-    from quantumvitas.parsers.registry import _PARSERS
+    from qmatsuite.parsers.registry import _PARSERS
 
     key = (engine, "bands")
     assert key in _PARSERS, f"No bands parser registered for {engine}"
@@ -714,9 +714,9 @@ def test_fatbands_parser_registers_with_bands(engine: str) -> None:
 @pytest.mark.parametrize("engine", ["vasp", "qe", "siesta", "cp2k", "abinit"])
 def test_pdos_engine_has_dos_parser(engine: str) -> None:
     """Gate: engines with PDOS support register as (engine, dos) parser."""
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
 
-    from quantumvitas.parsers.registry import _PARSERS
+    from qmatsuite.parsers.registry import _PARSERS
 
     key = (engine, "dos")
     assert key in _PARSERS, f"No dos parser registered for {engine}"
@@ -737,9 +737,9 @@ def test_final_matrix_documented() -> None:
 ])
 def test_trajectory_parser_matrix(engine: str) -> None:
     """Gate: every trajectory-capable engine has a registered trajectory parser."""
-    import quantumvitas.drivers  # noqa: F401 — trigger registration
+    import qmatsuite.drivers  # noqa: F401 — trigger registration
 
-    from quantumvitas.parsers.registry import _PARSERS
+    from qmatsuite.parsers.registry import _PARSERS
 
     key = (engine, "trajectory")
     assert key in _PARSERS, (
@@ -754,7 +754,7 @@ def test_trajectory_parser_matrix(engine: str) -> None:
 ])
 def test_trajectory_engine_has_analysis_capabilities(engine: str) -> None:
     """Gate: every engine with trajectory parser declares trajectory in ANALYSIS_CAPABILITIES."""
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
 
     driver = DriverRegistry.get_driver(engine)
     caps = getattr(driver, "ANALYSIS_CAPABILITIES", [])
@@ -767,9 +767,9 @@ def test_trajectory_engine_has_analysis_capabilities(engine: str) -> None:
 @pytest.mark.parametrize("engine", ["qe", "vasp", "abinit", "siesta", "cp2k"])
 def test_convergence_parser_matrix(engine: str) -> None:
     """Gate: every convergence-capable engine has a registered convergence parser."""
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
 
-    from quantumvitas.parsers.registry import _PARSERS
+    from qmatsuite.parsers.registry import _PARSERS
 
     key = (engine, "convergence")
     assert key in _PARSERS, (
@@ -781,7 +781,7 @@ def test_convergence_parser_matrix(engine: str) -> None:
 @pytest.mark.parametrize("engine", ["qe", "vasp", "abinit", "siesta", "cp2k"])
 def test_convergence_engine_has_analysis_capabilities(engine: str) -> None:
     """Gate: every engine with convergence parser declares convergence in ANALYSIS_CAPABILITIES."""
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
 
     driver = DriverRegistry.get_driver(engine)
     caps = getattr(driver, "ANALYSIS_CAPABILITIES", [])
@@ -793,12 +793,12 @@ def test_convergence_engine_has_analysis_capabilities(engine: str) -> None:
 
 def test_trajectory_transforms_importable() -> None:
     """Gate: all 6 trajectory transforms are importable."""
-    from quantumvitas.core.analysis.transforms.frame_slice import FrameSlice
-    from quantumvitas.core.analysis.transforms.smoothing import Smoothing
-    from quantumvitas.core.analysis.transforms.msd import MSD
-    from quantumvitas.core.analysis.transforms.rdf import RDF
-    from quantumvitas.core.analysis.transforms.vacf import VACF
-    from quantumvitas.core.analysis.transforms.diffusion import DiffusionCoefficient
+    from qmatsuite.core.analysis.transforms.frame_slice import FrameSlice
+    from qmatsuite.core.analysis.transforms.smoothing import Smoothing
+    from qmatsuite.core.analysis.transforms.msd import MSD
+    from qmatsuite.core.analysis.transforms.rdf import RDF
+    from qmatsuite.core.analysis.transforms.vacf import VACF
+    from qmatsuite.core.analysis.transforms.diffusion import DiffusionCoefficient
 
     assert FrameSlice is not None
     assert Smoothing is not None
@@ -810,9 +810,9 @@ def test_trajectory_transforms_importable() -> None:
 
 def test_neb_trajectory_parser_registered() -> None:
     """Gate: QE NEB trajectory parser is registered."""
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
 
-    from quantumvitas.parsers.registry import _PARSERS
+    from qmatsuite.parsers.registry import _PARSERS
 
     key = ("qe", "neb_trajectory")
     assert key in _PARSERS, f"Missing parser for qe/neb_trajectory"
@@ -824,9 +824,9 @@ def test_frontend_no_kernel_import() -> None:
     assert frontend_root.exists(), "gui/src not found"
 
     forbidden = [
-        "quantumvitas.core",
-        "quantumvitas.analysis",
-        "quantumvitas.drivers",
+        "qmatsuite.core",
+        "qmatsuite.analysis",
+        "qmatsuite.drivers",
     ]
     ts_like = list(frontend_root.rglob("*.ts")) + list(frontend_root.rglob("*.tsx"))
 
@@ -849,9 +849,9 @@ def test_frontend_no_kernel_import() -> None:
 ])
 def test_field3d_parser_matrix(engine: str) -> None:
     """Gate: every field3d-capable engine has a registered parser."""
-    import quantumvitas.drivers  # noqa: F401 — trigger registration
+    import qmatsuite.drivers  # noqa: F401 — trigger registration
 
-    from quantumvitas.parsers.registry import _PARSERS
+    from qmatsuite.parsers.registry import _PARSERS
 
     key = (engine, "field3d")
     assert key in _PARSERS, (
@@ -866,7 +866,7 @@ def test_field3d_parser_matrix(engine: str) -> None:
 ])
 def test_field3d_engine_has_analysis_capabilities(engine: str) -> None:
     """Gate: every field3d-capable engine declares field3d in ANALYSIS_CAPABILITIES."""
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
 
     driver = DriverRegistry.get_driver(engine)
     caps = getattr(driver, "ANALYSIS_CAPABILITIES", [])
@@ -878,14 +878,14 @@ def test_field3d_engine_has_analysis_capabilities(engine: str) -> None:
 
 def test_field3d_core_importable() -> None:
     """Gate: Field3D is importable from core analysis package."""
-    from quantumvitas.core.analysis.field3d import Field3D
+    from qmatsuite.core.analysis.field3d import Field3D
     assert hasattr(Field3D, "to_primitives")
     assert "grid_data" in Field3D.__init__.__code__.co_varnames
 
 
 def test_field3d_cube_parser_importable() -> None:
     """Gate: shared cube parser is importable from io/parser."""
-    from quantumvitas.io.parser.cube_parser import parse_cube_file, parse_xsf_field3d
+    from qmatsuite.io.parser.cube_parser import parse_cube_file, parse_xsf_field3d
     assert callable(parse_cube_file)
     assert callable(parse_xsf_field3d)
 
@@ -897,8 +897,8 @@ def test_field3d_cube_parser_importable() -> None:
 
 def test_declared_capability_has_provider() -> None:
     """§12.1: every declared capability MUST have a registered provider (gate-strict)."""
-    import quantumvitas.drivers  # noqa: F401
-    from quantumvitas.parsers.registry import get_parser
+    import qmatsuite.drivers  # noqa: F401
+    from qmatsuite.parsers.registry import get_parser
 
     registry = DriverRegistry.get_instance()
     engines_checked = 0
@@ -921,7 +921,7 @@ def test_declared_capability_has_provider() -> None:
 
 def test_capability_no_repeated_gen_steps() -> None:
     """§5.4.6: no capability may have repeated step types in gen_step_sequence."""
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
 
     registry = DriverRegistry.get_instance()
     for engine_name in list(registry._drivers.keys()):
@@ -958,13 +958,13 @@ def test_missing_provider_runtime_nonfatal(monkeypatch: pytest.MonkeyPatch, tmp_
 
 def test_enumerate_all_matches_importable() -> None:
     """Gate: enumerate_all_matches is available from capability module."""
-    from quantumvitas.core.analysis.capability import enumerate_all_matches
+    from qmatsuite.core.analysis.capability import enumerate_all_matches
     assert callable(enumerate_all_matches)
 
 
 def test_result_state_importable() -> None:
     """Gate: ResultState and AnalysisResult are importable."""
-    from quantumvitas.core.analysis.capability import (
+    from qmatsuite.core.analysis.capability import (
         AnalysisResult,
         MissingReason,
         ResultState,
@@ -976,6 +976,6 @@ def test_result_state_importable() -> None:
 
 def test_multi_match_schema_constraint() -> None:
     """§10.4: SQLite allows multiple rows per (run_ulid, object_type) with different match_key."""
-    schema_path = REPO_ROOT / "src" / "quantumvitas" / "provenance" / "schema.py"
+    schema_path = REPO_ROOT / "src" / "qmatsuite" / "provenance" / "schema.py"
     schema_src = schema_path.read_text(encoding="utf-8")
     assert "UNIQUE(run_ulid, object_type, match_key)" in schema_src

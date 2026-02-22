@@ -4,11 +4,11 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from quantumvitas.engine.lammps_engine import LammpsEngine
-from quantumvitas.engine.registry import create_default_registry, EngineRegistry
-from quantumvitas.engine.base import EngineConfig
-from quantumvitas.workflow.registry import get_registry
-from quantumvitas.core.resources import generate_resource_id
+from qmatsuite.engine.lammps_engine import LammpsEngine
+from qmatsuite.engine.registry import create_default_registry, EngineRegistry
+from qmatsuite.engine.base import EngineConfig
+from qmatsuite.workflow.registry import get_registry
+from qmatsuite.core.resources import generate_resource_id
 
 
 class TestLammpsEngine:
@@ -176,11 +176,11 @@ class TestLammpsRestartFromValidation:
 class TestLammpsBinaryResolver:
     """Test LAMMPS binary resolution."""
     
-    @patch("quantumvitas.core.engines.lammps_resolver.which")
-    @patch("quantumvitas.core.engines.lammps_resolver.os.environ", {})
+    @patch("qmatsuite.core.engines.lammps_resolver.which")
+    @patch("qmatsuite.core.engines.lammps_resolver.os.environ", {})
     def test_resolve_from_env_var(self, mock_which):
         """Test resolving LAMMPS from environment variable."""
-        from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
+        from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin
         import os
         
         with patch.dict(os.environ, {"QMATS_LAMMPS_BIN": "/custom/path/lmp"}):
@@ -189,13 +189,13 @@ class TestLammpsBinaryResolver:
                     bin_path = resolve_lammps_bin()
                     assert str(bin_path) == "/custom/path/lmp"
     
-    @patch("quantumvitas.core.engines.lammps_resolver.which")
-    @patch("quantumvitas.core.engines.lammps_resolver.Path.exists")
-    @patch("quantumvitas.core.engines.lammps_resolver.Path.is_file")
-    @patch("quantumvitas.core.engines.lammps_resolver.os.environ", {})
+    @patch("qmatsuite.core.engines.lammps_resolver.which")
+    @patch("qmatsuite.core.engines.lammps_resolver.Path.exists")
+    @patch("qmatsuite.core.engines.lammps_resolver.Path.is_file")
+    @patch("qmatsuite.core.engines.lammps_resolver.os.environ", {})
     def test_resolve_not_found(self, mock_is_file, mock_exists, mock_which):
         """Test FileNotFoundError when LAMMPS not found."""
-        from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
+        from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin
         
         # Mock all paths to not exist
         mock_exists.return_value = False

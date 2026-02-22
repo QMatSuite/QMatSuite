@@ -26,7 +26,7 @@ AssertionError: assert True == '.true.'
 
 ### 当前错误写入路径
 
-**文件**: `src/quantumvitas/presets/integration.py`  
+**文件**: `src/qmatsuite/presets/integration.py`  
 **函数**: `apply_presets_to_step()`  
 **位置**: 行 712 `doc.apply_patch(unified_patch)`
 
@@ -71,7 +71,7 @@ parameters:
 
 #### 1. QE Backend 序列化入口（SSOT）
 
-**文件**: `src/quantumvitas/ir/backends/qe/mapping.py`  
+**文件**: `src/qmatsuite/ir/backends/qe/mapping.py`  
 **函数**: `ir_params_to_qe_params(ir_params: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]`
 
 **职责**:
@@ -86,7 +86,7 @@ parameters:
 
 #### 2. 落盘前调用序列化
 
-**文件**: `src/quantumvitas/presets/integration.py`  
+**文件**: `src/qmatsuite/presets/integration.py`  
 **函数**: `apply_presets_to_step()`  
 **位置**: 在 `doc.apply_patch(unified_patch)` 之前
 
@@ -103,10 +103,10 @@ parameters:
 
 ### 修改文件清单
 
-1. **src/quantumvitas/ir/backends/qe/mapping.py**
+1. **src/qmatsuite/ir/backends/qe/mapping.py**
    - 新增/确认 `ir_params_to_qe_params()` 函数（处理 `parameters` + `cards` 结构）
 
-2. **src/quantumvitas/presets/integration.py**
+2. **src/qmatsuite/presets/integration.py**
    - 在 `doc.apply_patch()` 之前调用序列化
    - 从 `step_type` 推断 engine（目前都是 QE）
 

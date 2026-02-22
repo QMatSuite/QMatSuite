@@ -37,20 +37,20 @@
 - `OMP_NUM_THREADS` defaulted to 1 if not set
 
 **Files examined:**
-- `src/quantumvitas/drivers/qe/engine/qe_resolver.py` — two-state resolution
-- `src/quantumvitas/drivers/qe/engine/qe_engine.py` — executable lookup
-- `src/quantumvitas/drivers/qe/engine/qe_calculation.py` — subprocess invocation
-- `src/quantumvitas/calculation/runner.py` — engine-agnostic runner
-- `src/quantumvitas/execution/handlers.py` — handler map creation
-- `src/quantumvitas/core/driver_registry.py` — central registry
-- `src/quantumvitas/drivers/xtb/handler.py` — xTB subprocess pattern
-- `src/quantumvitas/drivers/vasp/handler.py` — VASP handler
+- `src/qmatsuite/drivers/qe/engine/qe_resolver.py` — two-state resolution
+- `src/qmatsuite/drivers/qe/engine/qe_engine.py` — executable lookup
+- `src/qmatsuite/drivers/qe/engine/qe_calculation.py` — subprocess invocation
+- `src/qmatsuite/calculation/runner.py` — engine-agnostic runner
+- `src/qmatsuite/execution/handlers.py` — handler map creation
+- `src/qmatsuite/core/driver_registry.py` — central registry
+- `src/qmatsuite/drivers/xtb/handler.py` — xTB subprocess pattern
+- `src/qmatsuite/drivers/vasp/handler.py` — VASP handler
 
 ### 2b: File Layout
 
 **Key findings:**
-- All paths via `src/quantumvitas/core/paths.py` (203 lines):
-  - `get_repo_root()`: walks up from `__file__` looking for `pyproject.toml` + `src/quantumvitas/`
+- All paths via `src/qmatsuite/core/paths.py` (203 lines):
+  - `get_repo_root()`: walks up from `__file__` looking for `pyproject.toml` + `src/qmatsuite/`
   - `get_qmatsuite_home_root()`: `<repo_root>/.qmatsuite/`
   - `get_qmatsuite_tmp_root()`: `<repo_root>/.tmp/`
   - 13 subdirectory helpers (config, engines, seeds, libraries, logs, pseudo, qe-specific, tmp-*)
@@ -64,14 +64,14 @@
 ### 2c: Packaging State
 
 **Key findings:**
-- `pyproject.toml`: package `quantumvitas`, version 1.0.1, entry point `qv = "quantumvitas.cli:app"`
+- `pyproject.toml`: package `qmatsuite`, version 1.0.1, entry point `qms = "qmatsuite.cli:app"`
 - Build: setuptools + wheel, Python >=3.9
 - 14 core deps (numpy, scipy, pymatgen, matplotlib, ase, etc.), 4 optional groups (dev, pyscf, mp-api, mcp)
 - No `setup.py` / `setup.cfg` / `MANIFEST.in`
 - Electron: `gui/` directory with React 18 + Vite 7 + Electron 39 + TypeScript + Three.js
 - `electron-builder.json5`: PLACEHOLDER values (`YourAppID`, `YourAppName`), dmg + nsis + AppImage targets
-- `electron/main.ts` (865 lines): spawns `python -m quantumvitas.daemon.server` as subprocess
-  - Python discovery: `QV_DAEMON_PYTHON` → `.venv/bin/python` → `venv/bin/python` → system `python`
+- `electron/main.ts` (865 lines): spawns `python -m qmatsuite.daemon.server` as subprocess
+  - Python discovery: `QMS_DAEMON_PYTHON` → `.venv/bin/python` → `venv/bin/python` → system `python`
   - JSON-RPC over stdio, 60s timeout, log forwarding
 - CI: `.github/workflows/tests.yml` — Ubuntu + macOS, builds QE from source, stages to `.qmatsuite/engines/qe/managed:qe-7.5:<os>`, runs pytest + Playwright E2E
 - No PyInstaller, Nuitka, or any binary packaging config exists

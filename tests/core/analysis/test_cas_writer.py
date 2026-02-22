@@ -9,17 +9,17 @@ from pathlib import Path
 
 import numpy as np
 
-from quantumvitas.core.analysis.bundles import (
+from qmatsuite.core.analysis.bundles import (
     CanonicalPrimitiveBundle,
     ProvenanceMeta,
     RenderMeta,
     compute_canonical_sha,
 )
-from quantumvitas.core.analysis.cas_writer import (
+from qmatsuite.core.analysis.cas_writer import (
     write_analysis_snapshot_row,
     write_canonical_to_cas,
 )
-from quantumvitas.provenance.db import get_db_path, open_provenance_db
+from qmatsuite.provenance.db import get_db_path, open_provenance_db
 
 
 def _bundle() -> CanonicalPrimitiveBundle:

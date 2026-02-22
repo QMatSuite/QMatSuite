@@ -7,7 +7,7 @@ PR4: Tests for PubChem search, SDF parsing, and rate limiting.
 from unittest.mock import patch, Mock
 import pytest
 
-from quantumvitas.io.providers.pubchem import (
+from qmatsuite.io.providers.pubchem import (
     search_by_name,
     search_by_formula,
     fetch_3d_sdf,
@@ -33,7 +33,7 @@ class TestPubChemSearch:
         }
         mock_response.raise_for_status = Mock()
         
-        with patch('quantumvitas.io.providers.pubchem.requests.get', return_value=mock_response):
+        with patch('qmatsuite.io.providers.pubchem.requests.get', return_value=mock_response):
             cids = search_by_name("caffeine", max_results=10)
             
             assert len(cids) == 2
@@ -44,7 +44,7 @@ class TestPubChemSearch:
         mock_response = Mock()
         mock_response.status_code = 404
         
-        with patch('quantumvitas.io.providers.pubchem.requests.get', return_value=mock_response):
+        with patch('qmatsuite.io.providers.pubchem.requests.get', return_value=mock_response):
             cids = search_by_name("nonexistent_compound_xyz123", max_results=10)
             
             assert len(cids) == 0
@@ -59,7 +59,7 @@ class TestPubChemSearch:
         }
         mock_response.raise_for_status = Mock()
         
-        with patch('quantumvitas.io.providers.pubchem.requests.get', return_value=mock_response):
+        with patch('qmatsuite.io.providers.pubchem.requests.get', return_value=mock_response):
             cids = search_by_formula("C8H10N4O2", max_results=10)
             
             assert len(cids) == 1
@@ -70,7 +70,7 @@ class TestPubChemSearch:
         mock_response = Mock()
         mock_response.status_code = 404
         
-        with patch('quantumvitas.io.providers.pubchem.requests.get', return_value=mock_response):
+        with patch('qmatsuite.io.providers.pubchem.requests.get', return_value=mock_response):
             cids = search_by_formula("XyZ123", max_results=10)
             
             assert len(cids) == 0
@@ -95,7 +95,7 @@ $$$$
         mock_response.text = mock_sdf_content
         mock_response.raise_for_status = Mock()
         
-        with patch('quantumvitas.io.providers.pubchem.requests.get', return_value=mock_response):
+        with patch('qmatsuite.io.providers.pubchem.requests.get', return_value=mock_response):
             sdf = fetch_3d_sdf("12345")
             
             assert sdf is not None
@@ -107,7 +107,7 @@ $$$$
         mock_response = Mock()
         mock_response.status_code = 404
         
-        with patch('quantumvitas.io.providers.pubchem.requests.get', return_value=mock_response):
+        with patch('qmatsuite.io.providers.pubchem.requests.get', return_value=mock_response):
             sdf = fetch_3d_sdf("12345")
             
             assert sdf is None
@@ -126,14 +126,14 @@ M  END
 $$$$
 """
         # Mock pymatgen availability
-        with patch('quantumvitas.io.providers.pubchem.PYMATGEN_AVAILABLE', True):
+        with patch('qmatsuite.io.providers.pubchem.PYMATGEN_AVAILABLE', True):
             # Mock pymatgen Molecule.from_str to return a mock molecule
             from unittest.mock import MagicMock
             mock_molecule = MagicMock()
             mock_molecule.__len__ = lambda self: 2
             mock_molecule.species = [MagicMock(symbol="C"), MagicMock(symbol="O")]
             
-            with patch('quantumvitas.io.providers.pubchem.PMGMolecule.from_str', return_value=mock_molecule):
+            with patch('qmatsuite.io.providers.pubchem.PMGMolecule.from_str', return_value=mock_molecule):
                 molecule = parse_sdf_to_molecule(sdf_content, "12345")
                 
                 assert molecule is not None
@@ -147,10 +147,10 @@ class TestPubChemRateLimiting:
     
     def test_rate_limit_delay(self):
         """Test that rate limiting enforces delay."""
-        from quantumvitas.io.providers.pubchem import _last_request_time
+        from qmatsuite.io.providers.pubchem import _last_request_time
         
         # Reset global state
-        import quantumvitas.io.providers.pubchem as pubchem_module
+        import qmatsuite.io.providers.pubchem as pubchem_module
         pubchem_module._last_request_time = 0.0
         
         start_time = time.time()
@@ -208,7 +208,7 @@ $$$$
                 return mock_sdf_response
             return Mock()
         
-        with patch('quantumvitas.io.providers.pubchem.requests.get', side_effect=side_effect):
+        with patch('qmatsuite.io.providers.pubchem.requests.get', side_effect=side_effect):
             candidates = search_pubchem("C8H10N4O2", max_results=10)
             
             # Should have found candidate via formula search
@@ -234,7 +234,7 @@ $$$$
                 return mock_sdf_response
             return Mock()
         
-        with patch('quantumvitas.io.providers.pubchem.requests.get', side_effect=side_effect):
+        with patch('qmatsuite.io.providers.pubchem.requests.get', side_effect=side_effect):
             candidates = search_pubchem("test", max_results=10)
             
             # Should skip CID without 3D SDF

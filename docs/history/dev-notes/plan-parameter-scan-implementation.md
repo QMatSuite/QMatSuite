@@ -13,8 +13,8 @@
 **Scope**: Add scan-related schema support and validation to StepDoc layer.
 
 **Files to modify**:
-- `src/quantumvitas/core/yamldoc.py` — No changes needed (already accepts any top-level keys)
-- `src/quantumvitas/calculation/scan_validation.py` — **NEW FILE**
+- `src/qmatsuite/core/yamldoc.py` — No changes needed (already accepts any top-level keys)
+- `src/qmatsuite/calculation/scan_validation.py` — **NEW FILE**
 
 **New module `scan_validation.py`**:
 ```python
@@ -30,7 +30,7 @@ def validate_step_scan_refs(step_doc: dict) -> List[str]  # returns list of erro
 ```
 
 **Integration point**:
-- `src/quantumvitas/workflow/step_factory.py:save_step_doc()` — call `validate_step_scan_refs()` before save, log warnings, raise on errors
+- `src/qmatsuite/workflow/step_factory.py:save_step_doc()` — call `validate_step_scan_refs()` before save, log warnings, raise on errors
 
 **Tests to add**:
 - `tests/unit/test_scan_validation.py`:
@@ -55,7 +55,7 @@ def validate_step_scan_refs(step_doc: dict) -> List[str]  # returns list of erro
 **Scope**: Core variant expansion logic and deterministic variant_key.
 
 **Files to create**:
-- `src/quantumvitas/execution/scan_expansion.py` — **NEW FILE**
+- `src/qmatsuite/execution/scan_expansion.py` — **NEW FILE**
 
 **New module contents**:
 ```python
@@ -111,7 +111,7 @@ def canonicalize_value(v: Any) -> str
 **Scope**: Resolve ScanRefs to produce effective engine params view, then feed into existing fingerprint/manifest logic.
 
 **Files to modify**:
-- `src/quantumvitas/calculation/hash_utils.py` — add helper to build effective params view
+- `src/qmatsuite/calculation/hash_utils.py` — add helper to build effective params view
 
 **New function**:
 ```python
@@ -136,7 +136,7 @@ def set_nested(data: dict, path: str, value: Any) -> None:
 ```
 
 **Integration points**:
-- `src/quantumvitas/calculation/manifest_reconcile.py` — for variants: build effective view, then call existing `compute_step_sha(effective_view)`
+- `src/qmatsuite/calculation/manifest_reconcile.py` — for variants: build effective view, then call existing `compute_step_sha(effective_view)`
 - For non-scan runs: if `parameter_scan` section exists, remove it before calling `compute_step_sha()`
 - **Key principle**: Reuse existing `compute_step_sha()` / manifest hashing pathway; do not create parallel fingerprint system
 
@@ -160,7 +160,7 @@ def set_nested(data: dict, path: str, value: Any) -> None:
 **Scope**: Generic post-job action system and scan archive implementation.
 
 **Files to create**:
-- `src/quantumvitas/execution/post_job.py` — **NEW FILE**
+- `src/qmatsuite/execution/post_job.py` — **NEW FILE**
 
 **New module contents**:
 ```python
@@ -185,7 +185,7 @@ class ArchiveToSlotAction(PostJobAction):
 ```
 
 **Integration points**:
-- `src/quantumvitas/execution/executor.py:_execute_job()` — capture pre-snapshot, execute job, run post-job actions
+- `src/qmatsuite/execution/executor.py:_execute_job()` — capture pre-snapshot, execute job, run post-job actions
 - `Job` dataclass may need optional `post_actions: List[PostJobAction]` field
 
 **Tests to add**:
@@ -217,8 +217,8 @@ class ArchiveToSlotAction(PostJobAction):
 **Scope**: Wire up scan expansion and variant execution in the calculation runner.
 
 **Files to modify**:
-- `src/quantumvitas/calculation/runner.py` — add scan variant loop
-- `src/quantumvitas/execution/recipes.py` — may need variant-aware job generation
+- `src/qmatsuite/calculation/runner.py` — add scan variant loop
+- `src/qmatsuite/execution/recipes.py` — may need variant-aware job generation
 
 **Changes to `CalculationRunner.run()`**:
 ```python
@@ -260,8 +260,8 @@ for job in job_graph:
 **Scope**: Ensure preset inference gracefully handles ScanRef dicts.
 
 **Files to modify**:
-- `src/quantumvitas/presets/paramspace.py` — possibly add type check
-- `src/quantumvitas/presets/detector.py` — possibly add guard
+- `src/qmatsuite/presets/paramspace.py` — possibly add type check
+- `src/qmatsuite/presets/detector.py` — possibly add guard
 
 **Changes**:
 - Review `get_yaml_value()` and `match_profile()` to confirm dict values don't cause crashes

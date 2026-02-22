@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 
 class TestW90ParameterStructure:

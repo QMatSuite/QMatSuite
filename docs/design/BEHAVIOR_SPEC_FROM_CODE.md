@@ -10,7 +10,7 @@
 
 ### 1.1 calc.yml Storage for Pseudos
 
-**File**: `src/quantumvitas/core/models.py` (lines 147-152, 186-188, 253-254)
+**File**: `src/qmatsuite/core/models.py` (lines 147-152, 186-188, 253-254)
 
 **Fields stored in `species_map`**:
 - `pseudopot`: Optional string (legacy filename field, for backward compatibility)
@@ -41,7 +41,7 @@
 
 ### 2.1 Exact Pseudo Sources Used at Runtime
 
-**File**: `src/quantumvitas/core/pseudo_runtime.py` (lines 41-45, 243-346, 349-532)
+**File**: `src/qmatsuite/core/pseudo_runtime.py` (lines 41-45, 243-346, 349-532)
 
 **Three sources only** (constitution-compliant):
 1. **`project`**: `project_root/pseudo/` directory
@@ -86,7 +86,7 @@ const realVariants = variants.filter(v => {
 
 ### 3.1 Exact Data Returned for Pseudo Options
 
-**File**: `src/quantumvitas/core/pseudo_options.py` (lines 218-601)
+**File**: `src/qmatsuite/core/pseudo_options.py` (lines 218-601)
 
 **Function**: `get_pseudo_options_for_elements()`
 
@@ -150,7 +150,7 @@ const realVariants = variants.filter(v => {
 
 ### 3.3 Sorting/Stability Rules
 
-**File**: `src/quantumvitas/core/pseudo_options.py` (lines 573-599)
+**File**: `src/qmatsuite/core/pseudo_options.py` (lines 573-599)
 
 **Sorting key** (lines 584-596):
 ```python
@@ -309,7 +309,7 @@ def sort_key(v: PseudoVariant) -> tuple:
 
 ### 6.2 What is Written to calc.yml
 
-**File**: `src/quantumvitas/api.py` (lines 5272-5330)
+**File**: `src/qmatsuite/api.py` (lines 5272-5330)
 
 **Function**: `update_calculation_species_map()`
 
@@ -342,7 +342,7 @@ def sort_key(v: PseudoVariant) -> tuple:
 **What it does**:
 1. Builds `selections` array from `selectedSha256ByElement`
 2. Determines `source_kind` for each (project > internal > lib priority)
-3. Calls `qv.analyzeProjectPseudoEffects()` RPC
+3. Calls `qms.analyzeProjectPseudoEffects()` RPC
 4. Parses warnings/errors from response
 5. Adds token-match warnings from variants
 6. Updates `warningsByElement` and `errorsByElement` state
@@ -370,7 +370,7 @@ def sort_key(v: PseudoVariant) -> tuple:
 ### 7.1 What Warnings Exist and How They're Computed
 
 **Backend analyzer**:
-- **File**: `src/quantumvitas/core/pseudo_runtime.py` (lines 243-346)
+- **File**: `src/qmatsuite/core/pseudo_runtime.py` (lines 243-346)
 - **Function**: `analyze_project_pseudo_effects()`
 - **Returns**: `PseudoPrepareReport` with `actions`, `warnings`, `errors`
 
@@ -382,7 +382,7 @@ def sort_key(v: PseudoVariant) -> tuple:
    - Message: `"{element}: Project pseudo '{basename}' exists with different sha_token. Run will rename existing file and update affected calcs."`
 
 3. **Token-match warnings** (from options):
-   - **File**: `src/quantumvitas/core/pseudo_options.py` (lines 438-452)
+   - **File**: `src/qmatsuite/core/pseudo_options.py` (lines 438-452)
    - Added to `variant.token_match_warnings` when project file has same basename with token-match but different sha256
 
 **UI-only warnings**:
@@ -391,7 +391,7 @@ def sort_key(v: PseudoVariant) -> tuple:
 
 ### 7.2 Token-Match Edge Case Presentation
 
-**File**: `src/quantumvitas/core/pseudo_options.py` (lines 438-452)
+**File**: `src/qmatsuite/core/pseudo_options.py` (lines 438-452)
 
 **Enforcement**: Backend adds warnings to variants during option building
 
@@ -408,7 +408,7 @@ def sort_key(v: PseudoVariant) -> tuple:
 
 ### 8.1 Exact Call Stack from Clicking Run to Step0 Execution
 
-**File**: `src/quantumvitas/calculation/runner.py` (lines 62-124)
+**File**: `src/qmatsuite/calculation/runner.py` (lines 62-124)
 
 **Call stack**:
 1. User clicks Run → `run_calculation` RPC
@@ -420,7 +420,7 @@ def sort_key(v: PseudoVariant) -> tuple:
 
 ### 8.2 Step0 Executor Algorithm
 
-**File**: `src/quantumvitas/core/pseudo_runtime.py` (lines 349-532)
+**File**: `src/qmatsuite/core/pseudo_runtime.py` (lines 349-532)
 
 **Function**: `prepare_project_pseudos_for_run()`
 
@@ -479,7 +479,7 @@ def sort_key(v: PseudoVariant) -> tuple:
 ### 9.1 Where Determinism is Enforced
 
 **Backend**:
-- **File**: `src/quantumvitas/core/pseudo_options.py` (lines 584-596)
+- **File**: `src/qmatsuite/core/pseudo_options.py` (lines 584-596)
 - Sorting is deterministic (same inputs → same order)
 - Tie-break rules are stable (project > internal > lib, then lexicographic)
 
@@ -556,7 +556,7 @@ def sort_key(v: PseudoVariant) -> tuple:
 
 **Issue**: `refresh_calc_pseudo_records_after_step0()` checks `if actual_file.exists()` but doesn't handle missing file case.
 
-**File**: `src/quantumvitas/core/pseudo_runtime.py` (lines 712-722)
+**File**: `src/qmatsuite/core/pseudo_runtime.py` (lines 712-722)
 
 **Evidence**:
 - Line 714: `if actual_file.exists():`
@@ -637,11 +637,11 @@ Based on code behavior, verify these scenarios:
 - ⚠️ Test coverage completeness needs verification
 
 **Files Referenced**:
-- `src/quantumvitas/core/pseudo_options.py` (option building)
-- `src/quantumvitas/core/pseudo_runtime.py` (Step0 execution)
-- `src/quantumvitas/core/models.py` (calc.yml schema)
-- `src/quantumvitas/calculation/runner.py` (Step0 integration)
+- `src/qmatsuite/core/pseudo_options.py` (option building)
+- `src/qmatsuite/core/pseudo_runtime.py` (Step0 execution)
+- `src/qmatsuite/core/models.py` (calc.yml schema)
+- `src/qmatsuite/calculation/runner.py` (Step0 integration)
 - `gui/src/components/common_cards/CommonCardPseudo.tsx` (UI restore/selection)
-- `gui/src/types/qv.ts` (TypeScript types)
-- `gui/src/hooks/useQVClient.ts` (RPC calls)
+- `gui/src/types/qms.ts` (TypeScript types)
+- `gui/src/hooks/useQMSClient.ts` (RPC calls)
 

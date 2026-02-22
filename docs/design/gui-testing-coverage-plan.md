@@ -81,8 +81,8 @@ src/App.tsx(969,20): error TS2339: Property 'pbc' does not exist
 
 **Python Backend:**
 ```
-src/quantumvitas/
-├── api/                 # QVService API layer
+src/qmatsuite/
+├── api/                 # QMSService API layer
 │   └── service.py       # Main API service (12KB)
 ├── daemon/              # JSON-RPC server
 │   ├── server.py        # RPC handlers (269KB, 120 endpoints)
@@ -117,9 +117,9 @@ gui/src/
 │   ├── HistoryPanel.tsx (17KB)
 │   └── ... (50+ more panels)
 ├── services/            # RPC client
-│   └── qv-daemon.ts     # QVCommand dispatcher
+│   └── qms-daemon.ts     # QMSCommand dispatcher
 ├── types/               # TypeScript types
-│   └── qv.ts            # QVCommandMap interface
+│   └── qms.ts            # QMSCommandMap interface
 └── App.tsx              # Main app (large, needs refactoring)
 ```
 
@@ -189,7 +189,7 @@ gui/src/
 | **Kernel (core domain)** | ~4000 | 69% overall | Preset detector (43%), provenance restore/scanner (24-26%), online providers (48-68%) |
 | **Engine drivers (15)** | ~1200 | High (80%+) | Field3D for some engines, convergence parsers for molecular codes |
 | **IR / Preset / Workflow** | ~300 | ~75% | Workflow detection edge cases, preset footprint validation |
-| **API layer (QVService)** | ~100 | ~80% | Analysis orchestrator error paths, DTO mapping edge cases |
+| **API layer (QMSService)** | ~100 | ~80% | Analysis orchestrator error paths, DTO mapping edge cases |
 | **Daemon / RPC server** | ~200 | Unknown (low?) | Most handlers lack contract tests, error paths untested |
 | **RPC contract (req/res schema)** | ~10 | <10% | Only placeholder tests in `test_daemon_payload_contracts.py` |
 | **GUI component (Vitest)** | 0 | 0% | No component tests exist |
@@ -409,7 +409,7 @@ class TestRPC_<endpoint_name>:
         response = send_request(daemon, "<endpoint_name>", {
             # Valid payload
         })
-        # Assert response structure matches TypeScript QVCommandMap
+        # Assert response structure matches TypeScript QMSCommandMap
         assert "expected_field" in response
         assert isinstance(response["expected_field"], expected_type)
 
@@ -474,7 +474,7 @@ class TestRPC_<endpoint_name>:
 
 #### Acceptance Criteria
 - [ ] All 120 RPC endpoints have at least 3 tests (happy path, error path, workflow integration)
-- [ ] Response schemas match TypeScript `QVCommandMap` interface
+- [ ] Response schemas match TypeScript `QMSCommandMap` interface
 - [ ] Error codes match GUI error handling expectations
 - [ ] Sequential workflows mirror actual GUI call patterns
 
@@ -1166,7 +1166,7 @@ tests/
 │   │   ├── Field3DVizPanel.spec.tsx
 │   │   └── ... (more component tests)
 │   ├── services/
-│   │   └── qv-daemon.spec.ts              # RPC client tests
+│   │   └── qms-daemon.spec.ts              # RPC client tests
 │   └── vitest.config.ts                   # Vitest config
 └── (existing test structure)
 

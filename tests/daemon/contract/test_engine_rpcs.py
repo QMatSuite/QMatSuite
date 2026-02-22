@@ -1,14 +1,14 @@
 """RPC contract tests for engine management endpoints."""
 
 import pytest
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 from .conftest import send_request
 
 
 class TestListEngineFamilies:
     """Contract tests for list_engine_families RPC."""
 
-    def test_list_engine_families_happy_path(self, daemon: QVDaemon):
+    def test_list_engine_families_happy_path(self, daemon: QMSDaemon):
         """list_engine_families returns all 15 engines."""
         response = send_request(daemon, "list_engine_families", {})
 
@@ -23,7 +23,7 @@ class TestListEngineFamilies:
             assert "display_name" in engine
             assert "supported_gen_steps" in engine
 
-    def test_list_engine_families_includes_qe(self, daemon: QVDaemon):
+    def test_list_engine_families_includes_qe(self, daemon: QMSDaemon):
         """list_engine_families includes qe engine."""
         response = send_request(daemon, "list_engine_families", {})
         engine_names = [e["engine_family"] for e in response["engines"]]
@@ -33,7 +33,7 @@ class TestListEngineFamilies:
 class TestSetEngineFamily:
     """Contract tests for set_engine_family RPC."""
 
-    def test_set_engine_family_immutable(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_set_engine_family_immutable(self, demo_project_with_calculation, daemon: QMSDaemon):
         """set_engine_family errors when trying to change immutable engine."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -47,7 +47,7 @@ class TestSetEngineFamily:
         
         assert "immutable" in str(exc_info.value).lower()
 
-    def test_set_engine_family_invalid_engine(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_set_engine_family_invalid_engine(self, demo_project_with_calculation, daemon: QMSDaemon):
         """set_engine_family errors on unknown engine."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -62,9 +62,9 @@ class TestSetEngineFamily:
 class TestEngineInstallManagement:
     """Contract tests for Step 3 engine installation RPC endpoints."""
 
-    def test_engine_list_installable_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+    def test_engine_list_installable_happy_path(self, daemon: QMSDaemon, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "quantumvitas.api.engines.list_installable_engines",
+            "qmatsuite.api.engines.list_installable_engines",
             lambda: [
                 {"engine": "xtb", "manual_only": False},
                 {"engine": "vasp", "manual_only": True},
@@ -75,7 +75,7 @@ class TestEngineInstallManagement:
         assert response["count"] == 2
         assert response["engines"][0]["engine"] == "xtb"
 
-    def test_engine_install_returns_job_id(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+    def test_engine_install_returns_job_id(self, daemon: QMSDaemon, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 
         def fake_submit(job_type, func, params, target_name=None, project_root_display=None, **kwargs):
@@ -100,7 +100,7 @@ class TestEngineInstallManagement:
             "source": "conda",
         }
 
-    def test_engine_uninstall_returns_job_id(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+    def test_engine_uninstall_returns_job_id(self, daemon: QMSDaemon, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(daemon.job_manager, "submit", lambda *args, **kwargs: "job-uninstall-1")
 
         response = send_request(
@@ -115,9 +115,9 @@ class TestEngineInstallManagement:
 class TestEngineRegistryRPCs:
     """Contract tests for registry-backed generic engine RPC endpoints."""
 
-    def test_engine_list_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+    def test_engine_list_happy_path(self, daemon: QMSDaemon, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "quantumvitas.api.engines.list_engines",
+            "qmatsuite.api.engines.list_engines",
             lambda installed_only=False: [
                 {"engine": "qe", "installed": True, "active_source": "bundled", "installations": []},
                 {"engine": "xtb", "installed": False, "active_source": None, "installations": []},
@@ -129,15 +129,15 @@ class TestEngineRegistryRPCs:
         assert response["engines"][0]["engine"] == "qe"
         assert response["installed_only"] is False
 
-    def test_engine_verify_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("quantumvitas.api.engines.verify_engine", lambda family: (True, f"{family}:OK"))
+    def test_engine_verify_happy_path(self, daemon: QMSDaemon, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("qmatsuite.api.engines.verify_engine", lambda family: (True, f"{family}:OK"))
 
         response = send_request(daemon, "engine.verify", {"engine_family": "qe"})
         assert response["engine"] == "qe"
         assert response["ok"] is True
         assert response["message"] == "qe:OK"
 
-    def test_engine_set_active_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+    def test_engine_set_active_happy_path(self, daemon: QMSDaemon, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, str] = {}
 
         def fake_set_active(engine_family: str, installation_id: str) -> bool:
@@ -145,7 +145,7 @@ class TestEngineRegistryRPCs:
             captured["installation_id"] = installation_id
             return True
 
-        monkeypatch.setattr("quantumvitas.api.engines.set_active_engine", fake_set_active)
+        monkeypatch.setattr("qmatsuite.api.engines.set_active_engine", fake_set_active)
 
         response = send_request(
             daemon,
@@ -155,7 +155,7 @@ class TestEngineRegistryRPCs:
         assert response["active"] is True
         assert captured == {"engine_family": "qe", "installation_id": "bundled-7.5"}
 
-    def test_engine_set_active_missing_id_returns_false(self, daemon: QVDaemon):
+    def test_engine_set_active_missing_id_returns_false(self, daemon: QMSDaemon):
         response = send_request(
             daemon,
             "engine.set_active",
@@ -164,7 +164,7 @@ class TestEngineRegistryRPCs:
         assert response["active"] is False
         assert "required" in response["message"]
 
-    def test_engine_register_path_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+    def test_engine_register_path_happy_path(self, daemon: QMSDaemon, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 
         def fake_register(engine_family: str, path: str, source: str, env_vars=None):
@@ -174,7 +174,7 @@ class TestEngineRegistryRPCs:
             captured["env_vars"] = env_vars
             return {"id": "user-test", "source": source, "path": path}
 
-        monkeypatch.setattr("quantumvitas.api.engines.register_engine", fake_register)
+        monkeypatch.setattr("qmatsuite.api.engines.register_engine", fake_register)
 
         response = send_request(
             daemon,
@@ -193,8 +193,8 @@ class TestEngineRegistryRPCs:
         assert captured["path"] == "/opt/vasp/bin"
         assert captured["source"] == "user_path"
 
-    def test_engine_unregister_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr("quantumvitas.api.engines.unregister_engine", lambda family, inst: True)
+    def test_engine_unregister_happy_path(self, daemon: QMSDaemon, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr("qmatsuite.api.engines.unregister_engine", lambda family, inst: True)
 
         response = send_request(
             daemon,
@@ -203,7 +203,7 @@ class TestEngineRegistryRPCs:
         )
         assert response["removed"] is True
 
-    def test_engine_unregister_missing_id_returns_false(self, daemon: QVDaemon):
+    def test_engine_unregister_missing_id_returns_false(self, daemon: QMSDaemon):
         response = send_request(
             daemon,
             "engine.unregister",

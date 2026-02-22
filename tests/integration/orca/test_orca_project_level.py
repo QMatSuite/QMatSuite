@@ -2,7 +2,7 @@
 Level-3 Project Integration Tests for ORCA.
 
 These tests verify the full unified pipeline (JobGraph execution) for ORCA:
-- QVService.run_calculation() runs through JobGraph pipeline
+- QMSService.run_calculation() runs through JobGraph pipeline
 - run_step() runs through unified run_step() (not legacy)
 - SPEC step types are preserved throughout execution
 
@@ -16,13 +16,13 @@ import yaml
 from pathlib import Path
 from typing import Optional
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
 def get_orca_path() -> Optional[Path]:
     """Get ORCA path using the resolver."""
     try:
-        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+        from qmatsuite.core.engines.orca_resolver import resolve_orca_bin
         return resolve_orca_bin()
     except RuntimeError:
         return None
@@ -33,19 +33,19 @@ ORCA_BIN = get_orca_path()
 
 @pytest.fixture
 def orca_project(tmp_path):
-    """Create an ORCA project using QVService APIs.
+    """Create an ORCA project using QMSService APIs.
 
     Uses the same pattern as other integration tests:
-    - QVService.init_project() to create project
+    - QMSService.init_project() to create project
     - Create molecule structure file manually (pymatgen Molecule)
-    - QVService.init_calculation() with engine_family=orca
-    - Add step using QVService.add_step()
+    - QMSService.init_calculation() with engine_family=orca
+    - Add step using QMSService.add_step()
     """
     if not ORCA_BIN:
         pytest.skip("QMATSUITE_ORCA_BIN not set")
 
     # Create project using service API
-    project_root = QVService.init_project(target_dir=tmp_path / "orca_project", name="ORCA Test")
+    project_root = QMSService.init_project(target_dir=tmp_path / "orca_project", name="ORCA Test")
 
     # Create molecule structure file (water)
     from pymatgen.core import Molecule
@@ -66,10 +66,10 @@ def orca_project(tmp_path):
     structures_dir = project_root / "structures"
     structures_dir.mkdir(parents=True, exist_ok=True)
 
-    from quantumvitas.core.resources import generate_resource_id
+    from qmatsuite.core.resources import generate_resource_id
     structure_ulid = generate_resource_id()
     structure_data = {
-        "__qv_meta__": {
+        "__qms_meta__": {
             "ulid": structure_ulid,
             "name": "H2O",
             "slug": "h2o",
@@ -81,7 +81,7 @@ def orca_project(tmp_path):
     (structures_dir / "h2o.json").write_text(json.dumps(structure_data))
 
     # Create calculation for ORCA
-    calc_resolved = QVService(project_root).project.init_calculation(
+    calc_resolved = QMSService(project_root).project.init_calculation(
         name="h2o-scf",
         structure_selector=structure_ulid,
     )
@@ -95,7 +95,7 @@ def orca_project(tmp_path):
     calc_yaml.write_text(yaml.dump(calc_data, default_flow_style=False))
 
     # Add SCF step with SPEC step type
-    step_dto = QVService(project_root).calculation.add_step(
+    step_dto = QMSService(project_root).calculation.add_step(
         calc_id,
         step_type_gen="scf",  # GEN type for UI layer (Constitution §A)
     )
@@ -130,7 +130,7 @@ class TestORCAProjectLevelExecution:
 
         Constitution §C: Run Calc uses JobGraph execution pipeline.
         """
-        svc = QVService(orca_project["root"])
+        svc = QMSService(orca_project["root"])
         result = svc.run.run_calculation(
             calc_selector=orca_project["calc_selector"],
         )
@@ -145,7 +145,7 @@ class TestORCAProjectLevelExecution:
 
         Constitution §C: Run Step shares the unified pipeline with Run Calc.
         """
-        svc = QVService(orca_project["root"])
+        svc = QMSService(orca_project["root"])
         result = svc.run.run_step(
             calc_selector=orca_project["calc_selector"],
             step_selector=orca_project["step_ulid"],
@@ -178,12 +178,12 @@ class TestORCAProjectLevelExecution:
             )
 
     def test_no_run_step_legacy_attribute(self, orca_project):
-        """Verify run_step_legacy has been removed from QVService.
+        """Verify run_step_legacy has been removed from QMSService.
 
         Constitution §C audit fix: Legacy paths removed.
         """
         # Verify run_step_legacy doesn't exist
-        assert not hasattr(QVService, 'run_step_legacy'), (
+        assert not hasattr(QMSService, 'run_step_legacy'), (
             "run_step_legacy still exists - should have been removed"
         )
 
@@ -198,7 +198,7 @@ class TestORCARegistryLookup:
 
         Constitution §C: Must use registry lookup, NOT prefix inference.
         """
-        from quantumvitas.calculation.runner import _get_engine_family_from_step
+        from qmatsuite.calculation.runner import _get_engine_family_from_step
         from unittest.mock import MagicMock
 
         # Create mock step with SPEC type
@@ -214,7 +214,7 @@ class TestORCARegistryLookup:
         Per constitution, registry.get() only accepts GEN types.
         Use get_for_engine(gen_type, engine) for engine-specific lookups.
         """
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         registry = get_registry()
 

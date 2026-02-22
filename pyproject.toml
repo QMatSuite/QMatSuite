@@ -3,15 +3,16 @@ requires = ["setuptools>=67", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "quantumvitas"
+name = "qmatsuite"
 version = "1.0.1"
-description = "Python rewrite of QuantumVITAS - a calculation engine and GUI layer for Quantum ESPRESSO and related codes."
+description = "QMatSuite calculation backend and automation toolkit for Quantum ESPRESSO and related engines."
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
-authors = [{ name = "QuantumVITAS Developers" }]
+authors = [{ name = "QMatSuite Developers" }]
 requires-python = ">=3.9"
 dependencies = [
     "numpy",
+    "ase",
     "scipy",
     "matplotlib",
     "plotext>=5.2",
@@ -55,11 +56,11 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-"quantumvitas" = [
+"*" = [
     "data/*.json",
     "drivers/**/data/*.json",
     "resources/**/*",
 ]
 
 [project.scripts]
-qv = "quantumvitas.cli:app"
+qms = "qmatsuite.cli:app"

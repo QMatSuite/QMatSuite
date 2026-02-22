@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api.service import QVService
+from qmatsuite.api.service import QMSService
 
 
 # ── CIF test strings ──────────────────────────────────────────────────
@@ -139,12 +139,12 @@ class TestCIFParsing:
 
 
 class TestImportStructureAPI:
-    """Verify structure import via QVService with various formats."""
+    """Verify structure import via QMSService with various formats."""
 
     def test_import_valid_cif(self, tmp_path):
         """import_file succeeds with a valid CIF."""
-        project_root = QVService.init_project(tmp_path / "proj")
-        svc = QVService(project_root)
+        project_root = QMSService.init_project(tmp_path / "proj")
+        svc = QMSService(project_root)
 
         cif_path = tmp_path / "si.cif"
         cif_path.write_text(VALID_SI_CIF)
@@ -156,8 +156,8 @@ class TestImportStructureAPI:
 
     def test_import_poscar(self, tmp_path):
         """import_file succeeds with POSCAR format."""
-        project_root = QVService.init_project(tmp_path / "proj")
-        svc = QVService(project_root)
+        project_root = QMSService.init_project(tmp_path / "proj")
+        svc = QMSService(project_root)
 
         poscar_path = tmp_path / "POSCAR"
         poscar_path.write_text(SI_POSCAR)
@@ -168,8 +168,8 @@ class TestImportStructureAPI:
 
     def test_import_broken_cif_raises(self, tmp_path):
         """import_file with broken CIF raises a catchable exception."""
-        project_root = QVService.init_project(tmp_path / "proj")
-        svc = QVService(project_root)
+        project_root = QMSService.init_project(tmp_path / "proj")
+        svc = QMSService(project_root)
 
         bad_path = tmp_path / "bad.cif"
         bad_path.write_text(BROKEN_CIF_NO_ATOMS)
@@ -179,8 +179,8 @@ class TestImportStructureAPI:
 
     def test_import_pymatgen_json(self, tmp_path):
         """import_file succeeds with pymatgen JSON format."""
-        project_root = QVService.init_project(tmp_path / "proj")
-        svc = QVService(project_root)
+        project_root = QMSService.init_project(tmp_path / "proj")
+        svc = QMSService(project_root)
 
         json_data = json.dumps({
             "@module": "pymatgen.core.structure",

@@ -89,13 +89,13 @@ r"from.*StepType|import.*StepType"
 ```
 
 This matches:
-- `from quantumvitas.workflow.registry import StepTypeRegistry` ❌ (False positive!)
-- `from quantumvitas.workflow.registry import StepTypeSpec` ❌ (False positive!)
-- `from quantumvitas.workflow.registry import StepType` ✓ (Actual violation)
+- `from qmatsuite.workflow.registry import StepTypeRegistry` ❌ (False positive!)
+- `from qmatsuite.workflow.registry import StepTypeSpec` ❌ (False positive!)
+- `from qmatsuite.workflow.registry import StepType` ✓ (Actual violation)
 
-The file `src/quantumvitas/execution/reference_resolver.py` imports:
+The file `src/qmatsuite/execution/reference_resolver.py` imports:
 ```python
-from quantumvitas.workflow.registry import get_registry, StepTypeRegistry
+from qmatsuite.workflow.registry import get_registry, StepTypeRegistry
 ```
 
 This is **NOT** a violation—`StepTypeRegistry` is a class, not the forbidden `StepType` enum. The regex is incorrectly flagging it.
@@ -146,7 +146,7 @@ The allowed items are:
 
 **Production Code to Review/Fix**:
 
-4. `src/quantumvitas/workflow/generalized_steps.py`
+4. `src/qmatsuite/workflow/generalized_steps.py`
    - Function: `materialize_workflow()` (line 129)
    - Issue: Currently silently omits ALL None returns
    - Fix: Must distinguish between:
@@ -354,7 +354,7 @@ pytest tests/unit/test_workflow_materialization_phase3b.py -v --tb=short
 **Goal**: Fix `materialize_workflow()` to distinguish 0-mapping from unsupported
 
 **Files to Modify**:
-- `src/quantumvitas/workflow/generalized_steps.py`
+- `src/qmatsuite/workflow/generalized_steps.py`
 
 **Changes**:
 1. Add helper function `_is_zero_mapping(gen_step, engine_family)` to check if a step is explicitly mapped to None
@@ -447,7 +447,7 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```python
 def get_valid_engine_prefixes() -> tuple:
     """Derive valid prefixes from registered step types."""
-    from quantumvitas.workflow.registry import _STEP_TYPES
+    from qmatsuite.workflow.registry import _STEP_TYPES
     prefixes = set()
     for machine_type in _STEP_TYPES.keys():
         prefix = machine_type.split('_')[0] + '_'
@@ -554,7 +554,7 @@ This is the **correct pattern** per Constitution. The file imports `StepTypeRegi
 | 1 | `tests/unit/test_step_type_mapping.py` | Add `"vasp_"` to prefix allowlist | 2 |
 | 2 | `tests/unit/test_no_steptype_enum.py` | Fix regex to use word boundaries | 1 |
 | 3 | `tests/unit/test_workflow_materialization_phase3b.py` | Replace `"vasp"` with `"abinit"` | 3 |
-| 4 | `src/quantumvitas/workflow/generalized_steps.py` | Add `_is_zero_mapping()`, fix `materialize_workflow()` | 3 |
+| 4 | `src/qmatsuite/workflow/generalized_steps.py` | Add `_is_zero_mapping()`, fix `materialize_workflow()` | 3 |
 
 **Total Tests Fixed**: 9
 
@@ -597,7 +597,7 @@ ValueError not raised for unsupported step
 
 ### Test 9: test_no_steptype_import_in_production
 ```
-Found StepType import in production code: src/quantumvitas/execution/reference_resolver.py
+Found StepType import in production code: src/qmatsuite/execution/reference_resolver.py
 ```
 (False positive due to `StepTypeRegistry` import)
 

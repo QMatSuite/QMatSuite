@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.engines.discovery import is_engine_available
+from qmatsuite.core.engines.discovery import is_engine_available
 
 # Repo root for .tmp directory
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -91,7 +91,7 @@ class TestSiestaSCF:
         _stage_pseudopotentials(workdir, ["H", "O"])
 
         # Write FDF input
-        from quantumvitas.drivers.siesta.writer import write_fdf
+        from qmatsuite.drivers.siesta.writer import write_fdf
 
         write_fdf(
             output_path=workdir / "h2o.fdf",
@@ -136,7 +136,7 @@ class TestSiestaSCF:
         assert (workdir / "OUTVARS.yml").exists(), "OUTVARS.yml missing"
 
         # ── Parse and validate energy ──
-        from quantumvitas.drivers.siesta.parser import parse_main_output
+        from qmatsuite.drivers.siesta.parser import parse_main_output
 
         parsed = parse_main_output(workdir / "h2o.out")
         assert parsed["scf_converged"] is True
@@ -153,7 +153,7 @@ class TestSiestaSCF:
         workdir = siesta_workdir
         _stage_pseudopotentials(workdir, ["Si"])
 
-        from quantumvitas.drivers.siesta.writer import write_fdf
+        from qmatsuite.drivers.siesta.writer import write_fdf
 
         write_fdf(
             output_path=workdir / "si_scf.fdf",
@@ -197,7 +197,7 @@ class TestSiestaSCF:
         assert (workdir / "FORCE_STRESS").exists()
 
         # ── Parse and validate ──
-        from quantumvitas.drivers.siesta.parser import parse_main_output, parse_eig_file
+        from qmatsuite.drivers.siesta.parser import parse_main_output, parse_eig_file
 
         parsed = parse_main_output(workdir / "si_scf.out")
         assert parsed["scf_converged"] is True
@@ -221,7 +221,7 @@ class TestSiestaRelax:
         workdir = siesta_workdir
         _stage_pseudopotentials(workdir, ["Si"])
 
-        from quantumvitas.drivers.siesta.writer import write_fdf
+        from qmatsuite.drivers.siesta.writer import write_fdf
 
         write_fdf(
             output_path=workdir / "si_relax.fdf",
@@ -270,7 +270,7 @@ class TestSiestaRelax:
         assert (workdir / "FORCE_STRESS").exists(), "FORCE_STRESS missing"
 
         # ── Parse output ──
-        from quantumvitas.drivers.siesta.parser import (
+        from qmatsuite.drivers.siesta.parser import (
             parse_main_output,
             parse_struct_out,
         )
@@ -291,7 +291,7 @@ class TestSiestaRelax:
         # CG trajectory (MDE) may or may not be produced depending on convergence
         mde_path = workdir / "si_relax.MDE"
         if mde_path.exists():
-            from quantumvitas.drivers.siesta.parser import parse_mde_file
+            from qmatsuite.drivers.siesta.parser import parse_mde_file
             mde = parse_mde_file(mde_path)
             assert mde["n_steps"] >= 1
 
@@ -305,8 +305,8 @@ class TestSiestaEngineDiscovery:
 
     def test_driver_registry_lookup(self):
         """Verify Siesta driver is accessible via DriverRegistry."""
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("siesta")
         assert driver is not None
@@ -315,8 +315,8 @@ class TestSiestaEngineDiscovery:
 
     def test_step_type_resolution(self):
         """Verify step types resolve correctly through the registry."""
-        import quantumvitas.drivers.siesta  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.siesta  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         for gen_type in ["scf", "relax", "md", "bands", "dos"]:
             spec_type = DriverRegistry.materialize_step_type("siesta", gen_type)
@@ -328,7 +328,7 @@ class TestSiestaEngineDiscovery:
 
     def test_workflow_registry_has_siesta_types(self):
         """Verify Siesta step types are in the workflow StepTypeRegistry."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         registry = get_registry()
         siesta_specs = registry.list_by_engine_machine("siesta")
@@ -344,7 +344,7 @@ class TestSiestaParser:
 
     def test_parse_h2o_artifacts(self):
         """Parse H2O SCF golden artifacts."""
-        from quantumvitas.drivers.siesta.parser import parse_siesta_workdir
+        from qmatsuite.drivers.siesta.parser import parse_siesta_workdir
 
         artifact_dir = _REPO_ROOT / "docs" / "engines" / "siesta" / "artifacts" / "h2o_scf"
         if not artifact_dir.exists():
@@ -360,7 +360,7 @@ class TestSiestaParser:
 
     def test_parse_si_scf_artifacts(self):
         """Parse Si SCF golden artifacts."""
-        from quantumvitas.drivers.siesta.parser import parse_siesta_workdir
+        from qmatsuite.drivers.siesta.parser import parse_siesta_workdir
 
         artifact_dir = _REPO_ROOT / "docs" / "engines" / "siesta" / "artifacts" / "si_scf"
         if not artifact_dir.exists():
@@ -378,7 +378,7 @@ class TestSiestaParser:
 
     def test_parse_si_relax_artifacts(self):
         """Parse Si relaxation golden artifacts."""
-        from quantumvitas.drivers.siesta.parser import parse_siesta_workdir
+        from qmatsuite.drivers.siesta.parser import parse_siesta_workdir
 
         artifact_dir = _REPO_ROOT / "docs" / "engines" / "siesta" / "artifacts" / "si_relax"
         if not artifact_dir.exists():

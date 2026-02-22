@@ -9,13 +9,13 @@ import time
 from pathlib import Path
 import json
 
-from quantumvitas.core.engines.qe_resolver import (
+from qmatsuite.core.engines.qe_resolver import (
     resolve_qe_bin_dir,
     find_internal_qe_bin_dir,
     validate_qe_bin_dir,
 )
-from quantumvitas.core.settings import QMatSuiteSettings, QEConfig, save_settings, load_settings
-from quantumvitas.core.paths import get_repo_root, home_qe_engines_dir
+from qmatsuite.core.settings import QMatSuiteSettings, QEConfig, save_settings, load_settings
+from qmatsuite.core.paths import get_repo_root, home_qe_engines_dir
 
 
 def test_validate_qe_bin_dir_valid(tmp_path):
@@ -55,8 +55,8 @@ def test_find_internal_qe_bin_dir_empty():
         engines_dir.mkdir(parents=True, exist_ok=True)
         
         # Temporarily patch home_qe_engines_dir
-        from quantumvitas.core.engines import qe_resolver
-        from quantumvitas.core.paths import home_qe_engines_dir
+        from qmatsuite.core.engines import qe_resolver
+        from qmatsuite.core.paths import home_qe_engines_dir
         original_func = qe_resolver.home_qe_engines_dir
         qe_resolver.home_qe_engines_dir = lambda: engines_dir
         
@@ -88,7 +88,7 @@ def test_find_internal_qe_bin_dir_selection():
         (engine2_bin / "pw.x").touch()
         
         # Temporarily patch home_qe_engines_dir
-        from quantumvitas.core.engines import qe_resolver
+        from qmatsuite.core.engines import qe_resolver
         original_func = qe_resolver.home_qe_engines_dir
         qe_resolver.home_qe_engines_dir = lambda: engines_base
         
@@ -127,7 +127,7 @@ def test_find_internal_qe_bin_dir_with_meta_json():
             json.dump(meta_a, f)
         
         # Temporarily patch home_qe_engines_dir
-        from quantumvitas.core.engines import qe_resolver
+        from qmatsuite.core.engines import qe_resolver
         original_func = qe_resolver.home_qe_engines_dir
         qe_resolver.home_qe_engines_dir = lambda: engines_base
         
@@ -181,7 +181,7 @@ def test_resolve_qe_bin_dir_internal(tmp_path):
     settings = QMatSuiteSettings(qe=QEConfig(bin_dir=None))
     
     # Temporarily patch home_qe_engines_dir
-    from quantumvitas.core.engines import qe_resolver
+    from qmatsuite.core.engines import qe_resolver
     original_func = qe_resolver.home_qe_engines_dir
     qe_resolver.home_qe_engines_dir = lambda: engines_base
     
@@ -233,7 +233,7 @@ def test_resolve_qe_bin_dir_no_qe():
     settings = QMatSuiteSettings(qe=QEConfig(bin_dir=None))
     
     # Temporarily patch to return empty engines dir
-    from quantumvitas.core.engines import qe_resolver
+    from qmatsuite.core.engines import qe_resolver
     original_func = qe_resolver.home_qe_engines_dir
     
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -255,8 +255,8 @@ def test_bin_dir_contract_no_double_bin(tmp_path):
     This test ensures that when bin_dir is already a bin directory (as per two-state
     resolver contract), we never create "bin/bin" paths in search locations or error messages.
     """
-    from quantumvitas.core.engines.qe import QuantumEspressoEngine
-    from quantumvitas.core.engines.base import EngineConfig
+    from qmatsuite.core.engines.qe import QuantumEspressoEngine
+    from qmatsuite.core.engines.base import EngineConfig
     
     # Create a QE installation structure: qe_root/bin/
     qe_root = tmp_path / "qe-7.5"

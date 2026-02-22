@@ -12,21 +12,21 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.core.models import load_project, load_calculation
-from quantumvitas.core.resolution import build_resource_index
-from quantumvitas.project.snapshot import (
+from qmatsuite.core.models import load_project, load_calculation
+from qmatsuite.core.resolution import build_resource_index
+from qmatsuite.project.snapshot import (
     ProjectSnapshot,
     export_project_to_snapshot,
     materialize_project_from_snapshot,
 )
-from quantumvitas.calculation.structure_steps import StructureStepSpec
+from qmatsuite.calculation.structure_steps import StructureStepSpec
 
 
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for materialized test projects."""
     import shutil
-    tmp = tempfile.mkdtemp(prefix="qv_snapshot_id_test_")
+    tmp = tempfile.mkdtemp(prefix="qms_snapshot_id_test_")
     yield Path(tmp)
     shutil.rmtree(tmp, ignore_errors=True)
 

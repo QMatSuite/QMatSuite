@@ -258,7 +258,7 @@ class ManifestStepEntry:
 **`compute_step_sha(step_doc, variant_assignments=None)`** (line 266):
 1. If `variant_assignments` provided, resolves `@scan:X` tokens to concrete values
 2. Removes `parameter_scan` section
-3. Strips meta keys: `meta`, `__qv_meta__`, `id`, `name`, `slug`, `path`, `kind`, `created_at`, `updated_at`
+3. Strips meta keys: `meta`, `__qms_meta__`, `id`, `name`, `slug`, `path`, `kind`, `created_at`, `updated_at`
 4. Canonicalizes: sorts dict keys, normalizes floats to `1e-10` tolerance
 5. JSON-serializes with `sort_keys=True`
 6. Returns `sha256(serialized).hexdigest()`
@@ -589,22 +589,22 @@ The fix is safe for all engines. For ORCA/PySCF, the reconciler may redundantly 
 
 | File | Role |
 |------|------|
-| `src/quantumvitas/calculation/runner.py` (790 lines) | Main runner: `CalculationRunner.run()` orchestrates reconciliation, SHA computation, JobGraph execution |
-| `src/quantumvitas/execution/executor.py` (732 lines) | `JobExecutor.execute()`: iterates jobs, skip logic, handler dispatch |
-| `src/quantumvitas/calculation/manifest.py` (327 lines) | Manifest data model, load/save, `should_skip_step()`, `clear_manifest_from_step()` (dead) |
-| `src/quantumvitas/calculation/manifest_reconcile.py` (262 lines) | `reconcile_manifest()`: aligns manifest to topology, per-step SHA comparison |
-| `src/quantumvitas/calculation/hash_utils.py` (449 lines) | SHA computation: `compute_step_sha()`, `compute_structure_sha()`, `compute_pseudo_set_sha()` |
-| `src/quantumvitas/execution/recipes.py` (225 lines) | `BaseRecipe`, `Recipe` protocol, `get_recipe_for_engine()` factory |
-| `src/quantumvitas/execution/job_graph.py` (204 lines) | `Job`, `JobGraph`, `SelectionMode`, `compute_job_fingerprint()` |
-| `src/quantumvitas/drivers/qe/recipe.py` (109 lines) | QE recipe: 1 job/step, shared workdir, no deps |
-| `src/quantumvitas/drivers/orca/recipe.py` (137 lines) | ORCA recipe: subchain jobs, self-contained |
-| `src/quantumvitas/drivers/vasp/recipe.py` (121 lines) | VASP recipe: 1 job/step, isolated workdirs, linear deps |
-| `src/quantumvitas/drivers/lammps/recipe.py` (155 lines) | LAMMPS recipe: isolated workdirs, restart_from deps |
-| `src/quantumvitas/drivers/pyscf/recipe.py` (137 lines) | PySCF recipe: weak-chain subchains |
-| `src/quantumvitas/calculation/step_done.py` (246 lines) | `is_step_done()`: engine-specific completion detection (JOB DONE, OUTCAR, log.lammps) |
-| `src/quantumvitas/mcp/tools/run_calculation.py` (187 lines) | MCP tool: only exposes `calc_ulid`, no `run_mode` or `target_step_ulid` |
-| `src/quantumvitas/api/service.py:6197-6302` | Service layer: `run_calculation()` bridges MCP to kernel |
-| `src/quantumvitas/api/service.py:6304-6340` | Service layer: `run_step()` (not exposed in MCP) |
+| `src/qmatsuite/calculation/runner.py` (790 lines) | Main runner: `CalculationRunner.run()` orchestrates reconciliation, SHA computation, JobGraph execution |
+| `src/qmatsuite/execution/executor.py` (732 lines) | `JobExecutor.execute()`: iterates jobs, skip logic, handler dispatch |
+| `src/qmatsuite/calculation/manifest.py` (327 lines) | Manifest data model, load/save, `should_skip_step()`, `clear_manifest_from_step()` (dead) |
+| `src/qmatsuite/calculation/manifest_reconcile.py` (262 lines) | `reconcile_manifest()`: aligns manifest to topology, per-step SHA comparison |
+| `src/qmatsuite/calculation/hash_utils.py` (449 lines) | SHA computation: `compute_step_sha()`, `compute_structure_sha()`, `compute_pseudo_set_sha()` |
+| `src/qmatsuite/execution/recipes.py` (225 lines) | `BaseRecipe`, `Recipe` protocol, `get_recipe_for_engine()` factory |
+| `src/qmatsuite/execution/job_graph.py` (204 lines) | `Job`, `JobGraph`, `SelectionMode`, `compute_job_fingerprint()` |
+| `src/qmatsuite/drivers/qe/recipe.py` (109 lines) | QE recipe: 1 job/step, shared workdir, no deps |
+| `src/qmatsuite/drivers/orca/recipe.py` (137 lines) | ORCA recipe: subchain jobs, self-contained |
+| `src/qmatsuite/drivers/vasp/recipe.py` (121 lines) | VASP recipe: 1 job/step, isolated workdirs, linear deps |
+| `src/qmatsuite/drivers/lammps/recipe.py` (155 lines) | LAMMPS recipe: isolated workdirs, restart_from deps |
+| `src/qmatsuite/drivers/pyscf/recipe.py` (137 lines) | PySCF recipe: weak-chain subchains |
+| `src/qmatsuite/calculation/step_done.py` (246 lines) | `is_step_done()`: engine-specific completion detection (JOB DONE, OUTCAR, log.lammps) |
+| `src/qmatsuite/mcp/tools/run_calculation.py` (187 lines) | MCP tool: only exposes `calc_ulid`, no `run_mode` or `target_step_ulid` |
+| `src/qmatsuite/api/service.py:6197-6302` | Service layer: `run_calculation()` bridges MCP to kernel |
+| `src/qmatsuite/api/service.py:6304-6340` | Service layer: `run_step()` (not exposed in MCP) |
 | `CONSTITUTION.md:105-123` | §5 Incremental Run Manifest: skip rules, run modes, cascade mandate |
 
 ---

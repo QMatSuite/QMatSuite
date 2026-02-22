@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from quantumvitas.core.context import (
+from qmatsuite.core.context import (
     ContextNotFoundError,
     ContextNode,
     PathContext,
@@ -50,7 +50,7 @@ class TestFindPathContext:
         project_root = tmp_path / "my-project"
         project_root.mkdir()
         
-        # Create project.qv.yml
+        # Create project.qms.yml
         config = {
             "project": {
                 "name": "My Project",
@@ -61,7 +61,7 @@ class TestFindPathContext:
             ],
             "structures": [],
         }
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
         
         # Create calculation
         calculation_dir = project_root / "calculations" / "test-wf"
@@ -122,9 +122,9 @@ class TestFindPathContext:
             deep = deep / f"level{i}"
             deep.mkdir()
         
-        # Put project.qv.yml at root
+        # Put project.qms.yml at root
         config = {"project": {"name": "Deep"}, "structures": [], "calculations": []}
-        (tmp_path / "project.qv.yml").write_text(yaml.safe_dump(config))
+        (tmp_path / "project.qms.yml").write_text(yaml.safe_dump(config))
         
         # With max_depth=3, should not find project from level4
         start = tmp_path / "level0" / "level1" / "level2" / "level3" / "level4"
@@ -153,7 +153,7 @@ class TestConvenienceFunctions:
             "calculations": [{"name": "My Calculation", "path": "calculations/my-calculation", "meta": {"slug": "my-calculation"}}],
             "structures": [],
         }
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
         
         wf_yaml = {"meta": {"slug": "my-calculation"}}
         (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(wf_yaml))

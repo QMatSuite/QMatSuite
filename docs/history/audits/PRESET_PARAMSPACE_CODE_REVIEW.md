@@ -14,14 +14,14 @@
 ├─────────────────────────────────────────────────────────────────┤
 │  gui/src/components/presets/PresetSection.tsx                  │
 │  gui/src/hooks/usePresets.ts                                    │
-│  gui/src/types/qv.ts (type definitions)                        │
+│  gui/src/types/qms.ts (type definitions)                        │
 └──────────────────────┬──────────────────────────────────────────┘
                        │ RPC (JSON-RPC)
                        ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                  Daemon Layer (Python)                         │
 ├─────────────────────────────────────────────────────────────────┤
-│  src/quantumvitas/daemon/server.py                             │
+│  src/qmatsuite/daemon/server.py                             │
 │    - _handle_detect_presets()                                  │
 │    - _handle_apply_presets_to_calculation()                    │
 │    - _handle_apply_presets_to_step()                           │
@@ -31,7 +31,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │              Integration Layer (Python)                        │
 ├─────────────────────────────────────────────────────────────────┤
-│  src/quantumvitas/presets/integration.py                       │
+│  src/qmatsuite/presets/integration.py                       │
 │    - detect_presets_from_calculation()                         │
 │    - apply_presets_to_step()                                   │
 │    - get_step_preset_footprints()                              │
@@ -54,7 +54,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │              Dimension Definitions                              │
 ├─────────────────────────────────────────────────────────────────┤
-│  src/quantumvitas/presets/dimensions.py                        │
+│  src/qmatsuite/presets/dimensions.py                        │
 │    - SpinOption, SOCOption, OccupationsSchemeOption,           │
 │      PrecisionOption, CUSTOM                                    │
 │    - DIMENSION_* constants                                      │
@@ -65,10 +65,10 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │              Specialized Modules                               │
 ├─────────────────────────────────────────────────────────────────┤
-│  src/quantumvitas/presets/precision.py                        │
+│  src/qmatsuite/presets/precision.py                        │
 │    - PrecisionAdvisor (structure-dependent)                    │
 │    - PRECISION_CONSTANTS (centralized config)                  │
-│  src/quantumvitas/presets/precision_context.py                │
+│  src/qmatsuite/presets/precision_context.py                │
 │    - resolve_precision_context() (unified resolver)            │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -88,19 +88,19 @@
 ### Backend (Python)
 
 **Core Modules**:
-- `src/quantumvitas/presets/dimensions.py` - Enum definitions (SpinOption, SOCOption, OccupationsSchemeOption, PrecisionOption, CUSTOM)
-- `src/quantumvitas/presets/compiler.py` - Forward compilation (compile_spin, compile_soc, compile_occupations_scheme, compile_precision)
-- `src/quantumvitas/presets/detector.py` - Reverse detection (detect_spin, detect_soc, detect_occupations_scheme, detect_precision, detect_all_presets)
-- `src/quantumvitas/presets/integration.py` - Integration glue (apply_presets_to_step, detect_presets_from_calculation, get_step_preset_footprints)
-- `src/quantumvitas/presets/receivers.py` - Receiver registry (PresetReceiverRegistry, filter_presets_for_step, get_precision_receiver_spec)
-- `src/quantumvitas/presets/__init__.py` - Public API exports
+- `src/qmatsuite/presets/dimensions.py` - Enum definitions (SpinOption, SOCOption, OccupationsSchemeOption, PrecisionOption, CUSTOM)
+- `src/qmatsuite/presets/compiler.py` - Forward compilation (compile_spin, compile_soc, compile_occupations_scheme, compile_precision)
+- `src/qmatsuite/presets/detector.py` - Reverse detection (detect_spin, detect_soc, detect_occupations_scheme, detect_precision, detect_all_presets)
+- `src/qmatsuite/presets/integration.py` - Integration glue (apply_presets_to_step, detect_presets_from_calculation, get_step_preset_footprints)
+- `src/qmatsuite/presets/receivers.py` - Receiver registry (PresetReceiverRegistry, filter_presets_for_step, get_precision_receiver_spec)
+- `src/qmatsuite/presets/__init__.py` - Public API exports
 
 **Specialized Modules**:
-- `src/quantumvitas/presets/precision.py` - PrecisionAdvisor, PRECISION_CONSTANTS, cutoff/kmesh computation
-- `src/quantumvitas/presets/precision_context.py` - Unified resolver for structure/pseudo mapping
+- `src/qmatsuite/presets/precision.py` - PrecisionAdvisor, PRECISION_CONSTANTS, cutoff/kmesh computation
+- `src/qmatsuite/presets/precision_context.py` - Unified resolver for structure/pseudo mapping
 
 **Daemon Handlers**:
-- `src/quantumvitas/daemon/server.py`:
+- `src/qmatsuite/daemon/server.py`:
   - `_handle_detect_presets()` (line 3376)
   - `_handle_apply_presets_to_calculation()` (line 3522)
   - `_handle_apply_presets_to_step()` (line 3448)
@@ -115,7 +115,7 @@
 - `gui/src/hooks/usePresets.ts` - React hook for preset detection/application
 
 **Types**:
-- `gui/src/types/qv.ts` - TypeScript type definitions (PresetValue, PresetDetectionResult, ApplyPresetsToCalcResult, etc.)
+- `gui/src/types/qms.ts` - TypeScript type definitions (PresetValue, PresetDetectionResult, ApplyPresetsToCalcResult, etc.)
 
 ### Tests
 
@@ -530,7 +530,7 @@ DIMENSION_OWNED_KEYS: dict[str, dict[str, set[str]]] = {
 
 1. **Create ParamSpace base class / dataclass**
    - Define `ParamSpace` structure: `keys`, `defaults`, `aliases`, `profiles`, `tolerances`
-   - Location: New file `src/quantumvitas/presets/paramspace.py`
+   - Location: New file `src/qmatsuite/presets/paramspace.py`
    - **Safe**: Additive only, doesn't change existing code
 
 2. **Extract defaults to constants**

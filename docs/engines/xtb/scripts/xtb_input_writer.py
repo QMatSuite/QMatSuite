@@ -6,7 +6,7 @@ Generates input files for xTB calculations:
 - Command-line argument construction
 
 Designed as a standalone exploration utility. When integrating into
-QMatSuite, this will be adapted into src/quantumvitas/drivers/xtb/writer.py
+QMatSuite, this will be adapted into src/qmatsuite/drivers/xtb/writer.py
 
 xTB input model:
   - Structure: standard XYZ file

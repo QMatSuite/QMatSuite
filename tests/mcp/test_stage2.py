@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 # Minimal pymatgen-format Silicon structure (1 atom, FCC-like).
 SI_STRUCTURE_JSON = json.dumps({
@@ -34,20 +34,20 @@ SI_STRUCTURE_JSON = json.dumps({
 
 
 @pytest.fixture
-def qv_project(tmp_path, monkeypatch):
+def qms_project(tmp_path, monkeypatch):
     """Create a temporary QMatSuite project with an imported Silicon structure.
 
     Patches the MCP project module so all tools resolve to this project.
     """
-    project_root = QVService.init_project(tmp_path / "project")
+    project_root = QMSService.init_project(tmp_path / "project")
 
     # Import structure
     source = tmp_path / "si.json"
     source.write_text(SI_STRUCTURE_JSON)
-    QVService(project_root).structure.import_file(source, name="Silicon")
+    QMSService(project_root).structure.import_file(source, name="Silicon")
 
     # Patch MCP project context
-    from quantumvitas.mcp import project as mcp_project
+    from qmatsuite.mcp import project as mcp_project
     monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
     return project_root
@@ -59,7 +59,7 @@ def qv_project(tmp_path, monkeypatch):
 
 def test_make_error_severity_and_diagnostics():
     """New make_error fields: severity, diagnostics, suggested_fixes."""
-    from quantumvitas.mcp.envelope import make_error
+    from qmatsuite.mcp.envelope import make_error
 
     result = make_error(
         "validation_error",
@@ -84,9 +84,9 @@ def test_make_error_severity_and_diagnostics():
 # create_calculation
 # ---------------------------------------------------------------------------
 
-def test_create_calculation_qe_scf(qv_project):
+def test_create_calculation_qe_scf(qms_project):
     """Create a QE SCF calculation — expect 1 step."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
 
     result = create_calculation.fn(
         engine="qe", workflow="scf", structure_selector="silicon",
@@ -101,9 +101,9 @@ def test_create_calculation_qe_scf(qv_project):
     assert data["steps"][0]["step_type_spec"] == "qe_scf"
 
 
-def test_create_calculation_qe_bands(qv_project):
+def test_create_calculation_qe_bands(qms_project):
     """Create a QE bands workflow — expect multiple steps (scf + bands)."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
 
     result = create_calculation.fn(
         engine="qe", workflow="bands", structure_selector="silicon",
@@ -115,9 +115,9 @@ def test_create_calculation_qe_bands(qv_project):
     assert "scf" in gen_steps
 
 
-def test_create_calculation_unknown_engine(qv_project):
+def test_create_calculation_unknown_engine(qms_project):
     """Unknown engine returns error envelope with suggestions."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
 
     result = create_calculation.fn(
         engine="nonexistent", workflow="scf", structure_selector="silicon",
@@ -131,9 +131,9 @@ def test_create_calculation_unknown_engine(qv_project):
 # set_parameters
 # ---------------------------------------------------------------------------
 
-def _create_qe_scf(qv_project):
+def _create_qe_scf(qms_project):
     """Helper: create a QE SCF calculation and return its data."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
 
     result = create_calculation.fn(
         engine="qe", workflow="scf", structure_selector="silicon",
@@ -142,11 +142,11 @@ def _create_qe_scf(qv_project):
     return result["data"]
 
 
-def test_set_parameters_qe_scf(qv_project):
+def test_set_parameters_qe_scf(qms_project):
     """Set ecutwfc on step 0 of a QE SCF calculation."""
-    from quantumvitas.mcp.tools.set_parameters import set_parameters
+    from qmatsuite.mcp.tools.set_parameters import set_parameters
 
-    calc_data = _create_qe_scf(qv_project)
+    calc_data = _create_qe_scf(qms_project)
     calc_ulid = calc_data["calc_ulid"]
 
     result = set_parameters.fn(
@@ -161,10 +161,10 @@ def test_set_parameters_qe_scf(qv_project):
     assert data["params_set"] == {"SYSTEM": {"ecutwfc": 60}}
 
 
-def test_set_parameters_step_index(qv_project):
+def test_set_parameters_step_index(qms_project):
     """Set params on a specific step index in a multi-step workflow."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
-    from quantumvitas.mcp.tools.set_parameters import set_parameters
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.set_parameters import set_parameters
 
     # Create bands workflow (scf + nscf + bands or similar)
     result = create_calculation.fn(
@@ -186,9 +186,9 @@ def test_set_parameters_step_index(qv_project):
     assert result["data"]["step"] == 1
 
 
-def test_set_parameters_invalid_calc(qv_project):
+def test_set_parameters_invalid_calc(qms_project):
     """Setting params on a nonexistent calculation returns error."""
-    from quantumvitas.mcp.tools.set_parameters import set_parameters
+    from qmatsuite.mcp.tools.set_parameters import set_parameters
 
     result = set_parameters.fn(
         calc_ulid="NONEXISTENT_ULID_12345678",
@@ -202,11 +202,11 @@ def test_set_parameters_invalid_calc(qv_project):
 # apply_preset
 # ---------------------------------------------------------------------------
 
-def test_apply_preset_qe_precision(qv_project):
+def test_apply_preset_qe_precision(qms_project):
     """Apply magnetism preset to a QE SCF — verify steps_updated > 0."""
-    from quantumvitas.mcp.tools.apply_preset import apply_preset
+    from qmatsuite.mcp.tools.apply_preset import apply_preset
 
-    calc_data = _create_qe_scf(qv_project)
+    calc_data = _create_qe_scf(qms_project)
     calc_ulid = calc_data["calc_ulid"]
 
     # apply_presets expects enum values, not profile names.
@@ -221,9 +221,9 @@ def test_apply_preset_qe_precision(qv_project):
     assert data["steps_updated"] > 0
 
 
-def test_apply_preset_invalid_calc(qv_project):
+def test_apply_preset_invalid_calc(qms_project):
     """Applying preset to nonexistent calculation returns error."""
-    from quantumvitas.mcp.tools.apply_preset import apply_preset
+    from qmatsuite.mcp.tools.apply_preset import apply_preset
 
     result = apply_preset.fn(
         calc_ulid="NONEXISTENT_ULID_12345678",
@@ -236,11 +236,11 @@ def test_apply_preset_invalid_calc(qv_project):
 # inspect_calculation
 # ---------------------------------------------------------------------------
 
-def test_inspect_calculation_overview(qv_project):
+def test_inspect_calculation_overview(qms_project):
     """Inspect overview returns engine, structure, and steps list."""
-    from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+    from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
-    calc_data = _create_qe_scf(qv_project)
+    calc_data = _create_qe_scf(qms_project)
     calc_ulid = calc_data["calc_ulid"]
 
     result = inspect_calculation.fn(calc_ulid=calc_ulid)
@@ -252,11 +252,11 @@ def test_inspect_calculation_overview(qv_project):
     assert data["steps"][0]["step_type_gen"] == "scf"
 
 
-def test_inspect_calculation_step_detail(qv_project):
+def test_inspect_calculation_step_detail(qms_project):
     """Inspect specific step returns parameters dict."""
-    from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+    from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
-    calc_data = _create_qe_scf(qv_project)
+    calc_data = _create_qe_scf(qms_project)
     calc_ulid = calc_data["calc_ulid"]
 
     result = inspect_calculation.fn(calc_ulid=calc_ulid, step=0)
@@ -266,12 +266,12 @@ def test_inspect_calculation_step_detail(qv_project):
     assert "parameters" in data["step_detail"]
 
 
-def test_inspect_calculation_after_set_params(qv_project):
+def test_inspect_calculation_after_set_params(qms_project):
     """Set params then inspect — verify persistence round-trip."""
-    from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
-    from quantumvitas.mcp.tools.set_parameters import set_parameters
+    from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
+    from qmatsuite.mcp.tools.set_parameters import set_parameters
 
-    calc_data = _create_qe_scf(qv_project)
+    calc_data = _create_qe_scf(qms_project)
     calc_ulid = calc_data["calc_ulid"]
 
     # Set parameter
@@ -296,7 +296,7 @@ def test_inspect_calculation_after_set_params(qv_project):
 
 def test_preview_compilation_qe_scf_magnetism():
     """Compile magnetism preset for QE SCF — verify SYSTEM params."""
-    from quantumvitas.mcp.tools.preview_compilation import preview_compilation
+    from qmatsuite.mcp.tools.preview_compilation import preview_compilation
 
     # compile_presets_for_step expects enum values, not profile names.
     # MagnetismOption.COLLINEAR_LSDA.value == "collinear_lsda"
@@ -318,7 +318,7 @@ def test_preview_compilation_qe_scf_magnetism():
 
 def test_preview_compilation_unknown_engine():
     """Unknown engine returns error envelope."""
-    from quantumvitas.mcp.tools.preview_compilation import preview_compilation
+    from qmatsuite.mcp.tools.preview_compilation import preview_compilation
 
     result = preview_compilation.fn(
         engine="nonexistent",
@@ -331,7 +331,7 @@ def test_preview_compilation_unknown_engine():
 
 def test_preview_compilation_empty_presets():
     """Empty presets returns default/empty parameters."""
-    from quantumvitas.mcp.tools.preview_compilation import preview_compilation
+    from qmatsuite.mcp.tools.preview_compilation import preview_compilation
 
     result = preview_compilation.fn(
         engine="qe",

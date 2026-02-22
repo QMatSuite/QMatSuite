@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { useQVClient } from './useQVClient';
+import { useQMSClient } from './useQMSClient';
 
 // QE metadata types (defined inline since QE-specific RPC type was removed)
 export interface QEModuleMeta {
@@ -108,7 +108,7 @@ export interface UseEngineParameterMetadataResult {
  * @param engineFamily - Engine family identifier (e.g., 'qe', 'vasp'). Defaults to 'qe'.
  */
 export function useEngineParameterMetadata(engineFamily: string = 'qe'): UseEngineParameterMetadataResult {
-  const qv = useQVClient();
+  const qms = useQMSClient();
 
   // Modules state
   const [modules, setModules] = useState<QEModuleMeta[]>([]);
@@ -159,7 +159,7 @@ export function useEngineParameterMetadata(engineFamily: string = 'qe'): UseEngi
     setModulesError(null);
 
     try {
-      const response = await qv.listEngineParameterMetadata(engineFamily, 'list_categories');
+      const response = await qms.listEngineParameterMetadata(engineFamily, 'list_categories');
 
       if (!response.ok) {
         setModulesError(response.error?.message ?? 'Failed to load modules');
@@ -187,7 +187,7 @@ export function useEngineParameterMetadata(engineFamily: string = 'qe'): UseEngi
     } finally {
       setModulesLoading(false);
     }
-  }, [qv, engineFamily, updateMetadataFromResponse]);
+  }, [qms, engineFamily, updateMetadataFromResponse]);
 
   // Load sections for a module (QE 3-level hierarchy; other engines map to flat)
   const loadSections = useCallback(async (module: string) => {
@@ -197,7 +197,7 @@ export function useEngineParameterMetadata(engineFamily: string = 'qe'): UseEngi
     try {
       if (engineFamily === 'qe') {
         // QE has sections within modules
-        const response = await qv.listEngineParameterMetadata(engineFamily, 'list_sections' as 'list_categories', { category: module });
+        const response = await qms.listEngineParameterMetadata(engineFamily, 'list_sections' as 'list_categories', { category: module });
 
         if (!response.ok) {
           setSectionsError(response.error?.message ?? 'Failed to load sections');
@@ -216,7 +216,7 @@ export function useEngineParameterMetadata(engineFamily: string = 'qe'): UseEngi
         }
       } else {
         // Non-QE: list tags for category and derive unique sections
-        const response = await qv.listEngineParameterMetadata(engineFamily, 'list_tags', { category: module });
+        const response = await qms.listEngineParameterMetadata(engineFamily, 'list_tags', { category: module });
 
         if (!response.ok) {
           setSectionsError(response.error?.message ?? 'Failed to load sections');
@@ -250,7 +250,7 @@ export function useEngineParameterMetadata(engineFamily: string = 'qe'): UseEngi
     } finally {
       setSectionsLoading(false);
     }
-  }, [qv, engineFamily, updateMetadataFromResponse]);
+  }, [qms, engineFamily, updateMetadataFromResponse]);
 
   // Load parameters for a module and section
   // CRITICAL: This must ACCUMULATE parameters, not replace them, because multiple sections
@@ -275,7 +275,7 @@ export function useEngineParameterMetadata(engineFamily: string = 'qe'): UseEngi
 
     const loadPromise = (async () => {
       try {
-        const response = await qv.listEngineParameterMetadata(engineFamily, 'list_tags', { category: module, section });
+        const response = await qms.listEngineParameterMetadata(engineFamily, 'list_tags', { category: module, section });
 
         if (!response.ok) {
           setParametersError(response.error?.message ?? 'Failed to load parameters');
@@ -338,7 +338,7 @@ export function useEngineParameterMetadata(engineFamily: string = 'qe'): UseEngi
     inFlightRef.current.set(key, loadPromise);
 
     return loadPromise;
-  }, [qv, engineFamily, updateMetadataFromResponse]);
+  }, [qms, engineFamily, updateMetadataFromResponse]);
 
   // Search parameters
   const search = useCallback(async (query: string) => {
@@ -352,7 +352,7 @@ export function useEngineParameterMetadata(engineFamily: string = 'qe'): UseEngi
     setSearchError(null);
 
     try {
-      const response = await qv.listEngineParameterMetadata(engineFamily, 'search', { query });
+      const response = await qms.listEngineParameterMetadata(engineFamily, 'search', { query });
 
       if (!response.ok) {
         setSearchError(response.error?.message ?? 'Search failed');
@@ -386,7 +386,7 @@ export function useEngineParameterMetadata(engineFamily: string = 'qe'): UseEngi
     } finally {
       setSearchLoading(false);
     }
-  }, [qv, engineFamily, updateMetadataFromResponse]);
+  }, [qms, engineFamily, updateMetadataFromResponse]);
 
   // Reload metadata (clear frontend cache + reload modules)
   const reloadMetadata = useCallback(async () => {

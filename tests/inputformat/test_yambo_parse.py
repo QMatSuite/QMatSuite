@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.yambo.inputspec import get_yambo_input_spec
-from quantumvitas.drivers.yambo.io.yambo_input import parse_yambo_input_text
-from quantumvitas.inputformat import parse_engine_inputs, write_engine_inputs
+from qmatsuite.drivers.yambo.inputspec import get_yambo_input_spec
+from qmatsuite.drivers.yambo.io.yambo_input import parse_yambo_input_text
+from qmatsuite.inputformat import parse_engine_inputs, write_engine_inputs
 
 SAMPLES_DIR = Path(__file__).parent / "samples" / "yambo"
 NORMALIZED_DIR = Path(__file__).resolve().parents[2] / ".tmp" / "engine_research" / "yambo" / "normalized"

@@ -12,9 +12,9 @@ M0 (driver protocol), M1 (demos), M2 (no QE fallbacks), and M3 (companion routin
 
 ### Modify
 
-1. `src/quantumvitas/daemon/server.py` — Add 5 new RPC handlers + register them in `_handlers` dict
-2. `src/quantumvitas/api/service.py` — Add service methods to support new RPCs (if needed)
-3. `src/quantumvitas/core/driver_protocol.py` — Add `get_managed_keys()` to BaseEngineDriver (optional, for `list_engine_ui_parameters`)
+1. `src/qmatsuite/daemon/server.py` — Add 5 new RPC handlers + register them in `_handlers` dict
+2. `src/qmatsuite/api/service.py` — Add service methods to support new RPCs (if needed)
+3. `src/qmatsuite/core/driver_protocol.py` — Add `get_managed_keys()` to BaseEngineDriver (optional, for `list_engine_ui_parameters`)
 
 ### Create
 
@@ -22,10 +22,10 @@ M0 (driver protocol), M1 (demos), M2 (no QE fallbacks), and M3 (companion routin
 
 ## Do NOT Touch
 
-- `src/quantumvitas/drivers/` (driver code, already done in M0)
+- `src/qmatsuite/drivers/` (driver code, already done in M0)
 - GUI files (that's M5-M7)
 - Existing QE RPC handlers in server.py (do NOT delete them — that's M8)
-- `src/quantumvitas/api/utils.py` (QE metadata utilities — still used by deprecated RPCs)
+- `src/qmatsuite/api/utils.py` (QE metadata utilities — still used by deprecated RPCs)
 
 ## Exact Instructions
 
@@ -60,8 +60,8 @@ def _handle_list_engine_families(self, payload: Dict[str, Any]) -> Dict[str, Any
     Returns:
         {"engines": [{engine_family, display_name, engine_role, companion_engines, supported_gen_steps}]}
     """
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     engines = []
     for family in sorted(DriverRegistry.get_all_engines()):
@@ -98,8 +98,8 @@ def _handle_list_step_palette(self, payload: Dict[str, Any]) -> Dict[str, Any]:
             "companion_steps": {},
         }
     """
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     engine_family = payload.get("engine_family")
 
@@ -180,8 +180,8 @@ def _handle_list_engine_ui_parameters(self, payload: Dict[str, Any]) -> Dict[str
 
     self.log(f"[RPC] list_engine_ui_parameters (engine: {engine_family}, gen: {step_type_gen})")
 
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     driver = DriverRegistry.get_driver(engine_family)
 
@@ -190,7 +190,7 @@ def _handle_list_engine_ui_parameters(self, payload: Dict[str, Any]) -> Dict[str
     if engine_family == "qe":
         # Delegate to existing QE metadata (stepTypeToModule mapping lives in GUI)
         # Return the raw QE UI parameters
-        from quantumvitas.api.utils import get_ui_parameters, list_supported_modules
+        from qmatsuite.api.utils import get_ui_parameters, list_supported_modules
         # Determine QE module from step_type_gen
         module_map = {
             "scf": "pw", "nscf": "pw", "relax": "pw",
@@ -224,19 +224,19 @@ def _handle_list_engine_ui_parameters(self, payload: Dict[str, Any]) -> Dict[str
     try:
         metadata_module = None
         if engine_family == "vasp":
-            from quantumvitas.drivers.vasp.data import vasp_metadata as metadata_module
+            from qmatsuite.drivers.vasp.data import vasp_metadata as metadata_module
         elif engine_family == "orca":
-            from quantumvitas.drivers.orca.data import orca_metadata as metadata_module
+            from qmatsuite.drivers.orca.data import orca_metadata as metadata_module
         elif engine_family == "lammps":
-            from quantumvitas.drivers.lammps.data import lammps_metadata as metadata_module
+            from qmatsuite.drivers.lammps.data import lammps_metadata as metadata_module
         elif engine_family == "gaussian":
-            from quantumvitas.drivers.gaussian.data import gaussian_metadata as metadata_module
+            from qmatsuite.drivers.gaussian.data import gaussian_metadata as metadata_module
         elif engine_family == "abinit":
-            from quantumvitas.drivers.abinit.data import abinit_metadata as metadata_module
+            from qmatsuite.drivers.abinit.data import abinit_metadata as metadata_module
         elif engine_family == "cp2k":
-            from quantumvitas.drivers.cp2k.data import cp2k_metadata as metadata_module
+            from qmatsuite.drivers.cp2k.data import cp2k_metadata as metadata_module
         elif engine_family == "qmcpack":
-            from quantumvitas.drivers.qmcpack.data import qmcpack_metadata as metadata_module
+            from qmatsuite.drivers.qmcpack.data import qmcpack_metadata as metadata_module
 
         if metadata_module and hasattr(metadata_module, 'list_tags'):
             tags = metadata_module.list_tags()
@@ -292,8 +292,8 @@ def _handle_list_engine_parameter_metadata(self, payload: Dict[str, Any]) -> Dic
 
     self.log(f"[RPC] list_engine_parameter_metadata (engine: {engine_family}, op: {operation})")
 
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     # For QE, delegate to existing metadata infrastructure
     if engine_family == "qe":
@@ -313,19 +313,19 @@ def _handle_list_engine_parameter_metadata(self, payload: Dict[str, Any]) -> Dic
     try:
         metadata_module = None
         if engine_family == "vasp":
-            from quantumvitas.drivers.vasp.data import vasp_metadata as metadata_module
+            from qmatsuite.drivers.vasp.data import vasp_metadata as metadata_module
         elif engine_family == "orca":
-            from quantumvitas.drivers.orca.data import orca_metadata as metadata_module
+            from qmatsuite.drivers.orca.data import orca_metadata as metadata_module
         elif engine_family == "lammps":
-            from quantumvitas.drivers.lammps.data import lammps_metadata as metadata_module
+            from qmatsuite.drivers.lammps.data import lammps_metadata as metadata_module
         elif engine_family == "gaussian":
-            from quantumvitas.drivers.gaussian.data import gaussian_metadata as metadata_module
+            from qmatsuite.drivers.gaussian.data import gaussian_metadata as metadata_module
         elif engine_family == "abinit":
-            from quantumvitas.drivers.abinit.data import abinit_metadata as metadata_module
+            from qmatsuite.drivers.abinit.data import abinit_metadata as metadata_module
         elif engine_family == "cp2k":
-            from quantumvitas.drivers.cp2k.data import cp2k_metadata as metadata_module
+            from qmatsuite.drivers.cp2k.data import cp2k_metadata as metadata_module
         elif engine_family == "qmcpack":
-            from quantumvitas.drivers.qmcpack.data import qmcpack_metadata as metadata_module
+            from qmatsuite.drivers.qmcpack.data import qmcpack_metadata as metadata_module
 
         if metadata_module is None:
             return {"categories": [], "tags": [], "results": []}
@@ -398,8 +398,8 @@ def _handle_set_engine_family(self, payload: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         {"success": true, "engine_family": "vasp"}
     """
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     project_root = self._require_path(payload, "project_root")
     calculation_selector = self._require_str(payload, "calculation")
@@ -426,7 +426,7 @@ def _handle_set_engine_family(self, payload: Dict[str, Any]) -> Dict[str, Any]:
     cache = self.state.get_cache(project_root)
 
     # Read calculation.yaml, set engine_family, save
-    from quantumvitas.api.utils import load_calculation
+    from qmatsuite.api.utils import load_calculation
     calc_model = load_calculation(project_root, calculation_selector, index=cache.index)
 
     calc_model.engine_family = engine_family
@@ -452,8 +452,8 @@ These test the RPC handler logic directly, not through the daemon socket.
 """
 import pytest
 
-from quantumvitas.core.driver_registry import DriverRegistry
-import quantumvitas.drivers
+from qmatsuite.core.driver_registry import DriverRegistry
+import qmatsuite.drivers
 
 
 class TestListEngineFamilies:
@@ -543,7 +543,7 @@ source .venv/bin/activate && python -m pytest tests/daemon/test_generic_rpcs.py 
 python -m pytest tests/daemon/ -v -k "qe" --tb=short
 
 # 3. Verify new handlers are registered
-grep -n "list_engine_families\|list_step_palette\|list_engine_ui_parameters\|list_engine_parameter_metadata\|set_engine_family" src/quantumvitas/daemon/server.py
+grep -n "list_engine_families\|list_step_palette\|list_engine_ui_parameters\|list_engine_parameter_metadata\|set_engine_family" src/qmatsuite/daemon/server.py
 
 # 4. Full test suite
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile

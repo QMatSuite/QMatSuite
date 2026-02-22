@@ -7,18 +7,18 @@ import yaml
 from pymatgen.core import Lattice, Structure
 from typer.testing import CliRunner
 
-from quantumvitas.cli.main import app, _parse_override_args
-from quantumvitas.api.utils import slugify, meta_from_name, read_structure
-from quantumvitas.core.resources import generate_resource_id
-from quantumvitas.calculation.input_runner import PreparedInputStep
-from quantumvitas.calculation.geometry import read_geometry_from_input, compare_geometries
+from qmatsuite.cli.main import app, _parse_override_args
+from qmatsuite.api.utils import slugify, meta_from_name, read_structure
+from qmatsuite.core.resources import generate_resource_id
+from qmatsuite.calculation.input_runner import PreparedInputStep
+from qmatsuite.calculation.geometry import read_geometry_from_input, compare_geometries
 # StepResult removed - use API types if needed
-from quantumvitas.io import QEInputParser
-from quantumvitas.calculation.types import StepMode
+from qmatsuite.io import QEInputParser
+from qmatsuite.calculation.types import StepMode
 from tests.core.test_data import load_test_cases
 
-# Structure file format constants (from quantumvitas.io.structure_io)
-STRUCTURE_META_KEY = "__qv_meta__"
+# Structure file format constants (from qmatsuite.io.structure_io)
+STRUCTURE_META_KEY = "__qms_meta__"
 STRUCTURE_DATA_KEY = "structure"
 
 
@@ -66,7 +66,7 @@ def sample_project(tmp_path: Path) -> Path:
             }
         ],
     }
-    _write_yaml(project_root / "project.qv.yml", project_config)
+    _write_yaml(project_root / "project.qms.yml", project_config)
     (project_root / "structures").mkdir()
     # Create a minimal valid structure JSON file (pymatgen format with structure key)
     structure_json = {
@@ -149,7 +149,7 @@ def sample_project(tmp_path: Path) -> Path:
 
 
 def test_project_open(sample_project: Path):
-    from quantumvitas.api import get_service
+    from qmatsuite.api import get_service
     svc = get_service(sample_project)
     # Use API to access project config
     config = svc.project.get_config()
@@ -185,7 +185,7 @@ def test_cli_init(tmp_path: Path):
     dest = tmp_path / "new_project"
     result = runner.invoke(app, ["init", "project", "--path", str(dest)])
     assert result.exit_code == 0, result.stdout
-    project_file = dest / "project.qv.yml"
+    project_file = dest / "project.qms.yml"
     assert project_file.exists()
     calculations_dir = dest / "calculations"
     assert calculations_dir.exists()
@@ -199,7 +199,7 @@ def test_cli_init_auto_creates_project_dir():
         assert result.exit_code == 0, result.stdout
         project_dir = Path("project1")
         assert project_dir.is_dir()
-        assert (project_dir / "project.qv.yml").exists()
+        assert (project_dir / "project.qms.yml").exists()
 
 
 def test_parse_override_args_basic():
@@ -269,7 +269,7 @@ def test_cli_import_structure_registers_json(tmp_path: Path):
     loaded = read_structure(stored)
     assert loaded.composition.reduced_formula == "Si"
 
-    data = yaml.safe_load((dest / "project.qv.yml").read_text())
+    data = yaml.safe_load((dest / "project.qms.yml").read_text())
     # In ID-only model, structures entries only have structure_ulid, not meta
     # Verify structure was registered by checking structure_ulid exists
     assert len(data["structures"]) == 1
@@ -279,7 +279,7 @@ def test_cli_import_structure_registers_json(tmp_path: Path):
     assert structure_file.exists()
     import json
     struct_data = json.loads(structure_file.read_text())
-    struct_meta = struct_data.get("__qv_meta__") or struct_data.get("meta") or {}
+    struct_meta = struct_data.get("__qms_meta__") or struct_data.get("meta") or {}
     assert struct_meta.get("name") == "si_struct"
 
 
@@ -311,7 +311,7 @@ def test_cli_rename_structure(sample_project: Path):
     )
     assert result.exit_code == 0, result.stdout
 
-    config = yaml.safe_load((sample_project / "project.qv.yml").read_text())
+    config = yaml.safe_load((sample_project / "project.qms.yml").read_text())
     entry = config["structures"][0]
     assert entry["name"] == "Si renamed"
     assert entry["file"] == dest_path
@@ -337,7 +337,7 @@ def test_cli_rename_calculation(sample_project: Path):
     )
     assert result.exit_code == 0, result.stdout
 
-    config = yaml.safe_load((sample_project / "project.qv.yml").read_text())
+    config = yaml.safe_load((sample_project / "project.qms.yml").read_text())
     entry = config["calculations"][0]
     # API format: meta contains ulid, name, slug, path
     assert entry["meta"]["name"] == "Calculation new"
@@ -381,7 +381,7 @@ def test_cli_delete_structure(tmp_path: Path):
     )
     assert result.exit_code == 0, result.stdout
     assert not structure_file.exists()
-    data = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    data = yaml.safe_load((project_root / "project.qms.yml").read_text())
     assert all(entry["name"] != "si" for entry in data["structures"])
 
 
@@ -431,7 +431,7 @@ def test_cli_delete_calculation(tmp_path: Path):
     )
     assert result.exit_code == 0, result.stdout
     assert not wf_dir.exists()
-    data = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    data = yaml.safe_load((project_root / "project.qms.yml").read_text())
     assert all(entry["name"] != "wf1" for entry in data["calculations"])
 
 
@@ -441,7 +441,7 @@ def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
 
     def fake_run_calculation(self, calc_selector, steps=None, **kwargs):
         # Return RunResultDTO matching nested method return format
-        from quantumvitas.api.types.run import RunResultDTO
+        from qmatsuite.api.types.run import RunResultDTO
         return RunResultDTO(
             run_ulid="test-run-ulid",
             calc_ulid="test-calc-ulid",
@@ -469,7 +469,7 @@ def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
         )
 
     # Mock the nested run_calculation method to avoid actual QE execution
-    monkeypatch.setattr("quantumvitas.api.service.QVService.Run.run_calculation", fake_run_calculation)
+    monkeypatch.setattr("qmatsuite.api.service.QMSService.Run.run_calculation", fake_run_calculation)
     
     # Mock pseudopotential resolution to avoid pseudo requirements
     def fake_ensure_qe_pseudos(*args, **kwargs):
@@ -484,7 +484,7 @@ def test_cli_run_calculation_strict_option(sample_project: Path, monkeypatch):
                 self.all_available = True
         return MockPseudoResult()
     
-    monkeypatch.setattr("quantumvitas.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
+    monkeypatch.setattr("qmatsuite.core.pseudo.ensure_qe_pseudos", fake_ensure_qe_pseudos)
 
     result = runner.invoke(
         app,
@@ -518,7 +518,7 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     project_root = tmp_path / "proj"
     project_root.mkdir()
     # Create minimal project file
-    (project_root / "project.qv.yml").write_text(
+    (project_root / "project.qms.yml").write_text(
         yaml.safe_dump({"project": {"name": "proj"}, "structures": [], "calculations": []})
     )
     (project_root / "structures").mkdir()
@@ -547,7 +547,7 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     (calculation_dir / "steps").mkdir()
     
     # Get structure_ulid from API
-    from quantumvitas.api import get_service
+    from qmatsuite.api import get_service
     svc = get_service(project_root)
     struct_resolved = svc.structure.require_ref("si")
     
@@ -563,9 +563,9 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
     
     # Update project config
-    config = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    config = yaml.safe_load((project_root / "project.qms.yml").read_text())
     config["calculations"] = [{"ulid": calculation_id}]
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
 
     # Step file in calculation directory (DAG model: no structure_ulid in step YAML)
     step_file = calculation_dir / "steps" / "scf.step.yaml"
@@ -598,7 +598,7 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
 
     # Constitution §C: run_step uses unified pipeline (CalculationRunner), not run_input_step
     # Mock the instance method svc.run.run_step() to return expected result format
-    from quantumvitas.api.types.run import RunResultDTO
+    from qmatsuite.api.types.run import RunResultDTO
     from unittest.mock import patch
     
     def fake_run_step(self, calc_selector, step_selector):
@@ -629,8 +629,8 @@ def test_cli_run_stepfile_generates_input(tmp_path: Path, monkeypatch):
             }],
         )
 
-    # Mock the run_step method on QVService.Run class
-    monkeypatch.setattr("quantumvitas.api.service.QVService.Run.run_step", fake_run_step)
+    # Mock the run_step method on QMSService.Run class
+    monkeypatch.setattr("qmatsuite.api.service.QMSService.Run.run_step", fake_run_step)
 
     # Use new CLI pattern: --calculation + --step (deprecated bare step path still works but requires calculation context)
     result = runner.invoke(
@@ -656,7 +656,7 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     runner = CliRunner()
     project_root = tmp_path / "proj"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text(
+    (project_root / "project.qms.yml").write_text(
         yaml.safe_dump({"project": {"name": "proj"}, "structures": [], "calculations": []})
     )
     (project_root / "structures").mkdir()
@@ -683,7 +683,7 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     (calculation_dir / "steps").mkdir()
     
     # Get structure_ulid from API
-    from quantumvitas.api import get_service
+    from qmatsuite.api import get_service
     svc = get_service(project_root)
     struct_resolved = svc.structure.require_ref("si")
     
@@ -699,9 +699,9 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
     (calculation_dir / "calculation.yaml").write_text(yaml.safe_dump(calculation_yaml_data))
     
     # Update project config
-    config = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    config = yaml.safe_load((project_root / "project.qms.yml").read_text())
     config["calculations"] = [{"ulid": calculation_id}]
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
 
     # Step file in calculation directory (DAG model: no structure_ulid in step YAML)
     step_file = calculation_dir / "steps" / "scf.step.yaml"
@@ -731,7 +731,7 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
 
     # Constitution §C: run_step uses unified pipeline (CalculationRunner), not run_input_step
     # Mock the instance method svc.run.run_step() to return expected result format
-    from quantumvitas.api.types.run import RunResultDTO
+    from qmatsuite.api.types.run import RunResultDTO
     from unittest.mock import patch
     
     def fake_run_step(self, calc_selector, step_selector):
@@ -762,8 +762,8 @@ def test_cli_run_step_accepts_step_yaml(tmp_path: Path, monkeypatch):
             }],
         )
 
-    # Mock the run_step method on QVService.Run class
-    monkeypatch.setattr("quantumvitas.api.service.QVService.Run.run_step", fake_run_step)
+    # Mock the run_step method on QMSService.Run class
+    monkeypatch.setattr("qmatsuite.api.service.QMSService.Run.run_step", fake_run_step)
 
     # Use new CLI pattern: --calculation + --step (deprecated bare step path still works but requires calculation context)
     result = runner.invoke(
@@ -852,7 +852,7 @@ def test_cli_step_set_param(tmp_path: Path):
             }
         ],
     }
-    _write_yaml(project_root / "project.qv.yml", project_config)
+    _write_yaml(project_root / "project.qms.yml", project_config)
     (project_root / "structures").mkdir()
     import json
     structure_json = {
@@ -927,7 +927,7 @@ def test_cli_show_command(tmp_path: Path):
     runner = CliRunner()
     result = runner.invoke(app, ["show-command", str(input_file)])
     assert result.exit_code == 0
-    assert "qv init step" in result.stdout
+    assert "qms init step" in result.stdout
     assert "configure step" in result.stdout
     # Check for helpful explanation instead of --structure placeholder
     assert "inside a calculation directory" in result.stdout or "--structure" in result.stdout
@@ -939,9 +939,9 @@ def test_cli_show_command_import_preserves_original_parameters(
     """
     Test that importing a step from QE input preserves original parameters.
     
-    This test verifies Scenario B: when using show-command + qv init step --no-defaults,
+    This test verifies Scenario B: when using show-command + qms init step --no-defaults,
     the generated QE input should match the original (round-trip), without injecting
-    QV's default parameters like outdir, restart_mode, conv_thr.
+    QMS's default parameters like outdir, restart_mode, conv_thr.
     """
     runner = CliRunner()
     project_root = tmp_path / "proj"
@@ -958,8 +958,8 @@ def test_cli_show_command_import_preserves_original_parameters(
 
     # Constitution §C: run_step uses unified pipeline (CalculationRunner), not run_input_step
     # Mock CalculationRunner.run to be a no-op while allowing step materialization
-    from quantumvitas.calculation.results import CalculationResult, StepResultSummary
-    from quantumvitas.calculation.types import StepMode, StepStatus
+    from qmatsuite.calculation.results import CalculationResult, StepResultSummary
+    from qmatsuite.calculation.types import StepMode, StepStatus
     from datetime import datetime
 
     def fake_runner_run(self, calculation, *args, **kwargs):
@@ -994,7 +994,7 @@ def test_cli_show_command_import_preserves_original_parameters(
             ],
         )
 
-    monkeypatch.setattr("quantumvitas.calculation.runner.CalculationRunner.run", fake_runner_run)
+    monkeypatch.setattr("qmatsuite.calculation.runner.CalculationRunner.run", fake_runner_run)
 
     geometry_skipped = []
     for case in cases:
@@ -1040,7 +1040,7 @@ def test_cli_show_command_import_preserves_original_parameters(
         init_line = next(
             line.strip()
             for line in show_output.stdout.splitlines()
-            if line.strip().startswith("qv init step")
+            if line.strip().startswith("qms init step")
         )
         init_args = shlex.split(init_line)[1:]
         # Verify --no-defaults is included (for import scenario)
@@ -1078,7 +1078,7 @@ def test_cli_show_command_import_preserves_original_parameters(
         
         last_step = calculation_yaml["steps"][-1]
         # With ID-only model, resolve step file via step_id
-        from quantumvitas.api import get_service
+        from qmatsuite.api import get_service
         svc = get_service(project_root)
         config = svc.project.get_config()
         index = svc.project.build_resource_index()
@@ -1157,7 +1157,7 @@ def test_cli_get_command_alias(tmp_path: Path):
     runner = CliRunner()
     result = runner.invoke(app, ["get-command", str(input_file)])
     assert result.exit_code == 0
-    assert "qv init step" in result.stdout
+    assert "qms init step" in result.stdout
     # Check for helpful explanation instead of --structure placeholder
     assert "inside a calculation directory" in result.stdout or "--structure" in result.stdout
 
@@ -1189,10 +1189,10 @@ def test_cli_delete_structure(tmp_path: Path):
     )
     assert result.exit_code == 0, result.stdout
     assert not structure_file.exists()
-    data = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    data = yaml.safe_load((project_root / "project.qms.yml").read_text())
     # In ID-only model, structures entries only have structure_ulid, not name
     # Verify structure was deleted by checking structures list is empty
-    assert len(data.get("structures", [])) == 0, "Structure should be deleted from project.qv.yml"
+    assert len(data.get("structures", [])) == 0, "Structure should be deleted from project.qms.yml"
 
 
 def test_cli_delete_calculation(tmp_path: Path):
@@ -1235,10 +1235,10 @@ def test_cli_delete_calculation(tmp_path: Path):
     )
     assert result.exit_code == 0, result.stdout
     assert not wf_dir.exists()
-    data = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    data = yaml.safe_load((project_root / "project.qms.yml").read_text())
     # In ID-only model, calculation entries only have calculation_id, not name
     # Verify calculation was deleted by checking calculations list is empty
     calculations = data.get("calculations", [])
-    assert len(calculations) == 0, "Calculation should be deleted from project.qv.yml"
+    assert len(calculations) == 0, "Calculation should be deleted from project.qms.yml"
 
 

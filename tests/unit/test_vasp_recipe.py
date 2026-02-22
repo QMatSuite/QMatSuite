@@ -2,8 +2,8 @@
 
 import pytest
 from pathlib import Path
-from quantumvitas.execution.recipes import VASPRecipe
-from quantumvitas.execution.job_graph import JobGraph
+from qmatsuite.execution.recipes import VASPRecipe
+from qmatsuite.execution.job_graph import JobGraph
 
 
 class MockStep:

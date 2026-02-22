@@ -2,7 +2,7 @@
 
 ## Current Schema Analysis
 
-### 1. project.qv.yml (CURRENT - has duplication)
+### 1. project.qms.yml (CURRENT - has duplication)
 ```yaml
 project:
   meta: { id, name, slug, path, kind }
@@ -38,7 +38,7 @@ parameters: {}
 
 ## Target Schema (DAG + ID-only)
 
-### 1. project.qv.yml (TARGET)
+### 1. project.qms.yml (TARGET)
 ```yaml
 project:
   meta: { id, name, slug, path, kind }

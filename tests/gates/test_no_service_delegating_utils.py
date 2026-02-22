@@ -2,7 +2,7 @@
 Gate B: Forbid service-delegating utils wrappers.
 
 Per API Constitution Law H2.2:
-- Utils functions MUST NOT contain get_service() or QVService()
+- Utils functions MUST NOT contain get_service() or QMSService()
 - Utils functions MUST NOT be thin forwarders to service methods
 
 Rationale: These wrappers were removed during API slimming.
@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 
-UTILS_PATH = Path(__file__).parent.parent.parent / "src" / "quantumvitas" / "api" / "utils.py"
+UTILS_PATH = Path(__file__).parent.parent.parent / "src" / "qmatsuite" / "api" / "utils.py"
 
 
 class ServiceDelegationVisitor(ast.NodeVisitor):
@@ -35,7 +35,7 @@ class ServiceDelegationVisitor(ast.NodeVisitor):
 
         # Check for service delegation patterns in the function body
         has_get_service = False
-        has_qvservice = False
+        has_qmsservice = False
 
         for child in ast.walk(node):
             # Check for get_service(...) calls
@@ -45,19 +45,19 @@ class ServiceDelegationVisitor(ast.NodeVisitor):
                 elif isinstance(child.func, ast.Attribute) and child.func.attr == "get_service":
                     has_get_service = True
 
-            # Check for QVService(...) instantiation
+            # Check for QMSService(...) instantiation
             if isinstance(child, ast.Call):
-                if isinstance(child.func, ast.Name) and child.func.id == "QVService":
-                    has_qvservice = True
-                elif isinstance(child.func, ast.Attribute) and child.func.attr == "QVService":
-                    has_qvservice = True
+                if isinstance(child.func, ast.Name) and child.func.id == "QMSService":
+                    has_qmsservice = True
+                elif isinstance(child.func, ast.Attribute) and child.func.attr == "QMSService":
+                    has_qmsservice = True
 
-        if has_get_service or has_qvservice:
+        if has_get_service or has_qmsservice:
             self.violations.append({
                 "function": node.name,
                 "line": node.lineno,
                 "has_get_service": has_get_service,
-                "has_qvservice": has_qvservice,
+                "has_qmsservice": has_qmsservice,
             })
 
         self.generic_visit(node)
@@ -106,8 +106,8 @@ class TestNoServiceDelegatingUtils:
             violation_report = "\n".join(
                 f"  Line {v['line']}: {v['function']}() - "
                 f"{'get_service()' if v['has_get_service'] else ''}"
-                f"{' + ' if v['has_get_service'] and v['has_qvservice'] else ''}"
-                f"{'QVService()' if v['has_qvservice'] else ''}"
+                f"{' + ' if v['has_get_service'] and v['has_qmsservice'] else ''}"
+                f"{'QMSService()' if v['has_qmsservice'] else ''}"
                 for v in violations
             )
             pytest.fail(

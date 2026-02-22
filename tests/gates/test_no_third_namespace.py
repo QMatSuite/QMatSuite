@@ -27,7 +27,7 @@ SCAN_DIRS = [
 
 SKIP_PATTERNS = [
     "tests/gates/test_no_third_namespace.py",  # This file itself
-    "src/quantumvitas/_vault/*",  # Legacy archive
+    "src/qmatsuite/_vault/*",  # Legacy archive
 ]
 
 

@@ -6,7 +6,7 @@ use the companion allowlist correctly.
 """
 import pytest
 
-from quantumvitas.workflow.generalized_steps import (
+from qmatsuite.workflow.generalized_steps import (
     materialize_public_step_key,
     materialize_workflow,
     get_supported_generalized_steps,

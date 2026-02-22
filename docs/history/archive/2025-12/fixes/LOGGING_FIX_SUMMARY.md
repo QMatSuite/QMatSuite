@@ -7,23 +7,23 @@
 **Root Cause**: Python's `logging.getLogger(...).info(...)` calls were not configured to output to stderr.
 
 **Evidence**:
-1. Daemon has a `log()` method (`server.py:278`) that writes to `stderr` with format `[qv-daemon] [LEVEL] message`
+1. Daemon has a `log()` method (`server.py:278`) that writes to `stderr` with format `[qms-daemon] [LEVEL] message`
 2. Electron main process (`electron/main.ts:284`) listens to daemon's `stderr` and forwards to renderer via IPC
-3. GUI `DebugPanel` uses `useQVLogs()` hook to receive all logs
+3. GUI `DebugPanel` uses `useQMSLogs()` hook to receive all logs
 4. **BUT**: Code using `logging.getLogger(__name__).info(...)` (e.g., `api.py:1892`) doesn't automatically output to stderr because Python's logging module wasn't configured
 
 **Specific Code Locations**:
-- `src/quantumvitas/api.py:1892`: `logger = logging.getLogger(__name__)`
-- `src/quantumvitas/analysis/structure_viz.py:62`: `logger = logging.getLogger(__name__)`
+- `src/qmatsuite/api.py:1892`: `logger = logging.getLogger(__name__)`
+- `src/qmatsuite/analysis/structure_viz.py:62`: `logger = logging.getLogger(__name__)`
 - Many other modules use `logging.getLogger(__name__)` but logs were lost
 
 ## Solution Implemented
 
 ### 1. Configure Python Logging in Daemon (`server.py`)
 
-**File**: `src/quantumvitas/daemon/server.py`
+**File**: `src/qmatsuite/daemon/server.py`
 
-**Added**: `_configure_logging()` method in `QVDaemon.__init__()`
+**Added**: `_configure_logging()` method in `QMSDaemon.__init__()`
 
 ```python
 def _configure_logging(self):
@@ -38,7 +38,7 @@ def _configure_logging(self):
     
     # Use a formatter that matches the daemon log format
     formatter = logging.Formatter(
-        '[qv-daemon] [%(levelname)s] [%(name)s] %(message)s',
+        '[qms-daemon] [%(levelname)s] [%(name)s] %(message)s',
         datefmt=None
     )
     handler.setFormatter(formatter)
@@ -54,12 +54,12 @@ def _configure_logging(self):
 
 **Result**: All `logging.getLogger(...).info(...)` calls now output to stderr with format:
 ```
-[qv-daemon] [INFO] [quantumvitas.api] [viewer] kind=online mode=supercell ...
+[qms-daemon] [INFO] [qmatsuite.api] [viewer] kind=online mode=supercell ...
 ```
 
 ### 2. Backend Viewer Summary Log (`api.py`)
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 
 **Added**: One-line summary log in `_build_structure_vis_payload()`
 
@@ -125,11 +125,11 @@ def _configure_logging(self):
 1. **Start GUI** and open Structures page
 2. **Click a project structure** → Should see in Daemon Logs:
    ```
-   [qv-daemon] [INFO] [quantumvitas.api] [viewer] kind=project mode=primitive sc=1x1x1 repeat=0 atoms=2->2 bonds=4 prep=2ms bonds=1ms total=5ms payload=2KB
+   [qms-daemon] [INFO] [qmatsuite.api] [viewer] kind=project mode=primitive sc=1x1x1 repeat=0 atoms=2->2 bonds=4 prep=2ms bonds=1ms total=5ms payload=2KB
    ```
 3. **Click an online candidate** → Should see:
    ```
-   [qv-daemon] [INFO] [quantumvitas.api] [viewer] kind=online mode=primitive sc=1x1x1 repeat=0 atoms=3->3 bonds=6 prep=3ms bonds=2ms total=8ms payload=3KB
+   [qms-daemon] [INFO] [qmatsuite.api] [viewer] kind=online mode=primitive sc=1x1x1 repeat=0 atoms=3->3 bonds=6 prep=3ms bonds=2ms total=8ms payload=3KB
    ```
 4. **Check browser console** → Should see:
    ```
@@ -140,7 +140,7 @@ def _configure_logging(self):
 
 **Backend** (visible in Daemon Logs panel):
 ```
-[qv-daemon] [INFO] [quantumvitas.api] [viewer] kind=online mode=supercell sc=2x2x2 repeat=1 atoms=3->24 bonds=84 prep=8ms bonds=120ms total=135ms payload=420KB
+[qms-daemon] [INFO] [qmatsuite.api] [viewer] kind=online mode=supercell sc=2x2x2 repeat=1 atoms=3->24 bonds=84 prep=8ms bonds=120ms total=135ms payload=420KB
 ```
 
 **Frontend** (visible in browser console):
@@ -150,8 +150,8 @@ def _configure_logging(self):
 
 ## Files Changed
 
-1. `src/quantumvitas/daemon/server.py`: Added `_configure_logging()` method
-2. `src/quantumvitas/api.py`: Added `[viewer]` summary log in `_build_structure_vis_payload()`
+1. `src/qmatsuite/daemon/server.py`: Added `_configure_logging()` method
+2. `src/qmatsuite/api.py`: Added `[viewer]` summary log in `_build_structure_vis_payload()`
 3. `gui/src/App.tsx`: Added frontend timing logs in `loadStructureModel()` and `handleViewerFirstFrame()`
 
 ## Testing

@@ -1,17 +1,17 @@
-# AI Understanding of QuantumVITAS (Python v2)
+# AI Understanding of QMatSuite (Python v2)
 
 > **Purpose**: This document captures architectural knowledge, conventions, and lessons learned
-> to help future AI assistants quickly understand the QuantumVITAS Python codebase.
+> to help future AI assistants quickly understand the QMatSuite Python codebase.
 
 ---
 
 ## 1. Project Overview
 
-QuantumVITAS is a calculation engine and GUI layer for **Quantum ESPRESSO (QE)** ab-initio simulations.
+QMatSuite is a calculation engine and GUI layer for **Quantum ESPRESSO (QE)** ab-initio simulations.
 The Python v2 rewrite (in `v2-python` branch) replaces the original Java GUI with a modern
 Python implementation featuring:
 
-- **Typer CLI** (`qv` command) for all operations
+- **Typer CLI** (`qms` command) for all operations
 - **Calculation engine** for multi-step QE calculations
 - **Project model** for organizing structures, calculations, and steps
 - **Automatic QE detection** across platforms
@@ -19,8 +19,8 @@ Python implementation featuring:
 ### Key Directories
 
 ```
-src/quantumvitas/
-├── api.py               # QVService - stable interface for CLI and GUI
+src/qmatsuite/
+├── api.py               # QMSService - stable interface for CLI and GUI
 ├── cli/                 # Typer CLI implementation (main.py is ~2600 lines)
 ├── core/
 │   ├── engines/         # QE engine, installation detection, pseudopotentials
@@ -35,7 +35,7 @@ src/quantumvitas/
 │   ├── generator/       # QEInputGenerator
 │   ├── model.py         # QEInput, QENamelist, QECard, etc.
 │   └── structure_io.py  # pymatgen-based structure I/O
-├── project/             # Project model (project.qv.yml)
+├── project/             # Project model (project.qms.yml)
 ├── calculation/            # Calculation execution, steps, verification
 ├── analysis/            # Post-processing (energy, bands, DOS)
 ├── engine/              # High-level engine registry
@@ -68,11 +68,11 @@ class ResourceMeta:
 
 ### 2.2 Project Structure
 
-A QuantumVITAS project is a directory containing:
+A QMatSuite project is a directory containing:
 
 ```
 project/
-├── project.qv.yml       # Project metadata and registry
+├── project.qms.yml       # Project metadata and registry
 ├── structures/          # Structure JSON files (pymatgen format)
 ├── calculations/
 │   └── <calculation-slug>/
@@ -169,7 +169,7 @@ The QE home path is stored in an **internal Python registry**, NOT `os.environ["
 This prevents test pollution and external process interference.
 
 ```python
-from quantumvitas.core.engines import get_qe_home, set_qe_home, reset_qe_home
+from qmatsuite.core.engines import get_qe_home, set_qe_home, reset_qe_home
 
 # Get (triggers auto-detection on first call)
 qe_home = get_qe_home()
@@ -212,7 +212,7 @@ def preserve_qe_home():
 The CLI uses Typer with sub-apps. All commands support `--project PATH` for explicit project specification:
 
 ```
-qv
+qms
 ├── init
 │   ├── project [--path PATH] [--name NAME] [--snapshot SNAPSHOT]
 │   ├── calculation <name> [--structure STRUCT] [--parent WF] [--template TEMPLATE]
@@ -259,10 +259,10 @@ Resources can be identified by:
 - **path**: Relative or absolute filesystem path
 
 **Auto-detection from current directory**:
-- `find_project_root()`: Walks up to find `project.qv.yml`
+- `find_project_root()`: Walks up to find `project.qms.yml`
 - `find_enclosing_calculation()`: Detects if pwd is inside a calculation (uses directory path matching)
 - `PathContext` (`core/context.py`): Scans upward to find project/calculation/step context
-- Used by `qv run calculation`, `qv init step`, `qv analyze band`, etc.
+- Used by `qms run calculation`, `qms init step`, `qms analyze band`, etc.
 
 **Important**: For calculation auto-detection, prefer `find_enclosing_calculation()` over `PathContext.calculation_selector` because it uses directory paths (more reliable after renames). See section 26.4 for details.
 
@@ -284,37 +284,37 @@ CLI supports QE parameter overrides with special syntax:
 
 ### 4.4 API Architecture
 
-**Architecture Goal**: CLI should be thin wrappers around `QVService` methods.
+**Architecture Goal**: CLI should be thin wrappers around `QMSService` methods.
 
 ```
 INTENDED ARCHITECTURE:
-    CLI (main.py) → api.py (QVService) → core/* modules
+    CLI (main.py) → api.py (QMSService) → core/* modules
                                        → calculation/*
                                        → analysis/*
 
 CURRENT STATE (Partial):
-    - analyze commands: ✅ Uses QVService (fixed 2025-12-05)
-    - init/configure/delete: ⚠️ Mixed (some use QVService, some bypass)
-    - run commands: ⚠️ Bypasses QVService
+    - analyze commands: ✅ Uses QMSService (fixed 2025-12-05)
+    - init/configure/delete: ⚠️ Mixed (some use QMSService, some bypass)
+    - run commands: ⚠️ Bypasses QMSService
 ```
 
-**`api.py` (`QVService`)** provides a clean service layer:
+**`api.py` (`QMSService`)** provides a clean service layer:
 - All methods receive `project_root` explicitly (never use `os.getcwd()`)
 - Uses selectors (name/slug/path) for resources
-- Raises `QVServiceError` for all errors
+- Raises `QMSServiceError` for all errors
 - Provides consistent interface for CLI, GUI, and scripts
 
 **`cli/main.py`** should be a thin wrapper:
 - Parse CLI arguments with Typer
-- Call `QVService` methods
-- Convert `QVServiceError` to `typer.BadParameter`
+- Call `QMSService` methods
+- Convert `QMSServiceError` to `typer.BadParameter`
 - Format output for terminal
 
-**For new implementations**: Always add functionality to `QVService` first, then call from CLI.
+**For new implementations**: Always add functionality to `QMSService` first, then call from CLI.
 
 **Files**:
 - **`core/project_utils.py`**: Low-level config helpers that raise `ValueError`, `ResourceNotFoundError`
-- **`api.py`**: Service layer (`QVService`) that should be the single entry point
+- **`api.py`**: Service layer (`QMSService`) that should be the single entry point
 - **`cli/main.py`**: Thin CLI wrapper (currently too thick)
 
 ---
@@ -323,17 +323,17 @@ CURRENT STATE (Partial):
 
 ### 5.1 Configure Calculation Command
 
-`qv configure calculation` now supports:
+`qms configure calculation` now supports:
 
 ```bash
 # Change structure for calculation and all its steps
-qv configure calculation --structure new_structure
+qms configure calculation --structure new_structure
 
 # Reorder steps in calculation
-qv configure calculation --reorder scf,nscf,dos
+qms configure calculation --reorder scf,nscf,dos
 
 # Both at once
-qv configure calculation si_dos --structure si --reorder scf,nscf
+qms configure calculation si_dos --structure si --reorder scf,nscf
 ```
 
 When `--structure` is used, the command:
@@ -363,7 +363,7 @@ This enables:
 
 ### 5.3 Init Step: Type Required, Structure Optional
 
-`qv init step` syntax changed to make step type required (validated against known types):
+`qms init step` syntax changed to make step type required (validated against known types):
 
 ```bash
 # Known step types:
@@ -371,15 +371,15 @@ This enables:
 # ph, q2r, matdyn, dynmat, pp, projwfc, custom
 
 # With explicit structure
-qv init step scf --structure si
+qms init step scf --structure si
 
 # Inside calculation directory (structure inherited)
 cd project/calculations/si-dos
-qv init step nscf
+qms init step nscf
 # Output: "Using structure 'si' from parent calculation"
 
 # Outside calculation without structure = ERROR
-qv init step scf  # Error: Structure required
+qms init step scf  # Error: Structure required
 ```
 
 ### 5.5 Structure Validation on Step Run
@@ -438,22 +438,22 @@ run_input_step(..., keep_original=True)   # Default for raw .in files
 Basic implementation for renaming structures:
 
 ```bash
-qv configure structure si --name "Silicon bulk"
+qms configure structure si --name "Silicon bulk"
 ```
 
 ### 5.8 Step Parameter Defaults vs Import Semantics
 
-QuantumVITAS distinguishes two distinct scenarios for step creation, each with different default parameter behavior:
+QMatSuite distinguishes two distinct scenarios for step creation, each with different default parameter behavior:
 
-#### Scenario A: "Create Step from Scratch" (Uses QV Defaults)
+#### Scenario A: "Create Step from Scratch" (Uses QMS Defaults)
 
 **Sources:**
-- `qv init step <type>` (without `--no-defaults`)
+- `qms init step <type>` (without `--no-defaults`)
 - GUI "Add Step" (type = scf / nscf / bands / dos / ...)
-- `reset_step_params` (reset to QV defaults)
+- `reset_step_params` (reset to QMS defaults)
 
 **Behavior:**
-- Step spec parameters and cards include QV's in-code default parameters
+- Step spec parameters and cards include QMS's in-code default parameters
 - Defaults are defined in `calculation/step_defaults.py` per step type
 - Common defaults include:
   - `CONTROL.outdir = "./outdir"`
@@ -465,27 +465,27 @@ QuantumVITAS distinguishes two distinct scenarios for step creation, each with d
 
 **Example:**
 ```bash
-qv init step scf --structure si
+qms init step scf --structure si
 # Creates step with defaults: outdir, restart_mode, conv_thr, etc.
 ```
 
 #### Scenario B: "Import Existing QE Input" (Preserves Original)
 
 **Sources:**
-- `qv init step <type> --no-defaults` (with parameters extracted from QE input)
-- `show-command` → `qv init step` calculation (suggests `--no-defaults`)
+- `qms init step <type> --no-defaults` (with parameters extracted from QE input)
+- `show-command` → `qms init step` calculation (suggests `--no-defaults`)
 - Future GUI "Import QE Input" flow
 
 **Behavior:**
 - Step spec parameters reflect only what was in the original input file
-- No QV defaults are injected (no `outdir`, `restart_mode`, `conv_thr` unless present in original)
+- No QMS defaults are injected (no `outdir`, `restart_mode`, `conv_thr` unless present in original)
 - Round-trip preservation: original QE input → step spec → generated QE input should match
 - Run-time tweaks like `set_outdir_to_temp()` are allowed at execution time but not persisted back to the spec
 
 **Example:**
 ```bash
-qv show-command si_scf.in
-# Suggests: qv init step scf --no-defaults --CONTROL.calculation=scf ...
+qms show-command si_scf.in
+# Suggests: qms init step scf --no-defaults --CONTROL.calculation=scf ...
 # This preserves original parameters without injecting defaults
 ```
 
@@ -497,31 +497,31 @@ qv show-command si_scf.in
 
 **GUI Wiring:**
 - **GUI "Add Step"** (`CalculationDetailPanel.handleAddStep`):
-  - Calls RPC `add_step_to_calculation` → `QVService.add_step_to_calculation` → `init_step`
-  - Uses `apply_defaults=True` (Scenario A: from-scratch with QV defaults)
+  - Calls RPC `add_step_to_calculation` → `QMSService.add_step_to_calculation` → `init_step`
+  - Uses `apply_defaults=True` (Scenario A: from-scratch with QMS defaults)
   - Steps created this way include `outdir`, `restart_mode`, `conv_thr`, etc.
   
 - **GUI "Import QE Input"** (`CalculationDetailPanel.handleImportStep`):
-  - Calls RPC `import_step_from_qe_input` → `QVService.import_step_from_qe_input`
+  - Calls RPC `import_step_from_qe_input` → `QMSService.import_step_from_qe_input`
   - Uses `apply_defaults=False` (Scenario B: preserve original parameters)
   - Steps imported this way only contain parameters from the original QE input file
   
 - **GUI "Reset Step Parameters"** (`StepDetailPanel.handleResetParams`):
-  - Calls RPC `reset_step_params` → `QVService.reset_step_params`
-  - Uses `apply_defaults=True` (Scenario A: reset to QV defaults)
+  - Calls RPC `reset_step_params` → `QMSService.reset_step_params`
+  - Uses `apply_defaults=True` (Scenario A: reset to QMS defaults)
   - Always resets to in-code defaults, not to "original QE input file"
 
 **Decision Tree:**
 ```
 Create Step
-├─ From scratch (GUI "Add Step", CLI `qv init step` without --no-defaults)
-│  └─ apply_defaults=True → QV defaults included
+├─ From scratch (GUI "Add Step", CLI `qms init step` without --no-defaults)
+│  └─ apply_defaults=True → QMS defaults included
 │
-└─ Import existing QE input (GUI "Import QE Input", CLI `qv init step --no-defaults`)
+└─ Import existing QE input (GUI "Import QE Input", CLI `qms init step --no-defaults`)
    └─ apply_defaults=False → Original parameters preserved
 
 Reset Step Parameters
-└─ Always apply_defaults=True → Reset to QV defaults
+└─ Always apply_defaults=True → Reset to QMS defaults
 ```
 
 **Historical Context:**
@@ -532,7 +532,7 @@ Reset Step Parameters
   - E2E tests in `gui/tests/e2e/step_defaults.spec.ts` verify GUI wiring
 
 Updates:
-- Entry in `project.qv.yml`
+- Entry in `project.qms.yml`
 - Renames the structure file
 - Updates metadata inside the JSON file
 
@@ -646,7 +646,7 @@ python -m pytest tests/cli/       # CLI tests (needs QE)
 
 ### 8.3 YAML Files
 
-- `project.qv.yml` - Project metadata
+- `project.qms.yml` - Project metadata
 - `calculation.yaml` - Calculation definition (includes `structure_id` ULID reference)
 - `*.step.yaml` - Step specifications (DAG model: NO `parent_calculation_id` or `structure_id` - these are inherited from calculation)
 
@@ -686,7 +686,7 @@ Structures are stored as pymatgen JSON with embedded metadata:
 ### 9.3 Structure Consistency
 
 Workflows reference a single structure in `calculation.yaml`. Steps also have a `structure` field.
-When changing a calculation's structure, use `qv configure calculation --structure` which updates all steps.
+When changing a calculation's structure, use `qms configure calculation --structure` which updates all steps.
 
 ### 9.4 QE Input Quirks
 
@@ -710,7 +710,7 @@ Tolerances:
 
 When adding new functionality, follow this pattern:
 
-1. **Add to `QVService` first** (`api.py`):
+1. **Add to `QMSService` first** (`api.py`):
    ```python
    @staticmethod
    def new_feature(project_root: Path, selector: str, **kwargs) -> Result:
@@ -730,16 +730,16 @@ When adding new functionality, follow this pattern:
    @app.command("new-feature")
    def new_feature_command(...):
        try:
-           result = QVService.new_feature(project_root, selector, **kwargs)
+           result = QMSService.new_feature(project_root, selector, **kwargs)
            typer.echo(f"Success: {result}")
-       except QVServiceError as e:
+       except QMSServiceError as e:
            raise typer.BadParameter(str(e))
    ```
 
 3. **Never**:
    - Import `core/project_utils.py` directly in CLI
-   - Use `Path.cwd()` in `QVService` methods
-   - Duplicate logic between CLI and `QVService`
+   - Use `Path.cwd()` in `QMSService` methods
+   - Duplicate logic between CLI and `QMSService`
 
 ---
 
@@ -751,7 +751,7 @@ When adding new functionality, follow this pattern:
 2. `core/models.py` - Dataclass models with load/save (CalculationModel, ProjectModel)
 3. `core/resolution.py` - Centralized selector→resource resolution
 4. `core/context.py` - PWD context helper for CLI
-5. `api.py` - QVService stable interface
+5. `api.py` - QMSService stable interface
 6. `calculation/structure_steps.py` - StructureStepSpec (step YAML model)
 7. `io/model.py` - QE input structure
 8. `cli/main.py` - CLI commands (large file, use semantic search)
@@ -763,7 +763,7 @@ When adding new functionality, follow this pattern:
 | Add CLI command | `cli/main.py` |
 | Add configure option | `cli/main.py` (look for `@configure_app.command`) |
 | Modify resource resolution | `core/resolution.py` |
-| Add service layer method | `api.py` (`QVService` class) |
+| Add service layer method | `api.py` (`QMSService` class) |
 | Modify PWD context detection | `core/context.py` |
 | Add/modify resource models | `core/models.py` |
 | Modify QE detection | `core/engines/qe_installation.py` |
@@ -803,7 +803,7 @@ The GUI is implemented as an Electron desktop application with React/TypeScript 
 │  │  + Actions  │ │  (view-based)        │  │
 │  └─────────────┘ └──────────────────────┘  │
 │               │                             │
-│        window.qv.request()                  │
+│        window.qms.request()                  │
 └───────────────┼─────────────────────────────┘
                 │ IPC (contextBridge)
 ┌───────────────┼─────────────────────────────┐
@@ -813,7 +813,7 @@ The GUI is implemented as an Electron desktop application with React/TypeScript 
                 │ stdio (JSON lines)
 ┌───────────────┼─────────────────────────────┐
 │           Python Daemon                     │
-│    QVDaemon → QVService → core modules      │
+│    QMSDaemon → QMSService → core modules      │
 └─────────────────────────────────────────────┘
 ```
 
@@ -825,7 +825,7 @@ The GUI is implemented as an Electron desktop application with React/TypeScript 
 | Resizable daemon logs panel | DebugPanel with drag handle |
 | Resizable list panels | ResizablePane component |
 | Drag-and-drop step reordering | Native HTML5 DnD in CalculationDetailPanel |
-| Add step to calculation | add_step_to_calculation in QVService + daemon handler |
+| Add step to calculation | add_step_to_calculation in QMSService + daemon handler |
 | Supercell visualization | Controls in StructureViewer3D, params to get_structure_vis |
 | Boundary atom repetition | repeat_boundary param in structure visualization |
 | Context-aware element legend | Filter legend to only present elements |
@@ -835,7 +835,7 @@ The GUI is implemented as an Electron desktop application with React/TypeScript 
 | Feature | Implementation |
 |---------|---------------|
 | Theme switching (dark/light) | CSS variables with `[data-theme="light"]` selector, Settings panel toggle |
-| Reveal in Finder/Explorer | `shell.showItemInFolder()` IPC handler, `window.qv.revealPath()` API |
+| Reveal in Finder/Explorer | `shell.showItemInFolder()` IPC handler, `window.qms.revealPath()` API |
 | Automatic analysis selection | `detectAnalysisType()` based on calculation's last step type |
 | Automatic analysis loading | Settings toggle, auto-loads when calculation selected (if enabled) |
 | Band structure ylim control | Energy range inputs update YAxis domain dynamically |
@@ -846,28 +846,28 @@ Key methods exposed via JSON-RPC:
 
 ```python
 # Project operations
-"get_project_summary" → QVService.get_project_summary
-"list_structures" → QVService.list_structures_data
-"list_calculations" → QVService.list_calculations_data
+"get_project_summary" → QMSService.get_project_summary
+"list_structures" → QMSService.list_structures_data
+"list_calculations" → QMSService.list_calculations_data
 
 # CRUD operations
-"create_project" → QVService.init_project
-"import_structure" → QVService.import_structure
-"create_calculation" → QVService.init_calculation
-"add_step_to_calculation" → QVService.add_step_to_calculation (NEW)
-"reorder_calculation_steps" → QVService.reorder_calculation_steps
-"delete_structure" → QVService.delete_structure
-"delete_calculation" → QVService.delete_calculation
+"create_project" → QMSService.init_project
+"import_structure" → QMSService.import_structure
+"create_calculation" → QMSService.init_calculation
+"add_step_to_calculation" → QMSService.add_step_to_calculation (NEW)
+"reorder_calculation_steps" → QMSService.reorder_calculation_steps
+"delete_structure" → QMSService.delete_structure
+"delete_calculation" → QMSService.delete_calculation
 
 # Visualization data (pure data, no matplotlib)
-"get_structure_vis" → QVService.get_structure_visualization_data
-"get_scf_convergence" → QVService.get_scf_convergence_data
-"get_dos_data" → QVService.get_dos_data
-"get_band_structure_data" → QVService.get_band_structure_data
+"get_structure_vis" → QMSService.get_structure_visualization_data
+"get_scf_convergence" → QMSService.get_scf_convergence_data
+"get_dos_data" → QMSService.get_dos_data
+"get_band_structure_data" → QMSService.get_band_structure_data
 
 # Job management
-"run_calculation" → JobManager.submit(QVService.run_calculation)
-"run_step" → JobManager.submit(QVService.run_step)
+"run_calculation" → JobManager.submit(QMSService.run_calculation)
+"run_step" → JobManager.submit(QMSService.run_step)
 "list_jobs" → JobManager.list_jobs
 "cancel_job" → JobManager.cancel_job
 ```
@@ -898,7 +898,7 @@ gui/src/components/
 
 ### 11.5 Log File Persistence
 
-Logs are persisted to `.qv-daemon.log` in the project directory:
+Logs are persisted to `.qms-daemon.log` in the project directory:
 
 ```typescript
 // Electron main process
@@ -906,8 +906,8 @@ appendToLogFile(message)  // Appends timestamped log
 readLogFile(projectPath)  // Reads tail of log file
 
 // Preload API
-window.qv.setProject(path)  // Set current project for logging
-window.qv.readLogs(path)    // Read logs from project
+window.qms.setProject(path)  // Set current project for logging
+window.qms.readLogs(path)    // Read logs from project
 ```
 
 When a project is loaded, `setProject` is called automatically to enable log persistence.
@@ -930,16 +930,16 @@ Implemented from `temporary_ai_prompts` (lines 372-379):
 | Item | Implementation |
 |------|---------------|
 | **Post-processing step support** | DOS/bands/projwfc steps now generate correct input format (just &DOS, &BANDS, etc. namelists) instead of pw.x format |
-| **`--snapshot` for `qv init project`** | Create project from snapshot YAML file (e.g., `qv init project --snapshot demo.yml`) |
-| **`--template` for `qv init calculation`** | Copy calculation template with steps from resources/calculation_templates/ (e.g., `qv init calculation my-dos --template si-dos`) |
-| **`qv init step`** | Creates step with in-code default parameters based on step type (no template option) |
-| **`qv import-structure` accepts .json** | Can now import QV-format JSON files with embedded metadata |
-| **`qv show-command` simplified** | No longer includes `--structure <structure-id>` placeholder; shows helpful explanation instead |
-| **Structure inheritance in `qv init step`** | When using `--calculation`, inherits structure from that calculation (not just from enclosing directory) |
-| **ULID consistency in templates** | When copying templates, calculation ULIDs in project.qv.yml match step parent_calculation_id |
+| **`--snapshot` for `qms init project`** | Create project from snapshot YAML file (e.g., `qms init project --snapshot demo.yml`) |
+| **`--template` for `qms init calculation`** | Copy calculation template with steps from resources/calculation_templates/ (e.g., `qms init calculation my-dos --template si-dos`) |
+| **`qms init step`** | Creates step with in-code default parameters based on step type (no template option) |
+| **`qms import-structure` accepts .json** | Can now import QMS-format JSON files with embedded metadata |
+| **`qms show-command` simplified** | No longer includes `--structure <structure-id>` placeholder; shows helpful explanation instead |
+| **Structure inheritance in `qms init step`** | When using `--calculation`, inherits structure from that calculation (not just from enclosing directory) |
+| **ULID consistency in templates** | When copying templates, calculation ULIDs in project.qms.yml match step parent_calculation_id |
 | **QE registry isolation** | Added autouse fixture to reset QE home registry between tests |
 
-**New file**: `src/quantumvitas/core/templates.py` - Template management utilities
+**New file**: `src/qmatsuite/core/templates.py` - Template management utilities
 
 **New test file**: `tests/cli/test_template_calculation.py` - Tests for template copying and ULID consistency
 
@@ -963,12 +963,12 @@ resources/
   - Structure library: `resources/structure_library/` (for `import_structure_from_template()`)
 - **Step defaults**: Step parameters use in-code defaults (no template files)
   - Default parameters defined in `calculation/step_defaults.py`
-  - `qv init step` creates steps with default parameters based on step type
+  - `qms init step` creates steps with default parameters based on step type
   - `reset_step_params` resets to in-code defaults
 
 **Key implementation details**:
 - When creating calculation from template, CLI generates the calculation ULID first and passes it to `copy_calculation_template` so steps get the correct `parent_calculation_id`
-- When copying project template, old calculation ULIDs from project.qv.yml are mapped to new ULIDs for consistency
+- When copying project template, old calculation ULIDs from project.qms.yml are mapped to new ULIDs for consistency
 - Demo project creation (`create_demo_project`) uses snapshots from `resources/demo_projects/` instead of templates
 - Demo snapshots are generated from test projects using `scripts/generate_demo_snapshots.py`
 - If test example projects change, rerun `python scripts/generate_demo_snapshots.py` to regenerate the demo snapshot files
@@ -979,13 +979,13 @@ Implemented from `temporary_ai_prompts` (lines 344-365):
 
 | Item | Implementation |
 |------|---------------|
-| `qv configure calculation --reorder` | Reorders steps in calculation.yaml |
-| `qv configure calculation --structure` | Changes structure, updates all step YAMLs |
+| `qms configure calculation --reorder` | Reorders steps in calculation.yaml |
+| `qms configure calculation --structure` | Changes structure, updates all step YAMLs |
 | DAG model: step.yaml | Step YAML contains only step-local config (no `parent_calculation_id` or `structure_id`) |
-| Structure optional in `qv init step` | Inherits from parent calculation if inside one |
+| Structure optional in `qms init step` | Inherits from parent calculation if inside one |
 | Structure validation on run step | Warning if step structure differs from calculation |
 | Reduced input file output | Only one file when running from step spec |
-| `qv configure structure` | Basic renaming support |
+| `qms configure structure` | Basic renaming support |
 
 All tests passing (80/80).
 
@@ -999,7 +999,7 @@ Implemented the unified resource resolution architecture from `temporary_ai_prom
 |--------|---------|
 | `core/resolution.py` | Centralized selector→resource resolution |
 | `core/context.py` | PWD context helper for CLI |
-| `api.py` | `QVService` - stable service layer |
+| `api.py` | `QMSService` - stable service layer |
 
 **Architecture summary**:
 
@@ -1023,7 +1023,7 @@ Implemented the unified resource resolution architecture from `temporary_ai_prom
    - Business logic works with objects, not raw dicts
 
 4. **API Layer** (`api.py`):
-   - `QVService` class with methods for all CRUD operations
+   - `QMSService` class with methods for all CRUD operations
    - Always receives `project_root` explicitly
    - Never looks at cwd
    - Uses models layer for YAML I/O
@@ -1049,7 +1049,7 @@ Resolution order:
 @dataclass
 class ResolvedResource:
     meta: ResourceMeta      # ULID, name, slug, path, kind
-    entry: dict             # Raw entry from project.qv.yml
+    entry: dict             # Raw entry from project.qms.yml
     absolute_path: Path     # Resolved absolute filesystem path
 
 @dataclass
@@ -1089,7 +1089,7 @@ save_structure_model(model, path)
 **Test coverage**:
 - `tests/unit/test_resolution.py` - 20 tests for resolution
 - `tests/unit/test_context.py` - 11 tests for PWD context
-- `tests/unit/test_api_service.py` - 19 tests for QVService
+- `tests/unit/test_api_service.py` - 19 tests for QMSService
 - `tests/unit/test_models.py` - 20 tests for models
 
 All 155 tests passing.
@@ -1101,7 +1101,7 @@ All 155 tests passing.
 ## 13. Analysis Layer
 
 The analysis layer provides parsers and plotting functions for QE outputs, designed for:
-- CLI integration (`qv analyze`)
+- CLI integration (`qms analyze`)
 - Future GUI integration (JSON-serializable data)
 
 ### 13.1 Dataclasses
@@ -1149,7 +1149,7 @@ data = result.to_dict()
 ### 13.3 Pattern: Parse → Structured Data → Plot
 
 ```python
-from quantumvitas.analysis import (
+from qmatsuite.analysis import (
     parse_scf_output, parse_dos_data, parse_bands_gnu,
     plot_dos, plot_bands, save_figure,
 )
@@ -1176,7 +1176,7 @@ json.dumps(dos.to_dict())  # Ready for GUI
 
 ### 13.4 Auto K-Path Generation
 
-When running `qv init step bands --auto-kpath`, the CLI:
+When running `qms init step bands --auto-kpath`, the CLI:
 
 1. Loads the step's structure (pymatgen `Structure`)
 2. Calls `generate_kpath(structure, points_per_segment=N)`
@@ -1214,18 +1214,18 @@ kpath_metadata:  # Stored here, not in .kpath.json
 **Precedence rules**:
 - If `--auto-kpath` used but no structure: error
 - If manual `K_POINTS` also provided: manual takes precedence
-- The `kpath_metadata` is optional; `qv analyze band` can work without it
+- The `kpath_metadata` is optional; `qms analyze band` can work without it
 
 ### 13.5 CLI Integration
 
 ```bash
 # Basic analysis
-qv analyze scf si.scf.out
-qv analyze dos si.dos.dat
-qv analyze band si.bands.dat.gnu
+qms analyze scf si.scf.out
+qms analyze dos si.dos.dat
+qms analyze band si.bands.dat.gnu
 
 # With options
-qv analyze band si.bands.dat.gnu \
+qms analyze band si.bands.dat.gnu \
   --symmetry si.bands.pp.out \    # High-sym labels
   --scf si.scf.out \              # Extract Fermi from SCF
   --plot \                        # Generate plot
@@ -1233,7 +1233,7 @@ qv analyze band si.bands.dat.gnu \
   --format svg                    # Plot format
 
 # Energy range
-qv analyze dos si.dos.dat --plot --energy-range -5,5
+qms analyze dos si.dos.dat --plot --energy-range -5,5
 ```
 
 ### 13.6 Parsing Robustness
@@ -1312,7 +1312,7 @@ Tests verify:
 
 ### 14.2 CLI Improvements
 
-#### `qv show-command` Module Detection
+#### `qms show-command` Module Detection
 
 **Problem**: `show-command` always assumed `pw.x` module, giving wrong suggestions for `bands.x`, `dos.x`, etc.
 
@@ -1326,26 +1326,26 @@ calculation = module.value if module != QEModule.UNKNOWN else "scf"
 Example output for `si.bands.pp.in`:
 ```
 Step type: bands
-Suggested: qv init step bands --calculation <calculation>
+Suggested: qms init step bands --calculation <calculation>
 ```
 
-#### `qv configure --name` (Preferred) and `qv rename` (Deprecated)
+#### `qms configure --name` (Preferred) and `qms rename` (Deprecated)
 
-**New approach**: Renaming resources via `qv configure <type> <selector> --name <new_name>`:
+**New approach**: Renaming resources via `qms configure <type> <selector> --name <new_name>`:
 
 ```bash
 # Preferred syntax
-qv configure structure si --name "Silicon bulk"
-qv configure calculation si-dos --name "Si DOS v2"
-qv configure step scf --calculation si-dos --name "SCF high-precision"
+qms configure structure si --name "Silicon bulk"
+qms configure calculation si-dos --name "Si DOS v2"
+qms configure step scf --calculation si-dos --name "SCF high-precision"
 
 # Deprecated (shows warning, still works)
-qv rename structure si --name "Silicon bulk"
+qms rename structure si --name "Silicon bulk"
 ```
 
 **Implementation**:
 - Added `--name` option to `configure_structure_command`, `configure_calculation_command`, `configure_step_command`
-- `qv rename *` commands now emit deprecation warning via `typer.secho(..., fg=typer.colors.YELLOW)`
+- `qms rename *` commands now emit deprecation warning via `typer.secho(..., fg=typer.colors.YELLOW)`
 
 ### 14.3 Resource Metadata Updates
 
@@ -1390,8 +1390,8 @@ Templates in `/templates/calculation/` updated to use new format with `meta` sec
 **New logic in `ensure_pseudopotentials()`**:
 
 1. Check `project_root/pseudo/` first
-2. If not found, check `quantumvitas_root/pseudo/`
-3. If not found, download to `quantumvitas_root/pseudo/`
+2. If not found, check `qmatsuite_root/pseudo/`
+3. If not found, download to `qmatsuite_root/pseudo/`
 4. **Always copy** found/downloaded pseudopotentials to `project_root/pseudo/`
 
 This makes projects self-contained for portability.
@@ -1399,8 +1399,8 @@ This makes projects self-contained for portability.
 ```python
 # Priority order:
 # 1. project_root/pseudo/Si.pbe-n-rrkjus_psl.1.0.0.UPF
-# 2. quantumvitas_root/pseudo/Si.pbe-n-rrkjus_psl.1.0.0.UPF (then copy to project)
-# 3. Download to quantumvitas_root/pseudo/ and copy to project
+# 2. qmatsuite_root/pseudo/Si.pbe-n-rrkjus_psl.1.0.0.UPF (then copy to project)
+# 3. Download to qmatsuite_root/pseudo/ and copy to project
 ```
 
 ### 14.5 Input File Handling
@@ -1415,7 +1415,7 @@ This makes projects self-contained for portability.
 
 #### API Layer Separation (Technical Debt)
 
-**Finding**: The CLI (`main.py`) bypasses `QVService` and directly imports from `core/project_utils.py`.
+**Finding**: The CLI (`main.py`) bypasses `QMSService` and directly imports from `core/project_utils.py`.
 
 **Current state**:
 ```
@@ -1425,10 +1425,10 @@ CLI (main.py) → core/project_utils.py (DIRECT)
 
 **Intended architecture**:
 ```
-CLI (main.py) → api.py (QVService) → core/* modules
+CLI (main.py) → api.py (QMSService) → core/* modules
 ```
 
-**Impact**: Logic is duplicated between CLI and `QVService`. Future refactoring should make CLI a thin wrapper around `QVService`.
+**Impact**: Logic is duplicated between CLI and `QMSService`. Future refactoring should make CLI a thin wrapper around `QMSService`.
 
 #### Post-Processing Step Inputs (Verified)
 
@@ -1474,37 +1474,37 @@ CLI (main.py) → api.py (QVService) → core/* modules
 **CLI usage**:
 ```bash
 # Pass SCF/NSCF output to provide reciprocal lattice vectors
-qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
+qms analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
 ```
 
 ### 14.9 Files Modified in Session 2
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/analysis/parsers.py` | K-point coordinate conversion and crystal labeling |
-| `src/quantumvitas/analysis/bands.py` | Pass pw_output_file for k-point conversion |
-| `src/quantumvitas/cli/main.py` | Pass scf_file to parse_bands_gnu for k-point conversion |
+| `src/qmatsuite/analysis/parsers.py` | K-point coordinate conversion and crystal labeling |
+| `src/qmatsuite/analysis/bands.py` | Pass pw_output_file for k-point conversion |
+| `src/qmatsuite/cli/main.py` | Pass scf_file to parse_bands_gnu for k-point conversion |
 | `tests/integration/test_si_bands_calculation_comprehensive.py` | Copy only Si pseudopotentials, fix file patterns |
 | `AI_understanding.md` | API architecture guidelines, new feature pattern |
 
-### 14.10 Auto-Detection in `qv analyze band`
+### 14.10 Auto-Detection in `qms analyze band`
 
-**New feature**: The `qv analyze band` command can now auto-locate files from calculation context.
+**New feature**: The `qms analyze band` command can now auto-locate files from calculation context.
 
 **Usage patterns**:
 ```bash
 # Explicit calculation selector
-qv analyze band --calculation si-bands --plot
+qms analyze band --calculation si-bands --plot
 
 # Auto-detect from pwd (if inside calculation)
 cd project/calculations/si-bands/raw
-qv analyze band --plot
+qms analyze band --plot
 
 # Auto-detect from pwd (searches current directory)
-qv analyze band --plot
+qms analyze band --plot
 
 # Explicit files (still supported)
-qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
+qms analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plot
 ```
 
 **New module**: `calculation/naming.py` provides centralized file naming conventions:
@@ -1517,9 +1517,9 @@ qv analyze band si.bands.dat.gnu --symmetry si.bands.out --scf si.nscf.out --plo
 - `core/project_utils.py:find_calculation_entry()` - resolve calculation selector
 - `calculation/naming.py` - centralized file patterns
 
-### 14.11 3D Structure Visualization (`qv analyze structure`)
+### 14.11 3D Structure Visualization (`qms analyze structure`)
 
-**New command**: `qv analyze structure <selector> [options]`
+**New command**: `qms analyze structure <selector> [options]`
 
 Creates 3D ball-and-stick visualization of crystal structures using matplotlib.
 
@@ -1544,7 +1544,7 @@ Creates 3D ball-and-stick visualization of crystal structures using matplotlib.
   - `COVALENT_RADII` - Built-in covalent radii table (Cordero et al., Dalton Trans. 2008)
   - `get_element_radius()` - Uses built-in table, falls back to pymatgen's `atomic_radius`
   
-- **Service layer**: `api.py:QVService.visualize_structure()`
+- **Service layer**: `api.py:QMSService.visualize_structure()`
   - Resolves structure from selector
   - Calls core visualization function
   - Returns metadata dict
@@ -1556,23 +1556,23 @@ Creates 3D ball-and-stick visualization of crystal structures using matplotlib.
 
 **Usage examples**:
 ```bash
-qv analyze structure si
-qv analyze structure si --supercell "2 2 2" --repeat-boundary
-qv analyze structure /path/to/structure.cif --output vis.png
+qms analyze structure si
+qms analyze structure si --supercell "2 2 2" --repeat-boundary
+qms analyze structure /path/to/structure.cif --output vis.png
 ```
 
 ### 14.12 Files Modified in Session 1
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/analysis/energy.py` | Fix `fermi_energy_ev` key |
-| `src/quantumvitas/analysis/dos.py` | Use `fermi_energy_ev` key |
-| `src/quantumvitas/analysis/bands.py` | Use `fermi_energy_ev` key, prefer NSCF for Fermi |
-| `src/quantumvitas/calculation/verification.py` | Use `fermi_energy_ev` key |
-| `src/quantumvitas/core/engines/qe_pseudopotentials.py` | Pseudopotential priority and copying |
-| `src/quantumvitas/calculation/input_runner.py` | Simplified input file naming |
-| `src/quantumvitas/calculation/calculation.py` | Better input file extensions (.bands.in, .dos.in) |
-| `src/quantumvitas/cli/main.py` | Module detection, configure --name, rename deprecation, calculation meta |
+| `src/qmatsuite/analysis/energy.py` | Fix `fermi_energy_ev` key |
+| `src/qmatsuite/analysis/dos.py` | Use `fermi_energy_ev` key |
+| `src/qmatsuite/analysis/bands.py` | Use `fermi_energy_ev` key, prefer NSCF for Fermi |
+| `src/qmatsuite/calculation/verification.py` | Use `fermi_energy_ev` key |
+| `src/qmatsuite/core/engines/qe_pseudopotentials.py` | Pseudopotential priority and copying |
+| `src/qmatsuite/calculation/input_runner.py` | Simplified input file naming |
+| `src/qmatsuite/calculation/calculation.py` | Better input file extensions (.bands.in, .dos.in) |
+| `src/qmatsuite/cli/main.py` | Module detection, configure --name, rename deprecation, calculation meta |
 | `templates/calculation/si-dos/calculation.yaml` | Updated to new meta format |
 | `docs/CLI_API_REFERENCE.md` | Comprehensive update |
 
@@ -1580,7 +1580,7 @@ qv analyze structure /path/to/structure.cif --output vis.png
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/analysis/structure_viz.py` | Fixed bond detection for supercells |
+| `src/qmatsuite/analysis/structure_viz.py` | Fixed bond detection for supercells |
 | | - Added `COVALENT_RADII` table (Cordero et al.) |
 | | - Fixed `get_element_radius()` to use built-in table + fallback |
 | | - Added `_is_coord_in_cell()` helper |
@@ -1594,25 +1594,25 @@ qv analyze structure /path/to/structure.cif --output vis.png
 
 ### 15.1 CLI Analyze Commands - API Layer Refactoring
 
-**Problem**: The `analyze_output_command` implemented analysis logic directly in the CLI layer (~200 lines), bypassing the `QVService` API layer. This was the technical debt mentioned in the documentation.
+**Problem**: The `analyze_output_command` implemented analysis logic directly in the CLI layer (~200 lines), bypassing the `QMSService` API layer. This was the technical debt mentioned in the documentation.
 
-**Root Cause of Test Failure**: The documented API showed `qv analyze band <file>` but the implementation only had `qv analyze output band <file>`. Tests were calling the documented API.
+**Root Cause of Test Failure**: The documented API showed `qms analyze band <file>` but the implementation only had `qms analyze output band <file>`. Tests were calling the documented API.
 
 **Solution**: Full refactoring to follow the intended architecture:
 
-1. **Added QVService methods** (`api.py`):
-   - `QVService.analyze_band()` - Band structure analysis
-   - `QVService.analyze_dos()` - DOS analysis
-   - `QVService.analyze_scf()` - SCF convergence analysis
-   - `QVService._detect_calculation_results_dir()` - Helper for auto-detecting output directory
+1. **Added QMSService methods** (`api.py`):
+   - `QMSService.analyze_band()` - Band structure analysis
+   - `QMSService.analyze_dos()` - DOS analysis
+   - `QMSService.analyze_scf()` - SCF convergence analysis
+   - `QMSService._detect_calculation_results_dir()` - Helper for auto-detecting output directory
 
 2. **Updated CLI commands** (`cli/main.py`):
-   - `qv analyze band` - Thin wrapper calling `QVService.analyze_band()`
-   - `qv analyze dos` - Thin wrapper calling `QVService.analyze_dos()`
-   - `qv analyze energy` - Thin wrapper calling `QVService.analyze_scf()`
-   - `qv analyze scf` - Alias for `analyze energy`
+   - `qms analyze band` - Thin wrapper calling `QMSService.analyze_band()`
+   - `qms analyze dos` - Thin wrapper calling `QMSService.analyze_dos()`
+   - `qms analyze energy` - Thin wrapper calling `QMSService.analyze_scf()`
+   - `qms analyze scf` - Alias for `analyze energy`
 
-3. **Deprecated `qv analyze output`**:
+3. **Deprecated `qms analyze output`**:
    - Marked with `deprecated=True` in Typer
    - Shows warning when used
    - Kept for backward compatibility but will be removed later
@@ -1623,7 +1623,7 @@ When implementing new CLI commands, follow this pattern:
 
 ```python
 # 1. Add service method in api.py
-class QVService:
+class QMSService:
     @staticmethod
     def new_feature(
         project_root: Optional[Path],  # Always explicit, never use cwd
@@ -1635,9 +1635,9 @@ class QVService:
         - Resolves resources using resolution.resolve_*()
         - Calls core modules for actual work
         - Returns structured result dict
-        - Raises QVServiceError on failures
+        - Raises QMSServiceError on failures
         """
-        from quantumvitas.analysis.some_module import do_work
+        from qmatsuite.analysis.some_module import do_work
         
         # Resolve resources
         if project_root:
@@ -1661,8 +1661,8 @@ def feature_command(
     ...
 ) -> None:
     """CLI docstring."""
-    from quantumvitas.api import QVService, QVServiceError
-    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+    from qmatsuite.api import QMSService, QMSServiceError
+    from qmatsuite.core.context import find_path_context_from_pwd, ContextNotFoundError
     
     # Auto-detect project root if not provided
     project_root: Optional[Path] = None
@@ -1677,26 +1677,26 @@ def feature_command(
     
     # Call service
     try:
-        result = QVService.new_feature(project_root=project_root, ...)
+        result = QMSService.new_feature(project_root=project_root, ...)
         typer.echo(json.dumps(result, indent=2))
-    except QVServiceError as e:
+    except QMSServiceError as e:
         raise typer.BadParameter(str(e))
 ```
 
 ### 15.3 Key Principles
 
-1. **CLI is thin**: Only argument parsing, context detection, and calling QVService
-2. **QVService receives explicit project_root**: Never looks at cwd internally
+1. **CLI is thin**: Only argument parsing, context detection, and calling QMSService
+2. **QMSService receives explicit project_root**: Never looks at cwd internally
 3. **Context detection in CLI**: Use `find_path_context_from_pwd()` for auto-detection
-4. **Errors**: QVService raises `QVServiceError`, CLI converts to `typer.BadParameter`
-5. **Results**: QVService returns dict, CLI formats for terminal output
+4. **Errors**: QMSService raises `QMSServiceError`, CLI converts to `typer.BadParameter`
+5. **Results**: QMSService returns dict, CLI formats for terminal output
 
 ### 15.4 Files Modified
 
 | File | Changes |
 |------|---------|
-| `src/quantumvitas/api.py` | Added `analyze_scf()`, `analyze_dos()`, `analyze_band()`, `_detect_calculation_results_dir()` |
-| `src/quantumvitas/cli/main.py` | Refactored analyze commands to use QVService, deprecated `analyze output` |
+| `src/qmatsuite/api.py` | Added `analyze_scf()`, `analyze_dos()`, `analyze_band()`, `_detect_calculation_results_dir()` |
+| `src/qmatsuite/cli/main.py` | Refactored analyze commands to use QMSService, deprecated `analyze output` |
 
 ### 15.5 Test Results
 
@@ -1710,21 +1710,21 @@ All 263 tests pass, including the previously failing:
 
 ### 16.1 Overview
 
-QuantumVITAS now includes a stdio JSON-RPC daemon for GUI integration. The architecture follows the established pattern of using `QVService` as the single API surface.
+QMatSuite now includes a stdio JSON-RPC daemon for GUI integration. The architecture follows the established pattern of using `QMSService` as the single API surface.
 
 **Key components**:
 ```
 Electron GUI (future)
        ↓ JSON-RPC (stdin/stdout)
-   QVDaemon
+   QMSDaemon
        ↓ method calls
-   QVService (api.py)
+   QMSService (api.py)
        ↓ 
    core/*, calculation/*, analysis/*
 ```
 
-**Location**: `src/quantumvitas/daemon/`
-- `server.py` - `QVDaemon` class implementing JSON-RPC protocol
+**Location**: `src/qmatsuite/daemon/`
+- `server.py` - `QMSDaemon` class implementing JSON-RPC protocol
 - `jobs.py` - `JobManager` for background QE execution
 
 ### 16.2 JSON-RPC Protocol
@@ -1744,7 +1744,7 @@ Electron GUI (future)
 - `parse_error` - Invalid JSON
 - `invalid_request` - Missing required fields
 - `unknown_command` - Unknown command type
-- `service_error` - `QVServiceError` from API layer
+- `service_error` - `QMSServiceError` from API layer
 - `not_found` - `FileNotFoundError`
 - `invalid_argument` - `ValueError`
 - `handler_error` - Unexpected exception
@@ -1773,27 +1773,27 @@ Electron GUI (future)
 - `list_jobs` → List all jobs (filterable by status/type)
 - `cancel_job` → Cancel a pending job
 
-### 16.4 GUI-Ready QVService Methods
+### 16.4 GUI-Ready QMSService Methods
 
-New methods in `QVService` return pure JSON-serializable data (no matplotlib objects):
+New methods in `QMSService` return pure JSON-serializable data (no matplotlib objects):
 
 ```python
 # Project/resource summary
-QVService.get_project_summary(project_root) -> dict
-QVService.list_structures_data(project_root) -> list[dict]
-QVService.list_calculations_data(project_root) -> list[dict]
+QMSService.get_project_summary(project_root) -> dict
+QMSService.list_structures_data(project_root) -> list[dict]
+QMSService.list_calculations_data(project_root) -> list[dict]
 
 # Pure visualization data
-QVService.get_structure_vis_data(project_root, selector, supercell, repeat_boundary) -> dict
+QMSService.get_structure_vis_data(project_root, selector, supercell, repeat_boundary) -> dict
 # Returns: atoms (coords, element, color, radius), bonds, lattice matrix
 
-QVService.get_scf_convergence_data(project_root, calculation, step) -> dict
+QMSService.get_scf_convergence_data(project_root, calculation, step) -> dict
 # Returns: iterations, energies, converged status
 
-QVService.get_dos_data(project_root, calculation, step) -> dict
+QMSService.get_dos_data(project_root, calculation, step) -> dict
 # Returns: energies[], dos[], fermi_energy
 
-QVService.get_band_structure_data(project_root, calculation, step) -> dict
+QMSService.get_band_structure_data(project_root, calculation, step) -> dict
 # Returns: k_distances[], energies[bands][kpoints], high_symmetry_points
 ```
 
@@ -1803,22 +1803,22 @@ QVService.get_band_structure_data(project_root, calculation, step) -> dict
 
 **Allowed paths**:
 ```
-GUI (React/Electron) → Electron main → Daemon RPC → QVService → core/calculation/analysis
+GUI (React/Electron) → Electron main → Daemon RPC → QMSService → core/calculation/analysis
 ```
 
 **Forbidden paths**:
 - ❌ GUI → core/calculation/analysis (direct Python imports)
-- ❌ Daemon handlers → core/calculation/analysis (bypassing QVService)
+- ❌ Daemon handlers → core/calculation/analysis (bypassing QMSService)
 - ❌ GUI → daemon internals (must use typed RPC protocol)
 
 **Exceptions** (documented):
-- `find_project_root` handler uses `quantumvitas.core.context` directly (utility function, not business logic)
-- `list_calculation_templates` handler uses `quantumvitas.core.templates` directly (read-only listing, no state mutation)
+- `find_project_root` handler uses `qmatsuite.core.context` directly (utility function, not business logic)
+- `list_calculation_templates` handler uses `qmatsuite.core.templates` directly (read-only listing, no state mutation)
 
 **Enforcement**:
-- GUI TypeScript code must only use `window.qv.*` RPC calls (typed in `gui/src/types/qv.ts`)
-- Daemon handlers should delegate to `QVService` methods whenever possible
-- New handlers should follow the pattern: parse payload → call `QVService.method()` → return result
+- GUI TypeScript code must only use `window.qms.*` RPC calls (typed in `gui/src/types/qms.ts`)
+- Daemon handlers should delegate to `QMSService` methods whenever possible
+- New handlers should follow the pattern: parse payload → call `QMSService.method()` → return result
 
 ### 16.6 JobManager and Background Execution
 
@@ -1829,14 +1829,14 @@ GUI (React/Electron) → Electron main → Daemon RPC → QVService → core/cal
 - Job results/status live in memory; project/calculation data lives on disk
 
 ```python
-from quantumvitas.daemon.jobs import JobManager, JobStatus
+from qmatsuite.daemon.jobs import JobManager, JobStatus
 
 manager = JobManager(max_workers=1)
 
 # Submit job
 job_id = manager.submit(
     job_type="run_calculation",
-    func=QVService.run_calculation,
+    func=QMSService.run_calculation,
     params={"calculation": "si-dos"},
     project_root=project_root,
     calculation_selector="si-dos",
@@ -1862,12 +1862,12 @@ PENDING → RUNNING → COMPLETED
 ```python
 # Start daemon (typically from Electron via spawn)
 # In Python:
-from quantumvitas.daemon import QVDaemon
-daemon = QVDaemon()
+from qmatsuite.daemon import QMSDaemon
+daemon = QMSDaemon()
 daemon.run()
 
 # Or from command line:
-# python -m quantumvitas.daemon.server
+# python -m qmatsuite.daemon.server
 ```
 
 **Example JSON conversation**:
@@ -1895,17 +1895,17 @@ The daemon implementation follows these rules:
 4. **Pure JSON-RPC over stdio**: One request/response per line
 5. **Daemon never crashes**: All exceptions become `{ok: false, error: {...}}`
 6. **Long QE runs = background jobs**: Sequential (max_workers=1)
-7. **No CLI invocation from daemon**: Only call `QVService` methods
+7. **No CLI invocation from daemon**: Only call `QMSService` methods
 
 ### 16.8 Files Added
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/daemon/__init__.py` | Package exports |
-| `src/quantumvitas/daemon/server.py` | `QVDaemon` class with JSON-RPC handlers |
-| `src/quantumvitas/daemon/jobs.py` | `JobManager`, `Job`, `JobStatus` |
+| `src/qmatsuite/daemon/__init__.py` | Package exports |
+| `src/qmatsuite/daemon/server.py` | `QMSDaemon` class with JSON-RPC handlers |
+| `src/qmatsuite/daemon/jobs.py` | `JobManager`, `Job`, `JobStatus` |
 | `tests/unit/test_daemon.py` | Unit tests for daemon and job manager |
-| `tests/unit/test_qvservice_gui.py` | Unit tests for GUI-ready QVService methods |
+| `tests/unit/test_qmsservice_gui.py` | Unit tests for GUI-ready QMSService methods |
 | `tests/daemon/test_si_bands_calculation_daemon.py` | Integration tests using daemon/JobManager |
 | `docs/DAEMON_API_REFERENCE.md` | Complete daemon API documentation |
 
@@ -1917,9 +1917,9 @@ A thorough audit was performed on the daemon implementation:
 
 - No `subprocess` imports in daemon code
 - No `typer` imports in daemon code
-- No imports from `quantumvitas.cli`
+- No imports from `qmatsuite.cli`
 - No dependency on `core/context.py`
-- All operations go through `QVService`
+- All operations go through `QMSService`
 
 #### 2. JSON-RPC Streaming Correctness ✅
 
@@ -1931,8 +1931,8 @@ A thorough audit was performed on the daemon implementation:
 #### 3. Resolution Correctness ✅
 
 - Daemon passes explicit `project_root` from payload
-- No duplicate resolution logic - all goes through `QVService`
-- `QVService` methods call `core/resolution.resolve_*()` internally
+- No duplicate resolution logic - all goes through `QMSService`
+- `QMSService` methods call `core/resolution.resolve_*()` internally
 - No cwd-based lookups in daemon or service layer
 
 #### 4. JobManager Correctness ✅
@@ -2000,16 +2000,16 @@ Run with: `pytest tests/unit/ -v`
 | File | Purpose |
 |------|---------|
 | `test_daemon.py` | Daemon JSON-RPC protocol, JobManager thread safety |
-| `test_qvservice_gui.py` | QVService GUI methods, JSON-serializable outputs |
+| `test_qmsservice_gui.py` | QMSService GUI methods, JSON-serializable outputs |
 | `test_analysis_parsers.py` | SCF convergence, DOS, band structure parsing |
 | `test_analysis_plotting.py` | Band structure/DOS plot generation |
-| `test_api_service.py` | QVService core methods (create, list, run) |
+| `test_api_service.py` | QMSService core methods (create, list, run) |
 | `test_context.py` | cwd-based auto-detection in CLI context |
 | `test_models.py` | Core models (Calculation, Step, Structure) |
 | `test_parameter_overrides.py` | Parameter merging and override logic |
 | `test_project_and_cli.py` | Project model and CLI arg parsing |
 | `test_qe_executable_detection.py` | QE installation detection (PATH, env vars, shell configs) |
-| `test_qe_geometry_roundtrip.py` | Geometry: QV → QE input → parse back → verify |
+| `test_qe_geometry_roundtrip.py` | Geometry: QMS → QE input → parse back → verify |
 | `test_qe_input.py` | QE input file generation |
 | `test_qe_modules.py` | Module parameter mappings (pw.x, dos.x, etc.) |
 | `test_resolution.py` | Selector resolution (path → ULID → slug → name) |
@@ -2029,11 +2029,11 @@ Run with: `pytest tests/daemon/ -v -s`
 | `test_si_bands_calculation_daemon.py` | Full Si band structure via daemon + JobManager |
 
 **What it tests:**
-- Project/calculation/step creation via `QVService` (not CLI)
+- Project/calculation/step creation via `QMSService` (not CLI)
 - Job submission via `JobManager.submit()`
 - Polling job status until completion
-- Band structure data retrieval via `QVService.get_band_structure_data()`
-- Band analysis and PNG plot generation via `QVService.analyze_band()`
+- Band structure data retrieval via `QMSService.get_band_structure_data()`
+- Band analysis and PNG plot generation via `QMSService.analyze_band()`
 
 #### **CLI Tests (`tests/cli/`)** — Requires QE
 
@@ -2043,14 +2043,14 @@ Run with: `pytest tests/cli/ -v -s`
 |------|---------|
 | `test_si_bands_calculation_comprehensive.py` | Full Si band structure via CLI commands |
 | `test_si_dos_workflow_cli.py` | Full Si DOS calculation via CLI |
-| `test_cli_show_command_integration.py` | `qv show` command variants |
+| `test_cli_show_command_integration.py` | `qms show` command variants |
 | `test_template_calculation.py` | Template copying and ULID consistency |
 
 **What `test_si_bands_calculation_comprehensive.py` tests:**
-- `qv project create`, `qv structure import`, `qv calculation create`
-- `qv step init`, `qv step configure`, `qv run`
+- `qms project create`, `qms structure import`, `qms calculation create`
+- `qms step init`, `qms step configure`, `qms run`
 - Both manual k-path and auto k-path modes
-- `qv analyze band` with PNG output
+- `qms analyze band` with PNG output
 
 #### **Integration Tests (`tests/integration/`)** — Requires QE
 
@@ -2188,9 +2188,9 @@ gui/
 │   │       ├── ImportStructureDialog.tsx
 │   │       └── CreateWorkflowDialog.tsx
 │   ├── hooks/
-│   │   └── useQVClient.ts   # Type-safe daemon communication
+│   │   └── useQMSClient.ts   # Type-safe daemon communication
 │   └── types/
-│       └── qv.ts            # QVCommandMap + all RPC types
+│       └── qms.ts            # QMSCommandMap + all RPC types
 ├── index.html
 ├── package.json
 ├── tsconfig.json
@@ -2199,11 +2199,11 @@ gui/
 
 ### 17.3 Type-Safe RPC API
 
-The GUI uses a centralized `QVCommandMap` for end-to-end type safety:
+The GUI uses a centralized `QMSCommandMap` for end-to-end type safety:
 
 ```typescript
-// In src/types/qv.ts
-export interface QVCommandMap {
+// In src/types/qms.ts
+export interface QMSCommandMap {
   // System
   ping: { payload: {}; result: { pong: boolean; version: string } };
   shutdown: { payload: {}; result: { shutdown: boolean } };
@@ -2235,21 +2235,21 @@ export interface QVCommandMap {
   cancel_job: { payload: { job_id: string }; result: { job_id: string; cancelled: boolean } };
 }
 
-// In hooks/useQVClient.ts
-const qv = useQVClient();
-const response = await qv.call('get_project_summary', { project_root: '/path' });
+// In hooks/useQMSClient.ts
+const qms = useQMSClient();
+const response = await qms.call('get_project_summary', { project_root: '/path' });
 // response.data is typed as ProjectSummary
 ```
 
 ### 17.4 Daemon Spawning (Robust)
 
 Python interpreter detection order:
-1. `QV_DAEMON_PYTHON` env var (if set)
+1. `QMS_DAEMON_PYTHON` env var (if set)
 2. `.venv/bin/python` or `.venv/Scripts/python.exe` (Windows)
 3. `venv/bin/python` or `venv/Scripts/python.exe`
 4. Fallback to `python` on PATH
 
-Daemon module override: `QV_DAEMON_MODULE` env var (default: `quantumvitas.daemon.server`)
+Daemon module override: `QMS_DAEMON_MODULE` env var (default: `qmatsuite.daemon.server`)
 
 Error handling:
 - Startup errors stored in `DaemonStatus`
@@ -2288,7 +2288,7 @@ Shutdown:
 | Dialog | Purpose |
 |--------|---------|
 | `Modal` | Base modal/dialog component |
-| `CreateProjectDialog` | Create new QV project (target dir, name) |
+| `CreateProjectDialog` | Create new QMS project (target dir, name) |
 | `ImportStructureDialog` | Import CIF/XSF/etc. structure file |
 | `CreateWorkflowDialog` | Create calculation from template |
 
@@ -2309,9 +2309,9 @@ The `Sidebar` has view tabs: Summary, Structures, Workflows, Analysis, Debug.
 ### 17.6 Preload API
 
 ```typescript
-window.qv = {
+window.qms = {
   // Daemon communication
-  request: <T>(type, payload) => Promise<QVResponse<T>>,
+  request: <T>(type, payload) => Promise<QMSResponse<T>>,
   onLog: (callback) => unsubscribe,
   isConnected: () => Promise<boolean>,
   getDaemonStatus: () => Promise<DaemonStatus>,
@@ -2329,7 +2329,7 @@ window.qv = {
 
 **File dialog filters example:**
 ```typescript
-const path = await window.qv.openFile({
+const path = await window.qms.openFile({
   title: 'Select Structure File',
   filters: [
     { name: 'Structure Files', extensions: ['cif', 'json', 'in', 'xsf'] },
@@ -2373,10 +2373,10 @@ Development mode opens DevTools automatically.
 ### 17.9 Extending the GUI
 
 **Adding a new daemon command:**
-1. Add Python handler in `daemon/server.py` (calls `QVService`)
-2. Add entry to `QVCommandMap` in `src/types/qv.ts` with payload + result types
-3. Optionally add convenience method to `useQVClient.ts`
-4. Call via `qv.call('new_command', payload)` - fully typed!
+1. Add Python handler in `daemon/server.py` (calls `QMSService`)
+2. Add entry to `QMSCommandMap` in `src/types/qms.ts` with payload + result types
+3. Optionally add convenience method to `useQMSClient.ts`
+4. Call via `qms.call('new_command', payload)` - fully typed!
 
 **Adding a new panel:**
 1. Create component in `src/components/panels/`
@@ -2486,7 +2486,7 @@ When clicking "Run Calculation":
 3. Updates job counts immediately
 4. "View Jobs" button links to Jobs view
 
-**TypeScript Types Added** (`types/qv.ts`):
+**TypeScript Types Added** (`types/qms.ts`):
 
 ```typescript
 interface JobSummary {
@@ -2529,28 +2529,28 @@ interface JobCounts {
 
 ### 17.13 GUI-CLI Parity Roadmap (2025-12-06)
 
-The goal is to enable non-expert users to perform all core QV operations entirely from the GUI.
+The goal is to enable non-expert users to perform all core QMS operations entirely from the GUI.
 
 **Completed Features:**
 
 | CLI Command | GUI Feature | Component |
 |-------------|------------|-----------|
-| `qv init project` | Create Project dialog | `CreateProjectDialog` |
-| `qv import-structure` | Import Structure dialog | `ImportStructureDialog` |
-| `qv init calculation` | Create Calculation dialog | `CreateWorkflowDialog` |
-| `qv list structures` | Structures view | `StructureListPanel` |
-| `qv list calculations` | Workflows view | `CalculationListPanel` |
-| `qv run calculation` | Run Calculation button | `CalculationDetailPanel` |
-| `qv analyze scf` | SCF Convergence chart | `AnalysisPanel` |
-| `qv analyze dos` | DOS chart | `AnalysisPanel` |
-| `qv analyze bands` | Band Structure chart | `AnalysisPanel` |
-| `qv detect-qe` | Settings panel | `SettingsPanel` |
-| `qv rename structure` | Rename dialog | `RenameDialog` |
-| `qv rename calculation` | Rename dialog | `RenameDialog` |
-| `qv delete structure` | Delete confirmation | `DeleteConfirmDialog` |
-| `qv delete calculation` | Delete confirmation | `DeleteConfirmDialog` |
-| `qv run step` | Run Step button | `StepDetailPanel` |
-| `qv show-command step` | Step detail view | `StepDetailPanel` |
+| `qms init project` | Create Project dialog | `CreateProjectDialog` |
+| `qms import-structure` | Import Structure dialog | `ImportStructureDialog` |
+| `qms init calculation` | Create Calculation dialog | `CreateWorkflowDialog` |
+| `qms list structures` | Structures view | `StructureListPanel` |
+| `qms list calculations` | Workflows view | `CalculationListPanel` |
+| `qms run calculation` | Run Calculation button | `CalculationDetailPanel` |
+| `qms analyze scf` | SCF Convergence chart | `AnalysisPanel` |
+| `qms analyze dos` | DOS chart | `AnalysisPanel` |
+| `qms analyze bands` | Band Structure chart | `AnalysisPanel` |
+| `qms detect-qe` | Settings panel | `SettingsPanel` |
+| `qms rename structure` | Rename dialog | `RenameDialog` |
+| `qms rename calculation` | Rename dialog | `RenameDialog` |
+| `qms delete structure` | Delete confirmation | `DeleteConfirmDialog` |
+| `qms delete calculation` | Delete confirmation | `DeleteConfirmDialog` |
+| `qms run step` | Run Step button | `StepDetailPanel` |
+| `qms show-command step` | Step detail view | `StepDetailPanel` |
 
 **Settings & Environment Panel** (`SettingsPanel`):
 
@@ -2610,7 +2610,7 @@ Shows detailed step information with:
 | `update_step_params` | Update specific parameters in a step |
 | `reset_step_params` | Reset step to template defaults |
 
-**Backend Implementation** (`QVService`):
+**Backend Implementation** (`QMSService`):
 - `update_step_params()`: Merges new parameters into existing spec
 - Type validation for numeric parameters
 - Only touches specified fields, doesn't clobber unknown options
@@ -2691,14 +2691,14 @@ Shows detailed step information with:
   - `tags`: List of tags (e.g., ["bands", "Si", "PW", "tutorial"])
   - `recommended_analysis`: Default analysis type (e.g., "bands", "dos")
   - `difficulty`: Difficulty level (e.g., "beginner", "intermediate", "advanced")
-- Backend (`QVService.list_demo_projects()`) reads metadata from snapshot files with fallback to defaults
+- Backend (`QMSService.list_demo_projects()`) reads metadata from snapshot files with fallback to defaults
 - If metadata is missing, sensible defaults are used for backward compatibility
 - When a demo project is created with `recommended_analysis`, the Analysis view pre-selects that analysis type
 
 **Project Creation Validation**:
 - Both `create_project` and `create_demo_project` check if target directory is inside an existing project
 - Uses `detect_enclosing_project()` helper from `core/context.py`
-- Raises `ValueError` with clear message: "Cannot create a new project inside an existing QuantumVITAS project. The selected folder is inside a project at: <path>. Please choose a parent folder above your current project directory."
+- Raises `ValueError` with clear message: "Cannot create a new project inside an existing QMatSuite project. The selected folder is inside a project at: <path>. Please choose a parent folder above your current project directory."
 - GUI shows error and keeps dialog/gallery open (doesn't close on validation error)
 - User can correct the folder choice without losing context
 
@@ -2711,7 +2711,7 @@ Shows detailed step information with:
 - RPC: `create_demo_project` - creates project, imports Si structure, adds calculation
 
 **Recent Projects**:
-- Stored in localStorage (`qv-recent-projects`)
+- Stored in localStorage (`qms-recent-projects`)
 - Max 5 recent projects tracked
 - Click to open, × to remove
 - Displays project name and parent directory
@@ -2835,7 +2835,7 @@ Split view layouts:
 | Summary panel refresh | Fixed `handleCreateProjectSuccess` to load project directly instead of via setTimeout (avoiding stale closures) |
 | 3D viewer camera state | Added `structureId` tracking to `CameraController` - camera only resets on structure change, not supercell/boundary changes |
 | Calculation/step separator | Created `VerticalResizablePane` component for draggable height separation |
-| Log persistence | Logs saved to `.qv-daemon.log` in project directory with `setProject`/`readLogs` IPC methods |
+| Log persistence | Logs saved to `.qms-daemon.log` in project directory with `setProject`/`readLogs` IPC methods |
 
 ### New Components
 
@@ -2848,8 +2848,8 @@ gui/src/components/layout/
 ### Modified Files
 
 **Backend**:
-- `src/quantumvitas/api.py` - Fixed `run_step`, boundary atoms
-- `src/quantumvitas/project/model.py` - Added slug search to `get_calculation_ref`
+- `src/qmatsuite/api.py` - Fixed `run_step`, boundary atoms
+- `src/qmatsuite/project/model.py` - Added slug search to `get_calculation_ref`
 - `templates/calculation/si-dos/calculation.yaml` - Added step types
 
 **Frontend**:
@@ -2857,7 +2857,7 @@ gui/src/components/layout/
 - `gui/src/components/panels/StructureViewer3D.tsx` - `structureId` prop
 - `gui/electron/main.ts` - Log persistence IPC handlers
 - `gui/electron/preload.ts` - `setProject`/`readLogs` methods
-- `gui/src/types/qv.ts` - New method types
+- `gui/src/types/qms.ts` - New method types
 
 ---
 
@@ -2868,7 +2868,7 @@ gui/src/components/layout/
 | Feature | Implementation | Files |
 |---------|---------------|-------|
 | Theme switching | CSS variables with `[data-theme="light"]` selector, Settings panel toggle, localStorage persistence | `gui/src/index.css`, `gui/src/components/panels/SettingsPanel.tsx`, `gui/src/App.tsx` |
-| Reveal in Finder/Explorer | `shell.showItemInFolder()` IPC handler, `window.qv.revealPath()` API | `gui/electron/main.ts`, `gui/electron/preload.ts` |
+| Reveal in Finder/Explorer | `shell.showItemInFolder()` IPC handler, `window.qms.revealPath()` API | `gui/electron/main.ts`, `gui/electron/preload.ts` |
 | Automatic analysis selection | `detectAnalysisType()` function checks calculation's last step type (dos → DOS, bands → Bands, else → SCF) | `gui/src/components/panels/AnalysisPanel.tsx` |
 | Automatic analysis loading | Settings toggle in Settings → Analysis, auto-loads when calculation selected if enabled (default: true) | `gui/src/components/panels/SettingsPanel.tsx`, `gui/src/components/panels/AnalysisPanel.tsx`, `gui/src/App.tsx` |
 | Band structure ylim control | Energy range inputs update YAxis `domain` prop dynamically | `gui/src/components/panels/AnalysisPanel.tsx` (BandsChart component) |
@@ -2879,12 +2879,12 @@ gui/src/components/layout/
 - Dark theme is default (defined in `:root`)
 - Light theme uses `[data-theme="light"]` selector with VS Code-inspired colors
 - Theme applied via `document.documentElement.setAttribute('data-theme', theme)`
-- Persisted in localStorage as `qv-app-settings`
+- Persisted in localStorage as `qms-app-settings`
 
 **Reveal Path:**
 - Uses Electron's `shell.showItemInFolder()` (cross-platform)
 - Works on macOS (Finder), Windows (Explorer), Linux (file manager)
-- Accessible via `window.qv.revealPath(path)` in renderer
+- Accessible via `window.qms.revealPath(path)` in renderer
 
 **Analysis Auto-Selection:**
 - Checks last step's `type` field
@@ -2902,7 +2902,7 @@ gui/src/components/layout/
 - `gui/src/components/panels/SettingsPanel.tsx` - Added theme and auto-analysis settings
 - `gui/src/components/panels/AnalysisPanel.tsx` - Added auto-selection and auto-loading
 - `gui/src/App.tsx` - Added settings state management and theme application
-- `gui/electron/main.ts` - Added `qv-reveal-path` IPC handler
+- `gui/electron/main.ts` - Added `qms-reveal-path` IPC handler
 - `gui/electron/preload.ts` - Added `revealPath` method
 
 ---
@@ -2921,21 +2921,21 @@ gui/src/components/layout/
 
 | Feature | Implementation |
 |---------|---------------|
-| Search up for project root | When loading/browsing, uses `find_path_context_from_pwd()` from `core/context.py` to search up for project.qv.yml |
+| Search up for project root | When loading/browsing, uses `find_path_context_from_pwd()` from `core/context.py` to search up for project.qms.yml |
 | Remove "Load Project" button | Removed button, press Enter in path input to load, browse button directly loads |
 | Project subfolder support | If user opens a subfolder, GUI searches up and loads parent project |
 
 ### Key Architectural Note
 
 **Project Root Finding**: The GUI now reuses the existing `find_path_context_from_pwd()` function from `core/context.py` rather than implementing duplicate logic. This function:
-- Searches up to 20 directories for `project.qv.yml`
+- Searches up to 20 directories for `project.qms.yml`
 - Returns a `PathContext` with `project_root` and context nodes
 - Raises `ContextNotFoundError` if no project found
 
 **Daemon Handler**:
 ```python
 def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-    from quantumvitas.core.context import find_path_context_from_pwd, ContextNotFoundError
+    from qmatsuite.core.context import find_path_context_from_pwd, ContextNotFoundError
     
     start_dir = Path(payload.get("start_dir", "")).resolve()
     try:
@@ -2948,8 +2948,8 @@ def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
 ### Modified Files
 
 **Backend**:
-- `src/quantumvitas/api.py` - Fixed preflight_check exception handling
-- `src/quantumvitas/daemon/server.py` - Uses `find_path_context_from_pwd` for project root finding
+- `src/qmatsuite/api.py` - Fixed preflight_check exception handling
+- `src/qmatsuite/daemon/server.py` - Uses `find_path_context_from_pwd` for project root finding
 
 **Frontend**:
 - `gui/src/App.tsx` - Updated `handleBrowseAndLoad` and `handleLoadProject` to search up
@@ -2957,7 +2957,7 @@ def _handle_find_project_root(self, payload: Dict[str, Any]) -> Dict[str, Any]:
 - `gui/src/components/panels/DebugPanel.tsx` - CSS hiding instead of unmounting
 - `gui/src/components/panels/DebugPanel.css` - Added `.debug-panel--hidden` class
 - `gui/src/components/panels/StepDetailPanel.tsx` - Added `bands_pw` editable params
-- `gui/src/types/qv.ts` - Added `find_project_root` RPC type
+- `gui/src/types/qms.ts` - Added `find_project_root` RPC type
 
 ---
 
@@ -3007,8 +3007,8 @@ This fixes the bug where clicking "bands" step returned "bands-pp" because "band
 ### Modified Files
 
 **Backend**:
-- `src/quantumvitas/core/resolution.py` - Fixed step resolution order
-- `src/quantumvitas/api.py` - Added `absolute_path` to step detail responses
+- `src/qmatsuite/core/resolution.py` - Fixed step resolution order
+- `src/qmatsuite/api.py` - Added `absolute_path` to step detail responses
 
 **Frontend**:
 - `gui/src/components/dialogs/CreateProjectDialog.tsx` - Parent dir + name approach
@@ -3027,7 +3027,7 @@ This fixes the bug where clicking "bands" step returned "bands-pp" because "band
 - `gui/src/components/panels/StructureListPanel.css` - File location styles
 - `gui/src/components/panels/ProjectSummaryPanel.tsx` - Reveal in Finder for project
 - `gui/src/components/panels/ProjectSummaryPanel.css` - Reveal button styles
-- `gui/src/types/qv.ts` - Added `absolute_path` to `StepDetail` interface
+- `gui/src/types/qms.ts` - Added `absolute_path` to `StepDetail` interface
 
 ---
 
@@ -3061,7 +3061,7 @@ The unified fixture automatically detects the platform and chooses the appropria
 import { electronTest as test, expect } from './fixtures/electronTest';
 
 test('my test', async ({ appPage }) => {
-  await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible();
+  await expect(appPage.getByTestId('qms-welcome-title')).toBeVisible();
 });
 ```
 
@@ -3136,26 +3136,26 @@ The `electronTest` fixture automatically checks for duplicate `data-testid` valu
 
 **Test ID Naming Convention**:
 - **Always use namespaced IDs** to avoid collisions across different views/components:
-  - `qv-welcome-btn-open-project` (Welcome screen)
-  - `qv-sidebar-btn-open-project` (Sidebar)
-  - `qv-demo-card-si-bands-demo` (Demo Gallery)
-  - `qv-step-row-{stepId}` (Calculation steps - includes step ID for uniqueness)
+  - `qms-welcome-btn-open-project` (Welcome screen)
+  - `qms-sidebar-btn-open-project` (Sidebar)
+  - `qms-demo-card-si-bands-demo` (Demo Gallery)
+  - `qms-step-row-{stepId}` (Calculation steps - includes step ID for uniqueness)
 - **Never reuse the same test ID** for different UI elements, even in different views
 - **For list items**, include a unique identifier (e.g., item ID, index, or slug) in the test ID
 
 **Example violations that will fail tests**:
 ```typescript
 // ❌ BAD - same ID in different components
-<button data-testid="qv-btn-open-project">  // In Welcome
-<button data-testid="qv-btn-open-project">  // In Sidebar
+<button data-testid="qms-btn-open-project">  // In Welcome
+<button data-testid="qms-btn-open-project">  // In Sidebar
 
 // ✅ GOOD - namespaced IDs
-<button data-testid="qv-welcome-btn-open-project">  // In Welcome
-<button data-testid="qv-sidebar-btn-open-project">  // In Sidebar
+<button data-testid="qms-welcome-btn-open-project">  // In Welcome
+<button data-testid="qms-sidebar-btn-open-project">  // In Sidebar
 ```
 
 **When adding new components**:
-- Use a clear namespace prefix (e.g., `qv-{component}-{element}`)
+- Use a clear namespace prefix (e.g., `qms-{component}-{element}`)
 - For repeated elements (lists), include unique identifiers
 - Run E2E tests to verify no duplicates are introduced
 
@@ -3314,14 +3314,14 @@ All UI components use `data-testid` attributes for reliable test selection:
 
 | Component | Test IDs |
 |-----------|----------|
-| Welcome screen | `qv-welcome-title`, `qv-btn-open-project`, `qv-btn-create-new-project`, `qv-btn-create-demo-project` |
-| Navigation | `qv-nav-{home,structures,calculations,jobs,analysis,settings,debug}` |
-| Project summary | `qv-home-project`, `qv-project-path`, `qv-btn-project-reveal` |
-| Workflows | `qv-calculations-view`, `qv-calculation-row`, `qv-calculation-detail`, `qv-btn-run-calculation` |
-| Steps | `qv-steps-list`, `qv-step-row`, `qv-step-detail`, `qv-step-id`, `qv-step-file-path` |
-| Jobs | `qv-jobs-view`, `qv-job-row`, `qv-job-status`, `qv-job-detail` |
-| Analysis | `qv-analysis-view`, `qv-analysis-bands-chart`, `qv-analysis-fermi`, `qv-analysis-kpath` |
-| Dialogs | `qv-create-project-dialog`, `qv-input-parent-dir`, `qv-input-project-name`, `qv-btn-confirm-create` |
+| Welcome screen | `qms-welcome-title`, `qms-btn-open-project`, `qms-btn-create-new-project`, `qms-btn-create-demo-project` |
+| Navigation | `qms-nav-{home,structures,calculations,jobs,analysis,settings,debug}` |
+| Project summary | `qms-home-project`, `qms-project-path`, `qms-btn-project-reveal` |
+| Workflows | `qms-calculations-view`, `qms-calculation-row`, `qms-calculation-detail`, `qms-btn-run-calculation` |
+| Steps | `qms-steps-list`, `qms-step-row`, `qms-step-detail`, `qms-step-id`, `qms-step-file-path` |
+| Jobs | `qms-jobs-view`, `qms-job-row`, `qms-job-status`, `qms-job-detail` |
+| Analysis | `qms-analysis-view`, `qms-analysis-bands-chart`, `qms-analysis-fermi`, `qms-analysis-kpath` |
+| Dialogs | `qms-create-project-dialog`, `qms-input-parent-dir`, `qms-input-project-name`, `qms-btn-confirm-create` |
 
 ### 22.9 Helper Functions
 
@@ -3404,7 +3404,7 @@ All E2E-generated projects are created in `temp/e2e_projects/` (relative to repo
 
 ## 23. Project Snapshot Format
 
-The project snapshot format allows exporting a complete QuantumVITAS project into a single YAML file and recreating it elsewhere. This is useful for:
+The project snapshot format allows exporting a complete QMatSuite project into a single YAML file and recreating it elsewhere. This is useful for:
 - **Project templates**: Create reusable project definitions
 - **Version control**: Track project structure without binary files
 - **Sharing**: Distribute demo projects or calculations
@@ -3426,7 +3426,7 @@ project:
     kind: "project"
     path: "."
   settings:
-    # Project-level settings from project.qv.yml
+    # Project-level settings from project.qms.yml
 structures:
   - meta:
       id: "<structure_ulid>"
@@ -3521,8 +3521,8 @@ pseudo:
 #### Export Project to Snapshot
 
 ```bash
-qv save-project snapshot.yml
-qv save-project my-project-snapshot.yml --overwrite
+qms save-project snapshot.yml
+qms save-project my-project-snapshot.yml --overwrite
 ```
 
 - Exports current project (auto-detected from CWD) to a YAML file
@@ -3532,7 +3532,7 @@ qv save-project my-project-snapshot.yml --overwrite
 #### Create Project from Snapshot
 
 ```bash
-qv init project --snapshot snapshot.yml --path /path/to/parent --name "My New Project"
+qms init project --snapshot snapshot.yml --path /path/to/parent --name "My New Project"
 ```
 
 - `--snapshot`: Path to snapshot YAML file
@@ -3543,21 +3543,21 @@ qv init project --snapshot snapshot.yml --path /path/to/parent --name "My New Pr
 
 ### 23.5 API Methods
 
-The snapshot functionality is exposed via `QVService`:
+The snapshot functionality is exposed via `QMSService`:
 
 ```python
 # Export project to snapshot dict
-snapshot_dict = QVService.export_project_snapshot(project_root)
+snapshot_dict = QMSService.export_project_snapshot(project_root)
 
 # Save snapshot to YAML file
-output_path = QVService.save_project_snapshot(
+output_path = QMSService.save_project_snapshot(
     project_root=project_root,
     output_path=Path("snapshot.yml"),
     overwrite=False,
 )
 
 # Create project from snapshot
-new_project_root = QVService.create_project_from_snapshot(
+new_project_root = QMSService.create_project_from_snapshot(
     parent_dir=Path("/path/to/parent"),
     snapshot_path=Path("snapshot.yml"),
     project_name="New Project",
@@ -3566,7 +3566,7 @@ new_project_root = QVService.create_project_from_snapshot(
 
 ### 23.6 Implementation Details
 
-**Core module**: `src/quantumvitas/project/snapshot.py`
+**Core module**: `src/qmatsuite/project/snapshot.py`
 
 - `ProjectSnapshot`: Dataclass representing snapshot structure
 - `export_project_to_snapshot()`: Reads project directory, packages into snapshot
@@ -3574,7 +3574,7 @@ new_project_root = QVService.create_project_from_snapshot(
 
 **Key implementation notes**:
 - Uses existing model loaders (`load_project`, `load_calculation`, `load_structure_model`)
-- Handles both `__qv_meta__` wrapper and direct structure dict formats
+- Handles both `__qms_meta__` wrapper and direct structure dict formats
 - Rewrites `parent_calculation_id` references during materialization
 - Creates directory structure but not pseudopotential files
 
@@ -3691,10 +3691,10 @@ Analysis JSON files are stored in a dedicated directory per calculation:
 
 ### 24.4 Backend: AnalysisArtifacts Helper
 
-**Module**: `src/quantumvitas/analysis/artifacts.py`
+**Module**: `src/qmatsuite/analysis/artifacts.py`
 
 ```python
-from quantumvitas.analysis.artifacts import AnalysisArtifacts
+from qmatsuite.analysis.artifacts import AnalysisArtifacts
 
 # Get expected path for an artifact
 path = AnalysisArtifacts.get_artifact_path(project_root, calculation_slug, "bands")
@@ -3711,12 +3711,12 @@ AnalysisArtifacts.clear_artifacts(project_root, calculation_slug)
 
 ### 24.5 Backend API: ensure_calculation_analysis
 
-**Method**: `QVService.ensure_calculation_analysis()`
+**Method**: `QMSService.ensure_calculation_analysis()`
 
 ```python
-from quantumvitas.api import QVService, AnalysisStatus
+from qmatsuite.api import QMSService, AnalysisStatus
 
-status = QVService.ensure_calculation_analysis(
+status = QMSService.ensure_calculation_analysis(
     project_root=project_root,
     calculation_selector="si-bands",
     analysis_type="bands",  # "scf" | "dos" | "bands"
@@ -3739,7 +3739,7 @@ status = QVService.ensure_calculation_analysis(
 
 ### 24.6 RPC Handler
 
-**Daemon**: `src/quantumvitas/daemon/server.py`
+**Daemon**: `src/qmatsuite/daemon/server.py`
 
 ```python
 # RPC command: "ensure_calculation_analysis"
@@ -3764,7 +3764,7 @@ status = QVService.ensure_calculation_analysis(
 
 ### 24.7 GUI TypeScript Types
 
-**File**: `gui/src/types/qv.ts`
+**File**: `gui/src/types/qms.ts`
 
 ```typescript
 interface AnalysisStatus {
@@ -3775,7 +3775,7 @@ interface AnalysisStatus {
   error_code: string | null;
 }
 
-// In QVCommandMap:
+// In QMSCommandMap:
 ensure_calculation_analysis: {
   payload: {
     project_root: string;
@@ -3799,7 +3799,7 @@ This ensures backward compatibility while gaining caching benefits.
 
 ### 24.9 Cache Invalidation
 
-**When calculation is run** (`QVService.run_calculation`):
+**When calculation is run** (`QMSService.run_calculation`):
 - `AnalysisArtifacts.clear_artifacts()` is called at the start
 - Deletes all JSON files in `<calculation>/analysis/`
 - Ensures old analysis data doesn't persist after re-run
@@ -3897,7 +3897,7 @@ meta:
 
 **Project Origin Tracking**:
 
-When `create_demo_project` materializes a project, it stores origin info in `project.qv.yml`:
+When `create_demo_project` materializes a project, it stores origin info in `project.qms.yml`:
 
 ```yaml
 project:
@@ -3913,9 +3913,9 @@ project:
 **API: `get_reference_analysis`**:
 
 ```python
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
-result = QVService.get_reference_analysis(
+result = QMSService.get_reference_analysis(
     project_root=project_root,
     calculation_selector="si-bands",
     analysis_type="bands",  # or "dos", "scf"
@@ -3950,9 +3950,9 @@ result = QVService.get_reference_analysis(
 - **Read-only project path display**: Shows current project path (or "No project loaded") as non-editable text
 - **Reveal button**: Opens the project folder in system file manager (Finder/Explorer)
 - **Always-visible action buttons**: Three compact buttons are always available regardless of current view:
-  - "Open Project…" (`data-testid="qv-btn-open-project"`)
-  - "Create New…" (`data-testid="qv-btn-create-new-project"`)
-  - "Demo Gallery…" (`data-testid="qv-btn-demo-gallery"`)
+  - "Open Project…" (`data-testid="qms-btn-open-project"`)
+  - "Create New…" (`data-testid="qms-btn-create-new-project"`)
+  - "Demo Gallery…" (`data-testid="qms-btn-demo-gallery"`)
 
 These buttons work from any view, not just Home. They're styled as compact text buttons in expanded mode, and icon-only buttons when sidebar is collapsed.
 
@@ -3989,7 +3989,7 @@ si-bands-demo-3/    # Third creation
 
 All suffixed projects still get `origin.kind: demo` and `origin.demo_id` metadata, so reference analysis still works.
 
-**Code Location**: `src/quantumvitas/project/snapshot.py::materialize_project_from_snapshot()`
+**Code Location**: `src/qmatsuite/project/snapshot.py::materialize_project_from_snapshot()`
 
 ### 25.4 Graceful Handling of Deleted Resources
 
@@ -3997,15 +3997,15 @@ All suffixed projects still get `origin.kind: demo` and `origin.demo_id` metadat
 
 **Solution**: Enhanced error handling in daemon:
 
-1. **Project path validation**: The `_require_path()` helper now specifically detects missing project roots and project.qv.yml files
+1. **Project path validation**: The `_require_path()` helper now specifically detects missing project roots and project.qms.yml files
 2. **Specific error codes**: Returns `project_missing` error code (with `kind: "project_missing"`) for GUI to handle
-3. **Clear error messages**: "Project folder not found: /path" or "Project configuration not found: project.qv.yml"
+3. **Clear error messages**: "Project folder not found: /path" or "Project configuration not found: project.qms.yml"
 
 **GUI Behavior** (recommended implementation):
 - On `project_missing` error, show a banner: "Project folder is missing. Close this project or restore the folder."
 - Offer a "Close project" button that returns to no-project Home state
 
-**Code Location**: `src/quantumvitas/daemon/server.py::_require_path()` and error handling in `handle_line()`
+**Code Location**: `src/qmatsuite/daemon/server.py::_require_path()` and error handling in `handle_line()`
 
 ### 25.5 Home Mode State Management
 
@@ -4028,7 +4028,7 @@ const handleOpenDemoGallery = useCallback(() => {
 ### 25.6 E2E Test Compatibility
 
 The sidebar changes maintain backward compatibility with existing E2E tests:
-- Same `data-testid` values (`qv-btn-open-project`, `qv-btn-create-new-project`, `qv-btn-demo-gallery`)
+- Same `data-testid` values (`qms-btn-open-project`, `qms-btn-create-new-project`, `qms-btn-demo-gallery`)
 - Buttons now exist in both sidebar and welcome screen
 - Demo Gallery flow unchanged: click button → gallery view → create demo
 
@@ -4040,16 +4040,16 @@ The sidebar changes maintain backward compatibility with existing E2E tests:
 
 This section documents critical fixes to CLI calculation detection and rename operations that ensure commands work correctly when run from inside calculation directories, especially after renames.
 
-### 26.2 Fix: `qv init step` Calculation Auto-Detection
+### 26.2 Fix: `qms init step` Calculation Auto-Detection
 
-**Problem**: The `qv init step scf` command from inside a calculation directory was not reliably detecting the enclosing calculation and inheriting its structure.
+**Problem**: The `qms init step scf` command from inside a calculation directory was not reliably detecting the enclosing calculation and inheriting its structure.
 
 **Root Causes**:
 1. Used `_detect_enclosing_workflow()` instead of `PathContext` from `core/context.py`
 2. Structure was read from `calculation_data.get("calculation", {}).get("structure")` instead of top-level `calculation_data.get("structure")` (new format)
 3. No clear error message when run from project root without `--calculation`
 
-**Solution** (`src/quantumvitas/cli/main.py`, lines ~867-930):
+**Solution** (`src/qmatsuite/cli/main.py`, lines ~867-930):
 
 1. **Use PathContext for calculation detection**:
    ```python
@@ -4105,25 +4105,25 @@ This section documents the refactoring to use **ID-only cross-references** betwe
 - **File**: `calculation.yaml` (via `CalculationModel`)
 - **Field**: `structure: Optional[str]` (selector: name/slug/path)
 - **Current**: Selector-based (e.g., `structure: "si"` or `structure: "C"`)
-- **Location**: `src/quantumvitas/core/models.py` line 75
+- **Location**: `src/qmatsuite/core/models.py` line 75
 
 **Step → Calculation**:
 - **File**: `*.step.yaml` (via `StructureStepSpec`)
 - **Field**: `parent_calculation_id: Optional[str]`
 - **Current**: ✅ Already ID-based (ULID)
-- **Location**: `src/quantumvitas/calculation/structure_steps.py` line 47
+- **Location**: `src/qmatsuite/calculation/structure_steps.py` line 47
 
 **Step → Structure**:
 - **File**: `*.step.yaml` (via `StructureStepSpec`)
 - **Field**: `structure: str`
 - **Current**: Selector-based (e.g., `structure: "si"`)
-- **Location**: `src/quantumvitas/calculation/structure_steps.py` line 41
+- **Location**: `src/qmatsuite/calculation/structure_steps.py` line 41
 
 **Snapshots**:
 - **File**: `resources/demo_projects/*.yml` and `ProjectSnapshot`
 - **Fields**: Workflows have `structure: <selector>`, steps have `structure: <selector>` and `parent_calculation_id: <id>`
 - **Current**: Mixed (calculation ID-based, structure selector-based)
-- **Location**: `src/quantumvitas/project/snapshot.py` line 378
+- **Location**: `src/qmatsuite/project/snapshot.py` line 378
 
 ### 27.3 New Reference Contract
 
@@ -4182,7 +4182,7 @@ parameters: {...}
 
 **Resolution Flow**:
 1. User provides selector (name/slug/path) via CLI/GUI
-2. `QVService` resolves selector → resource via `resolve_structure()` / `resolve_calculation()`
+2. `QMSService` resolves selector → resource via `resolve_structure()` / `resolve_calculation()`
 3. Extract `resource.meta.id` and store in `*_id` field
 4. When loading, use `*_id` to resolve back to resource via registry lookup
 
@@ -4238,22 +4238,22 @@ When loading a legacy calculation with `load_calculation(path, project_root)`, t
 ### 27.6 How CLI/GUI Still Use Selectors
 
 **User-facing operations** (CLI/GUI) continue to use selectors (name/slug/path):
-- `qv init calculation --structure si` (uses selector)
-- `qv init step --structure C` (uses selector)
+- `qms init calculation --structure si` (uses selector)
+- `qms init step --structure C` (uses selector)
 - GUI calculation creation: user selects structure by name
 
 **Internal resolution flow**:
-1. User provides selector → `QVService` receives selector
-2. `QVService` resolves selector → `resolve_structure(project_root, selector)` → `ResolvedResource`
+1. User provides selector → `QMSService` receives selector
+2. `QMSService` resolves selector → `resolve_structure(project_root, selector)` → `ResolvedResource`
 3. Extract `resource.meta.id` → store in `structure_id` field
 4. When loading, use `structure_id` to resolve back to resource via registry lookup
 
 **Example: Creating a calculation**:
 ```python
-# User: qv init calculation --structure si
+# User: qms init calculation --structure si
 structure_selector = "si"  # From CLI
 
-# QVService resolves selector to structure
+# QMSService resolves selector to structure
 resolved = resolve_structure(project_root, structure_selector)
 structure_id = resolved.meta.id  # e.g., "01JABC123DEF456GHI789JKL"
 
@@ -4296,25 +4296,25 @@ structure_name: "Silicon"  # Updated from registry
 
 - **No duplication**: Structure name/slug/path only stored in structure's own meta and project registry
 - **Rename-safe**: Renaming a structure only updates its own meta and registry; all references via `structure_id` remain valid
-- **Single source of truth**: Project registry (`project.qv.yml`) is authoritative for resource metadata
+- **Single source of truth**: Project registry (`project.qms.yml`) is authoritative for resource metadata
 - **Backwards compatible**: Legacy YAML files with selector-based references still load correctly
 - **Resolution is explicit**: When loading, structure selector is resolved to `structure_id` if `project_root` is provided
 
 ### 27.9 Implementation Files
 
 **Core Models**:
-- `src/quantumvitas/core/models.py`: `CalculationModel` with `structure_id`/`structure_name` fields
-- `src/quantumvitas/calculation/structure_steps.py`: `StructureStepSpec` with `structure_id` field
+- `src/qmatsuite/core/models.py`: `CalculationModel` with `structure_id`/`structure_name` fields
+- `src/qmatsuite/calculation/structure_steps.py`: `StructureStepSpec` with `structure_id` field
 
 **Resolution**:
-- `src/quantumvitas/core/resolution.py`: `resolve_structure()` converts selector → `ResolvedResource` with `meta.id`
-- `src/quantumvitas/core/models.py`: `load_calculation()` auto-resolves legacy `structure` selector to `structure_id`
+- `src/qmatsuite/core/resolution.py`: `resolve_structure()` converts selector → `ResolvedResource` with `meta.id`
+- `src/qmatsuite/core/models.py`: `load_calculation()` auto-resolves legacy `structure` selector to `structure_id`
 
 **Service Layer**:
-- `src/quantumvitas/api.py`: `QVService.init_calculation()`, `QVService.init_step()`, etc. resolve selectors to IDs
+- `src/qmatsuite/api.py`: `QMSService.init_calculation()`, `QMSService.init_step()`, etc. resolve selectors to IDs
 
 **Snapshots**:
-- `src/quantumvitas/project/snapshot.py`: Exports `structure_id`, materializes with ID mapping
+- `src/qmatsuite/project/snapshot.py`: Exports `structure_id`, materializes with ID mapping
 
 **Tests**:
 - `tests/unit/test_id_based_references.py`: Comprehensive tests for ID-based references and backwards compatibility
@@ -4326,7 +4326,7 @@ structure_name: "Silicon"  # Updated from registry
 ### 28.1 Hard Invariants
 
 **Every resource file is self-describing:**
-- `project.qv.yml` (project)
+- `project.qms.yml` (project)
 - `calculations/<slug>/calculation.yaml` (calculation)
 - `calculations/<slug>/steps/*.step.yaml` (step)
 - `structures/*.json` (structure)
@@ -4359,7 +4359,7 @@ parent_calculation_id: 01H...     # Calculation reference (ULID only)
 structure_id: 01S...           # Structure reference (ULID only)
 ```
 
-**project.qv.yml:**
+**project.qms.yml:**
 ```yaml
 meta: {... kind: project}
 structures:
@@ -4370,7 +4370,7 @@ calculations:
 
 **No other resource's name/slug/path is allowed anywhere.** Names/slugs/paths of a resource appear only in that resource's own file.
 
-### 28.2 Registry (project.qv.yml)
+### 28.2 Registry (project.qms.yml)
 
 The registry stores only:
 - The project's own meta (with name/slug/path, because it's "self")
@@ -4402,7 +4402,7 @@ calculations:
 
 ### 28.1 Overview
 
-The `ResourceIndex` is the authoritative source for selector → ID resolution. It is built by scanning resource files (calculation.yaml, *.step.yaml, *.json) and reading their meta blocks, not from project.qv.yml entries.
+The `ResourceIndex` is the authoritative source for selector → ID resolution. It is built by scanning resource files (calculation.yaml, *.step.yaml, *.json) and reading their meta blocks, not from project.qms.yml entries.
 
 ### 28.2 ResourceIndex Structure
 
@@ -4420,9 +4420,9 @@ class ResourceIndex:
 `build_resource_index(project_root: Path) -> ResourceIndex`:
 - Scans `calculations/**/calculation.yaml` → reads meta, indexes by id/slug/path/name
 - Scans `calculations/**/steps/*.step.yaml` → reads meta, indexes by id/slug/path/name
-- Scans `structures/*.json` → reads `__qv_meta__` or `meta`, indexes by id/slug/path/name
+- Scans `structures/*.json` → reads `__qms_meta__` or `meta`, indexes by id/slug/path/name
 
-**Key principle**: Resource files are self-describing. Their meta blocks are the source of truth for name/slug/path. project.qv.yml only stores IDs for relationships.
+**Key principle**: Resource files are self-describing. Their meta blocks are the source of truth for name/slug/path. project.qms.yml only stores IDs for relationships.
 
 ### 28.4 Resolution Flow
 
@@ -4433,7 +4433,7 @@ class ResourceIndex:
 4. Use ID + index to get display name/slug/path when needed
 
 **Legacy flow (backwards compat)**:
-- Falls back to reading from project.qv.yml entries if ResourceIndex doesn't find the resource
+- Falls back to reading from project.qms.yml entries if ResourceIndex doesn't find the resource
 - This ensures old projects still work
 
 ### 28.5 Usage in Resolution Functions
@@ -4457,7 +4457,7 @@ resolved = resolve_structure(project_root, "si")
 ### 28.6 Benefits
 
 - **Single source of truth**: Resource files' meta blocks are authoritative
-- **No duplication**: project.qv.yml doesn't duplicate name/slug/path
+- **No duplication**: project.qms.yml doesn't duplicate name/slug/path
 - **Rename-safe**: Renaming a resource only updates its own file, index rebuilds automatically
 - **Backwards compatible**: Falls back to config-based resolution for old projects
 
@@ -4465,11 +4465,11 @@ resolved = resolve_structure(project_root, "si")
 
 ### 26.3 Fix: Calculation Rename Bug
 
-**Problem**: `qv configure calculation --name "graph"` failed with `FileNotFoundError` after renaming because the code tried to read/write `calculation.yaml` at the old location after the directory was moved.
+**Problem**: `qms configure calculation --name "graph"` failed with `FileNotFoundError` after renaming because the code tried to read/write `calculation.yaml` at the old location after the directory was moved.
 
 **Root Cause**: `apply_calculation_rename()` can move the calculation directory if the slug changes (e.g., "graphene bands" → "graph" changes slug from "graphene-bands" to "graph"), but the CLI code captured `calculation_dir` and `calculation_yaml` paths before the rename.
 
-**Solution** (`src/quantumvitas/cli/main.py`, lines ~2179-2197):
+**Solution** (`src/qmatsuite/cli/main.py`, lines ~2179-2197):
 
 ```python
 # Handle name change (rename)
@@ -4503,13 +4503,13 @@ if name:
 - ✅ `calculation.yaml` is updated at the correct location (new directory if moved)
 - ✅ Project config and calculation.yaml stay in sync
 
-### 26.4 Fix: `qv analyze band` Calculation Detection
+### 26.4 Fix: `qms analyze band` Calculation Detection
 
-**Problem**: `qv analyze band` from inside a calculation directory failed with "Calculation not found: graphene-bands" because `PathContext` extracted the selector from `calculation.yaml`, which might be stale after a rename.
+**Problem**: `qms analyze band` from inside a calculation directory failed with "Calculation not found: graphene-bands" because `PathContext` extracted the selector from `calculation.yaml`, which might be stale after a rename.
 
-**Root Cause**: `PathContext.calculation_selector` reads from `calculation.yaml` meta, but after a rename, the selector might not match what's in `project.qv.yml` (the source of truth for `resolve_calculation`).
+**Root Cause**: `PathContext.calculation_selector` reads from `calculation.yaml` meta, but after a rename, the selector might not match what's in `project.qms.yml` (the source of truth for `resolve_calculation`).
 
-**Solution** (`src/quantumvitas/cli/main.py`, lines ~3002-3024):
+**Solution** (`src/qmatsuite/cli/main.py`, lines ~3002-3024):
 
 ```python
 # Only auto-detect calculation if no input file provided
@@ -4527,9 +4527,9 @@ if input_file is None and ctx.is_inside_calculation():
 ```
 
 **Why This Works**:
-- `find_enclosing_calculation()` matches the current directory path against entries in `project.qv.yml`
+- `find_enclosing_calculation()` matches the current directory path against entries in `project.qms.yml`
 - Uses directory path, not selector from `calculation.yaml`, so it works after renames
-- Selector comes from the authoritative entry in `project.qv.yml`
+- Selector comes from the authoritative entry in `project.qms.yml`
 
 **Behavior**:
 - ✅ Works from inside calculation directory, even after rename
@@ -4546,9 +4546,9 @@ if input_file is None and ctx.is_inside_calculation():
 
 | File | Changes |
 |------|---------|
-| `src/quantumvitas/cli/main.py` | Fixed `init_step_command` to use `PathContext`, fixed structure reading, added clear error at project root |
-| `src/quantumvitas/cli/main.py` | Fixed `configure_calculation_command` to re-resolve paths after rename |
-| `src/quantumvitas/cli/main.py` | Fixed `analyze_band_command` to use `find_enclosing_calculation` instead of `PathContext.calculation_selector` |
+| `src/qmatsuite/cli/main.py` | Fixed `init_step_command` to use `PathContext`, fixed structure reading, added clear error at project root |
+| `src/qmatsuite/cli/main.py` | Fixed `configure_calculation_command` to re-resolve paths after rename |
+| `src/qmatsuite/cli/main.py` | Fixed `analyze_band_command` to use `find_enclosing_calculation` instead of `PathContext.calculation_selector` |
 | `tests/cli/test_graphene_workflow_setup.py` | New test verifying exact CLI sequence from manual instructions |
 
 ### 26.7 Test Coverage

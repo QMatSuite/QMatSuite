@@ -13,13 +13,13 @@ import shutil
 from pathlib import Path
 import yaml
 
-from quantumvitas.presets.integration import (
+from qmatsuite.presets.integration import (
     apply_presets_to_step,
     detect_presets_from_calculation,
 )
-from quantumvitas.presets.precision import PrecisionAdvisor, PrecisionOption
+from qmatsuite.presets.precision import PrecisionAdvisor, PrecisionOption
 from pymatgen.core import Structure, Lattice
-from quantumvitas.core.models import CalculationModel, ResourceMeta
+from qmatsuite.core.models import CalculationModel, ResourceMeta
 
 
 class TestPrecisionRoundtrip:
@@ -36,9 +36,9 @@ class TestPrecisionRoundtrip:
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir()
         
-        # Create project.qv.yml
-        project_qv_yml = project_root / "project.qv.yml"
-        project_qv_yml.write_text(yaml.safe_dump({
+        # Create project.qms.yml
+        project_qms_yml = project_root / "project.qms.yml"
+        project_qms_yml.write_text(yaml.safe_dump({
             "name": "Test Project",
             "version": "1.0",
         }))
@@ -53,7 +53,7 @@ class TestPrecisionRoundtrip:
         )
         structure_file = structures_dir / "test_structure.json"
         import json
-        from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+        from qmatsuite.io.structure_io import STRUCTURE_META_KEY
         struct_dict = structure.as_dict()
         struct_dict[STRUCTURE_META_KEY] = {
             "ulid": "test_structure",

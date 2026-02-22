@@ -89,13 +89,13 @@ python tools/verify_demos.py
 ## Files Modified
 
 ### Core Changes
-- `src/quantumvitas/api.py`: Injection detection
-- `src/quantumvitas/project/snapshot.py`: Schema cleaning
-- `src/quantumvitas/core/engines/qe.py`: None checks
-- `src/quantumvitas/core/engines/qe_calculation.py`: None checks
+- `src/qmatsuite/api.py`: Injection detection
+- `src/qmatsuite/project/snapshot.py`: Schema cleaning
+- `src/qmatsuite/core/engines/qe.py`: None checks
+- `src/qmatsuite/core/engines/qe_calculation.py`: None checks
 
 ### UI Changes
-- `gui/src/types/qv.ts`: Type definitions
+- `gui/src/types/qms.ts`: Type definitions
 - `gui/src/components/step_parameters/ActiveParametersPanel.tsx`: UI display
 - `gui/src/components/step_parameters/ActiveParametersPanel.css`: Styles
 

@@ -1,4 +1,4 @@
-# QuantumVITAS Python Architecture (v2)
+# QMatSuite Python Architecture (v2)
 
 This document captures the working architecture so contributors and tooling can
 stay aligned over the life of the refactor.
@@ -6,7 +6,7 @@ stay aligned over the life of the refactor.
 ## Layered Structure
 
 ```
-src/quantumvitas/
+src/qmatsuite/
 ├─ io/            # QE I/O models + parser/generator + pseudo helpers
 ├─ engine/        # Public engine interfaces + QE installation + registry
 ├─ calculation/      # Step definitions, runners, verification, input helpers
@@ -18,11 +18,11 @@ src/quantumvitas/
 
 ### Key Concepts
 
-- **Project layer (`quantumvitas.project`)**  
+- **Project layer (`qmatsuite.project`)**  
   Knows where the project root lives, which structures/calculations are registered,
-  and how to open them (currently via `project.qv.yml`, future CLI will call this).
+  and how to open them (currently via `project.qms.yml`, future CLI will call this).
 
-- **Calculation layer (`quantumvitas.calculation`)**  
+- **Calculation layer (`qmatsuite.calculation`)**  
   Defines `Calculation`, `Step`, `StepType`, `CalculationRunner`, `input_runner`. Every
   calculation owns exactly one I/O directory (default `raw/`, configurable via `working_dir` in calculation.yaml) under its folder; all QE
   I/O (inputs, modified copies, outputs, shared `outdir/`) happens inside that
@@ -41,12 +41,12 @@ src/quantumvitas/
   5. Invoke QE via `calculation.input_runner.run_input_step`, capturing `.out` plus
      leaving QE's own files in `raw/` (single shared `outdir/`).
 
-- **Engine layer (`quantumvitas.engine`)**  
+- **Engine layer (`qmatsuite.engine`)**  
   Provides the public `Engine` interface, QE installation helpers, and a
   registry. Internally it still reuses the legacy implementations under
-  `quantumvitas.core.engines`.
+  `qmatsuite.core.engines`.
 
-- **IO layer (`quantumvitas.io`)**  
+- **IO layer (`qmatsuite.io`)**  
   Owns `QEInputParser`, `QEInputGenerator`, card/namelist models, and pseudo
   management helpers.
 
@@ -58,7 +58,7 @@ src/quantumvitas/
 
 ```
 project_root/
-  project.qv.yml          # lists structures + calculations by ID only (DAG + ID-only model)
+  project.qms.yml          # lists structures + calculations by ID only (DAG + ID-only model)
   pseudo/                 # shared pseudopotentials (checked before downloading)
   calculations/
     si_dos/
@@ -90,7 +90,7 @@ and makes cleanup trivial (`rm -rf raw/`).
 ## Ground Rules
 
 1. **Editable install first** (`pip install -e .[dev]`). No new `sys.path`
-   hacks; scripts and tests should import `quantumvitas` normally.
+   hacks; scripts and tests should import `qmatsuite` normally.
 2. **Outdir/pseudo_dir** always rewired through `calculation.input_runner`.
    - **Project mode**: `pseudo_dir = project_root/pseudo` (shared across all calculations)
    - **Standalone mode**: `pseudo_dir = working_dir/pseudo` (isolated per execution)
@@ -115,7 +115,7 @@ component details as the project matures.
 
 ## Current Working Directory Usage
 
-**Intended rule**: Only the CLI layer should use `Path.cwd()` or rely on current working directory. QVService/daemon/engine helpers should receive explicit paths/project_root.
+**Intended rule**: Only the CLI layer should use `Path.cwd()` or rely on current working directory. QMSService/daemon/engine helpers should receive explicit paths/project_root.
 
 **Current status**: Some core modules (`core/project_utils.py`, `core/models.py`, `calculation/input_runner.py`, `calculation/structure_steps.py`) still use `Path.cwd()` for fallback behavior. This is acceptable for backwards compatibility but should be minimized in new code.
 

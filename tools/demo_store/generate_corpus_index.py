@@ -58,7 +58,7 @@ def main():
                     "type": "pseudopotential",
                     "file": pseudo.get("file", ""),
                     "element": pseudo.get("element", ""),
-                    "source": pseudo.get("source", "src/quantumvitas/resources/pseudo"),
+                    "source": pseudo.get("source", "src/qmatsuite/resources/pseudo"),
                     "vendored": True,
                 })
             for prop in asset_reqs.get("proprietary", []):

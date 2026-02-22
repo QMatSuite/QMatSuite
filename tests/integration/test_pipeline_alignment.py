@@ -15,13 +15,13 @@ import json
 from pathlib import Path
 import numpy as np
 
-from quantumvitas.io.online_search import (
+from qmatsuite.io.online_search import (
     OPTIMADE_BASES,
     fetch_structure_from_optimade,
     search_optimade,
 )
-from quantumvitas.io.structure_io import write_structure, read_structure
-from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
+from qmatsuite.io.structure_io import write_structure, read_structure
+from qmatsuite.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
 
 
 @pytest.mark.integration

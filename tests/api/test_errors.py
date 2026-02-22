@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from quantumvitas.api.errors import (
+from qmatsuite.api.errors import (
     APIError,
     AmbiguousError,
     ConfigError,
@@ -19,7 +19,7 @@ from quantumvitas.api.errors import (
     NotFoundError,
     ValidationError,
 )
-from quantumvitas.api.types.error import ErrorDTO
+from qmatsuite.api.types.error import ErrorDTO
 
 
 def test_error_dto_required_fields():
@@ -166,7 +166,7 @@ def test_config_error_ssot_missing():
     err = ConfigError(
         message="Missing SSOT",
         code="PROJECT_SSOT_MISSING",
-        context={"missing_key": "species_map", "expected_path": "project.qv.yml"}
+        context={"missing_key": "species_map", "expected_path": "project.qms.yml"}
     )
     assert err.code == "PROJECT_SSOT_MISSING"
     assert err.retryable is False

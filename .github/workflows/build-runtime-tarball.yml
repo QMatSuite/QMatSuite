@@ -3,8 +3,8 @@ name: Build Runtime Tarball
 on:
   workflow_dispatch:
     inputs:
-      quantumvitas_version:
-        description: "quantumvitas version to install (PyPI version or \"local\")"
+      qmatsuite_version:
+        description: "qmatsuite version to install (PyPI version or \"local\")"
         required: true
         type: string
         default: "local"
@@ -51,24 +51,24 @@ jobs:
         run: |
           micromamba create -y -p "$RUNTIME_ENV_PREFIX" -c conda-forge python=${{ matrix.python }} pip
 
-      - name: Install quantumvitas from local checkout
-        if: ${{ inputs.quantumvitas_version == 'local' }}
+      - name: Install qmatsuite from local checkout
+        if: ${{ inputs.qmatsuite_version == 'local' }}
         run: |
           micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install --upgrade pip
           micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install '.[mcp]'
 
-      - name: Install quantumvitas from PyPI
-        if: ${{ inputs.quantumvitas_version != 'local' }}
+      - name: Install qmatsuite from PyPI
+        if: ${{ inputs.qmatsuite_version != 'local' }}
         run: |
           micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install --upgrade pip
-          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install "quantumvitas[mcp]==${{ inputs.quantumvitas_version }}"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install "qmatsuite[mcp]==${{ inputs.qmatsuite_version }}"
 
       - name: Verify runtime import chain and CLI
         run: |
-          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "import quantumvitas, importlib.metadata as m; print('quantumvitas:', m.version('quantumvitas'))"
-          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from quantumvitas.daemon.server import main; print('daemon OK')"
-          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from quantumvitas.mcp.server import create_server; print('MCP OK')"
-          micromamba run -p "$RUNTIME_ENV_PREFIX" qv --help | head -n 5
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "import qmatsuite, importlib.metadata as m; print('qmatsuite:', m.version('qmatsuite'))"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from qmatsuite.daemon.server import main; print('daemon OK')"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from qmatsuite.mcp.server import create_server; print('MCP OK')"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help | head -n 5
 
       - name: Install zstandard helper
         run: |

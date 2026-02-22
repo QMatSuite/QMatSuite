@@ -2,7 +2,7 @@
 
 Every value returned by get_presets (profile names like NM, COL, MED)
 must be accepted by apply_presets after normalization. Tests call the
-QVService API directly, not MCP tools.
+QMSService API directly, not MCP tools.
 """
 
 from __future__ import annotations
@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api.service import QVService
-from quantumvitas.presets.variants_registry import PROFILE_TO_ENUM
+from qmatsuite.api.service import QMSService
+from qmatsuite.presets.variants_registry import PROFILE_TO_ENUM
 
 
 # Minimal pymatgen-format Silicon structure.
@@ -34,14 +34,14 @@ _SI_STRUCTURE_JSON = json.dumps({
 @pytest.fixture
 def svc_with_calc(tmp_path):
     """Create a project with Si structure, QE SCF calc, and species_map."""
-    project_root = QVService.init_project(tmp_path / "proj")
-    svc = QVService(project_root)
+    project_root = QMSService.init_project(tmp_path / "proj")
+    svc = QMSService(project_root)
 
     source = tmp_path / "si.json"
     source.write_text(_SI_STRUCTURE_JSON)
     svc.structure.import_file(source, name="Silicon")
 
-    import quantumvitas.drivers  # noqa: F401
+    import qmatsuite.drivers  # noqa: F401
     calc = svc.project.init_calculation(
         name="si_scf", structure_selector="Silicon", engine_family="qe",
     )

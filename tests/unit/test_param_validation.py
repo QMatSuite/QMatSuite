@@ -4,7 +4,7 @@ Tests for parameter validation (Class A/B typing).
 
 import pytest
 
-from quantumvitas.core.param_validation import (
+from qmatsuite.core.param_validation import (
     validate_and_parse,
     normalize_class_b_value,
     ValidationError,

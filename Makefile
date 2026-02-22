@@ -1,4 +1,4 @@
-# Makefile for QuantumVITAS
+# Makefile for QMatSuite
 
 .PHONY: test quick-test extended-test install clean
 
@@ -12,7 +12,7 @@ extended-test:
 
 # Run all quick tests with coverage
 test-coverage:
-	pytest tests/ -m quick --cov=src/quantumvitas --cov-report=html --cov-report=term
+	pytest tests/ -m quick --cov=src/qmatsuite --cov-report=html --cov-report=term
 
 # Install dependencies
 install:

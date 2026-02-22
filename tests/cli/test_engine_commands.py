@@ -1,10 +1,10 @@
-"""CLI tests for `qv engine` commands."""
+"""CLI tests for `qms engine` commands."""
 
 from __future__ import annotations
 
 from typer.testing import CliRunner
 
-from quantumvitas.cli.main import app
+from qmatsuite.cli.main import app
 
 
 runner = CliRunner()
@@ -12,7 +12,7 @@ runner = CliRunner()
 
 def test_engine_list_command(monkeypatch):
     monkeypatch.setattr(
-        "quantumvitas.api.engines.list_engines",
+        "qmatsuite.api.engines.list_engines",
         lambda installed_only=False: [
             {
                 "engine": "qe",
@@ -37,7 +37,7 @@ def test_engine_list_command(monkeypatch):
 
 def test_engine_install_command(monkeypatch):
     monkeypatch.setattr(
-        "quantumvitas.api.engines.install_engine",
+        "qmatsuite.api.engines.install_engine",
         lambda engine_family, version=None, source="auto": {
             "engine": engine_family,
             "source": source,
@@ -57,11 +57,11 @@ def test_engine_install_command(monkeypatch):
 
 def test_engine_uninstall_defaults_to_active(monkeypatch):
     monkeypatch.setattr(
-        "quantumvitas.api.engines.get_active_engine",
+        "qmatsuite.api.engines.get_active_engine",
         lambda _engine: {"id": "conda-6.7.1"},
     )
     monkeypatch.setattr(
-        "quantumvitas.api.engines.uninstall_engine",
+        "qmatsuite.api.engines.uninstall_engine",
         lambda engine_family, installation_id: {
             "engine": engine_family,
             "installation_id": installation_id,
@@ -75,7 +75,7 @@ def test_engine_uninstall_defaults_to_active(monkeypatch):
 
 
 def test_engine_verify_failure(monkeypatch):
-    monkeypatch.setattr("quantumvitas.api.engines.verify_engine", lambda _engine: (False, "missing"))
+    monkeypatch.setattr("qmatsuite.api.engines.verify_engine", lambda _engine: (False, "missing"))
 
     result = runner.invoke(app, ["engine", "verify", "xtb"])
     assert result.exit_code == 1

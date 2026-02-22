@@ -14,8 +14,8 @@ Allowlisted violations fall into two categories:
    (private helpers, resolvers, etc.). These are individually exempted.
 
 To add a new symbol to a domain's public.py:
-1. Add the import to ``src/quantumvitas/<domain>/public.py``
-2. Migrate all cross-domain consumers to use ``from quantumvitas.<domain>.public import ...``
+1. Add the import to ``src/qmatsuite/<domain>/public.py``
+2. Migrate all cross-domain consumers to use ``from qmatsuite.<domain>.public import ...``
 3. The gate test will automatically pass for the new symbol.
 """
 
@@ -27,7 +27,7 @@ from typing import Set
 
 import pytest
 
-SRC = Path(__file__).resolve().parent.parent.parent / "src" / "quantumvitas"
+SRC = Path(__file__).resolve().parent.parent.parent / "src" / "qmatsuite"
 
 DOMAINS = {"core", "calculation", "execution", "engine", "workflow", "analysis"}
 
@@ -96,27 +96,27 @@ _DAG_VIOLATION_FILES: Set[str] = {
 }
 
 # Symbols that are too internal for public.py — individual (file, module) pairs.
-# Format: { "domain/file.py": {"quantumvitas.target_domain.internal_module", ...} }
+# Format: { "domain/file.py": {"qmatsuite.target_domain.internal_module", ...} }
 _NOT_IN_PUBLIC_ALLOWLIST: dict[str, Set[str]] = {
     # Private pseudo helpers
-    "calculation/input_runner.py": {"quantumvitas.core.pseudo_config"},
-    "calculation/runner.py": {"quantumvitas.core.pseudo_runtime"},
-    "calculation/species_config.py": {"quantumvitas.core.project_utils"},  # find_calculation_entry, calculation_directory
-    "calculation/structure_steps.py": {"quantumvitas.core.pseudo_config"},
+    "calculation/input_runner.py": {"qmatsuite.core.pseudo_config"},
+    "calculation/runner.py": {"qmatsuite.core.pseudo_runtime"},
+    "calculation/species_config.py": {"qmatsuite.core.project_utils"},  # find_calculation_entry, calculation_directory
+    "calculation/structure_steps.py": {"qmatsuite.core.pseudo_config"},
     # Engine-specific resolvers (one per engine family)
-    "engine/cp2k_engine.py": {"quantumvitas.core.engines.cp2k_resolver"},
-    "engine/lammps_engine.py": {"quantumvitas.core.engines.lammps_resolver"},
-    "engine/qmcpack_engine.py": {"quantumvitas.core.engines.qmcpack_resolver"},
-    "engine/orca_engine.py": {"quantumvitas.core.engines.orca_resolver"},
-    "engine/psi4_engine.py": {"quantumvitas.core.engines.discovery"},
-    "engine/vasp_engine.py": {"quantumvitas.core.engines.vasp_resolver"},
-    "engine/vasp_writer.py": {"quantumvitas.core.engines.vasp_resolver"},
+    "engine/cp2k_engine.py": {"qmatsuite.core.engines.cp2k_resolver"},
+    "engine/lammps_engine.py": {"qmatsuite.core.engines.lammps_resolver"},
+    "engine/qmcpack_engine.py": {"qmatsuite.core.engines.qmcpack_resolver"},
+    "engine/orca_engine.py": {"qmatsuite.core.engines.orca_resolver"},
+    "engine/psi4_engine.py": {"qmatsuite.core.engines.discovery"},
+    "engine/vasp_engine.py": {"qmatsuite.core.engines.vasp_resolver"},
+    "engine/vasp_writer.py": {"qmatsuite.core.engines.vasp_resolver"},
     # Internal analysis model (trajectory frame)
-    "engine/lammps_parser.py": {"quantumvitas.core.analysis.trajectory.model"},
+    "engine/lammps_parser.py": {"qmatsuite.core.analysis.trajectory.model"},
     # Manifest alias (RunManifest = Manifest, TYPE_CHECKING only)
-    "execution/executor.py": {"quantumvitas.calculation.manifest"},
+    "execution/executor.py": {"qmatsuite.calculation.manifest"},
     # Calculation geometry helpers (not exported via public.py)
-    "execution/relax_artifacts.py": {"quantumvitas.calculation.geometry"},
+    "execution/relax_artifacts.py": {"qmatsuite.calculation.geometry"},
 }
 
 
@@ -125,7 +125,7 @@ _NOT_IN_PUBLIC_ALLOWLIST: dict[str, Set[str]] = {
 # ---------------------------------------------------------------------------
 
 def _get_domain(path: Path) -> str | None:
-    """Get the domain name from a file path under src/quantumvitas/."""
+    """Get the domain name from a file path under src/qmatsuite/."""
     try:
         rel = path.relative_to(SRC)
     except ValueError:
@@ -135,9 +135,9 @@ def _get_domain(path: Path) -> str | None:
 
 
 def _get_target_domain(module: str) -> str | None:
-    """Extract target domain from a module path like 'quantumvitas.core.yaml_io'."""
+    """Extract target domain from a module path like 'qmatsuite.core.yaml_io'."""
     parts = module.split(".")
-    if len(parts) >= 2 and parts[0] == "quantumvitas" and parts[1] in DOMAINS:
+    if len(parts) >= 2 and parts[0] == "qmatsuite" and parts[1] in DOMAINS:
         return parts[1]
     return None
 
@@ -147,7 +147,7 @@ def _is_through_public(module: str) -> bool:
     parts = module.split(".")
     return (
         len(parts) == 3
-        and parts[0] == "quantumvitas"
+        and parts[0] == "qmatsuite"
         and parts[1] in DOMAINS
         and parts[2] == "public"
     )
@@ -310,7 +310,7 @@ def test_no_cross_domain_deep_imports():
         msg = (
             f"Found {len(violations)} cross-domain deep import(s) bypassing public.py.\n"
             "Each import below must be changed to: "
-            "from quantumvitas.<domain>.public import <symbol>\n\n"
+            "from qmatsuite.<domain>.public import <symbol>\n\n"
         )
         msg += "\n".join(f"  {v}" for v in violations)
         pytest.fail(msg)

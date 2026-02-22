@@ -27,7 +27,7 @@ The StepType enum removal (PR0-7) was incomplete. Two categories of errors remai
 
 **Error**:
 ```python
-from quantumvitas.calculation.types import StepMode, StepStatus, StepType
+from qmatsuite.calculation.types import StepMode, StepStatus, StepType
 # ImportError: cannot import name 'StepType'
 ```
 
@@ -56,7 +56,7 @@ Multiple production code locations still access `.value` on `step_type` fields t
 
 #### Error 2.1: CLI Output (`cli/main.py`)
 
-**Location**: `src/quantumvitas/cli/main.py:3476, 3483`
+**Location**: `src/qmatsuite/cli/main.py:3476, 3483`
 
 **Error**:
 ```python
@@ -80,13 +80,13 @@ typer.echo(f"step_type: {step.step_type}")
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/cli/main.py` (lines 3476, 3483)
+- `src/qmatsuite/cli/main.py` (lines 3476, 3483)
 
 ---
 
 #### Error 2.2: Manifest Reconciliation (`calculation/manifest_reconcile.py`)
 
-**Location**: `src/quantumvitas/calculation/manifest_reconcile.py:74`
+**Location**: `src/qmatsuite/calculation/manifest_reconcile.py:74`
 
 **Error**:
 ```python
@@ -109,13 +109,13 @@ step_kind = str(step.step_type) if step.step_type else "unknown"
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/calculation/manifest_reconcile.py` (line 74)
+- `src/qmatsuite/calculation/manifest_reconcile.py` (line 74)
 
 ---
 
 #### Error 2.3: Energy Analysis (`analysis/energy.py`)
 
-**Location**: `src/quantumvitas/analysis/energy.py:94`
+**Location**: `src/qmatsuite/analysis/energy.py:94`
 
 **Error**:
 ```python
@@ -138,13 +138,13 @@ step_kind = str(step.step_type) if step.step_type else "unknown"
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/analysis/energy.py` (line 94)
+- `src/qmatsuite/analysis/energy.py` (line 94)
 
 ---
 
 #### Error 2.4: DOS Analysis (`analysis/dos.py`)
 
-**Location**: `src/quantumvitas/analysis/dos.py:95`
+**Location**: `src/qmatsuite/analysis/dos.py:95`
 
 **Error**:
 ```python
@@ -167,13 +167,13 @@ dos_steps = [step for step in result.steps if step.step_type and step.step_type.
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/analysis/dos.py` (line 95)
+- `src/qmatsuite/analysis/dos.py` (line 95)
 
 ---
 
 #### Error 2.5: Bands Analysis (`analysis/bands.py`)
 
-**Location**: `src/quantumvitas/analysis/bands.py:136, 152`
+**Location**: `src/qmatsuite/analysis/bands.py:136, 152`
 
 **Error**:
 ```python
@@ -203,13 +203,13 @@ step_type = step.step_type.lower() if step.step_type else ""
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/analysis/bands.py` (lines 136, 152)
+- `src/qmatsuite/analysis/bands.py` (lines 136, 152)
 
 ---
 
 #### Error 2.6: Execution Handlers (`execution/handlers.py`)
 
-**Location**: `src/quantumvitas/execution/handlers.py:183`
+**Location**: `src/qmatsuite/execution/handlers.py:183`
 
 **Error**:
 ```python
@@ -232,13 +232,13 @@ step_type=step.step_type if step.step_type else None,
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/execution/handlers.py` (line 183)
+- `src/qmatsuite/execution/handlers.py` (line 183)
 
 ---
 
 #### Error 2.7: QE Engine (`engine/qe_engine.py`)
 
-**Location**: `src/quantumvitas/engine/qe_engine.py:51, 67`
+**Location**: `src/qmatsuite/engine/qe_engine.py:51, 67`
 
 **Error**:
 ```python
@@ -270,13 +270,13 @@ step_type_value = step.type  # If step.type exists, it should also be a string
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/engine/qe_engine.py` (lines 51, 67)
+- `src/qmatsuite/engine/qe_engine.py` (lines 51, 67)
 
 ---
 
 #### Error 2.8: Calculation Import (`calculation/calculation.py`)
 
-**Location**: `src/quantumvitas/calculation/calculation.py:523`
+**Location**: `src/qmatsuite/calculation/calculation.py:523`
 
 **Error**:
 ```python
@@ -299,13 +299,13 @@ step_type = "custom"
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/calculation/calculation.py` (line 523)
+- `src/qmatsuite/calculation/calculation.py` (line 523)
 
 ---
 
 #### Error 2.9: History Run Revision (`history/run_revision.py`)
 
-**Location**: `src/quantumvitas/history/run_revision.py:415`
+**Location**: `src/qmatsuite/history/run_revision.py:415`
 
 **Error**:
 ```python
@@ -331,13 +331,13 @@ step_type = step_result.get("step_type", "")
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/history/run_revision.py` (line 415)
+- `src/qmatsuite/history/run_revision.py` (line 415)
 
 ---
 
 #### Error 2.10: API Response (`api.py`)
 
-**Location**: `src/quantumvitas/api.py:1292, 2376`
+**Location**: `src/qmatsuite/api.py:1292, 2376`
 
 **Error**: Defensive code exists but may be unnecessary now.
 
@@ -363,7 +363,7 @@ step_type = step_result.get("step_type", "")
 ```
 
 **Files to Modify**:
-- `src/quantumvitas/api.py` (lines 1292, 2376)
+- `src/qmatsuite/api.py` (lines 1292, 2376)
 
 ---
 
@@ -445,7 +445,7 @@ pytest tests/cli/test_si_dos_calculation_comprehensive.py::TestSiDosCalculation:
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 
 # Guard test for .value access
-rg "step_type.*\.value|\.value.*step_type" src/quantumvitas --type py
+rg "step_type.*\.value|\.value.*step_type" src/qmatsuite --type py
 ```
 
 ---

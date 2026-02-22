@@ -11,10 +11,10 @@ Phase 0 validation failed: `values.length (1000) != nx*ny*nz (64000) for dims=[4
 ### Code Review Completed
 
 - [x] Backend:
-  - [x] `src/quantumvitas/analysis/blob_store.py` - Blob registration
-  - [x] `src/quantumvitas/analysis/volume_artifacts.py` - Metadata structure
-  - [x] `src/quantumvitas/io/parser/volume_parsers.py` - Parsing + downsample
-  - [x] `src/quantumvitas/daemon/server.py` - `compile_fixture_volume` handler
+  - [x] `src/qmatsuite/analysis/blob_store.py` - Blob registration
+  - [x] `src/qmatsuite/analysis/volume_artifacts.py` - Metadata structure
+  - [x] `src/qmatsuite/io/parser/volume_parsers.py` - Parsing + downsample
+  - [x] `src/qmatsuite/daemon/server.py` - `compile_fixture_volume` handler
   
 - [x] Frontend:
   - [x] `gui/electron/preload.ts` - `readBlob` API
@@ -150,9 +150,9 @@ Phase 0 validation failed: `values.length (1000) != nx*ny*nz (64000) for dims=[4
 
 ## Files Modified
 
-1. `src/quantumvitas/analysis/volume_artifacts.py` - Added `preview_grid_shape` field
-2. `src/quantumvitas/io/parser/volume_parsers.py` - Store `preview_shape` in metadata (XSF + BXSF)
-3. `src/quantumvitas/daemon/server.py` - Added blob contract logging
+1. `src/qmatsuite/analysis/volume_artifacts.py` - Added `preview_grid_shape` field
+2. `src/qmatsuite/io/parser/volume_parsers.py` - Store `preview_shape` in metadata (XSF + BXSF)
+3. `src/qmatsuite/daemon/server.py` - Added blob contract logging
 4. `gui/src/components/panels/VolumeViewerSandbox.tsx` - Use preview_grid_shape when loading preview blob
 5. `gui/src/components/panels/VolumeViewerSandbox.css` - Improved text contrast
 6. `tests/unit/test_volume_parsers.py` - Added contract tests

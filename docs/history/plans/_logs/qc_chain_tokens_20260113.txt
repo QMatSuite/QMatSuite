@@ -142,159 +142,159 @@ ______________ coverage: platform darwin, python 3.12.12-final-0 _______________
 
 Name                                                   Stmts   Miss  Cover   Missing
 ------------------------------------------------------------------------------------
-src/quantumvitas/__init__.py                              22      7    68%   27-38
-src/quantumvitas/analysis/__init__.py                      7      0   100%
-src/quantumvitas/analysis/artifacts.py                   236    199    16%   53, 94-97, 105, 122-129, 148-161, 178-182, 201-206, 229-302, 327-381, 406-471, 496-648, 677-687
-src/quantumvitas/analysis/atomic_radii.py                 10      5    50%   46-49, 68-69
-src/quantumvitas/analysis/bands.py                        80     70    12%   53-123, 135-222
-src/quantumvitas/analysis/blob_store.py                   72     72     0%   8-206
-src/quantumvitas/analysis/calculation_analysis.py         16      7    56%   18-26
-src/quantumvitas/analysis/dos.py                          59     49    17%   39-86, 95-166
-src/quantumvitas/analysis/energy.py                       28     17    39%   32-34, 50-55, 77-81, 90-101
-src/quantumvitas/analysis/kpath.py                       105     70    33%   20-22, 30-31, 79-107, 115-118, 140-142, 166-241, 253-258, 276-284
-src/quantumvitas/analysis/parsers.py                     461    383    17%   88, 137-321, 354-363, 382-394, 399-426, 455-457, 467, 496-538, 581-583, 587-589, 599, 646-728, 749-768, 785-789, 802-829, 839-875, 900-955, 968-978, 991-992, 1019-1054, 1071-1094
-src/quantumvitas/analysis/plotting.py                    174    154    11%   61, 98-145, 170-188, 225-275, 300-322, 351-387, 414-472, 499-511
-src/quantumvitas/analysis/structure_viz.py               538    439    18%   118, 133, 249-253, 291, 308, 332-345, 366-383, 405-412, 484-522, 567-652, 692-743, 782-841, 875, 922-926, 984-1042, 1073-1087, 1109-1115, 1162-1299, 1351-1555, 1598-1693, 1703-1729, 1743-1772, 1789, 1825-1906
-src/quantumvitas/analysis/volume_artifacts.py             47     47     0%   5-97
-src/quantumvitas/api.py                                 3300   2884    13%   105-131, 176, 219-228, 233-239, 254-261, 280-291, 310-331, 363-461, 472-484, 495-536, 541, 546, 589-600, 656-657, 679-714, 737-793, 798, 803, 848-849, 866-869, 885-888, 967, 979-1001, 1034-1120, 1130, 1139, 1206, 1227-1264, 1282-1286, 1380, 1392-1393, 1404, 1409-1410, 1421-1424, 1449, 1454, 1459-1461, 1469-1471, 1476-1478, 1515-1658, 1705-2005, 2036-2065, 2095-2121, 2159-2212, 2253-2341, 2369-2421, 2442-2476, 2498-2536, 2554-2630, 2651-3010, 3042-3122, 3161-3188, 3210-3262, 3298-3345, 3378-3446, 3481-3592, 3622-3795, 3831-3940, 3960-4000, 4016-4104, 4117-4134, 4144-4182, 4199-4205, 4239-4276, 4294-4300, 4332-4373, 4400-4429, 4450-4520, 4551-4711, 4750-4795, 4824-4872, 4899-4954, 4988-5134, 5171-5220, 5250-5336, 5363-5455, 5483-5580, 5598-5608, 5651-5653, 5673-5772, 5800-6049, 6077-6107, 6151, 6190, 6196-6198, 6223-6226, 6255-6310, 6335-6384, 6412-6620, 6659-6745, 6780-7086, 7132-7160, 7192-7334, 7377-7482, 7508-7635, 7669-7788, 7807-7887, 7909-7915, 7949-8014, 8050-8203
-src/quantumvitas/calculation/__init__.py                  10      0   100%
-src/quantumvitas/calculation/calculation.py              381    233    39%   42, 46, 65-79, 94, 104-107, 120-134, 154, 170-174, 185-186, 222-223, 275-289, 294-299, 303-308, 324, 328-334, 340-357, 370, 410-548, 584, 595-694, 701, 709-722, 740, 753-756, 770, 780-783, 792-796, 809-814
-src/quantumvitas/calculation/folder_import.py            228    228     0%   9-460
-src/quantumvitas/calculation/geometry.py                 287    254    11%   32, 38, 52-111, 119-128, 145-168, 175-179, 183-202, 210-237, 244-251, 255, 262-267, 271-283, 287-316, 337-454, 480-506, 510-520
-src/quantumvitas/calculation/hash_utils.py                93     30    68%   68, 70, 100, 134, 140-143, 145-147, 175-177, 216, 222-236, 255-263
-src/quantumvitas/calculation/importers.py                273    231    15%   68-92, 127-256, 298-435, 445-453, 468-497, 506-528, 538-564, 568-585, 602, 606-633, 637-640
-src/quantumvitas/calculation/input_runner.py             360    319    11%   55-61, 73-74, 81-110, 126-174, 183-196, 234-395, 412-455, 497-514, 525-527, 531-537, 547-610, 620-653, 660-713, 725, 731-741, 747-753, 757-760, 770, 786-810
-src/quantumvitas/calculation/io.py                        21      0   100%
-src/quantumvitas/calculation/k_points_view.py            160    160     0%   9-343
-src/quantumvitas/calculation/manifest.py                 110     38    65%   117-119, 151-157, 196, 233-250, 261-269, 298-315
-src/quantumvitas/calculation/manifest_reconcile.py        89     23    74%   88-90, 126-140, 148-161, 179-196, 216-232
-src/quantumvitas/calculation/naming.py                   138     92    33%   65, 67, 73-79, 99, 113-123, 128-131, 150-181, 200, 205, 209, 238-300, 317, 334
-src/quantumvitas/calculation/results.py                   35      0   100%
-src/quantumvitas/calculation/runner.py                   340    134    61%   45-47, 52, 55-56, 115-161, 200, 213-217, 238, 260, 263-265, 275-340, 348-364, 400-401, 416-417, 444-445, 455-457, 478-479, 483, 506-514, 532-535, 542-549, 569-580, 591-604, 608-609, 631, 649-657, 726-727, 780-782, 817-821, 856-857
-src/quantumvitas/calculation/standalone.py                58     58     0%   8-152
-src/quantumvitas/calculation/step.py                      50     27    46%   40-60, 81-121
-src/quantumvitas/calculation/step_artifacts.py           111    111     0%   7-242
-src/quantumvitas/calculation/step_defaults.py             12      5    58%   240-259
-src/quantumvitas/calculation/step_done.py                 58     34    41%   37-57, 74-76, 81, 107, 110, 122-139
-src/quantumvitas/calculation/structure_steps.py          623    505    19%   93-95, 110, 115, 119, 169, 185-203, 222-240, 307-382, 397-429, 453-523, 537-579, 587, 630-631, 633-636, 646-653, 657-664, 686-687, 697-956, 970-971, 980-1110, 1122-1124, 1160-1356
-src/quantumvitas/calculation/types.py                     30      0   100%
-src/quantumvitas/calculation/verification.py              64     43    33%   30-32, 45-80, 112-124, 137-170
-src/quantumvitas/calculation/wannier90_kpoints.py         93     93     0%   10-205
-src/quantumvitas/cli/__init__.py                           5      5     0%   4-9
-src/quantumvitas/cli/__main__.py                           3      3     0%   1-5
-src/quantumvitas/cli/main.py                            2183   2183     0%   5-4608
-src/quantumvitas/core/__init__.py                         10      0   100%
-src/quantumvitas/core/calc_identity.py                    80     47    41%   37, 52-75, 95-115, 128-131, 157-162, 169-177, 185
-src/quantumvitas/core/context.py                         171    117    32%   37, 54-57, 62-65, 79-80, 85-86, 90, 94, 123-135, 145, 178-216, 221-225, 230-236, 241-265, 275-283, 288-323, 328-335, 340-356, 371-372, 386-390
-src/quantumvitas/core/debug.py                             5      0   100%
-src/quantumvitas/core/engines/__init__.py                  7      0   100%
-src/quantumvitas/core/engines/base.py                     42      8    81%   55, 77, 97, 115, 128, 142, 156, 168
-src/quantumvitas/core/engines/orca_resolver.py            65     32    51%   29-30, 61, 78-82, 102-103, 116-139, 152-162
-src/quantumvitas/core/engines/qe.py                      179    134    25%   115, 118, 128-130, 142, 147, 152, 169-230, 242-243, 259-290, 313-342, 367-421, 438-439, 451-452, 470-481, 493, 514-529, 534, 539-540, 554, 579, 610
-src/quantumvitas/core/engines/qe_calculation.py          290    255    12%   67-69, 105-145, 168-628, 659-691
-src/quantumvitas/core/engines/qe_diagnostics.py          102     77    25%   39, 64-134, 139-156, 161, 173-189
-src/quantumvitas/core/engines/qe_installation.py         284    228    20%   46-50, 72-73, 75, 102-118, 149-150, 156-159, 173, 189-205, 231-376, 397-497, 503, 510, 515, 520-524, 529-542, 546, 558-565, 569
-src/quantumvitas/core/engines/qe_pseudopotentials.py     114     94    18%   37-82, 117-136, 152-207, 217-222
-src/quantumvitas/core/engines/qe_registry.py              72     72     0%   11-202
-src/quantumvitas/core/engines/qe_resolver.py              76     34    55%   33-50, 74, 81, 96-97, 102-120, 128, 164-170, 183-187
-src/quantumvitas/core/engines/qe_seed.py                 111    111     0%   8-228
-src/quantumvitas/core/exceptions.py                        7      4    43%   24-32
-src/quantumvitas/core/journal.py                         151     58    62%   43, 104, 146, 150, 163, 188-220, 232-248, 256-258, 280, 286, 301, 311-322, 338, 361
-src/quantumvitas/core/library_manager.py                 186    186     0%   8-546
-src/quantumvitas/core/locking.py                          75     15    80%   89-97, 104-106, 148, 163-167, 189-191, 217
-src/quantumvitas/core/models.py                          453    268    41%   47-95, 122, 138, 140, 174-186, 247, 251, 255, 284, 328-335, 369, 375, 377-380, 385, 390, 436, 447-450, 468-470, 503-506, 514, 521, 554-605, 628-634, 645-714, 734, 747-828, 844, 848, 852, 856, 869-891, 901-909, 913-921, 934-945, 956-958, 979-981, 993-1007, 1021-1037, 1048-1051, 1070-1105
-src/quantumvitas/core/paths.py                            98     41    58%   49, 104-107, 112-115, 120-123, 137-140, 145-148, 153-156, 170-173, 178-181, 186-189, 194-197
-src/quantumvitas/core/project_context.py                  99     99     0%   8-303
-src/quantumvitas/core/project_utils.py                   654    594     9%   53, 84-95, 99-104, 118-147, 152-153, 158-170, 175-185, 206-256, 272-322, 337-373, 404-437, 459-475, 494-546, 563-615, 630-632, 637, 673-788, 799-805, 815-829, 839-851, 858-878, 888-895, 900-911, 921-930, 955-1088, 1108-1187, 1220-1280
-src/quantumvitas/core/pseudo.py                          231    231     0%   8-490
-src/quantumvitas/core/pseudo_config.py                   751    631    16%   42-44, 62-67, 94-97, 102-105, 110, 121-122, 132, 143-155, 167-178, 187-203, 220, 232-303, 312-337, 357-360, 369, 378, 386-408, 422-424, 433-479, 499-587, 612-693, 702-751, 773, 786, 799-846, 865-893, 898-902, 923-958, 992-1215, 1238-1298, 1323, 1347-1489
-src/quantumvitas/core/pseudo_installs.py                 228    228     0%   16-560
-src/quantumvitas/core/pseudo_libinfo.py                  123    102    17%   41-46, 51-55, 68, 93-103, 121-122, 145-317
-src/quantumvitas/core/pseudo_materialization.py          165    165     0%   8-301
-src/quantumvitas/core/pseudo_options.py                  458    458     0%   24-884
-src/quantumvitas/core/pseudo_provenance.py               143    106    26%   66-67, 88-117, 130-139, 158-170, 183-193, 206-216, 230-238, 268-335
-src/quantumvitas/core/pseudo_runtime.py                  322    322     0%   15-737
-src/quantumvitas/core/resolution.py                      720    453    37%   77-100, 134-159, 193-218, 229-238, 248-277, 320-324, 326, 333, 343-344, 350, 356-361, 366-415, 419-438, 441, 457, 461, 465, 469, 498-504, 547, 552-560, 578-580, 589-595, 610-612, 621-627, 633-645, 652-666, 691, 705, 721, 735, 755-756, 772, 786, 806-807, 852-854, 859-861, 905, 913-931, 941-943, 950-951, 957-967, 976-997, 1040-1050, 1100, 1111, 1123, 1131-1165, 1174-1195, 1201-1237, 1284, 1290, 1305, 1316, 1338-1345, 1351, 1359, 1376-1377, 1382-1444, 1452-1463, 1468-1487, 1508-1528, 1544, 1585-1594, 1607-1612, 1651-1660, 1673-1678, 1714-1724, 1733-1742, 1747-1756, 1765-1775
-src/quantumvitas/core/resources.py                        73     15    79%   27, 62, 68-77, 129, 138-139, 152, 180-181
-src/quantumvitas/core/selectors.py                       105     93    11%   50, 73, 94, 144-277, 282-284, 305-311, 328-334, 351-357
-src/quantumvitas/core/settings.py                         68     41    40%   44, 55-90, 113-120, 130-143, 148
-src/quantumvitas/core/structure_fingerprint.py            52     52     0%   16-194
-src/quantumvitas/core/templates.py                       198    180     9%   39-50, 67-102, 114-118, 133-135, 142-155, 160-163, 183-227, 246-403, 428-432
-src/quantumvitas/core/yaml_io.py                         159     39    75%   50, 57, 60, 110-114, 157, 159, 203-206, 217-219, 244, 270-271, 301, 313-326, 335-336, 357-358, 361, 377, 387, 391, 416, 429, 442
-src/quantumvitas/core/yamldoc.py                         241     81    66%   32, 71, 130, 138, 144, 160, 166-170, 190-209, 236, 243-245, 249, 255, 283, 287, 319, 323, 345-356, 390, 432-434, 441-442, 446, 524-536, 548, 554, 560-561, 613-615, 628-634, 642-644, 657-663, 671-673
-src/quantumvitas/daemon/__init__.py                       12     12     0%   12-26
-src/quantumvitas/daemon/jobs.py                          277    277     0%   13-683
-src/quantumvitas/daemon/server.py                       2243   2243     0%   18-6766
-src/quantumvitas/data/__init__.py                         11      2    82%   60-61
-src/quantumvitas/data/qe_metadata.py                     225    185    18%   56-61, 80-87, 111-202, 214-236, 253-256, 274, 289-290, 300, 324-375, 392-402, 422-430, 443-446, 462-467, 480-481, 499-507, 522-544, 557-597
-src/quantumvitas/engine/__init__.py                        4      0   100%
-src/quantumvitas/engine/base.py                           12      0   100%
-src/quantumvitas/engine/installation.py                    2      2     0%   5-7
-src/quantumvitas/engine/orca_engine.py                   138     26    81%   63-64, 68-80, 107-111, 201-204, 214-215, 221-223, 317
-src/quantumvitas/engine/pyscf_engine.py                  213     79    63%   73, 77-85, 103-118, 129, 213-286, 328, 342, 363, 375, 386, 394, 422, 432, 452-461, 487, 499, 510, 512, 541, 550, 562, 590, 592, 594, 600-601, 623-635, 655-664
-src/quantumvitas/engine/qc_engine_base.py                 65      3    95%   44, 109, 192
-src/quantumvitas/engine/qe_engine.py                      41     27    34%   30, 33-62
-src/quantumvitas/engine/registry.py                       32      4    88%   25-26, 61-62
-src/quantumvitas/engines/__init__.py                       0      0   100%
-src/quantumvitas/engines/orca/__init__.py                  2      0   100%
-src/quantumvitas/engines/orca/input_compiler.py           88      5    94%   113, 125, 146, 149, 152
-src/quantumvitas/engines/orca/property_parser.py         176     30    83%   93, 103-106, 116, 136-141, 147, 161, 184, 201, 235-236, 264-266, 288-293, 326, 381-387
-src/quantumvitas/engines/pyscf/__init__.py                 0      0   100%
-src/quantumvitas/engines/pyscf/__main__.py                33     33     0%   11-73
-src/quantumvitas/engines/pyscf/chain.py                   44      6    86%   49, 56, 90-97
-src/quantumvitas/engines/pyscf/chain_execution.py        197    197     0%   7-384
-src/quantumvitas/engines/pyscf/runner.py                 449    449     0%   25-854
-src/quantumvitas/history/__init__.py                       6      0   100%
-src/quantumvitas/history/digests.py                      296    189    36%   45, 50, 55, 60, 65, 69-74, 79, 163, 166, 173-197, 239-240, 249, 251, 253, 255, 257, 261-264, 279, 291, 295-297, 301-302, 309-356, 361-382, 387-421, 427-454, 460-486, 491-512, 517-534, 574, 576, 578-579
-src/quantumvitas/history/events.py                       169     26    85%   87-95, 261, 324, 364, 377, 428, 458, 461, 465-467, 473-475, 479-484
-src/quantumvitas/history/pins.py                         169    138    18%   46, 88-186, 198-216, 221-235, 240-245, 254-277, 298-325, 344-360, 375-400
-src/quantumvitas/history/run_revision.py                 177     34    81%   168-174, 227, 234-235, 244-245, 278-279, 320, 328-331, 335-343, 356-362, 397, 419, 473
-src/quantumvitas/history/storage.py                      193     71    63%   88-89, 229, 237, 247, 250-252, 254, 256, 259-261, 269, 285-301, 311-324, 337-349, 378, 396-413, 425-440, 454-465, 474-475, 484-485, 494-495, 500
-src/quantumvitas/io/__init__.py                            5      0   100%
-src/quantumvitas/io/generator/__init__.py                  2      0   100%
-src/quantumvitas/io/generator/qe_generator.py             84     67    20%   21-30, 34-43, 47-81, 85-117, 121-123
-src/quantumvitas/io/model.py                             151     83    45%   72, 75-77, 80, 92, 108-111, 114-117, 120, 123-130, 147-189, 192-195, 198-216
-src/quantumvitas/io/online_cache.py                      185    185     0%   8-485
-src/quantumvitas/io/online_search.py                     413    413     0%   8-920
-src/quantumvitas/io/parser/__init__.py                     2      0   100%
-src/quantumvitas/io/parser/qe_parser.py                  338    295    13%   46-50, 55-58, 62-100, 104-152, 156-169, 173-206, 210-256, 260-317, 321-333, 337-351, 355-367, 371, 375-400, 418-422
-src/quantumvitas/io/parser/volume_parsers.py             299    299     0%   9-640
-src/quantumvitas/io/pseudo/__init__.py                     2      2     0%   5-7
-src/quantumvitas/io/pseudo/manager.py                      2      2     0%   5-7
-src/quantumvitas/io/structure_io.py                      381    328    14%   54-55, 61-62, 72, 78-88, 91, 96-100, 117-141, 179-247, 269-303, 325-356, 366-427, 456-492, 496-499, 503-512, 519-529, 536-557, 561-567, 571-617, 621-775
-src/quantumvitas/io/wannier90_input.py                   287    287     0%   8-442
-src/quantumvitas/ir/__init__.py                            0      0   100%
-src/quantumvitas/ir/backends/__init__.py                   0      0   100%
-src/quantumvitas/ir/backends/qe/__init__.py                0      0   100%
-src/quantumvitas/ir/backends/qe/mapping.py                96     47    51%   77-94, 136-147, 166-185, 208, 215-222, 255-257, 272, 277, 281, 289, 293
-src/quantumvitas/ir/parameters.py                         30     30     0%   10-226
-src/quantumvitas/legacy/__init__.py                        0      0   100%
-src/quantumvitas/legacy/migrate.py                       148    148     0%   15-263
-src/quantumvitas/presets/__init__.py                       5      0   100%
-src/quantumvitas/presets/catalog.py                       42     42     0%   13-204
-src/quantumvitas/presets/compiler.py                      57     45    21%   56-64, 84-92, 132-155, 171-173, 220-244, 270-279, 295-308, 330-339
-src/quantumvitas/presets/detector.py                     240    190    21%   52-65, 72-83, 90-101, 118-126, 143-151, 162-173, 186-211, 216-227, 232-243, 270-272, 303-306, 343-350, 355-363, 372, 381-386, 415, 437-521, 546-567, 579-617, 658, 686-696
-src/quantumvitas/presets/dimensions.py                    41      4    90%   112, 115, 118, 121
-src/quantumvitas/presets/integration.py                  342    283    17%   42-52, 57-64, 79-99, 166, 186-187, 207-247, 272, 284, 296-297, 363-562, 581-626, 651-740, 763-821
-src/quantumvitas/presets/paramspace.py                   291    137    53%   85, 89-93, 101, 108-114, 145, 151, 159, 197, 203, 227, 232, 273, 281-282, 301, 309, 341-377, 392-401, 407, 410-417, 422-433, 439, 456, 670-715, 728-730, 754-825
-src/quantumvitas/presets/precision.py                    161    111    31%   95-130, 158-166, 183-184, 204-211, 224-225, 230, 251-264, 284-297, 317-352, 361, 434-445, 460-481, 505, 530-563, 588-589, 612-621
-src/quantumvitas/presets/precision_context.py             62     23    63%   49, 88-92, 98, 103-104, 116-159
-src/quantumvitas/presets/precision_variants.py            38      4    89%   273-284
-src/quantumvitas/presets/receivers.py                     66     11    83%   114, 177-178, 246, 266-267, 294, 312, 319, 324, 329
-src/quantumvitas/presets/space_variant.py                 21      5    76%   40, 42, 44, 46, 50
-src/quantumvitas/presets/spaces_registry.py               92     92     0%   16-385
-src/quantumvitas/presets/variants_registry.py            195    129    34%   142-143, 292-343, 367-457, 486, 490, 503, 506, 529-599, 614-631, 643-682
-src/quantumvitas/project/__init__.py                       3      0   100%
-src/quantumvitas/project/model.py                        259    124    52%   35, 38, 55, 62, 66, 69, 83, 90, 94, 97, 120, 168-169, 183-192, 210-213, 223-235, 272-273, 279, 291, 300-309, 313-340, 344-370, 374, 382-409, 422, 426, 430, 434, 437, 442, 446, 450, 453-458, 468-471, 477-483, 494-502
-src/quantumvitas/project/snapshot.py                     407    407     0%   9-865
-src/quantumvitas/project/storage.py                       32     18    44%   26-29, 32-33, 36-49, 55-56
-src/quantumvitas/viz/__init__.py                           2      2     0%   3-5
-src/quantumvitas/viz/data_models.py                       38     38     0%   10-62
-src/quantumvitas/workflow/__init__.py                      4      0   100%
-src/quantumvitas/workflow/generalized_steps.py            89     40    55%   203, 229-235, 252-259, 283-335, 356-359
-src/quantumvitas/workflow/registry.py                    117     26    78%   618, 626, 630, 634, 641, 648, 677-687, 708, 725, 731, 766, 772, 776-778, 781, 788-793
-src/quantumvitas/workflow/step_factory.py                 40      8    80%   55, 90, 94, 145-158
-src/quantumvitas/workflow/templates.py                   228    186    18%   163, 179-410, 414-432, 462-556, 573-617, 638
+src/qmatsuite/__init__.py                              22      7    68%   27-38
+src/qmatsuite/analysis/__init__.py                      7      0   100%
+src/qmatsuite/analysis/artifacts.py                   236    199    16%   53, 94-97, 105, 122-129, 148-161, 178-182, 201-206, 229-302, 327-381, 406-471, 496-648, 677-687
+src/qmatsuite/analysis/atomic_radii.py                 10      5    50%   46-49, 68-69
+src/qmatsuite/analysis/bands.py                        80     70    12%   53-123, 135-222
+src/qmatsuite/analysis/blob_store.py                   72     72     0%   8-206
+src/qmatsuite/analysis/calculation_analysis.py         16      7    56%   18-26
+src/qmatsuite/analysis/dos.py                          59     49    17%   39-86, 95-166
+src/qmatsuite/analysis/energy.py                       28     17    39%   32-34, 50-55, 77-81, 90-101
+src/qmatsuite/analysis/kpath.py                       105     70    33%   20-22, 30-31, 79-107, 115-118, 140-142, 166-241, 253-258, 276-284
+src/qmatsuite/analysis/parsers.py                     461    383    17%   88, 137-321, 354-363, 382-394, 399-426, 455-457, 467, 496-538, 581-583, 587-589, 599, 646-728, 749-768, 785-789, 802-829, 839-875, 900-955, 968-978, 991-992, 1019-1054, 1071-1094
+src/qmatsuite/analysis/plotting.py                    174    154    11%   61, 98-145, 170-188, 225-275, 300-322, 351-387, 414-472, 499-511
+src/qmatsuite/analysis/structure_viz.py               538    439    18%   118, 133, 249-253, 291, 308, 332-345, 366-383, 405-412, 484-522, 567-652, 692-743, 782-841, 875, 922-926, 984-1042, 1073-1087, 1109-1115, 1162-1299, 1351-1555, 1598-1693, 1703-1729, 1743-1772, 1789, 1825-1906
+src/qmatsuite/analysis/volume_artifacts.py             47     47     0%   5-97
+src/qmatsuite/api.py                                 3300   2884    13%   105-131, 176, 219-228, 233-239, 254-261, 280-291, 310-331, 363-461, 472-484, 495-536, 541, 546, 589-600, 656-657, 679-714, 737-793, 798, 803, 848-849, 866-869, 885-888, 967, 979-1001, 1034-1120, 1130, 1139, 1206, 1227-1264, 1282-1286, 1380, 1392-1393, 1404, 1409-1410, 1421-1424, 1449, 1454, 1459-1461, 1469-1471, 1476-1478, 1515-1658, 1705-2005, 2036-2065, 2095-2121, 2159-2212, 2253-2341, 2369-2421, 2442-2476, 2498-2536, 2554-2630, 2651-3010, 3042-3122, 3161-3188, 3210-3262, 3298-3345, 3378-3446, 3481-3592, 3622-3795, 3831-3940, 3960-4000, 4016-4104, 4117-4134, 4144-4182, 4199-4205, 4239-4276, 4294-4300, 4332-4373, 4400-4429, 4450-4520, 4551-4711, 4750-4795, 4824-4872, 4899-4954, 4988-5134, 5171-5220, 5250-5336, 5363-5455, 5483-5580, 5598-5608, 5651-5653, 5673-5772, 5800-6049, 6077-6107, 6151, 6190, 6196-6198, 6223-6226, 6255-6310, 6335-6384, 6412-6620, 6659-6745, 6780-7086, 7132-7160, 7192-7334, 7377-7482, 7508-7635, 7669-7788, 7807-7887, 7909-7915, 7949-8014, 8050-8203
+src/qmatsuite/calculation/__init__.py                  10      0   100%
+src/qmatsuite/calculation/calculation.py              381    233    39%   42, 46, 65-79, 94, 104-107, 120-134, 154, 170-174, 185-186, 222-223, 275-289, 294-299, 303-308, 324, 328-334, 340-357, 370, 410-548, 584, 595-694, 701, 709-722, 740, 753-756, 770, 780-783, 792-796, 809-814
+src/qmatsuite/calculation/folder_import.py            228    228     0%   9-460
+src/qmatsuite/calculation/geometry.py                 287    254    11%   32, 38, 52-111, 119-128, 145-168, 175-179, 183-202, 210-237, 244-251, 255, 262-267, 271-283, 287-316, 337-454, 480-506, 510-520
+src/qmatsuite/calculation/hash_utils.py                93     30    68%   68, 70, 100, 134, 140-143, 145-147, 175-177, 216, 222-236, 255-263
+src/qmatsuite/calculation/importers.py                273    231    15%   68-92, 127-256, 298-435, 445-453, 468-497, 506-528, 538-564, 568-585, 602, 606-633, 637-640
+src/qmatsuite/calculation/input_runner.py             360    319    11%   55-61, 73-74, 81-110, 126-174, 183-196, 234-395, 412-455, 497-514, 525-527, 531-537, 547-610, 620-653, 660-713, 725, 731-741, 747-753, 757-760, 770, 786-810
+src/qmatsuite/calculation/io.py                        21      0   100%
+src/qmatsuite/calculation/k_points_view.py            160    160     0%   9-343
+src/qmatsuite/calculation/manifest.py                 110     38    65%   117-119, 151-157, 196, 233-250, 261-269, 298-315
+src/qmatsuite/calculation/manifest_reconcile.py        89     23    74%   88-90, 126-140, 148-161, 179-196, 216-232
+src/qmatsuite/calculation/naming.py                   138     92    33%   65, 67, 73-79, 99, 113-123, 128-131, 150-181, 200, 205, 209, 238-300, 317, 334
+src/qmatsuite/calculation/results.py                   35      0   100%
+src/qmatsuite/calculation/runner.py                   340    134    61%   45-47, 52, 55-56, 115-161, 200, 213-217, 238, 260, 263-265, 275-340, 348-364, 400-401, 416-417, 444-445, 455-457, 478-479, 483, 506-514, 532-535, 542-549, 569-580, 591-604, 608-609, 631, 649-657, 726-727, 780-782, 817-821, 856-857
+src/qmatsuite/calculation/standalone.py                58     58     0%   8-152
+src/qmatsuite/calculation/step.py                      50     27    46%   40-60, 81-121
+src/qmatsuite/calculation/step_artifacts.py           111    111     0%   7-242
+src/qmatsuite/calculation/step_defaults.py             12      5    58%   240-259
+src/qmatsuite/calculation/step_done.py                 58     34    41%   37-57, 74-76, 81, 107, 110, 122-139
+src/qmatsuite/calculation/structure_steps.py          623    505    19%   93-95, 110, 115, 119, 169, 185-203, 222-240, 307-382, 397-429, 453-523, 537-579, 587, 630-631, 633-636, 646-653, 657-664, 686-687, 697-956, 970-971, 980-1110, 1122-1124, 1160-1356
+src/qmatsuite/calculation/types.py                     30      0   100%
+src/qmatsuite/calculation/verification.py              64     43    33%   30-32, 45-80, 112-124, 137-170
+src/qmatsuite/calculation/wannier90_kpoints.py         93     93     0%   10-205
+src/qmatsuite/cli/__init__.py                           5      5     0%   4-9
+src/qmatsuite/cli/__main__.py                           3      3     0%   1-5
+src/qmatsuite/cli/main.py                            2183   2183     0%   5-4608
+src/qmatsuite/core/__init__.py                         10      0   100%
+src/qmatsuite/core/calc_identity.py                    80     47    41%   37, 52-75, 95-115, 128-131, 157-162, 169-177, 185
+src/qmatsuite/core/context.py                         171    117    32%   37, 54-57, 62-65, 79-80, 85-86, 90, 94, 123-135, 145, 178-216, 221-225, 230-236, 241-265, 275-283, 288-323, 328-335, 340-356, 371-372, 386-390
+src/qmatsuite/core/debug.py                             5      0   100%
+src/qmatsuite/core/engines/__init__.py                  7      0   100%
+src/qmatsuite/core/engines/base.py                     42      8    81%   55, 77, 97, 115, 128, 142, 156, 168
+src/qmatsuite/core/engines/orca_resolver.py            65     32    51%   29-30, 61, 78-82, 102-103, 116-139, 152-162
+src/qmatsuite/core/engines/qe.py                      179    134    25%   115, 118, 128-130, 142, 147, 152, 169-230, 242-243, 259-290, 313-342, 367-421, 438-439, 451-452, 470-481, 493, 514-529, 534, 539-540, 554, 579, 610
+src/qmatsuite/core/engines/qe_calculation.py          290    255    12%   67-69, 105-145, 168-628, 659-691
+src/qmatsuite/core/engines/qe_diagnostics.py          102     77    25%   39, 64-134, 139-156, 161, 173-189
+src/qmatsuite/core/engines/qe_installation.py         284    228    20%   46-50, 72-73, 75, 102-118, 149-150, 156-159, 173, 189-205, 231-376, 397-497, 503, 510, 515, 520-524, 529-542, 546, 558-565, 569
+src/qmatsuite/core/engines/qe_pseudopotentials.py     114     94    18%   37-82, 117-136, 152-207, 217-222
+src/qmatsuite/core/engines/qe_registry.py              72     72     0%   11-202
+src/qmatsuite/core/engines/qe_resolver.py              76     34    55%   33-50, 74, 81, 96-97, 102-120, 128, 164-170, 183-187
+src/qmatsuite/core/engines/qe_seed.py                 111    111     0%   8-228
+src/qmatsuite/core/exceptions.py                        7      4    43%   24-32
+src/qmatsuite/core/journal.py                         151     58    62%   43, 104, 146, 150, 163, 188-220, 232-248, 256-258, 280, 286, 301, 311-322, 338, 361
+src/qmatsuite/core/library_manager.py                 186    186     0%   8-546
+src/qmatsuite/core/locking.py                          75     15    80%   89-97, 104-106, 148, 163-167, 189-191, 217
+src/qmatsuite/core/models.py                          453    268    41%   47-95, 122, 138, 140, 174-186, 247, 251, 255, 284, 328-335, 369, 375, 377-380, 385, 390, 436, 447-450, 468-470, 503-506, 514, 521, 554-605, 628-634, 645-714, 734, 747-828, 844, 848, 852, 856, 869-891, 901-909, 913-921, 934-945, 956-958, 979-981, 993-1007, 1021-1037, 1048-1051, 1070-1105
+src/qmatsuite/core/paths.py                            98     41    58%   49, 104-107, 112-115, 120-123, 137-140, 145-148, 153-156, 170-173, 178-181, 186-189, 194-197
+src/qmatsuite/core/project_context.py                  99     99     0%   8-303
+src/qmatsuite/core/project_utils.py                   654    594     9%   53, 84-95, 99-104, 118-147, 152-153, 158-170, 175-185, 206-256, 272-322, 337-373, 404-437, 459-475, 494-546, 563-615, 630-632, 637, 673-788, 799-805, 815-829, 839-851, 858-878, 888-895, 900-911, 921-930, 955-1088, 1108-1187, 1220-1280
+src/qmatsuite/core/pseudo.py                          231    231     0%   8-490
+src/qmatsuite/core/pseudo_config.py                   751    631    16%   42-44, 62-67, 94-97, 102-105, 110, 121-122, 132, 143-155, 167-178, 187-203, 220, 232-303, 312-337, 357-360, 369, 378, 386-408, 422-424, 433-479, 499-587, 612-693, 702-751, 773, 786, 799-846, 865-893, 898-902, 923-958, 992-1215, 1238-1298, 1323, 1347-1489
+src/qmatsuite/core/pseudo_installs.py                 228    228     0%   16-560
+src/qmatsuite/core/pseudo_libinfo.py                  123    102    17%   41-46, 51-55, 68, 93-103, 121-122, 145-317
+src/qmatsuite/core/pseudo_materialization.py          165    165     0%   8-301
+src/qmatsuite/core/pseudo_options.py                  458    458     0%   24-884
+src/qmatsuite/core/pseudo_provenance.py               143    106    26%   66-67, 88-117, 130-139, 158-170, 183-193, 206-216, 230-238, 268-335
+src/qmatsuite/core/pseudo_runtime.py                  322    322     0%   15-737
+src/qmatsuite/core/resolution.py                      720    453    37%   77-100, 134-159, 193-218, 229-238, 248-277, 320-324, 326, 333, 343-344, 350, 356-361, 366-415, 419-438, 441, 457, 461, 465, 469, 498-504, 547, 552-560, 578-580, 589-595, 610-612, 621-627, 633-645, 652-666, 691, 705, 721, 735, 755-756, 772, 786, 806-807, 852-854, 859-861, 905, 913-931, 941-943, 950-951, 957-967, 976-997, 1040-1050, 1100, 1111, 1123, 1131-1165, 1174-1195, 1201-1237, 1284, 1290, 1305, 1316, 1338-1345, 1351, 1359, 1376-1377, 1382-1444, 1452-1463, 1468-1487, 1508-1528, 1544, 1585-1594, 1607-1612, 1651-1660, 1673-1678, 1714-1724, 1733-1742, 1747-1756, 1765-1775
+src/qmatsuite/core/resources.py                        73     15    79%   27, 62, 68-77, 129, 138-139, 152, 180-181
+src/qmatsuite/core/selectors.py                       105     93    11%   50, 73, 94, 144-277, 282-284, 305-311, 328-334, 351-357
+src/qmatsuite/core/settings.py                         68     41    40%   44, 55-90, 113-120, 130-143, 148
+src/qmatsuite/core/structure_fingerprint.py            52     52     0%   16-194
+src/qmatsuite/core/templates.py                       198    180     9%   39-50, 67-102, 114-118, 133-135, 142-155, 160-163, 183-227, 246-403, 428-432
+src/qmatsuite/core/yaml_io.py                         159     39    75%   50, 57, 60, 110-114, 157, 159, 203-206, 217-219, 244, 270-271, 301, 313-326, 335-336, 357-358, 361, 377, 387, 391, 416, 429, 442
+src/qmatsuite/core/yamldoc.py                         241     81    66%   32, 71, 130, 138, 144, 160, 166-170, 190-209, 236, 243-245, 249, 255, 283, 287, 319, 323, 345-356, 390, 432-434, 441-442, 446, 524-536, 548, 554, 560-561, 613-615, 628-634, 642-644, 657-663, 671-673
+src/qmatsuite/daemon/__init__.py                       12     12     0%   12-26
+src/qmatsuite/daemon/jobs.py                          277    277     0%   13-683
+src/qmatsuite/daemon/server.py                       2243   2243     0%   18-6766
+src/qmatsuite/data/__init__.py                         11      2    82%   60-61
+src/qmatsuite/data/qe_metadata.py                     225    185    18%   56-61, 80-87, 111-202, 214-236, 253-256, 274, 289-290, 300, 324-375, 392-402, 422-430, 443-446, 462-467, 480-481, 499-507, 522-544, 557-597
+src/qmatsuite/engine/__init__.py                        4      0   100%
+src/qmatsuite/engine/base.py                           12      0   100%
+src/qmatsuite/engine/installation.py                    2      2     0%   5-7
+src/qmatsuite/engine/orca_engine.py                   138     26    81%   63-64, 68-80, 107-111, 201-204, 214-215, 221-223, 317
+src/qmatsuite/engine/pyscf_engine.py                  213     79    63%   73, 77-85, 103-118, 129, 213-286, 328, 342, 363, 375, 386, 394, 422, 432, 452-461, 487, 499, 510, 512, 541, 550, 562, 590, 592, 594, 600-601, 623-635, 655-664
+src/qmatsuite/engine/qc_engine_base.py                 65      3    95%   44, 109, 192
+src/qmatsuite/engine/qe_engine.py                      41     27    34%   30, 33-62
+src/qmatsuite/engine/registry.py                       32      4    88%   25-26, 61-62
+src/qmatsuite/engines/__init__.py                       0      0   100%
+src/qmatsuite/engines/orca/__init__.py                  2      0   100%
+src/qmatsuite/engines/orca/input_compiler.py           88      5    94%   113, 125, 146, 149, 152
+src/qmatsuite/engines/orca/property_parser.py         176     30    83%   93, 103-106, 116, 136-141, 147, 161, 184, 201, 235-236, 264-266, 288-293, 326, 381-387
+src/qmatsuite/engines/pyscf/__init__.py                 0      0   100%
+src/qmatsuite/engines/pyscf/__main__.py                33     33     0%   11-73
+src/qmatsuite/engines/pyscf/chain.py                   44      6    86%   49, 56, 90-97
+src/qmatsuite/engines/pyscf/chain_execution.py        197    197     0%   7-384
+src/qmatsuite/engines/pyscf/runner.py                 449    449     0%   25-854
+src/qmatsuite/history/__init__.py                       6      0   100%
+src/qmatsuite/history/digests.py                      296    189    36%   45, 50, 55, 60, 65, 69-74, 79, 163, 166, 173-197, 239-240, 249, 251, 253, 255, 257, 261-264, 279, 291, 295-297, 301-302, 309-356, 361-382, 387-421, 427-454, 460-486, 491-512, 517-534, 574, 576, 578-579
+src/qmatsuite/history/events.py                       169     26    85%   87-95, 261, 324, 364, 377, 428, 458, 461, 465-467, 473-475, 479-484
+src/qmatsuite/history/pins.py                         169    138    18%   46, 88-186, 198-216, 221-235, 240-245, 254-277, 298-325, 344-360, 375-400
+src/qmatsuite/history/run_revision.py                 177     34    81%   168-174, 227, 234-235, 244-245, 278-279, 320, 328-331, 335-343, 356-362, 397, 419, 473
+src/qmatsuite/history/storage.py                      193     71    63%   88-89, 229, 237, 247, 250-252, 254, 256, 259-261, 269, 285-301, 311-324, 337-349, 378, 396-413, 425-440, 454-465, 474-475, 484-485, 494-495, 500
+src/qmatsuite/io/__init__.py                            5      0   100%
+src/qmatsuite/io/generator/__init__.py                  2      0   100%
+src/qmatsuite/io/generator/qe_generator.py             84     67    20%   21-30, 34-43, 47-81, 85-117, 121-123
+src/qmatsuite/io/model.py                             151     83    45%   72, 75-77, 80, 92, 108-111, 114-117, 120, 123-130, 147-189, 192-195, 198-216
+src/qmatsuite/io/online_cache.py                      185    185     0%   8-485
+src/qmatsuite/io/online_search.py                     413    413     0%   8-920
+src/qmatsuite/io/parser/__init__.py                     2      0   100%
+src/qmatsuite/io/parser/qe_parser.py                  338    295    13%   46-50, 55-58, 62-100, 104-152, 156-169, 173-206, 210-256, 260-317, 321-333, 337-351, 355-367, 371, 375-400, 418-422
+src/qmatsuite/io/parser/volume_parsers.py             299    299     0%   9-640
+src/qmatsuite/io/pseudo/__init__.py                     2      2     0%   5-7
+src/qmatsuite/io/pseudo/manager.py                      2      2     0%   5-7
+src/qmatsuite/io/structure_io.py                      381    328    14%   54-55, 61-62, 72, 78-88, 91, 96-100, 117-141, 179-247, 269-303, 325-356, 366-427, 456-492, 496-499, 503-512, 519-529, 536-557, 561-567, 571-617, 621-775
+src/qmatsuite/io/wannier90_input.py                   287    287     0%   8-442
+src/qmatsuite/ir/__init__.py                            0      0   100%
+src/qmatsuite/ir/backends/__init__.py                   0      0   100%
+src/qmatsuite/ir/backends/qe/__init__.py                0      0   100%
+src/qmatsuite/ir/backends/qe/mapping.py                96     47    51%   77-94, 136-147, 166-185, 208, 215-222, 255-257, 272, 277, 281, 289, 293
+src/qmatsuite/ir/parameters.py                         30     30     0%   10-226
+src/qmatsuite/legacy/__init__.py                        0      0   100%
+src/qmatsuite/legacy/migrate.py                       148    148     0%   15-263
+src/qmatsuite/presets/__init__.py                       5      0   100%
+src/qmatsuite/presets/catalog.py                       42     42     0%   13-204
+src/qmatsuite/presets/compiler.py                      57     45    21%   56-64, 84-92, 132-155, 171-173, 220-244, 270-279, 295-308, 330-339
+src/qmatsuite/presets/detector.py                     240    190    21%   52-65, 72-83, 90-101, 118-126, 143-151, 162-173, 186-211, 216-227, 232-243, 270-272, 303-306, 343-350, 355-363, 372, 381-386, 415, 437-521, 546-567, 579-617, 658, 686-696
+src/qmatsuite/presets/dimensions.py                    41      4    90%   112, 115, 118, 121
+src/qmatsuite/presets/integration.py                  342    283    17%   42-52, 57-64, 79-99, 166, 186-187, 207-247, 272, 284, 296-297, 363-562, 581-626, 651-740, 763-821
+src/qmatsuite/presets/paramspace.py                   291    137    53%   85, 89-93, 101, 108-114, 145, 151, 159, 197, 203, 227, 232, 273, 281-282, 301, 309, 341-377, 392-401, 407, 410-417, 422-433, 439, 456, 670-715, 728-730, 754-825
+src/qmatsuite/presets/precision.py                    161    111    31%   95-130, 158-166, 183-184, 204-211, 224-225, 230, 251-264, 284-297, 317-352, 361, 434-445, 460-481, 505, 530-563, 588-589, 612-621
+src/qmatsuite/presets/precision_context.py             62     23    63%   49, 88-92, 98, 103-104, 116-159
+src/qmatsuite/presets/precision_variants.py            38      4    89%   273-284
+src/qmatsuite/presets/receivers.py                     66     11    83%   114, 177-178, 246, 266-267, 294, 312, 319, 324, 329
+src/qmatsuite/presets/space_variant.py                 21      5    76%   40, 42, 44, 46, 50
+src/qmatsuite/presets/spaces_registry.py               92     92     0%   16-385
+src/qmatsuite/presets/variants_registry.py            195    129    34%   142-143, 292-343, 367-457, 486, 490, 503, 506, 529-599, 614-631, 643-682
+src/qmatsuite/project/__init__.py                       3      0   100%
+src/qmatsuite/project/model.py                        259    124    52%   35, 38, 55, 62, 66, 69, 83, 90, 94, 97, 120, 168-169, 183-192, 210-213, 223-235, 272-273, 279, 291, 300-309, 313-340, 344-370, 374, 382-409, 422, 426, 430, 434, 437, 442, 446, 450, 453-458, 468-471, 477-483, 494-502
+src/qmatsuite/project/snapshot.py                     407    407     0%   9-865
+src/qmatsuite/project/storage.py                       32     18    44%   26-29, 32-33, 36-49, 55-56
+src/qmatsuite/viz/__init__.py                           2      2     0%   3-5
+src/qmatsuite/viz/data_models.py                       38     38     0%   10-62
+src/qmatsuite/workflow/__init__.py                      4      0   100%
+src/qmatsuite/workflow/generalized_steps.py            89     40    55%   203, 229-235, 252-259, 283-335, 356-359
+src/qmatsuite/workflow/registry.py                    117     26    78%   618, 626, 630, 634, 641, 648, 677-687, 708, 725, 731, 766, 772, 776-778, 781, 788-793
+src/qmatsuite/workflow/step_factory.py                 40      8    80%   55, 90, 94, 145-158
+src/qmatsuite/workflow/templates.py                   228    186    18%   163, 179-410, 414-432, 462-556, 573-617, 638
 ------------------------------------------------------------------------------------
 TOTAL                                                  28909  23032    20%
 Coverage HTML written to dir htmlcov

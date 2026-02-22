@@ -39,13 +39,13 @@ interface PseudoMapping {
 
 ### 2. Backend RPC/API
 
-**RPC Handler**: `src/quantumvitas/daemon/server.py`
+**RPC Handler**: `src/qmatsuite/daemon/server.py`
 - **Line 3330**: `_handle_get_calculation_pseudo_mapping()`
   - Returns mapping with candidates_by_element
 - **Line 3356**: `_handle_update_calculation_species_map()`
   - Updates species_map in calculation.yaml
 
-**Service Layer**: `src/quantumvitas/api.py`
+**Service Layer**: `src/qmatsuite/api.py`
 - **Line 4963**: `get_calculation_pseudo_mapping()`
   - Builds candidates_by_element by scanning:
     1. Internal: `resources/pseudo/*.UPF`
@@ -58,8 +58,8 @@ interface PseudoMapping {
     - No provenance information
 
 **Provenance Resolution**: Already exists
-- `src/quantumvitas/api.py` line 4099: `resolve_pseudo_provenance()`
-- `src/quantumvitas/daemon/server.py` line 1200: `_handle_resolve_project_pseudo_provenance()`
+- `src/qmatsuite/api.py` line 4099: `resolve_pseudo_provenance()`
+- `src/qmatsuite/daemon/server.py` line 1200: `_handle_resolve_project_pseudo_provenance()`
 - Uses `pseudo_provenance.py` which loads vendored `pseudo_libinfo` bundle
 
 ### 3. Settings Installation Code
@@ -68,7 +68,7 @@ interface PseudoMapping {
 - **Line 709**: `PseudopotentialsSection` component
 - Uses `usePseudoConfig` hook
 
-**Backend Installation**: `src/quantumvitas/core/pseudo_config.py`
+**Backend Installation**: `src/qmatsuite/core/pseudo_config.py`
 - **Line 957**: `download_sssp_library()`
   - Fetches manifest from GitHub at runtime
   - Downloads archives to seed cache
@@ -87,14 +87,14 @@ interface PseudoMapping {
 
 ### 4. Pseudo Libinfo Bundle
 
-**Loader**: `src/quantumvitas/core/pseudo_libinfo.py`
+**Loader**: `src/qmatsuite/core/pseudo_libinfo.py`
 - **Line 114**: `load_pseudo_libinfo_bundle()`
   - Loads from `resources/pseudo_libinfo/<tag>/`
   - Verifies SHA256SUMS.txt
   - Returns bundle with `index` and `manifest` dicts
   - Already cached with `@lru_cache(maxsize=1)`
 
-**Provenance**: `src/quantumvitas/core/pseudo_provenance.py`
+**Provenance**: `src/qmatsuite/core/pseudo_provenance.py`
 - **Line 253**: `resolve_pseudo_provenance()`
   - Builds occurrences index from bundle
   - Matches by SHA256 (primary) or sha_token (fallback)
@@ -104,13 +104,13 @@ interface PseudoMapping {
 
 ### Phase 1: Backend Archive Management
 
-1. **`src/quantumvitas/core/pseudo_installs.py`** (NEW)
+1. **`src/qmatsuite/core/pseudo_installs.py`** (NEW)
    - `get_pseudo_install_root()` - get install root from config
    - `list_installed_archives()` - scan archives directory
    - `is_archive_installed(asset_name, expected_sha256)` - verify installation
    - `install_archive(asset_url, asset_name, expected_sha256)` - download & verify
 
-2. **`src/quantumvitas/daemon/server.py`**
+2. **`src/qmatsuite/daemon/server.py`**
    - Add `_handle_list_pseudo_archives_status()` RPC
    - Add `_handle_install_pseudo_archive()` RPC
 
@@ -124,15 +124,15 @@ interface PseudoMapping {
 
 ### Phase 2: Provenance Tags
 
-1. **`src/quantumvitas/core/pseudo_libinfo.py`** (or new module)
+1. **`src/qmatsuite/core/pseudo_libinfo.py`** (or new module)
    - Add `build_provenance_indices()` - build sha256->occurrences mapping
    - Add `get_archive_install_status()` - check if archive is installed
 
-2. **`src/quantumvitas/api.py`**
+2. **`src/qmatsuite/api.py`**
    - Add `get_pseudo_options_for_element(element)` method
    - Returns deduplicated options with provenance tags
 
-3. **`src/quantumvitas/daemon/server.py`**
+3. **`src/qmatsuite/daemon/server.py`**
    - Add `_handle_get_pseudo_options_for_element()` RPC handler
 
 ### Phase 3: UI Replacement
@@ -151,7 +151,7 @@ interface PseudoMapping {
 3. **`gui/src/hooks/usePseudoConfig.ts`** (or new hook)
    - Add `getPseudoOptionsForElement(element)` function
 
-4. **`src/quantumvitas/api.py`**
+4. **`src/qmatsuite/api.py`**
    - Update `update_calculation_species_map()` to accept sha256 (backward compatible)
 
 ### Phase 4: Tests

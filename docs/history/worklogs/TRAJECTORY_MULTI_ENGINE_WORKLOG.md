@@ -26,14 +26,14 @@ Implemented trajectory parsing across 10 engines (VASP was already done, 1 rewri
 ## Files Created
 
 ### New parser source files (8)
-- `src/quantumvitas/drivers/cp2k/parsers/trajectory.py`
-- `src/quantumvitas/drivers/lammps/parsers/trajectory.py`
-- `src/quantumvitas/drivers/abinit/parsers/trajectory.py`
-- `src/quantumvitas/drivers/siesta/parsers/trajectory.py`
-- `src/quantumvitas/drivers/xtb/parsers/trajectory.py`
-- `src/quantumvitas/drivers/gpaw/parsers/trajectory.py`
-- `src/quantumvitas/drivers/orca/parsers/trajectory.py`
-- `src/quantumvitas/drivers/gaussian/parsers/trajectory.py`
+- `src/qmatsuite/drivers/cp2k/parsers/trajectory.py`
+- `src/qmatsuite/drivers/lammps/parsers/trajectory.py`
+- `src/qmatsuite/drivers/abinit/parsers/trajectory.py`
+- `src/qmatsuite/drivers/siesta/parsers/trajectory.py`
+- `src/qmatsuite/drivers/xtb/parsers/trajectory.py`
+- `src/qmatsuite/drivers/gpaw/parsers/trajectory.py`
+- `src/qmatsuite/drivers/orca/parsers/trajectory.py`
+- `src/qmatsuite/drivers/gaussian/parsers/trajectory.py`
 
 ### New test files (9)
 - `tests/drivers/qe/test_qe_trajectory_parser.py` (12 tests)
@@ -60,13 +60,13 @@ Implemented trajectory parsing across 10 engines (VASP was already done, 1 rewri
 ## Files Modified
 
 ### Rewritten
-- `src/quantumvitas/drivers/qe/parsers/trajectory.py` — Full rewrite: EvidenceBundle API, `_parse_relax_output()` + `_parse_md_output()`, position unit handling
+- `src/qmatsuite/drivers/qe/parsers/trajectory.py` — Full rewrite: EvidenceBundle API, `_parse_relax_output()` + `_parse_md_output()`, position unit handling
 
 ### ANALYSIS_CAPABILITIES added (9 driver.py files)
-- `src/quantumvitas/drivers/{qe,cp2k,lammps,abinit,siesta,xtb,gpaw,orca,gaussian}/driver.py`
+- `src/qmatsuite/drivers/{qe,cp2k,lammps,abinit,siesta,xtb,gpaw,orca,gaussian}/driver.py`
 
 ### Parser registration wired (8 parsers/__init__.py files)
-- `src/quantumvitas/drivers/{cp2k,lammps,abinit,siesta,xtb,gpaw,orca,gaussian}/parsers/__init__.py`
+- `src/qmatsuite/drivers/{cp2k,lammps,abinit,siesta,xtb,gpaw,orca,gaussian}/parsers/__init__.py`
 
 ### Gate tests added
 - `tests/gates/test_analysis_invariants.py` — `test_trajectory_parser_matrix` (10 engines) + `test_trajectory_engine_has_analysis_capabilities` (10 engines) = +20 gate tests
@@ -104,8 +104,8 @@ python -m pytest tests/gates/test_analysis_invariants.py -v -k trajectory
 
 # Registration check
 python -c "
-import quantumvitas.drivers
-from quantumvitas.parsers.registry import _PARSERS
+import qmatsuite.drivers
+from qmatsuite.parsers.registry import _PARSERS
 for e in ['qe','vasp','abinit','siesta','cp2k','gpaw','lammps','xtb','orca','gaussian']:
     p = _PARSERS.get((e, 'trajectory'))
     print(f'  {e}/trajectory: {p.__name__ if p else \"MISSING\"}')"

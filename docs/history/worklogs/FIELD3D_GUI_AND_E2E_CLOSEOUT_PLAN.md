@@ -30,16 +30,16 @@ GUI: Float32Array -> marching cubes -> Three.js isosurface
 
 | File | Action | Change |
 |------|--------|--------|
-| `src/quantumvitas/core/analysis/field3d.py` | EDIT | Add `materialize_to_scratch(calc_dir)` — binary Float32 + metadata JSON with atomic rename |
-| `src/quantumvitas/daemon/server.py` | EDIT | Add `_handle_get_field3d_grid` RPC handler |
-| `src/quantumvitas/api/service.py` | EDIT | Add `get_field3d_grid()` service method |
+| `src/qmatsuite/core/analysis/field3d.py` | EDIT | Add `materialize_to_scratch(calc_dir)` — binary Float32 + metadata JSON with atomic rename |
+| `src/qmatsuite/daemon/server.py` | EDIT | Add `_handle_get_field3d_grid` RPC handler |
+| `src/qmatsuite/api/service.py` | EDIT | Add `get_field3d_grid()` service method |
 
 ### Electron IPC
 
 | File | Action | Change |
 |------|--------|--------|
-| `gui/electron/preload.ts` | EDIT | Add `readScratchFile` to qvApi |
-| `gui/electron/main.ts` | EDIT | Add `qv-read-scratch-file` IPC handler with path validation |
+| `gui/electron/preload.ts` | EDIT | Add `readScratchFile` to qmsApi |
+| `gui/electron/main.ts` | EDIT | Add `qms-read-scratch-file` IPC handler with path validation |
 
 Security: reject paths with `..` or outside `.scratch/`.
 
@@ -52,7 +52,7 @@ Security: reject paths with `..` or outside `.scratch/`.
 | `gui/src/components/panels/VolumeViewerSandbox.tsx` | EDIT | Import shared IsosurfaceMesh |
 | `gui/src/components/panels/CalculationAnalysisPanel.tsx` | EDIT | Dispatch field3d to Field3DVizPanel |
 | `gui/src/components/panels/CalculationAnalysisPanel.css` | EDIT | Field3D panel styles |
-| `gui/src/types/qv.ts` | EDIT | Add readScratchFile type + Field3DGridMetadata |
+| `gui/src/types/qms.ts` | EDIT | Add readScratchFile type + Field3DGridMetadata |
 
 ### Reused as-is (no changes)
 

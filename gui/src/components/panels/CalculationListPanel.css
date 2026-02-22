@@ -58,7 +58,7 @@
 }
 
 /* Ghost Icon Button (for Refresh) */
-.qv-icon-button {
+.qms-icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -71,22 +71,22 @@
   transition: all var(--transition-fast);
 }
 
-.qv-icon-button--ghost {
+.qms-icon-button--ghost {
   background: transparent;
   color: var(--text-muted);
   box-shadow: none;
 }
 
-.qv-icon-button--ghost:hover:not(:disabled) {
+.qms-icon-button--ghost:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
 }
 
-.qv-icon-button--ghost:active:not(:disabled) {
+.qms-icon-button--ghost:active:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.qv-icon-button--ghost:disabled {
+.qms-icon-button--ghost:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -362,7 +362,7 @@
   gap: var(--space-4);
 }
 
-.qv-calc-header-title-group {
+.qms-calc-header-title-group {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -383,7 +383,7 @@
   white-space: nowrap;
 }
 
-.qv-calc-header-subtitle {
+.qms-calc-header-subtitle {
   font-size: 11px;
   color: var(--text-muted);
   margin-top: 2px;
@@ -404,7 +404,7 @@
 }
 
 /* Primary Button Styles (for Run Calculation) */
-.qv-button {
+.qms-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -416,37 +416,37 @@
   transition: all var(--transition-fast);
 }
 
-.qv-button--primary {
+.qms-button--primary {
   background: var(--color-primary);
   color: var(--text-on-primary);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
 }
 
-.qv-button--primary:hover:not(:disabled) {
+.qms-button--primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.qv-button--primary:active:not(:disabled) {
+.qms-button--primary:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
 }
 
-.qv-button--large {
+.qms-button--large {
   padding: 0.55rem 1.4rem;
   font-size: 0.9rem;
   font-weight: var(--font-semibold);
 }
 
-.qv-button-icon-left {
+.qms-button-icon-left {
   margin-right: 0.4rem;
   font-size: 1rem;
   display: inline-flex;
   align-items: center;
 }
 
-.qv-button:disabled {
+.qms-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
@@ -1491,7 +1491,7 @@
     display: none;
   }
   
-  .calculation-list-panel .panel-header__actions .qv-icon-button {
+  .calculation-list-panel .panel-header__actions .qms-icon-button {
     width: 100%;
     justify-content: center;
   }

@@ -48,8 +48,8 @@ Expanded HARD_REDLINE_FIELDS from 8 to **17 methods** covering all manifest meth
 
 | Method | Original Manifest | Actual GUI Type | Resolution |
 |--------|-------------------|-----------------|------------|
-| get_common_cards | `cards`, `cards.*` | `k_points?` (optional) | **Manifest corrected** to `k_points`. Evidence: `gui/src/types/qv.ts:1164-1188` |
-| get_preset_catalog | `presets`, `presets[].id/name` | `dimensions[]`, `schema_version` | **Manifest corrected** to `dimensions`, `schema_version`. Evidence: `gui/src/types/qv.ts:1565-1584` |
+| get_common_cards | `cards`, `cards.*` | `k_points?` (optional) | **Manifest corrected** to `k_points`. Evidence: `gui/src/types/qms.ts:1164-1188` |
+| get_preset_catalog | `presets`, `presets[].id/name` | `dimensions[]`, `schema_version` | **Manifest corrected** to `dimensions`, `schema_version`. Evidence: `gui/src/types/qms.ts:1565-1584` |
 
 Both methods now in HARD_REDLINE_FIELDS with correct field names.
 
@@ -210,12 +210,12 @@ All 22 skips are:
 **File**: `tests/gates/test_daemon_kernel_ban.py`
 
 Verified daemon has NO kernel imports:
-- `test_daemon_no_kernel_imports` - Scans all `src/quantumvitas/daemon/**/*.py`
+- `test_daemon_no_kernel_imports` - Scans all `src/qmatsuite/daemon/**/*.py`
 - `test_compat_py_specifically` - Specific gate for compat.py
 
 **Current compat.py imports**:
 ```python
-from quantumvitas.api import QVService  # Line 721 - ALLOWED
+from qmatsuite.api import QMSService  # Line 721 - ALLOWED
 ```
 
 No violations detected.
@@ -226,7 +226,7 @@ No violations detected.
 
 1. **GUI-critical fields enforced**: 17/20 methods have hard enforcement. 3 excluded due to golden fixture failures only.
 
-2. **Daemon kernel-ban enforced**: Gate test passes, compat.py only imports from `quantumvitas.api.*`.
+2. **Daemon kernel-ban enforced**: Gate test passes, compat.py only imports from `qmatsuite.api.*`.
 
 3. **CI will not fail**: All environment-specific fields now properly handled with minimal skipping.
 
@@ -238,10 +238,10 @@ No violations detected.
 
 1. **HARD_REDLINE_FIELDS** covers 17 methods (all manifest methods with successful golden fixtures)
 2. **API/manifest mismatches RESOLVED** with evidence from GUI TypeScript types:
-   - `get_common_cards`: GUI expects `k_points` (gui/src/types/qv.ts:1164-1188)
-   - `get_preset_catalog`: GUI expects `dimensions` + `schema_version` (gui/src/types/qv.ts:1565-1584)
+   - `get_common_cards`: GUI expects `k_points` (gui/src/types/qms.ts:1164-1188)
+   - `get_preset_catalog`: GUI expects `dimensions` + `schema_version` (gui/src/types/qms.ts:1565-1584)
 3. **Tightened skip policy** - Uses tolerance/schema enforcement instead of full skips where possible
-4. **Soft gate available** - Set `QV_ENFORCE_GUI_RPC_COVERAGE=1` to make test_gui_methods_covered fail on missing coverage
+4. **Soft gate available** - Set `QMS_ENFORCE_GUI_RPC_COVERAGE=1` to make test_gui_methods_covered fail on missing coverage
 
 **Test Summary**:
 - Local: 2946 passed, 22 skipped
@@ -253,7 +253,7 @@ No violations detected.
 
 ### `list_demo_projects` API Enhancement
 
-**File**: `src/quantumvitas/api/service.py`
+**File**: `src/qmatsuite/api/service.py`
 
 Updated to return proper demo metadata from YAML:
 - `title`: Human-readable display name (e.g., "Silicon band structure")
@@ -300,7 +300,7 @@ This uses the standard NumPy `isclose` formula: absolute tolerance handles near-
 
 ### 2. Step Type Consistency Fix (step_type mapped to v0 format)
 
-**File**: `src/quantumvitas/daemon/compat.py`
+**File**: `src/qmatsuite/daemon/compat.py`
 
 **Problem**: E2E test `demo_calculation.spec.ts` failed:
 ```
@@ -334,11 +334,11 @@ Now both sources return consistent v0 format (`qe_scf`).
 **Fix**: Updated test expectations to match v0 API format:
 ```typescript
 // Before
-const bandsStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-bands"]');
+const bandsStepChip = analysisPanel.locator('[data-testid="qms-analysis-step-tab-bands"]');
 expect(stepType?.toLowerCase()).toBe('bands');
 
 // After
-const bandsStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-qe_bands"]');
+const bandsStepChip = analysisPanel.locator('[data-testid="qms-analysis-step-tab-qe_bands"]');
 expect(stepType?.toLowerCase()).toBe('qe_bands');
 ```
 
@@ -351,8 +351,8 @@ expect(stepType?.toLowerCase()).toBe('qe_bands');
 **Features**:
 - Pure code scanning (no runtime, no manifest, no fixtures)
 - Extracts method names from:
-  - GUI: `QVCommandMap` interface in `gui/src/types/qv.ts`
-  - Daemon: handler dictionary in `src/quantumvitas/daemon/server.py`
+  - GUI: `QMSCommandMap` interface in `gui/src/types/qms.ts`
+  - Daemon: handler dictionary in `src/qmatsuite/daemon/server.py`
 - Fails if GUI calls methods not wired in daemon
 - Small exempt list with documented reasons (capped at 5)
 

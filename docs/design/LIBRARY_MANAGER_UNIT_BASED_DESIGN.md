@@ -140,7 +140,7 @@ def get_unit_install_path(unit: InstallableUnit, store_dir: Path) -> Path:
 ## 4. Files to Modify
 
 ### Backend Core
-1. **`src/quantumvitas/core/library_manager.py`** (Complete rewrite)
+1. **`src/qmatsuite/core/library_manager.py`** (Complete rewrite)
    - Remove: `LibraryMetadata`, `LibraryVariantStatus`, `LibraryStatus`
    - Add: `InstallableUnit`, `UnitStatus`, `LibraryGroup`
    - Add: `load_installable_units()` - parse vendored manifest
@@ -154,19 +154,19 @@ def get_unit_install_path(unit: InstallableUnit, store_dir: Path) -> Path:
    - Rewrite: `repair_units(unit_ids)` - unit-based repair
    - Remove: All variant-based logic
 
-2. **`src/quantumvitas/core/pseudo_config.py`** (Keep for download helpers)
+2. **`src/qmatsuite/core/pseudo_config.py`** (Keep for download helpers)
    - Keep: `download_github_release_asset()` - used by install_units
    - Keep: `compute_sha256()` - used for verification
    - Remove/Deprecate: `download_sssp_library()`, `download_all_sssp()` - no longer used
    - Remove/Deprecate: `install_sssp_from_seed()`, `install_all_sssp_from_seed()` - no longer used
    - Keep: `import_seed_archives()` - may be used for local archive import
 
-3. **`src/quantumvitas/core/pseudo_libinfo.py`** (No changes)
+3. **`src/qmatsuite/core/pseudo_libinfo.py`** (No changes)
    - Already loads vendored manifest correctly
    - Just needs to be imported and used
 
 ### RPC Layer
-4. **`src/quantumvitas/daemon/server.py`** (RPC handler updates)
+4. **`src/qmatsuite/daemon/server.py`** (RPC handler updates)
    - Update: `_handle_list_libraries()` - return LibraryGroup[]
    - Update: `_handle_get_library_status()` - return LibraryGroup
    - Rewrite: `_handle_install_library()` → `_handle_install_units()` - take unit_ids

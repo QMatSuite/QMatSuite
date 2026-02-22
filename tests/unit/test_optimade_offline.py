@@ -18,9 +18,9 @@ from pathlib import Path
 from pymatgen.core import Structure, Lattice
 import numpy as np
 
-from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
+from qmatsuite.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
 # Note: _parse_optimade_structure is internal, we'll use public API instead
-# from quantumvitas.io.online_search import fetch_structure_from_optimade
+# from qmatsuite.io.online_search import fetch_structure_from_optimade
 
 
 def load_optimade_fixture(filename: str) -> dict:

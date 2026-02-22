@@ -10,7 +10,7 @@
 
 ### A) Current State
 
-**Fields to remove** (defined in `src/quantumvitas/workflow/registry.py`):
+**Fields to remove** (defined in `src/qmatsuite/workflow/registry.py`):
 - `StepTypeSpec.accepts_presets: bool` (line 53)
 - `StepTypeSpec.allowed_dimensions: FrozenSet[str]` (line 54)
 
@@ -27,22 +27,22 @@
 
 ```bash
 # All accepts_presets references in production code
-rg "accepts_presets" src/quantumvitas
+rg "accepts_presets" src/qmatsuite
 
 # All allowed_dimensions references in production code
-rg "allowed_dimensions" src/quantumvitas
+rg "allowed_dimensions" src/qmatsuite
 
 # All references in tests
 rg "accepts_presets|allowed_dimensions" tests
 
 # PW_DIMENSIONS constant usage
-rg "PW_DIMENSIONS" src/quantumvitas
+rg "PW_DIMENSIONS" src/qmatsuite
 
 # Deprecated method usage
-rg "list_accepting_presets\(\)" src/quantumvitas tests
+rg "list_accepting_presets\(\)" src/qmatsuite tests
 
 # StepTypeSpec field access in production
-rg "spec\.accepts_presets|spec\.allowed_dimensions" src/quantumvitas
+rg "spec\.accepts_presets|spec\.allowed_dimensions" src/qmatsuite
 ```
 
 ### C) Current SSOT (What Replaces Removed Fields)
@@ -76,9 +76,9 @@ rg "spec\.accepts_presets|spec\.allowed_dimensions" src/quantumvitas
 ### F) No References Found In
 
 - `gui/` - No references
-- `src/quantumvitas/cli/` - No references
-- `src/quantumvitas/daemon/` - No references
-- `src/quantumvitas/api.py` - No references
+- `src/qmatsuite/cli/` - No references
+- `src/qmatsuite/daemon/` - No references
+- `src/qmatsuite/api.py` - No references
 - Any YAML schema files - No references
 
 ---
@@ -90,7 +90,7 @@ rg "spec\.accepts_presets|spec\.allowed_dimensions" src/quantumvitas
 **Scope**: Remove fields, constants, and deprecated method from registry.py
 
 **Files to modify**:
-- `src/quantumvitas/workflow/registry.py`
+- `src/qmatsuite/workflow/registry.py`
 
 **Changes**:
 
@@ -105,22 +105,22 @@ rg "spec\.accepts_presets|spec\.allowed_dimensions" src/quantumvitas
 
 ```bash
 # Verify no accepts_presets references remain
-rg "accepts_presets" src/quantumvitas/workflow/registry.py
+rg "accepts_presets" src/qmatsuite/workflow/registry.py
 # Expected: No matches
 
 # Verify no allowed_dimensions references remain
-rg "allowed_dimensions" src/quantumvitas/workflow/registry.py
+rg "allowed_dimensions" src/qmatsuite/workflow/registry.py
 # Expected: No matches
 
 # Verify no PW_DIMENSIONS references remain
-rg "PW_DIMENSIONS" src/quantumvitas/workflow/registry.py
+rg "PW_DIMENSIONS" src/qmatsuite/workflow/registry.py
 # Expected: No matches
 
 # Verify StepTypeSpec still imports correctly
-python -c "from quantumvitas.workflow.registry import StepTypeSpec; print('OK')"
+python -c "from qmatsuite.workflow.registry import StepTypeSpec; print('OK')"
 
 # Verify registry still works
-python -c "from quantumvitas.workflow.registry import get_registry; r = get_registry(); print('step types:', len(r.list_all()))"
+python -c "from qmatsuite.workflow.registry import get_registry; r = get_registry(); print('step types:', len(r.list_all()))"
 ```
 
 **Stop condition**: If imports fail or registry.list_all() returns 0 step types, STOP and create forensic note.
@@ -180,7 +180,7 @@ import subprocess
 def test_no_accepts_presets_in_production_code():
     """Production code must not reference accepts_presets field."""
     result = subprocess.run(
-        ["rg", "-l", r"\.accepts_presets", "src/quantumvitas"],
+        ["rg", "-l", r"\.accepts_presets", "src/qmatsuite"],
         capture_output=True,
         text=True,
     )
@@ -193,7 +193,7 @@ def test_no_accepts_presets_in_production_code():
 def test_no_allowed_dimensions_in_production_code():
     """Production code must not reference allowed_dimensions field."""
     result = subprocess.run(
-        ["rg", "-l", r"\.allowed_dimensions", "src/quantumvitas"],
+        ["rg", "-l", r"\.allowed_dimensions", "src/qmatsuite"],
         capture_output=True,
         text=True,
     )
@@ -206,7 +206,7 @@ def test_no_allowed_dimensions_in_production_code():
 def test_no_pw_dimensions_in_production_code():
     """Production code must not reference PW_DIMENSIONS constant."""
     result = subprocess.run(
-        ["rg", "-l", r"PW_DIMENSIONS", "src/quantumvitas"],
+        ["rg", "-l", r"PW_DIMENSIONS", "src/qmatsuite"],
         capture_output=True,
         text=True,
     )
@@ -219,7 +219,7 @@ def test_no_pw_dimensions_in_production_code():
 def test_no_deprecated_list_accepting_presets():
     """Production code must not have deprecated list_accepting_presets() method."""
     result = subprocess.run(
-        ["rg", "-l", r"def list_accepting_presets\(self\)", "src/quantumvitas"],
+        ["rg", "-l", r"def list_accepting_presets\(self\)", "src/qmatsuite"],
         capture_output=True,
         text=True,
     )
@@ -231,7 +231,7 @@ def test_no_deprecated_list_accepting_presets():
 
 def test_steptypespec_has_no_preset_fields():
     """StepTypeSpec dataclass must not have preset-related fields."""
-    from quantumvitas.workflow.registry import StepTypeSpec
+    from qmatsuite.workflow.registry import StepTypeSpec
     import dataclasses
     
     field_names = [f.name for f in dataclasses.fields(StepTypeSpec)]
@@ -246,7 +246,7 @@ def test_steptypespec_has_no_preset_fields():
 
 def test_registry_has_no_deprecated_method():
     """StepTypeRegistry must not have deprecated list_accepting_presets() method."""
-    from quantumvitas.workflow.registry import StepTypeRegistry
+    from qmatsuite.workflow.registry import StepTypeRegistry
     
     assert not hasattr(StepTypeRegistry, "list_accepting_presets"), (
         "StepTypeRegistry still has deprecated list_accepting_presets() method"
@@ -285,8 +285,8 @@ pytest tests/unit/test_engine_supported_presets.py -v
 
 # Verify new SSOT API works
 python -c "
-from quantumvitas.presets.catalog import list_presets_for_engine
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.presets.catalog import list_presets_for_engine
+from qmatsuite.workflow.registry import get_registry
 
 # QE SCF should have precision, magnetism, etc.
 qe_scf = list_presets_for_engine('qe', 'scf')

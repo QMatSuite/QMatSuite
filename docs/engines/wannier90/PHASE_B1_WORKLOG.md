@@ -25,13 +25,13 @@ Final verification against B1_ENGINE_PLAYBOOK.md:
 Full audit against B1_ENGINE_PLAYBOOK.md identified and fixed these gaps:
 
 ### Phase 1+2: Metadata catalog + access layer (NEW)
-- Created `src/quantumvitas/drivers/w90/data/w90_tags.json` (128 tags, 7 categories)
+- Created `src/qmatsuite/drivers/w90/data/w90_tags.json` (128 tags, 7 categories)
   - Generated from metadata seed (wannier90_params.yaml, 171 entries)
   - Schema version 1, all tags lowercase, fields: name/type/kind/default/category/description/status
-- Created `src/quantumvitas/drivers/w90/data/w90_metadata.py` (access layer)
+- Created `src/qmatsuite/drivers/w90/data/w90_metadata.py` (access layer)
   - Follows VASP vasp_metadata.py pattern exactly
   - API: safe_load_metadata, get_tag_info, list_tags, list_categories, validate_params, get_tag_type, get_tag_default, reload_metadata, get_metadata_file_info
-  - Module-level cache, hot-reload via QV_W90_METADATA_HOT_RELOAD=1, importlib.resources
+  - Module-level cache, hot-reload via QMS_W90_METADATA_HOT_RELOAD=1, importlib.resources
 - Created `tests/drivers/w90/test_w90_metadata.py` (26 tests: JSON validation + access layer)
 
 ### Phase 3: Curated case library expanded (UPGRADED)
@@ -45,8 +45,8 @@ Full audit against B1_ENGINE_PLAYBOOK.md identified and fixed these gaps:
 - Created `docs/engines/wannier90/CURATED_INDEX.md` with diversity rationale
 
 ### Phase 4: Parser/writer extraction (FIXED)
-- Extracted parser/writer from inline inputspec.py to `src/quantumvitas/drivers/w90/io/win.py`
-- Created `src/quantumvitas/drivers/w90/io/__init__.py`
+- Extracted parser/writer from inline inputspec.py to `src/qmatsuite/drivers/w90/io/win.py`
+- Created `src/qmatsuite/drivers/w90/io/__init__.py`
 - Rewrote inputspec.py as thin delegation layer (59 lines, lazy imports)
 - No behavior change — pure extraction refactor
 
@@ -83,7 +83,7 @@ Full audit against B1_ENGINE_PLAYBOOK.md identified and fixed these gaps:
 
 ## 2026-02-06T14:40 — Stage 6: Output digest complete
 
-- Created src/quantumvitas/drivers/w90/parsers/__init__.py + output.py
+- Created src/qmatsuite/drivers/w90/parsers/__init__.py + output.py
 - W90Digest dataclass: 14 fields (success, converged, spreads, WF centres, wall_time, etc.)
 - W90OutputParser registered as @register_parser("w90", "scf_digest")
 - parse_wout_text() extracts all key metrics from .wout via regex

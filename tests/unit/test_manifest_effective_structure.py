@@ -6,12 +6,12 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.calculation.manifest import (
+from qmatsuite.calculation.manifest import (
     ManifestStepEntry,
     Manifest,
     load_manifest,
 )
-from quantumvitas.core.exceptions import MissingArtifactError
+from qmatsuite.core.exceptions import MissingArtifactError
 
 
 class TestManifestEffectiveStructureSha:
@@ -125,9 +125,9 @@ class TestLoadEffectiveStructure:
     
     def test_load_effective_structure_no_relax_before(self, tmp_path):
         """If no relax step before current step, returns (None, None)."""
-        from quantumvitas.execution.executor import JobExecutor
-        from quantumvitas.calculation.calculation import Calculation
-        from quantumvitas.core.resources import ResourceMeta
+        from qmatsuite.execution.executor import JobExecutor
+        from qmatsuite.calculation.calculation import Calculation
+        from qmatsuite.core.resources import ResourceMeta
         from unittest.mock import MagicMock
         
         executor = JobExecutor()
@@ -150,9 +150,9 @@ class TestLoadEffectiveStructure:
     
     def test_load_effective_structure_missing_artifact_raises(self, tmp_path):
         """If relax step exists but current.json is missing, raises MissingArtifactError."""
-        from quantumvitas.execution.executor import JobExecutor
-        from quantumvitas.calculation.calculation import Calculation
-        from quantumvitas.core.resources import ResourceMeta
+        from qmatsuite.execution.executor import JobExecutor
+        from qmatsuite.calculation.calculation import Calculation
+        from qmatsuite.core.resources import ResourceMeta
         from unittest.mock import MagicMock
         
         executor = JobExecutor()
@@ -183,10 +183,10 @@ class TestLoadEffectiveStructure:
     
     def test_load_effective_structure_success(self, tmp_path):
         """If relax step exists and current.json exists, loads structure and returns SHA."""
-        from quantumvitas.execution.executor import JobExecutor
-        from quantumvitas.calculation.calculation import Calculation
-        from quantumvitas.core.resources import ResourceMeta
-        from quantumvitas.execution.relax_artifacts import write_generated_structure
+        from qmatsuite.execution.executor import JobExecutor
+        from qmatsuite.calculation.calculation import Calculation
+        from qmatsuite.core.resources import ResourceMeta
+        from qmatsuite.execution.relax_artifacts import write_generated_structure
         from pymatgen.core import Structure, Lattice
         from unittest.mock import MagicMock
         
@@ -233,7 +233,7 @@ class TestUpdateManifestStepWithEffectiveStructureSha:
     
     def test_update_manifest_step_with_effective_structure_sha(self, tmp_path):
         """update_manifest_step accepts and stores effective_structure_sha."""
-        from quantumvitas.calculation.manifest import (
+        from qmatsuite.calculation.manifest import (
             update_manifest_step,
             load_manifest,
             get_manifest_path,
@@ -263,7 +263,7 @@ class TestUpdateManifestStepWithEffectiveStructureSha:
     
     def test_update_manifest_step_without_effective_structure_sha(self, tmp_path):
         """update_manifest_step works without effective_structure_sha (backward compatible)."""
-        from quantumvitas.calculation.manifest import (
+        from qmatsuite.calculation.manifest import (
             update_manifest_step,
             load_manifest,
         )

@@ -56,11 +56,11 @@ When working on engine-related code, these are absolute prohibitions (from ENGIN
 
 When adding a new engine, follow the checklist in `docs/laws/L1/ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md` §10. Key points:
 
-1. Create driver bundle at `src/quantumvitas/drivers/<engine>/` (driver.py, handler.py, recipe.py, step_types.py, __init__.py)
+1. Create driver bundle at `src/qmatsuite/drivers/<engine>/` (driver.py, handler.py, recipe.py, step_types.py, __init__.py)
 2. Implement the 7-item MUST interface in driver.py (engine_family, display_name, driver_api_version, get_step_type_specs, get_handler, get_recipe_class, get_materialization_map)
 3. Choose recipe archetype: Directory-state (QE-like), Strong-chain (QC-like), or Cleanup (VASP-like)
 4. Register via `DriverRegistry.register()` in the driver's `__init__.py`
-5. Add import to `src/quantumvitas/drivers/__init__.py`
+5. Add import to `src/qmatsuite/drivers/__init__.py`
 6. **You MUST NOT modify**: `runner.py`, `executor.py`, `handlers.py`, `driver_registry.py`, `driver_protocol.py`, or any kernel routing/dispatch code
 
 ## Sensitive Information — Hard Ban (Law S1)

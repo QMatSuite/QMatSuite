@@ -49,26 +49,26 @@ paramspace.py: ParamKey.matches(actual_degauss, expected_degauss=0.02)
 
 ### Key Files
 
-1. **`src/quantumvitas/presets/paramspace.py`** (lines 482-548)
+1. **`src/qmatsuite/presets/paramspace.py`** (lines 482-548)
    - Defines `build_occupations_scheme_paramspace()`
    - Profile `SMEARING_GAUSSIAN_0.02` requires `degauss = 0.02` (line 540)
    - `key_degauss` has tolerance `1e-12` (line 519)
 
-2. **`src/quantumvitas/presets/variants_registry.py`** (lines 417-461)
+2. **`src/qmatsuite/presets/variants_registry.py`** (lines 417-461)
    - `detect_dimension_for_step()` calls `match_profile()` for occupations_scheme
    - Returns `CUSTOM` if `match_profile()` returns `None` (line 456)
 
-3. **`src/quantumvitas/presets/variants_registry.py`** (lines 371-387)
+3. **`src/qmatsuite/presets/variants_registry.py`** (lines 371-387)
    - `_compile_precision_patch_for_step()` writes degauss values:
      - LOW → 0.01
      - MED → 0.02
      - HIGH → 0.03
 
-4. **`src/quantumvitas/presets/paramspace.py`** (lines 260-328)
+4. **`src/qmatsuite/presets/paramspace.py`** (lines 260-328)
    - `match_profile()` compares actual YAML values against profile cells
    - For `VALUE` cells, uses `ParamKey.matches()` with tolerance
 
-5. **`src/quantumvitas/presets/paramspace.py`** (lines 95-114)
+5. **`src/qmatsuite/presets/paramspace.py`** (lines 95-114)
    - `ParamKey.matches()` uses tolerance for numeric comparison
    - Tolerance is `1e-12` for degauss, effectively requiring exact match
 
@@ -78,7 +78,7 @@ paramspace.py: ParamKey.matches(actual_degauss, expected_degauss=0.02)
 
 ### Finding 1: Occupation Detection Reads Degauss Directly from YAML
 
-**Location**: `src/quantumvitas/presets/paramspace.py:260-328` (`match_profile()`)
+**Location**: `src/qmatsuite/presets/paramspace.py:260-328` (`match_profile()`)
 
 **Evidence**:
 - `match_profile()` calls `get_yaml_value(yaml_tree, "SYSTEM", "degauss")` (line 295)
@@ -91,7 +91,7 @@ paramspace.py: ParamKey.matches(actual_degauss, expected_degauss=0.02)
 
 ### Finding 2: Occupation Detection Does NOT Depend on Precision Detect Results
 
-**Location**: `src/quantumvitas/presets/variants_registry.py:417-461` (`detect_dimension_for_step()`)
+**Location**: `src/qmatsuite/presets/variants_registry.py:417-461` (`detect_dimension_for_step()`)
 
 **Evidence**:
 - Occupation detection path does not call precision detection
@@ -104,7 +104,7 @@ paramspace.py: ParamKey.matches(actual_degauss, expected_degauss=0.02)
 
 ### Finding 3: Hardcoded Profile Requires Degauss = 0.02 Exactly
 
-**Location**: `src/quantumvitas/presets/paramspace.py:537-541`
+**Location**: `src/qmatsuite/presets/paramspace.py:537-541`
 
 **Evidence**:
 ```python

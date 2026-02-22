@@ -19,7 +19,7 @@ The codebase has made significant progress toward constitution compliance. The c
 
 ### 1.1 GenStepRegistry (§12.1) - **PASS**
 
-**File**: `src/quantumvitas/workflow/gen_steps.py`
+**File**: `src/qmatsuite/workflow/gen_steps.py`
 
 - Properly defines `GEN_STEPS` as a frozenset
 - Contains all required gen steps: scf, hf, nscf, relax, bands, bandspw, dos, projwfc, pp, wannierprep, pw2wannier, wannier, ph, q2r, matdyn, dynmat, md, minimize, mp2, td, custom
@@ -32,19 +32,19 @@ All drivers properly declare PREFIX and SUPPORTED_GEN_STEPS:
 
 | Engine | PREFIX | SUPPORTED_GEN_STEPS Location |
 |--------|--------|------------------------------|
-| qe | `"qe"` | `src/quantumvitas/drivers/qe/driver.py:9-13` |
-| vasp | `"vasp"` | `src/quantumvitas/drivers/vasp/driver.py:22-25` |
-| w90 | `"w90"` | `src/quantumvitas/drivers/w90/driver.py:31-34` |
-| orca | `"orca"` | `src/quantumvitas/drivers/orca/driver.py:20-23` |
-| pyscf | `"pyscf"` | `src/quantumvitas/drivers/pyscf/driver.py:22-25` |
-| lammps | `"lammps"` | `src/quantumvitas/drivers/lammps/driver.py:28-32` |
-| cp2k | `"cp2k"` | `src/quantumvitas/drivers/cp2k/driver.py:24-27` |
+| qe | `"qe"` | `src/qmatsuite/drivers/qe/driver.py:9-13` |
+| vasp | `"vasp"` | `src/qmatsuite/drivers/vasp/driver.py:22-25` |
+| w90 | `"w90"` | `src/qmatsuite/drivers/w90/driver.py:31-34` |
+| orca | `"orca"` | `src/qmatsuite/drivers/orca/driver.py:20-23` |
+| pyscf | `"pyscf"` | `src/qmatsuite/drivers/pyscf/driver.py:22-25` |
+| lammps | `"lammps"` | `src/qmatsuite/drivers/lammps/driver.py:28-32` |
+| cp2k | `"cp2k"` | `src/qmatsuite/drivers/cp2k/driver.py:24-27` |
 
 No underscores in any PREFIX value.
 
 ### 1.3 Conversion Functions (§3) - **PASS**
 
-**File**: `src/quantumvitas/workflow/step_type_convert.py`
+**File**: `src/qmatsuite/workflow/step_type_convert.py`
 
 Canonical functions properly implemented:
 - `spec_from(prefix, gen)` - join operation
@@ -54,7 +54,7 @@ Canonical functions properly implemented:
 
 ### 1.4 DriverRegistry Materialization (§12.3) - **PASS**
 
-**File**: `src/quantumvitas/core/driver_registry.py:181-204`
+**File**: `src/qmatsuite/core/driver_registry.py:181-204`
 
 `_build_materialization_map()` uses pure derivation:
 ```python

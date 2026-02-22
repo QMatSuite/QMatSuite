@@ -98,7 +98,7 @@ def print_section(section_name: str, params: Dict[str, Dict[str, Any]], indent: 
 
 def main() -> int:
     repo_root = Path(__file__).parent.parent
-    json_path = repo_root / "src" / "quantumvitas" / "data" / "qe_module_parameters.json"
+    json_path = repo_root / "src" / "qmatsuite" / "data" / "qe_module_parameters.json"
     
     if not json_path.exists():
         sys.stderr.write(f"Error: JSON file not found: {json_path}\n")

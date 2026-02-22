@@ -23,7 +23,7 @@
 
 ### 2.1 CRITICAL: `bandspw` missing from `occupations_scheme` gen_type_steps
 
-**File**: `src/quantumvitas/presets/variants_registry.py:49-54`
+**File**: `src/qmatsuite/presets/variants_registry.py:49-54`
 
 **Current code**:
 ```python
@@ -64,7 +64,7 @@ Remove the incorrect comment. Add:
 
 ### 3.1 Coverage matrix (current state)
 
-Source: `src/quantumvitas/presets/variants_registry.py:42-115`
+Source: `src/qmatsuite/presets/variants_registry.py:42-115`
 
 | Dimension | scf | nscf | bandspw | relax | md | Comment |
 |-----------|-----|------|---------|-------|----|---------|
@@ -98,7 +98,7 @@ These are independent. A bandspw calculation uses a k-path for K_POINTS AND need
 
 ### 4.1 QE: namelist info EXISTS but is poorly surfaced
 
-**Source JSON**: `src/quantumvitas/data/qe_module_parameters.json` (schema v3)
+**Source JSON**: `src/qmatsuite/data/qe_module_parameters.json` (schema v3)
 
 Each QE parameter has an explicit `namelist` field:
 ```json
@@ -111,11 +111,11 @@ Each QE parameter has an explicit `namelist` field:
 }
 ```
 
-**Access layer**: `src/quantumvitas/drivers/qe/data/qe_metadata.py:306-378`
+**Access layer**: `src/qmatsuite/drivers/qe/data/qe_metadata.py:306-378`
 - `_iter_params()` returns dicts with `{"module", "namelist", "name", "type", "default", "description"}`
 - The `namelist` field is stripped of `&` prefix (line 364): `"ELECTRONS"` not `"&ELECTRONS"`
 
-**Search index**: `src/quantumvitas/mcp/search_index.py:138-145`
+**Search index**: `src/qmatsuite/mcp/search_index.py:138-145`
 ```python
 docs.append(TagDoc(
     engine="qe",
@@ -167,7 +167,7 @@ The namelist IS available as `category`, but:
 
 ### 5.1 `set_parameters` — no validation at all
 
-**File**: `src/quantumvitas/mcp/tools/set_parameters.py:59-70`
+**File**: `src/qmatsuite/mcp/tools/set_parameters.py:59-70`
 
 Currently: top-level keys are classified as `parameters` vs `cards` (QE card auto-routing, line 67), then passed through to `update_step_params()` with **no type checking, no section validation, no engine-specific rules**.
 
@@ -187,7 +187,7 @@ This would check QE parameters against the module metadata to warn when a parame
 
 ### 5.2 `inspect_calculation` preflight — already validates some things
 
-**File**: `src/quantumvitas/mcp/tools/inspect_calculation.py:106-111`
+**File**: `src/qmatsuite/mcp/tools/inspect_calculation.py:106-111`
 
 The QE preflight checker (`drivers/qe/preflight.py`) validates 20 rules across 3 severity levels. It checks parameter VALUES (ecutwfc range, conv_thr, smearing consistency) but does **not** check parameter SECTIONS (whether a param is in the right namelist).
 
@@ -213,7 +213,7 @@ for nl_name in ("CONTROL", "SYSTEM", "ELECTRONS", "IONS", "CELL"):
 
 ### 5.3 Input file writer — silent pass-through
 
-**File**: `src/quantumvitas/drivers/qe/inputspec.py:95-107`
+**File**: `src/qmatsuite/drivers/qe/inputspec.py:95-107`
 
 The QE writer iterates over known namelists in order (`CONTROL`, `SYSTEM`, `ELECTRONS`, `IONS`, `CELL`) and writes whatever parameters are in each. It does **not** check whether a parameter belongs in that namelist. A parameter in the wrong namelist will produce a syntactically valid but semantically incorrect input file.
 
@@ -229,7 +229,7 @@ QE's pw.x will either:
 
 ### 6.1 Current response format
 
-**File**: `src/quantumvitas/mcp/tools/search_parameters.py:36-43`
+**File**: `src/qmatsuite/mcp/tools/search_parameters.py:36-43`
 
 ```python
 results_out.append({
@@ -254,7 +254,7 @@ The agent sees `category: "ELECTRONS"` for QE's `diago_full_acc` but cannot dist
 
 ### 6.3 Proposed fix
 
-**File**: `src/quantumvitas/mcp/search_index.py`
+**File**: `src/qmatsuite/mcp/search_index.py`
 
 **Step 1**: Add a `section` field to `TagDoc`:
 
@@ -292,7 +292,7 @@ For all others: `section=""` (no section structure).
 
 **Step 3**: Return `section` in search results:
 
-**File**: `src/quantumvitas/mcp/tools/search_parameters.py:36-43`
+**File**: `src/qmatsuite/mcp/tools/search_parameters.py:36-43`
 
 ```python
 results_out.append({
@@ -348,7 +348,7 @@ context_hint=(
 
 ### 8.1 QE: the only multi-executable engine
 
-**File**: `src/quantumvitas/drivers/qe/step_types.py:6-127`
+**File**: `src/qmatsuite/drivers/qe/step_types.py:6-127`
 
 | Step Type | Gen Type | Executable | Parameter Space | Preset-Eligible |
 |-----------|----------|-----------|----------------|-----------------|
@@ -406,7 +406,7 @@ VASP has one flat INCAR. ABINIT has one flat input. ORCA has `!` keywords + `%` 
 
 ### 9.1 step_defaults.py — All parameters verified correct
 
-**File**: `src/quantumvitas/calculation/step_defaults.py:14-200`
+**File**: `src/qmatsuite/calculation/step_defaults.py:14-200`
 
 | Step Type | Lines | CONTROL | SYSTEM | ELECTRONS | IONS | Verified |
 |-----------|-------|---------|--------|-----------|------|----------|
@@ -422,7 +422,7 @@ VASP has one flat INCAR. ABINIT has one flat input. ORCA has `!` keywords + `%` 
 
 ### 9.2 QE namelist assignments (ground truth)
 
-From `src/quantumvitas/data/qe_module_parameters.json` (schema v3, pw module):
+From `src/qmatsuite/data/qe_module_parameters.json` (schema v3, pw module):
 
 | Namelist | Key Parameters (non-exhaustive) |
 |----------|-------------------------------|
@@ -437,26 +437,26 @@ From `src/quantumvitas/data/qe_module_parameters.json` (schema v3, pw module):
 ## 10. Recommended Implementation Order
 
 ### Priority 1: Fix occupations_scheme scope (Critical, ~5 min)
-- **File**: `src/quantumvitas/presets/variants_registry.py:49`
+- **File**: `src/qmatsuite/presets/variants_registry.py:49`
 - Add `"bandspw"` to `applies_to_step_types`
 - Update comment
 - Run preset regression tests
 
 ### Priority 2: Add `section` field to search_parameters (Medium, ~30 min)
-- **Files**: `src/quantumvitas/mcp/search_index.py`, `src/quantumvitas/mcp/tools/search_parameters.py`
+- **Files**: `src/qmatsuite/mcp/search_index.py`, `src/qmatsuite/mcp/tools/search_parameters.py`
 - Add `section` slot to `TagDoc`, populate from QE `namelist` and CP2K `section`
 - Return in search results
 - Update context_hint with QE nesting guidance
 
 ### Priority 3: Add PARAM_WRONG_SECTION preflight rule (Medium, ~1 hour)
-- **File**: `src/quantumvitas/drivers/qe/preflight.py`
+- **File**: `src/qmatsuite/drivers/qe/preflight.py`
 - Load QE metadata, build param→namelist lookup
 - For each parameter in each namelist, check if metadata says it belongs elsewhere
 - Emit `severity="warning"` PreflightIssue with corrective suggestion
 - Only for QE pw.x steps (already gated by `_PW_X_GEN_STEPS` in inspect_calculation.py:11)
 
 ### Priority 4: Add soft validation to set_parameters (Low, ~1 hour)
-- **File**: `src/quantumvitas/mcp/tools/set_parameters.py`
+- **File**: `src/qmatsuite/mcp/tools/set_parameters.py`
 - After parameter classification (line 70), if engine is QE:
   - Load module metadata for the step's module
   - For each parameter, check if it's in the right namelist
@@ -489,7 +489,7 @@ With fixes 1-3 above: (a) agent sees `section: "ELECTRONS"` and knows where to p
 
 ## Appendix B: QE Preflight Checker Current Rules
 
-**File**: `src/quantumvitas/drivers/qe/preflight.py:50-350`
+**File**: `src/qmatsuite/drivers/qe/preflight.py:50-350`
 
 | Code | Severity | What It Checks |
 |------|----------|---------------|
@@ -665,7 +665,7 @@ The search index (`search_index.py:152-168`) already indexes ORCA keywords and b
 
 ### 13.1 Current response format
 
-**File**: `src/quantumvitas/mcp/tools/set_parameters.py:80-100`
+**File**: `src/qmatsuite/mcp/tools/set_parameters.py:80-100`
 
 ```python
 return make_response({
@@ -907,26 +907,26 @@ This is the only code change needed for correct preset scope. No other dimension
 ## 10. Recommended Implementation Order (Updated)
 
 ### Priority 1: Fix occupations_scheme scope (Critical, ~5 min)
-- **File**: `src/quantumvitas/presets/variants_registry.py:49`
+- **File**: `src/qmatsuite/presets/variants_registry.py:49`
 - Add `"bandspw"` to `applies_to_step_types`
 - Update comment (remove incorrect "uses kpath, not occupations")
 - Run preset regression tests
 - **Confidence**: Very high — zero parameter overlap with precision_bandspw (proven in section 11.3), phase ordering preserved (section 11.2)
 
 ### Priority 2: Add `section` field to search_parameters (Medium, ~30 min)
-- **Files**: `src/quantumvitas/mcp/search_index.py`, `src/quantumvitas/mcp/tools/search_parameters.py`
+- **Files**: `src/qmatsuite/mcp/search_index.py`, `src/qmatsuite/mcp/tools/search_parameters.py`
 - Add `section` slot to `TagDoc`, populate from QE `namelist` and CP2K `section`
 - For ORCA: `section="keyword_line"` or `section="block:<name>"` (section 12.3)
 - Return in search results, update context_hint with QE nesting guidance
 
 ### Priority 3: Add PARAM_WRONG_SECTION preflight rule (Medium, ~1 hour)
-- **File**: `src/quantumvitas/drivers/qe/preflight.py`
+- **File**: `src/qmatsuite/drivers/qe/preflight.py`
 - Load QE metadata, build param→namelist lookup
 - Emit `severity="warning"` with corrective suggestion
 - Higher value than set_parameters validation because it catches all error sources (section 13.5)
 
 ### Priority 4: Add soft validation to set_parameters (Low, ~1 hour)
-- **File**: `src/quantumvitas/mcp/tools/set_parameters.py`
+- **File**: `src/qmatsuite/mcp/tools/set_parameters.py`
 - Add `validation_warnings` array with structured `suggested_fix` (section 13.3)
 - Lower priority than preflight — defense-in-depth, not primary gate
 

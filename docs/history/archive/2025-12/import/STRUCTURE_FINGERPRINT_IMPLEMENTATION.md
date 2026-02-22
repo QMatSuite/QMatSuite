@@ -3,28 +3,28 @@
 ## Completed Tasks
 
 ### Task A: Structure Fingerprint Module ✅
-- **File**: `src/quantumvitas/core/structure_fingerprint.py`
+- **File**: `src/qmatsuite/core/structure_fingerprint.py`
 - **Functions**:
   - `canonicalize_structure_for_identity()` - Wraps to [-WRAP_TOL, 1-WRAP_TOL) then snaps to [0,1)
   - `structure_fingerprint()` - Quantizes with tol=1e-5, sorts sites, hashes with SHA256
   - `structures_semantically_equal()` - Verification helper with tol=1e-5
 
 ### Task A2: Fingerprint Storage ✅
-- Fingerprint stored in structure metadata (`__qv_meta__["fingerprint"]`)
+- Fingerprint stored in structure metadata (`__qms_meta__["fingerprint"]`)
 - Survives snapshot export/import (metadata is preserved in JSON structure files)
 
-### Task A3: QVService Fingerprint Dedup ✅
-- **`QVService.import_structure()`**: Computes fingerprint, checks existing structures, reuses if match found
-- **`QVService.import_step_from_qe_input()`**: Uses fingerprint for dedup (with samefile fallback for optimization)
+### Task A3: QMSService Fingerprint Dedup ✅
+- **`QMSService.import_structure()`**: Computes fingerprint, checks existing structures, reuses if match found
+- **`QMSService.import_step_from_qe_input()`**: Uses fingerprint for dedup (with samefile fallback for optimization)
 
 ### Task B: Multi-Structure Calculations ✅
 - **`build_calculation_from_qe_inputs()`**: Removed single structure_id enforcement
 - Steps can now have different structure_ids (enables relax/vc-relax flows naturally)
 
 ### Task C: Global Folder Import API ✅
-- **File**: `src/quantumvitas/calculation/folder_import.py`
+- **File**: `src/qmatsuite/calculation/folder_import.py`
 - **Function**: `materialize_project_from_qe_input_folder()`
-- Discovers .in files, sorts by execution order, imports via QVService, exports to snapshot
+- Discovers .in files, sorts by execution order, imports via QMSService, exports to snapshot
 
 ## Remaining Tasks
 
@@ -41,7 +41,7 @@
 
 ### Task E: Tests
 - Fingerprint stability tests (tiny perturbations, unit/representation stability)
-- QVService dedup behavior tests
+- QMSService dedup behavior tests
 - Multi-structure calculation tests
 
 ## Key Design Decisions
@@ -53,10 +53,10 @@
 
 ## Files Modified
 
-1. `src/quantumvitas/core/structure_fingerprint.py` (NEW)
-2. `src/quantumvitas/api.py` (updated import_structure, import_step_from_qe_input)
-3. `src/quantumvitas/calculation/importers.py` (removed single structure_id enforcement)
-4. `src/quantumvitas/calculation/folder_import.py` (NEW)
+1. `src/qmatsuite/core/structure_fingerprint.py` (NEW)
+2. `src/qmatsuite/api.py` (updated import_structure, import_step_from_qe_input)
+3. `src/qmatsuite/calculation/importers.py` (removed single structure_id enforcement)
+4. `src/qmatsuite/calculation/folder_import.py` (NEW)
 
 ## Next Steps
 

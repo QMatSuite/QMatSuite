@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.vasp.engine.vasp_potcar import (
+from qmatsuite.drivers.vasp.engine.vasp_potcar import (
     POTCAR_LIBRARY_DIRS,
     get_default_potcar_root,
     list_available_potcars,

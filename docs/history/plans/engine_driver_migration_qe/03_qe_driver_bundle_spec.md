@@ -5,7 +5,7 @@
 ## Target Directory Structure
 
 ```
-src/quantumvitas/drivers/qe/
+src/qmatsuite/drivers/qe/
 ├── __init__.py                 # Driver registration + public exports
 ├── driver.py                   # QEDriver class (BaseEngineDriver)
 ├── step_types.py               # QE step type specifications
@@ -52,7 +52,7 @@ src/quantumvitas/drivers/qe/
 Quantum ESPRESSO engine driver with complete I/O, IR mapping, and execution support.
 """
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 
 from .driver import QEDriver
 
@@ -89,7 +89,7 @@ __all__ = [
 ```python
 """QE Driver implementation."""
 
-from quantumvitas.core.driver_protocol import BaseEngineDriver, StepTypeSpec, WorkdirPolicy
+from qmatsuite.core.driver_protocol import BaseEngineDriver, StepTypeSpec, WorkdirPolicy
 
 from .step_types import QE_STEP_TYPE_SPECS
 
@@ -161,7 +161,7 @@ class QEDriver(BaseEngineDriver):
 ```python
 """QE step type specifications."""
 
-from quantumvitas.core.driver_protocol import StepTypeSpec
+from qmatsuite.core.driver_protocol import StepTypeSpec
 
 
 QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
@@ -348,18 +348,18 @@ QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
 ### Contract 1: Public API Preservation
 ```python
 # These imports must continue to work after migration:
-from quantumvitas.io import QEModule, QECardType, QEInput
-from quantumvitas.io import QEInputParser, QEInputGenerator
-from quantumvitas.io import structure_from_qe_input
+from qmatsuite.io import QEModule, QECardType, QEInput
+from qmatsuite.io import QEInputParser, QEInputGenerator
+from qmatsuite.io import structure_from_qe_input
 
 # Achieved via re-exports in io/__init__.py:
-from quantumvitas.drivers.qe.io.model import QEModule, QECardType, ...
+from qmatsuite.drivers.qe.io.model import QEModule, QECardType, ...
 ```
 
 ### Contract 2: DriverRegistry Integration
 ```python
 # All QE operations must go through DriverRegistry:
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 
 # Get handler for step type
 handler = DriverRegistry.get_handler("qe_scf")
@@ -382,7 +382,7 @@ machine_type = DriverRegistry.materialize_step_type("qe", "GEN_SCF")
 ### Contract 4: IR Mapping
 ```python
 # IR compilation must produce identical QE input
-from quantumvitas.drivers.qe.ir.mapping import ir_to_qe_param
+from qmatsuite.drivers.qe.ir.mapping import ir_to_qe_param
 
 # This must work exactly as before:
 qe_module, qe_section, qe_key, qe_value = ir_to_qe_param("ecutwfc", 50.0)
@@ -397,7 +397,7 @@ qe_module, qe_section, qe_key, qe_value = ir_to_qe_param("ecutwfc", 50.0)
 
 | Parameter | Location | Value | Reason |
 |-----------|----------|-------|--------|
-| `prefix` | CONTROL | `"qv"` or `calc_slug` | Workspace isolation |
+| `prefix` | CONTROL | `"qms"` or `calc_slug` | Workspace isolation |
 | `outdir` | CONTROL | `"./outdir"` | Constitution §F |
 | `pseudo_dir` | CONTROL | `"./pseudo"` or project pseudo | Pseudo resolution |
 | `wfcdir` | CONTROL | `"./outdir"` | With outdir |

@@ -53,14 +53,14 @@ After EVERY PR or batch, the following must pass:
 
 ```bash
 # 1. Compile check
-python -m py_compile src/quantumvitas/cli/main.py
-python -m py_compile src/quantumvitas/daemon/server.py
-python -m py_compile src/quantumvitas/api.py
+python -m py_compile src/qmatsuite/cli/main.py
+python -m py_compile src/qmatsuite/daemon/server.py
+python -m py_compile src/qmatsuite/api.py
 
 # 2. Import check
-python -c "from quantumvitas.cli.main import app; print('CLI OK')"
-python -c "from quantumvitas.daemon.server import QVDaemon; print('Daemon OK')"
-python -c "from quantumvitas.api import QVService; print('API OK')"
+python -c "from qmatsuite.cli.main import app; print('CLI OK')"
+python -c "from qmatsuite.daemon.server import QMSDaemon; print('Daemon OK')"
+python -c "from qmatsuite.api import QMSService; print('API OK')"
 
 # 3. Full test suite
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
@@ -148,12 +148,12 @@ They detect IMPORTS, not method calls.
 
 CRITICAL: These must NOT false-positive on legitimate method calls like:
     svc.resolve_calculation(...)  # OK - method call
-    QVService().resolve_calculation(...)  # OK - method call
+    QMSService().resolve_calculation(...)  # OK - method call
 
 They SHOULD catch:
-    from quantumvitas.core.resolution import resolve_calculation  # FORBIDDEN
-    import quantumvitas.core.resolution  # FORBIDDEN
-    from quantumvitas.core import resolution  # FORBIDDEN
+    from qmatsuite.core.resolution import resolve_calculation  # FORBIDDEN
+    import qmatsuite.core.resolution  # FORBIDDEN
+    from qmatsuite.core import resolution  # FORBIDDEN
 """
 
 import subprocess
@@ -168,10 +168,10 @@ def _find_forbidden_imports(source_dir: str, forbidden_modules: list[str]) -> li
     Find forbidden imports using ripgrep.
 
     Detects:
-    - from quantumvitas.X import ...
-    - from quantumvitas.X.Y import ...
-    - import quantumvitas.X
-    - import quantumvitas.X.Y
+    - from qmatsuite.X import ...
+    - from qmatsuite.X.Y import ...
+    - import qmatsuite.X
+    - import qmatsuite.X.Y
 
     Does NOT detect method calls like svc.resolve_calculation().
     """
@@ -181,12 +181,12 @@ def _find_forbidden_imports(source_dir: str, forbidden_modules: list[str]) -> li
 
     violations = []
     for module in forbidden_modules:
-        # Pattern 1: from quantumvitas.module import ...
-        # Pattern 2: from quantumvitas.module.submodule import ...
-        # Pattern 3: import quantumvitas.module
+        # Pattern 1: from qmatsuite.module import ...
+        # Pattern 2: from qmatsuite.module.submodule import ...
+        # Pattern 3: import qmatsuite.module
         patterns = [
-            f"^from quantumvitas\\.{module}(\\.|\\s)",
-            f"^import quantumvitas\\.{module}(\\.|\\s|$)",
+            f"^from qmatsuite\\.{module}(\\.|\\s)",
+            f"^import qmatsuite\\.{module}(\\.|\\s|$)",
         ]
 
         for pattern in patterns:
@@ -212,7 +212,7 @@ class TestFrontendImportRules:
     def test_cli_no_kernel_imports(self):
         """cli/* must not import from kernel modules."""
         # Check both old and new locations
-        for source_dir in ["src/quantumvitas/cli", "src/quantumvitas/frontends/cli"]:
+        for source_dir in ["src/qmatsuite/cli", "src/qmatsuite/frontends/cli"]:
             violations = _find_forbidden_imports(source_dir, self.KERNEL_MODULES)
             # Filter out any in-progress migration markers
             violations = [v for v in violations if "# MIGRATION:" not in v]
@@ -222,7 +222,7 @@ class TestFrontendImportRules:
 
     def test_daemon_no_kernel_imports(self):
         """daemon/* must not import from kernel modules."""
-        for source_dir in ["src/quantumvitas/daemon", "src/quantumvitas/frontends/daemon"]:
+        for source_dir in ["src/qmatsuite/daemon", "src/qmatsuite/frontends/daemon"]:
             violations = _find_forbidden_imports(source_dir, self.KERNEL_MODULES)
             violations = [v for v in violations if "# MIGRATION:" not in v]
             assert violations == [], (
@@ -232,7 +232,7 @@ class TestFrontendImportRules:
     def test_notebook_no_kernel_imports(self):
         """notebook/* must not import from kernel modules."""
         violations = _find_forbidden_imports(
-            "src/quantumvitas/frontends/notebook",
+            "src/qmatsuite/frontends/notebook",
             self.KERNEL_MODULES
         )
         assert violations == [], (
@@ -248,7 +248,7 @@ class TestToolsImportRules:
     def test_tools_no_kernel_imports(self):
         """tools/* must not import from kernel modules."""
         violations = _find_forbidden_imports(
-            "src/quantumvitas/tools",
+            "src/qmatsuite/tools",
             self.KERNEL_MODULES
         )
         assert violations == [], (
@@ -262,7 +262,7 @@ class TestAPIImportRules:
     def test_api_no_frontend_imports(self):
         """api/* must not import from frontends/*."""
         violations = _find_forbidden_imports(
-            "src/quantumvitas/api",
+            "src/qmatsuite/api",
             ["frontends", "cli", "daemon"]
         )
         assert violations == [], (
@@ -280,7 +280,7 @@ class TestImportabilitySmoke:
     def test_cli_importable(self):
         """CLI must be importable."""
         result = subprocess.run(
-            ["python", "-c", "from quantumvitas.cli.main import app; print('OK')"],
+            ["python", "-c", "from qmatsuite.cli.main import app; print('OK')"],
             capture_output=True,
             text=True,
             cwd=PROJECT_ROOT,
@@ -292,7 +292,7 @@ class TestImportabilitySmoke:
     def test_daemon_importable(self):
         """Daemon must be importable."""
         result = subprocess.run(
-            ["python", "-c", "from quantumvitas.daemon.server import QVDaemon; print('OK')"],
+            ["python", "-c", "from qmatsuite.daemon.server import QMSDaemon; print('OK')"],
             capture_output=True,
             text=True,
             cwd=PROJECT_ROOT,
@@ -304,7 +304,7 @@ class TestImportabilitySmoke:
     def test_api_importable(self):
         """API must be importable."""
         result = subprocess.run(
-            ["python", "-c", "from quantumvitas.api import QVService; print('OK')"],
+            ["python", "-c", "from qmatsuite.api import QMSService; print('OK')"],
             capture_output=True,
             text=True,
             cwd=PROJECT_ROOT,
@@ -316,7 +316,7 @@ class TestImportabilitySmoke:
     def test_package_importable(self):
         """Main package must be importable."""
         result = subprocess.run(
-            ["python", "-c", "import quantumvitas; print('OK')"],
+            ["python", "-c", "import qmatsuite; print('OK')"],
             capture_output=True,
             text=True,
             cwd=PROJECT_ROOT,
@@ -354,7 +354,7 @@ find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 
 # If .qmatsuite was accidentally deleted
-# Re-run: qv engines install qe  (may take 10+ minutes)
+# Re-run: qms engines install qe  (may take 10+ minutes)
 ```
 
 ## Verification Commands
@@ -363,9 +363,9 @@ After any refactor, run:
 
 ```bash
 # Quick smoke
-python -c "from quantumvitas.cli.main import app"
-python -c "from quantumvitas.daemon.server import QVDaemon"
-python -c "from quantumvitas.api import QVService"
+python -c "from qmatsuite.cli.main import app"
+python -c "from qmatsuite.daemon.server import QMSDaemon"
+python -c "from qmatsuite.api import QMSService"
 
 # Full suite
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
@@ -379,9 +379,9 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 python -m pytest tests/gates/test_import_rules.py -v
 
 # 2. Importability smoke passes
-python -c "from quantumvitas.cli.main import app; print('CLI OK')"
-python -c "from quantumvitas.daemon.server import QVDaemon; print('Daemon OK')"
-python -c "from quantumvitas.api import QVService; print('API OK')"
+python -c "from qmatsuite.cli.main import app; print('CLI OK')"
+python -c "from qmatsuite.daemon.server import QMSDaemon; print('Daemon OK')"
+python -c "from qmatsuite.api import QMSService; print('API OK')"
 
 # 3. Full suite passes
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
@@ -408,7 +408,7 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 
 **Output**: A checklist in this PR description of methods to add.
 
-**Current QVService methods to verify**:
+**Current QMSService methods to verify**:
 - `run_calculation(calc_selector)`
 - `run_step(calc_selector, step_selector)`
 - `list_calculations()`
@@ -421,7 +421,7 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 - `resolve_calculation_ref(selector) -> CalculationRef` - returns ref object
 - `resolve_step_ref(calc_selector, step_selector) -> StepRef` - returns ref object
 - `resolve_structure_ref(selector) -> StructureRef` - returns ref object
-- `load_project_config() -> dict` - loads project.qv.yml
+- `load_project_config() -> dict` - loads project.qms.yml
 - `get_context_from_cwd(cwd: Path) -> dict` - context detection
 - `get_engine_registry() -> EngineRegistry` - engine access
 - `validate_step_params(step_selector, params) -> ValidationResult`
@@ -429,12 +429,12 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 
 ### PR 1.2: Add Resolution Methods to API
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 
-**Add these methods to QVService class** (do NOT remove existing code):
+**Add these methods to QMSService class** (do NOT remove existing code):
 
 ```python
-# Add after existing methods in QVService class
+# Add after existing methods in QMSService class
 
 def resolve_calculation_ref(self, selector: str) -> "CalculationRef":
     """
@@ -450,16 +450,16 @@ def resolve_calculation_ref(self, selector: str) -> "CalculationRef":
         CalculationRef object
 
     Raises:
-        QVServiceError: If calculation not found
+        QMSServiceError: If calculation not found
     """
-    from quantumvitas.core.resolution import resolve_calculation
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.resolution import resolve_calculation
+    from qmatsuite.core.project_utils import load_project_config
 
     config = load_project_config(self.project_root)
     try:
         return resolve_calculation(self.project_root, selector, config=config)
     except Exception as e:
-        raise QVServiceError(f"Failed to resolve calculation '{selector}': {e}") from e
+        raise QMSServiceError(f"Failed to resolve calculation '{selector}': {e}") from e
 
 def resolve_step_ref(self, calc_selector: str, step_selector: str) -> "StepRef":
     """
@@ -472,14 +472,14 @@ def resolve_step_ref(self, calc_selector: str, step_selector: str) -> "StepRef":
     Returns:
         StepRef object
     """
-    from quantumvitas.core.resolution import resolve_step
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.resolution import resolve_step
+    from qmatsuite.core.project_utils import load_project_config
 
     config = load_project_config(self.project_root)
     try:
         return resolve_step(self.project_root, calc_selector, step_selector, config=config)
     except Exception as e:
-        raise QVServiceError(f"Failed to resolve step '{calc_selector}/{step_selector}': {e}") from e
+        raise QMSServiceError(f"Failed to resolve step '{calc_selector}/{step_selector}': {e}") from e
 
 def resolve_structure_ref(self, selector: str) -> "StructureRef":
     """
@@ -491,23 +491,23 @@ def resolve_structure_ref(self, selector: str) -> "StructureRef":
     Returns:
         StructureRef object
     """
-    from quantumvitas.core.resolution import resolve_structure
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.resolution import resolve_structure
+    from qmatsuite.core.project_utils import load_project_config
 
     config = load_project_config(self.project_root)
     try:
         return resolve_structure(self.project_root, selector, config=config)
     except Exception as e:
-        raise QVServiceError(f"Failed to resolve structure '{selector}': {e}") from e
+        raise QMSServiceError(f"Failed to resolve structure '{selector}': {e}") from e
 
 def load_project_config(self) -> dict:
     """
-    Load project.qv.yml configuration.
+    Load project.qms.yml configuration.
 
     Returns:
         Project configuration dict
     """
-    from quantumvitas.core.project_utils import load_project_config as _load_config
+    from qmatsuite.core.project_utils import load_project_config as _load_config
     return _load_config(self.project_root)
 
 def get_context_from_cwd(self, cwd: Path = None) -> dict:
@@ -520,7 +520,7 @@ def get_context_from_cwd(self, cwd: Path = None) -> dict:
     Returns:
         Context dict with keys: project_root, calculation, step, etc.
     """
-    from quantumvitas.core.context import find_path_context_from_pwd
+    from qmatsuite.core.context import find_path_context_from_pwd
     if cwd is None:
         cwd = Path.cwd()
     return find_path_context_from_pwd(cwd)
@@ -532,7 +532,7 @@ def get_engine_registry(self) -> "EngineRegistry":
     Returns:
         EngineRegistry instance
     """
-    from quantumvitas.engine.registry import create_default_registry
+    from qmatsuite.engine.registry import create_default_registry
     return create_default_registry()
 
 def configure_step(
@@ -563,8 +563,8 @@ def configure_step(
         return {"success": True, "changes": params, "warnings": []}
 
     # Apply changes
-    from quantumvitas.core.yamldoc import StepDoc
-    from quantumvitas.core.yaml_io import load_yaml_doc, save_yaml_doc
+    from qmatsuite.core.yamldoc import StepDoc
+    from qmatsuite.core.yaml_io import load_yaml_doc, save_yaml_doc
 
     step_path = step_ref.absolute_path
     doc = load_yaml_doc(StepDoc, step_path)
@@ -599,13 +599,13 @@ class TestAPIResolutionMethods:
     def demo_project(self, tmp_path):
         """Create a minimal demo project."""
         # Use existing demo or create minimal fixture
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
 
         project_root = tmp_path / "test_project"
         project_root.mkdir()
 
-        # Create minimal project.qv.yml
-        (project_root / "project.qv.yml").write_text("""
+        # Create minimal project.qms.yml
+        (project_root / "project.qms.yml").write_text("""
 project:
   name: test_project
 structures: []
@@ -615,18 +615,18 @@ calculations: []
 
     def test_load_project_config(self, demo_project):
         """API can load project config."""
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
 
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
         config = svc.load_project_config()
         assert "project" in config
 
     def test_get_context_from_cwd(self, demo_project):
         """API can detect context from cwd."""
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         import os
 
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
 
         # Change to project dir
         old_cwd = os.getcwd()
@@ -644,8 +644,8 @@ calculations: []
 ```bash
 # 1. API is importable with new methods
 python -c "
-from quantumvitas.api import QVService
-svc = QVService.__new__(QVService)
+from qmatsuite.api import QMSService
+svc = QMSService.__new__(QMSService)
 # Check methods exist
 assert hasattr(svc, 'resolve_calculation_ref')
 assert hasattr(svc, 'resolve_step_ref')
@@ -656,8 +656,8 @@ print('API methods OK')
 "
 
 # 2. Importability smoke
-python -c "from quantumvitas.cli.main import app; print('CLI OK')"
-python -c "from quantumvitas.daemon.server import QVDaemon; print('Daemon OK')"
+python -c "from qmatsuite.cli.main import app; print('CLI OK')"
+python -c "from qmatsuite.daemon.server import QMSDaemon; print('Daemon OK')"
 
 # 3. Full suite
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
@@ -683,24 +683,24 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 
 **Command**:
 ```bash
-rg "^from quantumvitas\.(core|calculation|drivers|analysis|io)" src/quantumvitas/daemon/
-rg "^import quantumvitas\.(core|calculation|drivers|analysis|io)" src/quantumvitas/daemon/
+rg "^from qmatsuite\.(core|calculation|drivers|analysis|io)" src/qmatsuite/daemon/
+rg "^import qmatsuite\.(core|calculation|drivers|analysis|io)" src/qmatsuite/daemon/
 ```
 
 **Expected findings** (from earlier audit):
-- `from quantumvitas.core.exceptions import LegacyProjectError`
-- `from quantumvitas.core.resolution import resolve_calculation, ...`
-- `from quantumvitas.core.project_utils import load_project_config`
+- `from qmatsuite.core.exceptions import LegacyProjectError`
+- `from qmatsuite.core.resolution import resolve_calculation, ...`
+- `from qmatsuite.core.project_utils import load_project_config`
 
 ### PR 2.2: Migrate Daemon Resolution Calls
 
-**File**: `src/quantumvitas/daemon/server.py`
+**File**: `src/qmatsuite/daemon/server.py`
 
 **Strategy**: ONE FUNCTION AT A TIME with compile check.
 
 **Step 1**: Add API import at top (keep existing imports for now):
 ```python
-from quantumvitas.api import QVService, QVServiceError
+from qmatsuite.api import QMSService, QMSServiceError
 ```
 
 **Step 2**: For EACH function that calls resolution:
@@ -714,59 +714,59 @@ def _handle_get_calculation(self, params):
 
 # AFTER:
 def _handle_get_calculation(self, params):
-    svc = QVService(self.project_root)
+    svc = QMSService(self.project_root)
     calc_ref = svc.resolve_calculation_ref(params["selector"])
     return calc_ref.to_dict()
 ```
 
 **After EACH function edit**:
 ```bash
-python -m py_compile src/quantumvitas/daemon/server.py
-python -c "from quantumvitas.daemon.server import QVDaemon; print('OK')"
+python -m py_compile src/qmatsuite/daemon/server.py
+python -c "from qmatsuite.daemon.server import QMSDaemon; print('OK')"
 ```
 
 **Step 3**: After ALL functions migrated, remove unused imports:
 ```python
 # REMOVE these lines:
-from quantumvitas.core.resolution import resolve_calculation, resolve_step, ...
-from quantumvitas.core.project_utils import load_project_config
+from qmatsuite.core.resolution import resolve_calculation, resolve_step, ...
+from qmatsuite.core.project_utils import load_project_config
 ```
 
 ### PR 2.3: Migrate Daemon Exception Handling
 
 **Current**:
 ```python
-from quantumvitas.core.exceptions import LegacyProjectError
+from qmatsuite.core.exceptions import LegacyProjectError
 ```
 
 **Options**:
 1. Re-export `LegacyProjectError` from `api.py`
-2. Catch generic `QVServiceError` instead
+2. Catch generic `QMSServiceError` instead
 
 **Preferred**: Re-export from API:
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 ```python
 # Add to imports section
-from quantumvitas.core.exceptions import LegacyProjectError
+from qmatsuite.core.exceptions import LegacyProjectError
 
 # Add to __all__ if exists
 ```
 
 **Then in daemon**:
 ```python
-from quantumvitas.api import QVService, QVServiceError, LegacyProjectError
+from qmatsuite.api import QMSService, QMSServiceError, LegacyProjectError
 ```
 
 ### Acceptance Criteria (Batch 2)
 
 ```bash
 # 1. No forbidden imports in daemon
-rg "^from quantumvitas\.(core|calculation|drivers)" src/quantumvitas/daemon/
+rg "^from qmatsuite\.(core|calculation|drivers)" src/qmatsuite/daemon/
 # Expected: 0 matches (or only re-exports via api)
 
 # 2. Daemon importable
-python -c "from quantumvitas.daemon.server import QVDaemon; print('Daemon OK')"
+python -c "from qmatsuite.daemon.server import QMSDaemon; print('Daemon OK')"
 
 # 3. Gates pass
 python -m pytest tests/gates/test_import_rules.py -v
@@ -791,20 +791,20 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 
 ### CLI Deep Review
 
-**File**: `src/quantumvitas/cli/main.py` (~4000 lines, ~189KB)
+**File**: `src/qmatsuite/cli/main.py` (~4000 lines, ~189KB)
 
 **Current forbidden imports** (from audit):
 ```python
-from quantumvitas.core.resources import (...)           # ~8 imports
-from quantumvitas.core.context import (...)             # ~2 imports
-from quantumvitas.core.exceptions import (...)          # ~1 import
-from quantumvitas.core.resolution import (...)          # ~7 imports
-from quantumvitas.core.selectors import (...)           # ~6 imports
-from quantumvitas.core.project_utils import (...)       # ~19 imports
-from quantumvitas.analysis import bands, dos, energy
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.calculation.calculation import Calculation
+from qmatsuite.core.resources import (...)           # ~8 imports
+from qmatsuite.core.context import (...)             # ~2 imports
+from qmatsuite.core.exceptions import (...)          # ~1 import
+from qmatsuite.core.resolution import (...)          # ~7 imports
+from qmatsuite.core.selectors import (...)           # ~6 imports
+from qmatsuite.core.project_utils import (...)       # ~19 imports
+from qmatsuite.analysis import bands, dos, energy
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.calculation.calculation import Calculation
 ```
 
 **High-risk areas** (most uses of forbidden imports):
@@ -829,14 +829,14 @@ from quantumvitas.calculation.calculation import Calculation
 
 **Purpose**: Mark imports that are being migrated to prevent accidental removal.
 
-**File**: `src/quantumvitas/cli/main.py`
+**File**: `src/qmatsuite/cli/main.py`
 
 **Add comment markers to imports**:
 ```python
 # === MIGRATION ZONE START ===
 # These imports will be migrated to use API in Batch 4.
 # Do NOT remove until migration complete.
-from quantumvitas.core.resolution import (  # MIGRATION: PR 4.x
+from qmatsuite.core.resolution import (  # MIGRATION: PR 4.x
     resolve_calculation,
     resolve_step,
     ...
@@ -853,7 +853,7 @@ from quantumvitas.core.resolution import (  # MIGRATION: PR 4.x
 def test_cli_compiles(self):
     """CLI must compile without syntax errors."""
     result = subprocess.run(
-        ["python", "-m", "py_compile", "src/quantumvitas/cli/main.py"],
+        ["python", "-m", "py_compile", "src/qmatsuite/cli/main.py"],
         capture_output=True,
         text=True,
         cwd=PROJECT_ROOT,
@@ -867,14 +867,14 @@ def test_cli_compiles(self):
 
 ```bash
 # 1. Migration markers added
-rg "MIGRATION:" src/quantumvitas/cli/main.py | head -5
+rg "MIGRATION:" src/qmatsuite/cli/main.py | head -5
 # Expected: Shows migration markers
 
 # 2. CLI compiles
-python -m py_compile src/quantumvitas/cli/main.py
+python -m py_compile src/qmatsuite/cli/main.py
 
 # 3. CLI importable
-python -c "from quantumvitas.cli.main import app; print('CLI OK')"
+python -c "from qmatsuite.cli.main import app; print('CLI OK')"
 
 # 4. Full suite
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
@@ -911,16 +911,16 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 **Pattern**:
 ```python
 # BEFORE:
-from quantumvitas.core.context import find_path_context_from_pwd
+from qmatsuite.core.context import find_path_context_from_pwd
 def _get_project_root():
     ctx = find_path_context_from_pwd(Path.cwd())
     return ctx.get("project_root")
 
 # AFTER:
 def _get_project_root():
-    # Note: We need project_root to create QVService, but we're detecting it.
+    # Note: We need project_root to create QMSService, but we're detecting it.
     # This is a bootstrap case - keep the import for now or use a standalone helper.
-    from quantumvitas.core.context import find_path_context_from_pwd
+    from qmatsuite.core.context import find_path_context_from_pwd
     ctx = find_path_context_from_pwd(Path.cwd())
     return ctx.get("project_root")
 ```
@@ -946,15 +946,15 @@ def list_calculations():
 # AFTER:
 @app.command()
 def list_calculations():
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     for calc in svc.list_calculations():
         print(calc.name)
 ```
 
 **After EACH function**:
 ```bash
-python -m py_compile src/quantumvitas/cli/main.py
-python -c "from quantumvitas.cli.main import app; print('OK')"
+python -m py_compile src/qmatsuite/cli/main.py
+python -c "from qmatsuite.cli.main import app; print('OK')"
 ```
 
 ### PR 4.3: Migrate show_* Commands
@@ -979,15 +979,15 @@ Similar pattern to list_* commands.
 
 ```python
 # REMOVE these lines (verify no uses first):
-# from quantumvitas.core.resolution import ...
-# from quantumvitas.core.project_utils import ...
+# from qmatsuite.core.resolution import ...
+# from qmatsuite.core.project_utils import ...
 # etc.
 ```
 
 **Verify no uses**:
 ```bash
 # For each symbol being removed:
-rg "resolve_calculation" src/quantumvitas/cli/main.py
+rg "resolve_calculation" src/qmatsuite/cli/main.py
 # Should show only the import line (which we're removing)
 # or svc.resolve_calculation_ref() calls (which are fine)
 ```
@@ -1003,26 +1003,26 @@ rg "resolve_calculation" src/quantumvitas/cli/main.py
 
 **If you get IndentationError**:
 1. STOP immediately
-2. `git diff src/quantumvitas/cli/main.py` to see damage
-3. If damage is extensive: `git checkout src/quantumvitas/cli/main.py`
+2. `git diff src/qmatsuite/cli/main.py` to see damage
+3. If damage is extensive: `git checkout src/qmatsuite/cli/main.py`
 4. Start over with smaller edits
 
 ### Acceptance Criteria (Batch 4)
 
 ```bash
 # 1. No forbidden imports (except bootstrap context detection)
-rg "^from quantumvitas\.(core|calculation|drivers)" src/quantumvitas/cli/main.py | grep -v "BOOTSTRAP"
+rg "^from qmatsuite\.(core|calculation|drivers)" src/qmatsuite/cli/main.py | grep -v "BOOTSTRAP"
 # Expected: 0 matches
 
 # 2. CLI compiles
-python -m py_compile src/quantumvitas/cli/main.py
+python -m py_compile src/qmatsuite/cli/main.py
 
 # 3. CLI importable
-python -c "from quantumvitas.cli.main import app; print('CLI OK')"
+python -c "from qmatsuite.cli.main import app; print('CLI OK')"
 
 # 4. CLI works
-qv --help
-qv list --help
+qms --help
+qms list --help
 
 # 5. Gates pass
 python -m pytest tests/gates/test_import_rules.py -v
@@ -1050,20 +1050,20 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ### PR 5.1: Create frontends/ Structure
 
 ```bash
-mkdir -p src/quantumvitas/frontends/_shared
-mkdir -p src/quantumvitas/frontends/cli
-mkdir -p src/quantumvitas/frontends/daemon
-mkdir -p src/quantumvitas/frontends/notebook
-mkdir -p src/quantumvitas/frontends/agent
+mkdir -p src/qmatsuite/frontends/_shared
+mkdir -p src/qmatsuite/frontends/cli
+mkdir -p src/qmatsuite/frontends/daemon
+mkdir -p src/qmatsuite/frontends/notebook
+mkdir -p src/qmatsuite/frontends/agent
 
-echo '"""Frontend layers for QMatSuite."""' > src/quantumvitas/frontends/__init__.py
+echo '"""Frontend layers for QMatSuite."""' > src/qmatsuite/frontends/__init__.py
 ```
 
 ### PR 5.2: Move Daemon
 
 ```bash
-git mv src/quantumvitas/daemon/server.py src/quantumvitas/frontends/daemon/server.py
-git mv src/quantumvitas/daemon/jobs.py src/quantumvitas/frontends/daemon/jobs.py
+git mv src/qmatsuite/daemon/server.py src/qmatsuite/frontends/daemon/server.py
+git mv src/qmatsuite/daemon/jobs.py src/qmatsuite/frontends/daemon/jobs.py
 # Update imports in moved files
 # Create shim at old location
 ```
@@ -1071,8 +1071,8 @@ git mv src/quantumvitas/daemon/jobs.py src/quantumvitas/frontends/daemon/jobs.py
 ### PR 5.3: Move CLI
 
 ```bash
-git mv src/quantumvitas/cli/main.py src/quantumvitas/frontends/cli/app.py
-git mv src/quantumvitas/cli/__main__.py src/quantumvitas/frontends/cli/__main__.py
+git mv src/qmatsuite/cli/main.py src/qmatsuite/frontends/cli/app.py
+git mv src/qmatsuite/cli/__main__.py src/qmatsuite/frontends/cli/__main__.py
 # Update imports in moved files
 # Create shim at old location
 # Update pyproject.toml entry point
@@ -1080,18 +1080,18 @@ git mv src/quantumvitas/cli/__main__.py src/quantumvitas/frontends/cli/__main__.
 
 ### PR 5.4: Create Notebook Frontend
 
-Create `src/quantumvitas/frontends/notebook/` with display helpers.
+Create `src/qmatsuite/frontends/notebook/` with display helpers.
 
 ### Acceptance Criteria (Batch 5)
 
 ```bash
 # 1. New locations importable
-python -c "from quantumvitas.frontends.cli import app; print('OK')"
-python -c "from quantumvitas.frontends.daemon import QVDaemon; print('OK')"
+python -c "from qmatsuite.frontends.cli import app; print('OK')"
+python -c "from qmatsuite.frontends.daemon import QMSDaemon; print('OK')"
 
 # 2. Old locations still work (shims)
-python -c "from quantumvitas.cli import app; print('OK')"
-python -c "from quantumvitas.daemon import QVDaemon; print('OK')"
+python -c "from qmatsuite.cli import app; print('OK')"
+python -c "from qmatsuite.daemon import QMSDaemon; print('OK')"
 
 # 3. Full suite
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
@@ -1120,7 +1120,7 @@ git mv tools scripts
 
 ### PR 6.2: Create tools/ Surface (Python Package)
 
-Create `src/quantumvitas/tools/` with agent-ready primitives.
+Create `src/qmatsuite/tools/` with agent-ready primitives.
 
 ### PR 6.3: Remove Compatibility Shims (Optional)
 
@@ -1132,23 +1132,23 @@ After deprecation period, remove shims at old locations.
 # === Complete Audit ===
 
 # 1. No forbidden imports in frontends
-rg "^from quantumvitas\.(core|calculation|drivers|analysis|io)" src/quantumvitas/frontends/
+rg "^from qmatsuite\.(core|calculation|drivers|analysis|io)" src/qmatsuite/frontends/
 # Expected: 0 matches
 
 # 2. No forbidden imports in tools
-rg "^from quantumvitas\.(core|calculation|drivers)" src/quantumvitas/tools/
+rg "^from qmatsuite\.(core|calculation|drivers)" src/qmatsuite/tools/
 # Expected: 0 matches
 
 # 3. All importability checks
-python -c "from quantumvitas.frontends.cli import app; print('CLI OK')"
-python -c "from quantumvitas.frontends.daemon import QVDaemon; print('Daemon OK')"
-python -c "from quantumvitas.frontends.notebook import display_bands; print('Notebook OK')"
-python -c "from quantumvitas.tools import discover, run_calc; print('Tools OK')"
-python -c "from quantumvitas.api import QVService; print('API OK')"
+python -c "from qmatsuite.frontends.cli import app; print('CLI OK')"
+python -c "from qmatsuite.frontends.daemon import QMSDaemon; print('Daemon OK')"
+python -c "from qmatsuite.frontends.notebook import display_bands; print('Notebook OK')"
+python -c "from qmatsuite.tools import discover, run_calc; print('Tools OK')"
+python -c "from qmatsuite.api import QMSService; print('API OK')"
 
 # 4. CLI works
-qv --help
-qv list calcs --help
+qms --help
+qms list calcs --help
 
 # 5. Full suite
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
@@ -1178,10 +1178,10 @@ echo "=== REFACTOR COMPLETE ==="
 
 ```python
 # FORBIDDEN - direct imports from kernel
-from quantumvitas.core.resolution import resolve_calculation  # CATCH THIS
-from quantumvitas.core import resolution  # CATCH THIS
-import quantumvitas.core.resolution  # CATCH THIS
-from quantumvitas.calculation.runner import CalculationRunner  # CATCH THIS
+from qmatsuite.core.resolution import resolve_calculation  # CATCH THIS
+from qmatsuite.core import resolution  # CATCH THIS
+import qmatsuite.core.resolution  # CATCH THIS
+from qmatsuite.calculation.runner import CalculationRunner  # CATCH THIS
 ```
 
 ### What Gates Should NOT Detect
@@ -1189,10 +1189,10 @@ from quantumvitas.calculation.runner import CalculationRunner  # CATCH THIS
 ```python
 # ALLOWED - method calls on API objects
 svc.resolve_calculation_ref(...)  # DO NOT CATCH
-result = QVService(root).resolve_calculation_ref(...)  # DO NOT CATCH
+result = QMSService(root).resolve_calculation_ref(...)  # DO NOT CATCH
 
 # ALLOWED - re-exports from API
-from quantumvitas.api import LegacyProjectError  # DO NOT CATCH (re-exported)
+from qmatsuite.api import LegacyProjectError  # DO NOT CATCH (re-exported)
 ```
 
 ### Gate Pattern Implementation
@@ -1201,8 +1201,8 @@ Use **import-based detection**, not method-name detection:
 
 ```python
 # CORRECT gate pattern
-r"^from quantumvitas\.core"  # Matches import statements only
-r"^import quantumvitas\.core"  # Matches import statements only
+r"^from qmatsuite\.core"  # Matches import statements only
+r"^import qmatsuite\.core"  # Matches import statements only
 
 # WRONG gate pattern (v1 mistake)
 r"resolve_calculation\("  # Matches method calls too - FALSE POSITIVE
@@ -1214,7 +1214,7 @@ r"resolve_calculation\("  # Matches method calls too - FALSE POSITIVE
 
 ### Undo a single file
 ```bash
-git checkout HEAD -- src/quantumvitas/cli/main.py
+git checkout HEAD -- src/qmatsuite/cli/main.py
 ```
 
 ### Undo all uncommitted changes
@@ -1244,8 +1244,8 @@ Use this checklist when migrating each CLI function:
 [ ] Identify which core imports it uses
 [ ] Check API has equivalent method
 [ ] Edit function (ONE function only)
-[ ] Run: python -m py_compile src/quantumvitas/cli/main.py
-[ ] Run: python -c "from quantumvitas.cli.main import app"
+[ ] Run: python -m py_compile src/qmatsuite/cli/main.py
+[ ] Run: python -c "from qmatsuite.cli.main import app"
 [ ] Run: python -m pytest tests/gates/test_import_rules.py -v
 [ ] Commit changes
 [ ] Repeat for next function
@@ -1266,18 +1266,18 @@ Some imports MUST stay in frontends because they're needed BEFORE we have a proj
 Bootstrap utilities that frontends may import.
 
 These are the ONLY kernel imports allowed in frontends.
-They are needed before QVService can be instantiated.
+They are needed before QMSService can be instantiated.
 """
 
-from quantumvitas.core.context import find_path_context_from_pwd
-from quantumvitas.core.exceptions import LegacyProjectError
+from qmatsuite.core.context import find_path_context_from_pwd
+from qmatsuite.core.exceptions import LegacyProjectError
 
 __all__ = ["find_path_context_from_pwd", "LegacyProjectError"]
 ```
 
 Then frontends import from `_shared`:
 ```python
-from quantumvitas.frontends._shared.bootstrap import find_path_context_from_pwd
+from qmatsuite.frontends._shared.bootstrap import find_path_context_from_pwd
 ```
 
 Gate tests exclude `_shared/bootstrap.py` from forbidden import checks.
@@ -1291,8 +1291,8 @@ Gate tests exclude `_shared/bootstrap.py` from forbidden import checks.
 
 ### Final State
 
-- ✅ **CLI**: 0 violations (all kernel imports migrated to `quantumvitas.api`)
-- ✅ **Daemon**: 0 violations (all kernel imports migrated to `quantumvitas.api`)
+- ✅ **CLI**: 0 violations (all kernel imports migrated to `qmatsuite.api`)
+- ✅ **Daemon**: 0 violations (all kernel imports migrated to `qmatsuite.api`)
 - ✅ **Gates**: Enforced by default (opt-out via `QMATSUITE_RELAX_ARCH_GATES=1`)
 - ✅ **Full test suite**: All tests pass (2458+ passed, 2 skipped)
 - ✅ **Audit scripts**: Deterministic outputs in `.audit/` directory
@@ -1300,14 +1300,14 @@ Gate tests exclude `_shared/bootstrap.py` from forbidden import checks.
 
 ### Architecture Contract (Finalized)
 
-**Frontends import only `quantumvitas.api`**:
-- Functions → `QVService.<wrapper>()` static methods
-- Types/Enums/Exceptions → re-exported from `quantumvitas.api`
+**Frontends import only `qmatsuite.api`**:
+- Functions → `QMSService.<wrapper>()` static methods
+- Types/Enums/Exceptions → re-exported from `qmatsuite.api`
 
 **Kernel modules** (forbidden in frontends):
-- `quantumvitas.core`, `quantumvitas.calculation`, `quantumvitas.drivers`
-- `quantumvitas.analysis`, `quantumvitas.io`, `quantumvitas.engine`
-- `quantumvitas.workflow`, `quantumvitas.presets`
+- `qmatsuite.core`, `qmatsuite.calculation`, `qmatsuite.drivers`
+- `qmatsuite.analysis`, `qmatsuite.io`, `qmatsuite.engine`
+- `qmatsuite.workflow`, `qmatsuite.presets`
 
 ### Verification Commands
 
@@ -1324,8 +1324,8 @@ python scripts/audit_daemon_kernel_imports.py
 ls -la .audit/
 
 # Manual verification
-rg -n "^from quantumvitas\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/quantumvitas/cli
-rg -n "^from quantumvitas\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/quantumvitas/daemon
+rg -n "^from qmatsuite\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/qmatsuite/cli
+rg -n "^from qmatsuite\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/qmatsuite/daemon
 ```
 
 ### Milestone Documentation

@@ -39,7 +39,7 @@ class TestORCAEngine:
 
     def test_engine_creation_with_path(self):
         """Engine can be created with explicit path."""
-        from quantumvitas.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.orca_engine import ORCAEngine
 
         with patch.object(Path, 'exists', return_value=True):
             with patch.object(Path, 'is_file', return_value=True):
@@ -49,7 +49,7 @@ class TestORCAEngine:
 
     def test_engine_probe_success(self):
         """Engine probe returns True when binary exists and runs."""
-        from quantumvitas.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.orca_engine import ORCAEngine
 
         mock_result = Mock()
         mock_result.returncode = 0
@@ -66,7 +66,7 @@ class TestORCAEngine:
 
     def test_engine_probe_binary_not_found(self):
         """Engine probe returns False when binary doesn't exist."""
-        from quantumvitas.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.orca_engine import ORCAEngine
 
         with patch.object(Path, 'exists', return_value=False):
             with patch.object(Path, 'is_file', return_value=False):
@@ -82,7 +82,7 @@ class TestORCAEngine:
 
     def test_command_building(self):
         """Test ORCA command construction."""
-        from quantumvitas.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.orca_engine import ORCAEngine
 
         with patch.object(Path, 'exists', return_value=True):
             with patch.object(Path, 'is_file', return_value=True):
@@ -94,7 +94,7 @@ class TestORCAEngine:
 
     def test_engine_step_types(self):
         """Engine reports supported step types."""
-        from quantumvitas.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.orca_engine import ORCAEngine
 
         with patch.object(Path, 'exists', return_value=True):
             with patch.object(Path, 'is_file', return_value=True):
@@ -111,7 +111,7 @@ class TestORCAPathResolution:
 
     def test_bundled_path_found(self):
         """Bundled ORCA path is resolved correctly when exists."""
-        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+        from qmatsuite.core.engines.orca_resolver import resolve_orca_bin
 
         # This tests actual bundled location
         try:
@@ -123,7 +123,7 @@ class TestORCAPathResolution:
 
     def test_env_var_resolution(self):
         """ORCA_BIN env var is used if set."""
-        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+        from qmatsuite.core.engines.orca_resolver import resolve_orca_bin
         import os
 
         old_val = os.environ.get("QMATSUITE_ORCA_BIN")
@@ -141,7 +141,7 @@ class TestORCAPathResolution:
 
     def test_missing_orca_raises(self):
         """Missing ORCA raises RuntimeError when no fallback."""
-        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+        from qmatsuite.core.engines.orca_resolver import resolve_orca_bin
         import os
 
         old_val = os.environ.get("QMATSUITE_ORCA_BIN")
@@ -163,8 +163,8 @@ class TestORCAEngineChainExecution:
 
     def test_run_chain_creates_input_file(self, tmp_path):
         """run_chain creates input file in working directory."""
-        from quantumvitas.engine.orca_engine import ORCAEngine
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -195,8 +195,8 @@ class TestORCAEngineChainExecution:
 
     def test_run_chain_returns_step_results(self, tmp_path):
         """run_chain returns StepResult for each step in chain."""
-        from quantumvitas.engine.orca_engine import ORCAEngine
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",

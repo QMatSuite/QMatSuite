@@ -57,7 +57,7 @@ MATERIALIZATION_REGISTRY: dict[tuple[str, str], str] = {
 Drivers are discovered via **package auto-import**:
 
 ```
-src/quantumvitas/drivers/
+src/qmatsuite/drivers/
 ├── __init__.py          # Discovery entry point
 ├── vasp/
 │   └── __init__.py      # Calls DriverRegistry.register()
@@ -106,7 +106,7 @@ Each driver package registers itself:
 # drivers/vasp/__init__.py
 
 from .driver import VASPDriver
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 
 # Register at import time
 DriverRegistry.register(VASPDriver())
@@ -539,7 +539,7 @@ After driver migration, kernel aggregator files become thin dispatchers:
 ```python
 # execution/handlers.py (after migration)
 
-from quantumvitas.core.driver_registry import get_driver_for_step_type
+from qmatsuite.core.driver_registry import get_driver_for_step_type
 
 def get_handler_for_step(step: Step) -> Callable:
     """Dispatch to driver's handler. NO ENGINE-SPECIFIC CODE HERE."""
@@ -549,7 +549,7 @@ def get_handler_for_step(step: Step) -> Callable:
 ```python
 # execution/recipes.py (after migration)
 
-from quantumvitas.core.driver_registry import get_driver
+from qmatsuite.core.driver_registry import get_driver
 
 def get_recipe_class(engine_family: str) -> type[BaseRecipe]:
     """Dispatch to driver's recipe. NO ENGINE-SPECIFIC CODE HERE."""

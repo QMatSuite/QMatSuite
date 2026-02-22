@@ -15,7 +15,7 @@ This document summarizes the hardening pass performed after migrating from `sha_
 ### SHA Token References
 
 **Code/Test/Tools**: ✅ **Zero occurrences** (except cleanup code)
-- `src/quantumvitas/project/snapshot.py`: Only contains cleanup code (removes `pseudo_sha_token` during materialization)
+- `src/qmatsuite/project/snapshot.py`: Only contains cleanup code (removes `pseudo_sha_token` during materialization)
 - `tests/unit/test_demo_snapshot_pseudo_family.py`: Test file that verifies absence of `sha_token` (correct)
 
 **Documentation**: Historical references only (acceptable if marked as historical)
@@ -29,9 +29,9 @@ This document summarizes the hardening pass performed after migrating from `sha_
 ### Family Match Warnings
 
 **Result**: ✅ **Present and correct**
-- `src/quantumvitas/core/pseudo_options.py`: 4 occurrences (correct)
+- `src/qmatsuite/core/pseudo_options.py`: 4 occurrences (correct)
 - `gui/src/components/common_cards/CommonCardPseudo.tsx`: 5 occurrences (correct)
-- `gui/src/types/qv.ts`: 1 occurrence (correct)
+- `gui/src/types/qms.ts`: 1 occurrence (correct)
 
 ---
 
@@ -53,7 +53,7 @@ This document summarizes the hardening pass performed after migrating from `sha_
 
 ### Fixes Applied
 
-**File**: `src/quantumvitas/project/snapshot.py`
+**File**: `src/qmatsuite/project/snapshot.py`
 
 1. **`export_project_to_snapshot()`** (lines 393-442):
    - Enhanced to compute `pseudo_sha256` and `pseudo_sha_family` from files if missing
@@ -95,7 +95,7 @@ grep -r "pseudo_sha_token" resources/demo_projects/*.yml  # Should be empty
 
 ### Changes Applied
 
-**File**: `src/quantumvitas/core/pseudo_libinfo.py`
+**File**: `src/qmatsuite/core/pseudo_libinfo.py`
 
 **Function**: `load_pseudo_libinfo_bundle()` (lines 261-308)
 
@@ -207,11 +207,11 @@ python -m pytest tests/unit/test_demo_snapshot_pseudo_family.py -v
 
 ### Core Implementation
 
-1. **`src/quantumvitas/project/snapshot.py`**:
+1. **`src/qmatsuite/project/snapshot.py`**:
    - Enhanced `export_project_to_snapshot()` to compute `sha_family` from files
    - Added cleanup of `pseudo_sha_token` in `materialize_project_from_snapshot()`
 
-2. **`src/quantumvitas/core/pseudo_libinfo.py`**:
+2. **`src/qmatsuite/core/pseudo_libinfo.py`**:
    - Added strict schema validation in `load_pseudo_libinfo_bundle()`
    - Validates `sha_family` presence and `sha_token` absence
 

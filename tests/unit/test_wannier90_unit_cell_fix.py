@@ -12,10 +12,10 @@ from pathlib import Path
 import numpy as np
 from pymatgen.core import Structure, Lattice
 
-from quantumvitas.calculation.structure_steps import materialize_step_spec
-from quantumvitas.calculation.structure_steps import StructureStepSpec
-from quantumvitas.core.models import ResourceMeta
-from quantumvitas.io.wannier90_input import Wannier90Input
+from qmatsuite.calculation.structure_steps import materialize_step_spec
+from qmatsuite.calculation.structure_steps import StructureStepSpec
+from qmatsuite.core.models import ResourceMeta
+from qmatsuite.io.wannier90_input import Wannier90Input
 
 
 @pytest.fixture
@@ -66,13 +66,13 @@ def test_w90_unit_cell_cart_in_angstrom(diamond_structure, tmp_path):
     
     # Mock resolve_structure_for_spec to return our structure
     # We need to patch _resolve_structure_for_spec to return our structure
-    from quantumvitas.calculation.structure_steps import _resolve_structure_for_spec
+    from qmatsuite.calculation.structure_steps import _resolve_structure_for_spec
     original_resolve = _resolve_structure_for_spec
     
     def mock_resolve(spec_obj, *args, **kwargs):
         return diamond_structure
     
-    import quantumvitas.calculation.structure_steps as ss_module
+    import qmatsuite.calculation.structure_steps as ss_module
     ss_module._resolve_structure_for_spec = mock_resolve
     
     try:
@@ -171,7 +171,7 @@ def test_w90_consistency_assertion(diamond_structure):
     This test verifies that the assertion would catch inconsistencies
     between unit_cell_cart and atoms_frac.
     """
-    from quantumvitas.io.wannier90_input import Wannier90Input
+    from qmatsuite.io.wannier90_input import Wannier90Input
     
     # Create a correct Wannier90Input
     win = Wannier90Input()
@@ -236,8 +236,8 @@ def test_qe_atomic_positions_crystal_format(diamond_structure, tmp_path):
     """
     Test that QE input uses ATOMIC_POSITIONS {crystal} format.
     """
-    from quantumvitas.io.structure_io import qe_input_from_structure
-    from quantumvitas.io.generator.qe_generator import QEInputGenerator
+    from qmatsuite.io.structure_io import qe_input_from_structure
+    from qmatsuite.io.generator.qe_generator import QEInputGenerator
     
     # Generate QE input from structure
     qe_input = qe_input_from_structure(diamond_structure)
@@ -251,7 +251,7 @@ def test_qe_atomic_positions_crystal_format(diamond_structure, tmp_path):
     )
     
     # Verify coordinates are fractional (should be small, < 1.0 for most structures)
-    from quantumvitas.io.model import QECardType
+    from qmatsuite.io.model import QECardType
     positions_card = qe_input.get_card(QECardType.ATOMIC_POSITIONS)
     assert positions_card is not None, (
         f"ATOMIC_POSITIONS card not found. Available cards: {[c.card_type.value for c in qe_input.cards]}"
@@ -272,7 +272,7 @@ def test_qe_atomic_positions_crystal_format(diamond_structure, tmp_path):
             )
     
     # Verify CELL_PARAMETERS still exists and is in angstrom
-    from quantumvitas.io.model import QECardType
+    from qmatsuite.io.model import QECardType
     cell_card = qe_input.get_card(QECardType.CELL_PARAMETERS)
     assert cell_card is not None, "CELL_PARAMETERS card not found"
     assert cell_card.option.lower() in ("angstrom", ""), (

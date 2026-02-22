@@ -535,7 +535,7 @@ export function generateIsosurface(
   }
   
   // C: Check if debug logging is enabled
-  const debugMc = typeof localStorage !== 'undefined' && localStorage.getItem('qv_mc_debug') === '1';
+  const debugMc = typeof localStorage !== 'undefined' && localStorage.getItem('qms_mc_debug') === '1';
   const debugLimit = debugMc ? 3 : 0; // C: Only log first N active cubes if debug enabled
   
   // C: Track timing for summary (moved here for consistency)

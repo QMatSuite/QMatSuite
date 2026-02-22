@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import type { StructureInfo } from '../../types/qv';
+import type { StructureInfo } from '../../types/qms';
 import { OnlineImportPanel, type OnlineCandidate } from './OnlineImportPanel';
 import './StructureListPanel.css';
 
@@ -128,7 +128,7 @@ export function StructureListPanel({
     }
     
     return (
-      <div className="structure-list-panel" data-testid="qv-structures-view">
+      <div className="structure-list-panel" data-testid="qms-structures-view">
         <div className="panel-header">
           <h2 className="panel-title">
             <span className="panel-icon">🔬</span>
@@ -145,7 +145,7 @@ export function StructureListPanel({
                 {isRefreshing ? '⟳' : '🔄'} Refresh
               </button>
             )}
-            <span className="panel-count" data-testid="qv-structures-count">{structures.length} total</span>
+            <span className="panel-count" data-testid="qms-structures-count">{structures.length} total</span>
           </div>
         </div>
 
@@ -154,7 +154,7 @@ export function StructureListPanel({
             <div
               key={structure.ulid}
               className={`structure-item ${selectedId === structure.ulid ? 'structure-item--selected' : ''}`}
-              data-testid="qv-structure-row"
+              data-testid="qms-structure-row"
             >
               <button
                 className="structure-item__content"
@@ -329,7 +329,7 @@ export function StructureDetailPanel({ structure, onClose }: StructureDetailPane
             </code>
             <button
               className="file-location__reveal-btn"
-              onClick={() => window.qv?.revealPath?.(structure.path)}
+              onClick={() => window.qms?.revealPath?.(structure.path)}
               title="Reveal in Finder"
             >
               📂 Reveal

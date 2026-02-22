@@ -20,17 +20,17 @@
 ## Fixes Applied
 
 ### 1. Module/Package Conflict Resolution
-- **Issue**: Both `src/quantumvitas/api/utils.py` AND `src/quantumvitas/api/utils/` package existed
+- **Issue**: Both `src/qmatsuite/api/utils.py` AND `src/qmatsuite/api/utils/` package existed
 - **Fix**: Deleted `api/utils/` package (had importlib hack), consolidated step_type functions into `utils.py`
-- **Files**: Deleted `src/quantumvitas/api/utils/` directory
+- **Files**: Deleted `src/qmatsuite/api/utils/` directory
 
 ### 2. Import Path Updates
-- **Issue**: Several files still imported from deleted `quantumvitas.api.utils.step_types`
-- **Fix**: Updated imports to use `quantumvitas.api.utils` directly
+- **Issue**: Several files still imported from deleted `qmatsuite.api.utils.step_types`
+- **Fix**: Updated imports to use `qmatsuite.api.utils` directly
 - **Files**:
-  - `src/quantumvitas/execution/recipes.py`
-  - `src/quantumvitas/api/service.py`
-  - `src/quantumvitas/workflow/templates.py`
+  - `src/qmatsuite/execution/recipes.py`
+  - `src/qmatsuite/api/service.py`
+  - `src/qmatsuite/workflow/templates.py`
 
 ### 3. Parameter Name Fixes (GEN vs SPEC)
 - **Issue**: Tests calling `write_generated_structure()` and `evaluate_step_result()` with wrong parameter name
@@ -44,44 +44,44 @@
 ### 4. `is_relax_step_type()` Function
 - **Issue**: Function only accepted GEN but tests passed SPEC; parameter named `step_type_any` violated ban
 - **Fix**: Renamed parameter to `step_type_spec` (execution layer), added internal GEN conversion
-- **File**: `src/quantumvitas/execution/relax_artifacts.py:491`
+- **File**: `src/qmatsuite/execution/relax_artifacts.py:491`
 
 ### 5. STEP_TYPE_ALIASES Update
 - **Issue**: `vc_relax` (underscored variant) not in aliases, causing `qe_vc_relax` to fail normalization
 - **Fix**: Added `"vc_relax": "relax"` to STEP_TYPE_ALIASES for migration support
-- **File**: `src/quantumvitas/workflow/registry.py:799`
+- **File**: `src/qmatsuite/workflow/registry.py:799`
 
 ### 6. `get_gen_type()` Reference Resolver
 - **Issue**: Called `registry.get()` with SPEC but registry expects GEN
 - **Fix**: Added GEN extraction logic - prefer `step_type_gen` attr, fallback to SPEC extraction
-- **File**: `src/quantumvitas/execution/reference_resolver.py:75`
+- **File**: `src/qmatsuite/execution/reference_resolver.py:75`
 
 ### 7. Cross-Assignment Gate Violations
 - **Issue**: `step_type_gen = step_type_spec` assignments detected by gate
 - **Fix**: Refactored to avoid direct cross-assignment using intermediate variables
 - **Files**:
-  - `src/quantumvitas/execution/relax_artifacts.py` - use `gen_value` intermediate
-  - `src/quantumvitas/engine/lammps_writer.py` - proper SPEC extraction before assignment
+  - `src/qmatsuite/execution/relax_artifacts.py` - use `gen_value` intermediate
+  - `src/qmatsuite/engine/lammps_writer.py` - proper SPEC extraction before assignment
 
 ### 8. Precision Detection NameError
 - **Issue**: `step_type` undefined at line 398, should be `step_type_gen`
 - **Fix**: Changed `step_type` to `step_type_gen` to match loop variable
-- **File**: `src/quantumvitas/presets/detector.py:398`
+- **File**: `src/qmatsuite/presets/detector.py:398`
 
 ### 9. VC Cleanup - Removed all vc-relax/vc-md as step types
 - **Issue**: Multiple files used vc-relax, vc-md, qe_vc_relax, opt as step types
 - **Fix**: Removed VC variants (VC is a PARAMETER, not a step type) and changed "opt" to "relax"
 - **Files fixed**:
-  - `src/quantumvitas/frontends/cli/app.py` - KNOWN_STEP_TYPES cleaned
-  - `src/quantumvitas/daemon/compat.py` - removed qe_vc_relax mapping
-  - `src/quantumvitas/calculation/structure_steps.py` - removed vc-relax/vc-md from STEP_TYPE_MODULE_MAP
-  - `src/quantumvitas/history/digests.py` - simplified vc-relax checks to just "relax"
-  - `src/quantumvitas/drivers/orca/driver.py` - changed "opt" to "relax" in capabilities
-  - `src/quantumvitas/drivers/pyscf/driver.py` - changed "opt" to "relax" in capabilities
-  - `src/quantumvitas/drivers/qe/engine/qe_calculation.py` - changed "opt" to "relax" in calculation_map
-  - `src/quantumvitas/drivers/qe/engine/qe_engine.py` - changed "opt" to "relax" in EXECUTABLE_MAP
-  - `src/quantumvitas/api/service.py` - fixed vc-relax checks to just "relax"
-  - `src/quantumvitas/execution/relax_artifacts.py` - updated docstrings and comments
+  - `src/qmatsuite/frontends/cli/app.py` - KNOWN_STEP_TYPES cleaned
+  - `src/qmatsuite/daemon/compat.py` - removed qe_vc_relax mapping
+  - `src/qmatsuite/calculation/structure_steps.py` - removed vc-relax/vc-md from STEP_TYPE_MODULE_MAP
+  - `src/qmatsuite/history/digests.py` - simplified vc-relax checks to just "relax"
+  - `src/qmatsuite/drivers/orca/driver.py` - changed "opt" to "relax" in capabilities
+  - `src/qmatsuite/drivers/pyscf/driver.py` - changed "opt" to "relax" in capabilities
+  - `src/qmatsuite/drivers/qe/engine/qe_calculation.py` - changed "opt" to "relax" in calculation_map
+  - `src/qmatsuite/drivers/qe/engine/qe_engine.py` - changed "opt" to "relax" in EXECUTABLE_MAP
+  - `src/qmatsuite/api/service.py` - fixed vc-relax checks to just "relax"
+  - `src/qmatsuite/execution/relax_artifacts.py` - updated docstrings and comments
 
 **Key distinction preserved:**
 - `calculation = 'vc-relax'` in QE input files = VALID (QE parameter value)
@@ -92,12 +92,12 @@
 - **Issue**: Multiple functions calling `registry.get()` with SPEC types (constitution requires GEN only)
 - **Fix**: Added helper functions and updated callers to use `get_for_engine()` or convert SPEC→GEN first
 - **Source files fixed**:
-  - `src/quantumvitas/engines/pyscf/chain.py` - added `_get_spec_from_registry()` helper
-  - `src/quantumvitas/calculation/runner.py` - fixed `_get_engine_family_from_step()`
-  - `src/quantumvitas/presets/capability.py` - fixed `resolve_engine_for_step()`
-  - `src/quantumvitas/execution/reference_resolver.py` - fixed `find_reference_scf()`
-  - `src/quantumvitas/execution/vasp_staging.py` - fixed `is_scf_step()`
-  - `src/quantumvitas/drivers/vasp/staging.py` - fixed `is_scf_step()`
+  - `src/qmatsuite/engines/pyscf/chain.py` - added `_get_spec_from_registry()` helper
+  - `src/qmatsuite/calculation/runner.py` - fixed `_get_engine_family_from_step()`
+  - `src/qmatsuite/presets/capability.py` - fixed `resolve_engine_for_step()`
+  - `src/qmatsuite/execution/reference_resolver.py` - fixed `find_reference_scf()`
+  - `src/qmatsuite/execution/vasp_staging.py` - fixed `is_scf_step()`
+  - `src/qmatsuite/drivers/vasp/staging.py` - fixed `is_scf_step()`
 - **Tests fixed**:
   - `tests/unit/test_pyscf_chain_registry_contract.py`
   - `tests/unit/orca/test_workflow_integration.py`
@@ -160,12 +160,12 @@
 The user mandates NO aliases anywhere. Found usages that need cleanup:
 
 **Source Code (need fixes):**
-- `src/quantumvitas/calculation/step_defaults.py:135` - `"vc-relax"` as step type key
-- `src/quantumvitas/calculation/naming.py:50` - lists `vc-relax` as step type
-- `src/quantumvitas/workflow/templates.py:91` - workflow template with `vc-relax`
-- `src/quantumvitas/drivers/orca/driver.py:157` - lists `opt` as supported step
-- `src/quantumvitas/cli/main.py:952` - completions list `qe_vc_relax`
-- `src/quantumvitas/api/service.py` - multiple `vc-relax` references
+- `src/qmatsuite/calculation/step_defaults.py:135` - `"vc-relax"` as step type key
+- `src/qmatsuite/calculation/naming.py:50` - lists `vc-relax` as step type
+- `src/qmatsuite/workflow/templates.py:91` - workflow template with `vc-relax`
+- `src/qmatsuite/drivers/orca/driver.py:157` - lists `opt` as supported step
+- `src/qmatsuite/cli/main.py:952` - completions list `qe_vc_relax`
+- `src/qmatsuite/api/service.py` - multiple `vc-relax` references
 
 **Key distinction:**
 - `calculation = 'vc-relax'` in QE input files = VALID (QE parameter)
@@ -191,8 +191,8 @@ The user mandates NO aliases anywhere. Found usages that need cleanup:
 **11. VASP bandspw fixes (vasp_bands → vasp_bandspw)**
 - VASP only has `bandspw` (main band calculation), not `bands` (post-processing)
 - **Files fixed**:
-  - `src/quantumvitas/drivers/vasp/driver.py` - Changed `vasp_bands` to `vasp_bandspw` in StepTypeSpec
-  - `src/quantumvitas/engine/vasp_engine.py` - Changed step type check
+  - `src/qmatsuite/drivers/vasp/driver.py` - Changed `vasp_bands` to `vasp_bandspw` in StepTypeSpec
+  - `src/qmatsuite/engine/vasp_engine.py` - Changed step type check
   - `tests/drivers/vasp/test_vasp_driver.py`
   - `tests/unit/test_vasp_registry.py` - Updated all band-related tests
   - `tests/unit/test_vasp_staging.py` - MockStep uses vasp_bandspw

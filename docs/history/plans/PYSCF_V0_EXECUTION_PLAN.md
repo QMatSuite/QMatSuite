@@ -41,9 +41,9 @@
 7. Verify `pyscf_scf` `results.json` includes `method` and `xc` fields (for downstream inference)
 
 **Files to Touch**:
-- `src/quantumvitas/engines/pyscf/runner.py` (verify/update `run_scf()`)
-- `src/quantumvitas/workflow/registry.py` (verify step type spec)
-- `src/quantumvitas/calculation/step_defaults.py` (verify defaults)
+- `src/qmatsuite/engines/pyscf/runner.py` (verify/update `run_scf()`)
+- `src/qmatsuite/workflow/registry.py` (verify step type spec)
+- `src/qmatsuite/calculation/step_defaults.py` (verify defaults)
 - `tests/integration/test_pyscf_execution.py` (verify/fix tests)
 
 **Tests to Add/Verify**:
@@ -74,7 +74,7 @@
 **Dependencies**: Step 1 (SCF implementation verified)
 
 **What to Implement**:
-1. Create helper function `_get_scf_metadata_from_upstream()` in `src/quantumvitas/engines/pyscf/runner.py`
+1. Create helper function `_get_scf_metadata_from_upstream()` in `src/qmatsuite/engines/pyscf/runner.py`
    - Input: upstream step's artifacts directory path
    - Output: dict with `method`, `xc` (if DFT), `checkpoint_path`
    - Logic:
@@ -87,7 +87,7 @@
 3. Add unit tests for the helper function
 
 **Files to Touch**:
-- `src/quantumvitas/engines/pyscf/runner.py` (add helper function, refactor `run_mp2()`)
+- `src/qmatsuite/engines/pyscf/runner.py` (add helper function, refactor `run_mp2()`)
 - `tests/unit/test_pyscf_runner.py` (new file, test helper function)
 
 **Tests to Add**:
@@ -116,20 +116,20 @@
 **Dependencies**: Step 1 (SCF), Step 2 (SCF metadata inference helper)
 
 **What to Implement**:
-1. **Step Type Registry** (`src/quantumvitas/workflow/registry.py`):
+1. **Step Type Registry** (`src/qmatsuite/workflow/registry.py`):
    - Add `pyscf_analysis` step type spec
    - `id`: `"analysis"`, `machine_type`: `"pyscf_analysis"`, `public_type`: `"analysis"`
    - `supports_incremental_skip`: `False`
-2. **Workflow Materialization** (`src/quantumvitas/workflow/generalized_steps.py`):
+2. **Workflow Materialization** (`src/qmatsuite/workflow/generalized_steps.py`):
    - Add `("pyscf", "analysis"): "pyscf_analysis"` to `MATERIALIZATION_MAP`
    - Update `materialize_public_step_key()` if needed
-3. **Workflow Template** (`src/quantumvitas/workflow/templates.py`):
+3. **Workflow Template** (`src/qmatsuite/workflow/templates.py`):
    - Add `scf_analysis` workflow template
    - `step_sequence`: `("scf", "analysis")`
-4. **Step Defaults** (`src/quantumvitas/calculation/step_defaults.py`):
+4. **Step Defaults** (`src/qmatsuite/calculation/step_defaults.py`):
    - Add defaults for `pyscf_analysis`: `population_method="mulliken"`, `verbose=4`
    - **Do NOT include `scf_method`, `scf_xc`, `scf_chkfile`** (inferred by runner)
-5. **Execution Engine** (`src/quantumvitas/engines/pyscf/runner.py`):
+5. **Execution Engine** (`src/qmatsuite/engines/pyscf/runner.py`):
    - Implement `run_analysis()` function
    - Use `_get_scf_metadata_from_upstream()` to get SCF metadata
    - Load SCF checkpoint, rebuild mol/mf, rerun SCF kernel (conservative policy)
@@ -138,11 +138,11 @@
    - Update `run_job()` to dispatch to `run_analysis()` for `pyscf_analysis` step type
 
 **Files to Touch**:
-- `src/quantumvitas/workflow/registry.py`
-- `src/quantumvitas/workflow/generalized_steps.py`
-- `src/quantumvitas/workflow/templates.py`
-- `src/quantumvitas/calculation/step_defaults.py`
-- `src/quantumvitas/engines/pyscf/runner.py`
+- `src/qmatsuite/workflow/registry.py`
+- `src/qmatsuite/workflow/generalized_steps.py`
+- `src/qmatsuite/workflow/templates.py`
+- `src/qmatsuite/calculation/step_defaults.py`
+- `src/qmatsuite/engines/pyscf/runner.py`
 - `tests/unit/test_pyscf_integration.py`
 - `tests/integration/test_pyscf_execution.py`
 
@@ -186,7 +186,7 @@
 **Dependencies**: Step 3 (Analysis) - but can be done in parallel if needed
 
 **What to Implement**:
-1. **Workflow Validation Function** (`src/quantumvitas/workflow/templates.py`):
+1. **Workflow Validation Function** (`src/qmatsuite/workflow/templates.py`):
    - Enhance `WorkflowService.validate_workflow()` to check PySCF-specific validation rules
    - Add validation for:
      - DFT → TDHF: ERROR (hard error, blocked)
@@ -199,7 +199,7 @@
    - These functions read upstream SCF step's results.json to get method/xc
 
 **Files to Touch**:
-- `src/quantumvitas/workflow/templates.py` (enhance `validate_workflow()`)
+- `src/qmatsuite/workflow/templates.py` (enhance `validate_workflow()`)
 - `tests/unit/test_workflow_validation.py` (new file or add to existing)
 
 **Tests to Add**:
@@ -227,20 +227,20 @@
 **Dependencies**: Step 1 (SCF), Step 2 (SCF metadata inference), Step 4 (Workflow validation)
 
 **What to Implement**:
-1. **Step Type Registry** (`src/quantumvitas/workflow/registry.py`):
+1. **Step Type Registry** (`src/qmatsuite/workflow/registry.py`):
    - Add `pyscf_td` step type spec
    - `id`: `"td"`, `machine_type`: `"pyscf_td"`, `public_type`: `"td"`
    - `supports_incremental_skip`: `False`
-2. **Workflow Materialization** (`src/quantumvitas/workflow/generalized_steps.py`):
+2. **Workflow Materialization** (`src/qmatsuite/workflow/generalized_steps.py`):
    - Add `("pyscf", "td"): "pyscf_td"` to `MATERIALIZATION_MAP`
-3. **Workflow Template** (`src/quantumvitas/workflow/templates.py`):
+3. **Workflow Template** (`src/qmatsuite/workflow/templates.py`):
    - Add `scf_td` workflow template
    - `step_sequence`: `("scf", "td")`
    - Use workflow validation from Step 4 (DFT → TDHF error)
-4. **Step Defaults** (`src/quantumvitas/calculation/step_defaults.py`):
+4. **Step Defaults** (`src/qmatsuite/calculation/step_defaults.py`):
    - Add defaults for `pyscf_td`: `nroots=10`, `tda=False`, `conv_tol=1e-9`, `max_cycle=50`, `verbose=4`
    - **Do NOT include `scf_method`, `scf_xc`, `scf_chkfile`** (inferred by runner)
-5. **Execution Engine** (`src/quantumvitas/engines/pyscf/runner.py`):
+5. **Execution Engine** (`src/qmatsuite/engines/pyscf/runner.py`):
    - Implement `run_td()` function
    - Use `_get_scf_metadata_from_upstream()` to get SCF metadata
    - Load SCF checkpoint, rebuild mol/mf, rerun SCF kernel (conservative policy)
@@ -252,11 +252,11 @@
    - Update `run_job()` to dispatch to `run_td()` for `pyscf_td` step type
 
 **Files to Touch**:
-- `src/quantumvitas/workflow/registry.py`
-- `src/quantumvitas/workflow/generalized_steps.py`
-- `src/quantumvitas/workflow/templates.py`
-- `src/quantumvitas/calculation/step_defaults.py`
-- `src/quantumvitas/engines/pyscf/runner.py`
+- `src/qmatsuite/workflow/registry.py`
+- `src/qmatsuite/workflow/generalized_steps.py`
+- `src/qmatsuite/workflow/templates.py`
+- `src/qmatsuite/calculation/step_defaults.py`
+- `src/qmatsuite/engines/pyscf/runner.py`
 - `tests/unit/test_pyscf_integration.py`
 - `tests/integration/test_pyscf_execution.py`
 
@@ -297,18 +297,18 @@
 **Dependencies**: Step 1 (SCF), Step 2 (SCF metadata inference), Step 4 (Workflow validation)
 
 **What to Implement**:
-1. **Refactor `run_mp2()`** (`src/quantumvitas/engines/pyscf/runner.py`):
+1. **Refactor `run_mp2()`** (`src/qmatsuite/engines/pyscf/runner.py`):
    - Use `_get_scf_metadata_from_upstream()` helper (should already be done in Step 2)
    - Remove any `scf_method`, `scf_xc`, `scf_chkfile` parameters from step.yaml reading
    - Ensure MP2 step does NOT read these from step.yaml (inferred from upstream)
-2. **Step Defaults** (`src/quantumvitas/calculation/step_defaults.py`):
+2. **Step Defaults** (`src/qmatsuite/calculation/step_defaults.py`):
    - Verify `pyscf_mp2` defaults do NOT include `scf_method`, `scf_xc`, `scf_chkfile`
-3. **Workflow Validation** (`src/quantumvitas/workflow/templates.py`):
+3. **Workflow Validation** (`src/qmatsuite/workflow/templates.py`):
    - Ensure `scf_mp2` workflow uses validation from Step 4 (DFT → MP2 warning)
 
 **Files to Touch**:
-- `src/quantumvitas/engines/pyscf/runner.py` (refactor `run_mp2()` if needed)
-- `src/quantumvitas/calculation/step_defaults.py` (verify defaults)
+- `src/qmatsuite/engines/pyscf/runner.py` (refactor `run_mp2()` if needed)
+- `src/qmatsuite/calculation/step_defaults.py` (verify defaults)
 - `tests/integration/test_pyscf_execution.py` (verify/fix tests)
 
 **Tests to Add**:
@@ -337,19 +337,19 @@
 **Dependencies**: Step 1 (SCF), Step 2 (SCF metadata inference)
 
 **What to Implement**:
-1. **Step Type Registry** (`src/quantumvitas/workflow/registry.py`):
+1. **Step Type Registry** (`src/qmatsuite/workflow/registry.py`):
    - Add `pyscf_freq` step type spec
    - `id`: `"freq"`, `machine_type`: `"pyscf_freq"`, `public_type`: `"freq"`
    - `supports_incremental_skip`: `False`
-2. **Workflow Materialization** (`src/quantumvitas/workflow/generalized_steps.py`):
+2. **Workflow Materialization** (`src/qmatsuite/workflow/generalized_steps.py`):
    - Add `("pyscf", "freq"): "pyscf_freq"` to `MATERIALIZATION_MAP`
-3. **Workflow Template** (`src/quantumvitas/workflow/templates.py`):
+3. **Workflow Template** (`src/qmatsuite/workflow/templates.py`):
    - Add `scf_freq` workflow template
    - `step_sequence`: `("scf", "freq")`
-4. **Step Defaults** (`src/quantumvitas/calculation/step_defaults.py`):
+4. **Step Defaults** (`src/qmatsuite/calculation/step_defaults.py`):
    - Add defaults for `pyscf_freq`: `thermo=False`, `temperature=298.15`, `pressure=101325`, `verbose=4`
    - **Do NOT include `scf_method`, `scf_xc`, `scf_chkfile`** (inferred by runner)
-5. **Execution Engine** (`src/quantumvitas/engines/pyscf/runner.py`):
+5. **Execution Engine** (`src/qmatsuite/engines/pyscf/runner.py`):
    - Implement `run_freq()` function
    - Use `_get_scf_metadata_from_upstream()` to get SCF metadata
    - Load SCF checkpoint, rebuild mol/mf, rerun SCF kernel (conservative policy)
@@ -359,11 +359,11 @@
    - Update `run_job()` to dispatch to `run_freq()` for `pyscf_freq` step type
 
 **Files to Touch**:
-- `src/quantumvitas/workflow/registry.py`
-- `src/quantumvitas/workflow/generalized_steps.py`
-- `src/quantumvitas/workflow/templates.py`
-- `src/quantumvitas/calculation/step_defaults.py`
-- `src/quantumvitas/engines/pyscf/runner.py`
+- `src/qmatsuite/workflow/registry.py`
+- `src/qmatsuite/workflow/generalized_steps.py`
+- `src/qmatsuite/workflow/templates.py`
+- `src/qmatsuite/calculation/step_defaults.py`
+- `src/qmatsuite/engines/pyscf/runner.py`
 - `tests/unit/test_pyscf_integration.py`
 - `tests/integration/test_pyscf_execution.py`
 
@@ -433,9 +433,9 @@ After completing all steps:
 - [ ] Verify workflow detection and instantiation use generalized `"td"`
 
 **Files to Touch**:
-- `src/quantumvitas/workflow/templates.py` (add `scf_td` workflow with `"td"` key)
-- `src/quantumvitas/workflow/generalized_steps.py` (add `("pyscf", "td"): "pyscf_td"` mapping)
-- `src/quantumvitas/workflow/registry.py` (verify `pyscf_td` step type exists)
+- `src/qmatsuite/workflow/templates.py` (add `scf_td` workflow with `"td"` key)
+- `src/qmatsuite/workflow/generalized_steps.py` (add `("pyscf", "td"): "pyscf_td"` mapping)
+- `src/qmatsuite/workflow/registry.py` (verify `pyscf_td` step type exists)
 
 **Tests to Add**:
 - Unit test: `materialize_public_step_key("td", "qe")` → existing QE TD machine type
@@ -450,16 +450,16 @@ After completing all steps:
 ---
 
 #### C2: Add Run Mode Plumbling (Incremental vs Full)
-- [ ] Verify `run_mode` parameter exists in `CalculationRunner.run()` and `QVService.run_calculation()` (already exists)
+- [ ] Verify `run_mode` parameter exists in `CalculationRunner.run()` and `QMSService.run_calculation()` (already exists)
 - [ ] Add UI dropdown for "Full Run" option (if not already present)
 - [ ] Ensure `run_mode` reaches PySCF runner layer
 - [ ] For QE: Preserve existing behavior (no change)
 - [ ] For PySCF: Implement behavior differences (SCF init_guess control)
 
 **Files to Touch**:
-- `src/quantumvitas/calculation/runner.py` (verify `run_mode` handling)
-- `src/quantumvitas/api.py` (verify `run_mode` passed through)
-- `src/quantumvitas/engines/pyscf/runner.py` (add `run_mode` parameter handling)
+- `src/qmatsuite/calculation/runner.py` (verify `run_mode` handling)
+- `src/qmatsuite/api.py` (verify `run_mode` passed through)
+- `src/qmatsuite/engines/pyscf/runner.py` (add `run_mode` parameter handling)
 - UI code (if separate, verify dropdown exists)
 
 **Tests to Add**:
@@ -497,10 +497,10 @@ After completing all steps:
 - [ ] Ensure non-SCF steps always rerun (regardless of done flags)
 
 **Files to Touch**:
-- `src/quantumvitas/workflow/registry.py` (add `consumes_state`, `produces_state` to `StepTypeSpec`)
-- `src/quantumvitas/engines/pyscf/runner.py` (add chain resolution and session execution)
-- `src/quantumvitas/calculation/runner.py` (integrate PySCF chain execution for RunStep mode)
-- `src/quantumvitas/engines/pyscf_engine.py` (if needed for engine interface)
+- `src/qmatsuite/workflow/registry.py` (add `consumes_state`, `produces_state` to `StepTypeSpec`)
+- `src/qmatsuite/engines/pyscf/runner.py` (add chain resolution and session execution)
+- `src/qmatsuite/calculation/runner.py` (integrate PySCF chain execution for RunStep mode)
+- `src/qmatsuite/engines/pyscf_engine.py` (if needed for engine interface)
 
 **Tests to Add**:
 - Unit test: Dependency chain resolution (nearest-provider rule)
@@ -529,8 +529,8 @@ After completing all steps:
 - [ ] Verify `chkfile` path is fixed convention (not stored as parameter)
 
 **Files to Touch**:
-- `src/quantumvitas/workflow/step_factory.py` (verify step.yaml generation)
-- `src/quantumvitas/calculation/step_defaults.py` (verify defaults don't include structure)
+- `src/qmatsuite/workflow/step_factory.py` (verify step.yaml generation)
+- `src/qmatsuite/calculation/step_defaults.py` (verify defaults don't include structure)
 
 **Tests to Add**:
 - Unit test: `step.yaml` structure validation (no structure data)

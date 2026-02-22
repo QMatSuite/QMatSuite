@@ -163,7 +163,7 @@ The current parser needs enhancement for:
 
 ### 4.1 Enhance Parser
 
-**File**: `src/quantumvitas/drivers/orca/inputspec.py`
+**File**: `src/qmatsuite/drivers/orca/inputspec.py`
 
 **Changes**:
 1. Multi-line `%pal` block support
@@ -213,7 +213,7 @@ def test_normalized_case_roundtrip(case_id):
 
 ### 5.1 Create Output Parser
 
-**File**: `src/quantumvitas/drivers/orca/parsers/output.py`
+**File**: `src/qmatsuite/drivers/orca/parsers/output.py`
 
 **Capabilities**:
 - Detect convergence/success: Look for `HURRAY` or `****ORCA TERMINATED NORMALLY****`
@@ -335,14 +335,14 @@ Expand existing tests:
 | `docs/engines/orca/PHASE_B1_PLAN.md` | This plan |
 | `docs/engines/orca/PHASE_B1_WORKLOG.md` | Continuous worklog |
 | `docs/engines/orca/SOURCES.md` | Documentation sources |
-| `src/quantumvitas/drivers/orca/parsers/output.py` | Output digest parser |
+| `src/qmatsuite/drivers/orca/parsers/output.py` | Output digest parser |
 | `tests/unit/test_orca_output_parser.py` | Output parser tests |
 | `tests/fixtures/orca_outputs/water_sp.out` | Sample ORCA output |
 
 ### Files to Modify
 | File | Changes |
 |------|---------|
-| `src/quantumvitas/drivers/orca/inputspec.py` | Enhanced parser/writer |
+| `src/qmatsuite/drivers/orca/inputspec.py` | Enhanced parser/writer |
 | `tests/inputformat/test_orca_parse.py` | Additional roundtrip tests |
 
 ### Directories

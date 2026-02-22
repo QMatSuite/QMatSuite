@@ -25,8 +25,8 @@
 **状态**: 符合
 
 **实现**:
-- `src/quantumvitas/core/engines/qe_calculation.py`: `run_step`, `run_calculation` ✅
-- `src/quantumvitas/core/engines/qe.py`: `detect_step_type`, `run_step` ✅
+- `src/qmatsuite/core/engines/qe_calculation.py`: `run_step`, `run_calculation` ✅
+- `src/qmatsuite/core/engines/qe.py`: `detect_step_type`, `run_step` ✅
 
 ### 4. ✅ test 逻辑中心化在 tests/core 里面
 **状态**: 符合

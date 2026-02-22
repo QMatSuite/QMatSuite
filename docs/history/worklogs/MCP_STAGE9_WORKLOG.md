@@ -6,7 +6,7 @@
 
 ### save_relax_final_structure() API Deep Dive
 
-Found at `src/quantumvitas/api/service.py:2377`. Key findings:
+Found at `src/qmatsuite/api/service.py:2377`. Key findings:
 
 - **Signature**: `save_relax_final_structure(calculation_selector, step_selector, parent_structure_ulid, slug_hint=None, index=None, config=None) -> dict`
 - **Returns**: `{"structure_ulid": str, "already_exists": bool}`
@@ -42,7 +42,7 @@ Missing categories per design doc Section 7.6:
 
 ### Step 1: Knowledge Schema Evolution (Part B)
 
-**File**: `src/quantumvitas/mcp/knowledge/schema.py`
+**File**: `src/qmatsuite/mcp/knowledge/schema.py`
 
 Added two columns to SCHEMA_DDL between `upvotes` and `created_at`:
 ```sql
@@ -50,13 +50,13 @@ last_validated TEXT,
 contradiction_count INTEGER DEFAULT 0,
 ```
 
-**File**: `src/quantumvitas/mcp/knowledge/build_builtin.py`
+**File**: `src/qmatsuite/mcp/knowledge/build_builtin.py`
 
 Updated INSERT statement to include `last_validated` (set to `now`) and `contradiction_count` (set to 0) for each builtin entry. Added one extra `now` parameter to the tuple.
 
 ### Step 2: Builtin.db Expansion (Part C)
 
-**File**: `src/quantumvitas/mcp/knowledge/builtin_entries.py`
+**File**: `src/qmatsuite/mcp/knowledge/builtin_entries.py`
 
 Added 20 new entries (20 → 40 total) in three new categories:
 
@@ -90,7 +90,7 @@ All entries follow quality guidelines: 50-150 words, actionable, specific parame
 
 ### Step 3: InsightRecord Dataclass (Part D)
 
-**File**: `src/quantumvitas/mcp/knowledge/insight_record.py` (NEW)
+**File**: `src/qmatsuite/mcp/knowledge/insight_record.py` (NEW)
 
 Created `InsightRecord` dataclass with 8 fields per design doc Section 5.4:
 - `content: str` — distilled conclusion (enters knowledge base)
@@ -104,7 +104,7 @@ Created `InsightRecord` dataclass with 8 fields per design doc Section 5.4:
 
 ### Step 4: promote_structure Tool (Part A)
 
-**File**: `src/quantumvitas/mcp/tools/promote_structure.py` (NEW)
+**File**: `src/qmatsuite/mcp/tools/promote_structure.py` (NEW)
 
 Tool signature: `promote_structure(calc_ulid, step_index=-1, name="")`
 
@@ -122,15 +122,15 @@ Error cases:
 - `no_output`: FileNotFoundError → step hasn't been run
 - `promote_failed`: Generic catch-all
 
-**File**: `src/quantumvitas/mcp/server.py`
+**File**: `src/qmatsuite/mcp/server.py`
 
-Added import: `import quantumvitas.mcp.tools.promote_structure` under "Stage 9" comment.
+Added import: `import qmatsuite.mcp.tools.promote_structure` under "Stage 9" comment.
 
 ### Step 5: Tests (Part E)
 
 **File**: `tests/mcp/test_stage9.py` (NEW, 17 tests)
 
-**TestPromoteStructure (5 tests, qv_project fixture):**
+**TestPromoteStructure (5 tests, qms_project fixture):**
 - test_promote_no_relax_step_error — SCF-only calc → no_relax_step error
 - test_promote_invalid_calc_ulid — nonexistent calc → not_found
 - test_promote_invalid_step_index — out-of-range → invalid_step_index
@@ -159,8 +159,8 @@ Added import: `import quantumvitas.mcp.tools.promote_structure` under "Stage 9" 
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `src/quantumvitas/mcp/tools/promote_structure.py` | ~145 | promote_structure MCP tool |
-| `src/quantumvitas/mcp/knowledge/insight_record.py` | ~40 | InsightRecord dataclass |
+| `src/qmatsuite/mcp/tools/promote_structure.py` | ~145 | promote_structure MCP tool |
+| `src/qmatsuite/mcp/knowledge/insight_record.py` | ~40 | InsightRecord dataclass |
 | `tests/mcp/test_stage9.py` | ~250 | 17 tests across 4 classes |
 | `docs/history/worklogs/MCP_STAGE9_WORKLOG.md` | this file | Implementation worklog |
 
@@ -168,10 +168,10 @@ Added import: `import quantumvitas.mcp.tools.promote_structure` under "Stage 9" 
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/mcp/knowledge/schema.py` | Added `last_validated` + `contradiction_count` to SCHEMA_DDL |
-| `src/quantumvitas/mcp/knowledge/build_builtin.py` | Updated INSERT to include new columns |
-| `src/quantumvitas/mcp/knowledge/builtin_entries.py` | Added 20 entries (20 → 40 total) |
-| `src/quantumvitas/mcp/server.py` | Registered promote_structure tool |
+| `src/qmatsuite/mcp/knowledge/schema.py` | Added `last_validated` + `contradiction_count` to SCHEMA_DDL |
+| `src/qmatsuite/mcp/knowledge/build_builtin.py` | Updated INSERT to include new columns |
+| `src/qmatsuite/mcp/knowledge/builtin_entries.py` | Added 20 entries (20 → 40 total) |
+| `src/qmatsuite/mcp/server.py` | Registered promote_structure tool |
 
 ## Test Results
 

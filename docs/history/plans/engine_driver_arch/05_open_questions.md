@@ -29,11 +29,11 @@ This document captures unresolved design decisions for the engine driver archite
 
 | Option | Structure | Pros | Cons |
 |--------|-----------|------|------|
-| **A** | `src/quantumvitas/drivers/` | Clear separation, easy discovery | New top-level package |
-| **B** | `src/quantumvitas/engine/` | Uses existing directory | Mixes old and new code |
-| **C** | `src/quantumvitas/core/drivers/` | Near core abstractions | Clutters core/ |
+| **A** | `src/qmatsuite/drivers/` | Clear separation, easy discovery | New top-level package |
+| **B** | `src/qmatsuite/engine/` | Uses existing directory | Mixes old and new code |
+| **C** | `src/qmatsuite/core/drivers/` | Near core abstractions | Clutters core/ |
 
-**Recommendation**: **Option A** (`src/quantumvitas/drivers/`)
+**Recommendation**: **Option A** (`src/qmatsuite/drivers/`)
 
 Clean separation between kernel and driver code. New directory signals architectural change.
 
@@ -165,11 +165,11 @@ Add deprecation warning:
 # recipes.py (legacy location)
 import warnings
 warnings.warn(
-    "VASPRecipe moved to quantumvitas.drivers.vasp.recipe. "
+    "VASPRecipe moved to qmatsuite.drivers.vasp.recipe. "
     "Update your imports.",
     DeprecationWarning,
 )
-from quantumvitas.drivers.vasp.recipe import VASPRecipe
+from qmatsuite.drivers.vasp.recipe import VASPRecipe
 ```
 
 ---
@@ -308,8 +308,8 @@ from quantumvitas.drivers.vasp.recipe import VASPRecipe
 
 **Vision**:
 ```bash
-pip install quantumvitas-driver-vasp
-pip install quantumvitas-driver-cp2k
+pip install qmatsuite-driver-vasp
+pip install qmatsuite-driver-cp2k
 ```
 
 **Considerations**:

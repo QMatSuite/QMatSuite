@@ -1,6 +1,6 @@
 # Crystal Viewer Geometry: Algorithms and Design
 
-This document describes the mathematical algorithms, design choices, and implementation details for the 3D crystal structure viewer in QuantumVITAS.
+This document describes the mathematical algorithms, design choices, and implementation details for the 3D crystal structure viewer in QMatSuite.
 
 ## Overview
 
@@ -48,7 +48,7 @@ The canonicalization algorithm (`canonicalize_frac_coords()`) performs:
 - Handles typical floating point errors in integer snapping
 - Works correctly with boundary atom detection
 
-**Implementation**: `src/quantumvitas/analysis/structure_viz.py::canonicalize_frac_coords()` and `canonicalize_structure_in_place()`
+**Implementation**: `src/qmatsuite/analysis/structure_viz.py::canonicalize_frac_coords()` and `canonicalize_structure_in_place()`
 
 ### Coordinate Wrapping (Legacy/Compatibility)
 
@@ -79,7 +79,7 @@ conventional = analyzer.get_conventional_standard_structure()
 
 **Why**: The conventional cell often provides better visual intuition (e.g., Si diamond appears cubic rather than rhombohedral).
 
-**Implementation**: `src/quantumvitas/analysis/structure_viz.py::get_conventional_cell()`
+**Implementation**: `src/qmatsuite/analysis/structure_viz.py::get_conventional_cell()`
 
 ## Box Enumeration (Method 2: Solve k-Range Intervals)
 
@@ -123,7 +123,7 @@ r = r₀ + i·a + j·b + k·c  lies inside the box
 - Typically much smaller than generating full supercell
 - Works even for very skewed cells (e.g., 1×1×100 supercell)
 
-**Implementation**: `src/quantumvitas/analysis/structure_viz.py::enumerate_atoms_in_aabb()`
+**Implementation**: `src/qmatsuite/analysis/structure_viz.py::enumerate_atoms_in_aabb()`
 
 ### Why Method 2?
 - **Efficiency**: Only enumerates atoms that could be in the box
@@ -187,7 +187,7 @@ Where:
 - Fractional wrapping uses epsilon guards near ±0.5 boundaries to prevent jitter
 - Invalid or near-singular lattice matrices fall back to non-periodic detection with warnings
 
-**Implementation**: `src/quantumvitas/analysis/structure_viz.py::build_bonds()`
+**Implementation**: `src/qmatsuite/analysis/structure_viz.py::build_bonds()`
 
 ### Boundary Repeat vs Bond Detection
 
@@ -231,7 +231,7 @@ def build_display_atoms(
 4. **Add boundary atoms** (if repeat_boundary=True)
 5. **Return** (display_atoms, display_structure)
 
-**Implementation**: `src/quantumvitas/analysis/structure_viz.py::build_display_atoms()`
+**Implementation**: `src/qmatsuite/analysis/structure_viz.py::build_display_atoms()`
 
 ## Known Limitations and Epsilon Handling
 
@@ -261,30 +261,30 @@ def build_display_atoms(
 ### Key Functions
 
 1. **Bond construction (single source of truth)**:
-   - File: `src/quantumvitas/analysis/structure_viz.py`
+   - File: `src/qmatsuite/analysis/structure_viz.py`
    - Function: `build_bonds()` (line ~200)
    - Signature: `build_bonds(atoms_cart, species, radii_map, *, max_factor=1.2, tolerance=0.3, max_cutoff=3.5) -> List[Bond]`
 
 2. **Box enumeration (method 2)**:
-   - File: `src/quantumvitas/analysis/structure_viz.py`
+   - File: `src/qmatsuite/analysis/structure_viz.py`
    - Function: `enumerate_atoms_in_aabb()` (line ~400)
    - Signature: `enumerate_atoms_in_aabb(structure, box_bounds, *, eps=1e-6) -> List[DisplayAtom]`
 
 3. **Coordinate wrapping**:
-   - File: `src/quantumvitas/analysis/structure_viz.py`
+   - File: `src/qmatsuite/analysis/structure_viz.py`
    - Functions: `wrap_fractional_coords()`, `wrap_cartesian_coords()` (line ~130)
 
 4. **Display atom building**:
-   - File: `src/quantumvitas/analysis/structure_viz.py`
+   - File: `src/qmatsuite/analysis/structure_viz.py`
    - Function: `build_display_atoms()` (line ~550)
 
 5. **Conventional cell**:
-   - File: `src/quantumvitas/analysis/structure_viz.py`
+   - File: `src/qmatsuite/analysis/structure_viz.py`
    - Function: `get_conventional_cell()` (line ~350)
 
 ### API Integration
 
-- **Backend API**: `src/quantumvitas/api.py::get_structure_vis_data()`
+- **Backend API**: `src/qmatsuite/api.py::get_structure_vis_data()`
   - Accepts `display_mode` and `box_bounds` parameters
   - Calls `build_display_atoms()` and `build_bonds()`
 

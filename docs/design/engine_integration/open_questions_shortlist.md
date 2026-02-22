@@ -174,11 +174,11 @@ Rationale: CI always runs, catches regressions. Real engine tests are contributo
 
 | Option | Description |
 |--------|-------------|
-| **A. `quantumvitas.drivers.*`** | New top-level package |
-| **B. `quantumvitas.engine.*`** | Reuse existing engine/ |
-| **C. `quantumvitas.core.drivers.*`** | Under core/ |
+| **A. `qmatsuite.drivers.*`** | New top-level package |
+| **B. `qmatsuite.engine.*`** | Reuse existing engine/ |
+| **C. `qmatsuite.core.drivers.*`** | Under core/ |
 
-**Recommended default**: **Option A (`quantumvitas.drivers.*`)**
+**Recommended default**: **Option A (`qmatsuite.drivers.*`)**
 
 Rationale: Clean separation from kernel. Signals architectural change. Easy discovery.
 

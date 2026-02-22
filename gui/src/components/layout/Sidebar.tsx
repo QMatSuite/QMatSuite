@@ -1,5 +1,5 @@
 /**
- * Sidebar - Navigation and controls for QuantumVITAS
+ * Sidebar - Navigation and controls for QMatSuite
  * 
  * Design:
  * - Read-only project path display with Reveal button
@@ -11,14 +11,14 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import type { QVClient } from '../../hooks/useQVClient';
-import type { DaemonStatus, JobCounts } from '../../types/qv';
+import type { QMSClient } from '../../hooks/useQMSClient';
+import type { DaemonStatus, JobCounts } from '../../types/qms';
 import './Sidebar.css';
 
 export type ViewType = 'home' | 'structures' | 'calculations' | 'jobs' | 'history' | 'resources' | 'settings' | 'dev-volume';
 
 interface SidebarProps {
-  qv: QVClient;
+  qms: QMSClient;
   projectRoot: string;
   projectLoaded: boolean;
   projectError: string | null;
@@ -32,7 +32,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ 
-  qv, 
+  qms, 
   projectRoot,
   projectLoaded,
   projectError,
@@ -44,8 +44,8 @@ export function Sidebar({
   daemonStatus,
   jobCounts,
 }: SidebarProps) {
-  const isLoading = qv.state.isLoading;
-  const isConnected = qv.state.isConnected;
+  const isLoading = qms.state.isLoading;
+  const isConnected = qms.state.isConnected;
   
   const runningCount = jobCounts?.running || 0;
   const pendingCount = jobCounts?.pending || 0;
@@ -56,7 +56,7 @@ export function Sidebar({
   // expanded: fixed narrow width (~230px) with icons + labels, Project Root truncated if needed
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
-      return localStorage.getItem('qv-sidebar-collapsed') === 'true';
+      return localStorage.getItem('qms-sidebar-collapsed') === 'true';
     } catch {
       return false;
     }
@@ -64,7 +64,7 @@ export function Sidebar({
   
   // Persist collapsed state
   useEffect(() => {
-    localStorage.setItem('qv-sidebar-collapsed', String(isCollapsed));
+    localStorage.setItem('qms-sidebar-collapsed', String(isCollapsed));
   }, [isCollapsed]);
   
   const handleToggleCollapse = useCallback(() => {
@@ -74,7 +74,7 @@ export function Sidebar({
   // Reveal project folder in system file manager
   const handleRevealProject = useCallback(() => {
     if (projectRoot && projectLoaded) {
-      window.qv?.revealPath?.(projectRoot);
+      window.qms?.revealPath?.(projectRoot);
     }
   }, [projectRoot, projectLoaded]);
   
@@ -89,7 +89,7 @@ export function Sidebar({
       <div className="sidebar__header">
         <h1 className="sidebar__title">
           <span className="sidebar__logo">⚛</span>
-          {!isCollapsed && <span className="sidebar__title-text">QuantumVITAS</span>}
+          {!isCollapsed && <span className="sidebar__title-text">QMatSuite</span>}
         </h1>
         {!isCollapsed && (
           <div className={`sidebar__status ${isConnected ? 'connected' : 'disconnected'}`}>
@@ -121,7 +121,7 @@ export function Sidebar({
                 onClick={handleRevealProject}
                 disabled={!projectLoaded || !projectRoot}
                 title={projectLoaded ? 'Reveal in Finder/Explorer' : 'No project loaded'}
-                data-testid="qv-btn-reveal-project"
+                data-testid="qms-btn-reveal-project"
               >
                 📂
               </button>
@@ -144,7 +144,7 @@ export function Sidebar({
                 onClick={onBrowseAndLoad}
                 disabled={isLoading}
                 title="Open Project"
-                data-testid="qv-sidebar-btn-open-project"
+                data-testid="qms-sidebar-btn-open-project"
               >
                 📂
               </button>
@@ -153,7 +153,7 @@ export function Sidebar({
                 onClick={onCreateProject}
                 disabled={isLoading}
                 title="Create New Project"
-                data-testid="qv-sidebar-btn-create-new-project"
+                data-testid="qms-sidebar-btn-create-new-project"
               >
                 ✨
               </button>
@@ -162,7 +162,7 @@ export function Sidebar({
                 onClick={onOpenDemoGallery}
                 disabled={isLoading}
                 title="Browse Demo Gallery"
-                data-testid="qv-sidebar-btn-demo-gallery"
+                data-testid="qms-sidebar-btn-demo-gallery"
               >
                 🎨
               </button>
@@ -174,7 +174,7 @@ export function Sidebar({
                 onClick={onBrowseAndLoad}
                 disabled={isLoading}
                 title="Browse and load an existing project"
-                data-testid="qv-sidebar-btn-open-project"
+                data-testid="qms-sidebar-btn-open-project"
               >
                 <span className="sidebar__action-icon">📂</span>
                 Open Project…
@@ -184,7 +184,7 @@ export function Sidebar({
               onClick={onCreateProject}
               disabled={isLoading}
                 title="Create a new QE project"
-                data-testid="qv-sidebar-btn-create-new-project"
+                data-testid="qms-sidebar-btn-create-new-project"
               >
                 <span className="sidebar__action-icon">✨</span>
                 Create New…
@@ -194,7 +194,7 @@ export function Sidebar({
                 onClick={onOpenDemoGallery}
                 disabled={isLoading}
                 title="Browse ready-to-run demo projects"
-                data-testid="qv-sidebar-btn-demo-gallery"
+                data-testid="qms-sidebar-btn-demo-gallery"
               >
                 <span className="sidebar__action-icon">🎨</span>
                 Demo Gallery…
@@ -212,7 +212,7 @@ export function Sidebar({
             className={`sidebar__tab ${currentView === 'home' ? 'active' : ''}`}
             onClick={() => onViewChange('home')}
             title="Home - project overview and quick actions"
-            data-testid="qv-nav-home"
+            data-testid="qms-nav-home"
           >
             <span className="sidebar__tab-icon">🏠</span>
             {!isCollapsed && 'Home'}
@@ -222,7 +222,7 @@ export function Sidebar({
             onClick={() => onViewChange('structures')}
             disabled={!projectLoaded}
             title={projectLoaded ? 'View and manage crystal structures' : 'Load a project first'}
-            data-testid="qv-nav-structures"
+            data-testid="qms-nav-structures"
           >
             <span className="sidebar__tab-icon">🔬</span>
             {!isCollapsed && 'Structures'}
@@ -232,7 +232,7 @@ export function Sidebar({
             onClick={() => onViewChange('calculations')}
             disabled={!projectLoaded}
             title={projectLoaded ? 'Configure and run QE calculations' : 'Load a project first'}
-            data-testid="qv-nav-calculations"
+            data-testid="qms-nav-calculations"
           >
             <span className="sidebar__tab-icon">📊</span>
             {!isCollapsed && 'Calculations'}
@@ -241,7 +241,7 @@ export function Sidebar({
             className={`sidebar__tab ${currentView === 'jobs' ? 'active' : ''}`}
             onClick={() => onViewChange('jobs')}
             title={activeJobsCount > 0 ? `${runningCount} running, ${pendingCount} pending` : 'View job queue and logs'}
-            data-testid="qv-nav-jobs"
+            data-testid="qms-nav-jobs"
           >
             <span className="sidebar__tab-icon">⚡</span>
             {!isCollapsed && 'Jobs'}
@@ -256,7 +256,7 @@ export function Sidebar({
             onClick={() => onViewChange('history')}
             disabled={!projectLoaded}
             title={projectLoaded ? 'View project history timeline' : 'Load a project first'}
-            data-testid="qv-nav-history"
+            data-testid="qms-nav-history"
           >
             <span className="sidebar__tab-icon">📜</span>
             {!isCollapsed && 'History'}
@@ -265,7 +265,7 @@ export function Sidebar({
             className={`sidebar__tab ${currentView === 'resources' ? 'active' : ''}`}
             onClick={() => onViewChange('resources')}
             title="Browse engine parameter reference"
-            data-testid="qv-nav-resources"
+            data-testid="qms-nav-resources"
           >
             <span className="sidebar__tab-icon">📚</span>
             {!isCollapsed && 'Resources'}
@@ -274,7 +274,7 @@ export function Sidebar({
             className={`sidebar__tab ${currentView === 'settings' ? 'active' : ''}`}
             onClick={() => onViewChange('settings')}
             title="Configure QE paths and app settings"
-            data-testid="qv-nav-settings"
+            data-testid="qms-nav-settings"
           >
             <span className="sidebar__tab-icon">⚙️</span>
             {!isCollapsed && 'Settings'}
@@ -284,7 +284,7 @@ export function Sidebar({
             className={`sidebar__tab ${currentView === 'dev-volume' ? 'active' : ''}`}
             onClick={() => onViewChange('dev-volume')}
             title="[DEV] Volume Viewer Sandbox"
-            data-testid="qv-nav-dev-volume"
+            data-testid="qms-nav-dev-volume"
             style={{ borderTop: '2px solid #f0f0f0', marginTop: '8px', paddingTop: '8px' }}
           >
             <span className="sidebar__tab-icon">🧊</span>
@@ -298,7 +298,7 @@ export function Sidebar({
       
       {/* Footer with collapse toggle */}
       <div className="sidebar__footer">
-        {!isCollapsed && <span className="sidebar__version">QuantumVITAS v2.0.0</span>}
+        {!isCollapsed && <span className="sidebar__version">QMatSuite v2.0.0</span>}
         <button
           className="sidebar__collapse-btn"
           onClick={handleToggleCollapse}

@@ -21,7 +21,7 @@ This review examines QMatSuite code areas relevant to CP2K integration, with spe
 
 ### 2.1 Core Principle: raw/scan is Archive-Only
 
-**File**: `src/quantumvitas/execution/post_job.py`
+**File**: `src/qmatsuite/execution/post_job.py`
 
 The scan archive is **NEVER the runtime SSOT**. It exists only for post-run analysis/UI inspection.
 
@@ -78,7 +78,7 @@ calc/raw/
 
 **CRITICAL**: Dependency resolution (restart/wfn lookup) must **NEVER** reference `raw/scan/`.
 
-**File**: `src/quantumvitas/engine/lammps_engine.py` (lines 376-380)
+**File**: `src/qmatsuite/engine/lammps_engine.py` (lines 376-380)
 ```python
 def _resolve_restart_artifact(self, step, calculation):
     # Find artifact in reference step's workdir
@@ -93,8 +93,8 @@ def _resolve_restart_artifact(self, step, calculation):
 ### 3.1 Current Implementation (VASP)
 
 **Files**:
-- `src/quantumvitas/execution/reference_resolver.py` - Finds reference SCF step
-- `src/quantumvitas/execution/vasp_staging.py` - Stages CHGCAR/WAVECAR
+- `src/qmatsuite/execution/reference_resolver.py` - Finds reference SCF step
+- `src/qmatsuite/execution/vasp_staging.py` - Stages CHGCAR/WAVECAR
 
 **Pattern**:
 ```python
@@ -109,7 +109,7 @@ chgcar_src = ref_workdir / "CHGCAR"
 
 ### 3.2 Current Implementation (LAMMPS)
 
-**File**: `src/quantumvitas/engine/lammps_engine.py` (lines 314-438)
+**File**: `src/qmatsuite/engine/lammps_engine.py` (lines 314-438)
 
 ```python
 def _resolve_restart_artifact(self, step, calculation):
@@ -194,7 +194,7 @@ class CP2KRecipe(BaseRecipe):
 
 ### 5.1 Current Implementation (VASP)
 
-**File**: `src/quantumvitas/execution/vasp_staging.py`
+**File**: `src/qmatsuite/execution/vasp_staging.py`
 
 VASP already has preflight-style checks:
 ```python
@@ -209,7 +209,7 @@ if not chgcar_src.exists():
 
 ### 5.2 Current Implementation (LAMMPS)
 
-**File**: `src/quantumvitas/engine/lammps_engine.py`
+**File**: `src/qmatsuite/engine/lammps_engine.py`
 
 LAMMPS has similar checks:
 ```python
@@ -224,7 +224,7 @@ raise FileNotFoundError(
 **Goal**: Extract preflight logic into a reusable component.
 
 ```python
-# Proposed: src/quantumvitas/execution/preflight.py
+# Proposed: src/qmatsuite/execution/preflight.py
 
 @dataclass
 class PreflightRequirement:
@@ -311,7 +311,7 @@ class CP2KRecipe(BaseRecipe):
 
 ### 6.2 VASP Cleanup Code
 
-**File**: `src/quantumvitas/execution/handlers.py` (lines 350-355)
+**File**: `src/qmatsuite/execution/handlers.py` (lines 350-355)
 ```python
 # Clean workdir completely (rm -rf)
 working_dir = job.working_dir
@@ -323,7 +323,7 @@ working_dir.mkdir(parents=True, exist_ok=True)
 
 ### 6.3 LAMMPS Accumulate Code
 
-**File**: `src/quantumvitas/execution/handlers.py` (lines 519-521)
+**File**: `src/qmatsuite/execution/handlers.py` (lines 519-521)
 ```python
 # Create workdir (LAMMPS uses isolated workdir per step)
 working_dir = job.working_dir
@@ -364,31 +364,31 @@ def cp2k_step_handler(...):
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/execution/preflight.py` | General preflight checker |
-| `src/quantumvitas/execution/latest_selector.py` | mtime-based artifact selector |
-| `src/quantumvitas/core/engines/cp2k_resolver.py` | CP2K binary discovery |
-| `src/quantumvitas/engine/cp2k_engine.py` | CP2K engine class |
-| `src/quantumvitas/engine/cp2k_writer.py` | Input file generator |
-| `src/quantumvitas/engine/cp2k_parser.py` | Output parser |
+| `src/qmatsuite/execution/preflight.py` | General preflight checker |
+| `src/qmatsuite/execution/latest_selector.py` | mtime-based artifact selector |
+| `src/qmatsuite/core/engines/cp2k_resolver.py` | CP2K binary discovery |
+| `src/qmatsuite/engine/cp2k_engine.py` | CP2K engine class |
+| `src/qmatsuite/engine/cp2k_writer.py` | Input file generator |
+| `src/qmatsuite/engine/cp2k_parser.py` | Output parser |
 
 ### 8.2 Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/workflow/registry.py` | Add cp2k_scf, cp2k_relax, cp2k_md |
-| `src/quantumvitas/workflow/generalized_steps.py` | Add CP2K MATERIALIZATION_MAP entries |
-| `src/quantumvitas/execution/recipes.py` | Add CP2KRecipe, update factory |
-| `src/quantumvitas/execution/handlers.py` | Add cp2k_step_handler, update handler map |
-| `src/quantumvitas/execution/relax_artifacts.py` | Add cp2k_trajectory handler |
-| `src/quantumvitas/engine/registry.py` | Register Cp2kEngine |
+| `src/qmatsuite/workflow/registry.py` | Add cp2k_scf, cp2k_relax, cp2k_md |
+| `src/qmatsuite/workflow/generalized_steps.py` | Add CP2K MATERIALIZATION_MAP entries |
+| `src/qmatsuite/execution/recipes.py` | Add CP2KRecipe, update factory |
+| `src/qmatsuite/execution/handlers.py` | Add cp2k_step_handler, update handler map |
+| `src/qmatsuite/execution/relax_artifacts.py` | Add cp2k_trajectory handler |
+| `src/qmatsuite/engine/registry.py` | Register Cp2kEngine |
 
 ### 8.3 Files NOT Requiring Modification
 
 | File | Reason |
 |------|--------|
-| `src/quantumvitas/execution/post_job.py` | Archive logic already correct |
-| `src/quantumvitas/execution/scan_expansion.py` | Variant machinery unchanged |
-| `src/quantumvitas/calculation/manifest.py` | Fingerprint system unchanged |
+| `src/qmatsuite/execution/post_job.py` | Archive logic already correct |
+| `src/qmatsuite/execution/scan_expansion.py` | Variant machinery unchanged |
+| `src/qmatsuite/calculation/manifest.py` | Fingerprint system unchanged |
 
 ---
 

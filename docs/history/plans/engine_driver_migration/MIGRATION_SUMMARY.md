@@ -120,7 +120,7 @@ QE excluded - will be migrated in a separate dedicated effort.
 
 ## Critical Vulnerability Fixed
 
-**Location**: `src/quantumvitas/core/calc_identity.py` lines 96-108
+**Location**: `src/qmatsuite/core/calc_identity.py` lines 96-108
 
 **Issue**: Silent QE fallback for unknown step types
 

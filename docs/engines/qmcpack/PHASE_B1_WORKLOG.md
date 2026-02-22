@@ -110,7 +110,7 @@
 
 ### Stage 5: Output Digest — DONE
 
-Created `src/quantumvitas/drivers/qmcpack/parsers/`:
+Created `src/qmatsuite/drivers/qmcpack/parsers/`:
 - `__init__.py` — import trigger for `@register_parser` registration
 - `output.py` — `QMCPACKDigest` (14 fields) + `QMCPACKOutputParser`
   - Registered as `("qmcpack", "scf_digest")`
@@ -188,23 +188,23 @@ Systematic audit identified 6 compliance gaps relative to the final playbook spe
 
 ### Fix G1: data/qmcpack_tags.json — DONE
 
-- Created `src/quantumvitas/drivers/qmcpack/data/__init__.py`
-- Created `src/quantumvitas/drivers/qmcpack/data/qmcpack_tags.json`
+- Created `src/qmatsuite/drivers/qmcpack/data/__init__.py`
+- Created `src/qmatsuite/drivers/qmcpack/data/qmcpack_tags.json`
   - 65 tags across 11 categories: cell, control, dmc, estimator, hamiltonian, optimization, particles, project, qmc, vmc, wavefunction
   - Schema version 1, engine "qmcpack"
   - Exceeds 50-tag minimum for specialized engines
 
 ### Fix G2: data/qmcpack_metadata.py — DONE
 
-- Created `src/quantumvitas/drivers/qmcpack/data/qmcpack_metadata.py` (261 lines)
+- Created `src/qmatsuite/drivers/qmcpack/data/qmcpack_metadata.py` (261 lines)
 - Full API: safe_load_metadata, reload_metadata, get_tag_info (case-insensitive), list_tags, list_categories, validate_params, get_tag_type, get_tag_default, get_metadata_file_info
-- Module-level cache with optional hot-reload via `QV_QMCPACK_METADATA_HOT_RELOAD=1`
+- Module-level cache with optional hot-reload via `QMS_QMCPACK_METADATA_HOT_RELOAD=1`
 - Uses `importlib.resources`, stdlib only
 
 ### Fix G3: io/qmcpack_xml.py — DONE
 
-- Created `src/quantumvitas/drivers/qmcpack/io/__init__.py`
-- Created `src/quantumvitas/drivers/qmcpack/io/qmcpack_xml.py` (550+ lines)
+- Created `src/qmatsuite/drivers/qmcpack/io/__init__.py`
+- Created `src/qmatsuite/drivers/qmcpack/io/qmcpack_xml.py` (550+ lines)
   - Moved ALL parse/write functions from inputspec.py
   - Public: `parse_qmcpack_text`, `write_qmcpack_text`
   - Helpers: `_parse_pos_array`, `_parse_lattice_text`, `_parse_string_array`, `_find_ion_particleset`, `_parse_ion_particleset`, `_parse_qmc_block`, `_extract_resource_refs`

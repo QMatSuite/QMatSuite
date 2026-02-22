@@ -6,19 +6,19 @@ import math
 import numpy as np
 import pytest
 
-from quantumvitas.mcp.renderers.terminal_chart import TerminalChart
-from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_to_ascii
+from qmatsuite.mcp.renderers.terminal_chart import TerminalChart
+from qmatsuite.mcp.renderers.ascii_renderer import render_bundle_to_ascii
 
 # ---------------------------------------------------------------------------
 # Bundle helpers (duplicated from test_phase2a to keep this file self-contained)
 # ---------------------------------------------------------------------------
 
-from quantumvitas.core.analysis.bundles import (
+from qmatsuite.core.analysis.bundles import (
     CanonicalPrimitiveBundle,
     ProvenanceMeta,
     RenderMeta,
 )
-from quantumvitas.core.analysis.primitives import Marker, Series1D
+from qmatsuite.core.analysis.primitives import Marker, Series1D
 
 
 def _make_convergence_bundle() -> CanonicalPrimitiveBundle:
@@ -252,7 +252,7 @@ class TestPlotextRenderer:
 
     def test_convergence_renders(self):
         """Convergence bundle renders via plotext."""
-        from quantumvitas.mcp.renderers.plotext_renderer import (
+        from qmatsuite.mcp.renderers.plotext_renderer import (
             render_bundle_with_plotext,
         )
         bundle = _make_convergence_bundle()
@@ -264,7 +264,7 @@ class TestPlotextRenderer:
 
     def test_dos_renders(self):
         """DOS bundle renders via plotext."""
-        from quantumvitas.mcp.renderers.plotext_renderer import (
+        from qmatsuite.mcp.renderers.plotext_renderer import (
             render_bundle_with_plotext,
         )
         bundle = _make_dos_bundle()
@@ -276,7 +276,7 @@ class TestPlotextRenderer:
 
     def test_bands_renders(self):
         """Bands bundle with 5 series renders without error."""
-        from quantumvitas.mcp.renderers.plotext_renderer import (
+        from qmatsuite.mcp.renderers.plotext_renderer import (
             render_bundle_with_plotext,
         )
         bundle = _make_bands_bundle()
@@ -288,7 +288,7 @@ class TestPlotextRenderer:
 
     def test_bands_with_fermi_shift(self):
         """Bands with reference_energy shifts y-axis label."""
-        from quantumvitas.mcp.renderers.plotext_renderer import (
+        from qmatsuite.mcp.renderers.plotext_renderer import (
             render_bundle_with_plotext,
         )
         k_dist = np.linspace(0.0, 1.0, 20)
@@ -319,7 +319,7 @@ class TestPlotextRenderer:
 
     def test_no_ansi_codes(self):
         """Output should be free of ANSI escape codes."""
-        from quantumvitas.mcp.renderers.plotext_renderer import (
+        from qmatsuite.mcp.renderers.plotext_renderer import (
             render_bundle_with_plotext,
         )
         bundle = _make_convergence_bundle()

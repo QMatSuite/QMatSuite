@@ -10,7 +10,7 @@
 
 ### 1.1 StepResult Schema
 
-**Location**: `src/quantumvitas/core/engines/qe_calculation.py:23-36`
+**Location**: `src/qmatsuite/core/engines/qe_calculation.py:23-36`
 
 ```python
 @dataclass
@@ -29,7 +29,7 @@ class StepResult:
 
 ### 1.2 Engine Interface
 
-**Location**: `src/quantumvitas/engine/base.py`
+**Location**: `src/qmatsuite/engine/base.py`
 
 ```python
 class Engine:
@@ -44,7 +44,7 @@ class Engine:
 
 ### 1.3 Engine Registry
 
-**Location**: `src/quantumvitas/engine/registry.py`
+**Location**: `src/qmatsuite/engine/registry.py`
 
 ```python
 class EngineRegistry:
@@ -57,7 +57,7 @@ def create_default_registry() -> EngineRegistry:
 
 ### 1.4 Step Type Registry
 
-**Location**: `src/quantumvitas/workflow/registry.py`
+**Location**: `src/qmatsuite/workflow/registry.py`
 
 The `pyscf_scf` step type is already registered:
 
@@ -73,7 +73,7 @@ The `pyscf_scf` step type is already registered:
 
 ### 1.5 QE Subprocess Execution Pattern
 
-**Location**: `src/quantumvitas/core/engines/qe_calculation.py:227-266`
+**Location**: `src/qmatsuite/core/engines/qe_calculation.py:227-266`
 
 ```python
 process = subprocess.Popen(
@@ -109,7 +109,7 @@ stdout, stderr = process.communicate(timeout=timeout)
 ┌─────────────────────────────────────────────────────────────┐
 │ Runner Subprocess (imports pyscf)                           │
 │                                                             │
-│  python -m quantumvitas.engines.pyscf.runner job.json       │
+│  python -m qmatsuite.engines.pyscf.runner job.json       │
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ 1. Read job.json                                      │  │
@@ -124,7 +124,7 @@ stdout, stderr = process.communicate(timeout=timeout)
 ### 2.2 File Structure
 
 ```
-src/quantumvitas/
+src/qmatsuite/
 ├── engine/
 │   ├── base.py              # Engine interface (unchanged)
 │   ├── registry.py          # Engine registry (add PySCF)
@@ -350,12 +350,12 @@ pytest tests/integration/test_pyscf_execution.py::TestPySCFH2OCalculation::test_
 ```bash
 # Run the water demo project
 cd resources/demo_projects
-qv run water_pyscf_scf.yml
+qms run water_pyscf_scf.yml
 
 # Or generate and run
 python tools/generate_pyscf_demo.py
 cd resources/demo_projects
-qv run water-pyscf-scf
+qms run water-pyscf-scf
 ```
 
 ### 6.4 Check Engine Availability
@@ -363,7 +363,7 @@ qv run water-pyscf-scf
 ```bash
 # From Python
 python -c "
-from quantumvitas.engine.pyscf_engine import PySCFEngine
+from qmatsuite.engine.pyscf_engine import PySCFEngine
 engine = PySCFEngine()
 print(engine.probe())
 "
@@ -410,12 +410,12 @@ print(engine.probe())
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/quantumvitas/engines/__init__.py` | Created | Package marker for engine subprocess runners |
-| `src/quantumvitas/engines/pyscf/__init__.py` | Created | PySCF runner package marker |
-| `src/quantumvitas/engines/pyscf/runner.py` | Created | Subprocess entrypoint that imports PySCF |
-| `src/quantumvitas/engines/pyscf/__main__.py` | Created | Allow `python -m quantumvitas.engines.pyscf` |
-| `src/quantumvitas/engine/pyscf_engine.py` | Refactored | Now uses subprocess instead of direct import |
-| `src/quantumvitas/engine/registry.py` | Modified | Added PySCF engine registration |
+| `src/qmatsuite/engines/__init__.py` | Created | Package marker for engine subprocess runners |
+| `src/qmatsuite/engines/pyscf/__init__.py` | Created | PySCF runner package marker |
+| `src/qmatsuite/engines/pyscf/runner.py` | Created | Subprocess entrypoint that imports PySCF |
+| `src/qmatsuite/engines/pyscf/__main__.py` | Created | Allow `python -m qmatsuite.engines.pyscf` |
+| `src/qmatsuite/engine/pyscf_engine.py` | Refactored | Now uses subprocess instead of direct import |
+| `src/qmatsuite/engine/registry.py` | Modified | Added PySCF engine registration |
 | `tests/unit/test_pyscf_integration.py` | Updated | Tests for new subprocess architecture |
 | `docs/pyscf_integration_plan.md` | Created | This documentation |
 

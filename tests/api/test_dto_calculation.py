@@ -6,8 +6,8 @@ Tests for CalculationDTO and StepDTO.
 
 import pytest
 
-from quantumvitas.api.types.calculation import CalculationDTO, StepDTO
-from quantumvitas.api.types.common import MetaDTO
+from qmatsuite.api.types.calculation import CalculationDTO, StepDTO
+from qmatsuite.api.types.common import MetaDTO
 
 
 def test_calculation_dto_required_fields():

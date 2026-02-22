@@ -19,7 +19,7 @@ Test categories:
 import pytest
 from pathlib import Path
 
-from quantumvitas.presets import (
+from qmatsuite.presets import (
     MagnetismOption,
     OccupationsSchemeOption,
     CUSTOM,
@@ -31,7 +31,7 @@ from quantumvitas.presets import (
     compile_presets,
     PresetCompilationError,
 )
-from quantumvitas.presets.detector import detect_dimension_from_steps
+from qmatsuite.presets.detector import detect_dimension_from_steps
 
 
 class TestMagnetismDetection:
@@ -231,7 +231,7 @@ class TestRealQEInputs:
     
     def _params_from_qe_file(self, path: Path) -> dict:
         """Parse QE input file and return parameters dict."""
-        from quantumvitas.io import QEInputParser
+        from qmatsuite.io import QEInputParser
         qe_input = QEInputParser.parse_file(path)
         
         params = {}
@@ -346,7 +346,7 @@ class TestCustomSingleton:
     
     def test_custom_is_singleton(self):
         """CUSTOM should be a singleton."""
-        from quantumvitas.presets.dimensions import _CustomType
+        from qmatsuite.presets.dimensions import _CustomType
         another = _CustomType()
         assert another is CUSTOM
 
@@ -400,7 +400,7 @@ class TestCompilerDetectorEquivalence:
     
     def test_occupations_scheme_roundtrip_fixed(self):
         """compile(fixed) -> detect should equal fixed."""
-        from quantumvitas.presets import compile_occupations_scheme
+        from qmatsuite.presets import compile_occupations_scheme
         
         compiled = compile_occupations_scheme(OccupationsSchemeOption.FIXED)
         # compiled is now {"SYSTEM": {...}}
@@ -411,7 +411,7 @@ class TestCompilerDetectorEquivalence:
     
     def test_occupations_scheme_roundtrip_smearing_gaussian(self):
         """compile(smearing_gaussian) -> detect should equal smearing_gaussian."""
-        from quantumvitas.presets import compile_occupations_scheme
+        from qmatsuite.presets import compile_occupations_scheme
         
         compiled = compile_occupations_scheme(OccupationsSchemeOption.SMEARING_GAUSSIAN)
         # compiled is now {"SYSTEM": {...}}
@@ -422,7 +422,7 @@ class TestCompilerDetectorEquivalence:
     
     def test_occupations_scheme_roundtrip_tetrahedra(self):
         """compile(tetrahedra) -> detect should equal tetrahedra."""
-        from quantumvitas.presets import compile_occupations_scheme
+        from qmatsuite.presets import compile_occupations_scheme
         
         compiled = compile_occupations_scheme(OccupationsSchemeOption.TETRAHEDRA)
         # compiled is now {"SYSTEM": {...}}
@@ -433,7 +433,7 @@ class TestCompilerDetectorEquivalence:
     
     def test_full_preset_roundtrip_defaults(self):
         """compile_presets with defaults should roundtrip through detect_all_presets."""
-        from quantumvitas.presets import compile_presets
+        from qmatsuite.presets import compile_presets
         
         options = {
             "magnetism": MagnetismOption.NONMAGNETIC,
@@ -447,7 +447,7 @@ class TestCompilerDetectorEquivalence:
     
     def test_full_preset_roundtrip_collinear_metal(self):
         """compile_presets for collinear metal should roundtrip correctly."""
-        from quantumvitas.presets import compile_presets
+        from qmatsuite.presets import compile_presets
         
         options = {
             "magnetism": MagnetismOption.COLLINEAR_LSDA,
@@ -461,7 +461,7 @@ class TestCompilerDetectorEquivalence:
     
     def test_full_preset_roundtrip_noncollinear_soc(self):
         """compile_presets for noncollinear with SOC should roundtrip correctly."""
-        from quantumvitas.presets import compile_presets
+        from qmatsuite.presets import compile_presets
         
         options = {
             "magnetism": MagnetismOption.NONCOLLINEAR_SOC,
@@ -613,7 +613,7 @@ class TestCompilerPostProcessing:
     
     def test_compile_presets_for_dos_step(self):
         """DOS step should return empty params (inherits from PW calc)."""
-        from quantumvitas.presets import compile_presets_for_step
+        from qmatsuite.presets import compile_presets_for_step
         
         options = {
             "magnetism": MagnetismOption.COLLINEAR_LSDA,
@@ -626,7 +626,7 @@ class TestCompilerPostProcessing:
     
     def test_compile_presets_for_bands_step(self):
         """BANDS step should return empty params."""
-        from quantumvitas.presets import compile_presets_for_step
+        from qmatsuite.presets import compile_presets_for_step
         
         options = {"magnetism": MagnetismOption.NONMAGNETIC}
         result = compile_presets_for_step("bands", options)
@@ -635,7 +635,7 @@ class TestCompilerPostProcessing:
     
     def test_compile_presets_for_scf_step(self):
         """SCF step should return full preset params."""
-        from quantumvitas.presets import compile_presets_for_step
+        from qmatsuite.presets import compile_presets_for_step
         
         options = {
             "magnetism": MagnetismOption.COLLINEAR_LSDA,

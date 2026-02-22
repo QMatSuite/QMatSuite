@@ -19,11 +19,11 @@ from pathlib import Path
 
 import yaml
 
-from quantumvitas.presets.integration import (
+from qmatsuite.presets.integration import (
     apply_presets_to_step,
     detect_presets_from_calculation,
 )
-from quantumvitas.presets.receivers import (
+from qmatsuite.presets.receivers import (
     get_receiver_registry,
     is_receiver,
     filter_presets_for_step,
@@ -32,8 +32,8 @@ from quantumvitas.presets.receivers import (
     V0_DIMENSIONS,
     V1_DIMENSIONS,
 )
-from quantumvitas.presets.detector import detect_magnetism, detect_occupations_scheme
-from quantumvitas.presets.dimensions import MagnetismOption, OccupationsSchemeOption, DIMENSION_OCCUPATIONS_SCHEME
+from qmatsuite.presets.detector import detect_magnetism, detect_occupations_scheme
+from qmatsuite.presets.dimensions import MagnetismOption, OccupationsSchemeOption, DIMENSION_OCCUPATIONS_SCHEME
 
 
 class TestReceiverRegistry:
@@ -329,7 +329,7 @@ class TestBroadcastApplyEdgeCases:
             "parameters": {"SYSTEM": {"noncolin": False, "lspinorb": True}}
         }))
         
-        from quantumvitas.presets.compiler import PresetCompilationError
+        from qmatsuite.presets.compiler import PresetCompilationError
         
         # Applying any magnetism option should trigger validation
         # The final state will have lspinorb=true but noncolin=false, which is invalid
@@ -385,7 +385,7 @@ class TestBroadcastApplyEdgeCases:
         # But since apply overwrites, it will fix it...
         
         # Let me just test that validation function works by calling it directly on invalid state
-        from quantumvitas.presets.integration import _validate_magnetism_physics
+        from qmatsuite.presets.integration import _validate_magnetism_physics
         
         with pytest.raises(PresetCompilationError) as exc_info:
             _validate_magnetism_physics({"noncolin": True, "nspin": 2})

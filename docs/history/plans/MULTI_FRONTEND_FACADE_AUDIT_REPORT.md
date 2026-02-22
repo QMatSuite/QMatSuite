@@ -40,12 +40,12 @@ This audit evaluates the current state of the multi-frontend refactor against th
 
 From `docs/plan/MULTI_FRONTEND_REFACTOR_MILESTONE.md` and `docs/specs/MULTI_FRONTEND_ARCHITECTURE_SPEC.md`:
 
-1. **Architecture Boundary**: Frontends (CLI + daemon) must only import `quantumvitas.api` (or allowed frontend-only modules). No direct kernel imports.
+1. **Architecture Boundary**: Frontends (CLI + daemon) must only import `qmatsuite.api` (or allowed frontend-only modules). No direct kernel imports.
 2. **Gates Policy**: Default enforced (blocking mode). Opt-out via `QMATSUITE_RELAX_ARCH_GATES=1` for local development.
 3. **Audit Scripts**: Must produce deterministic outputs (`.audit/` directory).
 4. **Zero Violations**: CLI and daemon must have 0 forbidden imports.
 5. **Facade Philosophy**: Wrappers validated via monkeypatching; avoid heavy filesystem/engine execution in unit tests.
-6. **QVService Usage**: Instance methods preferred for frontend code; static methods for utilities.
+6. **QMSService Usage**: Instance methods preferred for frontend code; static methods for utilities.
 
 ### Compliance Table
 
@@ -54,8 +54,8 @@ From `docs/plan/MULTI_FRONTEND_REFACTOR_MILESTONE.md` and `docs/specs/MULTI_FRON
 | **A1: Architecture Boundary** | | | |
 | CLI has 0 forbidden imports | `scripts/audit_cli_kernel_imports.py`: `total_violations: 0` | ✅ PASS | `.audit/cli_kernel_deps.json` confirms 0 violations |
 | Daemon has 0 forbidden imports | `scripts/audit_daemon_kernel_imports.py`: `total_violations: 0` | ✅ PASS | `.audit/daemon_kernel_deps.json` confirms 0 violations |
-| No direct kernel imports in CLI | `rg -n "^from quantumvitas\.(core|calculation|...)\b" src/quantumvitas/cli`: 0 matches | ✅ PASS | All imports go through `quantumvitas.api` |
-| No direct kernel imports in daemon | `rg -n "^from quantumvitas\.(core|calculation|...)\b" src/quantumvitas/daemon`: 0 matches | ✅ PASS | All imports go through `quantumvitas.api` |
+| No direct kernel imports in CLI | `rg -n "^from qmatsuite\.(core|calculation|...)\b" src/qmatsuite/cli`: 0 matches | ✅ PASS | All imports go through `qmatsuite.api` |
+| No direct kernel imports in daemon | `rg -n "^from qmatsuite\.(core|calculation|...)\b" src/qmatsuite/daemon`: 0 matches | ✅ PASS | All imports go through `qmatsuite.api` |
 | **A2: Gates Policy** | | | |
 | Gates enforced by default | `tests/gates/test_import_rules.py`: `_should_enforce_gates()` returns `True` by default | ✅ PASS | Line 50: `return os.environ.get("QMATSUITE_RELAX_ARCH_GATES") != "1"` |
 | Opt-out env var works | `QMATSUITE_RELAX_ARCH_GATES=1` enables report-only mode | ✅ PASS | Tested in milestone doc |
@@ -69,10 +69,10 @@ From `docs/plan/MULTI_FRONTEND_REFACTOR_MILESTONE.md` and `docs/specs/MULTI_FRON
 | **C1: Facade Philosophy** | | | |
 | Unit tests use monkeypatching | `tests/unit/test_api_service_facade.py`: Uses `monkeypatch` for wrappers | ✅ PASS | Example: `test_get_workflow_service_wrapper` (line 1693+) |
 | Tests avoid heavy execution | Tests use minimal demo projects, no real engines | ✅ PASS | `demo_project` fixture creates minimal YAML only |
-| **C2: QVService Usage Patterns** | | | |
-| CLI uses instance methods | `src/quantumvitas/cli/main.py`: `svc = QVService(project_root)` pattern | ✅ PASS | 236 QVService references, mostly instance |
-| Daemon uses instance methods | `src/quantumvitas/daemon/server.py`: `svc = QVService(project_root)` pattern | ✅ PASS | 206 QVService references, mostly instance |
-| Static methods exist for utilities | `src/quantumvitas/api.py`: 210 `@staticmethod` decorators | ✅ PASS | Many utility functions are static |
+| **C2: QMSService Usage Patterns** | | | |
+| CLI uses instance methods | `src/qmatsuite/cli/main.py`: `svc = QMSService(project_root)` pattern | ✅ PASS | 236 QMSService references, mostly instance |
+| Daemon uses instance methods | `src/qmatsuite/daemon/server.py`: `svc = QMSService(project_root)` pattern | ✅ PASS | 206 QMSService references, mostly instance |
+| Static methods exist for utilities | `src/qmatsuite/api.py`: 210 `@staticmethod` decorators | ✅ PASS | Many utility functions are static |
 
 ### Design-Level Remedies (if needed)
 
@@ -126,7 +126,7 @@ From `docs/plan/MULTI_FRONTEND_REFACTOR_MILESTONE.md` and `docs/specs/MULTI_FRON
 - **Count**: ~10 static
 
 **7. Pure Re-exports** (Enums/Dataclasses Only)
-- **Re-exports**: `StepMode`, `StepStatus`, `ResourceMeta`, `Calculation`, `Step`, `EngineConfig`, `QVServiceError`, exception types
+- **Re-exports**: `StepMode`, `StepStatus`, `ResourceMeta`, `Calculation`, `Step`, `EngineConfig`, `QMSServiceError`, exception types
 - **Usage**: ✅ Shared (CLI + daemon)
 - **Count**: ~20 in `__all__`, ~642 total (many duplicates)
 
@@ -197,7 +197,7 @@ Many static methods are simple pass-throughs:
 ```python
 @staticmethod
 def some_function(...):
-    from quantumvitas.module import some_function as _impl
+    from qmatsuite.module import some_function as _impl
     return _impl(...)
 ```
 
@@ -211,14 +211,14 @@ def some_function(...):
 
 **3. Code Duplication Across Frontends**
 
-**CLI-specific patterns** (in `src/quantumvitas/cli/main.py`):
+**CLI-specific patterns** (in `src/qmatsuite/cli/main.py`):
 - Project root detection: `_resolve_project_root()` (lines 129-162)
 - Service initialization: `_svc_from_cwd()` (lines 102-126)
 - Override parsing: `_parse_override_args()` (lines 1638+)
 
-**Daemon-specific patterns** (in `src/quantumvitas/daemon/server.py`):
+**Daemon-specific patterns** (in `src/qmatsuite/daemon/server.py`):
 - Cache management: `DaemonState.get_cache()` (lines 97-119)
-- Service initialization: `QVService(project_root)` (lines 110, 132)
+- Service initialization: `QMSService(project_root)` (lines 110, 132)
 
 **Finding**: Minimal duplication - each frontend has its own patterns, which is acceptable.
 
@@ -228,9 +228,9 @@ def some_function(...):
 
 **Structure**:
 ```
-src/quantumvitas/api/
-├── __init__.py          # Public exports (from quantumvitas.api import X)
-├── service.py           # QVService class (instance + static methods)
+src/qmatsuite/api/
+├── __init__.py          # Public exports (from qmatsuite.api import X)
+├── service.py           # QMSService class (instance + static methods)
 ├── reexports.py         # Module-level re-exports (types/exceptions)
 └── wrappers/
     ├── __init__.py
@@ -242,7 +242,7 @@ src/quantumvitas/api/
     └── project.py       # Project/calculation wrappers
 ```
 
-**Import Stability**: `from quantumvitas.api import QVService, QVServiceError, ...` must remain stable.
+**Import Stability**: `from qmatsuite.api import QMSService, QMSServiceError, ...` must remain stable.
 
 **Import Cycle Risks**:
 - **Risk**: `api/` importing from `core/` is allowed (spec says API can import kernel)
@@ -277,11 +277,11 @@ src/quantumvitas/api/
 **2. Backwards Compatibility**
 - **Risk**: MEDIUM - Moving symbols breaks existing imports
 - **Mitigation**: 
-  - Phase 1: Keep import paths stable (`from quantumvitas.api import X` still works)
+  - Phase 1: Keep import paths stable (`from qmatsuite.api import X` still works)
   - Phase 2: Add deprecation warnings, provide shim re-exports for 1-2 releases
 
 **3. Tests Relying on Names**
-- **Risk**: LOW - Tests use `from quantumvitas.api import QVService` (stable)
+- **Risk**: LOW - Tests use `from qmatsuite.api import QMSService` (stable)
 - **Mitigation**: Update test imports if needed (mechanical change)
 
 **4. Re-export Sprawl**
@@ -291,12 +291,12 @@ src/quantumvitas/api/
 **5. Frontend Breakage**
 - **Risk**: MEDIUM - Moving CLI-only helpers could break CLI if not careful
 - **Mitigation**: 
-  - Update CLI imports: `from quantumvitas.frontends._shared.analysis import plot_bands`
+  - Update CLI imports: `from qmatsuite.frontends._shared.analysis import plot_bands`
   - Add shim re-exports in `api/__init__.py` with deprecation warnings
 
 **Guardrails**:
 
-1. **Import Path Stability**: `from quantumvitas.api import QVService` must never break
+1. **Import Path Stability**: `from qmatsuite.api import QMSService` must never break
 2. **Contract Tests**: Add tests that verify `__all__` exports are importable
 3. **Deprecation Warnings**: For Phase 2 moves, emit warnings for 1-2 releases
 4. **Gradual Migration**: Move symbols one category at a time, verify tests after each
@@ -307,10 +307,10 @@ src/quantumvitas/api/
 
 ### Recommended Core Exports (~15-20 symbols)
 
-**Essential Public API** (must remain in `quantumvitas.api`):
+**Essential Public API** (must remain in `qmatsuite.api`):
 
-1. **QVService** (class) - Primary service interface
-2. **QVServiceError** (exception) - Base exception for API operations
+1. **QMSService** (class) - Primary service interface
+2. **QMSServiceError** (exception) - Base exception for API operations
 3. **ResourceNotFoundError** (exception) - Resource not found
 4. **AmbiguousSelectorError** (exception) - Selector ambiguity
 5. **SelectorNotFoundError** (exception) - Selector not found

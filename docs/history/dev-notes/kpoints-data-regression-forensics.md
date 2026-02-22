@@ -25,7 +25,7 @@ K-path formats (crystal_b, crystal_c, tpiba_b, tpiba_c) cannot use automatic gri
 **bandspp** step (step_type: `qe_bands`)
 
 ### 错误位置
-- **文件**: `src/quantumvitas/calculation/input_runner.py`
+- **文件**: `src/qmatsuite/calculation/input_runner.py`
 - **函数**: `apply_card_overrides_to_qe_input`
 - **行号**: 755-759
 - **错误信息**: `payload keys=['option'], payload={'option': 'crystal_b'}` - **data 字段已丢失**
@@ -145,7 +145,7 @@ cards:
 
 #### 4.2 回溯来源
 
-**代码位置**: `src/quantumvitas/calculation/step_defaults.py:69-88`
+**代码位置**: `src/qmatsuite/calculation/step_defaults.py:69-88`
 
 ```python
 "bands": {
@@ -176,15 +176,15 @@ cards:
 - 这是默认模板注入的，不是从 existing_input_file 提取的
 
 **调用链**:
-1. `QVService.init_step(step_type="bands")` → `src/quantumvitas/api.py:810`
-2. `get_default_step_params("bands")` → `src/quantumvitas/calculation/step_defaults.py:218`
-3. `create_step_doc(overrides={"cards": defaults.get("cards", {})})` → `src/quantumvitas/workflow/step_factory.py:24`
+1. `QMSService.init_step(step_type="bands")` → `src/qmatsuite/api.py:810`
+2. `get_default_step_params("bands")` → `src/qmatsuite/calculation/step_defaults.py:218`
+3. `create_step_doc(overrides={"cards": defaults.get("cards", {})})` → `src/qmatsuite/workflow/step_factory.py:24`
 4. `step_doc.apply_patch(overrides)` → 写入 step.yaml
 
 **代码证据**:
-- `src/quantumvitas/api.py:903`: `defaults = get_default_step_params(step_type)`
-- `src/quantumvitas/api.py:914`: `"cards": defaults.get("cards", {})`
-- `src/quantumvitas/workflow/step_factory.py:89-90`: `if defaults.get("cards"): data["cards"] = defaults["cards"]`
+- `src/qmatsuite/api.py:903`: `defaults = get_default_step_params(step_type)`
+- `src/qmatsuite/api.py:914`: `"cards": defaults.get("cards", {})`
+- `src/qmatsuite/workflow/step_factory.py:89-90`: `if defaults.get("cards"): data["cards"] = defaults["cards"]`
 
 #### 4.3 判定
 
@@ -210,7 +210,7 @@ cards:
 
 #### 5.2 调用链检查（只读）
 
-**代码位置1**: `src/quantumvitas/execution/handlers.py:112`
+**代码位置1**: `src/qmatsuite/execution/handlers.py:112`
 
 ```python
 result = step.run(
@@ -221,7 +221,7 @@ result = step.run(
 )
 ```
 
-**代码位置2**: `src/quantumvitas/calculation/step.py:99-107`
+**代码位置2**: `src/qmatsuite/calculation/step.py:99-107`
 
 ```python
 result, _ = run_input_step(
@@ -236,7 +236,7 @@ result, _ = run_input_step(
 )
 ```
 
-**代码位置3**: `src/quantumvitas/calculation/input_runner.py:458-514`
+**代码位置3**: `src/qmatsuite/calculation/input_runner.py:458-514`
 
 ```python
 def run_input_step(
@@ -270,7 +270,7 @@ def run_input_step(
 
 ```
 step.yaml (cards.K_POINTS: {option: crystal_b})  ← 默认模板注入，缺少 data
-  ↓ QVService.init_step()
+  ↓ QMSService.init_step()
   ↓ get_default_step_params("bands")
   ↓ create_step_doc(overrides={"cards": {"K_POINTS": {"option": "crystal_b"}}})
   ↓ save_step_doc() → step.yaml 落盘
@@ -300,7 +300,7 @@ step.yaml (cards.K_POINTS: {option: crystal_b})  ← 默认模板注入，缺少
 
 **描述**: 
 - `step_defaults.py` 中 `"bands"` 类型的默认值包含 `K_POINTS: {option: "crystal_b"}`，但**没有 `data`**
-- 当 `QVService.init_step(step_type="bands")` 创建 `bandspp` step 时，默认模板注入的 `K_POINTS` 就是无效的
+- 当 `QMSService.init_step(step_type="bands")` 创建 `bandspp` step 时，默认模板注入的 `K_POINTS` 就是无效的
 - 即使 `Step.run()` 传递了 `card_overrides`，也无法修复，因为 step.yaml 本身就不完整
 
 **影响**: 所有使用 `step_type="bands"` 创建的 step 都会有这个问题
@@ -336,7 +336,7 @@ step.yaml (cards.K_POINTS: {option: crystal_b})  ← 默认模板注入，缺少
 
 ### 推荐修复点: 修复默认模板中 "bands" 类型的 K_POINTS 配置
 
-**位置**: `src/quantumvitas/calculation/step_defaults.py:69-88`
+**位置**: `src/qmatsuite/calculation/step_defaults.py:69-88`
 
 **修复内容**:
 删除 `"bands"` 类型默认值中的 `K_POINTS`，因为：
@@ -382,7 +382,7 @@ step.yaml (cards.K_POINTS: {option: crystal_b})  ← 默认模板注入，缺少
 
 ### Part A: Removed invalid K_POINTS default from "bands" step type
 
-**File**: `src/quantumvitas/calculation/step_defaults.py:69-88`
+**File**: `src/qmatsuite/calculation/step_defaults.py:69-88`
 
 **Change**: Removed `K_POINTS: {option: "crystal_b"}` from the "bands" default template. The cards dict is now empty `{}`.
 
@@ -393,7 +393,7 @@ step.yaml (cards.K_POINTS: {option: crystal_b})  ← 默认模板注入，缺少
 
 ### Part B: Step.run() now forwards card_overrides from step.yaml
 
-**File**: `src/quantumvitas/calculation/step.py:62-127`
+**File**: `src/qmatsuite/calculation/step.py:62-127`
 
 **Change**: Modified `Step.run()` to:
 1. Load cards from step.yaml using `StructureStepSpec.from_yaml()` 

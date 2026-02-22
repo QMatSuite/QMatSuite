@@ -1,7 +1,7 @@
 """CI-friendly quick tests for PW module.
 
 Parsing tests do not require QE; execution tests run pw.x if available.
-Tests assume `quantumvitas` is importable (e.g. via `pip install -e .`
+Tests assume `qmatsuite` is importable (e.g. via `pip install -e .`
 or `PYTHONPATH=src`).
 """
 
@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.io import QEInputParser, QEInputGenerator
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.io import QEInputParser, QEInputGenerator
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 from tests.core import run_and_verify_step_with_assert
 from tests.core.qe_step_runner import get_default_working_dir
 from tests.core.test_data import load_test_cases

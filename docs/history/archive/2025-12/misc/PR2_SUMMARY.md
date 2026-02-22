@@ -102,7 +102,7 @@ Added to `__all__`:
 
 ## Files Modified
 
-- `src/quantumvitas/analysis/structure_viz.py`: Core implementation
+- `src/qmatsuite/analysis/structure_viz.py`: Core implementation
 - `tests/unit/test_structure_viz.py`: New tests for shifted wrap invariants and boundary repeat
 
 ## Summary

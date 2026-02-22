@@ -20,7 +20,7 @@ from typing import Dict, Any, List, Optional
 def get_orca_path() -> Optional[Path]:
     """Get ORCA path using the resolver."""
     try:
-        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+        from qmatsuite.core.engines.orca_resolver import resolve_orca_bin
         return resolve_orca_bin()
     except RuntimeError:
         return None
@@ -78,7 +78,7 @@ def orca_engine():
     if not orca_path.exists():
         pytest.skip(f"ORCA binary not found at {ORCA_BIN}")
 
-    from quantumvitas.engine.orca_engine import ORCAEngine
+    from qmatsuite.engine.orca_engine import ORCAEngine
     return ORCAEngine(orca_bin=orca_path)
 
 
@@ -103,7 +103,7 @@ class TestSystemIntegration:
 
     def test_chain_folder_structure(self, orca_engine, calc_structure):
         """Verify chain folder outputs under calc/raw/chains."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         # Create chain
         scf_step = MockStep(
@@ -130,7 +130,7 @@ class TestSystemIntegration:
 
     def test_scf_td_chain_artifacts(self, orca_engine, calc_structure):
         """Verify SCF+TD chain produces all expected artifacts."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         # Create SCF + TD chain
         scf_step = MockStep(
@@ -164,7 +164,7 @@ class TestSystemIntegration:
 
     def test_manifest_like_tracking(self, orca_engine, calc_structure):
         """Verify chain-level done tracking (manifest-like behavior)."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
         import json
 
         scf_step = MockStep(
@@ -202,8 +202,8 @@ class TestSystemIntegration:
 
     def test_energy_extraction_pipeline(self, orca_engine, calc_structure):
         """Verify energy is correctly extracted through the pipeline."""
-        from quantumvitas.engine.qc_engine_base import QCChain
-        from quantumvitas.engines.orca.property_parser import (
+        from qmatsuite.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.property_parser import (
             parse_orca_property_txt,
             get_energy,
         )
@@ -234,7 +234,7 @@ class TestSystemIntegration:
 
     def test_multiple_chains_isolation(self, orca_engine, calc_structure):
         """Verify multiple chains run in isolation."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         # Create two chains with different parameters
         chain1 = QCChain(
@@ -277,7 +277,7 @@ class TestSystemIntegration:
 
     def test_tddft_excitation_extraction(self, orca_engine, calc_structure):
         """Verify TDDFT excitation energies are correctly extracted."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="step_01",
@@ -313,8 +313,8 @@ class TestSystemIntegration:
         if not ORCA_BIN:
             pytest.skip("QMATSUITE_ORCA_BIN not set")
 
-        from quantumvitas.engine.registry import create_default_registry
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.registry import create_default_registry
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         registry = create_default_registry()
 
@@ -341,7 +341,7 @@ class TestSystemIntegration:
 
     def test_fresh_vs_reuse_behavior(self, orca_engine, calc_structure):
         """Verify fresh=True prevents wavefunction reuse."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="step_01",

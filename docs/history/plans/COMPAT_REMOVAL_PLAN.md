@@ -2,7 +2,7 @@
 
 ## Context
 
-`src/quantumvitas/daemon/compat.py` (~1000 lines) is a backward-compatibility shim that transforms RPC payloads and responses between the v0 GUI format (commit 0873ebf) and the current API. The GUI has since been updated to use many native field names, making most of this layer dead code. The golden contract test infrastructure (101 fixtures + comparison utilities) exists solely to verify this compat layer against the v0 baseline.
+`src/qmatsuite/daemon/compat.py` (~1000 lines) is a backward-compatibility shim that transforms RPC payloads and responses between the v0 GUI format (commit 0873ebf) and the current API. The GUI has since been updated to use many native field names, making most of this layer dead code. The golden contract test infrastructure (101 fixtures + comparison utilities) exists solely to verify this compat layer against the v0 baseline.
 
 **Goal**: Hard-delete compat.py and all golden contract test infrastructure. Update GUI to speak the native API format. No deprecation, no feature flags.
 
@@ -38,10 +38,10 @@ Delete all golden fixture files, comparison utilities, and tests that exist sole
 Remove all payload adapters, all response shapers, delete compat.py, remove central dispatch calls in server.py, clean up remaining references. Remove `_project_root` injection from list_calculations.
 
 ### Files DELETED
-- `src/quantumvitas/daemon/compat.py`
+- `src/qmatsuite/daemon/compat.py`
 
 ### Files UPDATED
-- `src/quantumvitas/daemon/server.py` — Remove adapt/shape dispatch, remove compat import
+- `src/qmatsuite/daemon/server.py` — Remove adapt/shape dispatch, remove compat import
 - `tests/gates/test_daemon_kernel_ban.py` — Remove compat test method
 - GUI files — Update to handle native response format (null coalescing, field renames)
 - Daemon contract tests — Update assertions for native field names

@@ -25,10 +25,10 @@
 
 ### Step: Parser/Writer Implementation (Universal Inputformat)
 - Actions:
-  - Added `src/quantumvitas/drivers/siesta/io/fdf.py` as dedicated FDF parser/writer module.
-  - Added `src/quantumvitas/drivers/siesta/io/__init__.py`.
-  - Wired `src/quantumvitas/drivers/siesta/inputspec.py` with `custom_parser` + `custom_writer`.
-  - Reworked legacy writer path in `src/quantumvitas/drivers/siesta/writer.py` to delegate to `io/fdf.py`.
+  - Added `src/qmatsuite/drivers/siesta/io/fdf.py` as dedicated FDF parser/writer module.
+  - Added `src/qmatsuite/drivers/siesta/io/__init__.py`.
+  - Wired `src/qmatsuite/drivers/siesta/inputspec.py` with `custom_parser` + `custom_writer`.
+  - Reworked legacy writer path in `src/qmatsuite/drivers/siesta/writer.py` to delegate to `io/fdf.py`.
 - Evidence/Citations:
   - Design alignment: `docs/design/UNIVERSAL_PARSER_WRITER_DESIGN.md`
   - Playbook writer extraction requirement: `docs/laws/L2/B1_ENGINE_PLAYBOOK.md`
@@ -38,9 +38,9 @@
 
 ### Step: Output Digest Parser
 - Actions:
-  - Added `src/quantumvitas/drivers/siesta/parsers/output.py` with `SiestaDigest`.
+  - Added `src/qmatsuite/drivers/siesta/parsers/output.py` with `SiestaDigest`.
   - Registered parser via `@register_parser("siesta", "scf_digest")`.
-  - Ensured registration import path through `src/quantumvitas/drivers/siesta/__init__.py`.
+  - Ensured registration import path through `src/qmatsuite/drivers/siesta/__init__.py`.
 - Result:
   - Parser registry lookup for `("siesta", "scf_digest")` is available.
 - Status: PASS
@@ -138,7 +138,7 @@
 - Scope note: full `tests/` run was intentionally skipped per user instruction to avoid collisions with concurrent engine threads.
 
 ### Digest/Analyzer Status
-- `SiestaOutputParser` implemented in `src/quantumvitas/drivers/siesta/parsers/output.py`
+- `SiestaOutputParser` implemented in `src/qmatsuite/drivers/siesta/parsers/output.py`
 - Registered object type: `("siesta", "scf_digest")`
 - Digest tests: PASS (`tests/inputformat/test_siesta_digest.py`)
 
@@ -151,9 +151,9 @@
   - Legacy `write_fdf(...)` wrapper emitted scaled lattice vectors with implicit `LatticeConstant = 1 Ang` while preserving `ScaledCartesian` coordinates, changing coordinate semantics.
   - `parse_main_output()` selected first `E_KS(eV)` match instead of the final one for multi-step outputs.
 - Fixes:
-  - `src/quantumvitas/drivers/siesta/writer.py`
+  - `src/qmatsuite/drivers/siesta/writer.py`
     - preserve `LatticeConstant` from wrapper input (`<value> Ang`) so `ScaledCartesian` remains physically correct.
-  - `src/quantumvitas/drivers/siesta/parser.py`
+  - `src/qmatsuite/drivers/siesta/parser.py`
     - take final `E_KS(eV)` match for `total_energy_eV`.
   - Added regression tests:
     - `tests/drivers/siesta/test_siesta_writer_parser.py`

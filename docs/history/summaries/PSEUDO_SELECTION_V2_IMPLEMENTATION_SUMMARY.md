@@ -20,7 +20,7 @@ Implemented "Pseudo Selection v2" with **sha256-keyed selection** (filename-firs
 
 ### Phase B: Generic Archive Management ✓
 **Backend:**
-- Created `src/quantumvitas/core/pseudo_installs.py` with:
+- Created `src/qmatsuite/core/pseudo_installs.py` with:
   - `load_manifest_archives()` - Loads from vendored MANIFEST_PSEUDO_SEED.json
   - `check_archives_status()` - Checks install status by SHA256
   - `install_archive()` - Downloads and installs archives with verification
@@ -28,8 +28,8 @@ Implemented "Pseudo Selection v2" with **sha256-keyed selection** (filename-firs
   - `ArchiveStatus` dataclass - Archive metadata with install status
 
 **RPC Handlers:**
-- Added `list_pseudo_archives_status` RPC in `src/quantumvitas/daemon/server.py`
-- Added `install_pseudo_archive` RPC in `src/quantumvitas/daemon/server.py`
+- Added `list_pseudo_archives_status` RPC in `src/qmatsuite/daemon/server.py`
+- Added `install_pseudo_archive` RPC in `src/qmatsuite/daemon/server.py`
 
 **Settings UI:**
 - ✅ Created `gui/src/components/settings/PseudoArchivesPanel.tsx` - Generic archives table
@@ -39,16 +39,16 @@ Implemented "Pseudo Selection v2" with **sha256-keyed selection** (filename-firs
 
 ### Phase C: Pseudo Options API ✓
 **Backend:**
-- Created `src/quantumvitas/core/pseudo_options.py` with:
+- Created `src/qmatsuite/core/pseudo_options.py` with:
   - `get_pseudo_options_for_elements()` - Generates deduplicated options per element
   - `PseudoOption` dataclass - Option with sha256, basename, sources, availability
   - `PseudoSource` dataclass - Source chip with kind, label, installed status
 
 **API Integration:**
-- Added `get_pseudo_options_for_elements()` to `src/quantumvitas/api.py`
+- Added `get_pseudo_options_for_elements()` to `src/qmatsuite/api.py`
 - Added `get_pseudo_options_for_calculation` RPC handler
-- Added TypeScript types in `gui/src/types/qv.ts`
-- Added hook method in `gui/src/hooks/useQVClient.ts`
+- Added TypeScript types in `gui/src/types/qms.ts`
+- Added hook method in `gui/src/hooks/useQMSClient.ts`
 
 **Features:**
 - SHA256-based deduplication (primary identity)
@@ -126,14 +126,14 @@ Implemented "Pseudo Selection v2" with **sha256-keyed selection** (filename-firs
 ## Files Modified
 
 ### Backend
-- `src/quantumvitas/core/pseudo_installs.py` (NEW)
-- `src/quantumvitas/core/pseudo_options.py` (NEW)
-- `src/quantumvitas/api.py` (added `get_pseudo_options_for_elements`)
-- `src/quantumvitas/daemon/server.py` (added 3 RPC handlers)
+- `src/qmatsuite/core/pseudo_installs.py` (NEW)
+- `src/qmatsuite/core/pseudo_options.py` (NEW)
+- `src/qmatsuite/api.py` (added `get_pseudo_options_for_elements`)
+- `src/qmatsuite/daemon/server.py` (added 3 RPC handlers)
 
 ### Frontend
-- `gui/src/types/qv.ts` (added RPC types, ArchiveStatus, ArchiveInstallResult)
-- `gui/src/hooks/useQVClient.ts` (added hook methods: getPseudoOptionsForCalculation, materializePseudoFile, listPseudoArchivesStatus, installPseudoArchive)
+- `gui/src/types/qms.ts` (added RPC types, ArchiveStatus, ArchiveInstallResult)
+- `gui/src/hooks/useQMSClient.ts` (added hook methods: getPseudoOptionsForCalculation, materializePseudoFile, listPseudoArchivesStatus, installPseudoArchive)
 - `gui/src/components/common_cards/CommonCardPseudo.tsx` (major refactor + auto-refresh listener)
 - `gui/src/components/common_cards/CommonCardPseudo.css` (added chip styles)
 - `gui/src/components/panels/CalculationListPanel.tsx` (pass calculation prop)

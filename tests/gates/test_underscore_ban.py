@@ -10,8 +10,8 @@ This gate enforces:
 """
 
 import pytest
-from quantumvitas.workflow.gen_steps import GenStepRegistry
-from quantumvitas.workflow.step_type_convert import ENGINE_PREFIXES
+from qmatsuite.workflow.gen_steps import GenStepRegistry
+from qmatsuite.workflow.step_type_convert import ENGINE_PREFIXES
 
 
 class TestUnderscoreBan:

@@ -47,79 +47,79 @@
 ### Files Inspected (Presets & ParamSpace)
 
 **ParamSpace Core**:
-- `src/quantumvitas/presets/paramspace.py`: `ParamSpace`, `ParamKey`, `Cell`, `match_profile()`, `compile_profile_patch()`
+- `src/qmatsuite/presets/paramspace.py`: `ParamSpace`, `ParamKey`, `Cell`, `match_profile()`, `compile_profile_patch()`
   - **Key Finding**: `ParamKey.key` is currently QE parameter name (e.g., "nspin", "ecutwfc")
   - **Key Finding**: `match_profile()` uses `key.section` and `key.key` to read from YAML
   - **Key Finding**: `compile_profile_patch()` uses `key.section` and `key.key` to write to YAML
 
 **Preset Dimensions**:
-- `src/quantumvitas/presets/paramspace.py:545-634`: `build_magnetism_paramspace()` - defines `nspin`, `noncolin`, `lspinorb` keys
-- `src/quantumvitas/presets/paramspace.py:460-526`: `build_occupations_scheme_paramspace()` - defines `occupations`, `smearing`, `degauss` keys
-- `src/quantumvitas/presets/paramspace.py:652-727`: `build_precision_paramspace()` - defines `ecutwfc`, `ecutrho`, `conv_thr`, `K_POINTS` keys
-- `src/quantumvitas/presets/paramspace.py:829-936`: `build_convergence_paramspace()` - defines `mixing_beta`, `electron_maxstep`, `mixing_mode`, `mixing_ndim`, `diagonalization` keys
+- `src/qmatsuite/presets/paramspace.py:545-634`: `build_magnetism_paramspace()` - defines `nspin`, `noncolin`, `lspinorb` keys
+- `src/qmatsuite/presets/paramspace.py:460-526`: `build_occupations_scheme_paramspace()` - defines `occupations`, `smearing`, `degauss` keys
+- `src/qmatsuite/presets/paramspace.py:652-727`: `build_precision_paramspace()` - defines `ecutwfc`, `ecutrho`, `conv_thr`, `K_POINTS` keys
+- `src/qmatsuite/presets/paramspace.py:829-936`: `build_convergence_paramspace()` - defines `mixing_beta`, `electron_maxstep`, `mixing_mode`, `mixing_ndim`, `diagonalization` keys
 
 **Preset Registry**:
-- `src/quantumvitas/presets/spaces_registry.py`: `detect_dimension()`, `compile_dimension_patch()` - public APIs
-- `src/quantumvitas/presets/variants_registry.py`: `get_variant()`, `compile_dimension_patch_for_step()` - step-type-aware variants
+- `src/qmatsuite/presets/spaces_registry.py`: `detect_dimension()`, `compile_dimension_patch()` - public APIs
+- `src/qmatsuite/presets/variants_registry.py`: `get_variant()`, `compile_dimension_patch_for_step()` - step-type-aware variants
 
 **Compiler/Detector**:
-- `src/quantumvitas/presets/compiler.py`: `compile_magnetism()`, `compile_occupations_scheme()`, `compile_presets()` - high-level compilation
-- `src/quantumvitas/presets/detector.py`: `detect_magnetism()`, `detect_occupations_scheme()`, `detect_all_presets()` - high-level detection
+- `src/qmatsuite/presets/compiler.py`: `compile_magnetism()`, `compile_occupations_scheme()`, `compile_presets()` - high-level compilation
+- `src/qmatsuite/presets/detector.py`: `detect_magnetism()`, `detect_occupations_scheme()`, `detect_all_presets()` - high-level detection
 
 **Integration Layer**:
-- `src/quantumvitas/presets/integration.py:327-550`: `apply_presets_to_step()` - mutates step.yaml via StepDoc
+- `src/qmatsuite/presets/integration.py:327-550`: `apply_presets_to_step()` - mutates step.yaml via StepDoc
   - **Key Finding**: Uses `StepDoc` to load/mutate step.yaml, then saves via `save_yaml_doc()`
   - **Key Finding**: Compilation produces QE parameters which are written to `step.yaml["parameters"]`
 
 ### Files Inspected (Step YAML Mutation)
 
 **Step Structure**:
-- `src/quantumvitas/calculation/structure_steps.py:34-54`: `StructureStepSpec` - has `parameters: Dict[str, Dict[str, Any]]` field (engine-specific)
+- `src/qmatsuite/calculation/structure_steps.py:34-54`: `StructureStepSpec` - has `parameters: Dict[str, Dict[str, Any]]` field (engine-specific)
   - **Key Finding**: No `engine_id` field currently exists
   - **Key Finding**: `parameters` field contains QE namelist parameters (e.g., `{"SYSTEM": {"nspin": 2}}`)
 
 **StepDoc Abstraction**:
-- `src/quantumvitas/core/yamldoc.py:75-655`: `YamlDoc`, `StepDoc` - mutation containment
+- `src/qmatsuite/core/yamldoc.py:75-655`: `YamlDoc`, `StepDoc` - mutation containment
   - **Key Finding**: `StepDoc` provides `get()`, `set()`, `apply_patch()`, `export_copy()` methods
   - **Key Finding**: All mutations go through StepDoc; no direct dict mutation
 
 **YAML I/O & Journal**:
-- `src/quantumvitas/core/yaml_io.py:117-124`: `save_yaml_doc()` - save hook with journal integration
+- `src/qmatsuite/core/yaml_io.py:117-124`: `save_yaml_doc()` - save hook with journal integration
   - **Key Finding**: Journal hook records before/after snapshots automatically
-  - **Key Finding**: Journal entries stored in `~/.quantumvitas/journal/journal.jsonl`
+  - **Key Finding**: Journal entries stored in `~/.qmatsuite/journal/journal.jsonl`
 
 ### Files Inspected (QE Input Generation)
 
 **Input Generator**:
-- `src/quantumvitas/io/generator/qe_generator.py`: `QEInputGenerator` - generates `*.in` files from step.yaml
+- `src/qmatsuite/io/generator/qe_generator.py`: `QEInputGenerator` - generates `*.in` files from step.yaml
   - **Key Finding**: Reads `step.yaml["parameters"]` to generate QE namelists and cards
   - **Key Finding**: `step.yaml` → `*.in` is the authoritative path for execution
 
 ### Files Inspected (Execution & Runner)
 
 **QE Engine**:
-- `src/quantumvitas/core/engines/qe.py:22-618`: `QuantumEspressoEngine` - QE-specific engine
+- `src/qmatsuite/core/engines/qe.py:22-618`: `QuantumEspressoEngine` - QE-specific engine
   - **Key Finding**: `EXECUTABLE_MAP` maps step types to QE executables (e.g., `"scf": "pw.x"`)
   - **Key Finding**: No `engine_id` field in step.yaml currently
 
 **PySCF Runner**:
-- `src/quantumvitas/engines/pyscf/runner.py:1-359`: PySCF subprocess runner
+- `src/qmatsuite/engines/pyscf/runner.py:1-359`: PySCF subprocess runner
   - **Key Finding**: Reads `job.json`, writes `results.json` (file-based, restartable)
   - **Key Finding**: No long-lived worker yet; invoked per step
 
 **Step Completion**:
-- `src/quantumvitas/calculation/step_done.py:86-141`: `is_step_done()` - determines if step is complete
+- `src/qmatsuite/calculation/step_done.py:86-141`: `is_step_done()` - determines if step is complete
   - **Key Finding**: QE steps: checks for "JOB DONE" in primary `.out` file
   - **Key Finding**: Wannier90 steps: checks for `.wout` file existence
 
 ### Files Inspected (Workflow & Step Types)
 
 **Step Types**:
-- `src/quantumvitas/calculation/types.py:10-30`: `StepType` enum - defines step types
+- `src/qmatsuite/calculation/types.py:10-30`: `StepType` enum - defines step types
   - **Key Finding**: Step types: SCF, NSCF, DOS, BANDS_PW, BANDS, PH, Q2R, MATDYN, DYNMAT, PP, PROJWFC, RELAX, VC_RELAX, W90_PREPROC, PW2WANNIER90, W90_RUN, PYSCF_SCF, CUSTOM
 
 **Workflow Templates**:
-- `src/quantumvitas/workflow/templates.py:76-113`: `WorkflowTemplate` - defines workflow sequences
+- `src/qmatsuite/workflow/templates.py:76-113`: `WorkflowTemplate` - defines workflow sequences
   - **Key Finding**: Workflow templates group step types (e.g., DOS = SCF → NSCF → DOS)
 
 ---
@@ -144,23 +144,23 @@
 
 **Task**: Enumerate all IR parameters required by existing presets
 
-- [ ] **A1.1**: Inspect `src/quantumvitas/presets/paramspace.py:545-634` (magnetism ParamSpace)
+- [ ] **A1.1**: Inspect `src/qmatsuite/presets/paramspace.py:545-634` (magnetism ParamSpace)
   - **Why**: Need to identify all QE keys used in magnetism dimension
   - **Expected IR Keys**: `nspin`, `noncolin`, `lspinorb` (QE-equivalent)
   - **Tests Impacted**: None (documentation only)
 
-- [ ] **A1.2**: Inspect `src/quantumvitas/presets/paramspace.py:460-526` (occupations_scheme ParamSpace)
+- [ ] **A1.2**: Inspect `src/qmatsuite/presets/paramspace.py:460-526` (occupations_scheme ParamSpace)
   - **Why**: Need to identify all QE keys used in occupations_scheme dimension
   - **Expected IR Keys**: `occupations`, `smearing`, `degauss` (QE-equivalent)
   - **Tests Impacted**: None (documentation only)
 
-- [ ] **A1.3**: Inspect `src/quantumvitas/presets/paramspace.py:652-727` (precision ParamSpace)
+- [ ] **A1.3**: Inspect `src/qmatsuite/presets/paramspace.py:652-727` (precision ParamSpace)
   - **Why**: Need to identify all QE keys used in precision dimension
   - **Expected IR Keys**: `ecutwfc`, `ecutrho`, `conv_thr`, `K_POINTS` (QE-equivalent; K_POINTS is a card)
   - **Note**: Confirm `K_POINTS` is treated as a card in `key.section == "cards"`
   - **Tests Impacted**: None (documentation only)
 
-- [ ] **A1.4**: Inspect `src/quantumvitas/presets/paramspace.py:829-936` (convergence ParamSpace)
+- [ ] **A1.4**: Inspect `src/qmatsuite/presets/paramspace.py:829-936` (convergence ParamSpace)
   - **Why**: Need to identify all QE keys used in convergence dimension
   - **Expected IR Keys**: `mixing_beta`, `electron_maxstep`, `mixing_mode`, `mixing_ndim`, `diagonalization` (QE-equivalent)
   - **Tests Impacted**: None (documentation only)
@@ -178,7 +178,7 @@
 
 **Task**: Create minimal IR parameter registry (IR definitions only; no QE references)
 
-- [ ] **A2.1**: Create `src/quantumvitas/ir/parameters.py`
+- [ ] **A2.1**: Create `src/qmatsuite/ir/parameters.py`
   - **Why**: Central registry for IR parameter definitions (engine-agnostic)
   - **Exact Edit**: New file with IR parameter dataclass and registry
   - **Structure**:
@@ -204,7 +204,7 @@
 - [ ] **A2.2**: Populate IR registry with 18 parameters
   - **Why**: Complete IR parameter definitions for v0
   - **Exact Edit**: Add all 18 `IRParameter` instances to `IR_REGISTRY`
-  - **Source**: QE metadata from `src/quantumvitas/data/qe_module_parameters.json`
+  - **Source**: QE metadata from `src/qmatsuite/data/qe_module_parameters.json`
   - **Note**: Physical meaning and comments can be copied from QE metadata but are IR-owned
   - **Tests Impacted**: Registry validation tests
 
@@ -213,7 +213,7 @@
   - **Exact Edit**: `validate_ir_registry()` function
   - **Tests Impacted**: Registry validation tests
 
-**Deliverable**: `src/quantumvitas/ir/parameters.py` with 18 IR parameter definitions
+**Deliverable**: `src/qmatsuite/ir/parameters.py` with 18 IR parameter definitions
 
 ---
 
@@ -226,8 +226,8 @@
 - [ ] **A3.1**: Create IR↔QE adapter module
   - **Why**: Explicit mapping table for IR ↔ QE conversion (engine-specific, separate from ParamSpace)
   - **Location Options**:
-    - Option A: `src/quantumvitas/ir/backends/qe/mapping.py` (IR module, QE backend)
-    - Option B: `src/quantumvitas/core/engines/qe/adapter.py` (QE engine module, IR adapter)
+    - Option A: `src/qmatsuite/ir/backends/qe/mapping.py` (IR module, QE backend)
+    - Option B: `src/qmatsuite/core/engines/qe/adapter.py` (QE engine module, IR adapter)
   - **Decision**: Choose location based on whether this is IR's QE backend or QE's IR adapter
   - **Exact Edit**: New file with mapping dictionaries
   - **Structure**:
@@ -275,7 +275,7 @@
   - **Exact Edit**: `validate_ir_qe_mapping()` function
   - **Tests Impacted**: Mapping validation tests
 
-**Deliverable**: `src/quantumvitas/ir/backends/qe/mapping.py` with explicit mapping table and conversion functions
+**Deliverable**: `src/qmatsuite/ir/backends/qe/mapping.py` with explicit mapping table and conversion functions
 
 ---
 
@@ -285,39 +285,39 @@
 
 - [ ] **A4.1**: Inspect all ParamSpace builders
   - **Why**: Identify every `ParamKey` instance that needs IR key substitution
-  - **Files**: `src/quantumvitas/presets/paramspace.py:545-936`
+  - **Files**: `src/qmatsuite/presets/paramspace.py:545-936`
   - **Tests Impacted**: None (documentation only)
 
 - [ ] **A4.2**: Update `ParamKey` usage in `build_magnetism_paramspace()`
   - **Why**: Replace QE keys with IR keys
   - **Exact Edit**: Change `ParamKey(key="nspin", ...)` to `ParamKey(key="nspin", ...)` (no change in v0, but use IR registry)
   - **Note**: In v0, ir_key == qe_key for most params, but still use IR registry for consistency
-  - **Location**: `src/quantumvitas/presets/paramspace.py:565-589`
+  - **Location**: `src/qmatsuite/presets/paramspace.py:565-589`
   - **Tests Impacted**: ParamSpace reversibility tests
 
 - [ ] **A4.3**: Update `ParamKey` usage in `build_occupations_scheme_paramspace()`
   - **Why**: Replace QE keys with IR keys
   - **Exact Edit**: Change `ParamKey(key="occupations", ...)` to use IR registry
-  - **Location**: `src/quantumvitas/presets/paramspace.py:460-526`
+  - **Location**: `src/qmatsuite/presets/paramspace.py:460-526`
   - **Tests Impacted**: ParamSpace reversibility tests
 
 - [ ] **A4.4**: Update `ParamKey` usage in `build_precision_paramspace()`
   - **Why**: Replace QE keys with IR keys
   - **Exact Edit**: Change `ParamKey(key="ecutwfc", ...)` to use IR registry
   - **Note**: Handle `K_POINTS` card mapping (section="cards", key="K_POINTS")
-  - **Location**: `src/quantumvitas/presets/paramspace.py:652-727`
+  - **Location**: `src/qmatsuite/presets/paramspace.py:652-727`
   - **Tests Impacted**: ParamSpace reversibility tests
 
 - [ ] **A4.5**: Update `ParamKey` usage in `build_convergence_paramspace()`
   - **Why**: Replace QE keys with IR keys
   - **Exact Edit**: Change `ParamKey(key="mixing_beta", ...)` to use IR registry
-  - **Location**: `src/quantumvitas/presets/paramspace.py:829-936`
+  - **Location**: `src/qmatsuite/presets/paramspace.py:829-936`
   - **Tests Impacted**: ParamSpace reversibility tests
 
 - [ ] **A4.6**: Update `match_profile()` to work with IR keys (read YAML via adapter)
   - **Why**: ParamSpace operates on IR keys only; need to read QE YAML and convert to IR for matching
   - **Architecture**: ParamSpace does NOT perform engine translation; adapter converts QE→IR before ParamSpace matching
-  - **Exact Edit**: In `src/quantumvitas/presets/paramspace.py:238-306`, ParamSpace matches against IR keys
+  - **Exact Edit**: In `src/qmatsuite/presets/paramspace.py:238-306`, ParamSpace matches against IR keys
   - **Integration**: IR→QE adapter layer (outside ParamSpace) converts QE YAML to IR YAML before calling `match_profile()`
   - **Logic**:
     ```python
@@ -330,7 +330,7 @@
 - [ ] **A4.7**: Update `compile_profile_patch()` to work with IR keys (write YAML via adapter)
   - **Why**: ParamSpace operates on IR keys only; need to compile IR patch then convert to QE for YAML
   - **Architecture**: ParamSpace produces IR patch; adapter converts IR→QE before writing to YAML
-  - **Exact Edit**: In `src/quantumvitas/presets/paramspace.py:313-374`, ParamSpace compiles IR patch
+  - **Exact Edit**: In `src/qmatsuite/presets/paramspace.py:313-374`, ParamSpace compiles IR patch
   - **Integration**: IR→QE adapter layer (outside ParamSpace) converts IR patch to QE patch before writing to step.yaml
   - **Logic**:
     ```python
@@ -350,27 +350,27 @@
 
 - [ ] **A5.1**: Update `compile_dimension_patch()` to use IR→QE adapter
   - **Why**: Compilation flow: ParamSpace (IR keys) → IR patch → IR→QE adapter → QE patch → step.yaml
-  - **File**: `src/quantumvitas/presets/spaces_registry.py:compile_dimension_patch()`
+  - **File**: `src/qmatsuite/presets/spaces_registry.py:compile_dimension_patch()`
   - **Exact Edit**: After ParamSpace produces IR patch, call IR→QE adapter to convert IR patch to QE patch
   - **Architecture**: ParamSpace does NOT perform engine translation; adapter layer (outside ParamSpace) does
   - **Tests Impacted**: Compilation integration tests
 
 - [ ] **A5.2**: Update `detect_dimension()` to use QE→IR adapter
   - **Why**: Detection flow: step.yaml (QE params) → QE→IR adapter → IR params → ParamSpace matching → preset enum
-  - **File**: `src/quantumvitas/presets/spaces_registry.py:detect_dimension()`
+  - **File**: `src/qmatsuite/presets/spaces_registry.py:detect_dimension()`
   - **Exact Edit**: Before ParamSpace matching, call QE→IR adapter to convert QE YAML to IR YAML
   - **Architecture**: ParamSpace operates on IR keys only; adapter layer (outside ParamSpace) converts QE→IR
   - **Tests Impacted**: Detection integration tests
 
 - [ ] **A5.3**: Update `compile_magnetism()` if needed
   - **Why**: Ensure high-level compiler functions still work with IR keys
-  - **File**: `src/quantumvitas/presets/compiler.py:39-64`
+  - **File**: `src/qmatsuite/presets/compiler.py:39-64`
   - **Expected**: No changes needed (thin wrapper around registry)
   - **Tests Impacted**: Compiler function tests
 
 - [ ] **A5.4**: Update `detect_magnetism()` if needed
   - **Why**: Ensure high-level detector functions still work with IR keys
-  - **File**: `src/quantumvitas/presets/detector.py`
+  - **File**: `src/qmatsuite/presets/detector.py`
   - **Expected**: No changes needed (thin wrapper around registry)
   - **Tests Impacted**: Detector function tests
 
@@ -384,25 +384,25 @@
 
 - [ ] **A6.1**: Verify `apply_presets_to_step()` behavior
   - **Why**: Ensure preset application writes QE params to step.yaml (not IR params)
-  - **File**: `src/quantumvitas/presets/integration.py:327-550`
+  - **File**: `src/qmatsuite/presets/integration.py:327-550`
   - **Expected**: No changes needed (compilation already produces QE params via adapter)
   - **Tests Impacted**: Integration tests for preset application
 
 - [ ] **A6.2**: Verify StepDoc mutation flow
   - **Why**: Ensure StepDoc correctly mutates `step.yaml["parameters"]` with QE params
-  - **File**: `src/quantumvitas/core/yamldoc.py:StepDoc`
+  - **File**: `src/qmatsuite/core/yamldoc.py:StepDoc`
   - **Expected**: No changes needed (StepDoc already handles QE parameter structure)
   - **Tests Impacted**: StepDoc mutation tests
 
 - [ ] **A6.3**: Verify journal recording (if IR/preset provenance needed)
   - **Why**: Charter says IR/preset provenance belongs to journal/history only
-  - **File**: `src/quantumvitas/core/journal.py:Journal`
+  - **File**: `src/qmatsuite/core/journal.py:Journal`
   - **Note**: Journal already records before/after snapshots; IR/preset can be derived from journal if needed
   - **Tests Impacted**: Journal recording tests (if provenance recording is added)
 
 - [ ] **A6.4**: Verify no IR/preset persistence in step.yaml
   - **Why**: Charter explicitly forbids IR/preset in step.yaml
-  - **File**: `src/quantumvitas/presets/integration.py:apply_presets_to_step()`
+  - **File**: `src/qmatsuite/presets/integration.py:apply_presets_to_step()`
   - **Expected**: Ensure `apply_presets_to_step()` never writes IR params to step.yaml
   - **Tests Impacted**: Integration tests to verify step.yaml never contains IR keys
 
@@ -488,13 +488,13 @@
 
 - [ ] **B1.1**: Inspect current step type definitions
   - **Why**: Understand existing step types and their groupings
-  - **File**: `src/quantumvitas/calculation/types.py:StepType`
+  - **File**: `src/qmatsuite/calculation/types.py:StepType`
   - **Findings**: 17 step types (SCF, NSCF, DOS, BANDS_PW, BANDS, PH, Q2R, MATDYN, DYNMAT, PP, PROJWFC, RELAX, VC_RELAX, W90_PREPROC, PW2WANNIER90, W90_RUN, PYSCF_SCF)
   - **Tests Impacted**: None (documentation only)
 
 - [ ] **B1.2**: Create minimal generalized step taxonomy (conceptual only - enums/mappings)
   - **Why**: Conceptual abstraction only; execution logic unchanged
-  - **Exact Edit**: New file `src/quantumvitas/workflow/generalized_steps.py` (conceptual enum only)
+  - **Exact Edit**: New file `src/qmatsuite/workflow/generalized_steps.py` (conceptual enum only)
   - **Structure**:
     ```python
     from enum import Enum
@@ -603,7 +603,7 @@
 
 - [ ] **C2.1**: Implement IR→QE translation in QE adapter/compiler layer
   - **Why**: Engines are responsible for translating IR → engine-specific parameters; QE adapter MUST be implemented
-  - **Location**: QE engine adapter/compiler (e.g., `src/quantumvitas/core/engines/qe/adapter.py` or IR backend `src/quantumvitas/ir/backends/qe/mapping.py`)
+  - **Location**: QE engine adapter/compiler (e.g., `src/qmatsuite/core/engines/qe/adapter.py` or IR backend `src/qmatsuite/ir/backends/qe/mapping.py`)
   - **Exact Edit**: Translation function: `ir_patch_to_qe_patch(ir_patch: Dict) -> Dict` (converts IR keys to QE section/key)
   - **Architecture**: IR→QE translation happens in QE engine layer, NOT in ParamSpace
   - **Constraint**: Must NOT refactor QE execution paths (runners, generators, done-detection unchanged)
@@ -625,7 +625,7 @@
 
 - [ ] **C3.1**: Inspect PySCF runner artifact persistence
   - **Why**: Understand what artifacts PySCF persists per step
-  - **File**: `src/quantumvitas/engines/pyscf/runner.py:117-359`
+  - **File**: `src/qmatsuite/engines/pyscf/runner.py:117-359`
   - **Finding**: Runner writes `results.json` after each step (restartable)
   - **Tests Impacted**: None (documentation only)
 
@@ -651,7 +651,7 @@
 
 - [ ] **C4.1**: Inspect QE "done" detection
   - **Why**: Understand how QE determines step completion
-  - **File**: `src/quantumvitas/calculation/step_done.py:86-141`
+  - **File**: `src/qmatsuite/calculation/step_done.py:86-141`
   - **Finding**: QE checks for "JOB DONE" in primary `.out` file
   - **Tests Impacted**: None (documentation only)
 
@@ -723,7 +723,7 @@
 
 ### Q1: Where does ParamSpace currently store QE parameter names?
 
-**Answer**: `ParamKey.key` field in `src/quantumvitas/presets/paramspace.py:117-160`.  
+**Answer**: `ParamKey.key` field in `src/qmatsuite/presets/paramspace.py:117-160`.  
 **Evidence**: `ParamKey` dataclass has `key: str` field which currently contains QE parameter names (e.g., "nspin", "ecutwfc").  
 **Resolution**: Replace `key` field usage with IR keys; use IR→QE adapter for YAML I/O.
 
@@ -731,7 +731,7 @@
 
 ### Q2: How does ParamSpace read/write YAML currently?
 
-**Answer**: `match_profile()` and `compile_profile_patch()` in `src/quantumvitas/presets/paramspace.py:238-374`.  
+**Answer**: `match_profile()` and `compile_profile_patch()` in `src/qmatsuite/presets/paramspace.py:238-374`.  
 **Evidence**: 
 - `match_profile()` uses `yaml_tree[key.section].get(key.key)` to read values
 - `compile_profile_patch()` uses `patch[key.section][key.key] = value` to write values
@@ -742,14 +742,14 @@
 ### Q3: Does step.yaml currently have engine_id field?
 
 **Answer**: No.  
-**Evidence**: `StructureStepSpec` in `src/quantumvitas/calculation/structure_steps.py:34-54` has no `engine_id` field.  
+**Evidence**: `StructureStepSpec` in `src/qmatsuite/calculation/structure_steps.py:34-54` has no `engine_id` field.  
 **Resolution**: Engine_id introduction deferred to future phase (v0 MUST NOT break existing QE/Wannier behavior).
 
 ---
 
 ### Q4: Where does preset application mutate step.yaml?
 
-**Answer**: `apply_presets_to_step()` in `src/quantumvitas/presets/integration.py:327-550`.  
+**Answer**: `apply_presets_to_step()` in `src/qmatsuite/presets/integration.py:327-550`.  
 **Evidence**: Uses `StepDoc` to load/mutate step.yaml, then saves via `save_yaml_doc()`.  
 **Resolution**: No changes needed; compilation already produces QE params via adapter.
 
@@ -757,7 +757,7 @@
 
 ### Q5: How does journal record changes?
 
-**Answer**: `save_yaml_doc()` in `src/quantumvitas/core/yaml_io.py:117-124` records before/after snapshots.  
+**Answer**: `save_yaml_doc()` in `src/qmatsuite/core/yaml_io.py:117-124` records before/after snapshots.  
 **Evidence**: Journal hook in `save_yaml_doc()` automatically records changes.  
 **Resolution**: IR/preset provenance can be derived from journal if needed (not stored in step.yaml).
 
@@ -765,7 +765,7 @@
 
 ### Q6: How does QE determine step completion?
 
-**Answer**: `is_step_done()` in `src/quantumvitas/calculation/step_done.py:86-141` checks for "JOB DONE" in primary `.out` file.  
+**Answer**: `is_step_done()` in `src/qmatsuite/calculation/step_done.py:86-141` checks for "JOB DONE" in primary `.out` file.  
 **Evidence**: Function checks file existence and "JOB DONE" marker.  
 **Resolution**: Document engine-specific "done" detection (no generalization in v0).
 

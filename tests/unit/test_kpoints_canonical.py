@@ -13,8 +13,8 @@ import shutil
 from pathlib import Path
 import yaml
 
-from quantumvitas.presets.integration import apply_presets_to_step, detect_presets_from_calculation
-from quantumvitas.presets.precision import PrecisionAdvisor, PrecisionOption
+from qmatsuite.presets.integration import apply_presets_to_step, detect_presets_from_calculation
+from qmatsuite.presets.precision import PrecisionAdvisor, PrecisionOption
 
 
 class TestKPointsCanonicalization:
@@ -78,7 +78,7 @@ class TestKPointsCanonicalization:
         temp_step_file.write_text(yaml.safe_dump(content))
         
         # Test detector reading - should return None (no cards.K_POINTS)
-        from quantumvitas.presets.detector import _get_kpoints_mesh
+        from qmatsuite.presets.detector import _get_kpoints_mesh
         
         step_content = yaml.safe_load(temp_step_file.read_text())
         params_dict = {
@@ -107,7 +107,7 @@ class TestKPointsCanonicalization:
         temp_step_file.write_text(yaml.safe_dump(content))
         
         # Test detector reading from cards.K_POINTS format
-        from quantumvitas.presets.detector import _get_kpoints_mesh
+        from qmatsuite.presets.detector import _get_kpoints_mesh
         
         step_content = yaml.safe_load(temp_step_file.read_text())
         params_dict = {

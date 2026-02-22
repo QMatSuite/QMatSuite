@@ -3,7 +3,7 @@ Unit tests for atomic radii module.
 """
 
 import pytest
-from quantumvitas.analysis.atomic_radii import (
+from qmatsuite.analysis.atomic_radii import (
     get_radii_map,
     get_element_radius,
     DEFAULT_COVALENT_RADII,

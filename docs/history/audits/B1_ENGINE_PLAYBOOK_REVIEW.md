@@ -38,7 +38,7 @@
 QE is the reference implementation and template for all other engines. It has the most mature IO stack (`drivers/qe/io/` with parser.py, generator.py, model.py, structure_io.py), comprehensive metadata (`data/qe_metadata.py` + `data/qe_module_parameters.json`), and a regex-based line tokenizer with roundtrip capability. No B1 work is required — QE _is_ the standard.
 
 **Binary path**: `.qmatsuite/engines/qe/q-e-qe-7.5/bin/` — recorded and verified.
-**Files**: `src/quantumvitas/drivers/qe/` (full driver stack)
+**Files**: `src/qmatsuite/drivers/qe/` (full driver stack)
 
 ### 2.2 VASP (Tier A — Pre-Playbook, Remediation Required)
 
@@ -232,8 +232,8 @@ QE is the reference implementation and template for all other engines. It has th
 **Binary path**: `.qmatsuite/engines/abinit/10.4.7/bin/abinit` — path known from prior exploration but not formally recorded per §1.8 E3 (no version string or discovery timestamp in worklog). **NON-COMPLIANT**.
 
 **Files**:
-- `src/quantumvitas/drivers/abinit/inputspec.py` — custom_parser wired
-- `src/quantumvitas/drivers/abinit/parser.py` — 550 lines, handles multi-line arrays, znucl reversal
+- `src/qmatsuite/drivers/abinit/inputspec.py` — custom_parser wired
+- `src/qmatsuite/drivers/abinit/parser.py` — 550 lines, handles multi-line arrays, znucl reversal
 - `tests/inputformat/samples/abinit/si_scf.abi` — 1 curated sample (no real-run evidence)
 - No `docs/engines/abinit/PHASE_B1_*` files
 - No `.tmp/engine_research/abinit/` directory
@@ -247,8 +247,8 @@ QE is the reference implementation and template for all other engines. It has th
 **Binary path**: Expected at `$(brew --prefix)/bin/cp2k` — **not yet recorded**. Discovery required per §1.8. **NON-COMPLIANT**.
 
 **Files**:
-- `src/quantumvitas/drivers/cp2k/inputspec.py` — custom_writer only
-- `src/quantumvitas/drivers/cp2k/writer.py` — basic input generation
+- `src/qmatsuite/drivers/cp2k/inputspec.py` — custom_writer only
+- `src/qmatsuite/drivers/cp2k/writer.py` — basic input generation
 - No curated samples, no docs, no corpus
 
 **What's needed for B1**: Full Stages 0–8. Binary discovery first (§1.8). Parser from scratch (recursive descent for nested `&SECTION...&END`). No output digest. No metadata. No corpus.
@@ -260,8 +260,8 @@ QE is the reference implementation and template for all other engines. It has th
 **Binary path**: Expected via conda — **not yet recorded**. Discovery required per §1.8. **NON-COMPLIANT**.
 
 **Files**:
-- `src/quantumvitas/drivers/siesta/inputspec.py` — custom_writer only
-- `src/quantumvitas/drivers/siesta/parser.py` — 348 lines (exists but unwired)
+- `src/qmatsuite/drivers/siesta/inputspec.py` — custom_writer only
+- `src/qmatsuite/drivers/siesta/parser.py` — 348 lines (exists but unwired)
 - No curated samples, no docs, no corpus
 
 **What's needed for B1**: Full Stages 0–8. Binary discovery (§1.8). Existing parser.py (348 lines) gives a head start but needs wiring to inputspec and hardening.
@@ -273,8 +273,8 @@ QE is the reference implementation and template for all other engines. It has th
 **Binary path**: Expected via conda — **not yet recorded**. Discovery required per §1.8. **NON-COMPLIANT**.
 
 **Files**:
-- `src/quantumvitas/drivers/xtb/inputspec.py` — custom_writer only
-- `src/quantumvitas/drivers/xtb/parser.py` — 105 lines (minimal)
+- `src/qmatsuite/drivers/xtb/inputspec.py` — custom_writer only
+- `src/qmatsuite/drivers/xtb/parser.py` — 105 lines (minimal)
 - `tests/inputformat/samples/xtb/water.xyz` — 1 curated sample (no real-run evidence)
 - No docs, no corpus
 
@@ -287,8 +287,8 @@ QE is the reference implementation and template for all other engines. It has th
 **Binary path**: Expected via pip (`import gpaw`) — **not yet recorded**. Discovery required per §1.8. **NON-COMPLIANT**.
 
 **Files**:
-- `src/quantumvitas/drivers/gpaw/inputspec.py` — custom_writer only
-- `src/quantumvitas/drivers/gpaw/writer.py` — generates Python scripts
+- `src/qmatsuite/drivers/gpaw/inputspec.py` — custom_writer only
+- `src/qmatsuite/drivers/gpaw/writer.py` — generates Python scripts
 - No curated samples, no docs, no corpus
 
 **What's needed for B1**: Full Stages 0–8 with adapted scope (F7 Python-script engine — skip Phase 4 parser/writer). Binary discovery (§1.8). Metadata catalog covers GPAW API parameters. Output digest from results.json.
@@ -300,7 +300,7 @@ QE is the reference implementation and template for all other engines. It has th
 **Binary path**: Expected via conda — **not yet recorded**. Discovery required per §1.8. **NON-COMPLIANT**.
 
 **Files**:
-- `src/quantumvitas/drivers/psi4/inputspec.py` — returns empty spec (no input files)
+- `src/qmatsuite/drivers/psi4/inputspec.py` — returns empty spec (no input files)
 - No curated samples, no docs, no corpus
 
 **What's needed for B1**: Stages 0–8 with adapted scope (F7 engine). Binary discovery (§1.8). Focus on metadata catalog + output digest.
@@ -312,7 +312,7 @@ QE is the reference implementation and template for all other engines. It has th
 **Binary path**: Expected via pip (`import pyscf`) — **not yet recorded**. Discovery required per §1.8. **NON-COMPLIANT**.
 
 **Files**:
-- `src/quantumvitas/drivers/pyscf/inputspec.py` — returns empty spec (no input files)
+- `src/qmatsuite/drivers/pyscf/inputspec.py` — returns empty spec (no input files)
 - No curated samples, no docs, no corpus
 
 **What's needed for B1**: Same as Psi4 — adapted scope for F7 engines.
@@ -324,8 +324,8 @@ QE is the reference implementation and template for all other engines. It has th
 **Binary path**: Expected at `.qmatsuite/engines/yambo/` — **not yet recorded**. Discovery required per §1.8. Per the v2.1 playbook, "not available" or "not installed" is a violation — the binary is guaranteed to exist and MUST be found. **NON-COMPLIANT**.
 
 **Files**:
-- `src/quantumvitas/drivers/yambo/inputspec.py` — custom_writer only
-- `src/quantumvitas/drivers/yambo/parser.py` — 262 lines (exists but unwired)
+- `src/qmatsuite/drivers/yambo/inputspec.py` — custom_writer only
+- `src/qmatsuite/drivers/yambo/parser.py` — 262 lines (exists but unwired)
 - No curated samples, no docs, no corpus
 
 **What's needed for B1**: Full Stages 0–8. Binary discovery first (§1.8). Pipeline workflow (QE → p2y → yambo). Existing parser.py (262 lines) gives a head start but needs wiring.

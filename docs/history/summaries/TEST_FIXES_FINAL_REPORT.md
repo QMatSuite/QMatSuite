@@ -34,7 +34,7 @@
 
 ### Production Code (2 files)
 
-1. **`src/quantumvitas/io/online_search.py`**
+1. **`src/qmatsuite/io/online_search.py`**
    - Added Materials Project OPTIMADE as primary endpoint
    - Moved Materials Cloud to fallback positions
    ```python
@@ -48,7 +48,7 @@
    - **Impact:** Tests now pass in <1 second instead of timing out after 10-30 seconds
    - **Reliability:** No dependency on Materials Cloud server availability
 
-2. **`src/quantumvitas/api/service.py`**
+2. **`src/qmatsuite/api/service.py`**
    - Fixed `structure.delete()` method signature (from previous work)
    - Corrected `calculations_using_structure()` call
 

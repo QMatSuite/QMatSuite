@@ -73,10 +73,10 @@ Rounding: Round ecutwfc to nearest 5 Ry, ecutrho to nearest 10 Ry for cleaner in
 **Goal**: Add PrecisionOption enum, extend detector to recognize precision from step params.
 
 **Files modified**:
-- `src/quantumvitas/presets/dimensions.py` - Added PrecisionOption enum
+- `src/qmatsuite/presets/dimensions.py` - Added PrecisionOption enum
 
 **Files created**:
-- `src/quantumvitas/presets/precision.py` - PrecisionAdvisor and related logic
+- `src/qmatsuite/presets/precision.py` - PrecisionAdvisor and related logic
 
 **Tasks**:
 - [x] Add `PrecisionOption` enum (LOW, MED, HIGH) to dimensions.py
@@ -86,7 +86,7 @@ Rounding: Round ecutwfc to nearest 5 Ry, ecutrho to nearest 10 Ry for cleaner in
 
 **Verification**:
 ```bash
-python -c "from quantumvitas.presets.dimensions import PrecisionOption; print(PrecisionOption.LOW.value)"
+python -c "from qmatsuite.presets.dimensions import PrecisionOption; print(PrecisionOption.LOW.value)"
 # Output: low
 ```
 
@@ -98,7 +98,7 @@ python -c "from quantumvitas.presets.dimensions import PrecisionOption; print(Pr
 **Goal**: Implement cutoff calculation from PSEUDO_FILE_INDEX.json.
 
 **Files modified**:
-- `src/quantumvitas/presets/precision.py`
+- `src/qmatsuite/presets/precision.py`
 
 **Tasks**:
 - [x] Implemented `_load_index()` helper in PrecisionAdvisor (uses `load_pseudo_libinfo_bundle`)
@@ -118,7 +118,7 @@ python -c "from quantumvitas.presets.dimensions import PrecisionOption; print(Pr
 **Goal**: Implement k-point mesh calculation from lattice vectors.
 
 **Files modified**:
-- `src/quantumvitas/presets/precision.py`
+- `src/qmatsuite/presets/precision.py`
 
 **Tasks**:
 - [x] Implemented `compute_kmesh(lattice_matrix, k_density) -> (nk1, nk2, nk3, sk1, sk2, sk3)`
@@ -137,8 +137,8 @@ python -c "from quantumvitas.presets.dimensions import PrecisionOption; print(Pr
 **Goal**: Implement forward compilation and reverse detection for precision.
 
 **Files modified**:
-- `src/quantumvitas/presets/compiler.py` - Added `compile_precision()`
-- `src/quantumvitas/presets/detector.py` - Added `detect_precision()`
+- `src/qmatsuite/presets/compiler.py` - Added `compile_precision()`
+- `src/qmatsuite/presets/detector.py` - Added `detect_precision()`
 
 **Tasks**:
 - [x] Added `compile_precision(option, ecutwfc, ecutrho, conv_thr, nk1, nk2, nk3)` → returns SYSTEM + ELECTRONS + K_POINTS
@@ -157,8 +157,8 @@ python -c "from quantumvitas.presets.dimensions import PrecisionOption; print(Pr
 **Goal**: Wire precision into BROADCAST apply and step receivers.
 
 **Files modified**:
-- `src/quantumvitas/presets/receivers.py` - Added `DIMENSION_PRECISION` to V1_DIMENSIONS
-- `src/quantumvitas/presets/integration.py` - Updated apply_presets_to_step for precision
+- `src/qmatsuite/presets/receivers.py` - Added `DIMENSION_PRECISION` to V1_DIMENSIONS
+- `src/qmatsuite/presets/integration.py` - Updated apply_presets_to_step for precision
 
 **Tasks**:
 - [x] Added `DIMENSION_PRECISION` to V1_DIMENSIONS in receivers.py
@@ -177,7 +177,7 @@ python -c "from quantumvitas.presets.dimensions import PrecisionOption; print(Pr
 **Goal**: Update daemon RPC handlers for precision preset.
 
 **Files to modify**:
-- `src/quantumvitas/daemon/server.py` - Update preset handlers
+- `src/qmatsuite/daemon/server.py` - Update preset handlers
 
 **Tasks**:
 - [ ] Update `_handle_detect_presets()` to include precision
@@ -198,7 +198,7 @@ python -m pytest tests/integration/test_daemon_presets.py -v -k "precision"
 **Goal**: Update frontend types and hooks for precision.
 
 **Files to modify**:
-- `gui/src/types/qv.ts` - Add precision types
+- `gui/src/types/qms.ts` - Add precision types
 - `gui/src/hooks/usePresets.ts` - Update hook to handle precision
 
 **Tasks**:

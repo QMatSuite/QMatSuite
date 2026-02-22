@@ -2,7 +2,7 @@
  * DaemonErrorBanner - Shows daemon startup errors prominently
  */
 
-import type { DaemonStatus } from '../../types/qv';
+import type { DaemonStatus } from '../../types/qms';
 import './DaemonErrorBanner.css';
 
 interface DaemonErrorBannerProps {

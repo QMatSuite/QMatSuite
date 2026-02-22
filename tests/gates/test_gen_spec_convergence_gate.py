@@ -22,32 +22,32 @@ class TestBannedStepTypeVocabulary:
 
     def test_no_bare_step_type_in_step_factory(self):
         # step_factory.py should write step_type_spec (SPEC layer), not bare step_type
-        count = rg_count(r'"step_type":', "src/quantumvitas/workflow/step_factory.py")
+        count = rg_count(r'"step_type":', "src/qmatsuite/workflow/step_factory.py")
         assert count == 0, "step_factory.py writes bare 'step_type' (should use step_type_spec)"
 
     def test_no_bare_type_field_in_models(self):
-        count = rg_count(r'self\.type\b', "src/quantumvitas/core/models.py")
+        count = rg_count(r'self\.type\b', "src/qmatsuite/core/models.py")
         assert count == 0, "models.py has self.type"
 
     def test_no_type_dict_key_in_models(self):
-        count = rg_count(r'd\["type"\]', "src/quantumvitas/core/models.py")
+        count = rg_count(r'd\["type"\]', "src/qmatsuite/core/models.py")
         assert count == 0, "models.py writes d['type']"
 
     def test_no_second_truth_mapping(self):
-        count = rg_count(r"_map_step_type_to_v0", "src/quantumvitas/daemon/")
+        count = rg_count(r"_map_step_type_to_v0", "src/qmatsuite/daemon/")
         assert count == 0, "Hardcoded mapping table exists in daemon"
 
     def test_no_machine_type_in_registry(self):
-        count = rg_count(r"\.machine_type\b", "src/quantumvitas/workflow/registry.py")
+        count = rg_count(r"\.machine_type\b", "src/qmatsuite/workflow/registry.py")
         assert count == 0, "registry.py still uses .machine_type"
 
     def test_no_public_type_in_registry(self):
         # Check for old .public_type attribute (should use .step_type_gen now)
-        count = rg_count(r"\.public_type\b", "src/quantumvitas/workflow/registry.py")
+        count = rg_count(r"\.public_type\b", "src/qmatsuite/workflow/registry.py")
         assert count == 0, "registry.py still uses .public_type (should use .step_type_gen)"
 
     def test_no_spec_id_in_registry(self):
-        count = rg_count(r"spec\.id\b", "src/quantumvitas/workflow/registry.py")
+        count = rg_count(r"spec\.id\b", "src/qmatsuite/workflow/registry.py")
         assert count == 0, "registry.py still uses spec.id"
 
 
@@ -56,7 +56,7 @@ class TestCanonicalQERecipe:
 
     def test_single_qerecipe_class(self):
         result = subprocess.run(
-            ["rg", "-l", "^class QERecipe", "src/quantumvitas/"],
+            ["rg", "-l", "^class QERecipe", "src/qmatsuite/"],
             capture_output=True, text=True, cwd=Path(__file__).parent.parent.parent
         )
         files = [f for f in result.stdout.strip().split("\n") if f]
@@ -68,23 +68,23 @@ class TestRequiredVocabulary:
     """Required vocabulary must be present."""
 
     def test_step_type_spec_in_factory(self):
-        count = rg_count(r'"step_type_spec":', "src/quantumvitas/workflow/step_factory.py")
+        count = rg_count(r'"step_type_spec":', "src/qmatsuite/workflow/step_factory.py")
         assert count > 0, "step_factory.py missing step_type_spec"
 
     def test_meta_ulid_in_factory(self):
-        count = rg_count(r'"ulid":', "src/quantumvitas/workflow/step_factory.py")
+        count = rg_count(r'"ulid":', "src/qmatsuite/workflow/step_factory.py")
         assert count > 0, "step_factory.py missing meta.ulid"
 
     def test_api_facade_exists(self):
-        count = rg_count(r"def get_step_type_gen", "src/quantumvitas/api/")
+        count = rg_count(r"def get_step_type_gen", "src/qmatsuite/api/")
         assert count > 0, "API missing get_step_type_gen facade"
 
     def test_registry_has_step_type_spec_field(self):
-        count = rg_count(r"step_type_spec:\s*str", "src/quantumvitas/workflow/registry.py")
+        count = rg_count(r"step_type_spec:\s*str", "src/qmatsuite/workflow/registry.py")
         assert count > 0, "StepTypeSpec missing step_type_spec field"
 
     def test_registry_has_step_type_gen_field(self):
-        count = rg_count(r"step_type_gen:\s*str", "src/quantumvitas/workflow/registry.py")
+        count = rg_count(r"step_type_gen:\s*str", "src/qmatsuite/workflow/registry.py")
         assert count > 0, "StepTypeSpec missing step_type_gen field"
 
 
@@ -94,25 +94,25 @@ class TestGenSpecBoundary:
     def test_presets_map_spec_to_gen(self):
         """Presets must map step_type_spec to step_type_gen for variant lookup."""
         # Presets should have mapping logic (checking spec.step_type_gen)
-        count = rg_count(r"spec\.step_type_gen", "src/quantumvitas/presets/")
+        count = rg_count(r"spec\.step_type_gen", "src/qmatsuite/presets/")
         assert count > 0, "Presets missing step_type_spec→step_type_gen mapping"
 
     def test_templates_use_gen_for_workflow(self):
         """Workflow templates must use step_type_gen for workflow detection."""
-        count = rg_count(r"step_type_gen", "src/quantumvitas/workflow/templates.py")
+        count = rg_count(r"step_type_gen", "src/qmatsuite/workflow/templates.py")
         assert count > 0, "templates.py missing step_type_gen usage"
 
     def test_registry_provides_both_mappings(self):
         """Registry must provide both gen→spec and spec→gen mappings."""
         # gen→spec mapping: Check for StepTypeSpec dataclass with both fields
         # Pattern matches: step_type_spec: str ... step_type_gen: str (in dataclass)
-        gen_to_spec = rg_count(r"step_type_spec.*step_type_gen|step_type_gen.*step_type_spec", "src/quantumvitas/workflow/registry.py")
+        gen_to_spec = rg_count(r"step_type_spec.*step_type_gen|step_type_gen.*step_type_spec", "src/qmatsuite/workflow/registry.py")
         assert gen_to_spec > 0, "Registry missing gen→spec mapping (StepTypeSpec should have both fields)"
 
     def test_step_factory_writes_spec_to_yaml(self):
         """step_factory must write step_type_spec (not gen) to step.yaml."""
         # Check for step_type_spec being written in factory
-        count = rg_count(r'"step_type_spec":', "src/quantumvitas/workflow/step_factory.py")
+        count = rg_count(r'"step_type_spec":', "src/qmatsuite/workflow/step_factory.py")
         assert count > 0, "step_factory not writing step_type_spec to YAML"
 
 
@@ -120,7 +120,7 @@ class TestYamlSpecOnly:
     """YAML files must not contain step_type_gen."""
 
     def test_no_step_type_gen_in_demo_yaml(self):
-        count = rg_count(r"step_type_gen:", "src/quantumvitas/resources/demo_projects/")
+        count = rg_count(r"step_type_gen:", "src/qmatsuite/resources/demo_projects/")
         assert count == 0, "Demo YAML files contain step_type_gen"
 
     # Golden fixtures removed — test_no_bare_step_type_in_golden deleted
@@ -131,12 +131,12 @@ class TestIdentityFieldsRenamed:
 
     def test_no_step_id_in_models(self):
         # Check for step_id as a field name or in dict keys, but allow in comments/strings
-        count = rg_count(r"step_id\s*[:=]", "src/quantumvitas/core/models.py")
+        count = rg_count(r"step_id\s*[:=]", "src/qmatsuite/core/models.py")
         assert count == 0, "models.py still has step_id as field or dict key"
 
     def test_no_meta_id_in_factory(self):
         # Check for legacy "id": pattern (should use "ulid": now)
-        count = rg_count(r'"id":\s*step', "src/quantumvitas/workflow/step_factory.py")
+        count = rg_count(r'"id":\s*step', "src/qmatsuite/workflow/step_factory.py")
         assert count == 0, "step_factory.py still writes meta.id (should use ulid)"
 
 

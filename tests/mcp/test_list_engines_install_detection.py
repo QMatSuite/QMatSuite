@@ -6,10 +6,10 @@ import pytest
 
 
 def test_mcp_list_engines_uses_api_installed_map(monkeypatch: pytest.MonkeyPatch) -> None:
-    from quantumvitas.mcp.tools.list_engines import list_engines
+    from qmatsuite.mcp.tools.list_engines import list_engines
 
     monkeypatch.setattr(
-        "quantumvitas.api.engines.list_engines",
+        "qmatsuite.api.engines.list_engines",
         lambda installed_only=False: [
             {"engine": "qe", "installed": True},
             {"engine": "vasp", "installed": False},
@@ -23,10 +23,10 @@ def test_mcp_list_engines_uses_api_installed_map(monkeypatch: pytest.MonkeyPatch
 
 
 def test_mcp_list_engines_installed_only_filters(monkeypatch: pytest.MonkeyPatch) -> None:
-    from quantumvitas.mcp.tools.list_engines import list_engines
+    from qmatsuite.mcp.tools.list_engines import list_engines
 
     monkeypatch.setattr(
-        "quantumvitas.api.engines.list_engines",
+        "qmatsuite.api.engines.list_engines",
         lambda installed_only=False: [
             {"engine": "qe", "installed": True},
             {"engine": "vasp", "installed": False},

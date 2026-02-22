@@ -59,42 +59,42 @@ DATA_DEPENDENT_SUBTREES = {
 **Evidence from `tests/gates/test_import_rules.py` (lines 218-227)**:
 ```python
 FORBIDDEN_PREFIXES = (
-    "quantumvitas.core",
-    "quantumvitas.calculation",
-    "quantumvitas.analysis",
-    "quantumvitas.io",
-    "quantumvitas.drivers",
-    "quantumvitas.engine",
-    "quantumvitas.workflow",
-    "quantumvitas.presets",
+    "qmatsuite.core",
+    "qmatsuite.calculation",
+    "qmatsuite.analysis",
+    "qmatsuite.io",
+    "qmatsuite.drivers",
+    "qmatsuite.engine",
+    "qmatsuite.workflow",
+    "qmatsuite.presets",
 )
 ```
 
 **Missing kernel modules** (not in FORBIDDEN_PREFIXES):
-- `quantumvitas.project`
-- `quantumvitas.data`
-- `quantumvitas.execution`
-- `quantumvitas.history`
-- `quantumvitas.ir`
-- `quantumvitas.legacy`
-- `quantumvitas.parsers`
-- `quantumvitas.viz`
-- `quantumvitas._vault`
-- `quantumvitas.engines` (different from `engine`)
+- `qmatsuite.project`
+- `qmatsuite.data`
+- `qmatsuite.execution`
+- `qmatsuite.history`
+- `qmatsuite.ir`
+- `qmatsuite.legacy`
+- `qmatsuite.parsers`
+- `qmatsuite.viz`
+- `qmatsuite._vault`
+- `qmatsuite.engines` (different from `engine`)
 
 ### 4. `_shape_create_demo_project` Analysis
 
-**Location**: `src/quantumvitas/daemon/compat.py` lines 709-769
+**Location**: `src/qmatsuite/daemon/compat.py` lines 709-769
 
 **Current import** (line 721):
 ```python
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 ```
 
-**Verdict**: This import is from `quantumvitas.api` which is **ALLOWED** per architecture rules. The shaper calls:
-- `QVService.get_project_summary(project_path)` - API method
-- `QVService.list_structures_data(project_path)` - API method
-- `QVService.list_calculations_data(project_path)` - API method
+**Verdict**: This import is from `qmatsuite.api` which is **ALLOWED** per architecture rules. The shaper calls:
+- `QMSService.get_project_summary(project_path)` - API method
+- `QMSService.list_structures_data(project_path)` - API method
+- `QMSService.list_calculations_data(project_path)` - API method
 
 **No refactoring needed** - the shaper correctly uses API layer, not kernel.
 
@@ -104,9 +104,9 @@ from quantumvitas.api import QVService
 
 1. **GUI-critical fields are enforced by tests** (shape/types/required paths) even if values are not identical.
 
-2. **Daemon kernel-import ban is enforced by a gate test** covering ALL of `src/quantumvitas/daemon/` with a complete forbidden prefix list.
+2. **Daemon kernel-import ban is enforced by a gate test** covering ALL of `src/qmatsuite/daemon/` with a complete forbidden prefix list.
 
-3. **`_shape_create_demo_project` must only call API capabilities** (ALREADY SATISFIED - uses `quantumvitas.api.QVService`).
+3. **`_shape_create_demo_project` must only call API capabilities** (ALREADY SATISFIED - uses `qmatsuite.api.QMSService`).
 
 ---
 
@@ -146,8 +146,8 @@ from pathlib import Path
 from io import StringIO
 from typing import Any
 
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
-from quantumvitas.daemon.compat import shape_response
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
+from qmatsuite.daemon.compat import shape_response
 from tests.contract_crawler.recipes import get_recipe_for_method
 from tests.contract_crawler.payloads import get_minimal_payload
 from tests.contract_crawler.golden_comparison import load_golden
@@ -213,7 +213,7 @@ def _execute_method(method_name: str, tmp_path: Path) -> tuple[bool, dict | None
 
     Returns: (success, shaped_response, error_message)
     """
-    daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+    daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
     golden = load_golden(method_name)
 
     if golden is None:
@@ -423,12 +423,12 @@ Daemon kernel import ban gate.
 
 P0 LAW: Daemon package MUST NOT import from kernel modules.
 Allowed imports:
-- quantumvitas.api.*
-- quantumvitas.daemon.* (same package)
+- qmatsuite.api.*
+- qmatsuite.daemon.* (same package)
 - stdlib
 - third-party packages
 
-This test scans ALL files in src/quantumvitas/daemon/ including compat.py.
+This test scans ALL files in src/qmatsuite/daemon/ including compat.py.
 
 NOTE: This test has its own DAEMON_KERNEL_PREFIXES constant and does NOT
 modify test_import_rules.py's FORBIDDEN_PREFIXES to avoid collateral.
@@ -439,38 +439,38 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DAEMON_DIR = PROJECT_ROOT / "src/quantumvitas/daemon"
+DAEMON_DIR = PROJECT_ROOT / "src/qmatsuite/daemon"
 
 # Complete list of kernel module prefixes (daemon MUST NOT import these)
 # This is a SUPERSET of test_import_rules.py's FORBIDDEN_PREFIXES
 # We keep our own copy to avoid collateral impact on other tests
 DAEMON_KERNEL_PREFIXES = (
     # Original set from test_import_rules.py
-    "quantumvitas.core",
-    "quantumvitas.calculation",
-    "quantumvitas.analysis",
-    "quantumvitas.io",
-    "quantumvitas.drivers",
-    "quantumvitas.engine",
-    "quantumvitas.workflow",
-    "quantumvitas.presets",
+    "qmatsuite.core",
+    "qmatsuite.calculation",
+    "qmatsuite.analysis",
+    "qmatsuite.io",
+    "qmatsuite.drivers",
+    "qmatsuite.engine",
+    "qmatsuite.workflow",
+    "qmatsuite.presets",
     # Additional kernel modules (daemon-specific enforcement)
-    "quantumvitas.project",
-    "quantumvitas.data",
-    "quantumvitas.execution",
-    "quantumvitas.history",
-    "quantumvitas.ir",
-    "quantumvitas.legacy",
-    "quantumvitas.parsers",
-    "quantumvitas.viz",
-    "quantumvitas._vault",
-    "quantumvitas.engines",
+    "qmatsuite.project",
+    "qmatsuite.data",
+    "qmatsuite.execution",
+    "qmatsuite.history",
+    "qmatsuite.ir",
+    "qmatsuite.legacy",
+    "qmatsuite.parsers",
+    "qmatsuite.viz",
+    "qmatsuite._vault",
+    "qmatsuite.engines",
 )
 
-# Allowed quantumvitas imports for daemon
+# Allowed qmatsuite imports for daemon
 DAEMON_ALLOWED_PREFIXES = (
-    "quantumvitas.api",
-    "quantumvitas.daemon",
+    "qmatsuite.api",
+    "qmatsuite.daemon",
 )
 
 
@@ -515,8 +515,8 @@ def test_daemon_no_kernel_imports():
             continue
 
         for line_num, import_type, module in find_imports(py_file):
-            # Skip non-quantumvitas imports
-            if not module.startswith("quantumvitas"):
+            # Skip non-qmatsuite imports
+            if not module.startswith("qmatsuite"):
                 continue
 
             # Check if allowed
@@ -535,7 +535,7 @@ def test_daemon_no_kernel_imports():
         pytest.fail(
             f"Daemon kernel import ban violated!\n"
             f"P0 LAW: Daemon MUST NOT import from kernel modules.\n"
-            f"Allowed: quantumvitas.api.*, quantumvitas.daemon.*\n"
+            f"Allowed: qmatsuite.api.*, qmatsuite.daemon.*\n"
             f"Violations:\n" + "\n".join(violations)
         )
 
@@ -554,7 +554,7 @@ def test_compat_py_specifically():
     violations = []
 
     for line_num, import_type, module in find_imports(compat_file):
-        if not module.startswith("quantumvitas"):
+        if not module.startswith("qmatsuite"):
             continue
 
         is_forbidden = any(module.startswith(prefix) for prefix in DAEMON_KERNEL_PREFIXES)
@@ -566,7 +566,7 @@ def test_compat_py_specifically():
     if violations:
         pytest.fail(
             f"compat.py has forbidden kernel imports!\n"
-            f"The shaper must only use quantumvitas.api.* capabilities.\n"
+            f"The shaper must only use qmatsuite.api.* capabilities.\n"
             f"Violations:\n" + "\n".join(violations)
         )
 ```
@@ -582,7 +582,7 @@ def test_compat_py_specifically():
 - All existing tests pass (including `test_import_rules.py`)
 - `test_daemon_no_kernel_imports` passes
 - `test_compat_py_specifically` passes
-- If someone adds `from quantumvitas.core import ...` to compat.py, test fails
+- If someone adds `from qmatsuite.core import ...` to compat.py, test fails
 
 **Test command**:
 ```bash
@@ -798,14 +798,14 @@ def _shape_create_demo_project(response: Dict[str, Any]) -> Dict[str, Any]:
     ...
     if project_root:
         from pathlib import Path
-        from quantumvitas.api import QVService  # ← ALLOWED (api.*)
+        from qmatsuite.api import QMSService  # ← ALLOWED (api.*)
         ...
-        summary = QVService.get_project_summary(project_path)  # API method
-        structures = QVService.list_structures_data(project_path)  # API method
-        calcs = QVService.list_calculations_data(project_path)  # API method
+        summary = QMSService.get_project_summary(project_path)  # API method
+        structures = QMSService.list_structures_data(project_path)  # API method
+        calcs = QMSService.list_calculations_data(project_path)  # API method
 ```
 
-**Verdict**: ✅ No kernel imports. Uses only `quantumvitas.api.QVService`. No refactoring needed.
+**Verdict**: ✅ No kernel imports. Uses only `qmatsuite.api.QMSService`. No refactoring needed.
 
 ---
 

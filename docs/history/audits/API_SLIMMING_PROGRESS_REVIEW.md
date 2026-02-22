@@ -18,9 +18,9 @@
 **Status**: ✅ **DONE**
 
 **Evidence**:
-- Directory structure exists: `src/quantumvitas/api/` with `service.py`, `types/`, `errors.py`, `_mapping/`, `_internal/`
-- Base classes exist: `BaseDTO` in `src/quantumvitas/api/types/base.py:70`
-- Error infrastructure exists: `APIError` hierarchy in `src/quantumvitas/api/errors.py`
+- Directory structure exists: `src/qmatsuite/api/` with `service.py`, `types/`, `errors.py`, `_mapping/`, `_internal/`
+- Base classes exist: `BaseDTO` in `src/qmatsuite/api/types/base.py:70`
+- Error infrastructure exists: `APIError` hierarchy in `src/qmatsuite/api/errors.py`
 - Gate tests exist: `tests/gates/test_import_rules.py`, `tests/gates/test_tests_no_legacy_api_imports.py`
 
 **DoD Check**:
@@ -32,7 +32,7 @@
 
 **Deviations**:
 - Current `__all__` has 32 exports (target: ≤30 per PR10, but PR0 only required "freeze growth")
-- Still importing from `_api_legacy` via `from quantumvitas._api_legacy import *` (PR0-PR9 compatibility layer)
+- Still importing from `_api_legacy` via `from qmatsuite._api_legacy import *` (PR0-PR9 compatibility layer)
 
 ---
 
@@ -41,9 +41,9 @@
 **Status**: ✅ **DONE**
 
 **Evidence**:
-- Error classes implemented: `src/quantumvitas/api/errors.py` (9 classes: APIError, NotFoundError, AmbiguousError, ValidationError, ConflictError, EngineError, ConfigError, FilesystemError, InternalError)
-- ErrorDTO implemented: `src/quantumvitas/api/types/error.py:16`
-- Exception mapping exists: `src/quantumvitas/api/_mapping/exc_mapping.py:27` (`map_kernel_exception` function)
+- Error classes implemented: `src/qmatsuite/api/errors.py` (9 classes: APIError, NotFoundError, AmbiguousError, ValidationError, ConflictError, EngineError, ConfigError, FilesystemError, InternalError)
+- ErrorDTO implemented: `src/qmatsuite/api/types/error.py:16`
+- Exception mapping exists: `src/qmatsuite/api/_mapping/exc_mapping.py:27` (`map_kernel_exception` function)
 - Tests exist: `tests/api/test_errors.py`, `tests/api/test_exc_mapping.py` (implied from codebase search)
 
 **DoD Check**:
@@ -61,15 +61,15 @@
 **Status**: ✅ **DONE**
 
 **Evidence**:
-- `to_json_value()` implemented: `src/quantumvitas/api/types/base.py:22` (fail-closed, raises TypeError for unknown types)
+- `to_json_value()` implemented: `src/qmatsuite/api/types/base.py:22` (fail-closed, raises TypeError for unknown types)
 - Core DTOs exist:
-  - `MetaDTO`: `src/quantumvitas/api/types/common.py:15`
-  - `CalculationDTO`: `src/quantumvitas/api/types/calculation.py:33`
-  - `StepDTO`: `src/quantumvitas/api/types/calculation.py:57`
-  - `StructureDTO`: `src/quantumvitas/api/types/structure.py:16`
-  - `RunResultDTO`: `src/quantumvitas/api/types/run.py:16`
-  - `AnalysisRefDTO`: `src/quantumvitas/api/types/analysis.py:16`
-  - `AnalysisSummaryDTO`: `src/quantumvitas/api/types/analysis.py:41`
+  - `MetaDTO`: `src/qmatsuite/api/types/common.py:15`
+  - `CalculationDTO`: `src/qmatsuite/api/types/calculation.py:33`
+  - `StepDTO`: `src/qmatsuite/api/types/calculation.py:57`
+  - `StructureDTO`: `src/qmatsuite/api/types/structure.py:16`
+  - `RunResultDTO`: `src/qmatsuite/api/types/run.py:16`
+  - `AnalysisRefDTO`: `src/qmatsuite/api/types/analysis.py:16`
+  - `AnalysisSummaryDTO`: `src/qmatsuite/api/types/analysis.py:41`
 - Tests exist: `tests/api/test_dto_serialization.py` (fail-closed tests), `tests/api/test_dto_base.py`
 
 **DoD Check**:
@@ -88,14 +88,14 @@
 **Status**: 🟡 **PARTIAL**
 
 **Evidence**:
-- Capabilities exist: `src/quantumvitas/api/service.py:47-295` (Analysis domain with `get_summary`, `list_properties`, `get_property_ref`)
+- Capabilities exist: `src/qmatsuite/api/service.py:47-295` (Analysis domain with `get_summary`, `list_properties`, `get_property_ref`)
 - DTOs used: `AnalysisSummaryDTO`, `AnalysisRefDTO`
-- Mapping exists: `src/quantumvitas/api/_mapping/dto_mapping.py` (implied from imports)
+- Mapping exists: `src/qmatsuite/api/_mapping/dto_mapping.py` (implied from imports)
 
 **DoD Check**:
 - ✅ Analysis capabilities exist (`svc.analysis.get_summary`, `list_properties`, `get_property_ref`)
 - ⚠️ **Gap**: No `load_artifact` method (PR3 §Capabilities Introduced: "Jupyter-only, returns numpy")
-- ⚠️ **Gap**: No daemon endpoints updated (PR3 §Daemon Endpoints Updated) - need to verify `src/quantumvitas/daemon/endpoints/analysis.py` uses DTOs
+- ⚠️ **Gap**: No daemon endpoints updated (PR3 §Daemon Endpoints Updated) - need to verify `src/qmatsuite/daemon/endpoints/analysis.py` uses DTOs
 - ⚠️ **Gap**: No verification that analysis re-exports removed (PR3 §Re-export Deletions: ~50 symbols)
 
 **Deviations**:
@@ -108,7 +108,7 @@
 **Status**: ✅ **DONE**
 
 **Evidence**:
-- Capabilities exist: `src/quantumvitas/api/service.py:290-440` (Structure domain with `get`, `list`, `get_atoms`)
+- Capabilities exist: `src/qmatsuite/api/service.py:290-440` (Structure domain with `get`, `list`, `get_atoms`)
 - DTO used: `StructureDTO`
 - Tests exist: `tests/api/test_structure_capabilities.py` (implied from codebase search)
 
@@ -127,7 +127,7 @@
 **Status**: ✅ **DONE**
 
 **Evidence**:
-- Capabilities exist: `src/quantumvitas/api/service.py:580-1010` (Calculation domain with `get`, `list`, `get_step`, `list_steps`, `get_effective_params`)
+- Capabilities exist: `src/qmatsuite/api/service.py:580-1010` (Calculation domain with `get`, `list`, `get_step`, `list_steps`, `get_effective_params`)
 - DTOs used: `CalculationDTO`, `StepDTO`, `CalculationRefDTO`
 - Tests exist: `tests/api/test_calculation_read.py` (implied from codebase search)
 
@@ -147,7 +147,7 @@
 **Status**: ✅ **DONE**
 
 **Evidence**:
-- Capabilities exist: `src/quantumvitas/api/service.py:1018-1470` (Calculation domain with `create`, `update_meta`, `update_step_params`, `delete`)
+- Capabilities exist: `src/qmatsuite/api/service.py:1018-1470` (Calculation domain with `create`, `update_meta`, `update_step_params`, `delete`)
 - DTOs used: `CalculationDTO`, `StepDTO`
 
 **DoD Check**:
@@ -168,7 +168,7 @@
 **Status**: ✅ **DONE**
 
 **Evidence**:
-- Capabilities exist: `src/quantumvitas/api/service.py:1473-1690` (Run domain with `run_calculation`, `run_step`, `get_status`, `list_runs`)
+- Capabilities exist: `src/qmatsuite/api/service.py:1473-1690` (Run domain with `run_calculation`, `run_step`, `get_status`, `list_runs`)
 - DTO used: `RunResultDTO` (with `run_id` ULID, not `job_id`)
 
 **DoD Check**:
@@ -188,7 +188,7 @@
 **Status**: ✅ **DONE**
 
 **Evidence**:
-- Capabilities exist: `src/quantumvitas/api/service.py:1702-1840` (Project domain with `get_config`, `update_config`, `get_species_map`, `get_potential_map`, `list_calculations`)
+- Capabilities exist: `src/qmatsuite/api/service.py:1702-1840` (Project domain with `get_config`, `update_config`, `get_species_map`, `get_potential_map`, `list_calculations`)
 
 **DoD Check**:
 - ✅ `svc.project.get_config()` exists
@@ -206,7 +206,7 @@
 **Status**: ✅ **DONE**
 
 **Evidence**:
-- Capabilities exist: `src/quantumvitas/api/service.py:1926-2040` (Engine domain with `list`, `get_info`, `list_step_types`)
+- Capabilities exist: `src/qmatsuite/api/service.py:1926-2040` (Engine domain with `list`, `get_info`, `list_step_types`)
 
 **DoD Check**:
 - ✅ `svc.engine.list()` exists
@@ -225,12 +225,12 @@
 
 **Evidence**:
 - Current `__all__` has 32 exports (target: ≤30 per PR10 §Final `__init__.py` State)
-- Still importing from `_api_legacy`: `src/quantumvitas/api/__init__.py:29` (`from quantumvitas._api_legacy import *`)
+- Still importing from `_api_legacy`: `src/qmatsuite/api/__init__.py:29` (`from qmatsuite._api_legacy import *`)
 - Public exports count: 72 symbols (from `dir(api)`, not just `__all__`)
 - Many kernel types still exported: `Calculation`, `Step`, `ResourceMeta`, `StepMode`, `StepStatus`, `EngineConfig`, `CalculationStepEntry`, `QeEngine`, `ProjectContext`, `DisplayModeParams`, `BandAnalysisFiles`, `DOSData`, `ParameterOverride`, `PrecisionOption`, `DIMENSION_PRECISION` (from `dir(api)` output)
 
 **DoD Check** (PR10 §GATE 4):
-- ❌ `quantumvitas.api` exports kernel types (should be ZERO)
+- ❌ `qmatsuite.api` exports kernel types (should be ZERO)
 - ❌ Re-exports from `_api_legacy` still present
 - ✅ Frontends don't import kernel directly (gates pass)
 - ⚠️ **Gap**: No `test_export_count_final` gate (PR10 §Tests to Add)
@@ -282,9 +282,9 @@ __all__ = [
 - Kernel types: `Calculation`, `Step`, `ResourceMeta`, `StepMode`, `StepStatus`, `EngineConfig`, `CalculationStepEntry`, `QeEngine`, `ProjectContext`, `DisplayModeParams`, `BandAnalysisFiles`, `DOSData`, `ParameterOverride`, `PrecisionOption`
 - Kernel exceptions: `ResourceNotFoundError`, `AmbiguousSelectorError`, `SelectorNotFoundError`, `ContextNotFoundError`, `RegistryOutOfSyncError`, `ProjectConfigError`, `PresetCompilationError`, `PrecisionContextError`, `LegacyProjectError`, `VolumeParserError`
 - Kernel constants: `DIMENSION_PRECISION`
-- Other: `QVServiceError`, `CandidateSummary`, `QECardType`, `QEModule`, `QEInputParser`, `StructureStepSpec`, `Optional`, `Path`
+- Other: `QMSServiceError`, `CandidateSummary`, `QECardType`, `QEModule`, `QEInputParser`, `StructureStepSpec`, `Optional`, `Path`
 
-**Source**: All from `from quantumvitas._api_legacy import *` (line 29)
+**Source**: All from `from qmatsuite._api_legacy import *` (line 29)
 
 ### Violations of API_FACADE_CONTRACT.md
 
@@ -333,15 +333,15 @@ __all__ = [
 
 | DTO | File | Status | Fields Check |
 |-----|------|--------|--------------|
-| `ErrorDTO` | `src/quantumvitas/api/types/error.py:16` | ✅ | Has: type, code, message, retryable, hint, context, cause |
-| `MetaDTO` | `src/quantumvitas/api/types/common.py:15` | ✅ | Has: slug, name, description, tags, created_at, updated_at |
-| `CalculationDTO` | `src/quantumvitas/api/types/calculation.py:33` | ✅ | Has: calc_id (ULID), engine, status, meta, structure_id, step_ids, step_count, completed_step_count |
-| `CalculationRefDTO` | `src/quantumvitas/api/types/calculation.py:16` | ✅ | Reference DTO |
-| `StepDTO` | `src/quantumvitas/api/types/calculation.py:57` | ✅ | Has: step_id (ULID), calc_id, step_type, status, meta, started_at, completed_at, duration_seconds, exit_code, error_message |
-| `StructureDTO` | `src/quantumvitas/api/types/structure.py:16` | ✅ | Has: structure_id (ULID), formula, num_atoms, meta, space_group, point_group, cell_volume_ang3, lattice_abc, lattice_angles |
-| `RunResultDTO` | `src/quantumvitas/api/types/run.py:16` | ✅ | Has: run_id (ULID), calc_id, status, step_ids, started_at, completed_at, duration_seconds, exit_code, log_path, error |
-| `AnalysisRefDTO` | `src/quantumvitas/api/types/analysis.py:16` | ✅ | Has: calc_id, step_id, property_name, artifact_path, artifact_format, artifact_sha256, artifact_size_bytes, summary, preview |
-| `AnalysisSummaryDTO` | `src/quantumvitas/api/types/analysis.py:41` | ✅ | Has: calc_id, step_id, converged, total_energy_ev, fermi_energy_ev, band_gap_ev, band_gap_type, total_magnetization, available_properties |
+| `ErrorDTO` | `src/qmatsuite/api/types/error.py:16` | ✅ | Has: type, code, message, retryable, hint, context, cause |
+| `MetaDTO` | `src/qmatsuite/api/types/common.py:15` | ✅ | Has: slug, name, description, tags, created_at, updated_at |
+| `CalculationDTO` | `src/qmatsuite/api/types/calculation.py:33` | ✅ | Has: calc_id (ULID), engine, status, meta, structure_id, step_ids, step_count, completed_step_count |
+| `CalculationRefDTO` | `src/qmatsuite/api/types/calculation.py:16` | ✅ | Reference DTO |
+| `StepDTO` | `src/qmatsuite/api/types/calculation.py:57` | ✅ | Has: step_id (ULID), calc_id, step_type, status, meta, started_at, completed_at, duration_seconds, exit_code, error_message |
+| `StructureDTO` | `src/qmatsuite/api/types/structure.py:16` | ✅ | Has: structure_id (ULID), formula, num_atoms, meta, space_group, point_group, cell_volume_ang3, lattice_abc, lattice_angles |
+| `RunResultDTO` | `src/qmatsuite/api/types/run.py:16` | ✅ | Has: run_id (ULID), calc_id, status, step_ids, started_at, completed_at, duration_seconds, exit_code, log_path, error |
+| `AnalysisRefDTO` | `src/qmatsuite/api/types/analysis.py:16` | ✅ | Has: calc_id, step_id, property_name, artifact_path, artifact_format, artifact_sha256, artifact_size_bytes, summary, preview |
+| `AnalysisSummaryDTO` | `src/qmatsuite/api/types/analysis.py:41` | ✅ | Has: calc_id, step_id, converged, total_energy_ev, fermi_energy_ev, band_gap_ev, band_gap_type, total_magnetization, available_properties |
 
 **All DTOs match spec** ✅
 
@@ -361,7 +361,7 @@ Need to verify DTO field types don't contain kernel objects. From code inspectio
 
 ### Fail-Closed Serialization
 
-**Implementation**: `src/quantumvitas/api/types/base.py:22` (`to_json_value`)
+**Implementation**: `src/qmatsuite/api/types/base.py:22` (`to_json_value`)
 
 **Whitelist Check** (API_DTO_SCHEMA.md §2.2):
 - ✅ None, bool, int, float, str, list, tuple, dict, datetime, date, Path, Enum, UUID, Decimal
@@ -384,7 +384,7 @@ Need to verify DTO field types don't contain kernel objects. From code inspectio
 
 **Check**: Do domain methods return DTOs or kernel objects?
 
-From `src/quantumvitas/api/service.py`:
+From `src/qmatsuite/api/service.py`:
 - `svc.analysis.get_summary()` → `AnalysisSummaryDTO` ✅
 - `svc.analysis.get_property_ref()` → `AnalysisRefDTO` ✅
 - `svc.structure.get()` → `StructureDTO` ✅
@@ -406,25 +406,25 @@ From `src/quantumvitas/api/service.py`:
 
 | Code | Type | Status | Evidence |
 |------|------|--------|----------|
-| `NOT_FOUND` | NotFoundError | ✅ | `src/quantumvitas/api/errors.py:74` |
-| `AMBIGUOUS_SELECTOR` | AmbiguousError | ✅ | `src/quantumvitas/api/errors.py:80` |
-| `INVALID_SELECTOR` | ValidationError | ✅ | `src/quantumvitas/api/errors.py:88` (code override) |
-| `VALIDATION_FAILED` | ValidationError | ✅ | `src/quantumvitas/api/errors.py:94` |
-| `EDIT_LOCK_HELD` | ConflictError | ✅ | `src/quantumvitas/api/errors.py:123` (code override) |
-| `RUN_LOCK_HELD` | ConflictError | ✅ | `src/quantumvitas/api/errors.py:123` (code override) |
-| `ENGINE_EXEC_FAILED` | EngineError | ✅ | `src/quantumvitas/api/errors.py:158` |
-| `ENGINE_OUTPUT_PARSE_FAILED` | EngineError | ✅ | `src/quantumvitas/api/errors.py:158` (code override) |
-| `ENGINE_NOT_AVAILABLE` | EngineError | ✅ | `src/quantumvitas/api/errors.py:158` (code override) |
-| `PROJECT_SSOT_MISSING` | ConfigError | ✅ | `src/quantumvitas/api/errors.py:200` |
-| `MODE_MISMATCH` | ConfigError | ✅ | `src/quantumvitas/api/errors.py:200` (code override) |
-| `FILESYSTEM_ERROR` | FilesystemError | ✅ | `src/quantumvitas/api/errors.py:237` |
-| `INTERNAL_ERROR` | InternalError | ✅ | `src/quantumvitas/api/errors.py:266` |
+| `NOT_FOUND` | NotFoundError | ✅ | `src/qmatsuite/api/errors.py:74` |
+| `AMBIGUOUS_SELECTOR` | AmbiguousError | ✅ | `src/qmatsuite/api/errors.py:80` |
+| `INVALID_SELECTOR` | ValidationError | ✅ | `src/qmatsuite/api/errors.py:88` (code override) |
+| `VALIDATION_FAILED` | ValidationError | ✅ | `src/qmatsuite/api/errors.py:94` |
+| `EDIT_LOCK_HELD` | ConflictError | ✅ | `src/qmatsuite/api/errors.py:123` (code override) |
+| `RUN_LOCK_HELD` | ConflictError | ✅ | `src/qmatsuite/api/errors.py:123` (code override) |
+| `ENGINE_EXEC_FAILED` | EngineError | ✅ | `src/qmatsuite/api/errors.py:158` |
+| `ENGINE_OUTPUT_PARSE_FAILED` | EngineError | ✅ | `src/qmatsuite/api/errors.py:158` (code override) |
+| `ENGINE_NOT_AVAILABLE` | EngineError | ✅ | `src/qmatsuite/api/errors.py:158` (code override) |
+| `PROJECT_SSOT_MISSING` | ConfigError | ✅ | `src/qmatsuite/api/errors.py:200` |
+| `MODE_MISMATCH` | ConfigError | ✅ | `src/qmatsuite/api/errors.py:200` (code override) |
+| `FILESYSTEM_ERROR` | FilesystemError | ✅ | `src/qmatsuite/api/errors.py:237` |
+| `INTERNAL_ERROR` | InternalError | ✅ | `src/qmatsuite/api/errors.py:266` |
 
 **All 13 error codes exist** ✅
 
 ### Kernel→API Exception Mapping
 
-**Implementation**: `src/quantumvitas/api/_mapping/exc_mapping.py:27` (`map_kernel_exception`)
+**Implementation**: `src/qmatsuite/api/_mapping/exc_mapping.py:27` (`map_kernel_exception`)
 
 **Mappings Check** (API_ERROR_TAXONOMY.md §5):
 
@@ -507,16 +507,16 @@ From `src/quantumvitas/api/service.py`:
 **Tasks**:
 
 1. **Remove `_api_legacy` import**
-   - File: `src/quantumvitas/api/__init__.py:29`
-   - Action: Remove `from quantumvitas._api_legacy import *`
+   - File: `src/qmatsuite/api/__init__.py:29`
+   - Action: Remove `from qmatsuite._api_legacy import *`
    - Replace: Migrate any needed utilities to `api.utils` or internalize
    - Test: `python -m pytest tests/gates -v --tb=short`
-   - Verification: `python -c "import quantumvitas.api as a; print([x for x in dir(a) if not x.startswith('_')])"` should show only API-owned symbols
+   - Verification: `python -c "import qmatsuite.api as a; print([x for x in dir(a) if not x.startswith('_')])"` should show only API-owned symbols
 
 2. **Remove kernel type re-exports**
    - Files: All kernel types currently accessible via `_api_legacy`
    - Action: Remove from namespace (already not in `__all__`, but accessible via `*` import)
-   - Test: `python -c "import quantumvitas.api as a; assert not hasattr(a, 'Calculation'); assert not hasattr(a, 'Step')"`
+   - Test: `python -c "import qmatsuite.api as a; assert not hasattr(a, 'Calculation'); assert not hasattr(a, 'Step')"`
 
 3. **Add PR10 gate tests**
    - File: `tests/gates/test_api_surface_final.py` (new)
@@ -528,7 +528,7 @@ From `src/quantumvitas/api/service.py`:
    - Verification: `python -m pytest tests/gates/test_api_surface_final.py -v`
 
 4. **Reduce export count to ≤30**
-   - File: `src/quantumvitas/api/__init__.py`
+   - File: `src/qmatsuite/api/__init__.py`
    - Current: 32 exports
    - Action: Review utilities - can any be internalized or moved to `api.utils`?
    - Target: ≤30 (per API_FACADE_CONTRACT.md §6.1)
@@ -540,20 +540,20 @@ From `src/quantumvitas/api/service.py`:
 **Tasks**:
 
 5. **Add `svc.analysis.load_artifact` (PR3)**
-   - File: `src/quantumvitas/api/service.py` (Analysis domain)
+   - File: `src/qmatsuite/api/service.py` (Analysis domain)
    - Signature: `def load_artifact(self, ref: AnalysisRefDTO) -> dict`
    - Purpose: Jupyter-only, returns numpy arrays for full data
    - Reference: PR3 §Capabilities Introduced
    - Test: `tests/api/test_analysis_capabilities.py` (add test)
 
 6. **Add `svc.calculation.duplicate` (PR6)**
-   - File: `src/quantumvitas/api/service.py` (Calculation domain)
+   - File: `src/qmatsuite/api/service.py` (Calculation domain)
    - Signature: `def duplicate(self, selector: str, new_name: str | None = None) -> CalculationDTO`
    - Reference: PR6 §Capabilities Introduced
    - Test: `tests/api/test_calculation_write.py` (add test)
 
 7. **Add `svc.calculation.add_step` / `remove_step` (PR6)**
-   - File: `src/quantumvitas/api/service.py` (Calculation domain)
+   - File: `src/qmatsuite/api/service.py` (Calculation domain)
    - Signatures:
      - `def add_step(self, calc_selector: str, step_type: str, **params) -> StepDTO`
      - `def remove_step(self, calc_selector: str, step_selector: str) -> None`
@@ -561,13 +561,13 @@ From `src/quantumvitas/api/service.py`:
    - Test: `tests/api/test_calculation_write.py` (add tests)
 
 8. **Add `svc.run.cancel` (PR7)**
-   - File: `src/quantumvitas/api/service.py` (Run domain)
+   - File: `src/qmatsuite/api/service.py` (Run domain)
    - Signature: `def cancel(self, run_id: str) -> RunResultDTO`
    - Reference: PR7 §Capabilities Introduced
    - Test: `tests/api/test_run_capabilities.py` (add test)
 
 9. **Add `svc.engine.validate_installation` (PR9)**
-   - File: `src/quantumvitas/api/service.py` (Engine domain)
+   - File: `src/qmatsuite/api/service.py` (Engine domain)
    - Signature: `def validate_installation(self, engine_name: str) -> dict`
    - Reference: PR9 §Capabilities Introduced
    - Test: `tests/api/test_engine_capabilities.py` (add test)
@@ -579,10 +579,10 @@ From `src/quantumvitas/api/service.py`:
 **Tasks**:
 
 10. **Audit daemon endpoints for DTO usage**
-    - Files: `src/quantumvitas/daemon/endpoints/*.py`
+    - Files: `src/qmatsuite/daemon/endpoints/*.py`
     - Action: Verify all endpoints use `dto.to_dict()` not `json.dumps(__dict__)`
     - Reference: PR3 §Daemon Endpoints Updated, API_FACADE_CONTRACT.md §7 (prohibition: "Endpoint hand-serialization")
-    - Verification: `grep -rn "json\.dumps\|__dict__" src/quantumvitas/daemon/endpoints/` should return 0 matches
+    - Verification: `grep -rn "json\.dumps\|__dict__" src/qmatsuite/daemon/endpoints/` should return 0 matches
     - Test: Add gate test `test_daemon_no_hand_serialization` if missing
 
 ---

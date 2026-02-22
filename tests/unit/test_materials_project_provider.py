@@ -7,18 +7,18 @@ PR5: Tests for MP native search, API key validation, and candidate conversion.
 from unittest.mock import patch, Mock, MagicMock
 import pytest
 
-from quantumvitas.io.providers.materials_project import (
+from qmatsuite.io.providers.materials_project import (
     search_materials_project,
     validate_api_key,
     _mp_doc_to_candidate,
     MPSummaryDoc,
     MP_API_AVAILABLE,
 )
-from quantumvitas.io.providers.optimade import Candidate
+from qmatsuite.io.providers.optimade import Candidate
 
 # All mocked tests patch MP_API_AVAILABLE=True and create=True for MPRester
 # so they work regardless of whether mp-api is installed.
-_MP_MOD = 'quantumvitas.io.providers.materials_project'
+_MP_MOD = 'qmatsuite.io.providers.materials_project'
 
 
 def _make_mock_rester(mock_mpr):

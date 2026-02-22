@@ -81,7 +81,7 @@ Fix critical bugs in the preset system to make it fully functional, auditable, a
   - Collect `updated_fields` and `skipped_fields` for each step
   - Return structured result with per-step details
   
-- [ ] **B2.3**: Update TypeScript types in `qv.ts`
+- [ ] **B2.3**: Update TypeScript types in `qms.ts`
   - `StepApplyResult` includes `updated_fields`, `skipped_fields`
   - `ApplyPresetsToCalcResult` includes per-step details
   

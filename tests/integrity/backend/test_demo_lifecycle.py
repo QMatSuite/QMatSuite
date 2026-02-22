@@ -19,9 +19,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.api import QVService
-from quantumvitas.core.resources import get_resources_dir
-from quantumvitas.project.snapshot import (
+from qmatsuite.api import QMSService
+from qmatsuite.core.resources import get_resources_dir
+from qmatsuite.project.snapshot import (
     ProjectSnapshot,
     materialize_project_from_snapshot,
     export_project_to_snapshot,
@@ -74,7 +74,7 @@ class TestDemoLifecycle:
 
             # Verify project structure
             assert project_root.exists()
-            assert (project_root / "project.qv.yml").exists()
+            assert (project_root / "project.qms.yml").exists()
 
             structures_dir = project_root / "structures"
             assert structures_dir.exists()
@@ -90,11 +90,11 @@ class TestDemoLifecycle:
             assert len(step_files) > 0, f"No step files found in {calculations_dir}"
 
     def test_materialize_via_api(self, demo_path):
-        """Every demo must be loadable via QVService.create_demo_project."""
+        """Every demo must be loadable via QMSService.create_demo_project."""
         demo_id = demo_path.stem
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            result = QVService.create_demo_project(
+            result = QMSService.create_demo_project(
                 target_dir=Path(tmpdir),
                 name=f"test_{demo_id}",
                 demo_id=demo_id,
@@ -104,7 +104,7 @@ class TestDemoLifecycle:
             assert project_root.exists()
 
             # Verify project can be opened
-            svc = QVService(project_root)
+            svc = QMSService(project_root)
             summary = svc.project.get_summary()
             assert summary is not None
             assert summary["n_structures"] >= 0

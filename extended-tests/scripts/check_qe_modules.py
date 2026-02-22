@@ -13,8 +13,8 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root))
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 
 def check_module(engine, executable_name, module_name):

@@ -14,18 +14,18 @@ import pytest
 
 def _call_search_demos(**kwargs):
     """Directly call the search_demos function (bypassing MCP transport)."""
-    from quantumvitas.mcp.tools.demo_store import search_demos
+    from qmatsuite.mcp.tools.demo_store import search_demos
     # @mcp.tool wraps the function in a FunctionTool; call .fn() for the raw function
     return search_demos.fn(**kwargs)
 
 
 def _call_get_demo_results(demo_id: str, object_type: str = ""):
-    from quantumvitas.mcp.tools.demo_store import get_demo_results
+    from qmatsuite.mcp.tools.demo_store import get_demo_results
     return get_demo_results.fn(demo_id=demo_id, object_type=object_type)
 
 
-def _call_load_demo(qv_project, demo_id: str, name: str = ""):
-    from quantumvitas.mcp.tools.demo_store import load_demo
+def _call_load_demo(qms_project, demo_id: str, name: str = ""):
+    from qmatsuite.mcp.tools.demo_store import load_demo
     return load_demo.fn(demo_id=demo_id, name=name)
 
 
@@ -327,7 +327,7 @@ def test_get_demo_results_returns_engine_field():
 
 def test_get_demo_results_all_demos_have_ref_packs():
     """All 52 demos should have ref packs with at least one analysis type."""
-    from quantumvitas.demo_store.ref_packs import list_all_ref_packs, list_ref_pack_types
+    from qmatsuite.demo_store.ref_packs import list_all_ref_packs, list_ref_pack_types
 
     ref_packs = list_all_ref_packs()
     assert len(ref_packs) >= 52, f"Expected >=52 ref packs, got {len(ref_packs)}"
@@ -341,24 +341,24 @@ def test_get_demo_results_all_demos_have_ref_packs():
 # load_demo
 # ---------------------------------------------------------------------------
 
-def test_load_demo_valid_id_creates_calc(qv_project):
-    result = _call_load_demo(qv_project, "qe_si_scf")
+def test_load_demo_valid_id_creates_calc(qms_project):
+    result = _call_load_demo(qms_project, "qe_si_scf")
     assert _is_ok(result), result
     data = result["data"]
     assert "calc_ulid" in data
     assert data["calc_ulid"]
 
 
-def test_load_demo_structure_ulid_in_result(qv_project):
-    result = _call_load_demo(qv_project, "qe_si_scf")
+def test_load_demo_structure_ulid_in_result(qms_project):
+    result = _call_load_demo(qms_project, "qe_si_scf")
     assert _is_ok(result), result
     data = result["data"]
     assert "structure_ulid" in data, "structure_ulid should be in load_demo result"
     assert data["structure_ulid"], "structure_ulid should not be empty"
 
 
-def test_load_demo_context_hint_mentions_structure(qv_project):
-    result = _call_load_demo(qv_project, "qe_si_scf")
+def test_load_demo_context_hint_mentions_structure(qms_project):
+    result = _call_load_demo(qms_project, "qe_si_scf")
     assert _is_ok(result), result
     hint = result.get("context_hint", "")
     assert "structure" in hint.lower(), f"context_hint should mention structure: {hint}"
@@ -366,8 +366,8 @@ def test_load_demo_context_hint_mentions_structure(qv_project):
         f"context_hint should say user doesn't need to import separately: {hint}"
 
 
-def test_load_demo_invalid_id_error(qv_project):
-    result = _call_load_demo(qv_project, "nonexistent_demo_xyz")
+def test_load_demo_invalid_id_error(qms_project):
+    result = _call_load_demo(qms_project, "nonexistent_demo_xyz")
     assert _is_error(result)
     assert result["error_type"] == "demo_not_found"
 
@@ -375,10 +375,10 @@ def test_load_demo_invalid_id_error(qv_project):
 def test_load_demo_requires_project():
     """load_demo should return error if no project is active."""
     from unittest.mock import patch
-    from quantumvitas.mcp.project import ProjectNotFoundError
+    from qmatsuite.mcp.project import ProjectNotFoundError
 
     with patch(
-        "quantumvitas.mcp.project.get_service",
+        "qmatsuite.mcp.project.get_service",
         side_effect=ProjectNotFoundError("No project"),
     ):
         result = _call_load_demo(None, "qe_si_scf")
@@ -386,8 +386,8 @@ def test_load_demo_requires_project():
     assert result["error_type"] == "no_project"
 
 
-def test_load_demo_context_hint_mentions_calc_ulid(qv_project):
-    result = _call_load_demo(qv_project, "qe_si_scf")
+def test_load_demo_context_hint_mentions_calc_ulid(qms_project):
+    result = _call_load_demo(qms_project, "qe_si_scf")
     assert _is_ok(result)
     calc_ulid = result["data"]["calc_ulid"]
     hint = result.get("context_hint", "")
@@ -398,7 +398,7 @@ def test_load_demo_context_hint_mentions_calc_ulid(qv_project):
 # Integration: search → pick → get_results → load
 # ---------------------------------------------------------------------------
 
-def test_full_demo_flow_search_to_load(qv_project):
+def test_full_demo_flow_search_to_load(qms_project):
     """End-to-end: search demos, pick one, preview results, load it."""
     # 1. Search
     search_result = _call_search_demos(engine="qe", difficulty="beginner")
@@ -418,7 +418,7 @@ def test_full_demo_flow_search_to_load(qv_project):
     assert len(types) > 0
 
     # 4. Load into project
-    load_result = _call_load_demo(qv_project, demo_id)
+    load_result = _call_load_demo(qms_project, demo_id)
     assert _is_ok(load_result), load_result
     assert "calc_ulid" in load_result["data"]
     assert "structure_ulid" in load_result["data"]

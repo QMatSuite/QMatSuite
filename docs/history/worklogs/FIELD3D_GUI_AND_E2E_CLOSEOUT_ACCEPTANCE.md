@@ -21,12 +21,12 @@ Closed two remaining gaps: (1) Field3D now has a production 3D isosurface viewer
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/core/analysis/field3d.py` | +29 lines: `materialize_to_scratch(calc_dir)` — binary Float32 + metadata JSON with atomic rename |
-| `src/quantumvitas/daemon/server.py` | +15 lines: `_handle_get_field3d_grid` RPC handler |
-| `src/quantumvitas/api/service.py` | +57 lines: `get_field3d_grid()` service method |
-| `gui/electron/main.ts` | +43 lines: `qv-read-scratch-file` IPC handler with path security validation |
+| `src/qmatsuite/core/analysis/field3d.py` | +29 lines: `materialize_to_scratch(calc_dir)` — binary Float32 + metadata JSON with atomic rename |
+| `src/qmatsuite/daemon/server.py` | +15 lines: `_handle_get_field3d_grid` RPC handler |
+| `src/qmatsuite/api/service.py` | +57 lines: `get_field3d_grid()` service method |
+| `gui/electron/main.ts` | +43 lines: `qms-read-scratch-file` IPC handler with path security validation |
 | `gui/electron/preload.ts` | +13 lines: `readScratchFile` exposed to renderer |
-| `gui/src/types/qv.ts` | +21 lines: `Field3DGridMetadata` type + `readScratchFile` API signature |
+| `gui/src/types/qms.ts` | +21 lines: `Field3DGridMetadata` type + `readScratchFile` API signature |
 | `gui/src/components/panels/VolumeViewerSandbox.tsx` | -142 lines: replaced inline IsosurfaceMesh with shared import |
 | `gui/src/components/panels/CalculationAnalysisPanel.tsx` | +17 lines: field3d dispatch to Field3DVizPanel |
 | `gui/src/components/panels/CalculationAnalysisPanel.css` | +87 lines: field3d panel styles |

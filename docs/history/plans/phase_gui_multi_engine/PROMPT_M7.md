@@ -20,8 +20,8 @@ M0-M6 must be complete. The `list_engine_parameter_metadata` and `list_engine_fa
 3. `gui/src/components/panels/EngineParameterBrowserPanel.tsx` (the renamed file) — Accept `engineFamily` prop, replace QE-specific RPC calls
 4. `gui/src/hooks/useEngineParameterMetadata.ts` (the renamed file) — Accept `engineFamily` parameter, replace QE-specific RPC calls
 5. `gui/src/components/panels/SettingsPanel.tsx` — Generalize QE section (lines 300-349) to show all engines
-6. `gui/src/hooks/useQVClient.ts` — Add `listEngineParameterMetadata()` convenience method
-7. `gui/src/types/qv.ts` — Add `list_engine_parameter_metadata` RPC entry
+6. `gui/src/hooks/useQMSClient.ts` — Add `listEngineParameterMetadata()` convenience method
+7. `gui/src/types/qms.ts` — Add `list_engine_parameter_metadata` RPC entry
 8. Any files that import `QEParameterBrowserPanel` or `useQEParameterMetadata` — Update imports
 
 ## Do NOT Touch
@@ -76,15 +76,15 @@ Find all calls to `listQeParameterMetadata` and replace with `listEngineParamete
 
 ```typescript
 // OLD:
-// const res = await qv.listQeParameterMetadata('list_modules');
-// const res = await qv.listQeParameterMetadata('list_sections', { module: selectedModule });
-// const res = await qv.listQeParameterMetadata('list_parameters', { module, section });
-// const res = await qv.listQeParameterMetadata('search', { query: searchQuery });
+// const res = await qms.listQeParameterMetadata('list_modules');
+// const res = await qms.listQeParameterMetadata('list_sections', { module: selectedModule });
+// const res = await qms.listQeParameterMetadata('list_parameters', { module, section });
+// const res = await qms.listQeParameterMetadata('search', { query: searchQuery });
 
 // NEW:
-const res = await qv.listEngineParameterMetadata(engineFamily, 'list_categories');
-const res = await qv.listEngineParameterMetadata(engineFamily, 'list_tags', { category: selectedCategory });
-const res = await qv.listEngineParameterMetadata(engineFamily, 'search', { query: searchQuery });
+const res = await qms.listEngineParameterMetadata(engineFamily, 'list_categories');
+const res = await qms.listEngineParameterMetadata(engineFamily, 'list_tags', { category: selectedCategory });
+const res = await qms.listEngineParameterMetadata(engineFamily, 'search', { query: searchQuery });
 ```
 
 Note the operation name changes:
@@ -138,7 +138,7 @@ Rename any internal types that have "QE" in the name to generic equivalents.
 
 ### Step 4: Add RPC type and convenience method
 
-In `gui/src/types/qv.ts`, add:
+In `gui/src/types/qms.ts`, add:
 
 ```typescript
   list_engine_parameter_metadata: {
@@ -157,14 +157,14 @@ In `gui/src/types/qv.ts`, add:
   };
 ```
 
-In `gui/src/hooks/useQVClient.ts`, add:
+In `gui/src/hooks/useQMSClient.ts`, add:
 
 ```typescript
   listEngineParameterMetadata: (
     engineFamily: string,
     operation: 'list_categories' | 'list_tags' | 'search',
     params?: { category?: string; section?: string; query?: string }
-  ) => Promise<QVResponse<QVResult<'list_engine_parameter_metadata'>>>;
+  ) => Promise<QMSResponse<QMSResult<'list_engine_parameter_metadata'>>>;
 ```
 
 Implementation:
@@ -207,7 +207,7 @@ Find the hard-coded "Quantum ESPRESSO" section (lines 300-349).
 const [engineFamilies, setEngineFamilies] = useState<EngineFamilyInfo[]>([]);
 
 useEffect(() => {
-  qv.listEngineFamilies().then((res) => {
+  qms.listEngineFamilies().then((res) => {
     if (res.ok && res.data) {
       setEngineFamilies(res.data.engines.filter(e => e.engine_role === 'base'));
     }
@@ -263,7 +263,7 @@ useEffect(() => {
 - No file should import the old names
 - QE parameter browsing still works (the generic RPC delegates to QE metadata for engine_family="qe")
 - The Settings panel still shows QE detection status (detect_qe RPC still exists until M8)
-- Old QE convenience methods still exist in useQVClient.ts (deleted in M8)
+- Old QE convenience methods still exist in useQMSClient.ts (deleted in M8)
 
 ## Verifiers
 
@@ -300,8 +300,8 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 ## Do NOT Do
 
 - Do NOT delete the old QE RPC handlers from server.py (that's M8)
-- Do NOT delete `listQeUiParameters` or `listQeParameterMetadata` from useQVClient.ts (that's M8)
-- Do NOT delete `QEDetectionResult` from qv.ts (that's M8)
+- Do NOT delete `listQeUiParameters` or `listQeParameterMetadata` from useQMSClient.ts (that's M8)
+- Do NOT delete `QEDetectionResult` from qms.ts (that's M8)
 - Do NOT modify Python backend files
 - Do NOT create engine-specific parameter browser panels (one generic panel handles all engines)
 - Do NOT break the QE parameter browser (it must still work via the generic abstraction)

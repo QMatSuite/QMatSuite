@@ -1,9 +1,9 @@
 """Tests for ORCA driver bundle."""
 
 import pytest
-from quantumvitas.drivers.orca import ORCADriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.orca import ORCADriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestORCADriver:
@@ -65,7 +65,7 @@ class TestORCARegistration:
 
     def test_orca_registered(self):
         """ORCA should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("orca")
         driver = DriverRegistry.get_driver("orca")
@@ -73,14 +73,14 @@ class TestORCARegistration:
 
     def test_orca_step_types_registered(self):
         """ORCA step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("orca_scf")
         assert DriverRegistry.is_step_type_registered("orca_opt")
 
     def test_orca_handler_via_registry(self):
         """Should get ORCA handler via registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         handler = DriverRegistry.get_handler("orca_scf")
         assert callable(handler)
@@ -93,7 +93,7 @@ class TestORCAIsolation:
         """handlers.py should not contain orca_chain_handler."""
         from pathlib import Path
         # Use absolute path from project root
-        handlers_path = Path(__file__).parent.parent.parent.parent / "src" / "quantumvitas" / "execution" / "handlers.py"
+        handlers_path = Path(__file__).parent.parent.parent.parent / "src" / "qmatsuite" / "execution" / "handlers.py"
         source = handlers_path.read_text()
 
         assert "def orca_chain_handler" not in source, (
@@ -104,7 +104,7 @@ class TestORCAIsolation:
         """recipes.py should not contain ORCARecipe."""
         from pathlib import Path
         # Use absolute path from project root
-        recipes_path = Path(__file__).parent.parent.parent.parent / "src" / "quantumvitas" / "execution" / "recipes.py"
+        recipes_path = Path(__file__).parent.parent.parent.parent / "src" / "qmatsuite" / "execution" / "recipes.py"
         source = recipes_path.read_text()
 
         assert "class ORCARecipe" not in source, (

@@ -595,9 +595,9 @@ Top 10 design traps for LLM-driven simulation workflows:
 - `<HOME>/QMatSuite/docs/ARCHITECTURE_OVERVIEW.md` - High-level system architecture
 - `<HOME>/QMatSuite/docs/HISTORY_DESIGN.md` - Provenance and history system
 - `<HOME>/QMatSuite/docs/design/ir_step_engine_v0.md` - Parameter and step generalization
-- `<HOME>/QMatSuite/src/quantumvitas/core/models.py` - Data models
-- `<HOME>/QMatSuite/src/quantumvitas/calculation/runner.py` - Calculation execution
-- `<HOME>/QMatSuite/src/quantumvitas/engine/base.py` - Engine interface
+- `<HOME>/QMatSuite/src/qmatsuite/core/models.py` - Data models
+- `<HOME>/QMatSuite/src/qmatsuite/calculation/runner.py` - Calculation execution
+- `<HOME>/QMatSuite/src/qmatsuite/engine/base.py` - Engine interface
 
 ### Current Kernel Philosophy:
 
@@ -696,7 +696,7 @@ outputs:
 - Run start recorded in history
 - Job ID tracked in daemon
 
-**Host module**: New `src/quantumvitas/mcp/` package with FastMCP server
+**Host module**: New `src/qmatsuite/mcp/` package with FastMCP server
 
 ---
 
@@ -729,7 +729,7 @@ error_summary: Optional[str]  # Only if failed
 
 **SSOT + History fit**: Read from step status files + history run_revision.json. Status is derived, not stored separately.
 
-**Host module**: `src/quantumvitas/mcp/status.py`
+**Host module**: `src/qmatsuite/mcp/status.py`
 
 ---
 
@@ -766,7 +766,7 @@ constraints: Dict  # {"min": 0, "typical_range": [20, 100]}
 
 **SSOT + History fit**: Schema is read-only, derived from workflow registry and IR definitions. No SSOT impact.
 
-**Host module**: `src/quantumvitas/mcp/discovery.py`
+**Host module**: `src/qmatsuite/mcp/discovery.py`
 
 ---
 
@@ -804,7 +804,7 @@ outputs:
 - Edit event recorded in history
 - History captures old_value and new_value
 
-**Host module**: `src/quantumvitas/mcp/mutations.py`
+**Host module**: `src/qmatsuite/mcp/mutations.py`
 
 ---
 
@@ -834,7 +834,7 @@ outputs:
 - May use .analysis cache
 - Read-only operation; no SSOT mutation
 
-**Host module**: `src/quantumvitas/mcp/results.py`
+**Host module**: `src/qmatsuite/mcp/results.py`
 
 ---
 
@@ -868,7 +868,7 @@ outputs:
 
 **SSOT + History fit**: Pure read from .history/. No SSOT mutation.
 
-**Host module**: `src/quantumvitas/mcp/history_query.py`
+**Host module**: `src/qmatsuite/mcp/history_query.py`
 
 ---
 
@@ -898,7 +898,7 @@ content_hash: Optional[str]  # SHA256 for outputs
 
 **SSOT + History fit**: Artifacts are raw files (not SSOT). Manifest is derived on-demand.
 
-**Host module**: `src/quantumvitas/mcp/artifacts.py`
+**Host module**: `src/qmatsuite/mcp/artifacts.py`
 
 ---
 
@@ -929,7 +929,7 @@ outputs:
 
 **SSOT + History fit**: Detection reads from step.yaml (SSOT). Suggestion is advisory, not persisted.
 
-**Host module**: `src/quantumvitas/mcp/presets.py`
+**Host module**: `src/qmatsuite/mcp/presets.py`
 
 ---
 
@@ -1038,7 +1038,7 @@ FastMCP server exposes all tools via Model Context Protocol.
 
 ```bash
 # Start server
-python -m quantumvitas.mcp.server --port 8080
+python -m qmatsuite.mcp.server --port 8080
 
 # Agent connects via MCP client
 # Tools available: submit_calculation, get_calculation_status, etc.
@@ -1049,7 +1049,7 @@ python -m quantumvitas.mcp.server --port 8080
 Each tool has CLI equivalent with `--json` flag.
 
 ```bash
-qv agent submit-calculation --json \
+qms agent submit-calculation --json \
   --project . \
   --structure-id 01HXYZ... \
   --workflow scf \
@@ -1067,8 +1067,8 @@ For agents without direct API access, tools can output copy-pasteable commands.
 "Generate the command to submit an SCF calculation for structure 01HXYZ"
 
 # Tool returns:
-command: "qv run --calc my_calc --step scf"
-expected_output: "Started job {job_id}. Check status with: qv status {job_id}"
+command: "qms run --calc my_calc --step scf"
+expected_output: "Started job {job_id}. Check status with: qms status {job_id}"
 ```
 
 ## Mapping from External Repos
@@ -1117,24 +1117,24 @@ For understanding the agent-ready kernel concept, read these QMatSuite files in 
    - `docs/HISTORY_DESIGN.md` - Provenance principles
 
 2. **Core Data Models**
-   - `src/quantumvitas/core/models.py` - CalculationModel, StepEntry
-   - `src/quantumvitas/core/resources.py` - ResourceMeta, ULID handling
+   - `src/qmatsuite/core/models.py` - CalculationModel, StepEntry
+   - `src/qmatsuite/core/resources.py` - ResourceMeta, ULID handling
 
 3. **Execution Layer**
-   - `src/quantumvitas/calculation/runner.py` - CalculationRunner
-   - `src/quantumvitas/engine/base.py` - Engine interface
+   - `src/qmatsuite/calculation/runner.py` - CalculationRunner
+   - `src/qmatsuite/engine/base.py` - Engine interface
 
 4. **Parameter System**
    - `docs/design/ir_step_engine_v0.md` - Three-tier parameter model
-   - `src/quantumvitas/presets/paramspace.py` - ParamSpace implementation
+   - `src/qmatsuite/presets/paramspace.py` - ParamSpace implementation
 
 5. **Daemon API (Current)**
-   - `src/quantumvitas/daemon/server.py` - JSON-RPC handlers
+   - `src/qmatsuite/daemon/server.py` - JSON-RPC handlers
    - `docs/DAEMON_API_REFERENCE.md` - Existing RPC surface
 
 6. **Future: Agent API**
    - `docs/design/AGENT_READY_KERNEL.md` (this document) - Design principles
-   - `src/quantumvitas/mcp/` (to be created) - MCP tool implementations
+   - `src/qmatsuite/mcp/` (to be created) - MCP tool implementations
 
 ---
 

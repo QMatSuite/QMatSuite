@@ -9,7 +9,7 @@ This document tracks the contract cleanup pass required before Phase 3C can be c
 **Symptom**: Test fixture creates step with ULID A, but execution result shows ULID B.
 
 **Root Cause Analysis** (IN PROGRESS):
-- `QVService.init_step()` creates step via `create_step_doc()` → generates ULID, saves to step.yaml
+- `QMSService.init_step()` creates step via `create_step_doc()` → generates ULID, saves to step.yaml
 - `Calculation.from_yaml(materialize_steps=True)` loads steps via `_build_step()` → reads step_id from calculation.yaml
 - Step file resolved via `require_step(..., step_id)` → should return same step file with same ULID
 - **HYPOTHESIS**: Step ULID should be stable. Need to verify if any code path creates new steps or modifies ULIDs.

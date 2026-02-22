@@ -377,7 +377,7 @@ def extract_step_results(chain_key: str, step_type: str, working_dir: Path) -> D
 ### 7.2 Property.txt Parser
 
 ```python
-# src/quantumvitas/io/orca/property_parser.py
+# src/qmatsuite/io/orca/property_parser.py
 
 def parse_orca_property_txt(path: Path) -> Dict[str, Any]:
     """
@@ -524,7 +524,7 @@ Following the established QE pattern, ORCA path resolution uses a two-state mode
 For MVP, we hardcode the bundled ORCA location:
 
 ```python
-# src/quantumvitas/core/engines/orca_resolver.py
+# src/qmatsuite/core/engines/orca_resolver.py
 
 BUNDLED_ORCA_PATH = Path.home() / ".qmatsuite/engines/orca/orca_6_1_1_macosx_arm64_openmpi411"
 
@@ -576,8 +576,8 @@ Verified bundled ORCA at:
 **Goal**: Basic ORCA single-step (SCF only) execution working
 
 **Tasks**:
-1. Create `src/quantumvitas/engine/orca_engine.py`
-2. Create `src/quantumvitas/engines/orca/` module structure
+1. Create `src/qmatsuite/engine/orca_engine.py`
+2. Create `src/qmatsuite/engines/orca/` module structure
 3. Implement path resolution (MVP hardcoded)
 4. Implement basic input generation (DFT SCF only)
 5. Implement command building (no MPI wrapper)
@@ -597,7 +597,7 @@ Verified bundled ORCA at:
 **Goal**: Extract common chain logic for PySCF + ORCA
 
 **Tasks**:
-1. Create `src/quantumvitas/engine/qc_engine_base.py`
+1. Create `src/qmatsuite/engine/qc_engine_base.py`
 2. Implement `QCChain` dataclass with chain key derivation
 3. Implement `detect_chains()` (identify SCF roots)
 4. Implement `to_partial_chain()` (for Run Step)
@@ -669,7 +669,7 @@ Verified bundled ORCA at:
 ## 11. File Structure Proposal
 
 ```
-src/quantumvitas/
+src/qmatsuite/
   engine/
     base.py              # Engine, EngineConfig, StepResult (unchanged)
     registry.py          # EngineRegistry (add ORCA)
@@ -858,8 +858,8 @@ pytest tests/ -v  # Unit tests run, integration tests skip
 **ANSWER**: YES, Run Step exists.
 
 **Evidence**:
-- **RPC Handler**: `_handle_run_step()` at `src/quantumvitas/daemon/server.py:5450-5516`
-- **Backend**: `QVService.run_step()` at `src/quantumvitas/api.py:1319-1470`
+- **RPC Handler**: `_handle_run_step()` at `src/qmatsuite/daemon/server.py:5450-5516`
+- **Backend**: `QMSService.run_step()` at `src/qmatsuite/api.py:1319-1470`
 - **Also**: `_handle_run_single_step()` at `server.py:5518-5572` for "always run" variant
 
 The RPC accepts `calc_id` and `step_id`, looks up the step in calculation context, resolves engine via registry, and executes.
@@ -877,7 +877,7 @@ Chains are a runtime concept for execution, not a UI/persistence concept.
 **ANSWER**: Global, same pattern as QE.
 
 **Evidence**:
-- **QE Pattern**: `src/quantumvitas/core/engines/qe_resolver.py:139-190`
+- **QE Pattern**: `src/qmatsuite/core/engines/qe_resolver.py:139-190`
   - State 1: `settings.qe.bin_dir` (user-configured)
   - State 2: Auto-discovery under `.qmatsuite/engines/qe/**/bin`
 - **Bundled ORCA Location** (verified):

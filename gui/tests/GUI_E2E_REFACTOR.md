@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the E2E test updates made to align with the new Calculations UI paradigm introduced in QuantumVITAS/QMatSuite v2.
+This document summarizes the E2E test updates made to align with the new Calculations UI paradigm introduced in QMatSuite/QMatSuite v2.
 
 ## UI Changes Summary
 
@@ -63,10 +63,10 @@ This document summarizes the E2E test updates made to align with the new Calcula
 - Removed assumption that StepDetailPanel is always visible below calculation list
 
 **Key Updates:**
-- Uses `qv-calc-tab-overview` to verify tab state
-- Uses `qv-calc-overview-tab` and `qv-calc-overview-tab-focus` to distinguish modes
-- Uses `qv-compact-step-list` to verify Step Focus mode
-- Uses `qv-btn-back-to-overview` to exit focus mode
+- Uses `qms-calc-tab-overview` to verify tab state
+- Uses `qms-calc-overview-tab` and `qms-calc-overview-tab-focus` to distinguish modes
+- Uses `qms-compact-step-list` to verify Step Focus mode
+- Uses `qms-btn-back-to-overview` to exit focus mode
 
 ### 2. `demo_calculation_run.spec.ts`
 **Changes:**
@@ -75,13 +75,13 @@ This document summarizes the E2E test updates made to align with the new Calcula
 - **Updated**: Analysis verification now uses Calculations → Analysis tab:
   - Navigate to Calculations view
   - Select calculation
-  - Click Analysis tab (`qv-calc-tab-analysis`)
+  - Click Analysis tab (`qms-calc-tab-analysis`)
   - Verify analysis charts load
 
 **Key Updates:**
 - Verifies auto-switch to Run & Logs tab after clicking "Run Calculation"
-- Uses `qv-calc-tab-run` to verify Run & Logs tab is active
-- Uses `qv-calc-tab-analysis` to switch to Analysis tab
+- Uses `qms-calc-tab-run` to verify Run & Logs tab is active
+- Uses `qms-calc-tab-analysis` to switch to Analysis tab
 - Analysis assertions remain the same (bands chart, Fermi energy, k-path)
 
 ### 3. `step_defaults.spec.ts`
@@ -93,9 +93,9 @@ This document summarizes the E2E test updates made to align with the new Calcula
 
 **Key Updates:**
 - Clicks step to enter Step Focus mode before reading step details
-- Verifies `qv-calc-overview-tab-focus` is visible
-- Verifies `qv-step-detail` is visible in focus mode
-- Exits focus mode using `qv-btn-back-to-overview`
+- Verifies `qms-calc-overview-tab-focus` is visible
+- Verifies `qms-step-detail` is visible in focus mode
+- Exits focus mode using `qms-btn-back-to-overview`
 
 ### 4. `demo_gallery.spec.ts`
 **Status**: ✅ No changes needed
@@ -111,30 +111,30 @@ This document summarizes the E2E test updates made to align with the new Calcula
 
 ### Components
 - **App.tsx**:
-  - `qv-calc-tab-overview`: Overview & Steps tab button
-  - `qv-calc-tab-run`: Run & Logs tab button
-  - `qv-calc-tab-analysis`: Analysis tab button
+  - `qms-calc-tab-overview`: Overview & Steps tab button
+  - `qms-calc-tab-run`: Run & Logs tab button
+  - `qms-calc-tab-analysis`: Analysis tab button
 
 - **CalculationOverviewTab.tsx**:
-  - `qv-calc-overview-tab`: Overview mode container
-  - `qv-calc-overview-tab-focus`: Step Focus mode container
-  - `qv-compact-step-list`: Compact step list in focus mode
-  - `qv-btn-back-to-overview`: Back to overview button
-  - `qv-btn-run-calculation-focus`: Run Calculation button in focus mode (compact panel)
+  - `qms-calc-overview-tab`: Overview mode container
+  - `qms-calc-overview-tab-focus`: Step Focus mode container
+  - `qms-compact-step-list`: Compact step list in focus mode
+  - `qms-btn-back-to-overview`: Back to overview button
+  - `qms-btn-run-calculation-focus`: Run Calculation button in focus mode (compact panel)
 
 ### Existing Test IDs (Still Used)
-- `qv-calculations-view`: Calculations view container
-- `qv-calculations-list`: Calculations list
-- `qv-calculation-row`: Individual calculation row
-- `qv-calculation-detail`: Calculation detail panel
-- `qv-btn-run-calculation`: Run Calculation button (header)
-- `qv-step-row-{stepId}`: Step row with unique ID
-- `qv-step-detail`: Step detail panel
-- `qv-step-id`: Step ID display
-- `qv-step-file-path`: Step file path display
-- `qv-add-step-btn`: Add Step button
-- `qv-import-step-btn`: Import QE Input button
-- `qv-steps-list`: Steps list container
+- `qms-calculations-view`: Calculations view container
+- `qms-calculations-list`: Calculations list
+- `qms-calculation-row`: Individual calculation row
+- `qms-calculation-detail`: Calculation detail panel
+- `qms-btn-run-calculation`: Run Calculation button (header)
+- `qms-step-row-{stepId}`: Step row with unique ID
+- `qms-step-detail`: Step detail panel
+- `qms-step-id`: Step ID display
+- `qms-step-file-path`: Step file path display
+- `qms-add-step-btn`: Add Step button
+- `qms-import-step-btn`: Import QE Input button
+- `qms-steps-list`: Steps list container
 
 ## Selector Patterns
 
@@ -157,29 +157,29 @@ This document summarizes the E2E test updates made to align with the new Calcula
 await navigateToView(appPage, 'calculations');
 
 // 2. Select calculation
-await appPage.getByTestId('qv-calculation-row').first().click();
+await appPage.getByTestId('qms-calculation-row').first().click();
 
 // 3. Click Run Calculation
-await appPage.getByTestId('qv-btn-run-calculation').click();
+await appPage.getByTestId('qms-btn-run-calculation').click();
 
 // 4. Verify auto-switch to Run & Logs tab
-await expect(appPage.getByTestId('qv-calc-tab-run')).toHaveClass(/calculations-workspace-tab--active/);
+await expect(appPage.getByTestId('qms-calc-tab-run')).toHaveClass(/calculations-workspace-tab--active/);
 ```
 
 ### Viewing Step Details
 ```typescript
 // 1. Select calculation (in Overview mode)
-await appPage.getByTestId('qv-calculation-row').first().click();
+await appPage.getByTestId('qms-calculation-row').first().click();
 
 // 2. Click a step to enter Step Focus mode
 await stepRow.locator('button.step-item').click();
 
 // 3. Verify Step Focus mode
-await expect(appPage.getByTestId('qv-calc-overview-tab-focus')).toBeVisible();
-await expect(appPage.getByTestId('qv-step-detail')).toBeVisible();
+await expect(appPage.getByTestId('qms-calc-overview-tab-focus')).toBeVisible();
+await expect(appPage.getByTestId('qms-step-detail')).toBeVisible();
 
 // 4. Exit focus mode
-await appPage.getByTestId('qv-btn-back-to-overview').click();
+await appPage.getByTestId('qms-btn-back-to-overview').click();
 ```
 
 ### Accessing Analysis
@@ -188,17 +188,17 @@ await appPage.getByTestId('qv-btn-back-to-overview').click();
 await navigateToView(appPage, 'calculations');
 
 // 2. Select calculation
-await appPage.getByTestId('qv-calculation-row').first().click();
+await appPage.getByTestId('qms-calculation-row').first().click();
 
 // 3. Switch to Analysis tab
-await appPage.getByTestId('qv-calc-tab-analysis').click();
+await appPage.getByTestId('qms-calc-tab-analysis').click();
 
 // 4. Select analysis type (auto-loads data automatically)
 const bandsTab = appPage.locator('.calculation-analysis-panel__type-btn').filter({ hasText: /bands/i });
 await bandsTab.click();
 
 // 5. Wait for chart to appear (CalculationAnalysisPanel auto-loads)
-await expect(appPage.getByTestId('qv-analysis-bands-chart')).toBeVisible({ timeout: 30000 });
+await expect(appPage.getByTestId('qms-analysis-bands-chart')).toBeVisible({ timeout: 30000 });
 ```
 
 **Note**: `CalculationAnalysisPanel` automatically loads analysis data when the analysis type is selected. There is no "Load" button - data loads automatically via `useEffect` hooks.

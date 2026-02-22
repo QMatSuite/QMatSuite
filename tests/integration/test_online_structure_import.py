@@ -61,7 +61,7 @@ class TestOPTIMADEProviders:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_materials_project_search(self):
         """Materials Project OPTIMADE: search for Si."""
-        from quantumvitas.io.providers.optimade import _query_single_provider, ProviderConfig
+        from qmatsuite.io.providers.optimade import _query_single_provider, ProviderConfig
 
         provider = ProviderConfig(
             provider_key="mp",
@@ -85,7 +85,7 @@ class TestOPTIMADEProviders:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_cod_search(self):
         """COD OPTIMADE: search for NaCl."""
-        from quantumvitas.io.providers.optimade import _query_single_provider, ProviderConfig
+        from qmatsuite.io.providers.optimade import _query_single_provider, ProviderConfig
 
         provider = ProviderConfig(
             provider_key="cod",
@@ -108,7 +108,7 @@ class TestOPTIMADEProviders:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_alexandria_search(self):
         """Alexandria OPTIMADE: search for Si."""
-        from quantumvitas.io.providers.optimade import _query_single_provider, ProviderConfig
+        from qmatsuite.io.providers.optimade import _query_single_provider, ProviderConfig
 
         provider = ProviderConfig(
             provider_key="alexandria",
@@ -127,7 +127,7 @@ class TestOPTIMADEProviders:
     @retry_on_network_error(max_attempts=3, wait_seconds=5.0)
     def test_oqmd_search(self):
         """OQMD OPTIMADE: search for Fe."""
-        from quantumvitas.io.providers.optimade import _query_single_provider, ProviderConfig
+        from qmatsuite.io.providers.optimade import _query_single_provider, ProviderConfig
 
         provider = ProviderConfig(
             provider_key="oqmd",
@@ -146,7 +146,7 @@ class TestOPTIMADEProviders:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_jarvis_search(self):
         """JARVIS OPTIMADE: search for TiO2."""
-        from quantumvitas.io.providers.optimade import _query_single_provider, ProviderConfig
+        from qmatsuite.io.providers.optimade import _query_single_provider, ProviderConfig
 
         provider = ProviderConfig(
             provider_key="jarvis",
@@ -165,7 +165,7 @@ class TestOPTIMADEProviders:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_materials_cloud_search(self):
         """Materials Cloud OPTIMADE: search for MgO."""
-        from quantumvitas.io.providers.optimade import _query_single_provider, ProviderConfig
+        from qmatsuite.io.providers.optimade import _query_single_provider, ProviderConfig
 
         provider = ProviderConfig(
             provider_key="mcloud",
@@ -188,7 +188,7 @@ class TestOPTIMADEParallelSearch:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_parallel_search_si(self):
         """Search Si across all curated OPTIMADE providers in parallel."""
-        from quantumvitas.io.providers.optimade import (
+        from qmatsuite.io.providers.optimade import (
             search_parallel,
             CURATED_DEFAULT_PROVIDERS,
         )
@@ -217,7 +217,7 @@ class TestOPTIMADEParallelSearch:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_parallel_search_dedup_and_rank(self):
         """Search, deduplicate, and rank candidates across providers."""
-        from quantumvitas.io.providers.optimade import (
+        from qmatsuite.io.providers.optimade import (
             search_parallel,
             deduplicate_candidates,
             rank_candidates,
@@ -261,7 +261,7 @@ class TestOPTIMADEStructureFetch:
     @retry_on_network_error(max_attempts=3, wait_seconds=5.0)
     def test_fetch_structure_materials_project(self):
         """Fetch a real Si structure from Materials Project OPTIMADE."""
-        from quantumvitas.io.online_search import search_optimade, fetch_structure_from_optimade
+        from qmatsuite.io.online_search import search_optimade, fetch_structure_from_optimade
 
         base_url, entries = search_optimade("Si", max_results=1)
         assert entries and len(entries) > 0, "No Si entries found"
@@ -283,7 +283,7 @@ class TestOPTIMADEStructureFetch:
     @retry_on_network_error(max_attempts=3, wait_seconds=5.0)
     def test_fetched_structure_has_visualization_fields(self):
         """Fetched structure should have fields needed for 3D visualization."""
-        from quantumvitas.io.online_search import search_optimade, fetch_structure_from_optimade
+        from qmatsuite.io.online_search import search_optimade, fetch_structure_from_optimade
 
         base_url, entries = search_optimade("Si", max_results=1)
         assert entries and len(entries) > 0
@@ -311,7 +311,7 @@ class TestPubChemProvider:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_search_by_name_caffeine(self):
         """PubChem: search by name 'caffeine'."""
-        from quantumvitas.io.providers.pubchem import search_by_name
+        from qmatsuite.io.providers.pubchem import search_by_name
 
         cids = search_by_name("caffeine", max_results=3)
         assert len(cids) > 0, "PubChem returned no CIDs for 'caffeine'"
@@ -323,7 +323,7 @@ class TestPubChemProvider:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_search_by_name_aspirin(self):
         """PubChem: search by name 'aspirin'."""
-        from quantumvitas.io.providers.pubchem import search_by_name
+        from qmatsuite.io.providers.pubchem import search_by_name
 
         cids = search_by_name("aspirin", max_results=3)
         assert len(cids) > 0, "PubChem returned no CIDs for 'aspirin'"
@@ -335,7 +335,7 @@ class TestPubChemProvider:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_search_by_formula_h2o(self):
         """PubChem: search by formula H2O."""
-        from quantumvitas.io.providers.pubchem import search_by_formula
+        from qmatsuite.io.providers.pubchem import search_by_formula
 
         cids = search_by_formula("H2O", max_results=3)
         assert len(cids) > 0, "PubChem returned no CIDs for H2O"
@@ -347,7 +347,7 @@ class TestPubChemProvider:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_fetch_3d_sdf_caffeine(self):
         """PubChem: fetch 3D SDF for caffeine (CID 2519)."""
-        from quantumvitas.io.providers.pubchem import fetch_3d_sdf
+        from qmatsuite.io.providers.pubchem import fetch_3d_sdf
 
         sdf_content = fetch_3d_sdf("2519")
         assert sdf_content is not None, "fetch_3d_sdf returned None for caffeine"
@@ -359,7 +359,7 @@ class TestPubChemProvider:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_parse_sdf_to_molecule(self):
         """PubChem: parse SDF to pymatgen Molecule."""
-        from quantumvitas.io.providers.pubchem import fetch_3d_sdf, parse_sdf_to_molecule
+        from qmatsuite.io.providers.pubchem import fetch_3d_sdf, parse_sdf_to_molecule
 
         sdf_content = fetch_3d_sdf("962")  # Water
         assert sdf_content is not None
@@ -378,7 +378,7 @@ class TestPubChemProvider:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_search_pubchem_unified(self):
         """PubChem: unified search for 'ethanol' returns PubChemCandidate."""
-        from quantumvitas.io.providers.pubchem import search_pubchem, PubChemCandidate
+        from qmatsuite.io.providers.pubchem import search_pubchem, PubChemCandidate
 
         candidates = search_pubchem("ethanol", max_results=3)
         assert len(candidates) > 0, "search_pubchem returned no candidates for ethanol"
@@ -405,7 +405,7 @@ class TestOPTIMADERegistry:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_fetch_optimade_registry(self):
         """Fetch the live OPTIMADE provider registry."""
-        from quantumvitas.io.providers.optimade import fetch_optimade_registry
+        from qmatsuite.io.providers.optimade import fetch_optimade_registry
 
         providers = fetch_optimade_registry()
         assert providers is not None, "Registry fetch returned None"
@@ -431,7 +431,7 @@ class TestUnifiedSearch:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_unified_search_crystal_mode(self):
         """Full pipeline: unified_search in crystal mode for Si."""
-        from quantumvitas.io.providers import unified_search
+        from qmatsuite.io.providers import unified_search
 
         result = unified_search(
             "Si",
@@ -448,7 +448,7 @@ class TestUnifiedSearch:
         )
 
         # All candidates should be OPTIMADE-type
-        from quantumvitas.io.providers.optimade import Candidate as OptimadeCandidate
+        from qmatsuite.io.providers.optimade import Candidate as OptimadeCandidate
         for cand in result.candidates:
             assert isinstance(cand, OptimadeCandidate), f"Expected OptimadeCandidate, got {type(cand)}"
 
@@ -457,7 +457,7 @@ class TestUnifiedSearch:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_unified_search_molecule_mode(self):
         """Full pipeline: unified_search in molecule mode for caffeine."""
-        from quantumvitas.io.providers import unified_search
+        from qmatsuite.io.providers import unified_search
 
         result = unified_search(
             "caffeine",
@@ -472,7 +472,7 @@ class TestUnifiedSearch:
         )
 
         # All candidates should be PubChem-type
-        from quantumvitas.io.providers.pubchem import PubChemCandidate
+        from qmatsuite.io.providers.pubchem import PubChemCandidate
         for cand in result.candidates:
             assert isinstance(cand, PubChemCandidate), f"Expected PubChemCandidate, got {type(cand)}"
 
@@ -481,7 +481,7 @@ class TestUnifiedSearch:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_unified_search_auto_mode(self):
         """Full pipeline: unified_search in auto mode for H2O."""
-        from quantumvitas.io.providers import unified_search
+        from qmatsuite.io.providers import unified_search
 
         result = unified_search(
             "H2O",
@@ -500,21 +500,21 @@ class TestUnifiedSearch:
 
 
 # ======================================================================
-# QVService API Layer Tests (Real Network)
+# QMSService API Layer Tests (Real Network)
 # ======================================================================
 
-class TestQVServiceOnlineSearch:
-    """Test QVService.OnlineSearch with real network calls."""
+class TestQMSServiceOnlineSearch:
+    """Test QMSService.OnlineSearch with real network calls."""
 
     @pytest.mark.network
     @pytest.mark.integration
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_service_search_crystal(self):
-        """QVService API: search_structures crystal mode."""
-        from quantumvitas.api import QVService
-        from quantumvitas.api.types.online_search import SearchResultDTO
+        """QMSService API: search_structures crystal mode."""
+        from qmatsuite.api import QMSService
+        from qmatsuite.api.types.online_search import SearchResultDTO
 
-        result = QVService.OnlineSearch.search_structures(
+        result = QMSService.OnlineSearch.search_structures(
             query="Si",
             mode="crystal",
             limit=5,
@@ -538,11 +538,11 @@ class TestQVServiceOnlineSearch:
     @pytest.mark.integration
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_service_search_molecule(self):
-        """QVService API: search_structures molecule mode."""
-        from quantumvitas.api import QVService
-        from quantumvitas.api.types.online_search import SearchResultDTO
+        """QMSService API: search_structures molecule mode."""
+        from qmatsuite.api import QMSService
+        from qmatsuite.api.types.online_search import SearchResultDTO
 
-        result = QVService.OnlineSearch.search_structures(
+        result = QMSService.OnlineSearch.search_structures(
             query="aspirin",
             mode="molecule",
             limit=5,
@@ -561,11 +561,11 @@ class TestQVServiceOnlineSearch:
     @pytest.mark.integration
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_service_list_providers(self):
-        """QVService API: list_providers returns curated OPTIMADE + PubChem."""
-        from quantumvitas.api import QVService
-        from quantumvitas.api.types.online_search import ProviderListDTO
+        """QMSService API: list_providers returns curated OPTIMADE + PubChem."""
+        from qmatsuite.api import QMSService
+        from qmatsuite.api.types.online_search import ProviderListDTO
 
-        result = QVService.OnlineSearch.list_providers()
+        result = QMSService.OnlineSearch.list_providers()
 
         assert isinstance(result, ProviderListDTO)
         assert len(result.optimade_providers) > 0
@@ -588,9 +588,9 @@ class TestDaemonOnlineSearchRPC:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_daemon_search_online_crystal(self):
         """Daemon RPC: structure_search_online for Si (crystal)."""
-        from quantumvitas.daemon.server import QVDaemon
+        from qmatsuite.daemon.server import QMSDaemon
 
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         payload = {
             "query": "Si",
             "mode": "crystal",
@@ -612,9 +612,9 @@ class TestDaemonOnlineSearchRPC:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_daemon_search_online_molecule(self):
         """Daemon RPC: structure_search_online for ethanol (molecule)."""
-        from quantumvitas.daemon.server import QVDaemon
+        from qmatsuite.daemon.server import QMSDaemon
 
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         payload = {
             "query": "ethanol",
             "mode": "molecule",
@@ -634,9 +634,9 @@ class TestDaemonOnlineSearchRPC:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_daemon_search_online_auto(self):
         """Daemon RPC: structure_search_online in auto mode for H2O."""
-        from quantumvitas.daemon.server import QVDaemon
+        from qmatsuite.daemon.server import QMSDaemon
 
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         payload = {
             "query": "H2O",
             "mode": "auto",
@@ -664,7 +664,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_crystal_single_element_si(self):
         """Crystal search: single element Si."""
-        from quantumvitas.io.providers import unified_search
+        from qmatsuite.io.providers import unified_search
 
         result = unified_search("Si", mode="crystal", max_results=5, timeout_s=15.0)
         assert len(result.candidates) > 0, f"No Si crystals. Errors: {result.errors}"
@@ -674,7 +674,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_crystal_single_element_fe(self):
         """Crystal search: single element Fe."""
-        from quantumvitas.io.providers import unified_search
+        from qmatsuite.io.providers import unified_search
 
         result = unified_search("Fe", mode="crystal", max_results=5, timeout_s=15.0)
         assert len(result.candidates) > 0, f"No Fe crystals. Errors: {result.errors}"
@@ -684,7 +684,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_crystal_binary_compound_nacl(self):
         """Crystal search: binary compound NaCl."""
-        from quantumvitas.io.providers import unified_search
+        from qmatsuite.io.providers import unified_search
 
         result = unified_search("NaCl", mode="crystal", max_results=5, timeout_s=15.0)
         assert len(result.candidates) > 0, f"No NaCl crystals. Errors: {result.errors}"
@@ -694,7 +694,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_crystal_ternary_compound_batio3(self):
         """Crystal search: ternary compound BaTiO3 (perovskite)."""
-        from quantumvitas.io.providers import unified_search
+        from qmatsuite.io.providers import unified_search
 
         result = unified_search("BaTiO3", mode="crystal", max_results=5, timeout_s=15.0)
         assert len(result.candidates) > 0, f"No BaTiO3 crystals. Errors: {result.errors}"
@@ -704,7 +704,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_crystal_semiconductor_gaas(self):
         """Crystal search: semiconductor GaAs."""
-        from quantumvitas.io.providers import unified_search
+        from qmatsuite.io.providers import unified_search
 
         result = unified_search("GaAs", mode="crystal", max_results=5, timeout_s=15.0)
         assert len(result.candidates) > 0, f"No GaAs crystals. Errors: {result.errors}"
@@ -714,7 +714,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_crystal_oxide_tio2(self):
         """Crystal search: oxide TiO2."""
-        from quantumvitas.io.providers import unified_search
+        from qmatsuite.io.providers import unified_search
 
         result = unified_search("TiO2", mode="crystal", max_results=5, timeout_s=15.0)
         assert len(result.candidates) > 0, f"No TiO2 crystals. Errors: {result.errors}"
@@ -724,7 +724,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_molecule_by_name_caffeine(self):
         """Molecule search by common name: caffeine."""
-        from quantumvitas.io.providers.pubchem import search_by_name
+        from qmatsuite.io.providers.pubchem import search_by_name
 
         cids = search_by_name("caffeine", max_results=3)
         assert len(cids) > 0, "PubChem found no CIDs for 'caffeine'"
@@ -735,7 +735,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_molecule_by_name_ibuprofen(self):
         """Molecule search by common name: ibuprofen."""
-        from quantumvitas.io.providers.pubchem import search_by_name
+        from qmatsuite.io.providers.pubchem import search_by_name
 
         cids = search_by_name("ibuprofen", max_results=3)
         assert len(cids) > 0, "PubChem found no CIDs for 'ibuprofen'"
@@ -746,7 +746,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_molecule_by_name_benzene(self):
         """Molecule search by common name: benzene."""
-        from quantumvitas.io.providers.pubchem import search_by_name
+        from qmatsuite.io.providers.pubchem import search_by_name
 
         cids = search_by_name("benzene", max_results=3)
         assert len(cids) > 0, "PubChem found no CIDs for 'benzene'"
@@ -757,7 +757,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_molecule_by_formula_c6h6(self):
         """Molecule search by formula: C6H6 (benzene)."""
-        from quantumvitas.io.providers.pubchem import search_by_formula
+        from qmatsuite.io.providers.pubchem import search_by_formula
 
         cids = search_by_formula("C6H6", max_results=5)
         assert len(cids) > 0, "PubChem found no CIDs for formula C6H6"
@@ -769,7 +769,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=3.0)
     def test_molecule_3d_structure_fetch(self):
         """Molecule: fetch 3D structure from PubChem and parse to Molecule."""
-        from quantumvitas.io.providers.pubchem import fetch_3d_sdf, parse_sdf_to_molecule
+        from qmatsuite.io.providers.pubchem import fetch_3d_sdf, parse_sdf_to_molecule
 
         # Benzene (CID 241) - well-known 3D structure
         sdf = fetch_3d_sdf("241")
@@ -784,7 +784,7 @@ class TestDiverseSearchPatterns:
     @retry_on_network_error(max_attempts=2, wait_seconds=5.0)
     def test_molecule_by_formula_h2o(self):
         """Molecule search by formula: H2O (water, async PubChem)."""
-        from quantumvitas.io.providers.pubchem import search_by_formula
+        from qmatsuite.io.providers.pubchem import search_by_formula
 
         cids = search_by_formula("H2O", max_results=5)
         assert len(cids) > 0, "PubChem found no CIDs for formula H2O"

@@ -8,9 +8,9 @@ import numpy as np
 import tempfile
 import shutil
 
-from quantumvitas.analysis.blob_store import BlobStore, BlobStoreError
-from quantumvitas.analysis.volume_artifacts import DataOrder, VolumeMetadata
-from quantumvitas.io.parser.volume_parsers import (
+from qmatsuite.analysis.blob_store import BlobStore, BlobStoreError
+from qmatsuite.analysis.volume_artifacts import DataOrder, VolumeMetadata
+from qmatsuite.io.parser.volume_parsers import (
     parse_xsf_datagrid_3d,
     downsample_grid,
     VolumeParserError,
@@ -235,7 +235,7 @@ def test_parse_bxsf_copper_header(temp_calc_dir, blob_store):
     if not COPPER_BXSF.exists():
         pytest.skip(f"Fixture not found: {COPPER_BXSF}")
     
-    from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
+    from qmatsuite.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
     
     result = parse_bxsf_bandgrid_3d(COPPER_BXSF, temp_calc_dir, blob_store, band_index=1)
     
@@ -254,7 +254,7 @@ def test_bxsf_order_contract(temp_calc_dir, blob_store):
     if not COPPER_BXSF.exists():
         pytest.skip(f"Fixture not found: {COPPER_BXSF}")
     
-    from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
+    from qmatsuite.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
     
     result = parse_bxsf_bandgrid_3d(COPPER_BXSF, temp_calc_dir, blob_store, band_index=1)
     metadata = result["metadata"]
@@ -277,7 +277,7 @@ def test_strict_count_validation_bxsf_band1(temp_calc_dir, blob_store):
     if not COPPER_BXSF.exists():
         pytest.skip(f"Fixture not found: {COPPER_BXSF}")
     
-    from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
+    from qmatsuite.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
     
     # Parse band 1 (should pass)
     result = parse_bxsf_bandgrid_3d(COPPER_BXSF, temp_calc_dir, blob_store, band_index=1)
@@ -296,7 +296,7 @@ def test_bxsf_lazy_band_read_does_not_load_all(temp_calc_dir, blob_store):
     if not COPPER_BXSF.exists():
         pytest.skip(f"Fixture not found: {COPPER_BXSF}")
     
-    from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d, _scan_bxsf_band_offsets
+    from qmatsuite.io.parser.volume_parsers import parse_bxsf_bandgrid_3d, _scan_bxsf_band_offsets
     
     # Scan band offsets (should not read all data)
     band_offsets = _scan_bxsf_band_offsets(COPPER_BXSF)
@@ -323,7 +323,7 @@ def test_compile_fixture_volume_blob_contract_xsf(temp_calc_dir, blob_store):
         pytest.skip(f"Fixture not found: {GAAS_XSF}")
     
     import os
-    from quantumvitas.io.parser.volume_parsers import parse_xsf_datagrid_3d
+    from qmatsuite.io.parser.volume_parsers import parse_xsf_datagrid_3d
     
     # Parse XSF (direct call, not via RPC)
     metadata = parse_xsf_datagrid_3d(GAAS_XSF, temp_calc_dir, blob_store)
@@ -363,7 +363,7 @@ def test_compile_fixture_volume_blob_contract_bxsf(temp_calc_dir, blob_store):
         pytest.skip(f"Fixture not found: {COPPER_BXSF}")
     
     import os
-    from quantumvitas.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
+    from qmatsuite.io.parser.volume_parsers import parse_bxsf_bandgrid_3d
     
     # Parse BXSF band 1 (direct call, not via RPC)
     result = parse_bxsf_bandgrid_3d(COPPER_BXSF, temp_calc_dir, blob_store, band_index=1)

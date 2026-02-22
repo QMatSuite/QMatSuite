@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements
-from quantumvitas.core.pseudo_libinfo import (
+from qmatsuite.core.pseudo_options import get_pseudo_options_for_elements
+from qmatsuite.core.pseudo_libinfo import (
     compute_sha256_bytes,
     compute_sha_family_file,
 )
@@ -75,11 +75,11 @@ def create_dummy_pseudo_file(path: Path, content: str = None) -> tuple[str, str]
 
 @pytest.fixture
 def temp_project(tmp_path: Path) -> Path:
-    """Create a temporary project with project.qv.yml."""
+    """Create a temporary project with project.qms.yml."""
     project_root = tmp_path / "test_project"
     project_root.mkdir()
     
-    # Create project.qv.yml
+    # Create project.qms.yml
     import yaml
     project_config = {
         "project": {
@@ -87,7 +87,7 @@ def temp_project(tmp_path: Path) -> Path:
             "ulid": "test-project-id",
         }
     }
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(project_config))
     
     return project_root
 
@@ -117,8 +117,8 @@ def test_sha256_keyed_variants(temp_project: Path, tmp_path: Path) -> None:
     
     # Mock get_system_pseudo_dir to return our temp internal dir
     from unittest.mock import patch
-    with patch('quantumvitas.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
-        with patch('quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
+    with patch('qmatsuite.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
+        with patch('qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
             # Mock bundle with empty index (no library occurrences)
             mock_bundle.return_value.index = {"files": []}
             options = get_pseudo_options_for_elements(temp_project, ["Si"])
@@ -163,8 +163,8 @@ def test_family_match_warnings(temp_project: Path, tmp_path: Path) -> None:
     
     # Mock get_system_pseudo_dir to return our temp internal dir
     from unittest.mock import patch
-    with patch('quantumvitas.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
-        with patch('quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
+    with patch('qmatsuite.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
+        with patch('qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
             # Mock bundle with empty index (no library occurrences)
             mock_bundle.return_value.index = {"files": []}
             options = get_pseudo_options_for_elements(temp_project, ["Si"])
@@ -199,8 +199,8 @@ def test_project_local_unknown(temp_project: Path, tmp_path: Path) -> None:
     
     # Mock get_system_pseudo_dir to return None (no internal)
     from unittest.mock import patch
-    with patch('quantumvitas.core.pseudo_options.get_system_pseudo_dir', return_value=None):
-        with patch('quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
+    with patch('qmatsuite.core.pseudo_options.get_system_pseudo_dir', return_value=None):
+        with patch('qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
             # Mock bundle with empty index (no library occurrences, and this sha256 not in index)
             mock_bundle.return_value.index = {"files": []}
             options = get_pseudo_options_for_elements(temp_project, ["Si"])
@@ -235,8 +235,8 @@ def test_filesystem_real_filtering(temp_project: Path, tmp_path: Path) -> None:
     
     # Mock get_system_pseudo_dir to return our temp internal dir
     from unittest.mock import patch
-    with patch('quantumvitas.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
-        with patch('quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
+    with patch('qmatsuite.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
+        with patch('qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
             # Mock bundle with empty index (no library occurrences)
             mock_bundle.return_value.index = {"files": []}
             options = get_pseudo_options_for_elements(temp_project, ["Si"])
@@ -271,8 +271,8 @@ def test_sources_aggregation(temp_project: Path, tmp_path: Path) -> None:
     
     # Mock get_system_pseudo_dir
     from unittest.mock import patch
-    with patch('quantumvitas.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
-        with patch('quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
+    with patch('qmatsuite.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
+        with patch('qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
             mock_bundle.return_value.index = {"files": []}
             options = get_pseudo_options_for_elements(temp_project, ["Si"])
     
@@ -300,8 +300,8 @@ def test_installed_corrupt_flags(temp_project: Path) -> None:
     create_dummy_pseudo_file(file1)
     
     from unittest.mock import patch
-    with patch('quantumvitas.core.pseudo_options.get_system_pseudo_dir', return_value=None):
-        with patch('quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
+    with patch('qmatsuite.core.pseudo_options.get_system_pseudo_dir', return_value=None):
+        with patch('qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
             mock_bundle.return_value.index = {"files": []}
             options = get_pseudo_options_for_elements(temp_project, ["Si"])
     
@@ -334,8 +334,8 @@ def test_tie_break_multiple_libs(temp_project: Path, tmp_path: Path) -> None:
     file1 = internal_dir / "Si.upf"
     sha256_1, _ = create_dummy_pseudo_file(file1)
     
-    with patch('quantumvitas.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
-        with patch('quantumvitas.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
+    with patch('qmatsuite.core.pseudo_options.get_system_pseudo_dir', return_value=internal_dir):
+        with patch('qmatsuite.core.pseudo_options.load_pseudo_libinfo_bundle') as mock_bundle:
             # Mock bundle with multiple library occurrences for same sha256
             mock_bundle.return_value.index = {
                 "files": [{

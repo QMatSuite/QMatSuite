@@ -12,17 +12,17 @@
 
 | File | Lines | Issue |
 |------|-------|-------|
-| `src/quantumvitas/presets/paramspace.py` | 601-605 | `compile_profile_patch()` converts bool → `.true.`/`.false.` via `ir_bool()` |
-| `src/quantumvitas/presets/paramspace.py` | 619-636 | `parse_bool()` parses `.true.`/`.false.` strings |
-| `src/quantumvitas/ir/backends/qe/mapping.py` | 14-41 | `ir_bool()` function returns `.true.`/`.false.` strings |
-| `src/quantumvitas/ir/backends/qe/mapping.py` | 118-122 | `ir_to_qe_param()` converts bool to `.true.`/`.false.` |
-| `src/quantumvitas/ir/backends/qe/mapping.py` | 156-180 | `_normalize_qe_value_to_ir()` parses `.true.`/`.false.` (CORRECT - import boundary) |
-| `src/quantumvitas/presets/detector.py` | 68-83 | `_parse_bool()` parses `.true.`/`.false.` (CORRECT - robustness) |
-| `src/quantumvitas/presets/integration.py` | 44-52 | `_strict_parse_bool_value()` parses `.true.`/`.false.` |
-| `src/quantumvitas/presets/integration.py` | 813 | Comment references QE format in step.yaml (needs update) |
-| `src/quantumvitas/cli/main.py` | 299-302, 555-558 | CLI parsing `.true.`/`.false.` from user input (CORRECT - user boundary) |
-| `src/quantumvitas/io/parser/qe_parser.py` | 72-75 | QE parser converts `.true.`/`.false.` → bool (CORRECT - import boundary) |
-| `src/quantumvitas/io/generator/qe_generator.py` | 21-22 | QE writer converts bool → `.true.`/`.false.` (CORRECT - export boundary) |
+| `src/qmatsuite/presets/paramspace.py` | 601-605 | `compile_profile_patch()` converts bool → `.true.`/`.false.` via `ir_bool()` |
+| `src/qmatsuite/presets/paramspace.py` | 619-636 | `parse_bool()` parses `.true.`/`.false.` strings |
+| `src/qmatsuite/ir/backends/qe/mapping.py` | 14-41 | `ir_bool()` function returns `.true.`/`.false.` strings |
+| `src/qmatsuite/ir/backends/qe/mapping.py` | 118-122 | `ir_to_qe_param()` converts bool to `.true.`/`.false.` |
+| `src/qmatsuite/ir/backends/qe/mapping.py` | 156-180 | `_normalize_qe_value_to_ir()` parses `.true.`/`.false.` (CORRECT - import boundary) |
+| `src/qmatsuite/presets/detector.py` | 68-83 | `_parse_bool()` parses `.true.`/`.false.` (CORRECT - robustness) |
+| `src/qmatsuite/presets/integration.py` | 44-52 | `_strict_parse_bool_value()` parses `.true.`/`.false.` |
+| `src/qmatsuite/presets/integration.py` | 813 | Comment references QE format in step.yaml (needs update) |
+| `src/qmatsuite/cli/main.py` | 299-302, 555-558 | CLI parsing `.true.`/`.false.` from user input (CORRECT - user boundary) |
+| `src/qmatsuite/io/parser/qe_parser.py` | 72-75 | QE parser converts `.true.`/`.false.` → bool (CORRECT - import boundary) |
+| `src/qmatsuite/io/generator/qe_generator.py` | 21-22 | QE writer converts bool → `.true.`/`.false.` (CORRECT - export boundary) |
 
 ### 1.2 Test Files with `.true.`/`.false.` Strings
 
@@ -42,7 +42,7 @@
 |------|------|--------|
 | `tests/data/*.in` files | QE input files | No change needed (QE format) |
 | `tests/data/*.yaml` files | Step/calc YAML | Check for strings, should be booleans |
-| `src/quantumvitas/data/*.json` | UI parameters | Check for `.true.` strings |
+| `src/qmatsuite/data/*.json` | UI parameters | Check for `.true.` strings |
 
 ---
 
@@ -68,13 +68,13 @@ Fix: Keep booleans as Python `bool` until the very last moment (QE `.in` generat
 ## 3. Implementation Plan
 
 ### PR0: Remove bool→string conversion in ParamSpace
-- [x] Modify `src/quantumvitas/presets/paramspace.py:compile_profile_patch()`:
+- [x] Modify `src/qmatsuite/presets/paramspace.py:compile_profile_patch()`:
   - Remove lines 601-605 that call `ir_bool()`
   - Boolean values stay as Python `bool`
 - [x] Update comment at line 601 to reflect new contract
 
 **Files to modify**:
-- `src/quantumvitas/presets/paramspace.py`
+- `src/qmatsuite/presets/paramspace.py`
 
 **Tests to run**:
 ```bash
@@ -86,17 +86,17 @@ pytest tests/presets/test_paramspace_ir.py -v -x
 ---
 
 ### PR1: Remove bool→string conversion in IR mapping
-- [x] Delete `ir_bool()` function from `src/quantumvitas/ir/backends/qe/mapping.py`
+- [x] Delete `ir_bool()` function from `src/qmatsuite/ir/backends/qe/mapping.py`
 - [x] Modify `ir_to_qe_param()`:
   - Remove lines 118-122 that convert bool to `.true.`/`.false.`
   - Return Python `bool` as-is
 - [x] Update `ir_params_to_qe_params()` to NOT convert booleans
 - [x] Update comment about serialization to clarify QE writer handles it
-- [x] Remove `ir_bool` import from `src/quantumvitas/ir/dialects/pw/__init__.py`
+- [x] Remove `ir_bool` import from `src/qmatsuite/ir/dialects/pw/__init__.py`
 
 **Files to modify**:
-- `src/quantumvitas/ir/backends/qe/mapping.py`
-- `src/quantumvitas/ir/dialects/pw/__init__.py`
+- `src/qmatsuite/ir/backends/qe/mapping.py`
+- `src/qmatsuite/ir/dialects/pw/__init__.py`
 
 **Tests to run**:
 ```bash
@@ -230,14 +230,14 @@ You are AUTO implementing PR0 from docs/dev/plan-ir-bool-migration.md
 
 TASK: Remove bool→string conversion in ParamSpace.
 
-MODIFY: src/quantumvitas/presets/paramspace.py
+MODIFY: src/qmatsuite/presets/paramspace.py
 
 CHANGES:
 1. At lines 601-606, REMOVE the following code block:
    # Convert boolean values to IR canonical format (.true./.false.)
    # IR contract: boolean values must be canonical strings, not Python bool
    if isinstance(value, bool):
-       from quantumvitas.ir.backends.qe.mapping import ir_bool
+       from qmatsuite.ir.backends.qe.mapping import ir_bool
        value = ir_bool(value)
 
 2. Replace with comment:
@@ -245,7 +245,7 @@ CHANGES:
    # QE writer converts to .true./.false. at output boundary
 
 VERIFICATION:
-python -c "from quantumvitas.presets.paramspace import compile_profile_patch; print('Import OK')"
+python -c "from qmatsuite.presets.paramspace import compile_profile_patch; print('Import OK')"
 
 TICK CHECKBOX: PR0 in plan file section 4
 COMMIT: "ParamSpace: keep booleans as Python bool, not .true. strings (PR0)"
@@ -259,7 +259,7 @@ You are AUTO implementing PR1 from docs/dev/plan-ir-bool-migration.md
 
 TASK: Remove bool→string conversion in IR mapping.
 
-MODIFY: src/quantumvitas/ir/backends/qe/mapping.py
+MODIFY: src/qmatsuite/ir/backends/qe/mapping.py
 
 CHANGES:
 1. DELETE the ir_bool() function (lines 14-41)
@@ -277,13 +277,13 @@ CHANGES:
 
 4. In ir_params_to_qe_params(), ensure booleans pass through unchanged
 
-MODIFY: src/quantumvitas/ir/dialects/pw/__init__.py
+MODIFY: src/qmatsuite/ir/dialects/pw/__init__.py
 
 CHANGES:
 1. Remove ir_bool from imports if present
 
 VERIFICATION:
-python -c "from quantumvitas.ir.backends.qe.mapping import ir_to_qe_param; print('Import OK')"
+python -c "from qmatsuite.ir.backends.qe.mapping import ir_to_qe_param; print('Import OK')"
 
 TICK CHECKBOX: PR1 in plan file section 4
 COMMIT: "IR mapping: keep booleans as Python bool (PR1)"
@@ -391,7 +391,7 @@ class TestIRPatchHasNoBoolStrings:
     """IR patches from ParamSpace must not contain .true./.false. strings."""
     
     def test_magnetism_profiles_use_python_bool(self):
-        from quantumvitas.presets.paramspace import (
+        from qmatsuite.presets.paramspace import (
             get_magnetism_paramspace,
             compile_profile_patch,
         )
@@ -402,8 +402,8 @@ class TestIRPatchHasNoBoolStrings:
             assert not errors, f"Profile {profile_name}: {errors}"
     
     def test_precision_profiles_use_python_bool(self):
-        from quantumvitas.presets.precision_variants import build_precision_pw_default_space
-        from quantumvitas.presets.paramspace import compile_profile_patch
+        from qmatsuite.presets.precision_variants import build_precision_pw_default_space
+        from qmatsuite.presets.paramspace import compile_profile_patch
         space = build_precision_pw_default_space()
         for profile_name in space.profiles:
             patch, _ = compile_profile_patch(space, profile_name)
@@ -415,7 +415,7 @@ class TestQEOutputHasFortranBools:
     """QE .in output must use .true./.false. for booleans."""
     
     def test_qe_generator_converts_bool_to_fortran(self):
-        from quantumvitas.io.generator.qe_generator import QEInputGenerator
+        from qmatsuite.io.generator.qe_generator import QEInputGenerator
         
         assert QEInputGenerator.format_value(True) == ".true."
         assert QEInputGenerator.format_value(False) == ".false."
@@ -436,11 +436,11 @@ You are AUTO implementing PR5 from docs/dev/plan-ir-bool-migration.md
 TASK: Final verification and cleanup.
 
 OPTIONAL CLEANUP:
-1. In src/quantumvitas/presets/integration.py, update comment at line 813:
+1. In src/qmatsuite/presets/integration.py, update comment at line 813:
    - Remove reference to "QE: .true./.false."
    - Clarify that step.yaml stores Python bool
 
-2. In src/quantumvitas/presets/paramspace.py:
+2. In src/qmatsuite/presets/paramspace.py:
    - Consider marking parse_bool() as internal-only (add underscore: _parse_bool)
 
 VERIFICATION:
@@ -457,13 +457,13 @@ COMMIT: "Bool migration: final cleanup and verification (PR5)"
 
 ```bash
 # Find all .true./.false. in production code
-rg '\.true\.|\.false\.' src/quantumvitas --type py
+rg '\.true\.|\.false\.' src/qmatsuite --type py
 
 # Find all .true./.false. in tests
 rg '\.true\.|\.false\.' tests --type py
 
 # Find ir_bool usages
-rg 'ir_bool' src/quantumvitas --type py
+rg 'ir_bool' src/qmatsuite --type py
 
 # Check YAML files for string booleans
 rg '\.true\.|\.false\.' --glob '*.yaml' --glob '*.yml'

@@ -1,6 +1,6 @@
 """Tests for roundtrip equivalence checker."""
 
-from quantumvitas.demo_store.roundtrip import verify_roundtrip_equivalence, RoundtripReport
+from qmatsuite.demo_store.roundtrip import verify_roundtrip_equivalence, RoundtripReport
 
 
 class TestRoundtripEquivalence:

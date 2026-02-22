@@ -66,7 +66,7 @@ All 15 engines have **complete driver.py implementations** with the 7-item MUST 
 
 #### Preset / ParamSpace System
 
-**Location**: `src/quantumvitas/presets/`
+**Location**: `src/qmatsuite/presets/`
 
 7 declared variants in `variants_registry.py`:
 1. `OCCUPATIONS_SCHEME_PW` (scf, nscf, relax, md)
@@ -81,7 +81,7 @@ All 15 engines have **complete driver.py implementations** with the 7-item MUST 
 
 #### Structure Handling
 
-**Location**: `src/quantumvitas/io/structure_io.py`
+**Location**: `src/qmatsuite/io/structure_io.py`
 
 Supported import formats (via pymatgen + ASE): CIF, POSCAR/CONTCAR, XYZ, PDB, MOL/MOL2, JSON, QE input files (.in, .pwi), XSF
 
@@ -96,7 +96,7 @@ Supported import formats (via pymatgen + ASE): CIF, POSCAR/CONTCAR, XYZ, PDB, MO
 
 #### Execution
 
-**Location**: `src/quantumvitas/execution/`
+**Location**: `src/qmatsuite/execution/`
 
 - ✅ Local subprocess execution for all 12 binary engines (QE, VASP, ORCA, CP2K, LAMMPS, ABINIT, Siesta, W90, xTB, QMCPACK, Yambo, Gaussian)
 - ✅ In-process Python execution for GPAW, Psi4, PySCF
@@ -110,7 +110,7 @@ Supported import formats (via pymatgen + ASE): CIF, POSCAR/CONTCAR, XYZ, PDB, MO
 
 ### 1.2 Daemon Layer
 
-**File**: `src/quantumvitas/daemon/server.py` (6,469 lines)
+**File**: `src/qmatsuite/daemon/server.py` (6,469 lines)
 
 - ✅ **Fully functional** JSON-RPC 2.0 server over stdio
 - ✅ **117 RPC handlers** covering: system, project, structure, calculation, step, execution, analysis, pseudos, presets, workflows, library management, history, demos
@@ -121,9 +121,9 @@ Supported import formats (via pymatgen + ASE): CIF, POSCAR/CONTCAR, XYZ, PDB, MO
 
 ---
 
-### 1.3 API Layer (QVService)
+### 1.3 API Layer (QMSService)
 
-**File**: `src/quantumvitas/api/service.py` (7,661 lines)
+**File**: `src/qmatsuite/api/service.py` (7,661 lines)
 
 - ✅ **93 methods across 7 domain classes** — all fully implemented, zero stubs
 - ✅ Domains: Structure (6), Calculation (14), Run (6), Project (7), Engine (3), History (4), + Analysis
@@ -135,27 +135,27 @@ Supported import formats (via pymatgen + ASE): CIF, POSCAR/CONTCAR, XYZ, PDB, MO
 
 ### 1.4 CLI Layer
 
-**File**: `src/quantumvitas/cli/main.py` (5,252 lines)
+**File**: `src/qmatsuite/cli/main.py` (5,252 lines)
 
 **31+ commands** organized into sub-apps:
 
 | Command Group | Commands | Status |
 |--------------|----------|--------|
-| `qv init` | `project`, `calculation`, `step` | ✅ |
-| `qv import-structure` | file import (CIF, POSCAR, XYZ, etc.) | ✅ |
-| `qv list` | hierarchical listing | ✅ |
-| `qv run` | `calculation`, `step` | ✅ |
-| `qv rename` | `structure`, `calculation`, `step`, `project` | ✅ |
-| `qv delete` | `structure`, `calculation`, `step`, `project`, `trash` | ✅ |
-| `qv configure` | `step`, `calculation`, `project`, `species`, `structure` | ✅ |
-| `qv analyze` | `band`, `dos`, `energy`, `scf`, `structure` | ✅ |
-| `qv detect-qe` | QE binary detection | ✅ |
-| `qv params` | QE parameter documentation | ✅ |
+| `qms init` | `project`, `calculation`, `step` | ✅ |
+| `qms import-structure` | file import (CIF, POSCAR, XYZ, etc.) | ✅ |
+| `qms list` | hierarchical listing | ✅ |
+| `qms run` | `calculation`, `step` | ✅ |
+| `qms rename` | `structure`, `calculation`, `step`, `project` | ✅ |
+| `qms delete` | `structure`, `calculation`, `step`, `project`, `trash` | ✅ |
+| `qms configure` | `step`, `calculation`, `project`, `species`, `structure` | ✅ |
+| `qms analyze` | `band`, `dos`, `energy`, `scf`, `structure` | ✅ |
+| `qms detect-qe` | QE binary detection | ✅ |
+| `qms params` | QE parameter documentation | ✅ |
 
-✅ **Full e2e CLI workflow** works: `qv init project` → `qv import-structure` → `qv init calculation` → `qv configure step` → `qv run calculation` → `qv analyze`
+✅ **Full e2e CLI workflow** works: `qms init project` → `qms import-structure` → `qms init calculation` → `qms configure step` → `qms run calculation` → `qms analyze`
 
 ⚠️ CLI is QE-centric in documentation and examples. Multi-engine CLI workflows are supported but less documented.
-⚠️ No `qv history` command — provenance accessible only via daemon/API.
+⚠️ No `qms history` command — provenance accessible only via daemon/API.
 
 ---
 
@@ -207,7 +207,7 @@ Supported import formats (via pymatgen + ASE): CIF, POSCAR/CONTCAR, XYZ, PDB, MO
 
 ### 1.6 Provenance System
 
-**Location**: `src/quantumvitas/provenance/` (14 modules, ~2,400 lines)
+**Location**: `src/qmatsuite/provenance/` (14 modules, ~2,400 lines)
 
 - ✅ **SQLite database** at `.provenance/provenance.db` with tables: `operations`, `runs`, `run_steps`, `pins`
 - ✅ **Content-Addressed Store (CAS)** at `.provenance/.cas/objects/` — SHA256-based snapshot storage
@@ -218,14 +218,14 @@ Supported import formats (via pymatgen + ASE): CIF, POSCAR/CONTCAR, XYZ, PDB, MO
 - ✅ **Graceful degradation**: Provenance failures never fail YAML writes (Law P7)
 - ✅ **API surface**: `query_operations()`, `query_runs()`, `get_run_details()`, `pin_analysis_to_history()`, etc.
 - ✅ **Daemon surfaced**: `get_project_history()`, `get_run_revision()`, `pin_analysis_to_history()` RPCs
-- ⚠️ No CLI commands for history query (`qv history` not implemented)
+- ⚠️ No CLI commands for history query (`qms history` not implemented)
 
 ---
 
 ### 1.7 Jupyter Integration
 
-- ✅ `import quantumvitas` works after `pip install -e .`
-- ✅ API layer (`quantumvitas.api.QVService`) is importable from notebooks
+- ✅ `import qmatsuite` works after `pip install -e .`
+- ✅ API layer (`qmatsuite.api.QMSService`) is importable from notebooks
 - ❌ No dedicated Jupyter kernel
 - ❌ No example notebooks
 - ❌ No `ipywidgets` or interactive visualization widgets
@@ -254,7 +254,7 @@ Supported import formats (via pymatgen + ASE): CIF, POSCAR/CONTCAR, XYZ, PDB, MO
 
 User has CIF → imports → views 3D → creates calculation.
 
-✅ **Works end-to-end.** Both CLI (`qv import-structure Si.cif`) and GUI (Import Structure dialog with file picker). 3D viewer renders ball-and-stick with bonds and unit cell. Structure formats supported: CIF, POSCAR, XYZ, PDB, MOL/MOL2, JSON, QE .in files.
+✅ **Works end-to-end.** Both CLI (`qms import-structure Si.cif`) and GUI (Import Structure dialog with file picker). 3D viewer renders ball-and-stick with bonds and unit cell. Structure formats supported: CIF, POSCAR, XYZ, PDB, MOL/MOL2, JSON, QE .in files.
 
 ### 2.3 Online Structure Fetch
 
@@ -281,7 +281,7 @@ SCF → Bands → DOS as multi-step → run sequentially → view combined resul
 
 ### 2.6 Engine Discovery & Setup
 
-✅ **QE detection works**: `qv detect-qe` scans QE_HOME, PATH, shell configs, home directory. Works in CLI and daemon.
+✅ **QE detection works**: `qms detect-qe` scans QE_HOME, PATH, shell configs, home directory. Works in CLI and daemon.
 ❌ **No engine download**: No built-in download/install for any engine. No portable Windows QE bundled.
 ❌ **No guided setup**: GUI has no "Engine Setup Wizard" guiding users to install engines.
 ⚠️ `LibrariesPanel.tsx` exists but library management RPCs may not be fully wired.
@@ -290,7 +290,7 @@ SCF → Bands → DOS as multi-step → run sequentially → view combined resul
 
 ✅ **QE SSSP download works**: `download_sssp_library()` RPC downloads SSSP library.
 ✅ **Pseudo assignment UI**: CommonCardPseudo component in GUI for selecting pseudos.
-✅ **CLI**: `qv configure project --pseudo Si:Si.pbe-n-kjpaw_psl.1.0.0.UPF`
+✅ **CLI**: `qms configure project --pseudo Si:Si.pbe-n-kjpaw_psl.1.0.0.UPF`
 ⚠️ Pseudo management is QE-centric. VASP POTCARs require manual setup. No GUI for managing VASP/LAMMPS/ABINIT pseudos/potentials.
 
 ### 2.8 Cross-Engine Comparison
@@ -494,7 +494,7 @@ Priority for v1:      Best-effort
 | `tests/drivers/` | 73 | Per-engine input/output/metadata (13 engines) |
 | `tests/integration/` | 49 | Real engine execution (requires binaries) |
 | `tests/inputformat/` | 21 | Parser/writer orchestration for all engines |
-| `tests/api/` | 24 | QVService API methods |
+| `tests/api/` | 24 | QMSService API methods |
 | `tests/daemon/` | 15 | JSON-RPC handlers, job management |
 | `tests/cli/` | 10 | CLI commands |
 | `tests/contract_crawler/` | 12 | Contract-based code analysis |
@@ -553,10 +553,10 @@ Priority for v1:      Best-effort
 | # | Task | Layer | Hours | Why |
 |---|------|-------|-------|-----|
 | 11 | **Add Materials Project API integration** | kernel | 6 | `mp-api` Python client exists. Second most requested structure source after OPTIMADE. |
-| 12 | **Add `qv history` CLI command** | cli | 3 | Provenance system is fully functional but CLI has no way to access it. |
+| 12 | **Add `qms history` CLI command** | cli | 3 | Provenance system is fully functional but CLI has no way to access it. |
 | 13 | **Add VASP-specific presets** | kernel | 4 | VASP has no presets despite being Tier 1. Need at least precision presets (ENCUT, EDIFF). |
 | 14 | **Supercell builder in GUI** | gui | 4 | pymatgen `make_supercell` exists. Wire it to a simple 3x3 matrix input in GUI. |
-| 15 | **Add Jupyter example notebook** | docs | 3 | Show `from quantumvitas.api import QVService` + programmatic workflow. Low effort, high credibility. |
+| 15 | **Add Jupyter example notebook** | docs | 3 | Show `from qmatsuite.api import QMSService` + programmatic workflow. Low effort, high credibility. |
 | 16 | **Calculation result comparison view** | gui | 6 | Side-by-side energy/bands/DOS from two runs of same calculation. Killer feature for parameter studies. |
 
 ### P3 — Low Impact / Defer
@@ -590,7 +590,7 @@ Priority for v1:      Best-effort
 **Day 4 (Thu)**: P1 + P2
 - Add non-QE demo projects (#6) — 4h
 - Clean up repo root (#10) — 2h
-- Add `qv history` CLI command (#12) — 2h
+- Add `qms history` CLI command (#12) — 2h
 
 **Day 5 (Fri)**: P2
 - Add Materials Project API integration (#11) — 6h

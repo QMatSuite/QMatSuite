@@ -10,12 +10,12 @@
 
 ### Issue 1: Two StepTypeSpec Classes
 QMatSuite has TWO separate `StepTypeSpec` dataclasses:
-- `quantumvitas.core.driver_protocol.StepTypeSpec` — used by engine drivers. **No `step_type_gen` field.**
-- `quantumvitas.workflow.registry.StepTypeSpec` — used by workflow system. Has `step_type_gen`.
+- `qmatsuite.core.driver_protocol.StepTypeSpec` — used by engine drivers. **No `step_type_gen` field.**
+- `qmatsuite.workflow.registry.StepTypeSpec` — used by workflow system. Has `step_type_gen`.
 
 **Solution**: Register step types in BOTH places:
-1. `src/quantumvitas/drivers/abinit/driver.py` → `get_step_type_specs()` (driver protocol)
-2. `src/quantumvitas/workflow/registry.py` → `_STEP_TYPES` dict (workflow registry)
+1. `src/qmatsuite/drivers/abinit/driver.py` → `get_step_type_specs()` (driver protocol)
+2. `src/qmatsuite/workflow/registry.py` → `_STEP_TYPES` dict (workflow registry)
 
 ### Issue 2: Hardcoded Engine Lists in Tests
 Two test files have hardcoded engine/prefix lists:
@@ -29,8 +29,8 @@ Two test files have hardcoded engine/prefix lists:
 
 ### Issue 4: ENGINE_PREFIXES Lists
 Two ENGINE_PREFIXES locations must be updated:
-- `src/quantumvitas/workflow/step_type_convert.py` — `ENGINE_PREFIXES` frozenset
-- `src/quantumvitas/workflow/registry.py` — `ENGINE_PREFIXES` tuple in `normalize_step_type_to_gen()`
+- `src/qmatsuite/workflow/step_type_convert.py` — `ENGINE_PREFIXES` frozenset
+- `src/qmatsuite/workflow/registry.py` — `ENGINE_PREFIXES` tuple in `normalize_step_type_to_gen()`
 
 ### Issue 5: Project Root for Engine Discovery
 Integration tests using `discover_engine()` MUST pass `project_root` explicitly due to pytest-xdist worker CWD issues.
@@ -49,7 +49,7 @@ ABINIT is a plane-wave DFT code similar to Quantum ESPRESSO. This integration fo
 
 ## 2. Implementation Checklist
 
-### Files to Create (in `src/quantumvitas/drivers/abinit/`)
+### Files to Create (in `src/qmatsuite/drivers/abinit/`)
 
 | File | Contents | Status |
 |------|----------|--------|
@@ -64,13 +64,13 @@ ABINIT is a plane-wave DFT code similar to Quantum ESPRESSO. This integration fo
 
 | File | Change | Status |
 |------|--------|--------|
-| `src/quantumvitas/drivers/__init__.py` | Add `from quantumvitas.drivers import abinit` | ✅ Done |
-| `src/quantumvitas/workflow/step_type_convert.py` | Add "abinit" to ENGINE_PREFIXES | ✅ Done |
-| `src/quantumvitas/workflow/registry.py` | Add abinit_scf/nscf/relax StepTypeSpecs + "abinit_" prefix | ✅ Done |
-| `src/quantumvitas/core/engines/discovery.py` | Add abinit EngineProbe | ✅ Done |
+| `src/qmatsuite/drivers/__init__.py` | Add `from qmatsuite.drivers import abinit` | ✅ Done |
+| `src/qmatsuite/workflow/step_type_convert.py` | Add "abinit" to ENGINE_PREFIXES | ✅ Done |
+| `src/qmatsuite/workflow/registry.py` | Add abinit_scf/nscf/relax StepTypeSpecs + "abinit_" prefix | ✅ Done |
+| `src/qmatsuite/core/engines/discovery.py` | Add abinit EngineProbe | ✅ Done |
 | `tests/unit/test_engine_discovery.py` | Add "abinit" to expected set | ✅ Done |
 | `tests/unit/test_step_type_mapping.py` | Add "abinit_" to valid_prefixes (2 places) | ✅ Done |
-| `tests/gates/test_registry_routing.py` | Add 'quantumvitas.drivers.abinit' to modules_to_remove | ✅ Done |
+| `tests/gates/test_registry_routing.py` | Add 'qmatsuite.drivers.abinit' to modules_to_remove | ✅ Done |
 
 ### Integration Tests Created
 
@@ -412,8 +412,8 @@ ABINIT uses `{outdata_prefix}_*` for outputs. We set this explicitly per step.
 ## 13. Files Ready for Implementation
 
 Pre-built utilities in `docs/engines/abinit/`:
-- `abinit_writer.py` — Copy to `src/quantumvitas/drivers/abinit/writer.py`
-- `abinit_parser.py` — Copy to `src/quantumvitas/drivers/abinit/parser.py`
+- `abinit_writer.py` — Copy to `src/qmatsuite/drivers/abinit/writer.py`
+- `abinit_parser.py` — Copy to `src/qmatsuite/drivers/abinit/parser.py`
 - `golden_refs/` — Use for test fixtures
 - `pseudopotentials/14si.pspnc` — Si pseudopotential for integration tests
 
@@ -434,7 +434,7 @@ Pre-built utilities in `docs/engines/abinit/`:
 
 ### New Files
 ```
-src/quantumvitas/drivers/abinit/
+src/qmatsuite/drivers/abinit/
 ├── __init__.py
 ├── driver.py
 ├── handler.py
@@ -445,10 +445,10 @@ src/quantumvitas/drivers/abinit/
 
 ### Modified Files
 ```
-src/quantumvitas/drivers/__init__.py
-src/quantumvitas/workflow/step_type_convert.py
-src/quantumvitas/workflow/registry.py
-src/quantumvitas/core/engines/discovery.py
+src/qmatsuite/drivers/__init__.py
+src/qmatsuite/workflow/step_type_convert.py
+src/qmatsuite/workflow/registry.py
+src/qmatsuite/core/engines/discovery.py
 tests/unit/test_engine_discovery.py
 tests/unit/test_step_type_mapping.py
 tests/gates/test_registry_routing.py

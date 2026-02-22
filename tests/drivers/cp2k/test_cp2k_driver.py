@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from quantumvitas.drivers.cp2k import CP2KDriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.cp2k import CP2KDriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestCP2KDriver:
@@ -84,7 +84,7 @@ class TestCP2KRegistration:
 
     def test_cp2k_registered(self):
         """CP2K should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("cp2k")
         driver = DriverRegistry.get_driver("cp2k")
@@ -92,7 +92,7 @@ class TestCP2KRegistration:
 
     def test_cp2k_step_types_registered(self):
         """CP2K step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("cp2k_scf")
         assert DriverRegistry.is_step_type_registered("cp2k_relax")
@@ -104,40 +104,40 @@ class TestCP2KIsolation:
 
     def test_handlers_no_cp2k_handler(self):
         """handlers.py should not contain cp2k_step_handler."""
-        handlers_path = Path(__file__).parent.parent.parent.parent / "src" / "quantumvitas" / "execution" / "handlers.py"
+        handlers_path = Path(__file__).parent.parent.parent.parent / "src" / "qmatsuite" / "execution" / "handlers.py"
         source = handlers_path.read_text()
         assert "def cp2k_step_handler" not in source
 
     def test_recipes_no_cp2k_recipe(self):
         """recipes.py should not contain CP2KRecipe."""
-        recipes_path = Path(__file__).parent.parent.parent.parent / "src" / "quantumvitas" / "execution" / "recipes.py"
+        recipes_path = Path(__file__).parent.parent.parent.parent / "src" / "qmatsuite" / "execution" / "recipes.py"
         source = recipes_path.read_text()
         assert "class CP2KRecipe" not in source
 
     def test_io_module_no_kernel(self):
         """cp2k_input.py should only use stdlib."""
         import importlib
-        mod = importlib.import_module("quantumvitas.drivers.cp2k.io.cp2k_input")
+        mod = importlib.import_module("qmatsuite.drivers.cp2k.io.cp2k_input")
         source = open(mod.__file__, "r").read()
-        assert "quantumvitas.kernel" not in source
-        assert "quantumvitas.runner" not in source
-        assert "quantumvitas.daemon" not in source
+        assert "qmatsuite.kernel" not in source
+        assert "qmatsuite.runner" not in source
+        assert "qmatsuite.daemon" not in source
 
     def test_parsers_output_no_kernel(self):
         """output.py should only import registry."""
         import importlib
-        mod = importlib.import_module("quantumvitas.drivers.cp2k.parsers.output")
+        mod = importlib.import_module("qmatsuite.drivers.cp2k.parsers.output")
         source = open(mod.__file__, "r").read()
-        assert "quantumvitas.kernel" not in source
-        assert "quantumvitas.runner" not in source
+        assert "qmatsuite.kernel" not in source
+        assert "qmatsuite.runner" not in source
 
     def test_metadata_no_kernel(self):
         """cp2k_metadata.py should only use stdlib."""
         import importlib
-        mod = importlib.import_module("quantumvitas.drivers.cp2k.data.cp2k_metadata")
+        mod = importlib.import_module("qmatsuite.drivers.cp2k.data.cp2k_metadata")
         source = open(mod.__file__, "r").read()
-        assert "quantumvitas.kernel" not in source
-        assert "quantumvitas.runner" not in source
+        assert "qmatsuite.kernel" not in source
+        assert "qmatsuite.runner" not in source
 
 
 class TestCP2KInputSpec:
@@ -175,7 +175,7 @@ class TestCP2KIOModule:
     """Test the extracted io/cp2k_input.py parse/write functions."""
 
     def test_parse_basic_energy(self):
-        from quantumvitas.drivers.cp2k.io.cp2k_input import parse_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import parse_cp2k_text
         text = """\
 &GLOBAL
   PROJECT test
@@ -218,7 +218,7 @@ class TestCP2KIOModule:
         assert len(result["structure"]["cart_coords"]) == 2
 
     def test_parse_fractional_coords(self):
-        from quantumvitas.drivers.cp2k.io.cp2k_input import parse_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import parse_cp2k_text
         text = """\
 &GLOBAL
   PROJECT si
@@ -252,7 +252,7 @@ class TestCP2KIOModule:
         assert result["structure"]["frac_coords"][1] == [0.25, 0.25, 0.25]
 
     def test_parse_explicit_lattice_vectors(self):
-        from quantumvitas.drivers.cp2k.io.cp2k_input import parse_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import parse_cp2k_text
         text = """\
 &GLOBAL
   PROJECT test
@@ -283,7 +283,7 @@ class TestCP2KIOModule:
         assert lattice[2] == [0.0, 0.0, 5.0]
 
     def test_parse_nested_sections(self):
-        from quantumvitas.drivers.cp2k.io.cp2k_input import parse_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import parse_cp2k_text
         text = """\
 &GLOBAL
   PROJECT test
@@ -315,7 +315,7 @@ class TestCP2KIOModule:
         assert dft["SCF"]["OT"]["MINIMIZER"] == "DIIS"
 
     def test_parse_comments_stripped(self):
-        from quantumvitas.drivers.cp2k.io.cp2k_input import parse_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import parse_cp2k_text
         text = """\
 &GLOBAL
   PROJECT test  # this is a comment
@@ -327,7 +327,7 @@ class TestCP2KIOModule:
         assert result["params"]["GLOBAL"]["RUN_TYPE"] == "ENERGY"
 
     def test_parse_booleans(self):
-        from quantumvitas.drivers.cp2k.io.cp2k_input import parse_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import parse_cp2k_text
         text = """\
 &GLOBAL
   PROJECT test
@@ -353,7 +353,7 @@ class TestCP2KIOModule:
         assert "frac_coords" in result["structure"]
 
     def test_parse_default_keyword(self):
-        from quantumvitas.drivers.cp2k.io.cp2k_input import parse_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import parse_cp2k_text
         text = """\
 &GLOBAL
   PROJECT test
@@ -381,7 +381,7 @@ class TestCP2KIOModule:
         assert func.get("_DEFAULT_KEYWORD") == "PBE"
 
     def test_write_basic(self):
-        from quantumvitas.drivers.cp2k.io.cp2k_input import write_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import write_cp2k_text
         fragment = {
             "params": {
                 "GLOBAL": {"PROJECT": "test", "RUN_TYPE": "ENERGY"},
@@ -411,7 +411,7 @@ class TestCP2KIOModule:
         assert "&END FORCE_EVAL" in text
 
     def test_write_fractional(self):
-        from quantumvitas.drivers.cp2k.io.cp2k_input import write_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import write_cp2k_text
         fragment = {
             "params": {
                 "GLOBAL": {"PROJECT": "si", "RUN_TYPE": "ENERGY"},
@@ -428,7 +428,7 @@ class TestCP2KIOModule:
         assert "Si" in text
 
     def test_write_motion_section(self):
-        from quantumvitas.drivers.cp2k.io.cp2k_input import write_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import write_cp2k_text
         fragment = {
             "params": {
                 "GLOBAL": {"PROJECT": "test", "RUN_TYPE": "GEO_OPT"},
@@ -472,7 +472,7 @@ class TestCP2KCorpusParse:
 
     def test_parse_no_crash(self, case_dir):
         """Each curated .inp file parses without error."""
-        from quantumvitas.drivers.cp2k.io.cp2k_input import parse_cp2k_text
+        from qmatsuite.drivers.cp2k.io.cp2k_input import parse_cp2k_text
         inp_files = list(case_dir.glob("*.inp"))
         assert len(inp_files) >= 1, f"No .inp file in {case_dir}"
         for inp_file in inp_files:
@@ -483,7 +483,7 @@ class TestCP2KCorpusParse:
 
     def test_roundtrip_no_crash(self, case_dir):
         """Each curated case roundtrips (parse -> write -> parse) without error."""
-        from quantumvitas.drivers.cp2k.io.cp2k_input import (
+        from qmatsuite.drivers.cp2k.io.cp2k_input import (
             parse_cp2k_text, write_cp2k_text,
         )
         inp_files = list(case_dir.glob("*.inp"))
@@ -499,7 +499,7 @@ class TestCP2KCorpusParse:
 
     def test_roundtrip_preserves_global(self, case_dir):
         """Roundtrip preserves GLOBAL section parameters."""
-        from quantumvitas.drivers.cp2k.io.cp2k_input import (
+        from qmatsuite.drivers.cp2k.io.cp2k_input import (
             parse_cp2k_text, write_cp2k_text,
         )
         inp_files = list(case_dir.glob("*.inp"))
@@ -518,7 +518,7 @@ class TestCP2KCorpusParse:
 
     def test_roundtrip_preserves_structure(self, case_dir):
         """Roundtrip preserves species and coordinates."""
-        from quantumvitas.drivers.cp2k.io.cp2k_input import (
+        from qmatsuite.drivers.cp2k.io.cp2k_input import (
             parse_cp2k_text, write_cp2k_text,
         )
         inp_files = list(case_dir.glob("*.inp"))

@@ -10,7 +10,7 @@
 
 ### 2. `test_pw_quick_tests_ci.py`
 - **用途**: CI 友好的测试，不依赖 QE 安装
-- **要求**: 仅需要 Python 和 quantumvitas 库
+- **要求**: 仅需要 Python 和 qmatsuite 库
 - **标记**: `@pytest.mark.quick`
 - **行为**: 总是运行，测试解析和生成功能
 

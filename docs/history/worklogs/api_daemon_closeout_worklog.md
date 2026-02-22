@@ -59,7 +59,7 @@ Key design decision: explicit `fixture_dir` argument skips auto-discovery chain 
 
 ## M5: Enrich create_demo_project return value — DONE
 
-Moved GUI enrichment from daemon into `QVService.create_demo_project()`:
+Moved GUI enrichment from daemon into `QMSService.create_demo_project()`:
 - `project_id`, `project_name`, `structure` (dict), `calculation` (dict), `ready_to_run`
 - Non-fatal: enrichment failure returns defaults (empty strings, None, False)
 

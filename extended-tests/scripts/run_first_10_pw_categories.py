@@ -13,8 +13,8 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root))
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 # Import test functions
 import importlib.util
@@ -51,8 +51,8 @@ def main():
     args = parser.parse_args()
     
     # Setup QE engine (auto-detect if not provided)
-    from quantumvitas.core.engines.qe import QuantumEspressoEngine
-    from quantumvitas.core.engines.base import EngineConfig
+    from qmatsuite.core.engines.qe import QuantumEspressoEngine
+    from qmatsuite.core.engines.base import EngineConfig
     
     if args.qe_home:
         config = EngineConfig(name="qe", executable_path=args.qe_home)

@@ -11,7 +11,7 @@ class TestPropertyParser:
 
     def test_parse_scf_energy(self):
         """Parse SCF energy from property file."""
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         result = parse_orca_property_txt(FIXTURES_DIR / "water_scf.property.txt")
 
@@ -27,7 +27,7 @@ class TestPropertyParser:
 
     def test_parse_final_energy(self):
         """Parse final energy from Single_Point_Data block."""
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         result = parse_orca_property_txt(FIXTURES_DIR / "water_scf.property.txt")
 
@@ -38,7 +38,7 @@ class TestPropertyParser:
 
     def test_parse_calculation_status(self):
         """Parse calculation status."""
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         result = parse_orca_property_txt(FIXTURES_DIR / "water_scf.property.txt")
 
@@ -49,7 +49,7 @@ class TestPropertyParser:
 
     def test_parse_calculation_info(self):
         """Parse calculation info (electrons, basis functions, etc.)."""
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         result = parse_orca_property_txt(FIXTURES_DIR / "water_scf.property.txt")
 
@@ -63,7 +63,7 @@ class TestPropertyParser:
 
     def test_parse_dipole_moment(self):
         """Parse dipole moment."""
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         result = parse_orca_property_txt(FIXTURES_DIR / "water_scf.property.txt")
 
@@ -74,7 +74,7 @@ class TestPropertyParser:
 
     def test_parse_property_txt_string(self):
         """Parse property content from string."""
-        from quantumvitas.engines.orca.property_parser import parse_property_txt_string
+        from qmatsuite.engines.orca.property_parser import parse_property_txt_string
 
         content = '''$SCF_Energy
    &GeometryIndex 1
@@ -96,21 +96,21 @@ $End
 
     def test_missing_file_raises(self):
         """Missing file should raise FileNotFoundError."""
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         with pytest.raises(FileNotFoundError):
             parse_orca_property_txt(Path("/nonexistent/file.property.txt"))
 
     def test_empty_file_returns_empty_dict(self):
         """Empty file should return empty dict."""
-        from quantumvitas.engines.orca.property_parser import parse_property_txt_string
+        from qmatsuite.engines.orca.property_parser import parse_property_txt_string
 
         result = parse_property_txt_string("")
         assert result == {}
 
     def test_get_energy_helper(self):
         """Test convenience function to get energy."""
-        from quantumvitas.engines.orca.property_parser import (
+        from qmatsuite.engines.orca.property_parser import (
             parse_orca_property_txt,
             get_energy,
         )
@@ -123,7 +123,7 @@ $End
 
     def test_is_converged_helper(self):
         """Test convenience function to check convergence."""
-        from quantumvitas.engines.orca.property_parser import (
+        from qmatsuite.engines.orca.property_parser import (
             parse_orca_property_txt,
             is_converged,
         )
@@ -139,7 +139,7 @@ class TestTDDFTPropertyParser:
 
     def test_parse_tddft_property_file(self):
         """Parse TDDFT property file."""
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         result = parse_orca_property_txt(FIXTURES_DIR / "water_scf_td.property.txt")
 
@@ -149,7 +149,7 @@ class TestTDDFTPropertyParser:
 
     def test_parse_cis_energies(self):
         """Parse CIS excited state energies."""
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         result = parse_orca_property_txt(FIXTURES_DIR / "water_scf_td.property.txt")
 
@@ -162,7 +162,7 @@ class TestTDDFTPropertyParser:
 
     def test_get_tddft_excitations(self):
         """Test TDDFT excitation extraction."""
-        from quantumvitas.engines.orca.property_parser import (
+        from qmatsuite.engines.orca.property_parser import (
             parse_orca_property_txt,
             get_tddft_excitations,
         )
@@ -182,7 +182,7 @@ class TestTDDFTPropertyParser:
 
     def test_tddft_mode_detection(self):
         """Test TDDFT mode detection (CIS, TDA, etc.)."""
-        from quantumvitas.engines.orca.property_parser import (
+        from qmatsuite.engines.orca.property_parser import (
             parse_orca_property_txt,
             get_tddft_excitations,
         )

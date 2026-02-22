@@ -70,7 +70,7 @@
 
 
      PseudoPot. # 1 for C  read from file:
-     <HOME>/quantumVITAS/pseudo/C.pbe-n-kjpaw_psl.1.0.0.UPF
+     <HOME>/QMatSuite/pseudo/C.pbe-n-kjpaw_psl.1.0.0.UPF
      MD5 check sum: 5f16ad9a65e90284d1d834d4ab3b0f7d
      Pseudo is Projector augmented-wave + core cor, Zval =  4.0
      Generated using &quot;atomic&quot; code by A. Dal Corso  v.6.3

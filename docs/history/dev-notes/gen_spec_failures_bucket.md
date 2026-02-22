@@ -40,7 +40,7 @@
 2. Replace with `spec_from(prefix=...)`
 
 **Files to Fix**:
-- `src/quantumvitas/engine/lammps_writer.py:68`
+- `src/qmatsuite/engine/lammps_writer.py:68`
 - Any other files using `spec_from(engine_prefix=...)`
 
 ### A3: Other Parameter Name Mismatches

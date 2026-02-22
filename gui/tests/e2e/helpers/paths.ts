@@ -47,10 +47,10 @@ export function getGuiDir(): string {
  * Resolve the root folder for ephemeral E2E projects.
  * Defaults to repo-local .tmp/e2e_projects for inspectable artifacts.
  *
- * Override with QV_E2E_PROJECTS_ROOT when needed.
+ * Override with QMS_E2E_PROJECTS_ROOT when needed.
  */
 export function getE2EProjectsRoot(): string {
-  const override = process.env.QV_E2E_PROJECTS_ROOT?.trim();
+  const override = process.env.QMS_E2E_PROJECTS_ROOT?.trim();
   if (override) {
     return path.resolve(override);
   }

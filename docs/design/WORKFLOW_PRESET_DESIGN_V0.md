@@ -154,7 +154,7 @@ The following table maps `tests/data/` tutorial folders to workflow categories:
 
 ### 2.5.2 Existing Step Types (in codebase)
 
-From `src/quantumvitas/calculation/step_defaults.py`:
+From `src/qmatsuite/calculation/step_defaults.py`:
 
 ```python
 KNOWN_STEP_TYPES = {
@@ -168,7 +168,7 @@ KNOWN_STEP_TYPES = {
 
 ### 2.5.3 Key QE Parameters for Presets
 
-From `src/quantumvitas/data/qe_module_parameters.json`:
+From `src/qmatsuite/data/qe_module_parameters.json`:
 
 | Parameter | Section | Values | Physical Meaning |
 |-----------|---------|--------|------------------|
@@ -1354,9 +1354,9 @@ U Co-3d 7.75
 
 ### 11.3 QMatSuite Internal Resources
 - `tests/data/0_*` through `19_*`: Tutorial datasets
-- `src/quantumvitas/data/qe_module_parameters.json`: Parsed QE parameter metadata
+- `src/qmatsuite/data/qe_module_parameters.json`: Parsed QE parameter metadata
 - `tools/import_tutorial_datasets.py`: Tutorial → Project/Calc/Step conversion
-- `src/quantumvitas/calculation/step_defaults.py`: Default step parameters
+- `src/qmatsuite/calculation/step_defaults.py`: Default step parameters
 
 ---
 

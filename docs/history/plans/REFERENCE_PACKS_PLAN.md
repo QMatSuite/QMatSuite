@@ -63,7 +63,7 @@ Before expanding, close out the existing migration:
   - Generation: `tools/demo_store/generate_ref_packs.py` reads curated outputs, parses via engine output parsers, serializes bundles
 
 ### 1b. Add `demo_source` field to project SSOT schema
-- New field in `project.qv.yml` → `settings.demo_source`:
+- New field in `project.qms.yml` → `settings.demo_source`:
   ```yaml
   demo_source:
     demo_id: "vasp_si_scf"          # slug, lookup key
@@ -80,7 +80,7 @@ Before expanding, close out the existing migration:
 ## Step 2: `demo_source` Infrastructure
 
 ### 2a. Modify `create_demo_project()` (service.py:7219)
-- After `materialize_project_from_snapshot()`, inject `demo_source` into the materialized project's `project.qv.yml`:
+- After `materialize_project_from_snapshot()`, inject `demo_source` into the materialized project's `project.qms.yml`:
   ```python
   demo_source = {
       "demo_id": demo_id,
@@ -92,17 +92,17 @@ Before expanding, close out the existing migration:
   project_model.settings["demo_source"] = demo_source
   save_project(project_model, target_dir)
   ```
-- **File**: `src/quantumvitas/api/service.py`
+- **File**: `src/qmatsuite/api/service.py`
 
 ### 2b. Refactor `get_reference_analysis()` (service.py:1122)
 - Replace `origin.kind == "demo"` check with `settings.demo_source` lookup
 - Flow:
-  1. Read `project.qv.yml` → `settings.demo_source.demo_id`
+  1. Read `project.qms.yml` → `settings.demo_source.demo_id`
   2. Look up ref pack at `resources/demo_projects/ref_packs/<demo_id>/manifest.json`
   3. If ref pack exists for requested object_type, load and return the JSON bundle
   4. Return `None` if no ref pack available
 - Remove dependency on `origin` field entirely
-- **File**: `src/quantumvitas/api/service.py`
+- **File**: `src/qmatsuite/api/service.py`
 
 ---
 
@@ -181,7 +181,7 @@ resources/demo_projects/ref_packs/
 ## Step 5: Backend Service Wiring
 
 ### 5a. Ref pack loader utility
-- **New file**: `src/quantumvitas/demo_store/ref_packs.py`
+- **New file**: `src/qmatsuite/demo_store/ref_packs.py`
 - `load_ref_pack(demo_id: str, object_type: str) -> dict | None`
   - Reads `resources/demo_projects/ref_packs/<demo_id>/manifest.json`
   - If object_type present, reads and returns the JSON bundle
@@ -192,7 +192,7 @@ resources/demo_projects/ref_packs/
 ### 5b. Wire into get_reference_analysis()
 - Use `demo_source.demo_id` → `load_ref_pack(demo_id, object_type)`
 - Return loaded bundle as `PrimitiveBundleData` for the GUI
-- **File**: `src/quantumvitas/api/service.py`
+- **File**: `src/qmatsuite/api/service.py`
 
 ---
 
@@ -222,9 +222,9 @@ resources/demo_projects/ref_packs/
 | `docs/demo_store/DEMO_MATRIX.md` | NEW — authoritative demo matrix |
 | `tools/demo_generators/` | DELETE entire directory |
 | `tools/demo_store/generate_ref_packs.py` | NEW — ref pack generator |
-| `src/quantumvitas/api/service.py` | Modify create_demo_project + get_reference_analysis |
-| `src/quantumvitas/demo_store/ref_packs.py` | NEW — ref pack loader |
-| `src/quantumvitas/core/analysis/bundles.py` | READ ONLY — reuse to_dict/from_dict |
+| `src/qmatsuite/api/service.py` | Modify create_demo_project + get_reference_analysis |
+| `src/qmatsuite/demo_store/ref_packs.py` | NEW — ref pack loader |
+| `src/qmatsuite/core/analysis/bundles.py` | READ ONLY — reuse to_dict/from_dict |
 | `tests/gates/test_ref_packs.py` | NEW — ref pack gate test |
 | `resources/demo_projects/ref_packs/` | NEW directory — ref pack storage |
 | `tests/inputformat/samples/corpus_index.yaml` | Update with new demo entries |
@@ -261,5 +261,5 @@ Steps 2-4 are parallelizable in implementation but share a commit.
    - `tools/demo_generators/` deleted
    - `docs/demo_store/DEMO_MATRIX.md` exists with all demos listed
    - ~55 total demos in `resources/demo_projects/`
-   - `demo_source` field written to project.qv.yml when creating demo project
+   - `demo_source` field written to project.qms.yml when creating demo project
    - `get_reference_analysis()` returns ref pack data for demos that have them

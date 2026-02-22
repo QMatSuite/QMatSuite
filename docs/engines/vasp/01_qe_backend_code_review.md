@@ -9,7 +9,7 @@
 ### 1.1 Engine Layer
 
 ```
-src/quantumvitas/engine/
+src/qmatsuite/engine/
 ├── base.py              # Engine abstract base class (supported_presets property)
 ├── registry.py          # EngineRegistry + create_default_registry()
 ├── qe_engine.py         # QeEngine wrapper (thin adapter over legacy)
@@ -17,7 +17,7 @@ src/quantumvitas/engine/
 ├── orca_engine.py       # ORCA engine (molecule engine)
 └── installation.py      # Engine installation helpers
 
-src/quantumvitas/core/engines/
+src/qmatsuite/core/engines/
 ├── base.py              # EngineConfig, legacy Engine class
 ├── qe.py                # QuantumEspressoEngine (main implementation)
 ├── qe_calculation.py    # QECalculationRunner, StepResult, get_capture_paths()
@@ -34,7 +34,7 @@ src/quantumvitas/core/engines/
 ### 1.2 Step Type Registry
 
 ```
-src/quantumvitas/workflow/
+src/qmatsuite/workflow/
 ├── registry.py          # StepTypeRegistry, StepTypeSpec, gen→spec mapping
 ├── step_factory.py      # Step creation from templates
 ├── templates.py         # Workflow templates
@@ -50,7 +50,7 @@ src/quantumvitas/workflow/
 ### 1.3 Execution Layer
 
 ```
-src/quantumvitas/execution/
+src/qmatsuite/execution/
 ├── executor.py          # JobExecutor - job graph execution
 ├── handlers.py          # Engine-specific dispatch (QE/PySCF/ORCA)
 ├── job_graph.py         # Job/JobGraph data structures
@@ -65,7 +65,7 @@ src/quantumvitas/execution/
 ### 1.4 Calculation Model
 
 ```
-src/quantumvitas/calculation/
+src/qmatsuite/calculation/
 ├── calculation.py       # Calculation model
 ├── step.py              # Step model
 ├── runner.py            # CalculationRunner - orchestrates execution
@@ -83,7 +83,7 @@ src/quantumvitas/calculation/
 ### 1.5 Materialization (IR/Backend)
 
 ```
-src/quantumvitas/ir/
+src/qmatsuite/ir/
 ├── parameters.py        # IRParameter registry (engine-agnostic)
 ├── backends/qe/
 │   └── mapping.py       # IR ↔ QE parameter mapping
@@ -94,7 +94,7 @@ src/quantumvitas/ir/
 ### 1.6 Pseudopotential System
 
 ```
-src/quantumvitas/core/
+src/qmatsuite/core/
 ├── pseudo.py            # get_system_pseudo_dir()
 ├── pseudo_config.py     # Pseudo configuration loading
 ├── pseudo_installs.py   # Archive installation
@@ -108,7 +108,7 @@ src/quantumvitas/core/
 ### 1.7 History & Manifest
 
 ```
-src/quantumvitas/history/
+src/qmatsuite/history/
 ├── storage.py           # ProjectHistory, run directory management
 ├── run_revision.py      # RunRevision, create_run_revision()
 ├── digests.py           # StepDigest, compute_step_digest()
@@ -119,7 +119,7 @@ src/quantumvitas/history/
 ### 1.8 Locking
 
 ```
-src/quantumvitas/core/locking.py
+src/qmatsuite/core/locking.py
   - calc_run_lock()      # Long lock during entire run (materialize + execute)
   - calc_edit_lock()     # Short lock during YAML writes
   - CalculationLockError # Raised when lock unavailable
@@ -133,7 +133,7 @@ src/quantumvitas/core/locking.py
 ### 2.1 High-Level Flow
 
 ```
-QVService.run_calculation() / run_step()
+QMSService.run_calculation() / run_step()
     └── CalculationRunner.run()
         ├── Step 0: Pseudo preparation (prepare_project_pseudos_for_run)
         ├── Create RunRevision (history/run_revision.py)
@@ -154,14 +154,14 @@ QVService.run_calculation() / run_step()
 ### 2.2 Detailed Execution Path (QE)
 
 ```
-1. QVService.run_step(project_root, calc_selector, step_selector)
-   └── src/quantumvitas/api.py
+1. QMSService.run_step(project_root, calc_selector, step_selector)
+   └── src/qmatsuite/api.py
 
 2. Resolution: resolve_calculation(), resolve_step()
-   └── src/quantumvitas/core/resolution.py
+   └── src/qmatsuite/core/resolution.py
 
 3. CalculationRunner.run(calculation, target_step_id=...)
-   └── src/quantumvitas/calculation/runner.py
+   └── src/qmatsuite/calculation/runner.py
 
 4. Step 0: Pseudo preparation
    ├── species_map_to_selections()
@@ -323,18 +323,18 @@ def test_parse_input_file(engine, tmp_path):
 
 #### Layer 3: Service API Tests
 **Location**: `tests/unit/` and `tests/integration/`
-**Pattern**: Test QVService methods with temp projects
+**Pattern**: Test QMSService methods with temp projects
 
 ```python
 # Example: tests/unit/test_api_service.py
 def test_init_calculation(tmp_path):
-    project_root = QVService.init_project(tmp_path / "proj")
-    calc = QVService.init_calculation(project_root, "test_calc", ...)
+    project_root = QMSService.init_project(tmp_path / "proj")
+    calc = QMSService.init_calculation(project_root, "test_calc", ...)
     assert calc.id is not None
 ```
 
 **Key Files**:
-- `tests/unit/test_api_service.py` - QVService operations
+- `tests/unit/test_api_service.py` - QMSService operations
 - `tests/unit/test_api_service_steps.py` - Step operations
 - `tests/unit/test_api_step_artifacts.py` - Artifact retrieval
 
@@ -345,7 +345,7 @@ def test_init_calculation(tmp_path):
 ```python
 # Example: tests/daemon/test_si_bands_calculation_daemon.py
 def test_full_bands_calculation(si_bands_project):
-    # Create project via QVService
+    # Create project via QMSService
     # Run calculation
     # Verify all steps completed
 ```
@@ -392,7 +392,7 @@ def create_calculation_project(
 @pytest.fixture(autouse=True)
 def reset_qe_registry():
     """Reset QE home registry before/after each test."""
-    from quantumvitas.core.engines import reset_qe_home
+    from qmatsuite.core.engines import reset_qe_home
     reset_qe_home()
     yield
     reset_qe_home()
@@ -415,7 +415,7 @@ def orca_engine():
 #### ULID Usage
 ```python
 # Always use generate_resource_id() for new resources
-from quantumvitas.core.resources import generate_resource_id
+from qmatsuite.core.resources import generate_resource_id
 step_ulid = generate_resource_id()
 ```
 
@@ -426,7 +426,7 @@ step_ulid = generate_resource_id()
    @pytest.fixture
    def vasp_available():
        try:
-           from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+           from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
            vasp_bin = resolve_vasp_bin()
        except RuntimeError:
            pytest.skip("VASP not available")

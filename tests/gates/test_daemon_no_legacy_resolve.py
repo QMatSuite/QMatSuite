@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DAEMON_DIR = PROJECT_ROOT / "src" / "quantumvitas" / "daemon"
+DAEMON_DIR = PROJECT_ROOT / "src" / "qmatsuite" / "daemon"
 
 
 def test_daemon_no_legacy_resolve_methods():

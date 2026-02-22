@@ -25,7 +25,7 @@
 - `w90_run` → `w90_run.stdout` / `w90_run.stderr`
 - `pw2wannier90` → `pw2wannier90.stdout` / `pw2wannier90.stderr`
 
-**实现**（`src/quantumvitas/core/engines/qe_calculation.py`）：
+**实现**（`src/qmatsuite/core/engines/qe_calculation.py`）：
 ```python
 # A. Unified stdout/stderr file naming to prevent overwrites between steps
 stdout_capture = _ensure_file_path(None, f"{step_type}.stdout", working_dir)
@@ -119,7 +119,7 @@ elif step_type == "pw2wannier90":
 
 **问题**：Evaluation 逻辑假设 `output_file` 必须存在，但 Wannier90 步骤的 primary output 是 artifact（`<seed>.wout`），不是 stdout capture。
 
-**修复**（`src/quantumvitas/calculation/runner.py`）：
+**修复**（`src/qmatsuite/calculation/runner.py`）：
 ```python
 # For Wannier90 steps, use stdout field (from capture file) for evaluation
 # output_file points to artifact (<seed>.wout), not stdout
@@ -172,17 +172,17 @@ except Exception as e:
 ## 修改文件列表
 
 ### 核心修改
-1. **`src/quantumvitas/core/engines/qe_calculation.py`**
+1. **`src/qmatsuite/core/engines/qe_calculation.py`**
    - A. 统一 stdout/stderr 文件命名（`{step_type}.stdout`）
    - B. 修正 primary output 绑定（artifact vs stdout capture）
    - C. 确保 cwd 是 raw_dir
    - D. Post-run 验证（artifact 存在性检查）
 
-2. **`src/quantumvitas/calculation/runner.py`**
+2. **`src/qmatsuite/calculation/runner.py`**
    - E. 修正 evaluation 逻辑（Wannier90 步骤使用 stdout 字段）
    - E. 添加 evaluation 异常处理
 
-3. **`src/quantumvitas/calculation/verification.py`**
+3. **`src/qmatsuite/calculation/verification.py`**
    - 更新注释，说明 artifact 检查在 `run_step()` 中完成
 
 ### 测试文件

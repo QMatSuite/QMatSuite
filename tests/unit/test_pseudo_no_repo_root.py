@@ -2,7 +2,7 @@
 Regression test: Ensure repo_root/pseudo is never created by tests or runtime.
 
 This test ensures that the invariant is maintained:
-- Internal pseudo library is ONLY at src/quantumvitas/resources/pseudo/
+- Internal pseudo library is ONLY at src/qmatsuite/resources/pseudo/
 - Repo-root pseudo/ must never be created
 - Tests must use tmp directories, never repo_root as project_root
 """
@@ -10,8 +10,8 @@ This test ensures that the invariant is maintained:
 import pytest
 from pathlib import Path
 import shutil
-from quantumvitas.core.pseudo_config import _find_quantumvitas_root
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.pseudo_config import _find_qmatsuite_root
+from qmatsuite.core.resources import get_resources_dir
 
 
 def test_repo_root_pseudo_never_created():
@@ -21,9 +21,9 @@ def test_repo_root_pseudo_never_created():
     This test should run after all other tests to verify the invariant.
     The conftest.py trap should catch any attempts to create it during tests.
     """
-    repo_root = _find_quantumvitas_root()
+    repo_root = _find_qmatsuite_root()
     if not repo_root:
-        pytest.skip("Cannot find quantumvitas repo root")
+        pytest.skip("Cannot find qmatsuite repo root")
     
     root_pseudo = repo_root / "pseudo"
     resources_pseudo = get_resources_dir() / "pseudo"

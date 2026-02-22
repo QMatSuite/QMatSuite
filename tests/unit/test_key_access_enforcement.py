@@ -16,7 +16,7 @@ This module tests:
 
 import pytest
 
-from quantumvitas.presets.paramspace import (
+from qmatsuite.presets.paramspace import (
     ParamSpace,
     ParamKey,
     Cell,
@@ -27,20 +27,20 @@ from quantumvitas.presets.paramspace import (
     _PARAMSPACE_REGISTRY,
     _KEY_OWNERSHIP,
 )
-from quantumvitas.presets.dimensions import (
+from qmatsuite.presets.dimensions import (
     OccupationsSchemeOption,
     CUSTOM,
 )
-from quantumvitas.presets.variants_registry import (
+from qmatsuite.presets.variants_registry import (
     detect_dimension_for_step,
     OCCUPATIONS_SCHEME_VARIANT,
 )
-from quantumvitas.presets.paramspace import (
+from qmatsuite.presets.paramspace import (
     get_occupations_scheme_paramspace,
     get_precision_paramspace,
     get_magnetism_paramspace,
 )
-from quantumvitas.presets.oracle import Oracle
+from qmatsuite.presets.oracle import Oracle
 
 
 class TestKeyAccessEnforcement:
@@ -133,7 +133,7 @@ class TestKeyAccessEnforcement:
     
     def test_precision_uses_oracle_for_occupations(self):
         """Precision compile uses Oracle to check degauss applicability."""
-        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
+        from qmatsuite.presets.variants_registry import compile_dimension_patch_for_step
         
         # Test that precision compile uses oracle, not direct YAML read
         step_yaml = {

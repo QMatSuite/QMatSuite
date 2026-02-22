@@ -17,7 +17,7 @@ AssertionError: calc.yaml pseudo_set_sha not updated: expected 52d2d981dddaaec4b
 
 **Expected Behavior**:
 1. Test sets `pseudo_set_sha: WRONG_SHA` in `calc.yaml`
-2. Test calls `QVService.run_calculation()`
+2. Test calls `QMSService.run_calculation()`
 3. Step0 preparation should run (even with mocked `JobExecutor.execute`)
 4. `refresh_calc_pseudo_records_after_step0()` should compute fresh SHA and update `calc.yaml`
 5. Test reads `calc.yaml` and expects `pseudo_set_sha` to match computed SHA
@@ -29,7 +29,7 @@ AssertionError: calc.yaml pseudo_set_sha not updated: expected 52d2d981dddaaec4b
 
 ## Code Changes Made
 
-### 1. Modified `src/quantumvitas/core/pseudo_runtime.py`
+### 1. Modified `src/qmatsuite/core/pseudo_runtime.py`
 
 **Function**: `refresh_calc_pseudo_records_after_step0()`
 
@@ -42,9 +42,9 @@ AssertionError: calc.yaml pseudo_set_sha not updated: expected 52d2d981dddaaec4b
 
 ```python
 # Update pseudo_set_sha in same transaction
-from quantumvitas.calculation.hash_utils import compute_pseudo_set_sha
+from qmatsuite.calculation.hash_utils import compute_pseudo_set_sha
 import yaml
-from quantumvitas.core.locking import calc_edit_lock
+from qmatsuite.core.locking import calc_edit_lock
 
 project_pseudo_dir = project_root / "pseudo"
 fresh_pseudo_sha = compute_pseudo_set_sha(project_pseudo_dir, wf_model.species_map or {})
@@ -62,7 +62,7 @@ with calc_edit_lock(calculation_dir):
     calculation_yaml.write_text(yaml.safe_dump(calc_data, sort_keys=False))
 ```
 
-### 2. Modified `src/quantumvitas/calculation/runner.py`
+### 2. Modified `src/qmatsuite/calculation/runner.py`
 
 **Function**: `CalculationRunner.run()`
 
@@ -112,20 +112,20 @@ if report and report.warnings:
 2. **Test Execution**:
    - Mocks `JobExecutor.execute` to avoid actual job execution
    - Mocks `ensure_qe_pseudos` to return fake result
-   - Calls `QVService.run_calculation()`
+   - Calls `QMSService.run_calculation()`
 
-3. **API Layer** (`src/quantumvitas/api.py`):
+3. **API Layer** (`src/qmatsuite/api.py`):
    - Preflight check detects SHA mismatch and logs warning (line 1242)
    - Calls `CalculationRunner.run()`
 
-4. **Runner Layer** (`src/quantumvitas/calculation/runner.py`):
+4. **Runner Layer** (`src/qmatsuite/calculation/runner.py`):
    - Step0 preparation (lines 180-217):
      - Checks `if calculation.species_map:` (line 182)
      - Calls `species_map_to_selections()` (line 190)
      - If `selections` is empty, `report = None`
      - Calls `refresh_calc_pseudo_records_after_step0()` (line 208)
 
-5. **Pseudo Runtime** (`src/quantumvitas/core/pseudo_runtime.py`):
+5. **Pseudo Runtime** (`src/qmatsuite/core/pseudo_runtime.py`):
    - `refresh_calc_pseudo_records_after_step0()`:
      - Loads `calc.yaml` and `wf_model` (line 694)
      - Checks `if not wf_model.species_map: return` (line 695)
@@ -202,7 +202,7 @@ if report and report.warnings:
 
 ## Deep Code Review
 
-### File: `src/quantumvitas/core/pseudo_runtime.py`
+### File: `src/qmatsuite/core/pseudo_runtime.py`
 
 **Function**: `refresh_calc_pseudo_records_after_step0()`
 
@@ -228,7 +228,7 @@ if report and report.warnings:
    - This should preserve all fields, but might not preserve exact formatting
    - Could cause issues if other code expects specific formatting
 
-### File: `src/quantumvitas/calculation/runner.py`
+### File: `src/qmatsuite/calculation/runner.py`
 
 **Function**: `CalculationRunner.run()`
 
@@ -374,7 +374,7 @@ if report and report.warnings:
 **Test Setup**:
 - Sets `pseudo_set_sha: WRONG_SHA` in `calc.yaml`
 - Mocks `JobExecutor.execute` and `ensure_qe_pseudos`
-- Calls `QVService.run_calculation()`
+- Calls `QMSService.run_calculation()`
 
 **Test Assertion**:
 - Expects `pseudo_set_sha` in `calc.yaml` to match computed SHA

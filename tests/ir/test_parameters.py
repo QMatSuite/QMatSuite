@@ -6,7 +6,7 @@ Tests that IR registry is complete, valid, and contains all required parameters.
 
 import pytest
 
-from quantumvitas.ir.parameters import (
+from qmatsuite.ir.parameters import (
     IR_REGISTRY,
     IRParameter,
     validate_ir_registry,

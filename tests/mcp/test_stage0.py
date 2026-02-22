@@ -18,21 +18,21 @@ import pytest
 # ---------------------------------------------------------------------------
 
 def test_envelope_shape():
-    from quantumvitas.mcp.envelope import make_response
+    from qmatsuite.mcp.envelope import make_response
 
     result = make_response({"x": 1})
     assert result == {"status": "success", "data": {"x": 1}, "context_hint": None, "warnings": []}
 
 
 def test_envelope_with_hint():
-    from quantumvitas.mcp.envelope import make_response
+    from qmatsuite.mcp.envelope import make_response
 
     result = make_response({"x": 1}, context_hint="some hint")
     assert result["context_hint"] == "some hint"
 
 
 def test_envelope_with_warnings():
-    from quantumvitas.mcp.envelope import make_response
+    from qmatsuite.mcp.envelope import make_response
 
     result = make_response({"x": 1}, warnings=["w1", "w2"])
     assert result["warnings"] == ["w1", "w2"]
@@ -43,7 +43,7 @@ def test_envelope_with_warnings():
 # ---------------------------------------------------------------------------
 
 def test_ping_tool_returns_envelope():
-    from quantumvitas.mcp.tools.ping import ping
+    from qmatsuite.mcp.tools.ping import ping
 
     # @mcp.tool wraps the function in a FunctionTool; call .fn() for the raw function
     result = ping.fn()
@@ -60,7 +60,7 @@ def test_ping_tool_returns_envelope():
 # ---------------------------------------------------------------------------
 
 def test_mcp_server_has_ping_tool():
-    from quantumvitas.mcp.server import mcp
+    from qmatsuite.mcp.server import mcp
 
     # FastMCP v2: get_tools() is async and returns dict[str, FunctionTool]
     tools = asyncio.run(mcp._tool_manager.get_tools())
@@ -84,7 +84,7 @@ class _StdioClient:
 
     def __init__(self):
         self.proc = subprocess.Popen(
-            [sys.executable, "-m", "quantumvitas.mcp.server"],
+            [sys.executable, "-m", "qmatsuite.mcp.server"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

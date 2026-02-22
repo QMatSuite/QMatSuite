@@ -45,7 +45,7 @@ This section covers the k-distance fix and design doc finalization. Both are com
 
 **Problem:** `_compute_k_distances()` and `_read_kpoints_labels()` used fractional Euclidean distance, which is incorrect for non-cubic cells because it ignores the metric tensor of reciprocal space.
 
-**Fix applied in** `src/quantumvitas/drivers/vasp/parsers/bands.py`:
+**Fix applied in** `src/qmatsuite/drivers/vasp/parsers/bands.py`:
 
 1. New helper `_reciprocal_lattice(lattice)` computes `B = 2π * inv(A)^T`
 2. `_compute_k_distances(kpoints, lattice)` transforms `dk_frac @ recip` to Cartesian reciprocal space before computing Euclidean norm
@@ -54,7 +54,7 @@ This section covers the k-distance fix and design doc finalization. Both are com
 5. POSCAR added to `source_files` tracking
 6. Warning emitted if no POSCAR found (fallback to fractional Euclidean)
 
-**New import:** `from quantumvitas.drivers.vasp.io.poscar import parse_poscar_text`
+**New import:** `from qmatsuite.drivers.vasp.io.poscar import parse_poscar_text`
 
 **Why existing tests survive:**
 - Si fixture has cubic POSCAR (a=5.4309 Å). For cubic cells, reciprocal Cartesian = `(2π/a) × fractional Euclidean` — only scale changes, not shape
@@ -88,10 +88,10 @@ This section covers the k-distance fix and design doc finalization. Both are com
 
 | File | Action |
 |------|--------|
-| `src/quantumvitas/core/analysis/evidence.py` | **CREATE** — `EvidenceBundle` dataclass |
-| `src/quantumvitas/core/analysis/orchestrator.py` | **MODIFY** — build `EvidenceBundle` instead of kwargs dict |
-| `src/quantumvitas/drivers/vasp/parsers/bands.py` | **MODIFY** — `parse(evidence: EvidenceBundle)` |
-| `src/quantumvitas/drivers/qe/parsers/bands.py` | **MODIFY** — `parse(evidence: EvidenceBundle)` |
+| `src/qmatsuite/core/analysis/evidence.py` | **CREATE** — `EvidenceBundle` dataclass |
+| `src/qmatsuite/core/analysis/orchestrator.py` | **MODIFY** — build `EvidenceBundle` instead of kwargs dict |
+| `src/qmatsuite/drivers/vasp/parsers/bands.py` | **MODIFY** — `parse(evidence: EvidenceBundle)` |
+| `src/qmatsuite/drivers/qe/parsers/bands.py` | **MODIFY** — `parse(evidence: EvidenceBundle)` |
 | `tests/drivers/vasp/test_vasp_bands_parser.py` | **MODIFY** — update `parse()` calls |
 | `tests/drivers/qe/test_qe_bands_parser.py` | **MODIFY** — update `parse()` calls |
 
@@ -119,7 +119,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### 2.2 DOS Model
 
-**File to create:** `src/quantumvitas/core/analysis/dos/model.py`
+**File to create:** `src/qmatsuite/core/analysis/dos/model.py`
 
 **DOS dataclass fields:**
 - `meta: AnalysisObjectMeta`
@@ -136,7 +136,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### 2.3 DOSCAR Parser
 
-**File to create:** `src/quantumvitas/drivers/vasp/parsers/dos.py`
+**File to create:** `src/qmatsuite/drivers/vasp/parsers/dos.py`
 
 **Class:** `VASPDOSProvider` with `@register_parser("vasp", "dos")`
 
@@ -189,8 +189,8 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 **Files:**
 | File | Action |
 |------|--------|
-| `src/quantumvitas/core/analysis/convergence/model.py` | **CREATE** — `Convergence` dataclass + `to_primitives()` |
-| `src/quantumvitas/drivers/vasp/parsers/convergence.py` | **CREATE** — `VASPConvergenceProvider` + `parse_oszicar()` |
+| `src/qmatsuite/core/analysis/convergence/model.py` | **CREATE** — `Convergence` dataclass + `to_primitives()` |
+| `src/qmatsuite/drivers/vasp/parsers/convergence.py` | **CREATE** — `VASPConvergenceProvider` + `parse_oszicar()` |
 | `tests/data/analysis_vasp_convergence/` | **CREATE** — OSZICAR fixtures (scf, relax, md) |
 | `tests/drivers/vasp/test_vasp_convergence_parser.py` | **CREATE** — unit tests |
 
@@ -209,7 +209,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 **Files:**
 | File | Action |
 |------|--------|
-| `src/quantumvitas/drivers/vasp/parsers/trajectory.py` | **CREATE** — `VASPTrajectoryProvider` |
+| `src/qmatsuite/drivers/vasp/parsers/trajectory.py` | **CREATE** — `VASPTrajectoryProvider` |
 | `tests/data/analysis_vasp_trajectory/` | **CREATE** — vasprun.xml + XDATCAR fixtures |
 | `tests/drivers/vasp/test_vasp_trajectory_parser.py` | **CREATE** — unit tests |
 
@@ -236,7 +236,7 @@ for event, elem in ET.iterparse(path, events=("end",)):
 **Files:**
 | File | Action |
 |------|--------|
-| `src/quantumvitas/drivers/vasp/parsers/field3d.py` | **CREATE** — `VASPField3DProvider` + `parse_chgcar_text()` |
+| `src/qmatsuite/drivers/vasp/parsers/field3d.py` | **CREATE** — `VASPField3DProvider` + `parse_chgcar_text()` |
 | `tests/data/analysis_vasp_field3d/` | **CREATE** — small CHGCAR + LOCPOT fixtures |
 | `tests/drivers/vasp/test_vasp_field3d_parser.py` | **CREATE** — unit tests |
 
@@ -275,7 +275,7 @@ for event, elem in ET.iterparse(path, events=("end",)):
 Add gate test verifying VASP driver declares capabilities for all 5 object_types:
 ```python
 def test_vasp_analysis_capabilities_cover_five_types():
-    from quantumvitas.drivers.vasp.driver import VASPDriver
+    from qmatsuite.drivers.vasp.driver import VASPDriver
     driver = VASPDriver()
     object_types = {cap.object_type for cap in driver.ANALYSIS_CAPABILITIES}
     assert {"bands", "dos", "convergence", "trajectory", "field3d"}.issubset(object_types)
@@ -312,10 +312,10 @@ Expected: all existing tests pass + new tests for DOS, convergence, trajectory, 
 **Date:** 2026-02-09
 
 **Completed tasks:**
-- ✓ Created `src/quantumvitas/core/analysis/evidence.py` with `EvidenceBundle` dataclass
-- ✓ Modified `src/quantumvitas/core/analysis/orchestrator.py` to build and pass `EvidenceBundle`
-- ✓ Updated `src/quantumvitas/drivers/vasp/parsers/bands.py` to accept `EvidenceBundle`
-- ✓ Updated `src/quantumvitas/drivers/qe/parsers/bands.py` to accept `EvidenceBundle`
+- ✓ Created `src/qmatsuite/core/analysis/evidence.py` with `EvidenceBundle` dataclass
+- ✓ Modified `src/qmatsuite/core/analysis/orchestrator.py` to build and pass `EvidenceBundle`
+- ✓ Updated `src/qmatsuite/drivers/vasp/parsers/bands.py` to accept `EvidenceBundle`
+- ✓ Updated `src/qmatsuite/drivers/qe/parsers/bands.py` to accept `EvidenceBundle`
 - ✓ Updated all test files to use `EvidenceBundle`
 
 **Verification:**
@@ -329,10 +329,10 @@ source .venv/bin/activate && python -m pytest tests/drivers/vasp/test_vasp_bands
 **Date:** 2026-02-09
 
 **Completed tasks:**
-- ✓ Created `src/quantumvitas/core/analysis/dos/model.py` with `DOS` dataclass and `to_primitives()`
-- ✓ Created `src/quantumvitas/core/analysis/dos/__init__.py`
-- ✓ Created `src/quantumvitas/drivers/vasp/parsers/dos.py` with `VASPDOSProvider`
-- ✓ Registered DOS capability in `src/quantumvitas/drivers/vasp/driver.py`
+- ✓ Created `src/qmatsuite/core/analysis/dos/model.py` with `DOS` dataclass and `to_primitives()`
+- ✓ Created `src/qmatsuite/core/analysis/dos/__init__.py`
+- ✓ Created `src/qmatsuite/drivers/vasp/parsers/dos.py` with `VASPDOSProvider`
+- ✓ Registered DOS capability in `src/qmatsuite/drivers/vasp/driver.py`
 - ✓ Generated real VASP fixtures using `scripts/generate_vasp_dos_fixtures.py`:
   - `tests/data/analysis_vasp_dos/DOSCAR` (Si non-spin, NEDOS=301)
   - `tests/data/analysis_vasp_dos/DOSCAR_spin` (Fe spin-polarized, NEDOS=301)
@@ -366,17 +366,17 @@ source .venv/bin/activate && python -m pytest tests/drivers/vasp/test_vasp_dos_p
 - ✓ Fixed `_Provider.parse()` in `tests/gates/test_analysis_invariants.py`
 
 **Step 1: Convergence Model + VASP Provider (COMPLETED ✓)**
-- ✓ Created `src/quantumvitas/core/analysis/convergence/__init__.py` and `model.py`
+- ✓ Created `src/qmatsuite/core/analysis/convergence/__init__.py` and `model.py`
   - Engine-agnostic `Convergence` dataclass: SCF steps, ionic steps, algorithm, converged flag
   - `to_primitives()` produces `Series1D` for SCF energy, SCF dE, ionic energy, and ionic max force
-- ✓ Created `src/quantumvitas/drivers/vasp/parsers/convergence.py` with `VASPConvergenceProvider`
+- ✓ Created `src/qmatsuite/drivers/vasp/parsers/convergence.py` with `VASPConvergenceProvider`
   - OSZICAR parser: DAV/CG/RMM electronic lines, F= ionic lines, T= MD lines
   - VASP Fortran float regex: `[-+]?\d*\.\d+E[+-]\d+` (handles `-.10586221E+02`)
 - ✓ Created fixtures: `tests/data/analysis_vasp_convergence/OSZICAR` (3 ionic steps, 21 SCF) + `OSZICAR_md`
 - ✓ Created `tests/drivers/vasp/test_vasp_convergence_parser.py` (10 tests)
 
 **Step 2: Trajectory Provider (COMPLETED ✓)**
-- ✓ Created `src/quantumvitas/drivers/vasp/parsers/trajectory.py` with `VASPTrajectoryProvider`
+- ✓ Created `src/qmatsuite/drivers/vasp/parsers/trajectory.py` with `VASPTrajectoryProvider`
   - Primary: vasprun.xml full parse (species, positions, forces, stress, energy per calculation)
   - Fallback: XDATCAR (positions) + OSZICAR (energies)
   - Reuses existing `Trajectory` + `Frame` from `core/analysis/trajectory/model.py`
@@ -384,7 +384,7 @@ source .venv/bin/activate && python -m pytest tests/drivers/vasp/test_vasp_dos_p
 - ✓ Created `tests/drivers/vasp/test_vasp_trajectory_parser.py` (11 tests, including fallback path)
 
 **Step 3: field3d Provider (COMPLETED ✓)**
-- ✓ Created `src/quantumvitas/drivers/vasp/parsers/field3d.py` with `VASPField3DProvider` + `Field3D` class
+- ✓ Created `src/qmatsuite/drivers/vasp/parsers/field3d.py` with `VASPField3DProvider` + `Field3D` class
   - Parses CHGCAR/LOCPOT/ELFCAR/PARCHG format (POSCAR header + grid + values)
   - `Field3D.to_primitives()` produces volume_metadata, preview via factor-4 downsampling
   - Discovery: detects all volumetric files, parses primary (CHGCAR > LOCPOT > ELFCAR > PARCHG)
@@ -392,8 +392,8 @@ source .venv/bin/activate && python -m pytest tests/drivers/vasp/test_vasp_dos_p
 - ✓ Created `tests/drivers/vasp/test_vasp_field3d_parser.py` (11 tests)
 
 **Step 4: Wiring + Gate Test (COMPLETED ✓)**
-- ✓ Updated `src/quantumvitas/drivers/vasp/parsers/__init__.py` — all 6 providers registered
-- ✓ Updated `src/quantumvitas/drivers/vasp/driver.py` — 8 capabilities (bands, dos, convergence×3, trajectory×2, field3d)
+- ✓ Updated `src/qmatsuite/drivers/vasp/parsers/__init__.py` — all 6 providers registered
+- ✓ Updated `src/qmatsuite/drivers/vasp/driver.py` — 8 capabilities (bands, dos, convergence×3, trajectory×2, field3d)
 - ✓ Added `test_vasp_analysis_capabilities_cover_five_types()` gate test
 - ✓ Updated `tests/daemon/test_vasp_bands_golden_daemon.py` — analysis_snapshots now expects multiple rows
 

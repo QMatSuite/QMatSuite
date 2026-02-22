@@ -23,12 +23,12 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root))
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.io import QEInputParser, QEInputGenerator
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
+from qmatsuite.io import QEInputParser, QEInputGenerator
 
 # Pseudopotential resolution is handled by ensure_qe_pseudos (already migrated in this file)
-from quantumvitas.calculation.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
+from qmatsuite.calculation.input_runner import set_outdir_to_temp, set_pseudo_dir_to_temp
 from tests.core import run_command_with_timeout, TimeoutError
 from tests.core.qe_test_utils import compare_with_benchmark
 
@@ -245,7 +245,7 @@ def run_test_category(
         if test_files:
             first_test_path = category_dir / test_files[0][0]
             if first_test_path.exists():
-                from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+                from qmatsuite.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
                 # Build additional search directories from test_suite_dir
                 additional_search_dirs = []
                 if test_suite_dir:
@@ -259,7 +259,7 @@ def run_test_category(
                 current = Path(first_test_path).parent
                 project_root = None
                 while current != current.parent:
-                    if (current / "pseudo").exists() or (current / "project.qv.yml").exists():
+                    if (current / "pseudo").exists() or (current / "project.qms.yml").exists():
                         project_root = current
                         break
                     current = current.parent
@@ -328,7 +328,7 @@ def run_test_category(
             QEInputGenerator.write_file(qe_input, generated_input)
             
             # Ensure pseudopotentials
-            from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+            from qmatsuite.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
             # Build additional search directories from test_suite_dir
             additional_search_dirs = []
             if test_suite_dir:
@@ -342,7 +342,7 @@ def run_test_category(
             current = Path(test_path).parent
             project_root = None
             while current != current.parent:
-                if (current / "pseudo").exists() or (current / "project.qv.yml").exists():
+                if (current / "pseudo").exists() or (current / "project.qms.yml").exists():
                     project_root = current
                     break
                 current = current.parent
@@ -427,7 +427,7 @@ def run_test_category(
                     verify_file = output_file if output_file.exists() and output_file.stat().st_size > 0 else stdout_file
                     if verify_file.exists():
                         from tests.core.qe_step_verification import verify_step_result
-                        from quantumvitas.core.engines.qe_workflow import StepResult
+                        from qmatsuite.core.engines.qe_workflow import StepResult
                         
                         step_result = StepResult(
                             step_type=step_type,
@@ -626,7 +626,7 @@ def main():
     args = parser.parse_args()
     
     # Auto-detect QE home if not provided
-    from quantumvitas.core.engines.qe_installation import QEInstallation
+    from qmatsuite.core.engines.qe_installation import QEInstallation
     if args.qe_home:
         qe_installation = QEInstallation(qe_home=args.qe_home)
     else:

@@ -161,7 +161,7 @@ export function VolumeViewerSandbox() {
       : volume.metadata.grid_shape as [number, number, number];
     
     // Read blob via preload API
-    const buffer = await (window as any).qv.readBlob(blobId, calcDir);
+    const buffer = await (window as any).qms.readBlob(blobId, calcDir);
     
     // Check if aborted after async operation
     if (signal.aborted) {
@@ -183,7 +183,7 @@ export function VolumeViewerSandbox() {
 
   const loadFixtures = useCallback(async () => {
     try {
-      const response = await (window as any).qv.request('list_wannier_3d_fixtures', {});
+      const response = await (window as any).qms.request('list_wannier_3d_fixtures', {});
       if (response.ok && response.data?.fixtures) {
         setFixtures(response.data.fixtures);
       } else {
@@ -228,7 +228,7 @@ export function VolumeViewerSandbox() {
     meshKeyRef.current += 1; // Force mesh remount
     
     // Use temporary calc_dir
-    const calcDir = '/tmp/qv-sandbox-volume';
+    const calcDir = '/tmp/qms-sandbox-volume';
     
     try {
       // P2: Add band_index parameter for BXSF
@@ -240,7 +240,7 @@ export function VolumeViewerSandbox() {
         payload.band_index = bandIndex;
       }
       
-      const response = await (window as any).qv.request('compile_fixture_volume', payload);
+      const response = await (window as any).qms.request('compile_fixture_volume', payload);
       
       // P0: Check if still current after async
       if (abortController.signal.aborted || currentSeq !== latestSeqRef.current || compileKey !== latestKeyRef.current) {

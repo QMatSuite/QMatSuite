@@ -21,12 +21,12 @@ This constitution governs:
 
 | Layer | Packages |
 |-------|----------|
-| **API** | `quantumvitas.api.*` |
-| **Daemon** | `quantumvitas.daemon.*` |
-| **CLI** | `quantumvitas.cli.*` |
+| **API** | `qmatsuite.api.*` |
+| **Daemon** | `qmatsuite.daemon.*` |
+| **CLI** | `qmatsuite.cli.*` |
 | **GUI** | `gui/src/**` (TypeScript) |
 
-Everything else (`quantumvitas.core.*`, `quantumvitas.io.*`, `quantumvitas.analysis.*`, `quantumvitas.calculation.*`, `quantumvitas.drivers.*`, `quantumvitas.presets.*`, `quantumvitas.workflow.*`, `quantumvitas.execution.*`, `quantumvitas.project.*`, `quantumvitas.history.*`, `quantumvitas.engine.*`) is **core/runtime**—the internal implementation below the API.
+Everything else (`qmatsuite.core.*`, `qmatsuite.io.*`, `qmatsuite.analysis.*`, `qmatsuite.calculation.*`, `qmatsuite.drivers.*`, `qmatsuite.presets.*`, `qmatsuite.workflow.*`, `qmatsuite.execution.*`, `qmatsuite.project.*`, `qmatsuite.history.*`, `qmatsuite.engine.*`) is **core/runtime**—the internal implementation below the API.
 
 ### 1.3 Normative Language
 
@@ -44,29 +44,29 @@ Everything else (`quantumvitas.core.*`, `quantumvitas.io.*`, `quantumvitas.analy
 Runtime backend code belongs to exactly one of:
 
 1. **Frontends**: daemon, CLI (and later GUI/Jupyter/agent adapters)
-2. **API facade**: `quantumvitas.api` (capabilities + DTOs + errors + utils)
+2. **API facade**: `qmatsuite.api` (capabilities + DTOs + errors + utils)
 3. **Core/runtime**: everything else below API
 
 **Import rule:**
 
 ```
 ALLOWED for daemon/CLI:
-  from quantumvitas.api import ...
-  from quantumvitas.api.utils import ...
-  from quantumvitas.api.errors import ...
+  from qmatsuite.api import ...
+  from qmatsuite.api.utils import ...
+  from qmatsuite.api.errors import ...
 
 FORBIDDEN for daemon/CLI:
-  from quantumvitas.core import ...
-  from quantumvitas.io import ...
-  from quantumvitas.analysis import ...
-  from quantumvitas.calculation import ...
-  from quantumvitas.drivers import ...
-  from quantumvitas.presets import ...
-  from quantumvitas.workflow import ...
-  from quantumvitas.execution import ...
-  from quantumvitas.project import ...
-  from quantumvitas.history import ...
-  from quantumvitas.engine import ...
+  from qmatsuite.core import ...
+  from qmatsuite.io import ...
+  from qmatsuite.analysis import ...
+  from qmatsuite.calculation import ...
+  from qmatsuite.drivers import ...
+  from qmatsuite.presets import ...
+  from qmatsuite.workflow import ...
+  from qmatsuite.execution import ...
+  from qmatsuite.project import ...
+  from qmatsuite.history import ...
+  from qmatsuite.engine import ...
 ```
 
 **Rationale**: The API layer is the ONLY stable contract. Direct core/runtime imports create coupling that prevents internal refactoring.
@@ -83,7 +83,7 @@ FORBIDDEN for daemon/CLI:
 
 **Exception**: A utils function MAY be a transparent pass-through proxy to some core function ONLY if:
 1. It is truly needed as a helper at the frontend boundary
-2. It cannot reasonably live as a QVService capability method
+2. It cannot reasonably live as a QMSService capability method
 3. It has a docstring justification explaining WHY it must exist
 4. It is individually audited and allowlisted
 
@@ -100,11 +100,11 @@ FORBIDDEN for daemon/CLI:
 
 | Pattern | Violation Type | Remedy |
 |---------|---------------|--------|
-| Domain reexports (analysis, presets, drivers, etc.) | DOMAIN_REEXPORT | Move to QVService method |
+| Domain reexports (analysis, presets, drivers, etc.) | DOMAIN_REEXPORT | Move to QMSService method |
 | Service delegation (calls `get_service()`) | SERVICE_DELEGATION | Call service method directly |
 | Multi-step orchestration logic | ORCHESTRATION | Service method or internal |
 | Class reexports (exposing internal types) | CLASS_EXPORT | Return dicts/DTOs instead |
-| Online search functions | DOMAIN_CAPABILITY | `QVService.OnlineSearch.*` |
+| Online search functions | DOMAIN_CAPABILITY | `QMSService.OnlineSearch.*` |
 
 #### H2.3 Docstring Justification Requirement
 
@@ -122,9 +122,9 @@ def is_ulid_like(s: str) -> bool:
     parsing before service instantiation. Cannot be service method because
     it's called before project context is available.
 
-    PROXIES: quantumvitas.core.resolution._is_ulid_like
+    PROXIES: qmatsuite.core.resolution._is_ulid_like
     """
-    from quantumvitas.core.resolution import _is_ulid_like
+    from qmatsuite.core.resolution import _is_ulid_like
     return _is_ulid_like(s)
 ```
 
@@ -136,16 +136,16 @@ def is_ulid_like(s: str) -> bool:
 
 **Online search/fetch/score/cache behavior is a CAPABILITY, not a utility.**
 
-All online structure search functions MUST be exposed as QVService methods, NOT as utils reexports.
+All online structure search functions MUST be exposed as QMSService methods, NOT as utils reexports.
 
 | Forbidden in utils | Required location |
 |-------------------|-------------------|
-| `search_online_structures` | `QVService.OnlineSearch.search()` |
-| `fetch_structure_from_optimade` | `QVService.OnlineSearch.fetch()` |
+| `search_online_structures` | `QMSService.OnlineSearch.search()` |
+| `fetch_structure_from_optimade` | `QMSService.OnlineSearch.fetch()` |
 | `score_candidate` | Internal to search capability |
 | `extract_provenance` | Internal to search capability |
 | `reduce_formula` | Internal or pure helper |
-| `OnlineStructureCache` class | Factory method in QVService |
+| `OnlineStructureCache` class | Factory method in QMSService |
 
 ---
 
@@ -156,7 +156,7 @@ All online structure search functions MUST be exposed as QVService methods, NOT 
 They pass through values unchanged. Specifically:
 
 - **No step type conversion**: Daemon/CLI read `step_type_gen` and `step_type_spec` directly from DTOs
-- **No selector resolution**: Resolution happens inside QVService, not in daemon/CLI
+- **No selector resolution**: Resolution happens inside QMSService, not in daemon/CLI
 - **No path canonicalization**: Paths come from DTOs or are passed through
 
 **API MUST NOT surface conversion utilities:**
@@ -229,11 +229,11 @@ Frontends (daemon, CLI, GUI, Jupyter adapters) MUST NOT:
 
 #### H9.1 YAML SSOT Files
 
-The following YAML files are Single Source of Truth (SSOT) and MUST only be modified by their respective `YamlDoc` subclasses in `quantumvitas.core.yamldoc`:
+The following YAML files are Single Source of Truth (SSOT) and MUST only be modified by their respective `YamlDoc` subclasses in `qmatsuite.core.yamldoc`:
 
 | File Pattern | Allowed Writer |
 |--------------|----------------|
-| `project.qv.yml` | `ProjectDoc` |
+| `project.qms.yml` | `ProjectDoc` |
 | `calculation.yaml` | `CalcDoc` |
 | `*.step.yaml` | `StepDoc` |
 
@@ -272,11 +272,11 @@ Frontends MAY write to:
 
 ### Law G1: Surface Accounting (Flattening Law)
 
-**Track and govern ALL public entrypoints across the entire `quantumvitas.api` tree:**
+**Track and govern ALL public entrypoints across the entire `qmatsuite.api` tree:**
 
 - Top-level functions in `api/__init__.py`
-- QVService static methods
-- QVService nested service methods
+- QMSService static methods
+- QMSService nested service methods
 - All utils exports
 - All DTO classes
 - All error classes
@@ -301,7 +301,7 @@ Frontends MAY write to:
 
 ---
 
-### Law G3: Static QVService Methods
+### Law G3: Static QMSService Methods
 
 **Goal: near-zero static methods.**
 
@@ -321,7 +321,7 @@ Do NOT maintain a detailed allowlist—too easy to loophole. Justify each static
 
 Adding any of the following triggers gate review:
 - New public function in `api/__init__.py`
-- New static method on `QVService`
+- New static method on `QMSService`
 - New export in `api/utils.py`
 - New nested service class
 
@@ -331,7 +331,7 @@ Adding any of the following triggers gate review:
 
 | Gate ID | Name | Checks |
 |---------|------|--------|
-| G-IMPORT | Import Layering | daemon/CLI import only from quantumvitas.api |
+| G-IMPORT | Import Layering | daemon/CLI import only from qmatsuite.api |
 | G-UTILS | Utils Allowlist | Every utils export has docstring justification |
 | G-CONVERT | No Conversion Above | No step type / selector conversion in daemon/CLI |
 | G-SURFACE | Surface Accounting | Total entrypoints within approved bounds |
@@ -347,8 +347,8 @@ Adding any of the following triggers gate review:
 | Category | Count |
 |----------|-------|
 | `api/__init__.py` exports | 24 |
-| QVService static methods | 38 |
-| QVService nested service methods | ~100 |
+| QMSService static methods | 38 |
+| QMSService nested service methods | ~100 |
 | Utils exports | 88 |
 | DTOs | 13 |
 | Errors | 9 |
@@ -381,7 +381,7 @@ Adding any of the following triggers gate review:
 
 1. **Phase 1**: Add docstring justifications to legitimate utils proxies
 2. **Phase 2**: Delete unused utils (0 daemon + 0 CLI usage)
-3. **Phase 3**: Move online search to QVService capability
+3. **Phase 3**: Move online search to QMSService capability
 4. **Phase 4**: Move domain reexports to service methods
 5. **Phase 5**: Deprecate duplicate static methods
 
@@ -451,7 +451,7 @@ Location: `api/utils.py`
 | Key | Type | Contract | Description |
 |-----|------|----------|-------------|
 | `detection` | dict | **stable** | QE detection result (found, qe_home, version, executables) |
-| `environment` | dict | **stable** | Environment info (python_version, qv_version, qe_found) |
+| `environment` | dict | **stable** | Environment info (python_version, qms_version, qe_found) |
 | `available_engines` | list | debug/diagnostic | Available QE engines (internal) |
 | `discovered` | list | debug/diagnostic | Auto-discovered engines (internal, cached) |
 
@@ -479,7 +479,7 @@ Location: `api/utils.py`
 
 | Gate | Test File | Checks |
 |------|-----------|--------|
-| Gate B | `tests/gates/test_no_service_delegating_utils.py` | No `get_service()`/`QVService()` in utils functions |
+| Gate B | `tests/gates/test_no_service_delegating_utils.py` | No `get_service()`/`QMSService()` in utils functions |
 | Gate C | `tests/gates/test_no_stub_service_methods.py` | No stub/placeholder nested service methods |
 | Gate H9 | `tests/gates/test_frontend_no_yaml_write.py` | No direct YAML writes in frontends |
 
@@ -521,10 +521,10 @@ Location: `api/utils.py`
 ### E.4 Final Export List (≤30)
 
 ```python
-# quantumvitas.api.__all__
+# qmatsuite.api.__all__
 __all__ = [
     # Service
-    "QVService",
+    "QMSService",
     # Errors (9)
     "APIError", "NotFoundError", "AmbiguousError", "ValidationError",
     "ConflictError", "EngineError", "ConfigError", "FilesystemError", "InternalError",
@@ -539,7 +539,7 @@ __all__ = [
 ]
 ```
 
-### E.5 QVService Domains
+### E.5 QMSService Domains
 
 | Domain | Capabilities |
 |--------|--------------|

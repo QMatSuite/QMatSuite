@@ -31,29 +31,29 @@ test.describe('Analysis: DOS', () => {
       projectName: 'e2e-dos',
       parentDir: projectDir,
     });
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-home-project')).toBeVisible({ timeout: 10000 });
 
     // === Navigate to Calculations and select ===
     await navigateToView(appPage, 'calculations');
-    await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
-    const calcRow = appPage.getByTestId('qv-calculation-row').first();
+    await expect(appPage.getByTestId('qms-calculations-view')).toBeVisible({ timeout: 10000 });
+    const calcRow = appPage.getByTestId('qms-calculation-row').first();
     await expect(calcRow).toBeVisible({ timeout: 5000 });
     await calcRow.click();
 
     // === Run calculation ===
-    const runButton = appPage.getByTestId('qv-btn-run-calculation');
+    const runButton = appPage.getByTestId('qms-btn-run-calculation');
     await expect(runButton).toBeVisible();
     await expect(runButton).toBeEnabled();
     await runButton.click();
 
     // Wait for Run & Logs tab
-    const runLogsTab = appPage.getByTestId('qv-calc-tab-run');
+    const runLogsTab = appPage.getByTestId('qms-calc-tab-run');
     await expect(runLogsTab).toHaveClass(/calculations-workspace-tab--active/, { timeout: 5000 });
-    const runLogsPanel = appPage.getByTestId('qv-calc-run-logs-panel');
+    const runLogsPanel = appPage.getByTestId('qms-calc-run-logs-panel');
     await expect(runLogsPanel).toBeVisible({ timeout: 10000 });
 
     // Wait for job completion
-    const statusBadge = runLogsPanel.getByTestId('qv-job-status');
+    const statusBadge = runLogsPanel.getByTestId('qms-job-status');
     await expect(statusBadge).toBeVisible({ timeout: 30000 });
 
     const startTime = Date.now();
@@ -76,17 +76,17 @@ test.describe('Analysis: DOS', () => {
     if (!completed) throw new Error('Job did not complete in time');
 
     // === Switch to Analysis tab ===
-    const analysisTab = appPage.getByTestId('qv-calc-tab-analysis');
+    const analysisTab = appPage.getByTestId('qms-calc-tab-analysis');
     await expect(analysisTab).toBeVisible({ timeout: 5000 });
     await analysisTab.click();
     await expect(analysisTab).toHaveClass(/calculations-workspace-tab--active/, { timeout: 5000 });
 
-    const analysisPanel = appPage.getByTestId('qv-calc-analysis-panel');
+    const analysisPanel = appPage.getByTestId('qms-calc-analysis-panel');
     await expect(analysisPanel).toBeVisible({ timeout: 5000 });
     await appPage.waitForTimeout(2000);
 
     // === Click DOS step tab ===
-    const dosStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-dos"]');
+    const dosStepChip = analysisPanel.locator('[data-testid="qms-analysis-step-tab-dos"]');
     await expect(dosStepChip).toBeVisible({ timeout: 5000 });
     await dosStepChip.click();
 
@@ -97,8 +97,8 @@ test.describe('Analysis: DOS', () => {
     await expect(plotTab).toHaveClass(/--active/, { timeout: 5000 });
 
     // === Wait for loading to finish ===
-    const loadingIndicator = appPage.getByTestId('qv-analysis-loading');
-    const dosChart = appPage.getByTestId('qv-analysis-dos-chart');
+    const loadingIndicator = appPage.getByTestId('qms-analysis-loading');
+    const dosChart = appPage.getByTestId('qms-analysis-dos-chart');
 
     await expect(async () => {
       const isLoading = await loadingIndicator.isVisible().catch(() => false);
@@ -118,7 +118,7 @@ test.describe('Analysis: DOS', () => {
     expect(await lineElements.count()).toBeGreaterThan(0);
 
     // === Assert Fermi energy label ===
-    const fermiElement = appPage.getByTestId('qv-analysis-fermi');
+    const fermiElement = appPage.getByTestId('qms-analysis-fermi');
     await expect(fermiElement).toBeVisible();
     await expect(fermiElement).not.toHaveText(/^\s*$/, { timeout: 5000 });
   });

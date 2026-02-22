@@ -18,14 +18,14 @@ import textwrap
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc
-from quantumvitas.core.models import load_calculation
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc
+from qmatsuite.core.models import load_calculation
 
 
 # ─── helpers ────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 def _resolve_pw_bin() -> Path | None:
     """Try to find pw.x."""
     try:
-        from quantumvitas.core.engines.qe_resolver import resolve_qe_bin_dir
+        from qmatsuite.core.engines.qe_resolver import resolve_qe_bin_dir
         pw = resolve_qe_bin_dir() / "pw.x"
         if pw.is_file():
             return pw
@@ -55,7 +55,7 @@ def _resolve_pw_bin() -> Path | None:
 
 def _resolve_pw2qmcpack_bin() -> Path | None:
     try:
-        from quantumvitas.core.engines.qmcpack_resolver import resolve_pw2qmcpack_bin
+        from qmatsuite.core.engines.qmcpack_resolver import resolve_pw2qmcpack_bin
         return resolve_pw2qmcpack_bin()
     except FileNotFoundError:
         pass
@@ -69,7 +69,7 @@ def _resolve_pw2qmcpack_bin() -> Path | None:
 
 def _resolve_qmcpack_bin() -> Path | None:
     try:
-        from quantumvitas.core.engines.qmcpack_resolver import resolve_qmcpack_bin
+        from qmatsuite.core.engines.qmcpack_resolver import resolve_qmcpack_bin
         return resolve_qmcpack_bin()
     except FileNotFoundError:
         pass
@@ -224,7 +224,7 @@ def diamond_workflow_project(tmp_path: Path):
     assert h5_file.exists(), "pw2qmcpack did not produce HDF5 file"
 
     # ── Phase 3: Set up QMCPACK VMC via QMatSuite API ──
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=tmp_path / "qmcpack_project",
         name="QMCPACK Diamond Workflow Test",
     )
@@ -244,11 +244,11 @@ def diamond_workflow_project(tmp_path: Path):
     struct_file = tmp_path / "diamond.json"
     struct_file.write_text(json.dumps(structure.as_dict()))
 
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="Diamond C")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="Diamond C")
     structure_ulid = struct_result.meta.ulid
 
     # Create calculation with engine_family=qmcpack
-    calc_resolved = QVService(project_root).project.init_calculation(
+    calc_resolved = QMSService(project_root).project.init_calculation(
         name="diamond_vmc",
         structure_selector=structure_ulid,
     )
@@ -262,7 +262,7 @@ def diamond_workflow_project(tmp_path: Path):
     save_yaml_doc(calc_doc, calc_path)
 
     # Add VMC step
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     step_dto = svc.calculation.add_step(
         calc_selector=calc_id,
         step_type_gen="vmc",
@@ -366,7 +366,7 @@ def test_diamond_qe_to_qmcpack_workflow(diamond_workflow_project):
     assert len(scalar_files) > 0, "No scalar.dat files produced"
 
     # Parse and validate energy
-    from quantumvitas.drivers.qmcpack.parser import parse_scalar_dat
+    from qmatsuite.drivers.qmcpack.parser import parse_scalar_dat
     scalar_data = parse_scalar_dat(scalar_files[0])
 
     assert scalar_data.num_blocks > 0, "No data blocks in scalar.dat"

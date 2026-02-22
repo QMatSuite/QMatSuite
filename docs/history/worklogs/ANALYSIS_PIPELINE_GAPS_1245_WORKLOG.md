@@ -38,7 +38,7 @@ Tests: 36 total (9 per engine x 4 engines), all passing.
 
 ## Gap 2: Trajectory Transform Library (6 transforms)
 
-All transforms at `src/quantumvitas/core/analysis/transforms/`. Each subclasses `PrimitiveTransform`, uses `clone_bundle_for_transform()`, appends `TransformRecord`. No engine imports.
+All transforms at `src/qmatsuite/core/analysis/transforms/`. Each subclasses `PrimitiveTransform`, uses `clone_bundle_for_transform()`, appends `TransformRecord`. No engine imports.
 
 | Transform | File | Input | Output |
 |-----------|------|-------|--------|
@@ -107,21 +107,21 @@ Gate test total: 85 (up from 69).
 ## File Inventory
 
 ### New Files (21)
-- `src/quantumvitas/drivers/qe/parsers/convergence.py`
-- `src/quantumvitas/drivers/abinit/parsers/convergence.py`
-- `src/quantumvitas/drivers/siesta/parsers/convergence.py`
-- `src/quantumvitas/drivers/cp2k/parsers/convergence.py`
-- `src/quantumvitas/core/analysis/transforms/frame_slice.py`
-- `src/quantumvitas/core/analysis/transforms/smoothing.py`
-- `src/quantumvitas/core/analysis/transforms/msd.py`
-- `src/quantumvitas/core/analysis/transforms/rdf.py`
-- `src/quantumvitas/core/analysis/transforms/vacf.py`
-- `src/quantumvitas/core/analysis/transforms/diffusion.py`
-- `src/quantumvitas/drivers/qe/parsers/neb_trajectory.py`
-- `src/quantumvitas/drivers/psi4/parsers/__init__.py`
-- `src/quantumvitas/drivers/psi4/parsers/trajectory.py`
-- `src/quantumvitas/drivers/pyscf/parsers/__init__.py`
-- `src/quantumvitas/drivers/pyscf/parsers/trajectory.py`
+- `src/qmatsuite/drivers/qe/parsers/convergence.py`
+- `src/qmatsuite/drivers/abinit/parsers/convergence.py`
+- `src/qmatsuite/drivers/siesta/parsers/convergence.py`
+- `src/qmatsuite/drivers/cp2k/parsers/convergence.py`
+- `src/qmatsuite/core/analysis/transforms/frame_slice.py`
+- `src/qmatsuite/core/analysis/transforms/smoothing.py`
+- `src/qmatsuite/core/analysis/transforms/msd.py`
+- `src/qmatsuite/core/analysis/transforms/rdf.py`
+- `src/qmatsuite/core/analysis/transforms/vacf.py`
+- `src/qmatsuite/core/analysis/transforms/diffusion.py`
+- `src/qmatsuite/drivers/qe/parsers/neb_trajectory.py`
+- `src/qmatsuite/drivers/psi4/parsers/__init__.py`
+- `src/qmatsuite/drivers/psi4/parsers/trajectory.py`
+- `src/qmatsuite/drivers/pyscf/parsers/__init__.py`
+- `src/qmatsuite/drivers/pyscf/parsers/trajectory.py`
 - `tests/drivers/qe/test_qe_convergence_parser.py`
 - `tests/drivers/abinit/test_abinit_convergence_parser.py`
 - `tests/drivers/siesta/test_siesta_convergence_parser.py`
@@ -137,22 +137,22 @@ Gate test total: 85 (up from 69).
 - `tests/data/analysis_pyscf_trajectory/` (output.out)
 
 ### Modified Files (18)
-- `src/quantumvitas/drivers/qe/driver.py` (ANALYSIS_CAPABILITIES, SUPPORTED_GEN_STEPS)
-- `src/quantumvitas/drivers/qe/parsers/__init__.py` (convergence + neb_trajectory imports)
-- `src/quantumvitas/drivers/qe/step_types.py` (qe_neb StepTypeSpec)
-- `src/quantumvitas/drivers/abinit/driver.py` (md gen_step, capabilities)
-- `src/quantumvitas/drivers/abinit/parsers/__init__.py` (convergence import)
-- `src/quantumvitas/drivers/siesta/driver.py` (capabilities)
-- `src/quantumvitas/drivers/siesta/parsers/__init__.py` (convergence import)
-- `src/quantumvitas/drivers/cp2k/driver.py` (capabilities)
-- `src/quantumvitas/drivers/cp2k/parsers/__init__.py` (convergence import)
-- `src/quantumvitas/drivers/xtb/driver.py` (md gen_step, capabilities)
-- `src/quantumvitas/drivers/psi4/driver.py` (ANALYSIS_CAPABILITIES)
-- `src/quantumvitas/drivers/psi4/__init__.py` (parsers import)
-- `src/quantumvitas/drivers/pyscf/driver.py` (ANALYSIS_CAPABILITIES)
-- `src/quantumvitas/drivers/pyscf/__init__.py` (parsers import)
-- `src/quantumvitas/core/analysis/transforms/__init__.py` (6 new exports)
-- `src/quantumvitas/workflow/gen_steps.py` (neb gen step)
+- `src/qmatsuite/drivers/qe/driver.py` (ANALYSIS_CAPABILITIES, SUPPORTED_GEN_STEPS)
+- `src/qmatsuite/drivers/qe/parsers/__init__.py` (convergence + neb_trajectory imports)
+- `src/qmatsuite/drivers/qe/step_types.py` (qe_neb StepTypeSpec)
+- `src/qmatsuite/drivers/abinit/driver.py` (md gen_step, capabilities)
+- `src/qmatsuite/drivers/abinit/parsers/__init__.py` (convergence import)
+- `src/qmatsuite/drivers/siesta/driver.py` (capabilities)
+- `src/qmatsuite/drivers/siesta/parsers/__init__.py` (convergence import)
+- `src/qmatsuite/drivers/cp2k/driver.py` (capabilities)
+- `src/qmatsuite/drivers/cp2k/parsers/__init__.py` (convergence import)
+- `src/qmatsuite/drivers/xtb/driver.py` (md gen_step, capabilities)
+- `src/qmatsuite/drivers/psi4/driver.py` (ANALYSIS_CAPABILITIES)
+- `src/qmatsuite/drivers/psi4/__init__.py` (parsers import)
+- `src/qmatsuite/drivers/pyscf/driver.py` (ANALYSIS_CAPABILITIES)
+- `src/qmatsuite/drivers/pyscf/__init__.py` (parsers import)
+- `src/qmatsuite/core/analysis/transforms/__init__.py` (6 new exports)
+- `src/qmatsuite/workflow/gen_steps.py` (neb gen step)
 - `tests/gates/test_analysis_invariants.py` (new gate tests)
 - `tests/daemon/test_si_bands_golden_daemon.py` (convergence result handling)
 

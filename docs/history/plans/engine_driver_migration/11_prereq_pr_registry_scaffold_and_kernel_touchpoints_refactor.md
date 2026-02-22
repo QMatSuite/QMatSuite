@@ -24,22 +24,22 @@ Create the DriverRegistry infrastructure and refactor kernel touchpoints to use 
 
 | File | Purpose | Lines (est.) |
 |------|---------|--------------|
-| `src/quantumvitas/core/driver_protocol.py` | Protocol + BaseEngineDriver | ~200 |
-| `src/quantumvitas/core/driver_registry.py` | DriverRegistry singleton | ~250 |
-| `src/quantumvitas/drivers/__init__.py` | Driver auto-registration | ~30 |
-| `src/quantumvitas/drivers/qe_shim/__init__.py` | QE legacy shim | ~80 |
+| `src/qmatsuite/core/driver_protocol.py` | Protocol + BaseEngineDriver | ~200 |
+| `src/qmatsuite/core/driver_registry.py` | DriverRegistry singleton | ~250 |
+| `src/qmatsuite/drivers/__init__.py` | Driver auto-registration | ~30 |
+| `src/qmatsuite/drivers/qe_shim/__init__.py` | QE legacy shim | ~80 |
 | `tests/gates/test_registry_routing.py` | Gate 1 tests | ~150 |
 
 ## 3. Files to Modify
 
 | File | Change | Risk |
 |------|--------|------|
-| `src/quantumvitas/execution/handlers.py` | Use registry for handler dispatch | HIGH |
-| `src/quantumvitas/execution/recipes.py` | Use registry for recipe dispatch | HIGH |
-| `src/quantumvitas/workflow/generalized_steps.py` | Use registry for materialization | MEDIUM |
-| `src/quantumvitas/calculation/structure_steps.py` | Use registry for step type queries | MEDIUM |
-| `src/quantumvitas/calculation/step_done.py` | Use registry for step type queries | MEDIUM |
-| `src/quantumvitas/core/calc_identity.py` | Use registry for engine inference | MEDIUM |
+| `src/qmatsuite/execution/handlers.py` | Use registry for handler dispatch | HIGH |
+| `src/qmatsuite/execution/recipes.py` | Use registry for recipe dispatch | HIGH |
+| `src/qmatsuite/workflow/generalized_steps.py` | Use registry for materialization | MEDIUM |
+| `src/qmatsuite/calculation/structure_steps.py` | Use registry for step type queries | MEDIUM |
+| `src/qmatsuite/calculation/step_done.py` | Use registry for step type queries | MEDIUM |
+| `src/qmatsuite/core/calc_identity.py` | Use registry for engine inference | MEDIUM |
 
 ---
 
@@ -47,7 +47,7 @@ Create the DriverRegistry infrastructure and refactor kernel touchpoints to use 
 
 ### Step 1: Create driver_protocol.py
 
-**Create file**: `src/quantumvitas/core/driver_protocol.py`
+**Create file**: `src/qmatsuite/core/driver_protocol.py`
 
 ```python
 """Engine driver protocol and base class.
@@ -63,9 +63,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from quantumvitas.core.job import Job
-    from quantumvitas.core.step_context import StepContext
-    from quantumvitas.core.job_result import JobResult
+    from qmatsuite.core.job import Job
+    from qmatsuite.core.step_context import StepContext
+    from qmatsuite.core.job_result import JobResult
 
 
 class WorkdirPolicy(Enum):
@@ -282,7 +282,7 @@ class BaseEngineDriver:
 
 ### Step 2: Create driver_registry.py
 
-**Create file**: `src/quantumvitas/core/driver_registry.py`
+**Create file**: `src/qmatsuite/core/driver_registry.py`
 
 ```python
 """Driver registry for engine-to-driver mapping.
@@ -301,7 +301,7 @@ import logging
 from threading import Lock
 from typing import TYPE_CHECKING, Callable
 
-from quantumvitas.core.driver_exceptions import (
+from qmatsuite.core.driver_exceptions import (
     DuplicateEngineError,
     DuplicateStepTypeError,
     EnginesMismatchError,
@@ -313,12 +313,12 @@ from quantumvitas.core.driver_exceptions import (
     UnknownMaterializationError,
     UnknownStepTypeError,
 )
-from quantumvitas.core.driver_protocol import EngineDriver, StepTypeSpec
+from qmatsuite.core.driver_protocol import EngineDriver, StepTypeSpec
 
 if TYPE_CHECKING:
-    from quantumvitas.core.job import Job
-    from quantumvitas.core.job_result import JobResult
-    from quantumvitas.core.step_context import StepContext
+    from qmatsuite.core.job import Job
+    from qmatsuite.core.job_result import JobResult
+    from qmatsuite.core.step_context import StepContext
 
 logger = logging.getLogger(__name__)
 
@@ -644,7 +644,7 @@ class DriverRegistry:
 
 ### Step 3: Update driver_exceptions.py
 
-**File**: `src/quantumvitas/core/driver_exceptions.py`
+**File**: `src/qmatsuite/core/driver_exceptions.py`
 
 **Add** the following exception classes (after the existing ones from PR 1):
 
@@ -688,7 +688,7 @@ class EnginesMismatchError(DriverError):
 
 ### Step 4: Create drivers/__init__.py
 
-**Create file**: `src/quantumvitas/drivers/__init__.py`
+**Create file**: `src/qmatsuite/drivers/__init__.py`
 
 ```python
 """Engine driver bundles.
@@ -697,10 +697,10 @@ This package contains all engine driver implementations.
 Drivers are registered with the DriverRegistry at import time.
 
 To ensure all drivers are registered, import this package:
-    import quantumvitas.drivers
+    import qmatsuite.drivers
 
 Or import specific drivers:
-    from quantumvitas.drivers import vasp
+    from qmatsuite.drivers import vasp
 """
 
 import logging
@@ -711,7 +711,7 @@ logger = logging.getLogger(__name__)
 # Each driver's __init__.py calls DriverRegistry.register()
 
 # QE shim (legacy compatibility until QE is properly migrated)
-from quantumvitas.drivers import qe_shim
+from qmatsuite.drivers import qe_shim
 
 # Note: Other drivers (vasp, orca, etc.) will be added as they are migrated
 # They will be imported here to trigger auto-registration
@@ -721,9 +721,9 @@ logger.debug("Driver packages imported")
 
 ### Step 5: Create QE Legacy Shim
 
-**Create directory**: `src/quantumvitas/drivers/qe_shim/`
+**Create directory**: `src/qmatsuite/drivers/qe_shim/`
 
-**Create file**: `src/quantumvitas/drivers/qe_shim/__init__.py`
+**Create file**: `src/qmatsuite/drivers/qe_shim/__init__.py`
 
 ```python
 """QE legacy shim driver.
@@ -734,8 +734,8 @@ It allows QE to work with the new registry system without full migration.
 This shim will be replaced when QE is properly migrated in a future effort.
 """
 
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import BaseEngineDriver, StepTypeSpec, WorkdirPolicy
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import BaseEngineDriver, StepTypeSpec, WorkdirPolicy
 
 
 class QELegacyDriver(BaseEngineDriver):
@@ -800,12 +800,12 @@ class QELegacyDriver(BaseEngineDriver):
 
     def get_handler(self):
         """Return existing QE handler."""
-        from quantumvitas.execution.handlers import qe_step_handler
+        from qmatsuite.execution.handlers import qe_step_handler
         return qe_step_handler
 
     def get_recipe_class(self):
         """Return existing QE recipe."""
-        from quantumvitas.execution.recipes import QERecipe
+        from qmatsuite.execution.recipes import QERecipe
         return QERecipe
 
     def get_materialization_map(self) -> dict[str, str]:
@@ -840,9 +840,9 @@ and that the registry provides correct mappings.
 """
 
 import pytest
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import EngineDriver, StepTypeSpec
-from quantumvitas.core.driver_exceptions import (
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import EngineDriver, StepTypeSpec
+from qmatsuite.core.driver_exceptions import (
     UnknownEngineError,
     UnknownStepTypeError,
     UnknownMaterializationError,
@@ -863,7 +863,7 @@ class TestRegistryBasics:
     def test_qe_shim_registered(self):
         """QE shim should be auto-registered."""
         # Import drivers to trigger registration
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("qe")
         driver = DriverRegistry.get_driver("qe")
@@ -883,7 +883,7 @@ class TestStepTypeRouting:
 
     def test_known_step_type_returns_handler(self):
         """Known step type should return handler."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         handler = DriverRegistry.get_handler("qe_scf")
         assert callable(handler)
@@ -897,7 +897,7 @@ class TestStepTypeRouting:
 
     def test_step_type_spec_retrieval(self):
         """Should retrieve full StepTypeSpec for step type."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         spec = DriverRegistry.get_step_type_spec("qe_scf")
         assert spec.id == "qe_scf"
@@ -906,7 +906,7 @@ class TestStepTypeRouting:
 
     def test_engine_for_step_type(self):
         """Should retrieve engine family for step type."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         engine = DriverRegistry.get_engine_for_step_type("qe_scf")
         assert engine == "qe"
@@ -917,14 +917,14 @@ class TestMaterialization:
 
     def test_materialize_known_type(self):
         """Known gen type should materialize to spec type."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         spec_type = DriverRegistry.materialize_step_type("qe", "GEN_SCF")
         assert spec_type == "qe_scf"
 
     def test_materialize_unknown_gen_type_raises(self):
         """Unknown gen type should raise UnknownMaterializationError."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         with pytest.raises(UnknownMaterializationError) as exc_info:
             DriverRegistry.materialize_step_type("qe", "GEN_NONEXISTENT")
@@ -942,7 +942,7 @@ class TestRecipeRouting:
 
     def test_recipe_class_for_engine(self):
         """Should retrieve recipe class for engine."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         recipe_class = DriverRegistry.get_recipe_class("qe")
         assert recipe_class is not None
@@ -962,13 +962,13 @@ class TestDriverValidation:
         DriverRegistry.reset()
         # Re-import to get QE shim back
         import importlib
-        import quantumvitas.drivers
-        importlib.reload(quantumvitas.drivers)
+        import qmatsuite.drivers
+        importlib.reload(qmatsuite.drivers)
 
     def test_duplicate_engine_rejected(self):
         """Duplicate engine registration should raise."""
         # QE is already registered
-        from quantumvitas.drivers.qe_shim import QELegacyDriver
+        from qmatsuite.drivers.qe_shim import QELegacyDriver
 
         with pytest.raises(DuplicateEngineError):
             DriverRegistry.register(QELegacyDriver())
@@ -992,7 +992,7 @@ class TestDriverValidation:
             def get_materialization_map(self):
                 return {}
 
-        from quantumvitas.core.driver_exceptions import InvalidDriverError
+        from qmatsuite.core.driver_exceptions import InvalidDriverError
         with pytest.raises(InvalidDriverError):
             DriverRegistry.register(BadDriver())
 
@@ -1003,7 +1003,7 @@ class TestKernelIntegration:
     def test_handlers_uses_registry(self):
         """handlers.py should use registry for dispatch."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/handlers.py").read_text()
+        source = Path("src/qmatsuite/execution/handlers.py").read_text()
 
         # After refactor, should import and use DriverRegistry
         assert "DriverRegistry" in source or "driver_registry" in source, (
@@ -1013,7 +1013,7 @@ class TestKernelIntegration:
     def test_recipes_uses_registry(self):
         """recipes.py should use registry for dispatch."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/recipes.py").read_text()
+        source = Path("src/qmatsuite/execution/recipes.py").read_text()
 
         # After refactor, should import and use DriverRegistry
         assert "DriverRegistry" in source or "driver_registry" in source, (
@@ -1027,12 +1027,12 @@ class TestKernelIntegration:
 
 ### Step 7: Refactor handlers.py
 
-**File**: `src/quantumvitas/execution/handlers.py`
+**File**: `src/qmatsuite/execution/handlers.py`
 
 **Change 1**: Add registry import at top (after other imports):
 
 ```python
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 ```
 
 **Change 2**: Modify `create_handler_map()` function (around line 1312):
@@ -1056,7 +1056,7 @@ def create_handler_map() -> dict[str, Callable]:
     This now delegates to DriverRegistry for all registered drivers.
     """
     # Ensure drivers are loaded
-    import quantumvitas.drivers
+    import qmatsuite.drivers
 
     handler_map = {}
     for step_type in DriverRegistry.get_all_step_types():
@@ -1083,19 +1083,19 @@ def get_handler_for_step(step_type: str) -> Callable:
         UnknownStepTypeError: If step type not registered
     """
     # Ensure drivers are loaded
-    import quantumvitas.drivers
+    import qmatsuite.drivers
 
     return DriverRegistry.get_handler(step_type)
 ```
 
 ### Step 8: Refactor recipes.py
 
-**File**: `src/quantumvitas/execution/recipes.py`
+**File**: `src/qmatsuite/execution/recipes.py`
 
 **Change 1**: Add registry import at top:
 
 ```python
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 ```
 
 **Change 2**: Modify `get_recipe_class()` function (around line 798):
@@ -1111,7 +1111,7 @@ def get_recipe_class(engine_family: str) -> type[BaseRecipe]:
         # ... hardcoded entries ...
     }
     if engine_family not in recipe_map:
-        from quantumvitas.core.driver_exceptions import UnknownEngineError
+        from qmatsuite.core.driver_exceptions import UnknownEngineError
         raise UnknownEngineError(engine_family, list(recipe_map.keys()))
     return recipe_map[engine_family]
 
@@ -1129,19 +1129,19 @@ def get_recipe_class(engine_family: str) -> type[BaseRecipe]:
         UnknownEngineError: If engine not registered
     """
     # Ensure drivers are loaded
-    import quantumvitas.drivers
+    import qmatsuite.drivers
 
     return DriverRegistry.get_recipe_class(engine_family)
 ```
 
 ### Step 9: Refactor generalized_steps.py
 
-**File**: `src/quantumvitas/workflow/generalized_steps.py`
+**File**: `src/qmatsuite/workflow/generalized_steps.py`
 
 **Change 1**: Add registry import:
 
 ```python
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 ```
 
 **Change 2**: Modify materialization logic (around line 61):
@@ -1179,7 +1179,7 @@ def materialize_step_type(engine: str, gen_type: str) -> str:
         UnknownMaterializationError: If no mapping exists
     """
     # Ensure drivers are loaded
-    import quantumvitas.drivers
+    import qmatsuite.drivers
 
     return DriverRegistry.materialize_step_type(engine, gen_type)
 
@@ -1190,7 +1190,7 @@ MATERIALIZATION_MAP = {}  # Populated dynamically from registry
 
 def _populate_compat_map():
     """Populate compatibility map from registry."""
-    import quantumvitas.drivers
+    import qmatsuite.drivers
     for engine in DriverRegistry.get_all_engines():
         try:
             driver = DriverRegistry.get_driver(engine)
@@ -1205,12 +1205,12 @@ _populate_compat_map()
 
 ### Step 10: Refactor structure_steps.py
 
-**File**: `src/quantumvitas/calculation/structure_steps.py`
+**File**: `src/qmatsuite/calculation/structure_steps.py`
 
 **Change 1**: Add registry import:
 
 ```python
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 ```
 
 **Change 2**: Remove hardcoded step type sets (around lines 778-791):
@@ -1228,33 +1228,33 @@ def is_pyscf_step(step_type: str) -> bool:
 # AFTER:
 def get_step_types_for_engine(engine: str) -> set[str]:
     """Get all step types for engine from registry."""
-    import quantumvitas.drivers
+    import qmatsuite.drivers
     return set(DriverRegistry.get_step_types_for_engine(engine))
 
 def is_pyscf_step(step_type: str) -> bool:
     """Check if step type belongs to PySCF."""
-    import quantumvitas.drivers
+    import qmatsuite.drivers
     if not DriverRegistry.is_step_type_registered(step_type):
         return False
     return DriverRegistry.get_engine_for_step_type(step_type) == "pyscf"
 
 def is_orca_step(step_type: str) -> bool:
     """Check if step type belongs to ORCA."""
-    import quantumvitas.drivers
+    import qmatsuite.drivers
     if not DriverRegistry.is_step_type_registered(step_type):
         return False
     return DriverRegistry.get_engine_for_step_type(step_type) == "orca"
 
 def is_lammps_step(step_type: str) -> bool:
     """Check if step type belongs to LAMMPS."""
-    import quantumvitas.drivers
+    import qmatsuite.drivers
     if not DriverRegistry.is_step_type_registered(step_type):
         return False
     return DriverRegistry.get_engine_for_step_type(step_type) == "lammps"
 
 def is_cp2k_step(step_type: str) -> bool:
     """Check if step type belongs to CP2K."""
-    import quantumvitas.drivers
+    import qmatsuite.drivers
     if not DriverRegistry.is_step_type_registered(step_type):
         return False
     return DriverRegistry.get_engine_for_step_type(step_type) == "cp2k"
@@ -1268,12 +1268,12 @@ CP2K_STEP_TYPES = property(lambda self: get_step_types_for_engine("cp2k"))
 
 ### Step 11: Refactor step_done.py
 
-**File**: `src/quantumvitas/calculation/step_done.py`
+**File**: `src/qmatsuite/calculation/step_done.py`
 
 **Change 1**: Add registry import:
 
 ```python
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 ```
 
 **Change 2**: Remove hardcoded step type sets (around lines 18, 161-162):
@@ -1289,14 +1289,14 @@ def is_vasp_step(step_type: str) -> bool:
 # AFTER:
 def is_vasp_step(step_type: str) -> bool:
     """Check if step type belongs to VASP."""
-    import quantumvitas.drivers
+    import qmatsuite.drivers
     if not DriverRegistry.is_step_type_registered(step_type):
         return False
     return DriverRegistry.get_engine_for_step_type(step_type) == "vasp"
 
 def is_lammps_step(step_type: str) -> bool:
     """Check if step type belongs to LAMMPS."""
-    import quantumvitas.drivers
+    import qmatsuite.drivers
     if not DriverRegistry.is_step_type_registered(step_type):
         return False
     return DriverRegistry.get_engine_for_step_type(step_type) == "lammps"
@@ -1304,12 +1304,12 @@ def is_lammps_step(step_type: str) -> bool:
 
 ### Step 12: Refactor calc_identity.py
 
-**File**: `src/quantumvitas/core/calc_identity.py`
+**File**: `src/qmatsuite/core/calc_identity.py`
 
 **Change 1**: Add registry import:
 
 ```python
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 ```
 
 **Change 2**: Modify `_infer_engine_family_from_machine_types()` (lines 78-115):
@@ -1341,7 +1341,7 @@ def _infer_engine_family_from_machine_types(machine_types: list[str]) -> str | N
     Returns:
         Single engine family if all steps belong to one engine, else None
     """
-    import quantumvitas.drivers
+    import qmatsuite.drivers
 
     families = set()
     for step_type in machine_types:

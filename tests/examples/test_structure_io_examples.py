@@ -10,13 +10,13 @@ from pathlib import Path
 import pytest
 from pymatgen.core import Lattice, Structure
 
-from quantumvitas.io import (
+from qmatsuite.io import (
     QEInputGenerator,
     QEInputParser,
     read_structure,
     write_structure,
 )
-from quantumvitas.io.structure_io import (
+from qmatsuite.io.structure_io import (
     STRUCTURE_DATA_KEY,
     STRUCTURE_META_KEY,
     qe_input_from_structure,
@@ -274,15 +274,15 @@ class TestRealWorldExamples:
         """
         Example: Complete calculation of importing structure and generating QE input.
 
-        This mimics what `qv import-structure` and `qv run-structure` do internally.
+        This mimics what `qms import-structure` and `qms run-structure` do internally.
         """
-        # Step 1: Save structure to project (like qv import-structure)
+        # Step 1: Save structure to project (like qms import-structure)
         structures_dir = tmp_path / "structures"
         structures_dir.mkdir()
         structure_file = structures_dir / "si.json"
         write_structure(sample_si_structure, structure_file, format="json")
 
-        # Step 2: Load structure (like qv run-structure)
+        # Step 2: Load structure (like qms run-structure)
         loaded_structure = read_structure(structure_file, format="json")
 
         # Step 3: Generate QE input

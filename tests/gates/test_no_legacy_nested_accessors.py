@@ -1,7 +1,7 @@
 """
 Gate 0.5: Nested accessors must not return legacy/vault objects
 
-Ensures that QVService nested accessors (analysis/structure/calculation/etc)
+Ensures that QMSService nested accessors (analysis/structure/calculation/etc)
 return objects from canonical API modules, not legacy/vault.
 """
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
 @pytest.fixture
@@ -19,8 +19,8 @@ def minimal_project(tmp_path: Path) -> Path:
     project_root = tmp_path / "test_project"
     project_root.mkdir()
     
-    # Create minimal project.qv.yml
-    project_file = project_root / "project.qv.yml"
+    # Create minimal project.qms.yml
+    project_file = project_root / "project.qms.yml"
     project_file.write_text("name: test_project\n")
     
     return project_root
@@ -28,7 +28,7 @@ def minimal_project(tmp_path: Path) -> Path:
 
 def test_nested_accessors_not_legacy(minimal_project: Path):
     """Ensure nested accessors return canonical API objects, not legacy/vault."""
-    svc = QVService(minimal_project)
+    svc = QMSService(minimal_project)
     
     # Test all nested accessors
     accessors = [
@@ -48,9 +48,9 @@ def test_nested_accessors_not_legacy(minimal_project: Path):
     
     violations = []
     forbidden_modules = [
-        "quantumvitas._api_legacy",
-        "quantumvitas.api_legacy",
-        "quantumvitas._vault",
+        "qmatsuite._api_legacy",
+        "qmatsuite.api_legacy",
+        "qmatsuite._vault",
     ]
     
     for name, obj in accessors:
@@ -74,6 +74,6 @@ def test_nested_accessors_not_legacy(minimal_project: Path):
                 f"  - {violation['accessor']}: module '{violation['module']}' "
                 f"contains forbidden '{violation['forbidden']}'\n"
             )
-        error_msg += "\nAll nested accessors must return objects from quantumvitas.api.* modules."
+        error_msg += "\nAll nested accessors must return objects from qmatsuite.api.* modules."
         assert False, error_msg
 

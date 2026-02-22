@@ -43,10 +43,10 @@ class ImportScanner:
 
         Args:
             forbidden_prefixes: Tuple of module prefixes that are forbidden
-                (e.g., ("quantumvitas.core", "quantumvitas.calculation"))
+                (e.g., ("qmatsuite.core", "qmatsuite.calculation"))
             allowed_paths: Optional dict mapping file paths (as strings) to sets
                 of allowed module prefixes. Used for bootstrap exceptions.
-                Example: {"src/quantumvitas/frontends/_shared/bootstrap.py": {"quantumvitas.core.context"}}
+                Example: {"src/qmatsuite/frontends/_shared/bootstrap.py": {"qmatsuite.core.context"}}
         """
         self.forbidden_prefixes = forbidden_prefixes
         self.allowed_paths = allowed_paths or {}
@@ -56,7 +56,7 @@ class ImportScanner:
         Check if a module name is forbidden.
 
         Args:
-            module_name: The imported module name (e.g., "quantumvitas.core.resolution")
+            module_name: The imported module name (e.g., "qmatsuite.core.resolution")
             file_path: The file path where the import occurs
 
         Returns:

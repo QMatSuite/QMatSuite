@@ -9,10 +9,10 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 # Removed compat import - use domain API
-from quantumvitas.core.paths import tmp_runs_dir
-from quantumvitas.execution.relax_artifacts import (
+from qmatsuite.core.paths import tmp_runs_dir
+from qmatsuite.execution.relax_artifacts import (
     get_generated_structure_path,
     read_generated_structure,
 )
@@ -24,7 +24,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.requires_qe]
 
 def configure_step(project_root, calculation_selector, step_selector, parameters, cards=None):
     """Helper function to configure step parameters via domain accessor."""
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     params_dict = {"parameters": parameters}
     if cards:
         params_dict["cards"] = cards
@@ -38,8 +38,8 @@ def configure_step(project_root, calculation_selector, step_selector, parameters
 @pytest.fixture(scope="module")
 def qe_engine():
     """Create a QE engine instance and validate required executables."""
-    from quantumvitas.core.engines.qe import QuantumEspressoEngine
-    from quantumvitas.core.engines.base import EngineConfig
+    from qmatsuite.core.engines.qe import QuantumEspressoEngine
+    from qmatsuite.core.engines.base import EngineConfig
     
     config = EngineConfig(name="qe")
     try:
@@ -73,7 +73,7 @@ def qe_project_with_si():
     test_dir = tmp_runs_dir() / unique_id
     test_dir.mkdir(parents=True, exist_ok=True)
     
-    project_root = QVService.init_project(test_dir / "qe_relax_project")
+    project_root = QMSService.init_project(test_dir / "qe_relax_project")
     
     # Create Si structure
     lattice = Lattice.cubic(5.43)
@@ -84,7 +84,7 @@ def qe_project_with_si():
     si_structure.to(filename=si_file, fmt="json")
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(si_file, name="Silicon")
+    struct_result = QMSService(project_root).structure.import_file(si_file, name="Silicon")
 
     return {
         "project_root": project_root,
@@ -101,7 +101,7 @@ def qe_calculation_with_relax(qe_project_with_si):
     structure_ulid = qe_project_with_si["structure_ulid"]
     
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="si_relax",
         structure_selector=structure_ulid,
         engine_family="qe",
@@ -116,14 +116,14 @@ def qe_calculation_with_relax(qe_project_with_si):
         calc_dir = calc_result.absolute_path.parent
     
     # Configure calculation with species_map and pseudo
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     svc.calculation.configure_species_map(
         calculation=calc_ulid,
         set_entries=[("Si", 28.0855, "Si.pbe-n-rrkjus_psl.1.0.0.UPF")],
     )
     
     # Create relax step
-    relax_step_dto = QVService(project_root).calculation.add_step(
+    relax_step_dto = QMSService(project_root).calculation.add_step(
         calc_ulid,
         step_type_gen="relax",  # GEN type for UI layer
         name="relax",
@@ -197,7 +197,7 @@ class TestQERelaxReal:
         project_root = qe_calculation_with_relax["project_root"]
         
         # Run the relax step
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.run.run_step(
             calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
@@ -261,9 +261,9 @@ class TestQERelaxReal:
         
         # Verify metadata
         data = json.loads(artifact_path.read_text())
-        assert "__qv_meta__" in data
-        assert data["__qv_meta__"]["source_step_ulid"] == relax_step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == "qe_relax"
+        assert "__qms_meta__" in data
+        assert data["__qms_meta__"]["source_step_ulid"] == relax_step_ulid
+        assert data["__qms_meta__"]["provenance"]["method"] == "qe_relax"
     
     def test_qe_relax_structure_changes(
         self,
@@ -284,12 +284,12 @@ class TestQERelaxReal:
         project_root = qe_calculation_with_relax["project_root"]
         
         # Load initial structure using the structure_path from fixture
-        from quantumvitas.io import read_structure
+        from qmatsuite.io import read_structure
         structure_path = qe_project_with_si["structure_path"]
         initial_structure = read_structure(structure_path)
         
         # Run the relax step
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.run.run_step(
             calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
@@ -325,7 +325,7 @@ class TestQERelaxReal:
         project_root = qe_calculation_with_relax["project_root"]
         
         # Run the relax step
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.run.run_step(
             calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
@@ -334,7 +334,7 @@ class TestQERelaxReal:
         assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
 
         # Load manifest
-        from quantumvitas.calculation.manifest import load_manifest
+        from qmatsuite.calculation.manifest import load_manifest
         manifest = load_manifest(calc_dir)
         assert manifest is not None
         

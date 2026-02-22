@@ -12,7 +12,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 
 **Key Findings**:
 - Current system: Presets directly compile to QE parameters via `presets/compiler.py`
-- QE parameter JSON: Located at `src/quantumvitas/data/qe_module_parameters.json` (schema v3, 954 parameters)
+- QE parameter JSON: Located at `src/qmatsuite/data/qe_module_parameters.json` (schema v3, 954 parameters)
 - Presets: 4 dimensions (magnetism, occupations_scheme, precision, convergence) mapping to ~15 QE parameters
 - Steps: QE-specific, stored in `*.step.yaml` with parameters/cards structure
 - Incremental runs: Use `step_sha` (hash of step YAML with meta stripped) to detect changes
@@ -25,7 +25,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 
 ### A.1 Presets Location
 
-**Primary Location**: `src/quantumvitas/presets/`
+**Primary Location**: `src/qmatsuite/presets/`
 
 **Key Files**:
 - `dimensions.py`: Dimension enums (MagnetismOption, OccupationsSchemeOption, PrecisionOption, ConvergenceOption)
@@ -44,26 +44,26 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 
 ### A.2 Steps/Workflow Location
 
-**Steps**: `src/quantumvitas/calculation/`
+**Steps**: `src/qmatsuite/calculation/`
 - `step.py`: Step dataclass (meta, input_file, step_type, options)
 - `step_defaults.py`: Default parameters per step type (hardcoded dicts)
 - `types.py`: StepType enum (SCF, NSCF, DOS, BANDS_PW, BANDS, etc.)
 - `structure_steps.py`: StructureStepSpec (step YAML representation)
 
-**Workflows**: `src/quantumvitas/workflow/`
+**Workflows**: `src/qmatsuite/workflow/`
 - `templates.py`: WorkflowTemplate definitions (scf, dos, bands, etc.) with step sequences
 - `step_factory.py`: Step creation with Journal integration
 - `registry.py`: StepTypeRegistry (centralized step type semantics)
 
 **Step Storage**: `calculations/{calc_id}/steps/*.step.yaml`
 - Structure: `{meta, step_type, parameters: {SYSTEM: {...}, ...}, cards: {K_POINTS: {...}}, ...}`
-- YAML I/O: Via `StepDoc` (`src/quantumvitas/core/yamldoc.py`) with mutation containment
+- YAML I/O: Via `StepDoc` (`src/qmatsuite/core/yamldoc.py`) with mutation containment
 
 ### A.3 QE Parameter JSON Location
 
-**File**: `src/quantumvitas/data/qe_module_parameters.json`
+**File**: `src/qmatsuite/data/qe_module_parameters.json`
 
-**Access API**: `src/quantumvitas/data/qe_metadata.py`
+**Access API**: `src/qmatsuite/data/qe_metadata.py`
 - `safe_load_metadata()`: Loads JSON with caching
 - `get_module_param_sections(module)`: Returns section → parameter list mapping
 - `_iter_params(module)`: Iterator over parameter metadata
@@ -121,7 +121,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 │ PRESET DETECTION/APPLICATION (engine-specific today: QE only)      │
 │ - Detector B: params → preset options                               │
 │ - Compiler: preset options → QE params                              │
-│ Location: src/quantumvitas/presets/{detector,compiler}.py          │
+│ Location: src/qmatsuite/presets/{detector,compiler}.py          │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -129,7 +129,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 │ PARAMETER COMPILATION (QE-specific)                                 │
 │ - compile_presets(options) → {"SYSTEM": {...}, "ELECTRONS": {...}} │
 │ - compile_precision(advice) → adds K_POINTS card                    │
-│ Location: src/quantumvitas/presets/compiler.py                     │
+│ Location: src/qmatsuite/presets/compiler.py                     │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -137,7 +137,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 │ STEP YAML MATERIALIZATION                                           │
 │ - apply_presets_to_step() patches step YAML via StepDoc            │
 │ - Step YAML stored: calculations/{calc}/steps/*.step.yaml          │
-│ Location: src/quantumvitas/presets/integration.py                  │
+│ Location: src/qmatsuite/presets/integration.py                  │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -145,7 +145,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 │ INPUT FILE GENERATION (QE-specific)                                 │
 │ - StructureStepSpec → QEInput → QEInputGenerator                    │
 │ - Generates .in file from parameters/cards                          │
-│ Location: src/quantumvitas/io/generator/qe_generator.py            │
+│ Location: src/qmatsuite/io/generator/qe_generator.py            │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -153,7 +153,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 │ EXECUTION (engine-specific)                                         │
 │ - QECalculationRunner.run_step()                                    │
 │ - Executes pw.x/bands.x/etc. with .in file                         │
-│ Location: src/quantumvitas/core/engines/qe_calculation.py          │
+│ Location: src/qmatsuite/core/engines/qe_calculation.py          │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -161,7 +161,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 │ OUTPUT PARSING (QE-specific)                                        │
 │ - parse_scf_output_text() extracts energy, forces, etc.            │
 │ - Assumes QE file layout (regex patterns for "JOB DONE", etc.)     │
-│ Location: src/quantumvitas/analysis/parsers.py                     │
+│ Location: src/qmatsuite/analysis/parsers.py                     │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -169,7 +169,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 │ ANALYSIS ARTIFACTS (engine-agnostic today)                          │
 │ - SCFResult, DOSResult, BandsResult dataclasses                     │
 │ - Stored in results/ directory as JSON                              │
-│ Location: src/quantumvitas/analysis/{energy,dos,bands}.py          │
+│ Location: src/qmatsuite/analysis/{energy,dos,bands}.py          │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -178,7 +178,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 │ - Journal: tracks YAML changes (before/after snapshots)            │
 │ - Manifest: tracks step completion (done flag + step_sha)          │
 │ - Incremental run: compares step_sha to skip unchanged steps        │
-│ Location: src/quantumvitas/{core/journal,calculation/manifest}.py  │
+│ Location: src/qmatsuite/{core/journal,calculation/manifest}.py  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -201,7 +201,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 
 ### C.1 JSON Structure
 
-**File**: `src/quantumvitas/data/qe_module_parameters.json`
+**File**: `src/qmatsuite/data/qe_module_parameters.json`
 
 **Schema v3 Format**:
 - Top-level: `{schema_version, generated_at, doc_pattern, modules: {...}}`
@@ -409,7 +409,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ IR Schema (engine-agnostic)                                 │
-│ Location: src/quantumvitas/ir/schema.py                     │
+│ Location: src/qmatsuite/ir/schema.py                     │
 │ - IRField definitions (dataclasses with types)              │
 │ - IRDocument (step-level IR)                                │
 └──────────────────┬──────────────────────────────────────────┘
@@ -417,7 +417,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ Backend Capability Declaration (per engine)                 │
-│ Location: src/quantumvitas/ir/backends/{engine}/cap.py     │
+│ Location: src/qmatsuite/ir/backends/{engine}/cap.py     │
 │ - Declares: which IR fields are supported                   │
 │ - Declares: default mappings (IR field → engine param)      │
 │ - Declares: step type → executable mapping                  │
@@ -426,7 +426,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ IR → Engine Lowering (compiler backend)                     │
-│ Location: src/quantumvitas/ir/backends/{engine}/lower.py   │
+│ Location: src/qmatsuite/ir/backends/{engine}/lower.py   │
 │ - lower_ir_to_engine(ir_doc, step_type) → engine_params    │
 │ - Handles: unit conversion, syntax translation              │
 └──────────────────┬──────────────────────────────────────────┘
@@ -434,7 +434,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ Engine Params → Input Materialization                       │
-│ Location: src/quantumvitas/io/generator/{engine}_gen.py    │
+│ Location: src/qmatsuite/io/generator/{engine}_gen.py    │
 │ - Existing: qe_generator.py (refactor to use engine_params) │
 │ - Generates: .in file (QE) or input dict (PySCF)            │
 └──────────────────┬──────────────────────────────────────────┘
@@ -442,7 +442,7 @@ This document provides a comprehensive review of the QMatSuite codebase to suppo
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ Parser → Engine-Agnostic Artifacts                          │
-│ Location: src/quantumvitas/analysis/parsers.py              │
+│ Location: src/qmatsuite/analysis/parsers.py              │
 │ - Abstract: parse_energy(), parse_forces(), etc.            │
 │ - Backend-specific: qe_parse_scf_output() (internal)        │
 │ - Returns: SCFResult (units: Ry/eV, engine-agnostic)        │
@@ -578,7 +578,7 @@ QE_STEP_MAPPING = {
 **Goal**: Add IR derivation without changing UI or storage.
 
 **Changes**:
-1. **New Module**: `src/quantumvitas/ir/` with:
+1. **New Module**: `src/qmatsuite/ir/` with:
    - `schema.py`: IR field definitions
    - `derivation.py`: `derive_ir_from_step(step_doc) → IRDocument`
    - `backends/qe/derive.py`: `derive_ir_from_qe_params(qe_params) → IRDocument`
@@ -591,13 +591,13 @@ QE_STEP_MAPPING = {
    - `lower_ir_to_qe(derive_ir_from_qe_params(qe_params)) == qe_params` (roundtrip test)
 
 **Files to Create**:
-- `src/quantumvitas/ir/__init__.py`
-- `src/quantumvitas/ir/schema.py`
-- `src/quantumvitas/ir/derivation.py`
-- `src/quantumvitas/ir/backends/__init__.py`
-- `src/quantumvitas/ir/backends/qe/__init__.py`
-- `src/quantumvitas/ir/backends/qe/derive.py`
-- `src/quantumvitas/ir/backends/qe/lower.py` (stub for Phase 1)
+- `src/qmatsuite/ir/__init__.py`
+- `src/qmatsuite/ir/schema.py`
+- `src/qmatsuite/ir/derivation.py`
+- `src/qmatsuite/ir/backends/__init__.py`
+- `src/qmatsuite/ir/backends/qe/__init__.py`
+- `src/qmatsuite/ir/backends/qe/derive.py`
+- `src/qmatsuite/ir/backends/qe/lower.py` (stub for Phase 1)
 
 **Tests**:
 - Unit: IR derivation from QE params
@@ -680,7 +680,7 @@ QE_STEP_MAPPING = {
 **Changes**:
 1. **IR Editor**:
    - GUI: IR editing mode (toggles with QE expert mode)
-   - CLI: `qv step set-ir --field spin_treatment=collinear`
+   - CLI: `qms step set-ir --field spin_treatment=collinear`
 
 2. **Validation**:
    - IR → QE lowering validates IR constraints
@@ -735,7 +735,7 @@ QE_STEP_MAPPING = {
 **Answer**: Parameters are stored **per step** in `*.step.yaml`.
 
 **Storage Hierarchy**:
-1. **Project-level**: `project.qv.yml` (settings, not params)
+1. **Project-level**: `project.qms.yml` (settings, not params)
 2. **Calculation-level**: `calculation.yaml` (structure_id, species_map, step list)
 3. **Step-level**: `steps/*.step.yaml` (parameters, cards, step_type)
 
@@ -845,7 +845,7 @@ QE_STEP_MAPPING = {
 
 **Answer**: Keep QE parameter JSON in `data/`; reference via **backend capability** declarations.
 
-**Current Location**: `src/quantumvitas/data/qe_module_parameters.json`
+**Current Location**: `src/qmatsuite/data/qe_module_parameters.json`
 
 **IR Abstraction**:
 - IR schema (`ir/schema.py`) → **no QE concepts** (uses eV, not Ry; uses physics names)
@@ -860,7 +860,7 @@ class BasisIR:
     wavefunction_cutoff: float  # eV, not Ry
 
 # ir/backends/qe/lower.py (QE imports OK)
-from quantumvitas.data.qe_metadata import safe_load_metadata
+from qmatsuite.data.qe_metadata import safe_load_metadata
 
 def lower_ir_to_qe(ir: BasisIR) -> dict:
     ecutwfc_ry = ir.wavefunction_cutoff / 13.6057  # eV → Ry
@@ -930,19 +930,19 @@ def lower_ir_to_qe(ir: BasisIR) -> dict:
 **Goal**: Add IR derivation without changing UI or storage.
 
 **Changes**:
-1. Create `src/quantumvitas/ir/` module structure
+1. Create `src/qmatsuite/ir/` module structure
 2. Implement `IRDocument` schema (25 fields)
 3. Implement `derive_ir_from_qe_params()` (QE → IR)
 4. Implement `lower_ir_to_qe()` stub (IR → QE, returns original params for now)
 5. Add unit tests (roundtrip QE → IR → QE)
 
 **Files to Create**:
-- `src/quantumvitas/ir/__init__.py`
-- `src/quantumvitas/ir/schema.py` (IRDocument, IR field dataclasses)
-- `src/quantumvitas/ir/derivation.py` (derive_ir_from_qe_params)
-- `src/quantumvitas/ir/backends/qe/__init__.py`
-- `src/quantumvitas/ir/backends/qe/derive.py` (QE-specific derivation)
-- `src/quantumvitas/ir/backends/qe/lower.py` (stub)
+- `src/qmatsuite/ir/__init__.py`
+- `src/qmatsuite/ir/schema.py` (IRDocument, IR field dataclasses)
+- `src/qmatsuite/ir/derivation.py` (derive_ir_from_qe_params)
+- `src/qmatsuite/ir/backends/qe/__init__.py`
+- `src/qmatsuite/ir/backends/qe/derive.py` (QE-specific derivation)
+- `src/qmatsuite/ir/backends/qe/lower.py` (stub)
 - `tests/unit/test_ir_derivation.py` (roundtrip tests)
 
 **No Changes To**:
@@ -961,34 +961,34 @@ def lower_ir_to_qe(ir: BasisIR) -> dict:
 ## Appendix: Key File Reference
 
 **Presets**:
-- `src/quantumvitas/presets/compiler.py`: Preset → QE params compilation
-- `src/quantumvitas/presets/detector.py`: QE params → preset detection
-- `src/quantumvitas/presets/integration.py`: Preset application to steps
+- `src/qmatsuite/presets/compiler.py`: Preset → QE params compilation
+- `src/qmatsuite/presets/detector.py`: QE params → preset detection
+- `src/qmatsuite/presets/integration.py`: Preset application to steps
 
 **Steps**:
-- `src/quantumvitas/calculation/structure_steps.py`: Step YAML representation
-- `src/quantumvitas/calculation/step_defaults.py`: Default parameters per step type
-- `src/quantumvitas/core/yamldoc.py`: StepDoc (YAML mutation containment)
+- `src/qmatsuite/calculation/structure_steps.py`: Step YAML representation
+- `src/qmatsuite/calculation/step_defaults.py`: Default parameters per step type
+- `src/qmatsuite/core/yamldoc.py`: StepDoc (YAML mutation containment)
 
 **Workflows**:
-- `src/quantumvitas/workflow/templates.py`: Workflow definitions
-- `src/quantumvitas/workflow/step_factory.py`: Step creation
+- `src/qmatsuite/workflow/templates.py`: Workflow definitions
+- `src/qmatsuite/workflow/step_factory.py`: Step creation
 
 **QE Parameters**:
-- `src/quantumvitas/data/qe_module_parameters.json`: QE parameter JSON (954 params)
-- `src/quantumvitas/data/qe_metadata.py`: QE metadata access API
+- `src/qmatsuite/data/qe_module_parameters.json`: QE parameter JSON (954 params)
+- `src/qmatsuite/data/qe_metadata.py`: QE metadata access API
 
 **Execution**:
-- `src/quantumvitas/core/engines/qe_calculation.py`: QE execution
-- `src/quantumvitas/io/generator/qe_generator.py`: Input file generation
+- `src/qmatsuite/core/engines/qe_calculation.py`: QE execution
+- `src/qmatsuite/io/generator/qe_generator.py`: Input file generation
 
 **Parsing**:
-- `src/quantumvitas/analysis/parsers.py`: QE output parsing
+- `src/qmatsuite/analysis/parsers.py`: QE output parsing
 
 **History**:
-- `src/quantumvitas/core/journal.py`: YAML change tracking
-- `src/quantumvitas/calculation/manifest.py`: Step completion tracking
-- `src/quantumvitas/calculation/hash_utils.py`: Step hashing for incremental runs
+- `src/qmatsuite/core/journal.py`: YAML change tracking
+- `src/qmatsuite/calculation/manifest.py`: Step completion tracking
+- `src/qmatsuite/calculation/hash_utils.py`: Step hashing for incremental runs
 
 ---
 
@@ -1023,42 +1023,42 @@ This section provides a comprehensive review of the engine/execution/runner laye
 ### A.1 Engine Representation
 
 **Engine Classes**:
-- `src/quantumvitas/engine/base.py`: Abstract `Engine` interface (`run_step(step, working_dir) -> StepResult`)
-- `src/quantumvitas/engine/qe_engine.py`: `QeEngine` adapter wrapping legacy `QuantumEspressoEngine`
-- `src/quantumvitas/engine/pyscf_engine.py`: `PySCFEngine` subprocess-based engine
-- `src/quantumvitas/core/engines/qe.py`: Legacy `QuantumEspressoEngine` (full QE implementation)
-- `src/quantumvitas/core/engines/qe_calculation.py`: `QECalculationRunner` (actual execution logic)
+- `src/qmatsuite/engine/base.py`: Abstract `Engine` interface (`run_step(step, working_dir) -> StepResult`)
+- `src/qmatsuite/engine/qe_engine.py`: `QeEngine` adapter wrapping legacy `QuantumEspressoEngine`
+- `src/qmatsuite/engine/pyscf_engine.py`: `PySCFEngine` subprocess-based engine
+- `src/qmatsuite/core/engines/qe.py`: Legacy `QuantumEspressoEngine` (full QE implementation)
+- `src/qmatsuite/core/engines/qe_calculation.py`: `QECalculationRunner` (actual execution logic)
 
 **Engine Registry**:
-- `src/quantumvitas/engine/registry.py`: `EngineRegistry` mapping names to engine instances
-- `src/quantumvitas/core/engines/qe_registry.py`: `QEEngineRegistry` for QE-specific resolution
+- `src/qmatsuite/engine/registry.py`: `EngineRegistry` mapping names to engine instances
+- `src/qmatsuite/core/engines/qe_registry.py`: `QEEngineRegistry` for QE-specific resolution
 
 **Engine Configuration**:
-- `src/quantumvitas/core/engines/base.py`: `EngineConfig` dataclass (executable_path, mpi_command, omp_threads, etc.)
+- `src/qmatsuite/core/engines/base.py`: `EngineConfig` dataclass (executable_path, mpi_command, omp_threads, etc.)
 
 ### A.2 Runner/Executor Implementation
 
 **Subprocess Execution**:
-- `src/quantumvitas/core/engines/qe_calculation.py::QECalculationRunner.run_step()`: Main QE execution entry point
+- `src/qmatsuite/core/engines/qe_calculation.py::QECalculationRunner.run_step()`: Main QE execution entry point
   - Builds command via `engine.build_command()`
   - Invokes subprocess with stdin/stdout/stderr capture
   - Writes stdout/stderr to `{step_type}.out` / `{step_type}.err`
   - Returns `StepResult` with execution metadata
 
 **Command Building**:
-- `src/quantumvitas/core/engines/qe.py::QuantumEspressoEngine.build_command()`: Builds QE command
+- `src/qmatsuite/core/engines/qe.py::QuantumEspressoEngine.build_command()`: Builds QE command
   - Resolves executable path (`pw.x`, `bands.x`, etc.)
   - Handles stdin redirection (most QE steps) vs command-line args (Wannier90)
   - Adds MPI wrapper if configured (`mpirun -np N`)
 
 **PySCF Execution**:
-- `src/quantumvitas/engine/pyscf_engine.py::PySCFEngine.run_step()`: Subprocess-based PySCF execution
+- `src/qmatsuite/engine/pyscf_engine.py::PySCFEngine.run_step()`: Subprocess-based PySCF execution
   - Writes `job.json` to workdir
-  - Invokes `python -m quantumvitas.engines.pyscf.runner <job.json>`
+  - Invokes `python -m qmatsuite.engines.pyscf.runner <job.json>`
   - Reads `results.json` from workdir
 
 **Calculation Runner**:
-- `src/quantumvitas/calculation/runner.py::CalculationRunner.run()`: Orchestrates multi-step execution
+- `src/qmatsuite/calculation/runner.py::CalculationRunner.run()`: Orchestrates multi-step execution
   - Manages incremental run logic (manifest reconciliation)
   - Calls `step.run(engine, raw_dir, project_root, species_map)`
   - Updates manifest entries (started_at, done flag, done_at)
@@ -1067,15 +1067,15 @@ This section provides a comprehensive review of the engine/execution/runner laye
 
 **Workdir Structure**:
 - **Location**: `calculations/<calc_id>/raw/` (per calculation)
-- **Function**: `src/quantumvitas/calculation/runner.py::compute_io_dir_from_calculation_model()` (SSOT for I/O directory path)
+- **Function**: `src/qmatsuite/calculation/runner.py::compute_io_dir_from_calculation_model()` (SSOT for I/O directory path)
 - **Default**: `calculation_dir / "raw"` (configurable via `calculation.working_dir` in `calculation.yaml`)
 
 **Input Materialization**:
-- `src/quantumvitas/calculation/structure_steps.py::materialize_step_spec()`: Generates QE input files from step YAML
+- `src/qmatsuite/calculation/structure_steps.py::materialize_step_spec()`: Generates QE input files from step YAML
   - Reads step YAML (`*.step.yaml`)
   - Generates QE input file (e.g., `scf.in`) in `raw/` directory
   - Handles Wannier90 steps (`.win`, `.pw2wan` files) separately
-- `src/quantumvitas/calculation/input_runner.py::prepare_input_step()`: Prepares input for execution
+- `src/qmatsuite/calculation/input_runner.py::prepare_input_step()`: Prepares input for execution
   - Sets `outdir='./outdir'` (relative to workdir)
   - Sets `pseudo_dir` (project mode: `project/pseudo`, standalone: `workdir/pseudo`)
   - Materializes pseudos if needed (calls `ensure_qe_pseudos()`)
@@ -1088,7 +1088,7 @@ This section provides a comprehensive review of the engine/execution/runner laye
 ### A.4 Engine Version/Command Storage
 
 **QE Engine Resolution**:
-- `src/quantumvitas/core/engines/qe_resolver.py`: Two-state resolver (external vs managed)
+- `src/qmatsuite/core/engines/qe_resolver.py`: Two-state resolver (external vs managed)
 - Priority: Project override → Settings → Managed engine → PATH fallback
 - **Storage**: Not persisted (resolved at runtime)
 
@@ -1097,26 +1097,26 @@ This section provides a comprehensive review of the engine/execution/runner laye
 - **Source**: Passed to `Engine` constructor, not stored on disk
 
 **QE Installation**:
-- `src/quantumvitas/core/engines/qe_installation.py::QEInstallation`: Detects QE installation
+- `src/qmatsuite/core/engines/qe_installation.py::QEInstallation`: Detects QE installation
   - Tracks `qe_home`, `bin_dir`, `test_suite_dir`
   - Resolves executable paths
 
 ### A.5 History/Job Manager Integration
 
 **Job Manager**:
-- `src/quantumvitas/daemon/jobs.py::JobManager`: Background job execution
+- `src/qmatsuite/daemon/jobs.py::JobManager`: Background job execution
   - Uses `ThreadPoolExecutor(max_workers=1)` for sequential QE execution (default)
   - Configurable via `settings.max_concurrent_calcs`
   - Tracks job status (pending/running/completed/failed/cancelled)
   - Stores `io_dir` (workdir path) for UI display
 
 **History Integration**:
-- `src/quantumvitas/calculation/runner.py::CalculationRunner._start_history_recording()`: Creates run revision
-- `src/quantumvitas/history/run_revision.py::create_run_revision()`: Records run metadata (step_ids, engine, etc.)
-- `src/quantumvitas/history/events.py`: `RunStartedEvent`, `RunFinishedEvent` for timeline
+- `src/qmatsuite/calculation/runner.py::CalculationRunner._start_history_recording()`: Creates run revision
+- `src/qmatsuite/history/run_revision.py::create_run_revision()`: Records run metadata (step_ids, engine, etc.)
+- `src/qmatsuite/history/events.py`: `RunStartedEvent`, `RunFinishedEvent` for timeline
 
 **Manifest System**:
-- `src/quantumvitas/calculation/manifest.py`: Tracks step completion state
+- `src/qmatsuite/calculation/manifest.py`: Tracks step completion state
   - Stores three SHAs: `step_sha`, `structure_sha`, `pseudo_set_sha`
   - Stores `done` flag, `started_at`, `done_at` timestamps
   - Location: `calculations/<calc_id>/.run_tmp_info/manifest.json`
@@ -1131,15 +1131,15 @@ This section provides a comprehensive review of the engine/execution/runner laye
 ┌─────────────────────────────────────────────────────────────────────┐
 │ UI/CLI TRIGGER                                                       │
 │ - GUI: RPC call to "run_calculation"                                │
-│ - CLI: `qv run calculation <calc>`                                  │
+│ - CLI: `qms run calculation <calc>`                                  │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │ DAEMON RPC (GUI path only)                                          │
-│ - QVDaemon.handle_request() → QVService.run_calculation()           │
+│ - QMSDaemon.handle_request() → QMSService.run_calculation()           │
 │ - JobManager.submit() → creates Job (pending)                       │
-│ Location: src/quantumvitas/daemon/server.py                         │
+│ Location: src/qmatsuite/daemon/server.py                         │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -1148,7 +1148,7 @@ This section provides a comprehensive review of the engine/execution/runner laye
 │ - Load calculation.yaml → Calculation model                         │
 │ - Load step YAMLs → Step specs                                      │
 │ - Materialize inputs: materialize_step_spec() → scf.in, etc.       │
-│ Location: src/quantumvitas/calculation/structure_steps.py           │
+│ Location: src/qmatsuite/calculation/structure_steps.py           │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -1157,7 +1157,7 @@ This section provides a comprehensive review of the engine/execution/runner laye
 │ - prepare_input_step() → sets outdir, pseudo_dir                    │
 │ - QEInputGenerator.write_file() → writes .in file                   │
 │ - Materialize pseudos: ensure_qe_pseudos() → project/pseudo/       │
-│ Location: src/quantumvitas/calculation/input_runner.py              │
+│ Location: src/qmatsuite/calculation/input_runner.py              │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -1167,7 +1167,7 @@ This section provides a comprehensive review of the engine/execution/runner laye
 │ - engine.build_command() → ["mpirun", "-np", "4", "pw.x"]          │
 │ - subprocess.run() with stdin redirection (pw.x < scf.in)          │
 │ - Capture stdout/stderr → scf.out / scf.err                         │
-│ Location: src/quantumvitas/core/engines/qe_calculation.py           │
+│ Location: src/qmatsuite/core/engines/qe_calculation.py           │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -1185,7 +1185,7 @@ This section provides a comprehensive review of the engine/execution/runner laye
 │ - parse_scf_output_text() → extracts energy, forces, etc.           │
 │ - Assumes QE file layout: regex for "JOB DONE", "total energy="    │
 │ - Returns SCFResult (units: Ry/eV, but structure is QE-specific)   │
-│ Location: src/quantumvitas/analysis/parsers.py                      │
+│ Location: src/qmatsuite/analysis/parsers.py                      │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -1194,7 +1194,7 @@ This section provides a comprehensive review of the engine/execution/runner laye
 │ - SCFResult, DOSResult, BandsResult dataclasses                     │
 │ - Stored in results/ directory as JSON                              │
 │ - Units normalized (Ry/eV) but structure is physics-driven          │
-│ Location: src/quantumvitas/analysis/{energy,dos,bands}.py           │
+│ Location: src/qmatsuite/analysis/{energy,dos,bands}.py           │
 └──────────────────┬──────────────────────────────────────────────────┘
                    │
                    ▼
@@ -1203,7 +1203,7 @@ This section provides a comprehensive review of the engine/execution/runner laye
 │ - Manifest update: set done=true, done_at timestamp                 │
 │ - History: RunFinishedEvent → timeline                              │
 │ - Journal: YAML change tracking (separate from execution)           │
-│ Location: src/quantumvitas/{calculation/manifest,history/}.py       │
+│ Location: src/qmatsuite/{calculation/manifest,history/}.py       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1293,7 +1293,7 @@ if step_status == StepStatus.SUCCESS:
 2. **Engine-specific**: Each engine has its own plan schema (no shared fields beyond core)
 3. **On-disk SSOT**: Plan is stored per step, not derived from YAML
 
-**Proposed Schema** (`src/quantumvitas/execution/plan.py`):
+**Proposed Schema** (`src/qmatsuite/execution/plan.py`):
 
 ```python
 @dataclass
@@ -1349,7 +1349,7 @@ class ArtifactSpec:
 
 ### E.1 Runner Interface
 
-**Proposed Interface** (`src/quantumvitas/execution/runner.py`):
+**Proposed Interface** (`src/qmatsuite/execution/runner.py`):
 
 ```python
 class Runner(ABC):
@@ -1437,7 +1437,7 @@ class SubprocessRunner(Runner):
 2. **Restartability required**: After each step, MUST flush on-disk artifacts (checkpoint + summary + logs)
 3. **In-memory is cache only**: Correctness depends on disk artifacts, not in-memory state
 
-**Proposed Implementation** (`src/quantumvitas/execution/python_runner.py`):
+**Proposed Implementation** (`src/qmatsuite/execution/python_runner.py`):
 
 ```python
 class PythonWorkerRunner(Runner):
@@ -1474,7 +1474,7 @@ class PythonWorkerRunner(Runner):
 
 ### E.4 Daemon Worker Lifecycle Management
 
-**Minimal Management** (`src/quantumvitas/execution/worker_manager.py`):
+**Minimal Management** (`src/qmatsuite/execution/worker_manager.py`):
 
 ```python
 class WorkerManager:
@@ -1509,7 +1509,7 @@ class WorkerManager:
 
 ### F.1 Current Parser Location
 
-**Parsers**: `src/quantumvitas/analysis/parsers.py`
+**Parsers**: `src/qmatsuite/analysis/parsers.py`
 
 **QE-Specific Parsers**:
 - `parse_scf_output_text()`: Parses QE `.out` files (regex for "JOB DONE", "total energy=", etc.)
@@ -1524,11 +1524,11 @@ class WorkerManager:
 ### F.2 Proposed Parser Abstraction
 
 **Engine-Specific Parsers** (internal):
-- `src/quantumvitas/execution/parsers/qe_parser.py`: `parse_qe_scf_output()`
-- `src/quantumvitas/execution/parsers/pyscf_parser.py`: `parse_pyscf_scf_output()`
+- `src/qmatsuite/execution/parsers/qe_parser.py`: `parse_qe_scf_output()`
+- `src/qmatsuite/execution/parsers/pyscf_parser.py`: `parse_pyscf_scf_output()`
 
 **Canonical Artifacts** (engine-agnostic):
-- `src/quantumvitas/execution/artifacts.py`:
+- `src/qmatsuite/execution/artifacts.py`:
   - `EnergyResult`: `{energy: float, unit: str, converged: bool}`
   - `ForcesResult`: `{forces: array, unit: str}`
   - `BandsResult`: `{bands: array, kpath: array, unit: str}`
@@ -1548,7 +1548,7 @@ class Parser(ABC):
 ```
 
 **Parser Registration**:
-- `src/quantumvitas/execution/parser_registry.py`: Maps `(engine_id, step_kind)` → parser class
+- `src/qmatsuite/execution/parser_registry.py`: Maps `(engine_id, step_kind)` → parser class
 
 ### F.3 Artifact Storage Location
 
@@ -1622,8 +1622,8 @@ class Parser(ABC):
 2. **Type Hints**: Add `EngineBackend` enum (`QE`, `PYSCF`) for clarity
 
 **Files to Touch**:
-- `src/quantumvitas/core/engines/qe_calculation.py`: Add "QE-specific" docstring
-- `src/quantumvitas/core/engines/qe.py`: Add "QE-specific" docstring
+- `src/qmatsuite/core/engines/qe_calculation.py`: Add "QE-specific" docstring
+- `src/qmatsuite/core/engines/qe.py`: Add "QE-specific" docstring
 
 **Tests**: None (documentation only)
 
@@ -1636,17 +1636,17 @@ class Parser(ABC):
 **Goal**: Add `EnginePlan` as thin wrapper around existing step YAML/materialization (no behavior change).
 
 **Changes**:
-1. **New Module**: `src/quantumvitas/execution/plan.py`
+1. **New Module**: `src/qmatsuite/execution/plan.py`
    - Define `EnginePlan` dataclass (QE-specific fields for now)
    - Define `generate_qe_plan(step_spec, workdir) -> EnginePlan` (wraps existing materialization)
 2. **Integration**: `CalculationRunner` generates plan on-the-fly, passes to runner (stub)
 
 **Files to Create**:
-- `src/quantumvitas/execution/__init__.py`
-- `src/quantumvitas/execution/plan.py`
+- `src/qmatsuite/execution/__init__.py`
+- `src/qmatsuite/execution/plan.py`
 
 **Files to Modify**:
-- `src/quantumvitas/calculation/runner.py`: Generate plan before execution (no-op for now)
+- `src/qmatsuite/calculation/runner.py`: Generate plan before execution (no-op for now)
 
 **Tests**:
 - Unit: `generate_qe_plan()` roundtrip (plan → existing execution path)
@@ -1661,16 +1661,16 @@ class Parser(ABC):
 **Goal**: Add runner interface, implement `SubprocessRunner` wrapping existing QE code.
 
 **Changes**:
-1. **New Module**: `src/quantumvitas/execution/runner.py`
+1. **New Module**: `src/qmatsuite/execution/runner.py`
    - Define `Runner` abstract interface
    - Implement `SubprocessRunner` (wraps `QECalculationRunner.run_step()`)
 2. **Integration**: `CalculationRunner` uses `SubprocessRunner` for QE steps
 
 **Files to Create**:
-- `src/quantumvitas/execution/runner.py`
+- `src/qmatsuite/execution/runner.py`
 
 **Files to Modify**:
-- `src/quantumvitas/calculation/runner.py`: Replace direct `step.run()` with `runner.run(plan)`
+- `src/qmatsuite/calculation/runner.py`: Replace direct `step.run()` with `runner.run(plan)`
 
 **Tests**:
 - Unit: `SubprocessRunner.run()` for QE step
@@ -1685,17 +1685,17 @@ class Parser(ABC):
 **Goal**: Add `PythonWorkerRunner` skeleton for PySCF (no need to support full PySCF now).
 
 **Changes**:
-1. **New Module**: `src/quantumvitas/execution/python_runner.py`
+1. **New Module**: `src/qmatsuite/execution/python_runner.py`
    - Implement `PythonWorkerRunner` (stub implementation)
    - Worker process: reads `plan.json`, executes via subprocess (same as current PySCFEngine)
 2. **Integration**: `CalculationRunner` selects runner based on `plan.engine_id`
 
 **Files to Create**:
-- `src/quantumvitas/execution/python_runner.py`
-- `src/quantumvitas/execution/worker_manager.py` (skeleton)
+- `src/qmatsuite/execution/python_runner.py`
+- `src/qmatsuite/execution/worker_manager.py` (skeleton)
 
 **Files to Modify**:
-- `src/quantumvitas/calculation/runner.py`: Route to `PythonWorkerRunner` for PySCF steps
+- `src/qmatsuite/calculation/runner.py`: Route to `PythonWorkerRunner` for PySCF steps
 
 **Tests**:
 - Unit: `PythonWorkerRunner.run()` stub (returns success with mock artifacts)
@@ -1879,9 +1879,9 @@ class Parser(ABC):
 2. Add type hint: `EngineBackend = Literal["qe", "pyscf"]` for clarity
 
 **Files to Modify**:
-- `src/quantumvitas/core/engines/qe_calculation.py`: Add "QE-specific" docstring to `QECalculationRunner`
-- `src/quantumvitas/core/engines/qe.py`: Add "QE-specific" docstring to `QuantumEspressoEngine`
-- `src/quantumvitas/execution/__init__.py`: Create new module (empty for now, prepare for Phase 1)
+- `src/qmatsuite/core/engines/qe_calculation.py`: Add "QE-specific" docstring to `QECalculationRunner`
+- `src/qmatsuite/core/engines/qe.py`: Add "QE-specific" docstring to `QuantumEspressoEngine`
+- `src/qmatsuite/execution/__init__.py`: Create new module (empty for now, prepare for Phase 1)
 
 **No Changes To**:
 - Execution logic (no behavior change)
@@ -1930,7 +1930,7 @@ This follow-up review answers 16 critical questions about boundary definitions, 
 - **[LOSSY]**: IR → QE params requires policy choice (multiple valid QE encodings)
 - **[DERIVED]**: IR is inferred from QE params, not directly encoded
 
-**Note**: Classification based on existing preset compilation/detection code paths in `src/quantumvitas/presets/`.
+**Note**: Classification based on existing preset compilation/detection code paths in `src/qmatsuite/presets/`.
 
 | IR Field | Category | QE Parameter(s) | Policy/Notes |
 |----------|----------|----------------|--------------|
@@ -1963,13 +1963,13 @@ This follow-up review answers 16 critical questions about boundary definitions, 
 **Summary**: 12 REVERSIBLE, 7 LOSSY, 6 DERIVED
 
 **Policy Storage**: Lossy policies are NOT stored on disk today. They live in compiler code:
-- `src/quantumvitas/presets/paramspace.py`: ParamSpace profiles define canonical encodings
-- `src/quantumvitas/presets/spaces_registry.py`: Profile → enum mappings (canonical for apply)
-- `src/quantumvitas/presets/variants_registry.py`: Detect tolerances (accept redundant forms)
+- `src/qmatsuite/presets/paramspace.py`: ParamSpace profiles define canonical encodings
+- `src/qmatsuite/presets/spaces_registry.py`: Profile → enum mappings (canonical for apply)
+- `src/qmatsuite/presets/variants_registry.py`: Detect tolerances (accept redundant forms)
 
 **Round-trip Ambiguity Avoidance**: Canonical encoding enforced on apply:
-- `src/quantumvitas/presets/paramspace.py:606`: Noncollinear → `nspin` deleted (NOT_APPLICABLE)
-- `src/quantumvitas/presets/variants_registry.py:185`: Detect tolerances accept `nspin=4` but don't generate it
+- `src/qmatsuite/presets/paramspace.py:606`: Noncollinear → `nspin` deleted (NOT_APPLICABLE)
+- `src/qmatsuite/presets/variants_registry.py:185`: Detect tolerances accept `nspin=4` but don't generate it
 
 ---
 
@@ -2008,10 +2008,10 @@ This follow-up review answers 16 critical questions about boundary definitions, 
 - **SOC**: `SYSTEM.lspinorb=.true.` requires `SYSTEM.noncolin=.true.` (physics constraint)
 
 **Evidence**:
-- `src/quantumvitas/presets/paramspace.py:591-628`: ParamSpace profiles define canonical encodings
-- `src/quantumvitas/presets/integration.py:67-102`: `_validate_magnetism_physics()` enforces constraints
-- `src/quantumvitas/data/qe_module_parameters.json:726-743`: `starting_magnetization(i)` description (per-atom, z for collinear)
-- `src/quantumvitas/data/qe_module_parameters.json:1353-1389`: `angle1(i)`, `angle2(i)` description (noncollinear only)
+- `src/qmatsuite/presets/paramspace.py:591-628`: ParamSpace profiles define canonical encodings
+- `src/qmatsuite/presets/integration.py:67-102`: `_validate_magnetism_physics()` enforces constraints
+- `src/qmatsuite/data/qe_module_parameters.json:726-743`: `starting_magnetization(i)` description (per-atom, z for collinear)
+- `src/qmatsuite/data/qe_module_parameters.json:1353-1389`: `angle1(i)`, `angle2(i)` description (noncollinear only)
 
 **Combinations**:
 
@@ -2041,9 +2041,9 @@ This follow-up review answers 16 critical questions about boundary definitions, 
 **Answer**: **No conversion code exists today**. IR will use **eV fixed** for energies.
 
 **Evidence**:
-- `src/quantumvitas/analysis/parsers.py:44-85`: `SCFResult` preserves native units (Ry for energy, eV for Fermi)
-- `src/quantumvitas/analysis/parsers.py:83-84`: Unit tracking fields (`energy_unit="Ry"`, `fermi_unit="eV"`)
-- `src/quantumvitas/engines/pyscf/runner.py:200`: PySCF results use `energy_unit="Hartree"` (not eV)
+- `src/qmatsuite/analysis/parsers.py:44-85`: `SCFResult` preserves native units (Ry for energy, eV for Fermi)
+- `src/qmatsuite/analysis/parsers.py:83-84`: Unit tracking fields (`energy_unit="Ry"`, `fermi_unit="eV"`)
+- `src/qmatsuite/engines/pyscf/runner.py:200`: PySCF results use `energy_unit="Hartree"` (not eV)
 - **No conversion functions found**: No `ry_to_ev()`, `ev_to_ry()`, etc. in codebase
 
 **Proposed IR Policy**: **IR uses eV fixed** (not stored, compile-time conversion).
@@ -2060,8 +2060,8 @@ This follow-up review answers 16 critical questions about boundary definitions, 
 - QE → IR: `ecutwfc_ry / 13.6057` → `ecutwfc_ev` (detection)
 
 **UI/History Display**: History already normalizes to eV for display:
-- `src/quantumvitas/history/digests.py`: StepDigest computes human-readable summaries (likely uses eV)
-- `gui/src/types/qv.ts:277-278`: UI types use `total_energy_ry` and `fermi_energy_ev` (mixed units today)
+- `src/qmatsuite/history/digests.py`: StepDigest computes human-readable summaries (likely uses eV)
+- `gui/src/types/qms.ts:277-278`: UI types use `total_energy_ry` and `fermi_energy_ev` (mixed units today)
 
 **Conclusion**: IR units are **fixed to eV** (not configurable). Conversion happens at compile/detect time.
 
@@ -2077,7 +2077,7 @@ This follow-up review answers 16 critical questions about boundary definitions, 
 
 **Preset**: `magnetism: MagnetismOption.COLLINEAR_LSDA`
 
-**QE Params Mutated** (from `src/quantumvitas/presets/paramspace.py:599-603`):
+**QE Params Mutated** (from `src/qmatsuite/presets/paramspace.py:599-603`):
 ```python
 {
     "SYSTEM": {
@@ -2097,15 +2097,15 @@ This follow-up review answers 16 critical questions about boundary definitions, 
 }
 ```
 
-**Detector Round-Trip** (from `src/quantumvitas/presets/detector.py:104-126`):
+**Detector Round-Trip** (from `src/qmatsuite/presets/detector.py:104-126`):
 1. **Detection**: `detect_magnetism(params)` → calls `variants_registry::detect_dimension_for_step()`
 2. **Matching**: ParamSpace matches `nspin=2`, `noncolin=False`, `lspinorb=False` → profile "COL"
 3. **Profile → Enum**: `MAGNETISM_PROFILE_TO_ENUM["COL"]` → `MagnetismOption.COLLINEAR_LSDA`
 4. **Round-trip**: Compile → Detect → same preset ✅
 
 **Code Paths**:
-- **Compile**: `src/quantumvitas/presets/compiler.py:39-64` → `compile_magnetism()` → `spaces_registry::compile_dimension_patch()` → profile "COL"
-- **Detect**: `src/quantumvitas/presets/detector.py:104-126` → `detect_magnetism()` → `variants_registry::detect_dimension_for_step()` → profile "COL" → enum
+- **Compile**: `src/qmatsuite/presets/compiler.py:39-64` → `compile_magnetism()` → `spaces_registry::compile_dimension_patch()` → profile "COL"
+- **Detect**: `src/qmatsuite/presets/detector.py:104-126` → `detect_magnetism()` → `variants_registry::detect_dimension_for_step()` → profile "COL" → enum
 - **Tests**: `tests/unit/test_detector_b.py:353-477` → roundtrip tests verify compile → detect equivalence
 
 **After IR Introduction**:
@@ -2121,15 +2121,15 @@ This follow-up review answers 16 critical questions about boundary definitions, 
 
 **Answer**:
 
-**Today** (from `src/quantumvitas/presets/detector.py`):
+**Today** (from `src/qmatsuite/presets/detector.py`):
 - Detector infers **preset options** (enum values: `MagnetismOption.NONMAGNETIC`, etc.)
 - SSOT is **preset enum** (not QE params directly)
 - Detection uses **tolerant matching** (accepts redundant QE encodings via ParamSpace profiles)
 
 **Evidence**:
-- `src/quantumvitas/presets/detector.py:104-126`: `detect_magnetism()` returns `MagnetismOption` enum
-- `src/quantumvitas/presets/variants_registry.py:185`: Tolerant profiles accept `nspin=4` for noncollinear (detect-only)
-- `src/quantumvitas/presets/dimensions.py:17-32`: Preset enums are runtime-only (never persisted)
+- `src/qmatsuite/presets/detector.py:104-126`: `detect_magnetism()` returns `MagnetismOption` enum
+- `src/qmatsuite/presets/variants_registry.py:185`: Tolerant profiles accept `nspin=4` for noncollinear (detect-only)
+- `src/qmatsuite/presets/dimensions.py:17-32`: Preset enums are runtime-only (never persisted)
 
 **After IR Introduction**:
 - Detector infers **IR fields** (not preset enums directly)
@@ -2156,7 +2156,7 @@ QE params → IR fields (engine-agnostic) → Preset options (UI convenience)
 
 **Answer**:
 
-**Source**: `src/quantumvitas/calculation/types.py:10-30` (StepType enum) + `src/quantumvitas/workflow/registry.py:65-280` (StepTypeSpec definitions)
+**Source**: `src/qmatsuite/calculation/types.py:10-30` (StepType enum) + `src/qmatsuite/workflow/registry.py:65-280` (StepTypeSpec definitions)
 
 **Step Taxonomy** (engine-agnostic):
 
@@ -2182,9 +2182,9 @@ QE params → IR fields (engine-agnostic) → Preset options (UI convenience)
 - **Density of states**: ρ(E) vs energy (format: engine-agnostic JSON)
 
 **Evidence**:
-- `src/quantumvitas/workflow/registry.py:69-112`: StepTypeSpec defines `requires_charge_density`, `produces_charge_density`
-- `src/quantumvitas/analysis/artifacts.py:213-302`: Analysis functions require specific files per step type
-- `src/quantumvitas/analysis/parsers.py:121-395`: Parsers produce canonical artifacts (SCFResult, DOSData, etc.)
+- `src/qmatsuite/workflow/registry.py:69-112`: StepTypeSpec defines `requires_charge_density`, `produces_charge_density`
+- `src/qmatsuite/analysis/artifacts.py:213-302`: Analysis functions require specific files per step type
+- `src/qmatsuite/analysis/parsers.py:121-395`: Parsers produce canonical artifacts (SCFResult, DOSData, etc.)
 
 ---
 
@@ -2195,9 +2195,9 @@ QE params → IR fields (engine-agnostic) → Preset options (UI convenience)
 **Answer**: **Final design should be engine-free**. Engine binding lives in **StepTypeSpec registry**.
 
 **Evidence**:
-- `src/quantumvitas/workflow/registry.py:22-47`: `StepTypeSpec` already contains `engine` and `executable` fields
-- `src/quantumvitas/workflow/registry.py:69-79`: `StepTypeSpec` for "scf" has `engine="qe"`, `executable="pw.x"`
-- `src/quantumvitas/calculation/types.py:10-30`: `StepType` enum is **engine-agnostic** (no engine info)
+- `src/qmatsuite/workflow/registry.py:22-47`: `StepTypeSpec` already contains `engine` and `executable` fields
+- `src/qmatsuite/workflow/registry.py:69-79`: `StepTypeSpec` for "scf" has `engine="qe"`, `executable="pw.x"`
+- `src/qmatsuite/calculation/types.py:10-30`: `StepType` enum is **engine-agnostic** (no engine info)
 
 **Current State**:
 - Step YAML: No engine info (engine-agnostic)
@@ -2219,7 +2219,7 @@ QE params → IR fields (engine-agnostic) → Preset options (UI convenience)
 
 **Answer**:
 
-**Today** (from `src/quantumvitas/calculation/structure_steps.py:34-54`):
+**Today** (from `src/qmatsuite/calculation/structure_steps.py:34-54`):
 - **SSOT**: `step.yaml` is SSOT for **user intent** (parameters/cards structure)
 - **Storage**: `steps/{step_id}.step.yaml` contains QE params (engine-specific today)
 - **Usage**: Materialization reads step YAML → generates QE `.in` file
@@ -2260,7 +2260,7 @@ cards:  # KEEP: Engine-specific cards (optional)
 - **After IR**: `materialize_step_spec()` reads IR from `step.yaml` → compiles IR → QE params → merges overrides → generates `.in`
 
 **History**: IR fields stored in run revision (human-readable):
-- `src/quantumvitas/history/run_revision.py:77`: `preset_options` field (today: preset enums)
+- `src/qmatsuite/history/run_revision.py:77`: `preset_options` field (today: preset enums)
 - **After IR**: `ir_fields` field (IR document snapshot)
 
 ---
@@ -2273,7 +2273,7 @@ cards:  # KEEP: Engine-specific cards (optional)
 
 **Answer**:
 
-**SSOT**: `src/quantumvitas/data/qe_module_parameters.json` is SSOT for QE parameter metadata.
+**SSOT**: `src/qmatsuite/data/qe_module_parameters.json` is SSOT for QE parameter metadata.
 
 **Duplications Found**:
 
@@ -2284,9 +2284,9 @@ cards:  # KEEP: Engine-specific cards (optional)
 | Preset ParamSpace profiles | Preset → QE param mappings | ✅ Intentional | Keep (preset logic, not metadata) |
 
 **Evidence**:
-- `src/quantumvitas/data/qe_module_parameters.json:745-753`: `ecutwfc` default: null (REQUIRED)
-- `src/quantumvitas/calculation/step_defaults.py:22-23`: `ecutwfc: 50` (hardcoded default, not from JSON)
-- `src/quantumvitas/data/qe_metadata.py`: Provides API to access JSON (caching, hot-reload)
+- `src/qmatsuite/data/qe_module_parameters.json:745-753`: `ecutwfc` default: null (REQUIRED)
+- `src/qmatsuite/calculation/step_defaults.py:22-23`: `ecutwfc: 50` (hardcoded default, not from JSON)
+- `src/qmatsuite/data/qe_metadata.py`: Provides API to access JSON (caching, hot-reload)
 
 **Elimination Strategy**:
 - `step_defaults.py` should read defaults from `qe_metadata.get_module_param_defaults()` (future)
@@ -2305,7 +2305,7 @@ cards:  # KEEP: Engine-specific cards (optional)
 **Answer**:
 
 **QE Parameter**:
-- **Location**: `src/quantumvitas/data/qe_module_parameters.json:745-753`
+- **Location**: `src/qmatsuite/data/qe_module_parameters.json:745-753`
 - **Name**: `&SYSTEM.ecutwfc`
 - **Type**: `REAL`
 - **Default**: `null` (REQUIRED)
@@ -2319,7 +2319,7 @@ cards:  # KEEP: Engine-specific cards (optional)
 - **Mapping**: IR → QE: `wavefunction_cutoff_ev * 13.6057` → `ecutwfc_ry`
 
 **History Display** (proposed):
-- **Location**: `src/quantumvitas/history/run_revision.py:86` (`step_digests` field)
+- **Location**: `src/qmatsuite/history/run_revision.py:86` (`step_digests` field)
 - **Format**: `"wavefunction_cutoff_ev": 60.0` (human-readable, engine-agnostic)
 - **UI Display**: `gui/src/components/panels/CalculationListPanel.tsx:355-361`: Formats as "wfc 60" (rounded)
 
@@ -2341,19 +2341,19 @@ cards:  # KEEP: Engine-specific cards (optional)
 **Answer**: **Two files** (both required):
 
 1. **Manifest entry** (`.run_tmp_info/manifest.json`):
-   - **Location**: `src/quantumvitas/calculation/manifest.py:25-59`
+   - **Location**: `src/qmatsuite/calculation/manifest.py:25-59`
    - **Fields**: `done: true`, `done_at: <timestamp>`, `step_sha: <hash>`, `structure_sha: <hash>`, `pseudo_set_sha: <hash>`
    - **SSOT for**: Completion state (did step finish?)
 
 2. **Primary output file** (`raw/{step_type}.out`):
-   - **Location**: `src/quantumvitas/calculation/step_done.py:86-139`
+   - **Location**: `src/qmatsuite/calculation/step_done.py:86-139`
    - **Content**: Contains "JOB DONE" marker (QE-specific)
    - **SSOT for**: Execution success (did QE report success?)
 
 **Evidence**:
-- `src/quantumvitas/calculation/manifest.py:32-40`: `ManifestStepEntry` tracks `done` flag + timestamps
-- `src/quantumvitas/calculation/step_done.py:86-139`: `is_step_done()` checks file existence + "JOB DONE" marker
-- `src/quantumvitas/calculation/runner.py:570-592`: Runner updates manifest `done=true` after successful execution
+- `src/qmatsuite/calculation/manifest.py:32-40`: `ManifestStepEntry` tracks `done` flag + timestamps
+- `src/qmatsuite/calculation/step_done.py:86-139`: `is_step_done()` checks file existence + "JOB DONE" marker
+- `src/qmatsuite/calculation/runner.py:570-592`: Runner updates manifest `done=true` after successful execution
 
 **Truth Drift Risk**: **Low** - Manifest and output file are updated atomically:
 - Manifest updated only if `is_step_done()` returns `True`
@@ -2372,7 +2372,7 @@ cards:  # KEEP: Engine-specific cards (optional)
 
 **Answer**:
 
-**Current Logic** (`src/quantumvitas/calculation/step_done.py:86-139`):
+**Current Logic** (`src/qmatsuite/calculation/step_done.py:86-139`):
 
 ```python
 def is_step_done(calc_dir, step_kind, calc_raw_dir=None, step_doc=None) -> bool:
@@ -2412,15 +2412,15 @@ def is_step_done(calc_dir, step_kind, calc_raw_dir=None, step_doc=None) -> bool:
 
 **Answer**: **YES** (subprocess-based today), **NO checkpoint files** (minimal restart).
 
-**Current Artifacts** (from `src/quantumvitas/engines/pyscf/runner.py:117-316`):
+**Current Artifacts** (from `src/qmatsuite/engines/pyscf/runner.py:117-316`):
 1. **`results.json`**: Parsed results (energy, MO coefficients, etc.)
 2. **`pyscf.log`**: Stdout capture (reproducible)
 3. **`pyscf_input.py`**: Reproducible input script (for debugging)
 
 **Evidence**:
-- `src/quantumvitas/engines/pyscf/runner.py:418`: `results_file = working_dir / "results.json"`
-- `src/quantumvitas/engines/pyscf/runner.py:180`: `log_file = working_dir / "pyscf.log"`
-- `src/quantumvitas/engines/pyscf/runner.py:319-394`: `write_input_script()` generates `pyscf_input.py`
+- `src/qmatsuite/engines/pyscf/runner.py:418`: `results_file = working_dir / "results.json"`
+- `src/qmatsuite/engines/pyscf/runner.py:180`: `log_file = working_dir / "pyscf.log"`
+- `src/qmatsuite/engines/pyscf/runner.py:319-394`: `write_input_script()` generates `pyscf_input.py`
 
 **Minimal Restart Artifact Set** (per step):
 - **`results.json`**: Required (contains all computed data)
@@ -2464,8 +2464,8 @@ preset_options = detect_presets_from_ir(ir_fields)  # For display only
 ```
 
 **Evidence** (similar pattern in presets):
-- `src/quantumvitas/presets/detector.py:104-126`: `detect_magnetism()` computes preset from QE params (not stored)
-- `src/quantumvitas/presets/integration.py:105-150`: `detect_presets_from_calculation()` returns dict (not persisted)
+- `src/qmatsuite/presets/detector.py:104-126`: `detect_magnetism()` computes preset from QE params (not stored)
+- `src/qmatsuite/presets/integration.py:105-150`: `detect_presets_from_calculation()` returns dict (not persisted)
 
 **Prevention Strategy**:
 - **No write code**: Phase 0 has no `write_ir_to_step_yaml()` function
@@ -2662,13 +2662,13 @@ def test_engineplan_ssot_no_drift():
 def test_cli_ir_roundtrip():
     """CLI IR edit → step YAML → CLI IR display should match."""
     # CLI: edit IR field
-    run_cli(["qv", "step", "edit", "--ir.wavefunction_cutoff=70.0", "scf"])
+    run_cli(["qms", "step", "edit", "--ir.wavefunction_cutoff=70.0", "scf"])
     
     # Read step YAML
     step_yaml = load_step_yaml("steps/scf.step.yaml")
     
     # CLI: display IR
-    output = run_cli(["qv", "step", "show", "--ir", "scf"])
+    output = run_cli(["qms", "step", "show", "--ir", "scf"])
     
     # Should match
     assert "wavefunction_cutoff: 70.0" in output
@@ -2749,7 +2749,7 @@ This final review confirms that **ParamSpace is a mathematically reversible syst
 
 ### A.1 Current ParamSpace Structure
 
-**Source**: `src/quantumvitas/presets/paramspace.py:117-160`
+**Source**: `src/qmatsuite/presets/paramspace.py:117-160`
 
 **Structure**:
 ```python
@@ -2786,7 +2786,7 @@ Each ParamSpace contains a **full matrix** where:
 - **Columns** = keys (engine parameters)
 - **Cells** = `Cell` objects (matrix entries)
 
-**Matrix Entry Types** (from `src/quantumvitas/presets/paramspace.py:24-54`):
+**Matrix Entry Types** (from `src/qmatsuite/presets/paramspace.py:24-54`):
 
 | Cell Type | Meaning | Compile Behavior | Detect Behavior |
 |-----------|---------|------------------|-----------------|
@@ -2795,15 +2795,15 @@ Each ParamSpace contains a **full matrix** where:
 | `WILDCARD` | Ignore this parameter | Do nothing (leave unchanged) | Skip check (always match) |
 
 **Evidence**:
-- `src/quantumvitas/presets/paramspace.py:238-306`: `match_profile()` logic for detection
-- `src/quantumvitas/presets/paramspace.py:313-374`: `compile_profile_patch()` logic for compilation
-- `src/quantumvitas/presets/paramspace.py:136-159`: `__post_init__()` validates full matrix
+- `src/qmatsuite/presets/paramspace.py:238-306`: `match_profile()` logic for detection
+- `src/qmatsuite/presets/paramspace.py:313-374`: `compile_profile_patch()` logic for compilation
+- `src/qmatsuite/presets/paramspace.py:136-159`: `__post_init__()` validates full matrix
 
 ---
 
 ### A.2 Applicability to Steps
 
-**Source**: `src/quantumvitas/presets/variants_registry.py:38-111`
+**Source**: `src/qmatsuite/presets/variants_registry.py:38-111`
 
 **Variant System**:
 - Each `ParamSpace` may have multiple **variants** (different matrices for different step types)
@@ -2811,8 +2811,8 @@ Each ParamSpace contains a **full matrix** where:
 - **Multiple variants** allow different matrices for the same dimension (e.g., precision has 3 variants: default, nscf, bands_pw)
 
 **Evidence**:
-- `src/quantumvitas/presets/variants_registry.py:42-90`: Variant definitions with `applies_to_step_types` sets
-- `src/quantumvitas/presets/variants_registry.py:118-154`: `_build_indexes()` creates `(step_type, dimension) -> variant` mapping
+- `src/qmatsuite/presets/variants_registry.py:42-90`: Variant definitions with `applies_to_step_types` sets
+- `src/qmatsuite/presets/variants_registry.py:118-154`: `_build_indexes()` creates `(step_type, dimension) -> variant` mapping
 
 **Example**: Precision dimension has 3 variants:
 - `PRECISION_PW_DEFAULT_VARIANT`: applies to `{"scf", "relax", "vc-relax", "md", "vc-md"}`
@@ -2825,23 +2825,23 @@ Each ParamSpace contains a **full matrix** where:
 
 ### A.3 Cell Type Meanings
 
-**VALUE(v)** (from `src/quantumvitas/presets/paramspace.py:42-44`):
+**VALUE(v)** (from `src/qmatsuite/presets/paramspace.py:42-44`):
 - **Meaning**: Static value that must match exactly (after canonicalization)
 - **Compile** (`compile_profile_patch()` line 357-372): Write `v` to YAML (subject to `explicit_defaults` flag)
 - **Detect** (`match_profile()` line 283-292): Compare YAML effective_value with `v` using `key.matches()`
 
-**NOT_APPLICABLE** (from `src/quantumvitas/presets/paramspace.py:47-49`):
+**NOT_APPLICABLE** (from `src/qmatsuite/presets/paramspace.py:47-49`):
 - **Meaning**: Parameter is not applicable for this profile (must be absent)
 - **Compile** (`compile_profile_patch()` line 352-355): Always delete from YAML (add to `deletions` set)
 - **Detect** (`match_profile()` line 275-281): Require `present == False` (if present, match fails)
 
-**WILDCARD** (from `src/quantumvitas/presets/paramspace.py:52-54`):
+**WILDCARD** (from `src/qmatsuite/presets/paramspace.py:52-54`):
 - **Meaning**: Ignore this parameter for this profile (parameter may have any value or be absent)
 - **Compile** (`compile_profile_patch()` line 348-350): Do nothing (leave parameter unchanged in YAML)
 - **Detect** (`match_profile()` line 268-270): Skip check (always match)
 
 **Oracle / Dynamic**: Not implemented as separate cell types. Precision uses **computed canonical values** (not static profiles):
-- **Location**: `src/quantumvitas/presets/paramspace.py:730-822` (`match_precision_profile()`)
+- **Location**: `src/qmatsuite/presets/paramspace.py:730-822` (`match_precision_profile()`)
 - **Behavior**: Values computed from structure + pseudos, then matched against YAML
 - **Note**: Precision profiles are empty (`{}`), values computed on-demand
 
@@ -2886,9 +2886,9 @@ Each ParamSpace contains a **full matrix** where:
 **Tie-Breaking / Priority Rules**:
 
 - **Mutual Exclusivity**: Profiles must be mutually exclusive (one YAML matches at most one profile)
-- **Evidence**: `src/quantumvitas/presets/paramspace.py:297-301`: Raises `ValueError` if multiple profiles match
+- **Evidence**: `src/qmatsuite/presets/paramspace.py:297-301`: Raises `ValueError` if multiple profiles match
 - **Tolerance Profiles**: Some dimensions have **detect-only tolerance profiles** (e.g., `NC_WITH_NSPIN4`) that accept redundant QE encodings but don't generate them
-- **Evidence**: `src/quantumvitas/presets/variants_registry.py:181-188`: `MAGNETISM_PROFILE_TO_ENUM` maps multiple profiles to same enum (detect tolerance), but `MAGNETISM_ENUM_TO_PROFILE` (compile) uses canonical only
+- **Evidence**: `src/qmatsuite/presets/variants_registry.py:181-188`: `MAGNETISM_PROFILE_TO_ENUM` maps multiple profiles to same enum (detect tolerance), but `MAGNETISM_ENUM_TO_PROFILE` (compile) uses canonical only
 
 **Reversibility Guarantee**: Reversibility holds **if and only if**:
 1. Compile uses canonical encoding (explicit `VALUE` cells, `NOT_APPLICABLE` for non-applicable params)
@@ -2903,23 +2903,23 @@ Each ParamSpace contains a **full matrix** where:
 
 **Evidence**:
 
-**OccupationsScheme ParamSpace** (`src/quantumvitas/presets/paramspace.py:475-499`):
+**OccupationsScheme ParamSpace** (`src/qmatsuite/presets/paramspace.py:475-499`):
 - `key="occupations"` (line 477)
 - `key="smearing"` (line 485)
 - `key="degauss"` (line 494)
 
-**Magnetism ParamSpace** (`src/quantumvitas/presets/paramspace.py:565-587`):
+**Magnetism ParamSpace** (`src/qmatsuite/presets/paramspace.py:565-587`):
 - `key="nspin"` (line 567)
 - `key="noncolin"` (line 575)
 - `key="lspinorb"` (line 583)
 
-**Precision ParamSpace** (`src/quantumvitas/presets/paramspace.py:667-700`):
+**Precision ParamSpace** (`src/qmatsuite/presets/paramspace.py:667-700`):
 - `key="ecutwfc"` (line 669)
 - `key="ecutrho"` (line 677)
 - `key="conv_thr"` (line 685)
 - `key="K_POINTS"` (line 696) ← **Special case**: card, not namelist parameter
 
-**Convergence ParamSpace** (`src/quantumvitas/presets/paramspace.py:848-886`):
+**Convergence ParamSpace** (`src/qmatsuite/presets/paramspace.py:848-886`):
 - `key="mixing_beta"` (line 850)
 - `key="electron_maxstep"` (line 858)
 - `key="mixing_mode"` (line 866)
@@ -2991,7 +2991,7 @@ Each ParamSpace contains a **full matrix** where:
 
 ### B.3 IR ⇄ QE Mapping Contract
 
-**Storage Location**: `src/quantumvitas/ir/backends/qe/mapping.py` (single registry, purely mechanical)
+**Storage Location**: `src/qmatsuite/ir/backends/qe/mapping.py` (single registry, purely mechanical)
 
 **Structure**:
 ```python
@@ -3085,7 +3085,7 @@ QE_TO_IR_MAPPING: dict[tuple[str, str], str] = {
 
 ### C.1 Mapping Registry Location
 
-**Location**: `src/quantumvitas/ir/backends/qe/mapping.py` (single registry, purely mechanical)
+**Location**: `src/qmatsuite/ir/backends/qe/mapping.py` (single registry, purely mechanical)
 
 **Structure**: Single registry module with:
 - `IR_TO_QE_MAPPING`: dict[str, tuple[str, str]] (IR name → (section, QE key))
@@ -3124,7 +3124,7 @@ QE_TO_IR_MAPPING: dict[tuple[str, str], str] = {
 - **Role**: Fuzzy intent, NOT SSOT
 - **Location**: UI/convenience layer only
 - **Storage**: NOT persisted (computed from IR → preset enum mapping)
-- **Evidence**: `src/quantumvitas/presets/dimensions.py:17-32`: Preset enums are runtime-only (never persisted)
+- **Evidence**: `src/qmatsuite/presets/dimensions.py:17-32`: Preset enums are runtime-only (never persisted)
 
 **IR**:
 - **Role**: Concrete physical knobs, NOT SSOT
@@ -3136,7 +3136,7 @@ QE_TO_IR_MAPPING: dict[tuple[str, str], str] = {
 - **Role**: Engine-specific SSOT (machine code)
 - **Location**: `steps/{step_id}.step.yaml` `parameters:` section
 - **Storage**: Persisted, authoritative for execution
-- **Evidence**: `src/quantumvitas/calculation/structure_steps.py:34-54`: `StructureStepSpec` has `parameters` field (engine-specific)
+- **Evidence**: `src/qmatsuite/calculation/structure_steps.py:34-54`: `StructureStepSpec` has `parameters` field (engine-specific)
 - **Example**: `parameters: {SYSTEM: {nspin: 2, noncolin: .false., lspinorb: .false.}}`
 
 **Execution SSOT**: `step.yaml` parameters are authoritative for execution. IR and presets are for history/provenance only.
@@ -3183,7 +3183,7 @@ QE_TO_IR_MAPPING: dict[tuple[str, str], str] = {
 
 **Ambiguity Avoidance**: ParamSpace logic is unchanged → profiles are still mutually exclusive → no ambiguity.
 
-**Evidence**: `src/quantumvitas/presets/variants_registry.py:427-471`: `detect_dimension_for_step()` selects variant and calls `match_profile()`.
+**Evidence**: `src/qmatsuite/presets/variants_registry.py:427-471`: `detect_dimension_for_step()` selects variant and calls `match_profile()`.
 
 ---
 

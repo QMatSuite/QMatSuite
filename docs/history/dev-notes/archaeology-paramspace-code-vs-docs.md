@@ -34,7 +34,7 @@
 **证据**:
 - Git 历史追踪 `degauss`：从 `616d837` (2025-12-31) 文件创建起，`degauss` 就定义在 `build_occupations_scheme_paramspace()` 中
 - 搜索 `precision.*degauss|degauss.*precision` 无结果
-- 当前代码：`src/quantumvitas/presets/paramspace.py:495` - `key_degauss` 属于 `occupations_scheme` ParamSpace
+- 当前代码：`src/qmatsuite/presets/paramspace.py:495` - `key_degauss` 属于 `occupations_scheme` ParamSpace
 
 ### 0.4 key 单归属是否曾 enforce？何时/在哪里 enforce？
 
@@ -172,7 +172,7 @@
 
 #### A3.4 degauss 归属的历史
 
-**搜索命令**: `git log -p -S "degauss" --all -- src/quantumvitas/presets`
+**搜索命令**: `git log -p -S "degauss" --all -- src/qmatsuite/presets`
 
 **结果**: 
 - `616d837` (2025-12-31): 文件创建时，`degauss` 就定义在 `build_occupations_scheme_paramspace()` 中
@@ -189,7 +189,7 @@
 #### B1.1 degauss 首次出现
 
 **Commit**: `616d837` (2025-12-31)  
-**文件**: `src/quantumvitas/presets/paramspace.py`  
+**文件**: `src/qmatsuite/presets/paramspace.py`  
 **位置**: `build_occupations_scheme_paramspace()` 函数
 
 **代码证据**:
@@ -208,11 +208,11 @@ key_degauss = ParamKey(
 
 #### B1.2 是否发生过迁移？
 
-**搜索**: `git log -p -G "precision.*degauss|degauss.*precision" --all -- src/quantumvitas/presets`
+**搜索**: `git log -p -G "precision.*degauss|degauss.*precision" --all -- src/qmatsuite/presets`
 
 **结果**: ❌ **无结果** - 从未发生过从 precision 到 occupations_scheme 的迁移。
 
-**搜索**: `git log -p -G "occupations_scheme.*degauss|degauss.*occupations_scheme" --all -- src/quantumvitas/presets`
+**搜索**: `git log -p -G "occupations_scheme.*degauss|degauss.*occupations_scheme" --all -- src/qmatsuite/presets`
 
 **结果**: ✅ **degauss 一直与 occupations_scheme 绑定**
 
@@ -224,9 +224,9 @@ key_degauss = ParamKey(
 
 **搜索命令**:
 ```bash
-git log -p -S "oracle" --all -- src/quantumvitas
-git log -p -S "Oracle" --all -- src/quantumvitas
-grep -r "oracle|Oracle|ORACLE" src/quantumvitas
+git log -p -S "oracle" --all -- src/qmatsuite
+git log -p -S "Oracle" --all -- src/qmatsuite
+grep -r "oracle|Oracle|ORACLE" src/qmatsuite
 ```
 
 **结果**: ❌ **无任何代码实现**
@@ -237,7 +237,7 @@ grep -r "oracle|Oracle|ORACLE" src/quantumvitas
 
 **搜索命令**:
 ```bash
-git log -p -G "two[-_ ]phase|two[-_ ]stage|pre.*compile|post.*compile" --all -- src/quantumvitas/presets
+git log -p -G "two[-_ ]phase|two[-_ ]stage|pre.*compile|post.*compile" --all -- src/qmatsuite/presets
 ```
 
 **结果**: ❌ **无任何代码实现**
@@ -248,7 +248,7 @@ git log -p -G "two[-_ ]phase|two[-_ ]stage|pre.*compile|post.*compile" --all -- 
 
 **搜索命令**:
 ```bash
-git log -p -G "compile.*order|DIMENSION_ORDER|topological|sort" --all -- src/quantumvitas/presets
+git log -p -G "compile.*order|DIMENSION_ORDER|topological|sort" --all -- src/qmatsuite/presets
 ```
 
 **结果**: 
@@ -259,7 +259,7 @@ git log -p -G "compile.*order|DIMENSION_ORDER|topological|sort" --all -- src/qua
 
 ### B3) 可逆性测试考古
 
-**搜索命令**: `git log -p -G "match_profile|compile_profile_patch|custom|infer|reverse" --all -- tests src/quantumvitas/presets`
+**搜索命令**: `git log -p -G "match_profile|compile_profile_patch|custom|infer|reverse" --all -- tests src/qmatsuite/presets`
 
 **关键测试文件**:
 - `tests/unit/test_paramspace.py` - ParamSpace 框架测试
@@ -275,7 +275,7 @@ git log -p -G "compile.*order|DIMENSION_ORDER|topological|sort" --all -- src/qua
 
 ### B4) Step 域与 SSOT
 
-**搜索命令**: `git log -p -G "StepType\\(|GeneralizedStep|public_type|machine_type|applies_to_step_types" --all -- src/quantumvitas`
+**搜索命令**: `git log -p -G "StepType\\(|GeneralizedStep|public_type|machine_type|applies_to_step_types" --all -- src/qmatsuite`
 
 **关键发现**:
 - `applies_to_step_types` 在 `ParamSpaceVariant` 中使用 `public_type` 字符串（如 "scf", "nscf"）
@@ -413,23 +413,23 @@ rg -n -i "ParamSpace|paramspace|preset|oracle|two[- ]phase|compile order|编译�
 
 ### Oracle 代码搜索
 ```bash
-git log -p -S "oracle" --all -- src/quantumvitas
-git log -p -S "Oracle" --all -- src/quantumvitas
-grep -r "oracle|Oracle|ORACLE" src/quantumvitas
+git log -p -S "oracle" --all -- src/qmatsuite
+git log -p -S "Oracle" --all -- src/qmatsuite
+grep -r "oracle|Oracle|ORACLE" src/qmatsuite
 ```
 结果：**无任何实现**
 
 ### Two-phase compile 代码搜索
 ```bash
-git log -p -G "two[-_ ]phase|two[-_ ]stage|pre.*compile|post.*compile" --all -- src/quantumvitas/presets
+git log -p -G "two[-_ ]phase|two[-_ ]stage|pre.*compile|post.*compile" --all -- src/qmatsuite/presets
 ```
 结果：**无任何实现**
 
 ### degauss 归属追踪
 ```bash
-git log -p -S "degauss" --all -- src/quantumvitas/presets
-git log -p -G "precision.*degauss|degauss.*precision" --all -- src/quantumvitas/presets
-git log -p -G "occupations_scheme.*degauss|degauss.*occupations_scheme" --all -- src/quantumvitas/presets
+git log -p -S "degauss" --all -- src/qmatsuite/presets
+git log -p -G "precision.*degauss|degauss.*precision" --all -- src/qmatsuite/presets
+git log -p -G "occupations_scheme.*degauss|degauss.*occupations_scheme" --all -- src/qmatsuite/presets
 ```
 结果：**degauss 从 616d837 起就属于 occupations_scheme，从未属于 precision**
 

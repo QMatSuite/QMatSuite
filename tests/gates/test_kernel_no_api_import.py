@@ -1,5 +1,5 @@
 """
-Gate test G-K0: Kernel packages MUST NOT import from quantumvitas.api.
+Gate test G-K0: Kernel packages MUST NOT import from qmatsuite.api.
 
 This enforces the dependency direction: api → kernel, never kernel → api.
 Uses the AST-based ImportScanner from _import_scan.py for accurate detection.
@@ -15,7 +15,7 @@ import pytest
 from tests.gates._import_scan import ImportScanner, Violation
 
 # Root of the source tree
-SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "quantumvitas"
+SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "qmatsuite"
 
 # All kernel packages to scan
 KERNEL_PACKAGES = [
@@ -39,7 +39,7 @@ KERNEL_PACKAGES = [
 
 # Forbidden import prefixes
 FORBIDDEN_PREFIXES = (
-    "quantumvitas.api",
+    "qmatsuite.api",
 )
 
 # Known violations allowlist: set of "relative_path:line_number" strings.
@@ -58,7 +58,7 @@ def _relative_key(violation: Violation) -> str:
 
 
 def test_kernel_no_api_import():
-    """Kernel packages must not import from quantumvitas.api."""
+    """Kernel packages must not import from qmatsuite.api."""
     scanner = ImportScanner(forbidden_prefixes=FORBIDDEN_PREFIXES)
 
     all_violations: list[Violation] = []

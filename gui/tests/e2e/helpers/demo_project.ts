@@ -21,8 +21,8 @@ export interface CreateDemoProjectOptions {
  * Wait for the Home welcome screen to be ready
  */
 export async function waitForHomeWelcome(page: Page): Promise<void> {
-  await expect(page.getByTestId('qv-welcome-title')).toBeVisible({ timeout: 30000 });
-  await expect(page.getByTestId('qv-welcome')).toBeVisible();
+  await expect(page.getByTestId('qms-welcome-title')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByTestId('qms-welcome')).toBeVisible();
 }
 
 /**
@@ -50,29 +50,29 @@ export async function createDemoProject(
   await waitForHomeWelcome(page);
   
   // Step 2: Click "Browse Demo Gallery" button
-  // Use namespaced test ID (welcome-* instead of generic qv-btn-*)
-  const welcomeContainer = page.getByTestId('qv-welcome');
+  // Use namespaced test ID (welcome-* instead of generic qms-btn-*)
+  const welcomeContainer = page.getByTestId('qms-welcome');
   await expect(welcomeContainer).toBeVisible({ timeout: 10000 });
-  const demoGalleryBtn = welcomeContainer.getByTestId('qv-welcome-btn-demo-gallery');
+  const demoGalleryBtn = welcomeContainer.getByTestId('qms-welcome-btn-demo-gallery');
   await expect(demoGalleryBtn).toBeVisible({ timeout: 10000 });
   await demoGalleryBtn.click();
   
   // Step 3: Wait for gallery panel to appear (inline, not modal)
-  await expect(page.getByTestId('qv-demo-gallery-view')).toBeVisible({ timeout: 10000 });
+  await expect(page.getByTestId('qms-demo-gallery-view')).toBeVisible({ timeout: 10000 });
   
   // Step 4: Wait for loading to complete
-  const loadingState = page.getByTestId('qv-demo-gallery-loading');
+  const loadingState = page.getByTestId('qms-demo-gallery-loading');
   await expect(loadingState).not.toBeVisible({ timeout: 15000 });
   
   // Step 5: Verify gallery loaded successfully by waiting for a demo card to appear
   // This is the correct feature to detect - when cards are rendered, gallery has loaded
   // Use a known demo card that should always exist (si-bands-demo)
-  const siBandsCard = page.getByTestId('qv-demo-card-si-bands-demo');
+  const siBandsCard = page.getByTestId('qms-demo-card-si-bands-demo');
   await expect(siBandsCard).toBeVisible({ timeout: 10000 });
   
   // If card appears, gallery loaded successfully
   // If it doesn't appear, check for error state to provide better error message
-  const errorState = page.getByTestId('qv-demo-gallery-error');
+  const errorState = page.getByTestId('qms-demo-gallery-error');
   const hasError = await errorState.isVisible().catch(() => false);
   if (hasError) {
     const errorText = await errorState.textContent();
@@ -82,7 +82,7 @@ export async function createDemoProject(
   // Step 6: Find and click the demo card's "Create Project" button
   // Convert demo ID to test ID format (replace underscores with hyphens)
   const demoTestId = demoId.replace(/_/g, '-');
-  const createBtn = page.getByTestId(`qv-demo-card-btn-create-${demoTestId}`);
+  const createBtn = page.getByTestId(`qms-demo-card-btn-create-${demoTestId}`);
   await expect(createBtn).toBeVisible({ timeout: 5000 });
   await expect(createBtn).toBeEnabled();
   
@@ -98,8 +98,8 @@ export async function createDemoProject(
   // This will be read by the main process when the dialog handler is called
   await page.evaluate(async (dir) => {
     // Use the IPC API exposed by preload to set the test directory
-    if ((window as any).qv?.setE2ETestDirectory) {
-      await (window as any).qv.setE2ETestDirectory(dir);
+    if ((window as any).qms?.setE2ETestDirectory) {
+      await (window as any).qms.setE2ETestDirectory(dir);
     }
   }, finalParentDir);
   
@@ -113,12 +113,12 @@ export async function createDemoProject(
   
   // Step 8: Wait for project to be created and loaded
   // The app should switch back to Home view with project loaded
-  await expect(page.getByTestId('qv-home-project')).toBeVisible({ timeout: 60000 });
+  await expect(page.getByTestId('qms-home-project')).toBeVisible({ timeout: 60000 });
   
   // Verify project is loaded (project name should be visible)
   // Note: The project name is auto-generated from the demo title, not from projectName parameter
   // So we just verify the element exists rather than checking for a specific name
-  const projectNameElement = page.getByTestId('qv-project-name');
+  const projectNameElement = page.getByTestId('qms-project-name');
   await expect(projectNameElement).toBeVisible({ timeout: 10000 });
   
   return finalParentDir;

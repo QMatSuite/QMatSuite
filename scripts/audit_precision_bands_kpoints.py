@@ -15,11 +15,11 @@ from pathlib import Path
 import yaml
 
 # Import the functions we need to test
-from quantumvitas.presets.integration import apply_presets_to_step
-from quantumvitas.presets.precision import PrecisionAdvisor, PrecisionOption
-from quantumvitas.presets.receivers import get_precision_receiver_spec
-from quantumvitas.presets.compiler import compile_precision_from_advice
-from quantumvitas.presets.integration import DIMENSION_OWNED_KEYS, DIMENSION_PRECISION
+from qmatsuite.presets.integration import apply_presets_to_step
+from qmatsuite.presets.precision import PrecisionAdvisor, PrecisionOption
+from qmatsuite.presets.receivers import get_precision_receiver_spec
+from qmatsuite.presets.compiler import compile_precision_from_advice
+from qmatsuite.presets.integration import DIMENSION_OWNED_KEYS, DIMENSION_PRECISION
 
 
 def main():
@@ -38,9 +38,9 @@ def main():
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir()
         
-        # Create project.qv.yml
-        project_qv_yml = project_root / "project.qv.yml"
-        project_qv_yml.write_text(yaml.safe_dump({
+        # Create project.qms.yml
+        project_qms_yml = project_root / "project.qms.yml"
+        project_qms_yml.write_text(yaml.safe_dump({
             "name": "Test Project",
             "version": "1.0",
         }))

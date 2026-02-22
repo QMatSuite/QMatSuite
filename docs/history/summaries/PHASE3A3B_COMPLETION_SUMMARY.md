@@ -14,7 +14,7 @@ Phase 3A and 3B successfully implemented calculation identity immutability and w
 ✅ **Identity Immutability Enforcement**
 - `save_calculation()` now enforces immutability of `structure_kind` and `engine_family`
 - Raises `ValueError` if attempting to change either field after initial creation
-- File: `src/quantumvitas/core/models.py`
+- File: `src/qmatsuite/core/models.py`
 
 ✅ **Best-Effort Recovery for Legacy Calculations**
 - `ensure_calculation_identity()` infers missing identity fields from existing steps
@@ -24,12 +24,12 @@ Phase 3A and 3B successfully implemented calculation identity immutability and w
   - Infers `engine_family` from machine type prefixes
   - Infers `structure_kind` from `engine_family`
 - Writes inferred values back to `calculation.yaml` if fields are missing
-- File: `src/quantumvitas/core/calc_identity.py` (NEW)
+- File: `src/qmatsuite/core/calc_identity.py` (NEW)
 
 ✅ **CalculationModel Integration**
 - `CalculationModel.from_dict()` uses `infer_calculation_identity()` for best-effort recovery
 - Loads `structure_kind` and `engine_family` from `calculation.yaml`
-- File: `src/quantumvitas/core/models.py`
+- File: `src/qmatsuite/core/models.py`
 
 ✅ **Phase 3A Tests**
 - 16 tests in `tests/unit/test_calc_identity.py`
@@ -43,13 +43,13 @@ Phase 3A and 3B successfully implemented calculation identity immutability and w
 - Maps PUBLIC step keys (e.g., "scf", "bands_pw") to MACHINE step types (e.g., "qe_scf", "qe_bands_pw")
 - 0-1 mapping invariant enforced: each PUBLIC key maps to at most one MACHINE type per `engine_family`
 - Unsupported families return `None` (no crash)
-- File: `src/quantumvitas/workflow/generalized_steps.py`
+- File: `src/qmatsuite/workflow/generalized_steps.py`
 
 ✅ **Workflow Instantiation Integration**
 - `WorkflowService.instantiate_workflow()` uses `engine_family` from `calculation.yaml`
 - Materializes PUBLIC step keys to MACHINE step types before creating steps
 - Falls back to "qe" if `engine_family` is not set
-- File: `src/quantumvitas/workflow/templates.py`
+- File: `src/qmatsuite/workflow/templates.py`
 
 ✅ **Phase 3B Tests**
 - 16 tests in `tests/unit/test_workflow_materialization_phase3b.py`
@@ -59,12 +59,12 @@ Phase 3A and 3B successfully implemented calculation identity immutability and w
 ## Files Modified
 
 ### Core Identity System
-- `src/quantumvitas/core/models.py`: Immutability enforcement in `save_calculation()`, integration with `infer_calculation_identity()`
-- `src/quantumvitas/core/calc_identity.py`: NEW - Identity inference and recovery functions
+- `src/qmatsuite/core/models.py`: Immutability enforcement in `save_calculation()`, integration with `infer_calculation_identity()`
+- `src/qmatsuite/core/calc_identity.py`: NEW - Identity inference and recovery functions
 
 ### Workflow Materialization
-- `src/quantumvitas/workflow/generalized_steps.py`: Enhanced `materialize_public_step_key()` to use `engine_family`
-- `src/quantumvitas/workflow/templates.py`: `instantiate_workflow()` uses `engine_family` for materialization
+- `src/qmatsuite/workflow/generalized_steps.py`: Enhanced `materialize_public_step_key()` to use `engine_family`
+- `src/qmatsuite/workflow/templates.py`: `instantiate_workflow()` uses `engine_family` for materialization
 
 ### Tests
 - `tests/unit/test_calc_identity.py`: NEW - Phase 3A tests (16 tests)

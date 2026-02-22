@@ -11,7 +11,7 @@ import pytest
 from pathlib import Path
 import yaml
 
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 
 # Repo root for finding demo projects

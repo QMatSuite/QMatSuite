@@ -4,7 +4,7 @@ Tests for QE parameter metadata access layer.
 
 import pytest
 
-from quantumvitas.data import (
+from qmatsuite.data import (
     get_doc_url_pattern,
     get_module_doc_url,
     get_module_namelists,
@@ -145,7 +145,7 @@ class TestIntegrationWithParameterMap:
     
     def test_all_ui_params_exist_in_qe_params(self):
         """Test that every UI parameter name exists in qe_module_parameters.json."""
-        from quantumvitas.data import get_ui_parameters, get_module_param_sections
+        from qmatsuite.data import get_ui_parameters, get_module_param_sections
         
         # Check pw module
         ui_params = get_ui_parameters("pw", "scf")

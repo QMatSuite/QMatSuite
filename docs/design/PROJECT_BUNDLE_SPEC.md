@@ -45,7 +45,7 @@ Minimum data needed to reproduce a calculation on any machine.
 ```
 bundle/
 ├── manifest.json
-├── project.qv.yml
+├── project.qms.yml
 ├── structures/
 │   └── *.json
 ├── calculations/
@@ -150,7 +150,7 @@ export_bundle(
   
   "files": [
     {
-      "path": "project.qv.yml",
+      "path": "project.qms.yml",
       "sha256": "abc123...",
       "size_bytes": 1234,
       "required": true
@@ -220,9 +220,9 @@ export_bundle(
 ### 4.1 Bundle Root Structure
 
 ```
-{bundle_name}.qvbundle/
+{bundle_name}.qmsbundle/
 ├── manifest.json              # Always first, always present
-├── project.qv.yml             # Project configuration
+├── project.qms.yml             # Project configuration
 ├── structures/
 │   └── *.json                 # Structure files
 ├── calculations/
@@ -244,8 +244,8 @@ export_bundle(
 
 Bundles can be distributed as:
 1. **Directory** - For development/inspection
-2. **ZIP archive** - `.qvbundle.zip` for sharing
-3. **Tarball** - `.qvbundle.tar.gz` for Linux distribution
+2. **ZIP archive** - `.qmsbundle.zip` for sharing
+3. **Tarball** - `.qmsbundle.tar.gz` for Linux distribution
 
 ---
 
@@ -482,13 +482,13 @@ class TestStalenessDetection:
 - name: Bundle Roundtrip Test
   run: |
     python -c "
-    from quantumvitas.project.bundle import export_bundle, import_bundle
+    from qmatsuite.project.bundle import export_bundle, import_bundle
     # Export demo project
-    bundle = export_bundle('resources/demo_projects/si_bands', 'test.qvbundle.zip')
+    bundle = export_bundle('resources/demo_projects/si_bands', 'test.qmsbundle.zip')
     # Import to new location
     imported = import_bundle(bundle, 'test_import/')
     # Validate structure
-    assert (imported / 'project.qv.yml').exists()
+    assert (imported / 'project.qms.yml').exists()
     "
 ```
 
@@ -500,8 +500,8 @@ class TestStalenessDetection:
 
 | New File | Purpose |
 |----------|---------|
-| `src/quantumvitas/project/bundle.py` | Bundle export/import |
-| `src/quantumvitas/project/bundle_manifest.py` | Manifest dataclass |
+| `src/qmatsuite/project/bundle.py` | Bundle export/import |
+| `src/qmatsuite/project/bundle_manifest.py` | Manifest dataclass |
 | `tests/unit/test_bundle.py` | Bundle tests |
 
 ### 9.2 Relationship to Snapshot

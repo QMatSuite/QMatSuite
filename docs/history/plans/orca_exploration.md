@@ -165,18 +165,18 @@ $end
 ┌─────────────────────────────────────────────────────────────┐
 │ CalculationRunner                                           │
 │  └─> EngineRegistry.get("qe")                              │
-│      └─> QeEngine (src/quantumvitas/engine/qe_engine.py)  │
+│      └─> QeEngine (src/qmatsuite/engine/qe_engine.py)  │
 │          └─> QuantumEspressoEngine (legacy)                │
 │              └─> QECalculationRunner                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **Key Files**:
-- **Engine Interface**: `src/quantumvitas/engine/base.py` (`Engine`, `EngineConfig`, `StepResult`)
-- **QE Engine Adapter**: `src/quantumvitas/engine/qe_engine.py` (wraps legacy engine)
-- **Legacy QE Engine**: `src/quantumvitas/core/engines/qe.py` (`QuantumEspressoEngine`)
-- **QE Calculation Runner**: `src/quantumvitas/core/engines/qe_calculation.py` (`QECalculationRunner`, `StepResult`)
-- **Engine Registry**: `src/quantumvitas/engine/registry.py` (`EngineRegistry`, `create_default_registry()`)
+- **Engine Interface**: `src/qmatsuite/engine/base.py` (`Engine`, `EngineConfig`, `StepResult`)
+- **QE Engine Adapter**: `src/qmatsuite/engine/qe_engine.py` (wraps legacy engine)
+- **Legacy QE Engine**: `src/qmatsuite/core/engines/qe.py` (`QuantumEspressoEngine`)
+- **QE Calculation Runner**: `src/qmatsuite/core/engines/qe_calculation.py` (`QECalculationRunner`, `StepResult`)
+- **Engine Registry**: `src/qmatsuite/engine/registry.py` (`EngineRegistry`, `create_default_registry()`)
 
 **Execution Flow**:
 
@@ -254,17 +254,17 @@ $end
 ┌─────────────────────────────────────────────────────────────┐
 │ CalculationRunner                                           │
 │  └─> EngineRegistry.get("pyscf")                           │
-│      └─> PySCFEngine (src/quantumvitas/engine/pyscf_engine.py)
-│          └─> subprocess: python -m quantumvitas.engines.pyscf
-│              └─> Runner (src/quantumvitas/engines/pyscf/runner.py)
+│      └─> PySCFEngine (src/qmatsuite/engine/pyscf_engine.py)
+│          └─> subprocess: python -m qmatsuite.engines.pyscf
+│              └─> Runner (src/qmatsuite/engines/pyscf/runner.py)
 │                  └─> Direct PySCF API calls                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **Key Files**:
-- **PySCF Engine**: `src/quantumvitas/engine/pyscf_engine.py` (`PySCFEngine`)
-- **PySCF Runner**: `src/quantumvitas/engines/pyscf/runner.py` (subprocess entry point)
-- **Step Registry**: `src/quantumvitas/workflow/registry.py` (step type definitions)
+- **PySCF Engine**: `src/qmatsuite/engine/pyscf_engine.py` (`PySCFEngine`)
+- **PySCF Runner**: `src/qmatsuite/engines/pyscf/runner.py` (subprocess entry point)
+- **Step Registry**: `src/qmatsuite/workflow/registry.py` (step type definitions)
 
 **Execution Flow**:
 
@@ -276,7 +276,7 @@ $end
 2. **Subprocess Execution**:
    - PySCF engine never imports PySCF directly (daemon isolation)
    - Creates `job.json` file with step parameters
-   - Launches subprocess: `[python, -m, quantumvitas.engines.pyscf, job.json]`
+   - Launches subprocess: `[python, -m, qmatsuite.engines.pyscf, job.json]`
    - Subprocess imports PySCF and executes calculation
 
 3. **Working Directory**:
@@ -314,7 +314,7 @@ $end
 │    1. Build job.json: {step_type, parameters, working_dir} │
 │       → job.json in working_dir                            │
 │                                                             │
-│    2. Build command: [python, -m, quantumvitas.engines.pyscf, job.json]
+│    2. Build command: [python, -m, qmatsuite.engines.pyscf, job.json]
 │                                                             │
 │    3. Execute: subprocess.Popen(command, cwd=working_dir)  │
 │       → Runner subprocess imports PySCF, runs calculation  │
@@ -343,17 +343,17 @@ $end
 **A) Step/Calc/Project Resource Model**:
 
 - **ULID Usage**: All resources (calculations, steps, structures) use ULIDs for unique identification
-  - Location: `src/quantumvitas/core/resources.py` (`generate_resource_id()`)
+  - Location: `src/qmatsuite/core/resources.py` (`generate_resource_id()`)
   - Steps have `meta.id` (ULID) and `meta.slug` (human-readable)
   - Registry uses ULIDs for resolution: `require_step(project_root, calculation_id, step_id)`
 
 - **Manifest System**: Tracks step execution state for incremental runs
-  - Location: `src/quantumvitas/calculation/manifest.py`, `manifest_reconcile.py`
+  - Location: `src/qmatsuite/calculation/manifest.py`, `manifest_reconcile.py`
   - Manifest entries: `{kind, step_ulid, pseudo_set_sha, structure_sha, step_sha, done, run_id, timestamps}`
   - Reconciliation: Compares old manifest with current topology, determines which steps to rerun
 
 - **Step Registry**: Centralized step type definitions
-  - Location: `src/quantumvitas/workflow/registry.py`
+  - Location: `src/qmatsuite/workflow/registry.py`
   - Maps step types to engine families, machine types, public types
   - Defines step capabilities: `supports_incremental_skip`, `requires_upstream_step`, etc.
 
@@ -369,19 +369,19 @@ $end
 
 **C) Job Manager / History Pipeline**:
 
-- **Job Manager**: `src/quantumvitas/daemon/jobs.py` (`JobManager`)
+- **Job Manager**: `src/qmatsuite/daemon/jobs.py` (`JobManager`)
   - Manages background job execution (sequential, max_workers=1)
   - Tracks job status, step progress
   - History: Job results stored in-memory (not persisted to disk)
 
 **D) Presets / Step Templates**:
 
-- **Workflow Templates**: `src/quantumvitas/workflow/templates.py`
+- **Workflow Templates**: `src/qmatsuite/workflow/templates.py`
   - Defines workflow families: `scf_dos`, `scf_bands`, `scf_td`, etc.
   - Templates specify step sequences and dependencies
   - Materialization: Maps generalized steps to engine-specific steps based on `engine_family`
 
-- **Step Factory**: `src/quantumvitas/workflow/step_factory.py`
+- **Step Factory**: `src/qmatsuite/workflow/step_factory.py`
   - Centralized step creation: `create_step_doc()`, `save_step_doc()`
   - Handles ULID generation, slug rules, defaults
 
@@ -649,7 +649,7 @@ Define a small set of workflow families for ORCA (for future presets):
 
 **Mapping to QMatSuite Concepts**:
 
-- **Step Type Registry**: Register ORCA step types in `src/quantumvitas/workflow/registry.py`
+- **Step Type Registry**: Register ORCA step types in `src/qmatsuite/workflow/registry.py`
   - Engine family: `"orca"`
   - Machine type: `"orca_{method}"` (e.g., `"orca_dft_scf"`)
   - Public type: `"{method}"` (e.g., `"dft_scf"`)
@@ -717,10 +717,10 @@ Define a small set of workflow families for ORCA (for future presets):
 - [ ] Basic error handling (executable not found, calculation failed)
 
 **Implementation Checklist**:
-- [ ] Create `src/quantumvitas/engine/orca_engine.py` (ORCA engine adapter)
-- [ ] Create `src/quantumvitas/core/engines/orca.py` (legacy engine, if needed)
-- [ ] Create `src/quantumvitas/core/engines/orca_calculation.py` (runner)
-- [ ] Create `src/quantumvitas/io/orca/` (input generator/parser)
+- [ ] Create `src/qmatsuite/engine/orca_engine.py` (ORCA engine adapter)
+- [ ] Create `src/qmatsuite/core/engines/orca.py` (legacy engine, if needed)
+- [ ] Create `src/qmatsuite/core/engines/orca_calculation.py` (runner)
+- [ ] Create `src/qmatsuite/io/orca/` (input generator/parser)
 - [ ] Register ORCA step types in workflow registry
 - [ ] Register ORCA engine in `create_default_registry()`
 - [ ] Unit tests for input generation
@@ -744,9 +744,9 @@ Define a small set of workflow families for ORCA (for future presets):
 - [ ] UI can display ORCA results (energy, properties)
 
 **Implementation Checklist**:
-- [ ] Create `src/quantumvitas/io/orca/prop_parser.py` (property file parser)
-- [ ] Create `src/quantumvitas/io/orca/output_parser.py` (output file parser)
-- [ ] Create `src/quantumvitas/analysis/orca_artifacts.py` (analysis artifact generation)
+- [ ] Create `src/qmatsuite/io/orca/prop_parser.py` (property file parser)
+- [ ] Create `src/qmatsuite/io/orca/output_parser.py` (output file parser)
+- [ ] Create `src/qmatsuite/analysis/orca_artifacts.py` (analysis artifact generation)
 - [ ] Unit tests for property file parsing
 - [ ] Unit tests for output file parsing
 - [ ] Integration test: Parse DFT SCF output and generate analysis artifact

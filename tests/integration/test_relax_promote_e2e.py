@@ -9,7 +9,7 @@ This test verifies the complete promote workflow:
 5. Verify new structure can be used to create a new calculation
 
 NOTE: These tests are skipped because promote_relax_structure is not yet
-implemented in the new domain API (QVService).
+implemented in the new domain API (QMSService).
 """
 
 import json
@@ -18,10 +18,10 @@ import time
 import uuid
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.api.errors import APIError
-from quantumvitas.core.paths import tmp_runs_dir
-from quantumvitas.execution.relax_artifacts import (
+from qmatsuite.api import QMSService
+from qmatsuite.api.errors import APIError
+from qmatsuite.core.paths import tmp_runs_dir
+from qmatsuite.execution.relax_artifacts import (
     get_generated_structure_path,
     read_generated_structure,
 )
@@ -33,7 +33,7 @@ pytestmark = [pytest.mark.integration]
 
 def configure_step(project_root, calculation_selector, step_selector, parameters):
     """Helper function to configure step parameters via domain accessor."""
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     svc.calculation.update_step_params(
         calc_selector=calculation_selector,
         step_selector=step_selector,
@@ -77,7 +77,7 @@ def promote_test_project():
     test_dir = tmp_runs_dir() / unique_id
     test_dir.mkdir(parents=True, exist_ok=True)
     
-    project_root = QVService.init_project(test_dir / "promote_e2e_project")
+    project_root = QMSService.init_project(test_dir / "promote_e2e_project")
     
     # Create H2 molecule (simple case for quick test)
     h2_molecule = Molecule(["H", "H"], [[0, 0, 0], [0.8, 0, 0]])
@@ -86,10 +86,10 @@ def promote_test_project():
     structures_dir = project_root / "structures"
     structures_dir.mkdir(parents=True, exist_ok=True)
     
-    from quantumvitas.core.resources import generate_resource_id
+    from qmatsuite.core.resources import generate_resource_id
     structure_ulid = generate_resource_id()
     structure_data = {
-        "__qv_meta__": {
+        "__qms_meta__": {
             "ulid": structure_ulid,
             "name": "H2",
             "slug": "h2",
@@ -115,7 +115,7 @@ def promote_test_calculation_with_relax(promote_test_project):
     structure_ulid = promote_test_project["structure_ulid"]
     
     # Create calculation with molecule/pyscf settings
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="h2_relax",
         structure_selector=structure_ulid,
     )
@@ -134,7 +134,7 @@ def promote_test_calculation_with_relax(promote_test_project):
     calc_yaml.write_text(yaml.dump(calc_data))
     
     # Create relax step
-    relax_step_result = QVService(project_root).calculation.add_step(
+    relax_step_result = QMSService(project_root).calculation.add_step(
         calc_ulid,
         step_type_gen="relax",  # GEN type for UI layer
         name="relax",
@@ -178,7 +178,7 @@ class TestRelaxPromoteE2E:
         initial_structure_ulid = promote_test_calculation_with_relax["structure_ulid"]
         
         # Get initial structure count via nested service method (DTO)
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         initial_structures = svc.structure.list()
         initial_count = len(initial_structures)
         
@@ -214,7 +214,7 @@ class TestRelaxPromoteE2E:
         assert structure_path.exists(), "Promoted structure file should exist"
 
         # Verify structure content
-        from quantumvitas.io import read_structure
+        from qmatsuite.io import read_structure
         promoted_structure = read_structure(structure_path)
         assert promoted_structure is not None
         assert len(promoted_structure) == 2, "Should have 2 H atoms"
@@ -235,7 +235,7 @@ class TestRelaxPromoteE2E:
         project_root = promote_test_calculation_with_relax["project_root"]
         
         # Try to promote without running relax step (no current.json)
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         with pytest.raises(APIError) as exc_info:
             svc.structure.promote_relax_structure(
                 calculation_selector=calc_ulid,
@@ -255,7 +255,7 @@ class TestRelaxPromoteE2E:
         structure_ulid = promote_test_project["structure_ulid"]
         
         # Create calculation
-        calc_result = QVService(project_root).project.init_calculation(
+        calc_result = QMSService(project_root).project.init_calculation(
             name="h2_scf",
             structure_selector=structure_ulid,
         )
@@ -271,7 +271,7 @@ class TestRelaxPromoteE2E:
         calc_yaml.write_text(yaml.dump(calc_data))
         
         # Create SCF step (not relax)
-        scf_step_result = QVService(project_root).calculation.add_step(
+        scf_step_result = QMSService(project_root).calculation.add_step(
             calc_ulid,
             step_type_gen="scf",  # GEN type for UI layer
             name="scf",
@@ -279,7 +279,7 @@ class TestRelaxPromoteE2E:
         scf_step_ulid = scf_step_result.ulid
         
         # Try to promote non-relax step
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         with pytest.raises(APIError) as exc_info:
             svc.structure.promote_relax_structure(
                 calculation_selector=calc_ulid,
@@ -300,7 +300,7 @@ class TestRelaxPromoteE2E:
         project_root = promote_test_calculation_with_relax["project_root"]
         
         # Run the relax step
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.run.run_step(
             calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
@@ -316,7 +316,7 @@ class TestRelaxPromoteE2E:
         )
 
         # Create a new calculation using the promoted structure
-        new_calc_result = QVService(project_root).project.init_calculation(
+        new_calc_result = QMSService(project_root).project.init_calculation(
             name="h2_relaxed_scf",
             structure_selector=promoted_result.meta.ulid,
         )

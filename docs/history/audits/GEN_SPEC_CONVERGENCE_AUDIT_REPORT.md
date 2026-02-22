@@ -26,11 +26,11 @@ The repository has made significant progress toward GEN/SPEC convergence, but **
 
 ### Old World Entry Points
 
-- **`src/quantumvitas/workflow/generalized_steps.py`** - Entire module is a legacy entry point. Contains `GeneralizedStep` enum, `materialize_step()` that normalizes to `GEN_*` format, and delegates to `DriverRegistry.materialize_step_type()` which uses `get_materialization_map()`.
+- **`src/qmatsuite/workflow/generalized_steps.py`** - Entire module is a legacy entry point. Contains `GeneralizedStep` enum, `materialize_step()` that normalizes to `GEN_*` format, and delegates to `DriverRegistry.materialize_step_type()` which uses `get_materialization_map()`.
 
-- **`src/quantumvitas/workflow/registry.py`** - Contains `normalize_step_type_to_gen()` with fallback prefix stripping, and maintains `STEP_TYPE_ALIASES` dict for legacy compatibility.
+- **`src/qmatsuite/workflow/registry.py`** - Contains `normalize_step_type_to_gen()` with fallback prefix stripping, and maintains `STEP_TYPE_ALIASES` dict for legacy compatibility.
 
-- **`src/quantumvitas/core/driver_registry.py`** - While it builds from `PREFIX + SUPPORTED_GEN_STEPS`, it still calls `driver.get_materialization_map()` as fallback, and applies special-case overrides in `_apply_special_case_overrides()`.
+- **`src/qmatsuite/core/driver_registry.py`** - While it builds from `PREFIX + SUPPORTED_GEN_STEPS`, it still calls `driver.get_materialization_map()` as fallback, and applies special-case overrides in `_apply_special_case_overrides()`.
 
 ---
 
@@ -40,7 +40,7 @@ The repository has made significant progress toward GEN/SPEC convergence, but **
 
 #### Violation: `step_type` key in API responses (v0 compatibility)
 
-**Location**: `src/quantumvitas/daemon/server.py:1459, 4139`
+**Location**: `src/qmatsuite/daemon/server.py:1459, 4139`
 
 ```python
 # Line 1459
@@ -93,7 +93,7 @@ step_types.append(step.get("step_type", "unknown"))
 
 #### ✅ COMPLIANT: `StructureStepSpec.to_dict()` writes only `step_type_spec`
 
-**Location**: `src/quantumvitas/calculation/structure_steps.py:195`
+**Location**: `src/qmatsuite/calculation/structure_steps.py:195`
 
 ```python
 data: Dict[str, Any] = {
@@ -108,7 +108,7 @@ data: Dict[str, Any] = {
 
 #### ✅ COMPLIANT: `StructureStepSpec.from_dict()` raises hard error on legacy `step_type`
 
-**Location**: `src/quantumvitas/calculation/structure_steps.py:106-107`
+**Location**: `src/qmatsuite/calculation/structure_steps.py:106-107`
 
 ```python
 if "step_type" in data and "step_type_spec" not in data:
@@ -123,7 +123,7 @@ if "step_type" in data and "step_type_spec" not in data:
 
 #### Violation: Daemon accepts `step_type` for v0 compatibility
 
-**Location**: `src/quantumvitas/daemon/server.py:1459, 1464`
+**Location**: `src/qmatsuite/daemon/server.py:1459, 1464`
 
 ```python
 step_type = (payload.get("step_type_gen") or payload.get("step_type", "")).strip().lower()
@@ -139,7 +139,7 @@ if not step_type:
 
 #### ✅ COMPLIANT: `step_to_dict()` writes both `step_type_spec` and `step_type_gen`
 
-**Location**: `src/quantumvitas/api/_mapping/dto_mapping.py:518-519`
+**Location**: `src/qmatsuite/api/_mapping/dto_mapping.py:518-519`
 
 ```python
 "step_type_spec": step_dto.step_type_spec,
@@ -154,7 +154,7 @@ if not step_type:
 
 ### 3.1 `GeneralizedStep` Enum and `GEN_*` Namespace
 
-**Location**: `src/quantumvitas/workflow/generalized_steps.py:24-59, 97-100, 127-130, 299-302, 376-378`
+**Location**: `src/qmatsuite/workflow/generalized_steps.py:24-59, 97-100, 127-130, 299-302, 376-378`
 
 **Evidence**:
 ```python
@@ -190,7 +190,7 @@ if gen_step.startswith("GEN_"):
 
 ### 3.2 `get_materialization_map()` Protocol Requirement
 
-**Location**: `src/quantumvitas/core/driver_protocol.py:147, 200-211`
+**Location**: `src/qmatsuite/core/driver_protocol.py:147, 200-211`
 
 **Evidence**:
 ```python
@@ -224,7 +224,7 @@ def get_materialization_map(self) -> dict[str, str]:
 
 ### 3.3 `normalize_step_type_to_gen()` Fallback Prefix Stripping
 
-**Location**: `src/quantumvitas/workflow/registry.py:851-882`
+**Location**: `src/qmatsuite/workflow/registry.py:851-882`
 
 **Evidence**:
 ```python
@@ -259,9 +259,9 @@ def normalize_step_type_to_gen(step_type: str) -> str:
 ### 3.4 Multiple `ENGINE_PREFIXES` Definitions
 
 **Locations**:
-- `src/quantumvitas/calculation/structure_steps.py:242`
-- `src/quantumvitas/workflow/registry.py:876`
-- `src/quantumvitas/workflow/step_type_convert.py:14`
+- `src/qmatsuite/calculation/structure_steps.py:242`
+- `src/qmatsuite/workflow/registry.py:876`
+- `src/qmatsuite/workflow/step_type_convert.py:14`
 
 **Evidence**:
 ```python
@@ -289,7 +289,7 @@ ENGINE_PREFIXES: FrozenSet[str] = frozenset({
 
 ### 3.5 Special Case Overrides in Materialization
 
-**Location**: `src/quantumvitas/core/driver_registry.py:209-239`
+**Location**: `src/qmatsuite/core/driver_registry.py:209-239`
 
 **Evidence**:
 ```python
@@ -323,7 +323,7 @@ def _apply_special_case_overrides(self, driver: EngineDriver, mat_map: dict[str,
 
 ### 3.6 `STEP_TYPE_ALIASES` Compatibility Dict
 
-**Location**: `src/quantumvitas/workflow/registry.py:815-820, 823-848`
+**Location**: `src/qmatsuite/workflow/registry.py:815-820, 823-848`
 
 **Evidence**:
 ```python
@@ -364,7 +364,7 @@ def normalize_step_type(step_type: str) -> str:
 
 #### ✅ GenStepRegistry
 
-**Location**: `src/quantumvitas/workflow/gen_steps.py:11-62`
+**Location**: `src/qmatsuite/workflow/gen_steps.py:11-62`
 
 **Evidence**:
 ```python
@@ -382,7 +382,7 @@ class GenStepRegistry:
 
 #### ✅ Engine Recipe `PREFIX` and `SUPPORTED_GEN_STEPS`
 
-**Locations**: All driver files (e.g., `src/quantumvitas/drivers/qe/driver.py:9-13`)
+**Locations**: All driver files (e.g., `src/qmatsuite/drivers/qe/driver.py:9-13`)
 
 **Evidence**:
 ```python
@@ -403,7 +403,7 @@ class QEDriver(BaseEngineDriver):
 
 #### ✅ DriverRegistry Materialization Maps
 
-**Location**: `src/quantumvitas/core/driver_registry.py:71, 131-134`
+**Location**: `src/qmatsuite/core/driver_registry.py:71, 131-134`
 
 **Evidence**:
 ```python
@@ -423,7 +423,7 @@ if mat_map:
 
 #### ✅ StepTypeRegistry `_STEP_TYPES` Dict
 
-**Location**: `src/quantumvitas/workflow/registry.py:164-589`
+**Location**: `src/qmatsuite/workflow/registry.py:164-589`
 
 **Evidence**:
 ```python
@@ -460,7 +460,7 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
 
 #### ❌ `STEP_TYPE_ALIASES` Dict
 
-**Location**: `src/quantumvitas/workflow/registry.py:815-820`
+**Location**: `src/qmatsuite/workflow/registry.py:815-820`
 
 **Status**: ❌ **FORBIDDEN**. Creates a second mapping for legacy names that should not exist.
 
@@ -476,7 +476,7 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
 
 #### ❌ Special Case Overrides in `_apply_special_case_overrides()`
 
-**Location**: `src/quantumvitas/core/driver_registry.py:209-239`
+**Location**: `src/qmatsuite/core/driver_registry.py:209-239`
 
 **Status**: ❌ **FORBIDDEN**. Hardcoded mappings that override the derived `spec_from(prefix, gen)` rule.
 
@@ -488,7 +488,7 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
 
 #### ✅ Preset Variants Use Gen Steps
 
-**Location**: `src/quantumvitas/presets/variants_registry.py:49-110`
+**Location**: `src/qmatsuite/presets/variants_registry.py:49-110`
 
 **Evidence**:
 ```python
@@ -503,13 +503,13 @@ applies_to_step_types=frozenset({"bandspw"}),
 
 #### ✅ `get_variant()` Converts Spec to Gen
 
-**Location**: `src/quantumvitas/presets/variants_registry.py:304-324`
+**Location**: `src/qmatsuite/presets/variants_registry.py:304-324`
 
 **Evidence**:
 ```python
 def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
     # ...
-    from quantumvitas.workflow.registry import get_registry
+    from qmatsuite.workflow.registry import get_registry
     registry = get_registry()
     spec = registry.get(step_type)  # Accepts both gen and spec
     if spec:
@@ -522,11 +522,11 @@ def get_variant(dimension: str, step_type: str) -> Optional[ParamSpaceVariant]:
 
 #### ⚠️ Workflow Templates May Use Spec Types
 
-**Location**: `src/quantumvitas/workflow/templates.py:488-498`
+**Location**: `src/qmatsuite/workflow/templates.py:488-498`
 
 **Evidence**:
 ```python
-from quantumvitas.workflow.generalized_steps import materialize_public_step_key
+from qmatsuite.workflow.generalized_steps import materialize_public_step_key
 
 machine_steps = []
 for public_step_key in workflow.step_sequence:
@@ -545,7 +545,7 @@ for public_step_key in workflow.step_sequence:
 
 #### ✅ Step YAML Writes Only `step_type_spec`
 
-**Location**: `src/quantumvitas/calculation/structure_steps.py:195`
+**Location**: `src/qmatsuite/calculation/structure_steps.py:195`
 
 **Status**: ✅ Correctly writes only `step_type_spec` to step.yaml.
 
@@ -553,7 +553,7 @@ for public_step_key in workflow.step_sequence:
 
 #### ✅ Step Factory Uses Spec Types
 
-**Location**: `src/quantumvitas/workflow/step_factory.py:48-73`
+**Location**: `src/qmatsuite/workflow/step_factory.py:48-73`
 
 **Evidence**:
 ```python
@@ -575,7 +575,7 @@ data: Dict[str, Any] = {
 
 #### ⚠️ Calculation YAML May Store Gen Types
 
-**Location**: `src/quantumvitas/workflow/templates.py:546-547`
+**Location**: `src/qmatsuite/workflow/templates.py:546-547`
 
 **Evidence**:
 ```python
@@ -593,7 +593,7 @@ for public_step, step_ulid in zip(public_steps, step_ulids):
 
 #### ✅ Execution Uses Spec Types
 
-**Location**: `src/quantumvitas/drivers/qe/engine/qe_calculation.py:385, 484, 620, 636`
+**Location**: `src/qmatsuite/drivers/qe/engine/qe_calculation.py:385, 484, 620, 636`
 
 **Evidence**:
 ```python
@@ -610,13 +610,13 @@ step_type_spec=step_type,  # SPEC type passed to execution
 
 #### Recommendation 1: Remove `step_type` Fallback from Daemon Server
 
-**What**: Remove v0 compatibility fallback in `src/quantumvitas/daemon/server.py:1459, 4139`
+**What**: Remove v0 compatibility fallback in `src/qmatsuite/daemon/server.py:1459, 4139`
 
 **Why**: Violates Constitution §1 (only `step_type_gen` and `step_type_spec` allowed)
 
 **Validation**: 
 - Run `tests/gates/test_no_legacy_identity_fields.py` - should catch any remaining `step_type` keys
-- Run `rg '"step_type":' src/quantumvitas/daemon/` - should return zero matches
+- Run `rg '"step_type":' src/qmatsuite/daemon/` - should return zero matches
 
 ---
 
@@ -785,10 +785,10 @@ step_type_spec=step_type,  # SPEC type passed to execution
 
 ### Key Violation Files
 
-1. `src/quantumvitas/workflow/generalized_steps.py` - Legacy entry point
-2. `src/quantumvitas/workflow/registry.py` - Fallback prefix stripping
-3. `src/quantumvitas/core/driver_registry.py` - Special case overrides
-4. `src/quantumvitas/daemon/server.py` - `step_type` fallback
+1. `src/qmatsuite/workflow/generalized_steps.py` - Legacy entry point
+2. `src/qmatsuite/workflow/registry.py` - Fallback prefix stripping
+3. `src/qmatsuite/core/driver_registry.py` - Special case overrides
+4. `src/qmatsuite/daemon/server.py` - `step_type` fallback
 5. `tests/unit/test_w90_parameter_rendering.py` - `step_type` fallback
 
 ### Compliance Status by Category

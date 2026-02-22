@@ -7,12 +7,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import (
+from qmatsuite.core.analysis.bundles import (
     CanonicalPrimitiveBundle,
     ProvenanceMeta,
     RenderMeta,
 )
-from quantumvitas.core.analysis.primitives import Marker, Series1D
+from qmatsuite.core.analysis.primitives import Marker, Series1D
 
 
 # ---------------------------------------------------------------------------
@@ -149,18 +149,18 @@ def _make_trajectory_bundle() -> CanonicalPrimitiveBundle:
 def _patch_analysis_instances(monkeypatch, mock_return):
     """Patch get_service so analysis.get_analysis_instances_for_step returns mock_return.
 
-    Since ``QVService.analysis`` is a property that creates a fresh
+    Since ``QMSService.analysis`` is a property that creates a fresh
     ``Analysis`` instance each call, we must patch at the class level.
     """
-    from quantumvitas.api import QVService
+    from qmatsuite.api import QMSService
 
-    original_analysis_class = QVService.Analysis
+    original_analysis_class = QMSService.Analysis
 
     class PatchedAnalysis(original_analysis_class):
         def get_analysis_instances_for_step(self, *args, **kwargs):
             return mock_return
 
-    monkeypatch.setattr(QVService, "analysis", property(lambda self: PatchedAnalysis(self)))
+    monkeypatch.setattr(QMSService, "analysis", property(lambda self: PatchedAnalysis(self)))
 
 
 # ===========================================================================
@@ -169,7 +169,7 @@ def _patch_analysis_instances(monkeypatch, mock_return):
 
 class TestAsciiRenderer:
     def test_convergence(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
+        from qmatsuite.mcp.renderers.ascii_renderer import render_bundle_ascii
 
         bundle = _make_convergence_bundle()
         text = render_bundle_ascii(bundle)
@@ -178,7 +178,7 @@ class TestAsciiRenderer:
         assert "CONVERGENCE" in text or "Iteration" in text
 
     def test_dos(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
+        from qmatsuite.mcp.renderers.ascii_renderer import render_bundle_ascii
 
         bundle = _make_dos_bundle()
         text = render_bundle_ascii(bundle)
@@ -186,7 +186,7 @@ class TestAsciiRenderer:
         assert len(lines) >= 8
 
     def test_bands_summary(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
+        from qmatsuite.mcp.renderers.ascii_renderer import render_bundle_ascii
 
         bundle = _make_bands_bundle()
         text = render_bundle_ascii(bundle)
@@ -194,7 +194,7 @@ class TestAsciiRenderer:
         assert len(lines) >= 8
 
     def test_scf_digest(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
+        from qmatsuite.mcp.renderers.ascii_renderer import render_bundle_ascii
 
         bundle = _make_scf_digest_bundle()
         text = render_bundle_ascii(bundle)
@@ -203,7 +203,7 @@ class TestAsciiRenderer:
         assert "total_energy_eV" in text
 
     def test_trajectory(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
+        from qmatsuite.mcp.renderers.ascii_renderer import render_bundle_ascii
 
         bundle = _make_trajectory_bundle()
         text = render_bundle_ascii(bundle)
@@ -211,7 +211,7 @@ class TestAsciiRenderer:
         assert len(lines) >= 8  # 2D chart, not a one-line sparkline
 
     def test_empty_series(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
+        from qmatsuite.mcp.renderers.ascii_renderer import render_bundle_ascii
 
         bundle = CanonicalPrimitiveBundle(
             object_type="convergence",
@@ -221,7 +221,7 @@ class TestAsciiRenderer:
         assert "(no data)" in text
 
     def test_generic_fallback(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
+        from qmatsuite.mcp.renderers.ascii_renderer import render_bundle_ascii
 
         bundle = CanonicalPrimitiveBundle(
             object_type="unknown_type",
@@ -243,7 +243,7 @@ class TestAsciiRenderer:
         assert "2 points" in text
 
     def test_field3d(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import render_bundle_ascii
+        from qmatsuite.mcp.renderers.ascii_renderer import render_bundle_ascii
 
         bundle = CanonicalPrimitiveBundle(
             object_type="field3d",
@@ -257,7 +257,7 @@ class TestAsciiRenderer:
 
 class TestSparklineHelper:
     def test_sparkline_basic(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import _sparkline
+        from qmatsuite.mcp.renderers.ascii_renderer import _sparkline
 
         result = _sparkline([1.0, 2.0, 3.0, 4.0, 5.0], width=10)
         assert len(result) == 5  # fewer values than width → no resampling
@@ -265,12 +265,12 @@ class TestSparklineHelper:
         assert result[-1] == "█"  # max value
 
     def test_sparkline_empty(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import _sparkline
+        from qmatsuite.mcp.renderers.ascii_renderer import _sparkline
 
         assert _sparkline([]) == ""
 
     def test_sparkline_constant(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import _sparkline
+        from qmatsuite.mcp.renderers.ascii_renderer import _sparkline
 
         result = _sparkline([5.0, 5.0, 5.0], width=10)
         assert len(result) == 3
@@ -278,7 +278,7 @@ class TestSparklineHelper:
         assert len(set(result)) == 1
 
     def test_sparkline_resampling(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import _sparkline
+        from qmatsuite.mcp.renderers.ascii_renderer import _sparkline
 
         values = list(range(100))
         result = _sparkline(values, width=20)
@@ -287,19 +287,19 @@ class TestSparklineHelper:
 
 class TestUnicodeBarHelper:
     def test_bar_basic(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import _unicode_bar
+        from qmatsuite.mcp.renderers.ascii_renderer import _unicode_bar
 
         result = _unicode_bar(10.0, 10.0, width=10)
         assert "█" in result
         assert len(result) <= 11  # up to width + 1 fractional char
 
     def test_bar_zero(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import _unicode_bar
+        from qmatsuite.mcp.renderers.ascii_renderer import _unicode_bar
 
         assert _unicode_bar(0.0, 10.0) == ""
 
     def test_bar_half(self):
-        from quantumvitas.mcp.renderers.ascii_renderer import _unicode_bar
+        from qmatsuite.mcp.renderers.ascii_renderer import _unicode_bar
 
         result = _unicode_bar(5.0, 10.0, width=20)
         # ~10 full blocks
@@ -313,7 +313,7 @@ class TestUnicodeBarHelper:
 
 class TestMatplotlibRenderer:
     def test_convergence_png(self, tmp_path):
-        from quantumvitas.mcp.renderers.matplotlib_renderer import render_bundle_png
+        from qmatsuite.mcp.renderers.matplotlib_renderer import render_bundle_png
 
         bundle = _make_convergence_bundle()
         out = tmp_path / "conv.png"
@@ -323,7 +323,7 @@ class TestMatplotlibRenderer:
         assert result.stat().st_size > 0
 
     def test_dos_png(self, tmp_path):
-        from quantumvitas.mcp.renderers.matplotlib_renderer import render_bundle_png
+        from qmatsuite.mcp.renderers.matplotlib_renderer import render_bundle_png
 
         bundle = _make_dos_bundle()
         out = tmp_path / "dos.png"
@@ -332,7 +332,7 @@ class TestMatplotlibRenderer:
         assert result.exists()
 
     def test_bands_png(self, tmp_path):
-        from quantumvitas.mcp.renderers.matplotlib_renderer import render_bundle_png
+        from qmatsuite.mcp.renderers.matplotlib_renderer import render_bundle_png
 
         bundle = _make_bands_bundle()
         out = tmp_path / "bands.png"
@@ -341,7 +341,7 @@ class TestMatplotlibRenderer:
         assert result.exists()
 
     def test_trajectory_png(self, tmp_path):
-        from quantumvitas.mcp.renderers.matplotlib_renderer import render_bundle_png
+        from qmatsuite.mcp.renderers.matplotlib_renderer import render_bundle_png
 
         bundle = _make_trajectory_bundle()
         out = tmp_path / "traj.png"
@@ -350,7 +350,7 @@ class TestMatplotlibRenderer:
         assert result.exists()
 
     def test_not_plottable_scf_digest(self, tmp_path):
-        from quantumvitas.mcp.renderers.matplotlib_renderer import render_bundle_png
+        from qmatsuite.mcp.renderers.matplotlib_renderer import render_bundle_png
 
         bundle = _make_scf_digest_bundle()
         out = tmp_path / "digest.png"
@@ -359,7 +359,7 @@ class TestMatplotlibRenderer:
         assert not out.exists()
 
     def test_not_plottable_field3d(self, tmp_path):
-        from quantumvitas.mcp.renderers.matplotlib_renderer import render_bundle_png
+        from qmatsuite.mcp.renderers.matplotlib_renderer import render_bundle_png
 
         bundle = CanonicalPrimitiveBundle(
             object_type="field3d",
@@ -370,7 +370,7 @@ class TestMatplotlibRenderer:
         assert result is None
 
     def test_creates_parent_dirs(self, tmp_path):
-        from quantumvitas.mcp.renderers.matplotlib_renderer import render_bundle_png
+        from qmatsuite.mcp.renderers.matplotlib_renderer import render_bundle_png
 
         bundle = _make_convergence_bundle()
         out = tmp_path / "nested" / "dir" / "conv.png"
@@ -379,7 +379,7 @@ class TestMatplotlibRenderer:
         assert result.exists()
 
     def test_empty_series_returns_none(self, tmp_path):
-        from quantumvitas.mcp.renderers.matplotlib_renderer import render_bundle_png
+        from qmatsuite.mcp.renderers.matplotlib_renderer import render_bundle_png
 
         bundle = CanonicalPrimitiveBundle(
             object_type="convergence",
@@ -396,8 +396,8 @@ class TestMatplotlibRenderer:
 
 class TestListAnalyses:
     def test_no_project(self, monkeypatch):
-        from quantumvitas.mcp import project as mcp_project
-        from quantumvitas.mcp.tools.list_analyses import list_analyses
+        from qmatsuite.mcp import project as mcp_project
+        from qmatsuite.mcp.tools.list_analyses import list_analyses
 
         monkeypatch.setattr(mcp_project, "_project_root_override", None)
         monkeypatch.delenv("QMATSUITE_PROJECT", raising=False)
@@ -406,17 +406,17 @@ class TestListAnalyses:
         assert result["status"] == "error"
         assert result["error_type"] == "no_project"
 
-    def test_not_found(self, qv_project):
-        from quantumvitas.mcp.tools.list_analyses import list_analyses
+    def test_not_found(self, qms_project):
+        from qmatsuite.mcp.tools.list_analyses import list_analyses
 
         result = list_analyses.fn(calc_ulid="NONEXISTENT_ULID_12345")
         assert result["status"] == "error"
         assert result["error_type"] == "not_found"
 
-    def test_happy_path(self, qv_project):
+    def test_happy_path(self, qms_project):
         """Create a QE SCF calc and list analyses — should find convergence."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.list_analyses import list_analyses
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.list_analyses import list_analyses
 
         # Create a QE SCF calculation
         cr = create_calculation.fn(
@@ -435,19 +435,19 @@ class TestListAnalyses:
         obj_types = [a["object_type"] for a in data["analyses"]]
         assert "convergence" in obj_types
 
-    def test_no_steps(self, qv_project, monkeypatch):
+    def test_no_steps(self, qms_project, monkeypatch):
         """Calc with empty steps list returns no_steps error."""
-        from quantumvitas.mcp.tools.list_analyses import list_analyses
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.api import QVService
+        from qmatsuite.mcp.tools.list_analyses import list_analyses
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.api import QMSService
 
         cr = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
         )
         calc_ulid = cr["data"]["calc_ulid"]
 
-        # QVService.calculation is a property → must patch at class level
-        original_calc_class = QVService.Calculation
+        # QMSService.calculation is a property → must patch at class level
+        original_calc_class = QMSService.Calculation
 
         class PatchedCalculation(original_calc_class):
             def get_detail(self, selector):
@@ -456,7 +456,7 @@ class TestListAnalyses:
                 return d
 
         monkeypatch.setattr(
-            QVService, "calculation",
+            QMSService, "calculation",
             property(lambda self: PatchedCalculation(self)),
         )
 
@@ -464,9 +464,9 @@ class TestListAnalyses:
         assert result["status"] == "error"
         assert result["error_type"] == "no_steps"
 
-    def test_invalid_step_index(self, qv_project):
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.list_analyses import list_analyses
+    def test_invalid_step_index(self, qms_project):
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.list_analyses import list_analyses
 
         cr = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -477,10 +477,10 @@ class TestListAnalyses:
         assert result["status"] == "error"
         assert result["error_type"] == "invalid_step_index"
 
-    def test_default_step_minus_one(self, qv_project):
+    def test_default_step_minus_one(self, qms_project):
         """step=-1 should resolve to last step."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.list_analyses import list_analyses
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.list_analyses import list_analyses
 
         cr = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -499,8 +499,8 @@ class TestListAnalyses:
 
 class TestPlotAnalysis:
     def test_no_project(self, monkeypatch):
-        from quantumvitas.mcp import project as mcp_project
-        from quantumvitas.mcp.tools.plot_analysis import plot_analysis
+        from qmatsuite.mcp import project as mcp_project
+        from qmatsuite.mcp.tools.plot_analysis import plot_analysis
 
         monkeypatch.setattr(mcp_project, "_project_root_override", None)
         monkeypatch.delenv("QMATSUITE_PROJECT", raising=False)
@@ -509,17 +509,17 @@ class TestPlotAnalysis:
         assert result["status"] == "error"
         assert result["error_type"] == "no_project"
 
-    def test_not_found(self, qv_project):
-        from quantumvitas.mcp.tools.plot_analysis import plot_analysis
+    def test_not_found(self, qms_project):
+        from qmatsuite.mcp.tools.plot_analysis import plot_analysis
 
         result = plot_analysis.fn(calc_ulid="NONEXISTENT_ULID", object_type="convergence")
         assert result["status"] == "error"
         assert result["error_type"] == "not_found"
 
-    def test_not_available(self, qv_project, monkeypatch):
+    def test_not_available(self, qms_project, monkeypatch):
         """Request an object_type that doesn't exist for the step."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.plot_analysis import plot_analysis
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.plot_analysis import plot_analysis
 
         cr = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -534,10 +534,10 @@ class TestPlotAnalysis:
         assert result["status"] == "error"
         assert result["error_type"] == "not_available"
 
-    def test_convergence_happy_path(self, qv_project, monkeypatch):
+    def test_convergence_happy_path(self, qms_project, monkeypatch):
         """Mock analysis API to return a convergence bundle, verify render."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.plot_analysis import plot_analysis
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.plot_analysis import plot_analysis
 
         cr = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -573,9 +573,9 @@ class TestPlotAnalysis:
         # Must NOT contain raw bundle data
         assert "bundle" not in data
 
-    def test_dos_happy_path(self, qv_project, monkeypatch):
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.plot_analysis import plot_analysis
+    def test_dos_happy_path(self, qms_project, monkeypatch):
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.plot_analysis import plot_analysis
 
         cr = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -601,9 +601,9 @@ class TestPlotAnalysis:
         # DOS summary should have Fermi marker
         assert "fermi_energy" in data["summary"]
 
-    def test_bands_happy_path(self, qv_project, monkeypatch):
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.plot_analysis import plot_analysis
+    def test_bands_happy_path(self, qms_project, monkeypatch):
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.plot_analysis import plot_analysis
 
         cr = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -629,9 +629,9 @@ class TestPlotAnalysis:
         assert "x_range" in data["primitive_meta"]
         assert "y_range" in data["primitive_meta"]
 
-    def test_scf_digest_no_png(self, qv_project, monkeypatch):
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.plot_analysis import plot_analysis
+    def test_scf_digest_no_png(self, qms_project, monkeypatch):
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.plot_analysis import plot_analysis
 
         cr = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -658,9 +658,9 @@ class TestPlotAnalysis:
         assert data["summary"].get("converged") is True
         assert data["summary"].get("total_energy_eV") == -135.42
 
-    def test_parse_failed_state(self, qv_project, monkeypatch):
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.plot_analysis import plot_analysis
+    def test_parse_failed_state(self, qms_project, monkeypatch):
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.plot_analysis import plot_analysis
 
         cr = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -689,7 +689,7 @@ class TestPlotAnalysis:
 class TestServerRegistration:
     def test_tools_registered(self):
         """Verify list_analyses and plot_analysis are registered in the MCP server."""
-        from quantumvitas.mcp.server import mcp
+        from qmatsuite.mcp.server import mcp
 
         tool_names = set(mcp._tool_manager._tools.keys())
         assert "list_analyses" in tool_names
@@ -697,6 +697,6 @@ class TestServerRegistration:
 
     def test_tool_count_at_least_29(self):
         """Should have at least 29 tools (27 existing + 2 new)."""
-        from quantumvitas.mcp.server import mcp
+        from qmatsuite.mcp.server import mcp
 
         assert len(mcp._tool_manager._tools) >= 29

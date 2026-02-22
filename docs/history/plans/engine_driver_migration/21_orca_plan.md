@@ -12,7 +12,7 @@
 
 ## 1. Objective
 
-Extract all ORCA-specific code from kernel files into a self-contained driver bundle at `src/quantumvitas/drivers/orca/`. After this migration:
+Extract all ORCA-specific code from kernel files into a self-contained driver bundle at `src/qmatsuite/drivers/orca/`. After this migration:
 
 1. All ORCA code lives in `drivers/orca/`
 2. ORCA is registered via DriverRegistry
@@ -26,7 +26,7 @@ Extract all ORCA-specific code from kernel files into a self-contained driver bu
 
 ### 2.1 Handler Code
 
-**Source**: `src/quantumvitas/execution/handlers.py`
+**Source**: `src/qmatsuite/execution/handlers.py`
 
 | Function | Lines | Description |
 |----------|-------|-------------|
@@ -35,7 +35,7 @@ Extract all ORCA-specific code from kernel files into a self-contained driver bu
 
 ### 2.2 Recipe Code
 
-**Source**: `src/quantumvitas/execution/recipes.py`
+**Source**: `src/qmatsuite/execution/recipes.py`
 
 | Class | Lines | Description |
 |-------|-------|-------------|
@@ -59,16 +59,16 @@ orca_mp2, orca_ccsd, orca_casscf, orca_nevpt2
 ### 2.5 Additional ORCA Logic
 
 **Locations**:
-- `src/quantumvitas/io/generator/` - ORCA input generator
-- `src/quantumvitas/io/parser/` - ORCA output parser
-- `src/quantumvitas/calculation/structure_steps.py` - ORCA_STEP_TYPES
+- `src/qmatsuite/io/generator/` - ORCA input generator
+- `src/qmatsuite/io/parser/` - ORCA output parser
+- `src/qmatsuite/calculation/structure_steps.py` - ORCA_STEP_TYPES
 
 ---
 
 ## 3. Target Structure
 
 ```
-src/quantumvitas/drivers/orca/
+src/qmatsuite/drivers/orca/
 ├── __init__.py          # Registration (15 lines)
 ├── driver.py            # ORCADriver class (60 lines)
 ├── handler.py           # orca_chain_handler (208 lines, moved)
@@ -84,16 +84,16 @@ src/quantumvitas/drivers/orca/
 ### Step 1: Create Directory Structure
 
 ```bash
-mkdir -p src/quantumvitas/drivers/orca
-touch src/quantumvitas/drivers/orca/__init__.py
-touch src/quantumvitas/drivers/orca/driver.py
-touch src/quantumvitas/drivers/orca/handler.py
-touch src/quantumvitas/drivers/orca/recipe.py
+mkdir -p src/qmatsuite/drivers/orca
+touch src/qmatsuite/drivers/orca/__init__.py
+touch src/qmatsuite/drivers/orca/driver.py
+touch src/qmatsuite/drivers/orca/handler.py
+touch src/qmatsuite/drivers/orca/recipe.py
 ```
 
 ### Step 2: Create driver.py
 
-**Create file**: `src/quantumvitas/drivers/orca/driver.py`
+**Create file**: `src/qmatsuite/drivers/orca/driver.py`
 
 ```python
 """ORCA engine driver.
@@ -104,7 +104,7 @@ This driver handles all ORCA quantum chemistry calculations including:
 - TD-DFT excited state calculations
 """
 
-from quantumvitas.core.driver_protocol import (
+from qmatsuite.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
     WorkdirPolicy,
@@ -276,7 +276,7 @@ class ORCADriver(BaseEngineDriver):
 
 ### Step 3: Move Handler to handler.py
 
-**Create file**: `src/quantumvitas/drivers/orca/handler.py`
+**Create file**: `src/qmatsuite/drivers/orca/handler.py`
 
 **Copy** the `orca_chain_handler` function from `handlers.py` (lines 887-1095).
 
@@ -292,9 +292,9 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from quantumvitas.core.job import Job
-from quantumvitas.core.step_context import StepContext
-from quantumvitas.core.job_result import JobResult
+from qmatsuite.core.job import Job
+from qmatsuite.core.step_context import StepContext
+from qmatsuite.core.job_result import JobResult
 
 if TYPE_CHECKING:
     pass
@@ -328,7 +328,7 @@ def orca_chain_handler(job: Job, context: StepContext) -> JobResult:
 
 ### Step 4: Move Recipe to recipe.py
 
-**Create file**: `src/quantumvitas/drivers/orca/recipe.py`
+**Create file**: `src/qmatsuite/drivers/orca/recipe.py`
 
 **Copy** the `ORCARecipe` class from `recipes.py` (lines 471-580).
 
@@ -342,7 +342,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from quantumvitas.execution.recipes import BaseRecipe
+from qmatsuite.execution.recipes import BaseRecipe
 
 logger = logging.getLogger(__name__)
 
@@ -366,17 +366,17 @@ class ORCARecipe(BaseRecipe):
 
 ### Step 5: Create __init__.py
 
-**Create file**: `src/quantumvitas/drivers/orca/__init__.py`
+**Create file**: `src/qmatsuite/drivers/orca/__init__.py`
 
 ```python
 """ORCA driver bundle.
 
-This package provides the ORCA engine driver for QuantumVitas.
+This package provides the ORCA engine driver for QMatSuite.
 It handles all ORCA quantum chemistry calculations including
 SCF, optimization, frequencies, and correlated methods.
 """
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import ORCADriver
 
 # Register driver at import time
@@ -387,20 +387,20 @@ __all__ = ["ORCADriver"]
 
 ### Step 6: Update drivers/__init__.py
 
-**File**: `src/quantumvitas/drivers/__init__.py`
+**File**: `src/qmatsuite/drivers/__init__.py`
 
 **Add** ORCA import:
 
 ```python
 # Import all driver packages to trigger registration
-from quantumvitas.drivers import qe_shim
-from quantumvitas.drivers import vasp
-from quantumvitas.drivers import orca  # ADD THIS LINE
+from qmatsuite.drivers import qe_shim
+from qmatsuite.drivers import vasp
+from qmatsuite.drivers import orca  # ADD THIS LINE
 ```
 
 ### Step 7: Remove ORCA from handlers.py
 
-**File**: `src/quantumvitas/execution/handlers.py`
+**File**: `src/qmatsuite/execution/handlers.py`
 
 **Remove**:
 1. `orca_chain_handler` function (lines 887-1095)
@@ -409,7 +409,7 @@ from quantumvitas.drivers import orca  # ADD THIS LINE
 
 ### Step 8: Remove ORCA from recipes.py
 
-**File**: `src/quantumvitas/execution/recipes.py`
+**File**: `src/qmatsuite/execution/recipes.py`
 
 **Remove**:
 1. `ORCARecipe` class (lines 471-580)
@@ -417,7 +417,7 @@ from quantumvitas.drivers import orca  # ADD THIS LINE
 
 ### Step 9: Clean up structure_steps.py
 
-**File**: `src/quantumvitas/calculation/structure_steps.py`
+**File**: `src/qmatsuite/calculation/structure_steps.py`
 
 **Verify** that ORCA_STEP_TYPES is now provided by registry (from PR 2).
 
@@ -429,9 +429,9 @@ from quantumvitas.drivers import orca  # ADD THIS LINE
 """Tests for ORCA driver bundle."""
 
 import pytest
-from quantumvitas.drivers.orca import ORCADriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.orca import ORCADriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestORCADriver:
@@ -493,7 +493,7 @@ class TestORCARegistration:
 
     def test_orca_registered(self):
         """ORCA should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("orca")
         driver = DriverRegistry.get_driver("orca")
@@ -501,14 +501,14 @@ class TestORCARegistration:
 
     def test_orca_step_types_registered(self):
         """ORCA step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("orca_scf")
         assert DriverRegistry.is_step_type_registered("orca_opt")
 
     def test_orca_handler_via_registry(self):
         """Should get ORCA handler via registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         handler = DriverRegistry.get_handler("orca_scf")
         assert callable(handler)
@@ -520,7 +520,7 @@ class TestORCAIsolation:
     def test_handlers_no_orca_handler(self):
         """handlers.py should not contain orca_chain_handler."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/handlers.py").read_text()
+        source = Path("src/qmatsuite/execution/handlers.py").read_text()
 
         assert "def orca_chain_handler" not in source, (
             "orca_chain_handler should be moved to drivers/orca/handler.py"
@@ -529,7 +529,7 @@ class TestORCAIsolation:
     def test_recipes_no_orca_recipe(self):
         """recipes.py should not contain ORCARecipe."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/recipes.py").read_text()
+        source = Path("src/qmatsuite/execution/recipes.py").read_text()
 
         assert "class ORCARecipe" not in source, (
             "ORCARecipe should be moved to drivers/orca/recipe.py"

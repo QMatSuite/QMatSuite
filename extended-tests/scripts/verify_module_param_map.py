@@ -4,7 +4,7 @@ Verify that the generated QE module parameter map covers real test-suite inputs.
 
 This script scans QE test-suite input files, parses them with QEInputParser,
 and compares the detected namelist parameters against
-`src/quantumvitas/data/qe_module_parameters.json`.
+`src/qmatsuite/data/qe_module_parameters.json`.
 """
 
 from __future__ import annotations
@@ -15,10 +15,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
-from quantumvitas.data import load_qe_parameter_map
-from quantumvitas.io import QEInputParser
-from quantumvitas.io.model import QEModule
-from quantumvitas.core.engines.qe_installation import QEInstallation
+from qmatsuite.data import load_qe_parameter_map
+from qmatsuite.io import QEInputParser
+from qmatsuite.io.model import QEModule
+from qmatsuite.core.engines.qe_installation import QEInstallation
 
 
 def iter_input_files(base_paths: Iterable[Path]) -> Iterable[Path]:

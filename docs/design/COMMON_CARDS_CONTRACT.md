@@ -2,7 +2,7 @@
 
 ## Architecture Rule: UI Never Parses QE Raw Text
 
-This document defines the contract for implementing Common Card editors (K_POINTS, PSEUDO, etc.) in the QuantumVITAS GUI.
+This document defines the contract for implementing Common Card editors (K_POINTS, PSEUDO, etc.) in the QMatSuite GUI.
 
 ## Core Principles
 
@@ -14,7 +14,7 @@ This document defines the contract for implementing Common Card editors (K_POINT
 
 ### 2. Python Service Owns Parsing/Formatting
 
-The Python `qvservice/daemon` is responsible for:
+The Python `qmsservice/daemon` is responsible for:
 
 - **Parsing**: Raw card text → structured view model
 - **Validating**: Soft warnings (non-blocking), not hard errors

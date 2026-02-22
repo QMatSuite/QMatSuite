@@ -105,7 +105,7 @@ Contains decisions D1–D8 verbatim from the task spec:
 
 ### Part 1: `_resource_utils.py` — Shared Internal Helpers
 
-Created `src/quantumvitas/mcp/tools/_resource_utils.py`:
+Created `src/qmatsuite/mcp/tools/_resource_utils.py`:
 
 - `PSEUDO_ENGINES = ("qe", "abinit", "siesta")` — constant for pseudo engine check
 - `auto_resolve_species_map_internal(calc_ulid, svc, library, flavor)`:
@@ -121,7 +121,7 @@ Created `src/quantumvitas/mcp/tools/_resource_utils.py`:
 
 ### Part 2: `list_resources.py` — New MCP Tool
 
-Created `src/quantumvitas/mcp/tools/list_resources.py`:
+Created `src/qmatsuite/mcp/tools/list_resources.py`:
 
 - `list_available_resources(engine, elements)` @mcp.tool
 - Engine dispatch:
@@ -135,11 +135,11 @@ Created `src/quantumvitas/mcp/tools/list_resources.py`:
 
 **Bug found during testing**: Plan spec said `svc.species.get_pseudo_options()` but
 the actual service attribute is `svc.project.get_pseudo_options()` (the method lives
-in the `Project` inner class of QVService). Fixed immediately.
+in the `Project` inner class of QMSService). Fixed immediately.
 
 ### Part 3: `resolve_species_map.py` — New MCP Tool
 
-Created `src/quantumvitas/mcp/tools/resolve_species_map.py`:
+Created `src/qmatsuite/mcp/tools/resolve_species_map.py`:
 
 - `auto_resolve_species_map(calc_ulid, library, flavor)` @mcp.tool
 - Validates calc exists, checks engine is in PSEUDO_ENGINES
@@ -195,7 +195,7 @@ Added resource status check after payload assembly, before step detail:
 
 ```python
 try:
-    from quantumvitas.mcp.tools._resource_utils import check_resource_status
+    from qmatsuite.mcp.tools._resource_utils import check_resource_status
     payload["resource_status"] = check_resource_status(calc_ulid, svc)
 except Exception:
     pass
@@ -209,8 +209,8 @@ Added two imports at the end:
 
 ```python
 # Stage P2: resource management
-import quantumvitas.mcp.tools.list_resources
-import quantumvitas.mcp.tools.resolve_species_map
+import qmatsuite.mcp.tools.list_resources
+import qmatsuite.mcp.tools.resolve_species_map
 ```
 
 #### `test_stage11.py`
@@ -258,14 +258,14 @@ tests/ (full suite):         6016 passed, 4 skipped, 0 failed
 | File | Action | Description |
 |------|--------|-------------|
 | `docs/history/reviews/RESOURCE_MANAGEMENT_REVIEW.md` | Modified | Appended Section 7 (D1-D8 decisions) |
-| `src/quantumvitas/mcp/tools/_resource_utils.py` | Created | Internal helpers: auto_resolve + check_status |
-| `src/quantumvitas/mcp/tools/list_resources.py` | Created | `list_available_resources` MCP tool |
-| `src/quantumvitas/mcp/tools/resolve_species_map.py` | Created | `auto_resolve_species_map` MCP tool |
-| `src/quantumvitas/mcp/tools/quick_run.py` | Modified | Auto-resolve species_map when not provided |
-| `src/quantumvitas/mcp/tools/create_calculation.py` | Modified | Auto-resolve at creation, dynamic hint |
-| `src/quantumvitas/mcp/tools/run_calculation.py` | Modified | Reject pseudo engines with empty species_map |
-| `src/quantumvitas/mcp/tools/inspect_calculation.py` | Modified | Added resource_status to payload |
-| `src/quantumvitas/mcp/server.py` | Modified | Added 2 tool imports (26 total) |
+| `src/qmatsuite/mcp/tools/_resource_utils.py` | Created | Internal helpers: auto_resolve + check_status |
+| `src/qmatsuite/mcp/tools/list_resources.py` | Created | `list_available_resources` MCP tool |
+| `src/qmatsuite/mcp/tools/resolve_species_map.py` | Created | `auto_resolve_species_map` MCP tool |
+| `src/qmatsuite/mcp/tools/quick_run.py` | Modified | Auto-resolve species_map when not provided |
+| `src/qmatsuite/mcp/tools/create_calculation.py` | Modified | Auto-resolve at creation, dynamic hint |
+| `src/qmatsuite/mcp/tools/run_calculation.py` | Modified | Reject pseudo engines with empty species_map |
+| `src/qmatsuite/mcp/tools/inspect_calculation.py` | Modified | Added resource_status to payload |
+| `src/qmatsuite/mcp/server.py` | Modified | Added 2 tool imports (26 total) |
 | `tests/mcp/test_stage_p2.py` | Created | 21 new tests |
 | `tests/mcp/test_stage11.py` | Modified | 24→26 tool count, new tool names |
 | `tests/mcp/test_stage_p1.py` | Modified | Updated hint test + tool count |

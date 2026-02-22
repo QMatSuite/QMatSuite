@@ -1,0 +1,545 @@
+{
+  "total_datasets": 28,
+  "successful": 19,
+  "failed": 9,
+  "verification": {
+    "00_Si_scf": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "12_NMR_gipaw": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "13_graphene": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "15_bulk_modulus_Si": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "19_Si_CPMD": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "03_Si_vc_relax": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "04_Si_DOS": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "06_Al_DOS": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "07_Si_bandStructure": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "08_Fe_DOS": {
+      "consistent": true,
+      "issue_count": 0
+    },
+    "09_Si_phonon": {
+      "consistent": true,
+      "issue_count": 0
+    }
+  },
+  "results": [
+    {
+      "demo_name": "00_Si_scf",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "00_Si_scf.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "10_benzene_TDDFT",
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H.upf, C.upf",
+      "missing_pseudos": [
+        "H.upf",
+        "C.upf"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "11_Si_100_surface_reconstruction",
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "12_NMR_gipaw",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "12_NMR_gipaw.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "12_NMR_gipaw",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "12_NMR_gipaw.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "13_graphene",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 3,
+      "reference_artifacts": {
+        "scf": "13_graphene.scf.json",
+        "bands": "13_graphene.bands.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "14_DFT_plus_U_NiO",
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): ni_pbe_v1.4.uspp.F.UPF",
+      "missing_pseudos": [
+        "ni_pbe_v1.4.uspp.F.UPF"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "14_DFT_plus_U_NiO",
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): ni_pbe_v1.4.uspp.F.UPF",
+      "missing_pseudos": [
+        "ni_pbe_v1.4.uspp.F.UPF"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "15_bulk_modulus_Si",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 3,
+      "reference_artifacts": {
+        "scf": "15_bulk_modulus_Si.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "17_H2O_vibration",
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "18_H2O_MD",
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "19_Si_CPMD",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {},
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "19_Si_CPMD",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 3,
+      "reference_artifacts": {},
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "19_Si_CPMD",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 3,
+      "reference_artifacts": {},
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "19_Si_CPMD",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 3,
+      "reference_artifacts": {},
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "19_Si_CPMD",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 3,
+      "reference_artifacts": {},
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "01_H2",
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "02_H2O",
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "03_Si_vc_relax",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {},
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "04_Si_DOS",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 2,
+      "reference_artifacts": {
+        "scf": "04_Si_DOS.scf.json",
+        "dos": "04_Si_DOS.dos.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "05_NH3_inversion",
+      "success": false,
+      "error": "Missing pseudopotentials (download failed): H_ONCV_PBE-1.0.oncvpsp.upf, N.oncvpsp.upf",
+      "missing_pseudos": [
+        "H_ONCV_PBE-1.0.oncvpsp.upf",
+        "N.oncvpsp.upf"
+      ],
+      "step_count": 0,
+      "reference_artifacts": {},
+      "validation": null,
+      "verification": {},
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "06_Al_DOS",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 3,
+      "reference_artifacts": {
+        "scf": "06_Al_DOS.scf.json",
+        "dos": "06_Al_DOS.dos.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "07_Si_bandStructure",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 3,
+      "reference_artifacts": {
+        "scf": "07_Si_bandStructure.scf.json",
+        "bands": "07_Si_bandStructure.bands.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "08_Fe_DOS",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 3,
+      "reference_artifacts": {
+        "scf": "08_Fe_DOS.scf.json",
+        "dos": "08_Fe_DOS.dos.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "08_Fe_DOS",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "08_Fe_DOS.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "09_Si_phonon",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "09_Si_phonon.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "09_Si_phonon",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "09_Si_phonon.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    },
+    {
+      "demo_name": "09_Si_phonon",
+      "success": true,
+      "error": null,
+      "missing_pseudos": [],
+      "step_count": 1,
+      "reference_artifacts": {
+        "scf": "09_Si_phonon.scf.json"
+      },
+      "validation": {
+        "success": false,
+        "differences_count": 0,
+        "error": "Round-trip validation error: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\nTraceback (most recent call last):\n  File \"<HOME>/QMatSuite/tools/import_tutorial_datasets.py\", line 944, in validate_roundtrip_regeneration\n    calc_detail = QMSService.get_calculation_detail(\nTypeError: get_calculation_detail() got an unexpected keyword argument 'calculation_selector'\n"
+      },
+      "verification": {
+        "consistent": true,
+        "issues": []
+      },
+      "detailed_verification": null
+    }
+  ]
+}

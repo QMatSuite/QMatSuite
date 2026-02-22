@@ -1,12 +1,12 @@
 """
 Integration tests for online structure search daemon RPC methods.
 
-PR0: Tests for daemon RPC handlers that call QVService.OnlineSearch.
+PR0: Tests for daemon RPC handlers that call QMSService.OnlineSearch.
 """
 
 import pytest
 from unittest.mock import patch, Mock
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 
 
 class TestOnlineSearchDaemon:
@@ -14,9 +14,9 @@ class TestOnlineSearchDaemon:
     
     def test_daemon_structure_search_online(self):
         """Test daemon structure_search_online RPC."""
-        from quantumvitas.io.providers.optimade import Candidate as OptimadeCandidate
-        from quantumvitas.io.providers import UnifiedSearchResult
-        from quantumvitas.api.types.online_search import SearchResultDTO
+        from qmatsuite.io.providers.optimade import Candidate as OptimadeCandidate
+        from qmatsuite.io.providers import UnifiedSearchResult
+        from qmatsuite.api.types.online_search import SearchResultDTO
         
         mock_candidate = OptimadeCandidate(
             entry_id="mp-123",
@@ -36,9 +36,9 @@ class TestOnlineSearchDaemon:
             errors={},
         )
         
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         
-        with patch('quantumvitas.io.providers.unified_search') as mock_search:
+        with patch('qmatsuite.io.providers.unified_search') as mock_search:
             mock_search.return_value = mock_result
             
             payload = {
@@ -58,17 +58,17 @@ class TestOnlineSearchDaemon:
     
     def test_daemon_structure_fetch_online(self):
         """Test daemon structure_fetch_online RPC (no project_root in request)."""
-        from quantumvitas.io.online_cache import OnlineStructureCache, CandidateSummary, SessionInfo
+        from qmatsuite.io.online_cache import OnlineStructureCache, CandidateSummary, SessionInfo
         from pymatgen.core import Structure, Lattice
         
         # Create mock structure
         lattice = Lattice.cubic(5.0)
         structure = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
         
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         
         # Mock cache
-        with patch('quantumvitas.io.online_cache.OnlineStructureCache') as MockCache:
+        with patch('qmatsuite.io.online_cache.OnlineStructureCache') as MockCache:
             mock_cache = MockCache.return_value
             mock_cache.get_candidates.return_value = [
                 CandidateSummary(
@@ -90,7 +90,7 @@ class TestOnlineSearchDaemon:
             mock_cache.add_candidate = Mock()  # Mock add_candidate for caching
             
             # Mock API fetch_structure method
-            from quantumvitas.api.types.online_search import StructureDocDTO
+            from qmatsuite.api.types.online_search import StructureDocDTO
             structure_doc = StructureDocDTO(
                 structure_type="crystal",
                 formula="Si",
@@ -103,7 +103,7 @@ class TestOnlineSearchDaemon:
                 provenance={"source": "optimade", "source_id": "mp-123"},
             )
             
-            with patch('quantumvitas.api.service.QVService.OnlineSearch.fetch_structure') as mock_fetch:
+            with patch('qmatsuite.api.service.QMSService.OnlineSearch.fetch_structure') as mock_fetch:
                 mock_fetch.return_value = structure_doc
                 
                 # PR6: Handler no longer requires project_root (uses global cache)
@@ -137,13 +137,13 @@ class TestOnlineSearchDaemon:
         import inspect
         
         # Get daemon source
-        daemon_source = inspect.getsource(QVDaemon)
+        daemon_source = inspect.getsource(QMSDaemon)
         
         # Parse AST
         tree = ast.parse(daemon_source)
         
         # Check for kernel imports in _handle_structure_search_online
-        # PR0: Daemon should call QVService.OnlineSearch, not import from quantumvitas.io.online_search directly
+        # PR0: Daemon should call QMSService.OnlineSearch, not import from qmatsuite.io.online_search directly
         # (except for temporary compatibility in _handle_structure_get_online_candidate)
         
         # This is a basic check - full gate test is in tests/gates/test_daemon_kernel_ban.py

@@ -11,7 +11,7 @@
 ## Executive Summary
 
 1. **Kernel layer is spec-compliant.** All 14 invariants (Inv-A1 through Inv-A14) are correctly implemented in the core analysis types, orchestrator, transforms, and bundle model. No spec violations found.
-2. **CRITICAL: QE parser registration chain is broken.** `src/quantumvitas/drivers/qe/parsers/__init__.py` does not exist, so `@register_parser("qe", "bands")` and `@register_parser("qe", "trajectory")` decorators never fire at runtime. Tests pass only because they import the parser classes directly. The orchestrator's `get_parser("qe", "bands")` will return `None` in production.
+2. **CRITICAL: QE parser registration chain is broken.** `src/qmatsuite/drivers/qe/parsers/__init__.py` does not exist, so `@register_parser("qe", "bands")` and `@register_parser("qe", "trajectory")` decorators never fire at runtime. Tests pass only because they import the parser classes directly. The orchestrator's `get_parser("qe", "bands")` will return `None` in production.
 3. **API/daemon layer has ZERO wiring to the new pipeline.** `service.py` (7779 lines) has 30+ references to legacy `analysis.artifacts` and zero references to `run_post_run_analysis`, `CanonicalPrimitiveBundle`, or `analysis_snapshots`.
 4. **GUI still uses legacy types.** `CalculationAnalysisPanel.tsx` consumes `BandStructureData`, `DosData`, `ScfConvergenceData` — all legacy types not connected to the new pipeline.
 5. **Gate test coverage is 9/29 (31%).** Spec §12.1 lists 29 gate tests; only 9 are implemented. All 9 pass.
@@ -103,7 +103,7 @@ All in `tests/gates/test_analysis_invariants.py`:
 
 ### 3.1 CRITICAL: QE Parser Registration Chain Broken
 
-**Problem:** `src/quantumvitas/drivers/qe/parsers/__init__.py` does not exist. The two parser modules (`bands.py`, `trajectory.py`) use `@register_parser` decorators, but these decorators only fire when the module is imported. Since:
+**Problem:** `src/qmatsuite/drivers/qe/parsers/__init__.py` does not exist. The two parser modules (`bands.py`, `trajectory.py`) use `@register_parser` decorators, but these decorators only fire when the module is imported. Since:
 
 1. `drivers/qe/__init__.py` only imports `QEDriver` — no `from . import parsers`
 2. No `__init__.py` exists in `parsers/` to enable package-level import
@@ -128,7 +128,7 @@ The orchestrator's `get_parser("qe", "bands")` returns `None` at runtime.
 ### 3.3 MAJOR: API Still Wired to Legacy Pipeline
 
 **Problem:** `api/service.py` has 30+ references to:
-- `from quantumvitas.analysis.artifacts import ...`
+- `from qmatsuite.analysis.artifacts import ...`
 - `ensure_analysis_artifact()`
 - `read_artifact()`
 - `AnalysisType` enum
@@ -191,7 +191,7 @@ Raw files (tests/data/analysis_bands/)
 
 The new `QEBandsProvider` (`drivers/qe/parsers/bands.py:9`) imports from legacy code:
 ```python
-from quantumvitas.analysis.parsers import parse_bands_gnu, parse_scf_output
+from qmatsuite.analysis.parsers import parse_bands_gnu, parse_scf_output
 ```
 
 This is acceptable — the spec does not prohibit reusing existing parsing functions. The new provider wraps legacy parse output into the new `BandStructure` type. However, this creates a dependency that must be maintained during legacy removal.
@@ -260,39 +260,39 @@ python -m pytest tests/gates/test_analysis_invariants.py -v
 # Result: 9/9 passed
 
 # Engine branching scan
-rg 'if engine ==' src/quantumvitas/core/analysis/
+rg 'if engine ==' src/qmatsuite/core/analysis/
 # Result: No matches
 
 # Legacy import scan
-rg 'from quantumvitas\.analysis\.artifacts' src/quantumvitas/api/
+rg 'from qmatsuite\.analysis\.artifacts' src/qmatsuite/api/
 # Result: 30+ matches in service.py
 
 # Driver imports in universal layer
-rg 'from quantumvitas\.drivers' src/quantumvitas/core/analysis/
+rg 'from qmatsuite\.drivers' src/qmatsuite/core/analysis/
 # Result: No matches (CLEAN)
 
 # Parser registration check
-rg '@register_parser' src/quantumvitas/drivers/
+rg '@register_parser' src/qmatsuite/drivers/
 # Result: 14 decorators across 12 engines (QE has bands + trajectory)
 
 # Import chain verification
-rg 'from \. import parsers' src/quantumvitas/drivers/ --glob='__init__.py'
+rg 'from \. import parsers' src/qmatsuite/drivers/ --glob='__init__.py'
 # Result: Only 5/15 engines (LAMMPS, Gaussian, Yambo, xTB, Siesta)
 
 # QE parsers __init__.py existence
-ls src/quantumvitas/drivers/qe/parsers/__init__.py
+ls src/qmatsuite/drivers/qe/parsers/__init__.py
 # Result: File does not exist
 
 # CAS write path
-rg 'canonical_sha|analysis_snapshots' src/quantumvitas/ --type=py
+rg 'canonical_sha|analysis_snapshots' src/qmatsuite/ --type=py
 # Result: Only in schema.py (table definition), nowhere else
 
 # .tmp in runtime code
-rg '\.tmp/' src/quantumvitas/ --type=py
+rg '\.tmp/' src/qmatsuite/ --type=py
 # Result: Only in comments, not in runtime paths
 
 # created_at in bundles
-rg 'created_at' src/quantumvitas/core/analysis/bundles.py
+rg 'created_at' src/qmatsuite/core/analysis/bundles.py
 # Result: No matches (correctly excluded from ProvenanceMeta)
 ```
 

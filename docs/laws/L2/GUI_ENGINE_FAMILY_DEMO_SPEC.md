@@ -607,7 +607,7 @@ def list_engine_ui_parameters(engine_family: str, step_type_gen: str) -> list[di
 
 ### 6.3 Versioning Strategy
 
-Metadata JSON files are committed to the repo alongside the driver code. Versioning is implicit in git history. Hot-reload is supported for development via `QV_<ENGINE>_METADATA_HOT_RELOAD=1` env vars.
+Metadata JSON files are committed to the repo alongside the driver code. Versioning is implicit in git history. Hot-reload is supported for development via `QMS_<ENGINE>_METADATA_HOT_RELOAD=1` env vars.
 
 No separate metadata version number or schema migration is needed. The metadata is consumed by the GUI via RPCs, which abstract the JSON structure. If the JSON format changes, only the access layer (`<engine>_metadata.py`) changes — the RPC contract is stable.
 

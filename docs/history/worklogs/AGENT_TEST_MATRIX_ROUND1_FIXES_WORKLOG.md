@@ -57,7 +57,7 @@
 
 ### GAP-1 + BUG-3: Magnetization + engine-agnostic parser — DONE
 - `QESCFDigest`: Added `total_magnetization` and `absolute_magnetization` fields, populated from `SCFResult`
-- `get_results_summary._parse_direct()`: Now uses `find_parser_for_raw()` from parser registry with `import quantumvitas.drivers` trigger, falls back to QE parser
+- `get_results_summary._parse_direct()`: Now uses `find_parser_for_raw()` from parser registry with `import qmatsuite.drivers` trigger, falls back to QE parser
 - `get_results_summary._build_summary()`: Multi-unit support: `total_energy_ev` (VASP/xTB), `total_energy_ry` (QE), `total_energy_ha` (ORCA/Gaussian) → all convert to `total_energy_eV`. Added `_HA_TO_EV = 27.211386245988`
 - Magnetization fields included in summary when present
 - `run_calculation._try_parse_digest()`: Same engine-agnostic pattern applied
@@ -70,7 +70,7 @@
 - Step summaries now include `message` field
 
 ### GAP-3: list_calculations MCP tool — DONE
-- New file: `src/quantumvitas/mcp/tools/list_calculations.py`
+- New file: `src/qmatsuite/mcp/tools/list_calculations.py`
 - Follows `list_structures.py` pattern exactly
 - Uses `svc.calculation.list()` → returns `CalculationDTO` list
 - Fields: `calc_ulid`, `name`, `engine`, `status`, `n_steps`, `structure_ulid`
@@ -120,17 +120,17 @@ Added 7 new instruction lines:
 ## Files Modified
 
 ### Source files (12)
-- `src/quantumvitas/mcp/tools/promote_structure.py` — BUG-2
-- `src/quantumvitas/mcp/tools/run_calculation.py` — BUG-2, BUG-3
-- `src/quantumvitas/mcp/tools/get_status.py` — BUG-2, BUG-5
-- `src/quantumvitas/mcp/tools/quick_run.py` — BUG-2, BUG-4
-- `src/quantumvitas/mcp/tools/get_results_summary.py` — BUG-2, BUG-3, GAP-1
-- `src/quantumvitas/mcp/tools/apply_preset.py` — BUG-1
-- `src/quantumvitas/mcp/error_enrichment.py` — BUG-2
-- `src/quantumvitas/mcp/tools/demo_store.py` — GAP-8
-- `src/quantumvitas/mcp/tools/list_calculations.py` — GAP-3 (NEW)
-- `src/quantumvitas/mcp/server.py` — GAP-3 wiring
-- `src/quantumvitas/drivers/qe/parsers/output.py` — GAP-1
+- `src/qmatsuite/mcp/tools/promote_structure.py` — BUG-2
+- `src/qmatsuite/mcp/tools/run_calculation.py` — BUG-2, BUG-3
+- `src/qmatsuite/mcp/tools/get_status.py` — BUG-2, BUG-5
+- `src/qmatsuite/mcp/tools/quick_run.py` — BUG-2, BUG-4
+- `src/qmatsuite/mcp/tools/get_results_summary.py` — BUG-2, BUG-3, GAP-1
+- `src/qmatsuite/mcp/tools/apply_preset.py` — BUG-1
+- `src/qmatsuite/mcp/error_enrichment.py` — BUG-2
+- `src/qmatsuite/mcp/tools/demo_store.py` — GAP-8
+- `src/qmatsuite/mcp/tools/list_calculations.py` — GAP-3 (NEW)
+- `src/qmatsuite/mcp/server.py` — GAP-3 wiring
+- `src/qmatsuite/drivers/qe/parsers/output.py` — GAP-1
 
 ### Config/resource files (3)
 - `.mcp.json.example` — Part C

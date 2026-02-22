@@ -22,8 +22,8 @@ As of the latest fixes:
 **Root Cause**: `ir_to_qe_param()` requires two arguments (`ir_key`, `ir_value`), but deletion conversion code was calling it with only one argument.
 
 **Files Modified**:
-- `src/quantumvitas/presets/variants_registry.py` (line 331)
-- `src/quantumvitas/presets/spaces_registry.py` (line 372)
+- `src/qmatsuite/presets/variants_registry.py` (line 331)
+- `src/qmatsuite/presets/spaces_registry.py` (line 372)
 
 **Fix**: Pass `None` as dummy value for deletions (we only need the key name, not the value).
 
@@ -36,7 +36,7 @@ As of the latest fixes:
 **Root Cause**: QE uses `.true./.false.` strings for booleans, but IR/ParamSpace expects Python `True/False`. The `qe_to_ir_param()` function was passing values through unchanged.
 
 **Files Modified**:
-- `src/quantumvitas/ir/backends/qe/mapping.py` (added `_normalize_qe_value_to_ir()` function, updated `qe_to_ir_param()`)
+- `src/qmatsuite/ir/backends/qe/mapping.py` (added `_normalize_qe_value_to_ir()` function, updated `qe_to_ir_param()`)
 
 **Fix**: Added `_normalize_qe_value_to_ir()` function that converts QE boolean strings (`.true./.false.`) to Python booleans for boolean parameters (noncolin, lspinorb, nosym, noinv).
 
@@ -51,7 +51,7 @@ As of the latest fixes:
 2. Missing defensive checks for non-dict sections
 
 **Files Modified**:
-- `src/quantumvitas/ir/backends/qe/mapping.py` (normalize sections to uppercase, add defensive checks)
+- `src/qmatsuite/ir/backends/qe/mapping.py` (normalize sections to uppercase, add defensive checks)
 - `tests/presets/test_integration_ir.py` (removed redundant `import yaml` statements inside functions)
 
 **Fix**: 
@@ -69,7 +69,7 @@ As of the latest fixes:
 **Root Cause**: Tests expect `K_POINTS_CARD` as a top-level key in the compiled precision patch (old API), but `compile_dimension_patch()` returns `cards.K_POINTS` (new nested structure).
 
 **Files Modified**:
-- `src/quantumvitas/presets/compiler.py` (lines 148-150)
+- `src/qmatsuite/presets/compiler.py` (lines 148-150)
 
 **Fix**: Added backward compatibility layer in `compile_precision()` that flattens `cards.K_POINTS` to `K_POINTS_CARD` at the top level.
 
@@ -80,7 +80,7 @@ As of the latest fixes:
 ## Bug #6: QE Boolean Canonical Output Restored
 
 **Date**: 2025-01-XX  
-**Files Modified**: `src/quantumvitas/ir/backends/qe/mapping.py`
+**Files Modified**: `src/qmatsuite/ir/backends/qe/mapping.py`
 
 ### Problem
 
@@ -136,7 +136,7 @@ This fix restores the canonical encoding contract at the compiler output boundar
 ## Bug #7: K_POINTS_CARD Folded into cards.K_POINTS in QE→IR Conversion
 
 **Date**: 2025-01-XX  
-**Files Modified**: `src/quantumvitas/ir/backends/qe/mapping.py`
+**Files Modified**: `src/qmatsuite/ir/backends/qe/mapping.py`
 
 ### Problem
 
@@ -199,7 +199,7 @@ This fix adds a compatibility layer at the QE→IR conversion boundary, allowing
 ## Bug #8: Case-Insensitive Section Detection
 
 **Date**: 2025-01-XX  
-**Files Modified**: `src/quantumvitas/ir/backends/qe/mapping.py`, `tests/presets/test_integration_ir.py`
+**Files Modified**: `src/qmatsuite/ir/backends/qe/mapping.py`, `tests/presets/test_integration_ir.py`
 
 ### Problem
 

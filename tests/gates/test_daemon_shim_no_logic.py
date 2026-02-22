@@ -1,8 +1,8 @@
 """
 Gate: Daemon Shim Contains No Business Logic
 
-The file `quantumvitas/frontends/daemon/server.py` must be a pure shim that
-only re-exports from `quantumvitas.daemon.server`. It must NOT contain:
+The file `qmatsuite/frontends/daemon/server.py` must be a pure shim that
+only re-exports from `qmatsuite.daemon.server`. It must NOT contain:
 - Class definitions (class Foo:)
 - Function definitions (def foo():)
 - Business logic of any kind
@@ -10,7 +10,7 @@ only re-exports from `quantumvitas.daemon.server`. It must NOT contain:
 This prevents the historical divergence where two daemon implementations
 existed in parallel and drifted out of sync.
 
-Canonical implementation: quantumvitas.daemon.server
+Canonical implementation: qmatsuite.daemon.server
 """
 
 import ast
@@ -30,7 +30,7 @@ def _find_repo_root() -> Path:
 
 
 REPO_ROOT = _find_repo_root()
-SHIM_PATH = REPO_ROOT / "src/quantumvitas/frontends/daemon/server.py"
+SHIM_PATH = REPO_ROOT / "src/qmatsuite/frontends/daemon/server.py"
 MAX_LINES = 60  # A pure shim should be very short
 
 
@@ -46,7 +46,7 @@ def test_daemon_shim_is_pure_reexport():
     assert len(lines) <= MAX_LINES, (
         f"frontends/daemon/server.py has {len(lines)} lines (max {MAX_LINES}). "
         f"This file must be a pure re-export shim with no business logic. "
-        f"The canonical implementation lives in quantumvitas.daemon.server."
+        f"The canonical implementation lives in qmatsuite.daemon.server."
     )
 
     # Parse AST and check for forbidden constructs
@@ -74,7 +74,7 @@ def test_daemon_shim_is_pure_reexport():
         pytest.fail(
             f"frontends/daemon/server.py must be a pure re-export shim.\n"
             f"Found forbidden constructs:\n  - " + "\n  - ".join(errors) + "\n"
-            f"The canonical implementation lives in quantumvitas.daemon.server.\n"
+            f"The canonical implementation lives in qmatsuite.daemon.server.\n"
             f"Do not add logic to the shim."
         )
 
@@ -88,7 +88,7 @@ def test_daemon_shim_has_deprecation_warning():
 
     assert "DeprecationWarning" in content, (
         "frontends/daemon/server.py must emit a DeprecationWarning "
-        "directing users to import from quantumvitas.daemon.server instead."
+        "directing users to import from qmatsuite.daemon.server instead."
     )
     assert "warnings.warn" in content, (
         "frontends/daemon/server.py must use warnings.warn() to emit deprecation."

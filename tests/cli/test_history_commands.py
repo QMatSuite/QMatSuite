@@ -1,7 +1,7 @@
 """
-Tests for `qv history` CLI subcommands.
+Tests for `qms history` CLI subcommands.
 
-Uses run_qv() subprocess helper to test the CLI interface
+Uses run_qms() subprocess helper to test the CLI interface
 against minimal project directories.
 """
 
@@ -13,9 +13,9 @@ from pathlib import Path
 import pytest
 
 
-def run_qv(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
-    """Run qv CLI command."""
-    cmd = [sys.executable, "-m", "quantumvitas.cli.main"] + args
+def run_qms(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
+    """Run qms CLI command."""
+    cmd = [sys.executable, "-m", "qmatsuite.cli.main"] + args
     result = subprocess.run(
         cmd,
         cwd=cwd,
@@ -36,26 +36,26 @@ def fresh_project(tmp_path):
     """Create a minimal project directory."""
     project = tmp_path / "test_project"
     project.mkdir()
-    (project / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     return project
 
 
 class TestHistoryListCommand:
     def test_history_list_empty(self, fresh_project):
-        """qv history list on fresh project shows 'No history' message."""
-        result = run_qv(["history", "list"], cwd=fresh_project)
+        """qms history list on fresh project shows 'No history' message."""
+        result = run_qms(["history", "list"], cwd=fresh_project)
         assert "No history" in result.stdout or "no history" in result.stdout.lower()
 
     def test_history_list_help(self, fresh_project):
         """--help shows usage info."""
-        result = run_qv(["history", "list", "--help"], cwd=fresh_project)
+        result = run_qms(["history", "list", "--help"], cwd=fresh_project)
         assert "Maximum events" in result.stdout or "limit" in result.stdout.lower()
 
 
 class TestHistoryShowCommand:
     def test_history_show_not_found(self, fresh_project):
         """Non-existent run ULID returns error."""
-        result = run_qv(["history", "show", "NONEXISTENT_ULID"], cwd=fresh_project, check=False)
+        result = run_qms(["history", "show", "NONEXISTENT_ULID"], cwd=fresh_project, check=False)
         assert result.returncode != 0
         combined = result.stdout + result.stderr
         assert "not found" in combined.lower() or "error" in combined.lower()
@@ -64,7 +64,7 @@ class TestHistoryShowCommand:
 class TestHistoryStorageCommand:
     def test_history_storage_fresh(self, fresh_project):
         """Shows zero counts on fresh project."""
-        result = run_qv(["history", "storage"], cwd=fresh_project)
+        result = run_qms(["history", "storage"], cwd=fresh_project)
         assert "0" in result.stdout
         assert "Runs" in result.stdout or "runs" in result.stdout.lower()
 
@@ -72,7 +72,7 @@ class TestHistoryStorageCommand:
 class TestHistoryClearCommand:
     def test_history_clear_without_force(self, fresh_project):
         """Without --force, exits without deleting (non-interactive)."""
-        result = run_qv(["history", "clear"], cwd=fresh_project, check=False)
+        result = run_qms(["history", "clear"], cwd=fresh_project, check=False)
         # In non-interactive mode, typer.confirm will abort
         # Either exits with 1 or prints "Aborted"
         combined = result.stdout + result.stderr
@@ -81,8 +81,8 @@ class TestHistoryClearCommand:
 
 class TestHistoryHelp:
     def test_history_no_args(self, fresh_project):
-        """qv history with no args shows help (no_args_is_help=True)."""
-        result = run_qv(["history"], cwd=fresh_project, check=False)
+        """qms history with no args shows help (no_args_is_help=True)."""
+        result = run_qms(["history"], cwd=fresh_project, check=False)
         combined = result.stdout + result.stderr
         assert "list" in combined.lower()
         assert "show" in combined.lower()

@@ -21,18 +21,18 @@
 **Tasks:**
 
 #### M0.1: ArtifactKind & BaseArtifact ABC
-- **File:** `src/quantumvitas/analysis/artifact_types.py`
+- **File:** `src/qmatsuite/analysis/artifact_types.py`
 - **Deliverable:** `ArtifactKind` enum, `BaseArtifact` ABC with `to_metadata()`, `serialize()`, `deserialize()`
 - **Tests:** `tests/unit/test_artifact_types.py` - ABC compliance, serialization roundtrip
 
 #### M0.2: ArtifactCatalog & Index Structure
-- **File:** `src/quantumvitas/analysis/artifact_catalog.py`
+- **File:** `src/qmatsuite/analysis/artifact_catalog.py`
 - **Deliverable:** `ArtifactCatalog` dataclass with `line_artifacts`, `map_artifacts`, `volume_artifacts`, `properties_artifacts` lists
 - **Storage:** `<calc_dir>/analysis/catalog.json` (metadata only, no binary paths in JSON)
 - **Tests:** `tests/unit/test_artifact_catalog.py` - catalog persistence, artifact registration
 
 #### M0.3: VolumeMetadata Contract v1 (HARD CONSTRAINT)
-- **File:** `src/quantumvitas/analysis/volume_artifacts.py`
+- **File:** `src/qmatsuite/analysis/volume_artifacts.py`
 - **Contract Fields (MUST BE EXPLICIT):**
   ```python
   @dataclass
@@ -74,7 +74,7 @@
 - **Tests:** `tests/unit/test_volume_metadata.py` - validation, unit checking, coordinate system checks
 
 #### M0.4: Binary Blob Security & Allowlist
-- **File:** `src/quantumvitas/analysis/binary_cache.py`, `gui/electron/preload.ts`
+- **File:** `src/qmatsuite/analysis/binary_cache.py`, `gui/electron/preload.ts`
 - **Deliverable:**
   - `BinaryCache` class: `write_blob()`, `get_blob_path(blob_id)`, `validate_blob_id()`
   - Storage: `<calc_dir>/analysis/blobs/<blob_id>.npy` (only in analysis directory)
@@ -84,7 +84,7 @@
 - **Tests:** `tests/integration/test_blob_security.py` - preload allowlist enforcement
 
 #### M0.5: Ordering Detection Fixture & Parser Sanity Checks
-- **File:** `src/quantumvitas/io/parser/volume_parsers.py`, `tests/fixtures/ordering_test.py`
+- **File:** `src/qmatsuite/io/parser/volume_parsers.py`, `tests/fixtures/ordering_test.py`
 - **Deliverable:**
   - Synthetic test fixture generator: `generate_ordering_test_fixture(nx, ny, nz)` → creates volume with `f(i,j,k) = i + 10*j + 100*k`
   - Ordering auto-detection: Parse fixture, check if values match expected pattern
@@ -112,7 +112,7 @@
 **Tasks:**
 
 #### M1.1: XSF Parser with Ordering Detection
-- **File:** `src/quantumvitas/io/parser/volume_parsers.py`
+- **File:** `src/qmatsuite/io/parser/volume_parsers.py`
 - **Function:** `parse_xsf(path: Path) -> VolumeArtifact`
 - **Requirements:**
   - Parse `CRYSTAL` or `ATOMS` structure block
@@ -126,7 +126,7 @@
 - **Tests:** `tests/unit/test_volume_parsers.py::test_parse_xsf` - real XSF files, ordering detection, structure extraction
 
 #### M1.2: Cube Parser with Ordering Detection
-- **File:** `src/quantumvitas/io/parser/volume_parsers.py`
+- **File:** `src/qmatsuite/io/parser/volume_parsers.py`
 - **Function:** `parse_cube(path: Path) -> VolumeArtifact`
 - **Requirements:**
   - Parse Cube header (comment lines, natoms, origin, vectors)
@@ -136,7 +136,7 @@
 - **Tests:** `tests/unit/test_volume_parsers.py::test_parse_cube` - Gaussian/ORCA cube files
 
 #### M1.3: VolumeArtifact Dataclass
-- **File:** `src/quantumvitas/analysis/volume_artifacts.py`
+- **File:** `src/qmatsuite/analysis/volume_artifacts.py`
 - **Deliverable:** `VolumeArtifact` extends `BaseArtifact`, contains `VolumeMetadata`
 - **Methods:**
   - `get(i, j, k, wrap: bool = True) -> float` - Periodic wrapping (p4vasp pattern)
@@ -145,7 +145,7 @@
 - **Tests:** `tests/unit/test_volume_artifacts.py` - get/getRaw wrapping, downsampling
 
 #### M1.4: Binary Cache Module
-- **File:** `src/quantumvitas/analysis/binary_cache.py`
+- **File:** `src/qmatsuite/analysis/binary_cache.py`
 - **Deliverable:** `BinaryCache` class
 - **Methods:**
   - `write_blob(data: np.ndarray, blob_id: str, calc_dir: Path) -> Path`
@@ -154,7 +154,7 @@
 - **Tests:** `tests/unit/test_binary_cache.py` - write/read roundtrip, preview generation
 
 #### M1.5: RPC Handlers for Volume Metadata
-- **File:** `src/quantumvitas/daemon/server.py`
+- **File:** `src/qmatsuite/daemon/server.py`
 - **Handlers:**
   - `list_volume_artifacts(calc_id: str) -> List[Dict]` - Returns metadata only (no blob data)
   - `get_volume_metadata(calc_id: str, artifact_id: str) -> Dict` - Returns VolumeMetadata JSON (includes blob_id, not path)
@@ -227,7 +227,7 @@
 **Tasks:**
 
 #### M2.1: BXSF Parser with Lazy Band Loading
-- **File:** `src/quantumvitas/io/parser/volume_parsers.py`
+- **File:** `src/qmatsuite/io/parser/volume_parsers.py`
 - **Function:** `parse_bxsf(path: Path) -> FermiSurfaceArtifact`
 - **Requirements:**
   - Parse `BEGIN_BLOCK_BANDGRID3D` / `BEGIN_BANDGRID_3D` header
@@ -240,7 +240,7 @@
 - **Tests:** `tests/unit/test_volume_parsers.py::test_parse_bxsf` - copper.bxsf, band file positions, lazy loading
 
 #### M2.2: FermiSurfaceArtifact Dataclass
-- **File:** `src/quantumvitas/analysis/volume_artifacts.py`
+- **File:** `src/qmatsuite/analysis/volume_artifacts.py`
 - **Deliverable:** `FermiSurfaceArtifact` extends `VolumeArtifact`
 - **Additional Fields:**
   - `n_bands: int`
@@ -281,7 +281,7 @@
 - **Tests:** UI smoke tests - reciprocal cell displays correctly
 
 #### M2.6: MapArtifact for k-slice
-- **File:** `src/quantumvitas/analysis/map_artifacts.py`
+- **File:** `src/qmatsuite/analysis/map_artifacts.py`
 - **Deliverable:** `MapArtifact` extends `BaseArtifact`
 - **Fields:**
   - `grid_shape: Tuple[int, int]` - (nx, ny) for 2D slice
@@ -293,7 +293,7 @@
 - **Tests:** `tests/unit/test_map_artifacts.py` - map artifact creation, plane extraction
 
 #### M2.7: k-slice Extraction from BXSF
-- **File:** `src/quantumvitas/analysis/map_artifacts.py`
+- **File:** `src/qmatsuite/analysis/map_artifacts.py`
 - **Function:** `extract_kslice(fermi_surface: FermiSurfaceArtifact, band_index: int, kz_index: int) -> MapArtifact`
 - **Requirements:**
   - Extract 2D slice from 3D band data at specified kz index
@@ -312,7 +312,7 @@
 - **Tests:** UI smoke tests - heatmap renders, colormap updates
 
 #### M2.9: RPC Handlers for Fermi Surface
-- **File:** `src/quantumvitas/daemon/server.py`
+- **File:** `src/qmatsuite/daemon/server.py`
 - **Handlers:**
   - `get_fermi_surface_metadata(calc_id: str, artifact_id: str) -> Dict`
   - `get_band_blob_token(calc_id: str, artifact_id: str, band_index: int) -> str`
@@ -338,18 +338,18 @@
 **Tasks:**
 
 #### M3.1: QE pp.x Step Type & Template
-- **File:** `src/quantumvitas/calculation/step_defaults.py`, `src/quantumvitas/workflow/templates.py`
+- **File:** `src/qmatsuite/calculation/step_defaults.py`, `src/qmatsuite/workflow/templates.py`
 - **Deliverable:** `pp` step type for pp.x post-processing
 - **Template:** pp.x input generator (plot_num, filplot options)
 - **Tests:** `tests/unit/test_ppx_generator.py` - input generation, plot_num selection
 
 #### M3.2: Automatic pp.x Output Detection
-- **File:** `src/quantumvitas/calculation/step_artifacts.py`
+- **File:** `src/qmatsuite/calculation/step_artifacts.py`
 - **Deliverable:** Auto-detect cube/xsf files from pp.x output
 - **Tests:** `tests/unit/test_step_artifacts.py::test_ppx_artifact_detection`
 
 #### M3.3: VASP CHGCAR/ELFCAR/LOCPOT Parsers
-- **File:** `src/quantumvitas/io/parser/volume_parsers.py`
+- **File:** `src/qmatsuite/io/parser/volume_parsers.py`
 - **Functions:** `parse_chgcar()`, `parse_elfcar()`, `parse_locpot()`
 - **Requirements:**
   - Parse VASP format (structure header + grid dimensions + data)
@@ -360,7 +360,7 @@
 - **Tests:** `tests/unit/test_volume_parsers.py::test_parse_chgcar` - real VASP files
 
 #### M3.4: Wannier90 .wout Parser for Centers/Spreads
-- **File:** `src/quantumvitas/io/parser/wannier90_parsers.py`
+- **File:** `src/qmatsuite/io/parser/wannier90_parsers.py`
 - **Function:** `parse_wannier90_wout(path: Path) -> WannierPropertiesArtifact`
 - **Requirements:**
   - Parse "Final State" section from .wout
@@ -369,7 +369,7 @@
 - **Tests:** `tests/unit/test_wannier90_parsers.py` - tutorial .wout files
 
 #### M3.5: PropertiesArtifact & PropertiesPanel
-- **Files:** `src/quantumvitas/analysis/properties_artifacts.py`, `gui/src/components/panels/PropertiesPanel.tsx`
+- **Files:** `src/qmatsuite/analysis/properties_artifacts.py`, `gui/src/components/panels/PropertiesPanel.tsx`
 - **Deliverable:**
   - `PropertiesArtifact` dataclass (centers, spreads)
   - Table UI for Wannier centers/spreads

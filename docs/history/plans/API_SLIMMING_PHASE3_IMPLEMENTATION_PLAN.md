@@ -10,7 +10,7 @@
 
 Phase 3 focuses on high-impact consolidation through:
 1. **Bundle functions**: Combine multiple related utils into single response
-2. **Service capability**: Move online search to QVService per Constitution H3
+2. **Service capability**: Move online search to QMSService per Constitution H3
 3. **Unused removal**: Delete methods with zero production usage
 
 ---
@@ -48,7 +48,7 @@ Phase 3 focuses on high-impact consolidation through:
    - Replace `svc.project.get_species_map()` → `svc.project.get_config().get("species_map", {})`
    - Replace `svc.project.get_potential_map()` → `svc.project.get_config().get("potential_map", {})`
 
-2. Delete methods from `src/quantumvitas/api/service.py`:
+2. Delete methods from `src/qmatsuite/api/service.py`:
    - `Analysis.find_band_files` (lines ~1447-1460)
    - `Project.get_species_map` (lines ~5592-5606)
    - `Project.get_potential_map` (lines ~5616-5630)
@@ -287,7 +287,7 @@ Keep: `QEUIParam` (class for type hints)
 **Expected Delta**: -5
 
 This is the most complex batch requiring:
-- New `QVService.OnlineSearch` static nested class
+- New `QMSService.OnlineSearch` static nested class
 - Major daemon handler refactoring
 - Cache factory pattern
 

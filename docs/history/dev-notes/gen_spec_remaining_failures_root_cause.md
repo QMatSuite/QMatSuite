@@ -30,8 +30,8 @@ After completing PATCH (kernel import fixes), C (topology/relax detection), and 
 **Root Cause**: `StepTypeRegistry.get(step_type_gen)` expects GEN type (e.g., "scf"), but many places pass SPEC type (e.g., "qe_scf", "vasp_scf", "pyscf_scf").
 
 **Affected Code**:
-- `src/quantumvitas/execution/reference_resolver.py:93` - `registry.get(str(step_type))` where `step_type` is `step_type_spec`
-- `src/quantumvitas/execution/reference_resolver.py:56` - Same issue in `find_reference_scf()`
+- `src/qmatsuite/execution/reference_resolver.py:93` - `registry.get(str(step_type))` where `step_type` is `step_type_spec`
+- `src/qmatsuite/execution/reference_resolver.py:56` - Same issue in `find_reference_scf()`
 
 **Test Failures**:
 - `test_reference_resolver.py::test_get_gen_type` - Returns "vasp_scf" instead of "scf"
@@ -45,7 +45,7 @@ step_type = getattr(step, 'step_type_spec', None)
 spec = registry.get(str(step_type))  # WRONG: registry.get() expects GEN
 
 # Fix:
-from quantumvitas.api.utils.step_types import step_type_gen_from_spec, is_step_type_spec
+from qmatsuite.api.utils.step_types import step_type_gen_from_spec, is_step_type_spec
 step_type = getattr(step, 'step_type_spec', None)
 if step_type:
     if is_step_type_spec(step_type):
@@ -121,7 +121,7 @@ spec = registry.get_for_engine("scf", "qe")  # GEN + engine
 
 # Or add a helper method:
 def get_by_spec(registry, step_type_spec: str):
-    from quantumvitas.api.utils.step_types import step_type_gen_from_spec, prefix_from
+    from qmatsuite.api.utils.step_types import step_type_gen_from_spec, prefix_from
     step_type_gen = step_type_gen_from_spec(step_type_spec)
     prefix = prefix_from(step_type_spec)
     return registry.get_for_engine(step_type_gen, prefix)
@@ -140,7 +140,7 @@ def get_by_spec(registry, step_type_spec: str):
 **Test Failures**:
 - `test_relax_execution.py::test_executor_pre_clean_before_job_execution` - `TypeError: write_generated_structure() got an unexpected keyword argument 'step_type_gen'`
 
-**Code Location**: `src/quantumvitas/execution/relax_artifacts.py`
+**Code Location**: `src/qmatsuite/execution/relax_artifacts.py`
 
 **Fix Proposal**:
 ```python
@@ -152,7 +152,7 @@ write_generated_structure(
 )
 
 # Fix:
-from quantumvitas.api.utils.step_types import step_type_spec_from_gen
+from qmatsuite.api.utils.step_types import step_type_spec_from_gen
 step_type_spec = step_type_spec_from_gen("qe", "relax")  # "qe_relax"
 write_generated_structure(
     ...,
@@ -181,7 +181,7 @@ evaluate_step_result(
 )
 
 # Fix:
-from quantumvitas.api.utils.step_types import step_type_spec_from_gen
+from qmatsuite.api.utils.step_types import step_type_spec_from_gen
 step_type_spec = step_type_spec_from_gen("w90", "wannierprep")  # "w90_wannierprep"
 evaluate_step_result(
     ...,
@@ -289,15 +289,15 @@ evaluate_step_result(
 
 **Fix Proposal**:
 ```python
-# In src/quantumvitas/api/utils/__init__.py
+# In src/qmatsuite/api/utils/__init__.py
 from .step_types import ...  # Already done
 # Add:
-from quantumvitas.api.utils import is_ulid_like  # Re-export from utils.py
+from qmatsuite.api.utils import is_ulid_like  # Re-export from utils.py
 ```
 
 **Status**: Fixed - `is_ulid_like` exists in `api/utils.py` (the file, not the package). The `api/utils/` package (directory) only contains `step_types.py`. The import should work from `api/utils.py` directly. If there's a conflict, we may need to rename one of them (e.g., `api/utils.py` → `api/utils_module.py` or `api/utils/` → `api/utils_package/`).
 
-**Note**: There's a potential naming conflict: `api/utils.py` (file) vs `api/utils/` (package). Python should prefer the file when importing `quantumvitas.api.utils`, but this can cause confusion. Consider renaming one to avoid conflicts.
+**Note**: There's a potential naming conflict: `api/utils.py` (file) vs `api/utils/` (package). Python should prefer the file when importing `qmatsuite.api.utils`, but this can cause confusion. Consider renaming one to avoid conflicts.
 
 ---
 

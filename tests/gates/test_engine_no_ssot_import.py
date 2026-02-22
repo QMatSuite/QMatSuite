@@ -17,16 +17,16 @@ import pytest
 from tests.gates._import_scan import ImportScanner, Violation
 
 # Root of the source tree
-SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "quantumvitas"
+SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "qmatsuite"
 ENGINE_DIR = SRC_ROOT / "engine"
 
 # --- Check 1: Forbidden SSOT imports ---
 
 FORBIDDEN_IMPORT_PREFIXES = (
-    "quantumvitas.core.yaml_io",
-    "quantumvitas.core.yamldoc",
-    "quantumvitas.core.locking",
-    "quantumvitas.core.journal",
+    "qmatsuite.core.yaml_io",
+    "qmatsuite.core.yamldoc",
+    "qmatsuite.core.locking",
+    "qmatsuite.core.journal",
 )
 
 # No known import violations expected

@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from quantumvitas.drivers.qe.parsers.output import QEOutputParser, QESCFDigest
-from quantumvitas.parsers.registry import get_parser
+from qmatsuite.drivers.qe.parsers.output import QEOutputParser, QESCFDigest
+from qmatsuite.parsers.registry import get_parser
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]

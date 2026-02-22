@@ -16,7 +16,7 @@ All backend gaps and GUI visualization work from the Analysis Pipeline Review ar
 | Spin-polarized PDOS with total DOS | PASS | `test_pdos_spin_polarized_series` |
 | PDOS raw array still in bundle.arrays | PASS | `test_pdos_still_in_arrays` |
 | Default labels when atom/orbital labels None | PASS | `test_pdos_default_labels_when_none` |
-| GUI TypeScript types for geometry frames | PASS | `PrimitiveGeometryFrame`, `PrimitiveGeometryFrames` in qv.ts |
+| GUI TypeScript types for geometry frames | PASS | `PrimitiveGeometryFrame`, `PrimitiveGeometryFrames` in qms.ts |
 | GUI object types expanded to 6 | PASS | bands, dos, convergence, trajectory, neb_trajectory, field3d |
 | GUI dispatches trajectory to TrajectoryVizPanel | PASS | `CalculationAnalysisPanel.tsx` |
 | GUI dispatches fatbands to FatbandsVizPanel | PASS | `CalculationAnalysisPanel.tsx` |

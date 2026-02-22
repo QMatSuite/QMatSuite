@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.yambo.parsers.output import (
+from qmatsuite.drivers.yambo.parsers.output import (
     YamboDigest,
     YamboOutputParser,
     parse_qp_file,
@@ -123,7 +123,7 @@ class TestYamboOutputParser:
 
 class TestParserRegistry:
     def test_registered_in_registry(self):
-        from quantumvitas.parsers.registry import get_parser
+        from qmatsuite.parsers.registry import get_parser
 
         parser = get_parser("yambo", "scf_digest")
         assert parser is not None

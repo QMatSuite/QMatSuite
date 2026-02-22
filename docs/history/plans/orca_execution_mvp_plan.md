@@ -86,14 +86,14 @@
 ### Implementation Summary (2026-01-13)
 
 **Files Modified:**
-- `src/quantumvitas/workflow/registry.py`:
+- `src/qmatsuite/workflow/registry.py`:
   - Added `token` field to `StepTypeSpec` dataclass
   - Added `PUBLIC_TYPE_TOKENS` constant: `{"scf": "s", "hf": "h", "td": "t", "mp2": "m2", "freq": "f", "nmr": "n"}`
   - Added `get_token_for_public_type()` function
   - Added `generate_subchain_basename()` function
   - Added `get_chain_namespace_folder()` function
   - Added token values to pyscf_scf, pyscf_mp2, pyscf_td, orca_scf, orca_hf, orca_td step types
-- `src/quantumvitas/engines/orca/input_compiler.py`:
+- `src/qmatsuite/engines/orca/input_compiler.py`:
   - Added `CANONICAL_GBW_FILE = "scf.gbw"` constant
   - Added `moread_file` parameter to `compile()` method
   - Added MORead keyword and %moinp block generation
@@ -290,7 +290,7 @@ import pytest
 from pathlib import Path
 
 # Will import after implementation
-# from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+# from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
 
 FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "orca"
@@ -301,7 +301,7 @@ class TestPropertyParser:
 
     def test_parse_scf_energy(self):
         """Parse SCF energy from property file."""
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         result = parse_orca_property_txt(FIXTURES_DIR / "water_scf.property.txt")
 
@@ -312,7 +312,7 @@ class TestPropertyParser:
 
     def test_parse_property_txt_string(self):
         """Parse property content from string."""
-        from quantumvitas.engines.orca.property_parser import parse_property_txt_string
+        from qmatsuite.engines.orca.property_parser import parse_property_txt_string
 
         content = '''
 $SCF_Energy
@@ -328,7 +328,7 @@ $End
 
     def test_parse_array_property(self):
         """Parse array-type property (like orbital energies)."""
-        from quantumvitas.engines.orca.property_parser import parse_property_txt_string
+        from qmatsuite.engines.orca.property_parser import parse_property_txt_string
 
         content = '''
 $Orbital_Energies
@@ -345,14 +345,14 @@ $End
 
     def test_missing_file_raises(self):
         """Missing file should raise FileNotFoundError."""
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         with pytest.raises(FileNotFoundError):
             parse_orca_property_txt(Path("/nonexistent/file.property.txt"))
 
     def test_empty_file_returns_empty_dict(self):
         """Empty file should return empty dict."""
-        from quantumvitas.engines.orca.property_parser import parse_property_txt_string
+        from qmatsuite.engines.orca.property_parser import parse_property_txt_string
 
         result = parse_property_txt_string("")
         assert result == {}
@@ -368,16 +368,16 @@ pytest tests/unit/orca/test_property_parser.py -v
 
 **Files to create**:
 ```
-src/quantumvitas/engines/orca/__init__.py
-src/quantumvitas/engines/orca/property_parser.py
+src/qmatsuite/engines/orca/__init__.py
+src/qmatsuite/engines/orca/property_parser.py
 ```
 
-**File**: `src/quantumvitas/engines/orca/__init__.py`
+**File**: `src/qmatsuite/engines/orca/__init__.py`
 ```python
 """ORCA engine module."""
 ```
 
-**File**: `src/quantumvitas/engines/orca/property_parser.py`
+**File**: `src/qmatsuite/engines/orca/property_parser.py`
 ```python
 """Parser for ORCA .property.txt files."""
 import re
@@ -520,7 +520,7 @@ $End
 ```python
 def test_parse_tddft_excitations(self):
     """Parse TDDFT excitation energies."""
-    from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+    from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
     result = parse_orca_property_txt(FIXTURES_DIR / "water_scf_td.property.txt")
 
@@ -529,7 +529,7 @@ def test_parse_tddft_excitations(self):
 
 def test_parse_tddft_oscillator_strengths(self):
     """Parse TDDFT oscillator strengths."""
-    from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+    from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
     result = parse_orca_property_txt(FIXTURES_DIR / "water_scf_td.property.txt")
 
@@ -575,7 +575,7 @@ class TestChainDetection:
 
     def test_single_scf_forms_one_chain(self):
         """Single SCF step forms one chain."""
-        from quantumvitas.engine.qc_engine_base import detect_chains
+        from qmatsuite.engine.qc_engine_base import detect_chains
 
         steps = [MockStep(id="s1", public_type="scf", step_type="orca_scf")]
         chains = detect_chains(steps)
@@ -586,7 +586,7 @@ class TestChainDetection:
 
     def test_scf_td_forms_one_chain(self):
         """SCF + TD forms one chain with TD as downstream."""
-        from quantumvitas.engine.qc_engine_base import detect_chains
+        from qmatsuite.engine.qc_engine_base import detect_chains
 
         steps = [
             MockStep(id="s1", public_type="scf", step_type="orca_scf"),
@@ -601,7 +601,7 @@ class TestChainDetection:
 
     def test_two_scf_forms_two_chains(self):
         """Two SCF steps form two separate chains."""
-        from quantumvitas.engine.qc_engine_base import detect_chains
+        from qmatsuite.engine.qc_engine_base import detect_chains
 
         steps = [
             MockStep(id="s1", public_type="scf", step_type="orca_scf"),
@@ -617,7 +617,7 @@ class TestChainDetection:
 
     def test_hf_also_starts_chain(self):
         """HF step also starts a new chain (like SCF)."""
-        from quantumvitas.engine.qc_engine_base import detect_chains
+        from qmatsuite.engine.qc_engine_base import detect_chains
 
         steps = [
             MockStep(id="s1", public_type="hf", step_type="orca_hf"),
@@ -630,7 +630,7 @@ class TestChainDetection:
 
     def test_chain_key_derivation(self):
         """Chain key derived from step types."""
-        from quantumvitas.engine.qc_engine_base import QCChain, derive_chain_key
+        from qmatsuite.engine.qc_engine_base import QCChain, derive_chain_key
 
         chain = QCChain(
             scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
@@ -642,7 +642,7 @@ class TestChainDetection:
 
     def test_chain_key_scf_only(self):
         """Chain key for SCF-only chain."""
-        from quantumvitas.engine.qc_engine_base import QCChain, derive_chain_key
+        from qmatsuite.engine.qc_engine_base import QCChain, derive_chain_key
 
         chain = QCChain(
             scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
@@ -654,7 +654,7 @@ class TestChainDetection:
 
     def test_chain_key_collision_resolution(self):
         """Multiple chains with same structure get unique keys."""
-        from quantumvitas.engine.qc_engine_base import detect_chains
+        from qmatsuite.engine.qc_engine_base import detect_chains
 
         steps = [
             MockStep(id="s1", public_type="scf", step_type="orca_scf"),
@@ -673,7 +673,7 @@ class TestPartialChain:
 
     def test_partial_chain_to_target(self):
         """Extract partial chain from SCF root to target."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         chain = QCChain(
             scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
@@ -692,7 +692,7 @@ class TestPartialChain:
 
     def test_partial_chain_to_scf_root(self):
         """Partial chain to SCF root includes only SCF."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         chain = QCChain(
             scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
@@ -707,7 +707,7 @@ class TestPartialChain:
 
     def test_partial_chain_invalid_target_raises(self):
         """Invalid target step raises ValueError."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         chain = QCChain(
             scf_root=MockStep(id="s1", public_type="scf", step_type="orca_scf"),
@@ -727,7 +727,7 @@ pytest tests/unit/orca/test_chain_detection.py -v
 
 ### Step 2.2: Implement QCChain and Chain Detection
 
-**File to create**: `src/quantumvitas/engine/qc_engine_base.py`
+**File to create**: `src/qmatsuite/engine/qc_engine_base.py`
 
 ```python
 """Generalized QC engine base with chain detection."""
@@ -918,8 +918,8 @@ class TestORCAInputCompiler:
 
     def test_scf_only_input(self):
         """Generate input for SCF-only chain."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             id="s1",
@@ -940,8 +940,8 @@ class TestORCAInputCompiler:
 
     def test_scf_td_fusion(self):
         """Generate fused input for SCF + TD chain."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             id="s1",
@@ -970,8 +970,8 @@ class TestORCAInputCompiler:
 
     def test_hf_input(self):
         """Generate input for HF calculation."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         hf_step = MockStep(
             id="s1",
@@ -990,8 +990,8 @@ class TestORCAInputCompiler:
 
     def test_tightscf_added(self):
         """TightSCF should be added for reliable convergence."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             id="s1",
@@ -1008,8 +1008,8 @@ class TestORCAInputCompiler:
 
     def test_noautostart_when_fresh(self):
         """NoAutoStart keyword added when fresh=True."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             id="s1",
@@ -1026,8 +1026,8 @@ class TestORCAInputCompiler:
 
     def test_pal_block_with_nprocs(self):
         """Parallelism block added when nprocs specified."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             id="s1",
@@ -1044,8 +1044,8 @@ class TestORCAInputCompiler:
 
     def test_chain_comment_header(self):
         """Input should have chain key in comment."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             id="s1",
@@ -1069,7 +1069,7 @@ pytest tests/unit/orca/test_input_compiler.py -v
 
 ### Step 3.2: Implement ORCA Input Compiler
 
-**File to create**: `src/quantumvitas/engines/orca/input_compiler.py`
+**File to create**: `src/qmatsuite/engines/orca/input_compiler.py`
 
 ```python
 """ORCA input file compiler - single-job fusion."""
@@ -1257,7 +1257,7 @@ class TestORCAEngine:
 
     def test_engine_creation(self):
         """Engine can be created with explicit path."""
-        from quantumvitas.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.orca_engine import ORCAEngine
 
         with patch.object(Path, 'exists', return_value=True):
             engine = ORCAEngine(orca_bin=Path("/fake/orca"))
@@ -1265,7 +1265,7 @@ class TestORCAEngine:
 
     def test_engine_probe_with_binary(self):
         """Engine probe returns True when binary exists."""
-        from quantumvitas.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.orca_engine import ORCAEngine
 
         with patch.object(Path, 'exists', return_value=True):
             with patch('subprocess.run') as mock_run:
@@ -1276,7 +1276,7 @@ class TestORCAEngine:
 
     def test_command_building(self):
         """Test ORCA command construction."""
-        from quantumvitas.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.orca_engine import ORCAEngine
 
         with patch.object(Path, 'exists', return_value=True):
             engine = ORCAEngine(orca_bin=Path("/fake/orca"))
@@ -1291,7 +1291,7 @@ class TestORCAPathResolution:
 
     def test_bundled_path_found(self):
         """Bundled ORCA path is resolved correctly."""
-        from quantumvitas.core.engines.orca_resolver import resolve_orca_bin_dir
+        from qmatsuite.core.engines.orca_resolver import resolve_orca_bin_dir
 
         # This test checks the actual bundled location
         try:
@@ -1303,7 +1303,7 @@ class TestORCAPathResolution:
 
     def test_missing_orca_raises(self):
         """Missing ORCA raises RuntimeError."""
-        from quantumvitas.core.engines.orca_resolver import _resolve_orca_at_path
+        from qmatsuite.core.engines.orca_resolver import _resolve_orca_at_path
 
         with pytest.raises(RuntimeError):
             _resolve_orca_at_path(Path("/nonexistent/path"))
@@ -1316,7 +1316,7 @@ class TestORCAPathResolution:
 
 ### Step 4.2: Implement ORCA Path Resolver
 
-**File to create**: `src/quantumvitas/core/engines/orca_resolver.py`
+**File to create**: `src/qmatsuite/core/engines/orca_resolver.py`
 
 ```python
 """ORCA path resolution."""
@@ -1378,7 +1378,7 @@ def _resolve_orca_at_path(path: Path) -> Path:
 
 ### Step 4.3: Implement ORCA Engine
 
-**File to create**: `src/quantumvitas/engine/orca_engine.py`
+**File to create**: `src/qmatsuite/engine/orca_engine.py`
 
 ```python
 """ORCA quantum chemistry engine."""
@@ -1420,7 +1420,7 @@ class ORCAEngine(Engine):
         elif self.config.orca_bin:
             self.orca_dir = self.config.orca_bin
         else:
-            from quantumvitas.core.engines.orca_resolver import resolve_orca_bin_dir
+            from qmatsuite.core.engines.orca_resolver import resolve_orca_bin_dir
             self.orca_dir = resolve_orca_bin_dir()
 
         self.orca_binary = self.orca_dir / "orca"
@@ -1481,8 +1481,8 @@ class ORCAEngine(Engine):
         Returns:
             List of StepResult for each step in chain
         """
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engines.orca.property_parser import parse_orca_property_txt
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engines.orca.property_parser import parse_orca_property_txt
 
         # 1. Compile chain to input
         compiler = ORCAInputCompiler()
@@ -1651,7 +1651,7 @@ def orca_engine():
     if not orca_path.exists():
         pytest.skip(f"ORCA binary not found at {ORCA_BIN}")
 
-    from quantumvitas.engine.orca_engine import ORCAEngine
+    from qmatsuite.engine.orca_engine import ORCAEngine
     return ORCAEngine(orca_bin=orca_path.parent)
 
 
@@ -1662,7 +1662,7 @@ class TestORCAExecution:
 
     def test_scf_execution(self, orca_engine, tmp_path):
         """Test basic SCF calculation."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             id="s1",
@@ -1683,7 +1683,7 @@ class TestORCAExecution:
 
     def test_scf_td_chain(self, orca_engine, tmp_path):
         """Test SCF + TDDFT chain."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             id="s1",
@@ -1710,7 +1710,7 @@ class TestORCAExecution:
 
     def test_property_file_generated(self, orca_engine, tmp_path):
         """Verify property.txt is generated."""
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             id="s1",
@@ -1729,8 +1729,8 @@ class TestORCAExecution:
 
     def test_fresh_run_uses_noautostart(self, orca_engine, tmp_path):
         """Verify fresh=True generates NoAutoStart."""
-        from quantumvitas.engine.qc_engine_base import QCChain
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
 
         scf_step = MockStep(
             id="s1",
@@ -1777,7 +1777,7 @@ pytest tests/ -v
 
 ### Step 6.1: Add ORCA Step Types
 
-**File to modify**: `src/quantumvitas/workflow/registry.py`
+**File to modify**: `src/qmatsuite/workflow/registry.py`
 
 Add to `_STEP_TYPES` dictionary:
 
@@ -1817,7 +1817,7 @@ Add to `_STEP_TYPES` dictionary:
 
 ### Step 6.2: Add ORCA Materialization
 
-**File to modify**: `src/quantumvitas/workflow/generalized_steps.py`
+**File to modify**: `src/qmatsuite/workflow/generalized_steps.py`
 
 Add to `MATERIALIZATION_MAP`:
 
@@ -1846,7 +1846,7 @@ pytest tests/unit/workflow/test_registry.py -v
 
 ### Step 7.1: Update Engine Registry
 
-**File to modify**: `src/quantumvitas/engine/registry.py`
+**File to modify**: `src/qmatsuite/engine/registry.py`
 
 Add ORCA to `create_default_registry()`:
 
@@ -1859,7 +1859,7 @@ def create_default_registry() -> EngineRegistry:
 
     # ORCA
     try:
-        from quantumvitas.engine.orca_engine import ORCAEngine
+        from qmatsuite.engine.orca_engine import ORCAEngine
         registry.register("orca", ORCAEngine)
     except ImportError:
         pass
@@ -1930,12 +1930,12 @@ while true; do pytest tests/unit/orca/ -v --tb=short; sleep 5; done
 
 ### New Files
 ```
-src/quantumvitas/engines/orca/__init__.py
-src/quantumvitas/engines/orca/property_parser.py
-src/quantumvitas/engines/orca/input_compiler.py
-src/quantumvitas/engine/qc_engine_base.py
-src/quantumvitas/engine/orca_engine.py
-src/quantumvitas/core/engines/orca_resolver.py
+src/qmatsuite/engines/orca/__init__.py
+src/qmatsuite/engines/orca/property_parser.py
+src/qmatsuite/engines/orca/input_compiler.py
+src/qmatsuite/engine/qc_engine_base.py
+src/qmatsuite/engine/orca_engine.py
+src/qmatsuite/core/engines/orca_resolver.py
 tests/unit/orca/__init__.py
 tests/unit/orca/test_property_parser.py
 tests/unit/orca/test_chain_detection.py
@@ -1950,7 +1950,7 @@ tests/fixtures/orca/water_scf.out
 
 ### Modified Files
 ```
-src/quantumvitas/workflow/registry.py          # Add ORCA step types
-src/quantumvitas/workflow/generalized_steps.py # Add ORCA materialization
-src/quantumvitas/engine/registry.py            # Add ORCA engine
+src/qmatsuite/workflow/registry.py          # Add ORCA step types
+src/qmatsuite/workflow/generalized_steps.py # Add ORCA materialization
+src/qmatsuite/engine/registry.py            # Add ORCA engine
 ```

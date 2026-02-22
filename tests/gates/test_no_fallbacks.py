@@ -16,7 +16,7 @@ class TestNoSilentQEFallback:
 
     def test_no_qe_fallback_pattern(self):
         """The specific QE fallback pattern must not exist."""
-        source = (PROJECT_ROOT / "src/quantumvitas/core/calc_identity.py").read_text()
+        source = (PROJECT_ROOT / "src/qmatsuite/core/calc_identity.py").read_text()
 
         # This exact pattern is the dangerous fallback
         # It should NOT be in the code after the fix
@@ -30,7 +30,7 @@ class TestNoSilentQEFallback:
 
     def test_unknown_type_returns_none_not_qe(self):
         """Unknown type should return None, not 'qe'."""
-        from quantumvitas.core.calc_identity import _infer_engine_family_from_spec_types
+        from qmatsuite.core.calc_identity import _infer_engine_family_from_spec_types
 
         result = _infer_engine_family_from_spec_types(["totally_unknown_xyz_123"])
 
@@ -46,7 +46,7 @@ class TestNoDefaultEngineInCalculation:
 
     def test_no_default_engine_qe_pattern(self):
         """No .get('engine', 'qe') in calculation loading."""
-        source = (PROJECT_ROOT / "src/quantumvitas/calculation/calculation.py").read_text()
+        source = (PROJECT_ROOT / "src/qmatsuite/calculation/calculation.py").read_text()
 
         pattern = r'\.get\(["\']engine["\'],\s*["\']qe["\']\)'
         matches = re.findall(pattern, source)
@@ -62,7 +62,7 @@ class TestNoRecipeFallback:
 
     def test_no_qerecipe_default(self):
         """get_recipe_for_engine should not default to QERecipe."""
-        source = (PROJECT_ROOT / "src/quantumvitas/execution/recipes.py").read_text()
+        source = (PROJECT_ROOT / "src/qmatsuite/execution/recipes.py").read_text()
 
         # Pattern: .get(..., QERecipe) or default=QERecipe
         patterns = [

@@ -9,7 +9,7 @@
 
 ### Environment Verification
 - [ ] **Python version**: `python --version` output
-- [ ] **QMatSuite import**: `python -c "import quantumvitas"` success/failure
+- [ ] **QMatSuite import**: `python -c "import qmatsuite"` success/failure
 - [ ] **LAMMPS binary path**: output of resolver check
 - [ ] **LAMMPS version**: first 5 lines of `lmp -h`
 
@@ -17,7 +17,7 @@
 ```
 === PRE-RUN CHECKS ===
 Python: 3.11.5
-QMatSuite: /path/to/quantumvitas/__init__.py
+QMatSuite: /path/to/qmatsuite/__init__.py
 LAMMPS binary: /opt/homebrew/opt/lammps/bin/lmp
 LAMMPS version: LAMMPS (2 Aug 2023)
 ```

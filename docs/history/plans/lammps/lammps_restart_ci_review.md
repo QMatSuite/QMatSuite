@@ -239,9 +239,9 @@ Before implementing, Auto should collect:
 
 | File | Change Type | Purpose |
 |------|-------------|---------|
-| `src/quantumvitas/execution/handlers.py` | Modify | Add output verification in `lammps_step_handler` |
-| `src/quantumvitas/execution/recipes.py` | Modify | Parse restart_from and add dependency edges |
-| `src/quantumvitas/calculation/step_done.py` | Add | LAMMPS step done detection |
+| `src/qmatsuite/execution/handlers.py` | Modify | Add output verification in `lammps_step_handler` |
+| `src/qmatsuite/execution/recipes.py` | Modify | Parse restart_from and add dependency edges |
+| `src/qmatsuite/calculation/step_done.py` | Add | LAMMPS step done detection |
 | `tests/integration/test_lammps_chain.py` | Modify | Add parallel-safe assertions |
 | `tests/integration/test_lammps_long_smoke.py` | Modify | Add parallel-safe assertions |
 

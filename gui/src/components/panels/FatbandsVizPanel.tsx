@@ -11,7 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import type { PrimitiveBundleData } from '../../types/qv';
+import type { PrimitiveBundleData } from '../../types/qms';
 
 interface FatbandsVizPanelProps {
   availableObjectTypes: string[];
@@ -178,7 +178,7 @@ export function FatbandsVizPanel({
 
   if (availableObjectTypes.length === 0) {
     return (
-      <div className="analysis-surface__placeholder" data-testid="qv-analysis-no-objects">
+      <div className="analysis-surface__placeholder" data-testid="qms-analysis-no-objects">
         No analysis object is available for this step in the current run.
       </div>
     );
@@ -212,17 +212,17 @@ export function FatbandsVizPanel({
         </label>
       </div>
 
-      {loading ? <div className="analysis-surface__placeholder" data-testid="qv-analysis-loading">Loading analysis...</div> : null}
-      {error ? <div className="analysis-surface__error" data-testid="qv-analysis-error">{error}</div> : null}
+      {loading ? <div className="analysis-surface__placeholder" data-testid="qms-analysis-loading">Loading analysis...</div> : null}
+      {error ? <div className="analysis-surface__error" data-testid="qms-analysis-error">{error}</div> : null}
 
       {!loading && !error && bundle ? (
         <>
           <div className="analysis-viz__info">
             {fermiEnergy != null ? (
-              <span data-testid="qv-analysis-fermi">E_F = {fermiEnergy.toFixed(4)} eV</span>
+              <span data-testid="qms-analysis-fermi">E_F = {fermiEnergy.toFixed(4)} eV</span>
             ) : null}
             {kpathLabels ? (
-              <span data-testid="qv-analysis-kpath">{kpathLabels}</span>
+              <span data-testid="qms-analysis-kpath">{kpathLabels}</span>
             ) : null}
           </div>
 
@@ -270,7 +270,7 @@ export function FatbandsVizPanel({
           </div>
 
           {/* Chart with fat band overlay */}
-          <div className="analysis-viz__plot" data-testid="qv-analysis-fatbands-chart">
+          <div className="analysis-viz__plot" data-testid="qms-analysis-fatbands-chart">
             <ResponsiveContainer height={420} width="100%">
               <LineChart data={chartData} margin={{ top: 18, right: 20, left: 16, bottom: 16 }}>
                 <CartesianGrid strokeDasharray="3 3" />

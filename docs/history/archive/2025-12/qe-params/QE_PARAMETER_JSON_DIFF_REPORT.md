@@ -301,7 +301,7 @@ This report compares parameter metadata across three JSON schema versions:
 - `&INPUTP.file_chi`
 - `&INPUTP.file_core`
 - `&INPUTP.file_pseudopw`
-- `&INPUTP.file_qvan`
+- `&INPUTP.file_qmsan`
 - `&INPUTP.file_recon`
 - `&INPUTP.file_screen`
 - `&INPUTP.file_wfcaegen`

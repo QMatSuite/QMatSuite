@@ -2,14 +2,14 @@
 
 from pathlib import Path
 import pytest
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 from .conftest import send_request
 
 
 class TestListJobs:
     """Contract tests for list_jobs RPC."""
 
-    def test_list_jobs_empty(self, temp_project: Path, daemon: QVDaemon):
+    def test_list_jobs_empty(self, temp_project: Path, daemon: QMSDaemon):
         """list_jobs returns empty list for project with no jobs."""
         response = send_request(daemon, "list_jobs", {
             "project_root": str(temp_project)
@@ -18,7 +18,7 @@ class TestListJobs:
         assert "jobs" in response
         assert response["jobs"] == []
 
-    def test_list_jobs_no_param(self, daemon: QVDaemon):
+    def test_list_jobs_no_param(self, daemon: QMSDaemon):
         """list_jobs without project_root returns all jobs."""
         response = send_request(daemon, "list_jobs", {})
         
@@ -29,7 +29,7 @@ class TestListJobs:
 class TestJobCounts:
     """Contract tests for job_counts RPC."""
 
-    def test_job_counts_empty(self, temp_project: Path, daemon: QVDaemon):
+    def test_job_counts_empty(self, temp_project: Path, daemon: QMSDaemon):
         """job_counts returns zero counts for no jobs."""
         response = send_request(daemon, "job_counts", {})
 
@@ -39,7 +39,7 @@ class TestJobCounts:
         assert response["running"] == 0
         assert response["pending"] == 0
 
-    def test_job_counts_workflow(self, temp_project: Path, daemon: QVDaemon):
+    def test_job_counts_workflow(self, temp_project: Path, daemon: QMSDaemon):
         """job_counts used for GUI polling."""
         # Poll multiple times
         for _ in range(3):
@@ -52,7 +52,7 @@ class TestJobCounts:
 class TestGetJobStatus:
     """Contract tests for get_job_status RPC."""
 
-    def test_get_job_status_not_found(self, temp_project: Path, daemon: QVDaemon):
+    def test_get_job_status_not_found(self, temp_project: Path, daemon: QMSDaemon):
         """get_job_status errors on non-existent job."""
         with pytest.raises(RuntimeError):
             send_request(daemon, "get_job_status", {

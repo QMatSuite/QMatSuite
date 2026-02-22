@@ -6,7 +6,7 @@ Tests for the ErrorDTO dataclass structure.
 
 import pytest
 
-from quantumvitas.api.types.error import ErrorDTO
+from qmatsuite.api.types.error import ErrorDTO
 
 
 def test_error_dto_required_fields():

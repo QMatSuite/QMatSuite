@@ -20,7 +20,7 @@
 
 ### 1.1 Precision Owned Keys Definition
 
-**Location**: `src/quantumvitas/presets/integration.py:293-305`
+**Location**: `src/qmatsuite/presets/integration.py:293-305`
 
 ```python
 DIMENSION_OWNED_KEYS: dict[str, dict[str, set[str]]] = {
@@ -39,7 +39,7 @@ DIMENSION_OWNED_KEYS: dict[str, dict[str, set[str]]] = {
 ```
 
 **Evidence**: 
-- **File**: `src/quantumvitas/presets/integration.py:303`
+- **File**: `src/qmatsuite/presets/integration.py:303`
 - **Line**: 303
 - **Data Shape**: `{"cards": {"K_POINTS"}}` - precision owns `cards.K_POINTS`
 
@@ -53,7 +53,7 @@ DIMENSION_OWNED_KEYS: dict[str, dict[str, set[str]]] = {
 - `DIMENSION_MAGNETISM`: Does NOT own K_POINTS (only SYSTEM keys)
 - `DIMENSION_OCCUPATIONS_SCHEME`: Does NOT own K_POINTS (only SYSTEM keys)
 
-**Evidence**: `src/quantumvitas/presets/integration.py:293-305` - Only precision has `"cards": {"K_POINTS"}`
+**Evidence**: `src/qmatsuite/presets/integration.py:293-305` - Only precision has `"cards": {"K_POINTS"}`
 
 **Conclusion**: ✅ **Only precision dimension owns K_POINTS**. No other dimension touches it.
 
@@ -61,7 +61,7 @@ DIMENSION_OWNED_KEYS: dict[str, dict[str, set[str]]] = {
 
 ### 1.3 bands_pw Receiver Specification
 
-**Location**: `src/quantumvitas/presets/receivers.py:158-163`
+**Location**: `src/qmatsuite/presets/receivers.py:158-163`
 
 ```python
 # pw.x: bands_pw - accept cutoffs/conv_thr, but NOT kmesh (uses k-path)
@@ -74,7 +74,7 @@ DIMENSION_OWNED_KEYS: dict[str, dict[str, set[str]]] = {
 ```
 
 **Evidence**:
-- **File**: `src/quantumvitas/presets/receivers.py:158-163`
+- **File**: `src/qmatsuite/presets/receivers.py:158-163`
 - **Lines**: 158-163
 - **Data Shape**: `PrecisionReceiverSpec(accepts_kmesh=False, kmesh_strategy="none")`
 
@@ -84,7 +84,7 @@ DIMENSION_OWNED_KEYS: dict[str, dict[str, set[str]]] = {
 
 ### 1.4 Receiver Filter Logic in Apply Path
 
-**Location**: `src/quantumvitas/presets/integration.py:438-442`
+**Location**: `src/qmatsuite/presets/integration.py:438-442`
 
 ```python
 # Apply kmesh if accepted (receiver decides strategy)
@@ -95,7 +95,7 @@ if precision_spec.accepts_kmesh and precision_spec.kmesh_strategy != "none":
 ```
 
 **Evidence**:
-- **File**: `src/quantumvitas/presets/integration.py:438-442`
+- **File**: `src/qmatsuite/presets/integration.py:438-442`
 - **Lines**: 438-442
 - **Logic**: Only sets `compiled_kpoints_card` if `accepts_kmesh=True AND kmesh_strategy != "none"`
 
@@ -112,7 +112,7 @@ if precision_spec.accepts_kmesh and precision_spec.kmesh_strategy != "none":
 
 **Location**: Multiple references
 
-**Canonical Format** (from `src/quantumvitas/presets/spaces_registry.py:293-296`):
+**Canonical Format** (from `src/qmatsuite/presets/spaces_registry.py:293-296`):
 ```python
 "K_POINTS_CARD": {
     "option": "automatic",  # or "crystal_b", "tpiba_b", etc.
@@ -134,7 +134,7 @@ if precision_spec.accepts_kmesh and precision_spec.kmesh_strategy != "none":
 
 ### 2.1 Deletion Logic
 
-**Location**: `src/quantumvitas/presets/integration.py:444-458`
+**Location**: `src/qmatsuite/presets/integration.py:444-458`
 
 ```python
 # Remove only keys owned by applied dimensions
@@ -155,7 +155,7 @@ if "K_POINTS" in keys_to_remove["cards"]:
 ```
 
 **Evidence**:
-- **File**: `src/quantumvitas/presets/integration.py:444-458`
+- **File**: `src/qmatsuite/presets/integration.py:444-458`
 - **Lines**: 444-458
 - **Critical Line**: 449 - `if section != "cards" or dimension == DIMENSION_PRECISION:`
 
@@ -170,7 +170,7 @@ if "K_POINTS" in keys_to_remove["cards"]:
 
 ### 2.2 Merge/Restore Logic
 
-**Location**: `src/quantumvitas/presets/integration.py:460-464`
+**Location**: `src/qmatsuite/presets/integration.py:460-464`
 
 ```python
 # Add compiled params (only owned keys)
@@ -181,7 +181,7 @@ if compiled_kpoints_card is not None:
 ```
 
 **Evidence**:
-- **File**: `src/quantumvitas/presets/integration.py:460-464`
+- **File**: `src/qmatsuite/presets/integration.py:460-464`
 - **Lines**: 460-464
 - **Critical Line**: 463 - `if compiled_kpoints_card is not None:`
 
@@ -200,8 +200,8 @@ if compiled_kpoints_card is not None:
 > "Remove all owned keys from existing params, then add compiled patches (shallow dict update). For cards.K_POINTS, delete if owned by applied dimension, restore only if compiled replacement exists."
 
 **Code Proof**:
-- **Deletion**: `src/quantumvitas/presets/integration.py:444-458`
-- **Restore**: `src/quantumvitas/presets/integration.py:460-464`
+- **Deletion**: `src/qmatsuite/presets/integration.py:444-458`
+- **Restore**: `src/qmatsuite/presets/integration.py:460-464`
 - **Merge Type**: **Shallow dict update** (not deep merge) - `existing_cards["K_POINTS"] = compiled_kpoints_card` replaces entire dict
 
 **Conclusion**: ✅ **Merge is replacement-based, not field-level merge**. Entire `K_POINTS` dict is replaced or deleted.
@@ -298,7 +298,7 @@ if compiled_kpoints_card is not None:
 **Change**: Remove `"cards": {"K_POINTS"}` from `DIMENSION_OWNED_KEYS[DIMENSION_PRECISION]`
 
 **Files**:
-- `src/quantumvitas/presets/integration.py:300-304`
+- `src/qmatsuite/presets/integration.py:300-304`
 
 **Logic**:
 - Precision only owns `ecutwfc`, `ecutrho`, `conv_thr`
@@ -327,8 +327,8 @@ if compiled_kpoints_card is not None:
 **Change**: Make ownership conditional on step_type
 
 **Files**:
-- `src/quantumvitas/presets/integration.py:293-305` - Make `DIMENSION_OWNED_KEYS` step-type-aware
-- `src/quantumvitas/presets/integration.py:444-450` - Check step_type before adding to removal list
+- `src/qmatsuite/presets/integration.py:293-305` - Make `DIMENSION_OWNED_KEYS` step-type-aware
+- `src/qmatsuite/presets/integration.py:444-450` - Check step_type before adding to removal list
 
 **Logic**:
 - For `scf/nscf/relax/md/vc-*`: precision owns `K_POINTS` (kmesh)
@@ -367,7 +367,7 @@ keys_to_remove[section].update(keys)
 **Change**: Only delete K_POINTS if receiver accepts kmesh
 
 **Files**:
-- `src/quantumvitas/presets/integration.py:444-458` - Check receiver spec before deletion
+- `src/qmatsuite/presets/integration.py:444-458` - Check receiver spec before deletion
 
 **Logic**:
 ```python
@@ -421,11 +421,11 @@ if "K_POINTS" in keys_to_remove["cards"]:
 
 ### Key Code Locations
 
-1. **Ownership Definition**: `src/quantumvitas/presets/integration.py:303`
-2. **Receiver Spec**: `src/quantumvitas/presets/receivers.py:158-163`
-3. **Deletion Logic**: `src/quantumvitas/presets/integration.py:444-458`
-4. **Restore Logic**: `src/quantumvitas/presets/integration.py:460-464`
-5. **Receiver Filter**: `src/quantumvitas/presets/integration.py:438-442`
+1. **Ownership Definition**: `src/qmatsuite/presets/integration.py:303`
+2. **Receiver Spec**: `src/qmatsuite/presets/receivers.py:158-163`
+3. **Deletion Logic**: `src/qmatsuite/presets/integration.py:444-458`
+4. **Restore Logic**: `src/qmatsuite/presets/integration.py:460-464`
+5. **Receiver Filter**: `src/qmatsuite/presets/integration.py:438-442`
 
 ### Minimal Reproduction
 

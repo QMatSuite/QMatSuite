@@ -9,14 +9,14 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { useQVClient } from '../../hooks/useQVClient';
-import type { QVResult } from '../../types/qv';
+import { useQMSClient } from '../../hooks/useQMSClient';
+import type { QMSResult } from '../../types/qms';
 import './EngineParameterBrowserPanel.css';
 
-// Extract types from QVResult, handling optional arrays
-type EngineCategoryMeta = NonNullable<QVResult<'list_engine_parameter_metadata'>['categories']>[number];
-type EngineTagMeta = NonNullable<QVResult<'list_engine_parameter_metadata'>['tags']>[number];
-type GlobalSearchResult = NonNullable<QVResult<'list_engine_parameter_metadata'>['results']>[number];
+// Extract types from QMSResult, handling optional arrays
+type EngineCategoryMeta = NonNullable<QMSResult<'list_engine_parameter_metadata'>['categories']>[number];
+type EngineTagMeta = NonNullable<QMSResult<'list_engine_parameter_metadata'>['tags']>[number];
+type GlobalSearchResult = NonNullable<QMSResult<'list_engine_parameter_metadata'>['results']>[number];
 
 interface EngineParameterBrowserPanelProps {
   engineFamily?: string;  // optional initial hint; panel derives its own default
@@ -33,10 +33,10 @@ function normalizeError(err: unknown): string {
   return 'Unknown error';
 }
 
-const STORAGE_KEY = 'qv-reference-engine';
+const STORAGE_KEY = 'qms-reference-engine';
 
 export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: EngineParameterBrowserPanelProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
 
   // Engine selection state — panel owns this, prop is just an initial hint
   const [selectedEngine, setSelectedEngine] = useState<string>(() => {
@@ -54,7 +54,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
     let cancelled = false;
     (async () => {
       try {
-        const res = await qv.listEngineFamilies();
+        const res = await qms.listEngineFamilies();
         if (cancelled) return;
         if (res.ok && res.data?.engines) {
           setEngineList(res.data.engines);
@@ -62,7 +62,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [qv]);
+  }, [qms]);
 
   // Derive engineFamily from internal state
   const engineFamily = selectedEngine;
@@ -236,7 +236,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
         category: categoryToUse,
       });
 
-      const response = await qv.listEngineParameterMetadata(engineFamily, 'list_tags', {
+      const response = await qms.listEngineParameterMetadata(engineFamily, 'list_tags', {
         category: categoryToUse,
       });
 
@@ -272,7 +272,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
       } finally {
       setTagsLoading(false);
         }
-  }, [qv, engineFamily]); // Only depend on qv and engineFamily, not selectedCategory
+  }, [qms, engineFamily]); // Only depend on qms and engineFamily, not selectedCategory
 
         
   // Exactly one effect: load categories on mount
@@ -297,7 +297,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
           engine_family: engineFamily,
         });
 
-        const response = await qv.listEngineParameterMetadata(engineFamily, 'list_categories');
+        const response = await qms.listEngineParameterMetadata(engineFamily, 'list_categories');
 
         if (cancelled) return;
 
@@ -330,7 +330,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
     return () => {
       cancelled = true;
     };
-  }, [qv, engineFamily, handleCategoryChange]); // qv is stable; handleCategoryChange is stable due to useCallback
+  }, [qms, engineFamily, handleCategoryChange]); // qms is stable; handleCategoryChange is stable due to useCallback
     
   
   // Clear stale global results when searchTerm changes (user typing without new search)
@@ -361,7 +361,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
     setGlobalSearchError(null);
 
     try {
-      const response = await qv.listEngineParameterMetadata(engineFamily, 'search', {
+      const response = await qms.listEngineParameterMetadata(engineFamily, 'search', {
         query,
       });
 
@@ -392,7 +392,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
     } finally {
       setIsGlobalSearching(false);
     }
-  }, [qv, searchTerm, engineFamily]);
+  }, [qms, searchTerm, engineFamily]);
     
   // Rank global search results: prioritize name matches over other field matches
   const rankedResults = useMemo(() => {
@@ -570,7 +570,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
       return null;
       }
     return (
-      <span className="qv-sort-indicator">
+      <span className="qms-sort-indicator">
         {tagSort.direction === 'asc' ? '▲' : '▼'}
       </span>
     );
@@ -578,8 +578,8 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
 
   // Unified sort indicator for category (matches table header style)
   const renderSortIndicatorForMode = useCallback((mode: SortMode) => {
-    if (mode === 'asc') return <span className="qv-sort-indicator">▲</span>;
-    if (mode === 'desc') return <span className="qv-sort-indicator">▼</span>;
+    if (mode === 'asc') return <span className="qms-sort-indicator">▲</span>;
+    if (mode === 'desc') return <span className="qms-sort-indicator">▼</span>;
     return null; // original mode shows no indicator
   }, []);
 
@@ -822,7 +822,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
               <div className="qe-parameter-browser__filter-group qe-parameter-browser__filter-group--category">
               <label 
                 htmlFor="engine-category-select"
-                className="qv-field-label qv-sortable-header"
+                className="qms-field-label qms-sortable-header"
                 onClick={cycleCategorySort}
                 style={{ cursor: 'pointer', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
                 title="Click to sort categories"
@@ -892,7 +892,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
                   </div>
                   <div className="qe-search-popover-body">
                     {isGlobalSearching ? (
-                      <div className="qv-global-search-loading">
+                      <div className="qms-global-search-loading">
                         <div className="loading-spinner" />
                         <span>Searching all modules…</span>
                       </div>
@@ -902,12 +902,12 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
                         <span className="qe-parameter-browser__error-message">{globalSearchError}</span>
                       </div>
                     ) : rankedResults.length === 0 ? (
-                      <div className="qv-global-search-empty">
+                      <div className="qms-global-search-empty">
                         No matches found across modules.
                       </div>
                     ) : (
-                      <div className="qv-global-search-table-container">
-                        <table className="qv-global-search-table">
+                      <div className="qms-global-search-table-container">
+                        <table className="qms-global-search-table">
                           <thead>
                             <tr>
                               <th>Category</th>
@@ -924,7 +924,7 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
                               return (
                                 <tr
                                   key={`${result.category}::${result.name}`}
-                                  className={`qv-global-search-row ${isPrimaryMatch ? 'qv-global-result-primary' : 'qv-global-result-secondary'}`}
+                                  className={`qms-global-search-row ${isPrimaryMatch ? 'qms-global-result-primary' : 'qms-global-result-secondary'}`}
                                   onClick={() => handleGlobalResultClick(result)}
                                 >
                                   <td>{result.category}</td>
@@ -966,8 +966,8 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
                 <p>No parameters found for this category.</p>
               </div>
             ) : (
-              <div className="qv-param-table-container">
-                <table ref={tableRef} className="qv-param-table">
+              <div className="qms-param-table-container">
+                <table ref={tableRef} className="qms-param-table">
                   <colgroup>
                     {columnOrder.map((key, idx) => (
                       <col key={idx} style={{ width: `${columnWidths[key]}%` }} />
@@ -977,15 +977,15 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
                     <tr>
                       <th 
                         onClick={() => cycleTagSort('name')} 
-                        className="qv-sortable-header qv-param-col-name"
+                        className="qms-sortable-header qms-param-col-name"
                         title="Click to sort by name"
                         style={{ position: 'relative' }}
                       >
-                        <div className="qv-param-header-content">
+                        <div className="qms-param-header-content">
                           <span>Name {renderSortIndicator('name')}</span>
                         </div>
                         <div
-                          className="qv-param-col-resizer"
+                          className="qms-param-col-resizer"
                           onMouseDown={(e) => handleColumnResizeStart(e, 'name')}
                           onClick={(e) => e.stopPropagation()}
                           onDragStart={(e) => e.preventDefault()}
@@ -993,15 +993,15 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
                       </th>
                       <th 
                         onClick={() => cycleTagSort('type')} 
-                        className="qv-sortable-header qv-param-col-type"
+                        className="qms-sortable-header qms-param-col-type"
                         title="Click to sort by type"
                         style={{ position: 'relative' }}
                       >
-                        <div className="qv-param-header-content">
+                        <div className="qms-param-header-content">
                           <span>Type {renderSortIndicator('type')}</span>
                         </div>
                         <div
-                          className="qv-param-col-resizer"
+                          className="qms-param-col-resizer"
                           onMouseDown={(e) => handleColumnResizeStart(e, 'type')}
                           onClick={(e) => e.stopPropagation()}
                           onDragStart={(e) => e.preventDefault()}
@@ -1009,15 +1009,15 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
                       </th>
                       <th 
                         onClick={() => cycleTagSort('default')} 
-                        className="qv-sortable-header qv-param-col-default"
+                        className="qms-sortable-header qms-param-col-default"
                         title="Click to sort by default"
                         style={{ position: 'relative' }}
                       >
-                        <div className="qv-param-header-content">
+                        <div className="qms-param-header-content">
                           <span>Default {renderSortIndicator('default')}</span>
                         </div>
                         <div
-                          className="qv-param-col-resizer"
+                          className="qms-param-col-resizer"
                           onMouseDown={(e) => handleColumnResizeStart(e, 'default')}
                           onClick={(e) => e.stopPropagation()}
                           onDragStart={(e) => e.preventDefault()}
@@ -1025,15 +1025,15 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
                       </th>
                       <th 
                         onClick={() => cycleTagSort('description')} 
-                        className="qv-sortable-header qv-param-col-description"
+                        className="qms-sortable-header qms-param-col-description"
                         title="Click to sort by description"
                         style={{ position: 'relative' }}
                       >
-                        <div className="qv-param-header-content">
+                        <div className="qms-param-header-content">
                           <span>Description {renderSortIndicator('description')}</span>
                         </div>
                         <div
-                          className="qv-param-col-resizer"
+                          className="qms-param-col-resizer"
                           onMouseDown={(e) => handleColumnResizeStart(e, 'description')}
                           onClick={(e) => e.stopPropagation()}
                           onDragStart={(e) => e.preventDefault()}
@@ -1057,25 +1057,25 @@ export function EngineParameterBrowserPanel({ engineFamily: engineFamilyProp }: 
                         <tr
                           key={i}
                           data-tag-key={rowKey}
-                          className={`qv-param-row ${isSelected ? 'qv-param-row--selected' : ''}`}
+                          className={`qms-param-row ${isSelected ? 'qms-param-row--selected' : ''}`}
                           onClick={() => handleTagRowClick(rowKey)}
                         >
-                          <td className="qv-param-cell qv-param-col-name">
+                          <td className="qms-param-cell qms-param-col-name">
                           {'section' in tag && (tag as any).section && (
-                            <span className="qv-param-section-badge">{(tag as any).section}</span>
+                            <span className="qms-param-section-badge">{(tag as any).section}</span>
                           )}
                           <strong>{tag.name}</strong>
                         </td>
-                          <td className="qv-param-cell qv-param-col-type" title={tag.type || 'UNKNOWN'}>
+                          <td className="qms-param-cell qms-param-col-type" title={tag.type || 'UNKNOWN'}>
                           <code>{tag.type || 'UNKNOWN'}</code>
                         </td>
-                          <td className="qv-param-cell qv-param-col-default" title={defaultText}>
+                          <td className="qms-param-cell qms-param-col-default" title={defaultText}>
                           {tag.default !== null && tag.default !== undefined
                             ? <code>{String(tag.default)}</code>
                             : <span className="qe-parameter-browser__param-empty">—</span>
                           }
                         </td>
-                          <td className="qv-param-cell qv-param-col-description" title={descriptionText}>
+                          <td className="qms-param-cell qms-param-col-description" title={descriptionText}>
                           {tag.description
                               ? <span>{tag.description}</span>
                             : <span className="qe-parameter-browser__param-empty">—</span>

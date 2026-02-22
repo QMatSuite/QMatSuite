@@ -10,7 +10,7 @@
 
 ### A) StepDoc / YAML Parsing & Serialization
 
-**File**: `src/quantumvitas/core/yamldoc.py`
+**File**: `src/qmatsuite/core/yamldoc.py`
 
 - **StepDoc class** (lines 454-616): Wrapper around `YamlDoc` with QE-specific normalization
   - Normalizes section names to uppercase (CONTROL, SYSTEM, etc.)
@@ -27,14 +27,14 @@
   - **No schema validation** - accepts any structure
 
 - **Loading**: `StepDoc.load(path)` → calls `_load_yaml_raw()` → `yaml.safe_load()` → `StepDoc(data)`
-  - **Location**: `src/quantumvitas/core/yaml_io.py:81-114`
+  - **Location**: `src/qmatsuite/core/yaml_io.py:81-114`
   - No validation of unknown top-level keys
 
 - **Saving**: `StepDoc.save(path)` → `save_yaml_doc()` → `_save_yaml_raw()` → `yaml.safe_dump()`
-  - **Location**: `src/quantumvitas/core/yaml_io.py:117-175`
+  - **Location**: `src/qmatsuite/core/yaml_io.py:117-175`
   - Writes entire `to_dict()` output - any top-level keys are preserved
 
-- **Step Factory**: `src/quantumvitas/workflow/step_factory.py`
+- **Step Factory**: `src/qmatsuite/workflow/step_factory.py`
   - `create_step_doc()`: Creates StepDoc with known sections (meta, step_type, parameters, cards, species_overrides)
   - `save_step_doc()`: Saves via `save_yaml_doc()` (journaled)
   - **No validation** that only known keys exist
@@ -46,11 +46,11 @@
 
 ### B) Manifest Digests / Incremental Skip
 
-**File**: `src/quantumvitas/calculation/hash_utils.py`
+**File**: `src/qmatsuite/calculation/hash_utils.py`
 
 - **`compute_step_sha()`** (lines 161-192):
   - Input: `step_doc` (dict or Path)
-  - Strips meta fields via `strip_resource_meta()` (removes: meta, __qv_meta__, id, name, slug, path, kind, created_at, updated_at)
+  - Strips meta fields via `strip_resource_meta()` (removes: meta, __qms_meta__, id, name, slug, path, kind, created_at, updated_at)
   - **Does NOT exclude runtime-managed keys** (prefix, outdir, pseudo_dir) - these are included in hash
   - **Does NOT handle `parameter_scan` section** - if present, it's included in hash
   - Uses `stable_serialize()` → SHA256
@@ -59,7 +59,7 @@
 
 - **`stable_serialize()`** (lines 103-118): Canonicalizes → JSON → bytes
 
-**File**: `src/quantumvitas/calculation/manifest.py`
+**File**: `src/qmatsuite/calculation/manifest.py`
 
 - **`ManifestStepEntry`** (lines 25-59): Stores per-step state
   - Fields: `kind`, `step_ulid`, `pseudo_set_sha`, `structure_sha`, `step_sha`, `run_id`, `done`, `started_at`, `done_at`
@@ -69,7 +69,7 @@
   - Requires: kind match + all 3 SHAs match + done==True
   - Uses `step_sha` from manifest entry vs current `step_sha`
 
-**File**: `src/quantumvitas/execution/executor.py`
+**File**: `src/qmatsuite/execution/executor.py`
 
 - **`_should_skip_job()`** (lines 156-195): Job-level skip logic
   - Checks all steps in job have matching fingerprints
@@ -80,7 +80,7 @@
 
 ### C) Runtime-Managed Key Injection
 
-**File**: `src/quantumvitas/calculation/structure_steps.py`
+**File**: `src/qmatsuite/calculation/structure_steps.py`
 
 - **`_inject_calculation_prefix_outdir()`** (lines 341-447):
   - **When**: Called during `materialize_step_spec()` (line 1214)
@@ -95,13 +95,13 @@
   - Used by `save_step_doc()` to emit warnings (line 125)
 
 - **`set_pseudo_dir_in_input()`**: Called separately to inject `pseudo_dir` into QE input
-  - **Location**: `src/quantumvitas/calculation/input_runner.py:113`
+  - **Location**: `src/qmatsuite/calculation/input_runner.py:113`
 
 **Key finding**: Runtime-managed keys are **NOT excluded from step_sha fingerprint** currently. They are injected at materialize time but still present in step.yaml parameters dict when computing hash.
 
 ### D) Job Formation Semantics
 
-**File**: `src/quantumvitas/execution/recipes.py`
+**File**: `src/qmatsuite/execution/recipes.py`
 
 - **QE Recipe** (lines 82-159):
   - **Job = 1 step**: Each step becomes one job
@@ -121,14 +121,14 @@
   - Working dir: `calc/raw/scf_<suffix>/`
   - Steps list: Same subchain pattern as ORCA
 
-**File**: `src/quantumvitas/calculation/runner.py`
+**File**: `src/qmatsuite/calculation/runner.py`
 
 - **`CalculationRunner.run()`** (lines 102-549):
   - **Run Calculation mode**: `target_step_id=None` → `SelectionMode.ALL` → all steps
   - **Run Step mode**: `target_step_id=<ulid>` → `SelectionMode.TARGET` → steps up to target
   - Steps list: `calculation.steps` (ordered list from calculation.yaml)
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 
 - **`run_calculation()`** (lines 1151-1302): Calls `CalculationRunner.run()` with `target_step_id=None`
 - **`run_step()`** (lines 1304-1400): Calls `CalculationRunner.run()` with `target_step_id=<resolved_ulid>`
@@ -137,10 +137,10 @@
 
 ### E) Raw Snapshot/Diff Archiving
 
-**File**: `src/quantumvitas/history/run_revision.py`
+**File**: `src/qmatsuite/history/run_revision.py`
 
 - **`_create_snapshot()`** (lines 287-364):
-  - **What**: Snapshots YAML files (project.qv.yml, calculation.yaml, step.yaml files)
+  - **What**: Snapshots YAML files (project.qms.yml, calculation.yaml, step.yaml files)
   - **Does NOT snapshot raw/ directory** - only YAML config files
   - **Purpose**: History tracking, not output archiving
   - **Format**: tar.zst or tar.gz

@@ -1,6 +1,6 @@
 # Canonical Documentation for AI and Humans
 
-This document lists the canonical documentation files that should be treated as the primary reference for understanding QuantumVITAS. These documents are authoritative, up-to-date, and cover the core topics needed to work with the codebase.
+This document lists the canonical documentation files that should be treated as the primary reference for understanding QMatSuite. These documents are authoritative, up-to-date, and cover the core topics needed to work with the codebase.
 
 ## Architecture & Design
 
@@ -30,7 +30,7 @@ This document lists the canonical documentation files that should be treated as 
 
 ### `docs/CLI_API_REFERENCE.md`
 - **Purpose**: Comprehensive CLI command reference
-- **Covers**: All `qv` commands with examples, selectors, overrides syntax
+- **Covers**: All `qms` commands with examples, selectors, overrides syntax
 - **Tag**: `cli`
 
 ### `docs/DAEMON_API_REFERENCE.md`
@@ -62,14 +62,14 @@ This document lists the canonical documentation files that should be treated as 
 
 ### `docs/QE_MODULE_DOCUMENTATION.md`
 - **Purpose**: QE module documentation links and metadata schema
-- **Covers**: Runtime metadata via `quantumvitas.data.qe_metadata`, legacy v1 snapshot, tooling
+- **Covers**: Runtime metadata via `qmatsuite.data.qe_metadata`, legacy v1 snapshot, tooling
 - **Tag**: `qe-engine`
 - **Note**: 
   - **`safe_load_metadata()` is the only runtime entry point for QE parameter metadata.**
   - **CLI/daemon code must never read `qe_module_parameters.json` directly.**
-  - Runtime code should access QE metadata only through `quantumvitas.data.qe_metadata` helper functions (canonical interface)
-  - Current metadata file: `src/quantumvitas/data/qe_module_parameters.json` (schema v2 with rich parameter map)
-  - Legacy snapshot: `src/quantumvitas/data/qe_module_parameters.legacy.json` (frozen v1, used only by comparison tools)
+  - Runtime code should access QE metadata only through `qmatsuite.data.qe_metadata` helper functions (canonical interface)
+  - Current metadata file: `src/qmatsuite/data/qe_module_parameters.json` (schema v2 with rich parameter map)
+  - Legacy snapshot: `src/qmatsuite/data/qe_module_parameters.legacy.json` (frozen v1, used only by comparison tools)
   - Tools:
     - `tools/extract_qe_parameters_v1.py` (deprecated, v1 extractor)
     - `tools/extract_qe_parameters_v2.py` (current, v2 extractor with rich metadata)

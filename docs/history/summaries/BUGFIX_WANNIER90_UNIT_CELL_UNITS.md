@@ -34,7 +34,7 @@ The values are approximately 1.8897× larger (≈ 1/0.529177), indicating a Bohr
 
 ## Fixes Applied
 
-### 1. Wannier90 unit_cell_cart Fix (`src/quantumvitas/calculation/structure_steps.py`)
+### 1. Wannier90 unit_cell_cart Fix (`src/qmatsuite/calculation/structure_steps.py`)
 
 **Before**:
 ```python
@@ -80,7 +80,7 @@ unit_cell_cart (Å) @ atoms_frac == cartesian_coords (Å)
 
 If this fails, raises a detailed error showing both lattice matrices and coordinate mismatches.
 
-### 4. QE ATOMIC_POSITIONS Format Fix (`src/quantumvitas/io/structure_io.py`)
+### 4. QE ATOMIC_POSITIONS Format Fix (`src/qmatsuite/io/structure_io.py`)
 
 **Before**:
 ```python
@@ -119,7 +119,7 @@ atomic_positions_card = QECard(
 - Changed option from `"angstrom"` to `"crystal"`
 - Added comment explaining rationale
 
-### 5. Wannier90Input Default Fix (`src/quantumvitas/io/wannier90_input.py`)
+### 5. Wannier90Input Default Fix (`src/qmatsuite/io/wannier90_input.py`)
 
 **Before**:
 ```python
@@ -145,9 +145,9 @@ All tests pass ✅
 
 ## Files Modified
 
-1. `src/quantumvitas/calculation/structure_steps.py`: Fixed Wannier90 lattice conversion, added consistency assertion
-2. `src/quantumvitas/io/structure_io.py`: Changed QE `ATOMIC_POSITIONS` to use crystal format
-3. `src/quantumvitas/io/wannier90_input.py`: Changed default `length_unit` to "ang"
+1. `src/qmatsuite/calculation/structure_steps.py`: Fixed Wannier90 lattice conversion, added consistency assertion
+2. `src/qmatsuite/io/structure_io.py`: Changed QE `ATOMIC_POSITIONS` to use crystal format
+3. `src/qmatsuite/io/wannier90_input.py`: Changed default `length_unit` to "ang"
 4. `tests/unit/test_wannier90_unit_cell_fix.py`: New regression tests
 
 ## Verification

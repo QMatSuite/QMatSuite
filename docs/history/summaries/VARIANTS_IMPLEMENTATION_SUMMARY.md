@@ -7,7 +7,7 @@ This document summarizes the implementation of the ParamSpace Variants system, w
 ## Completed Work
 
 ### Part 1: ParamSpaceVariant Dataclass ✅
-- Created `src/quantumvitas/presets/space_variant.py`
+- Created `src/qmatsuite/presets/space_variant.py`
 - Defines `ParamSpaceVariant` with:
   - `name`: Unique identifier
   - `dimension`: Dimension name
@@ -16,7 +16,7 @@ This document summarizes the implementation of the ParamSpace Variants system, w
   - `priority`: Optional tie-breaking (default 0)
 
 ### Part 2: Variants Registry ✅
-- Created `src/quantumvitas/presets/variants_registry.py`
+- Created `src/qmatsuite/presets/variants_registry.py`
 - Defines 5 variants:
   - `OCCUPATIONS_SCHEME_PW`: All PW steps (scf, nscf, relax, etc.)
   - `MAGNETISM_PW`: All PW steps including bands_pw
@@ -33,7 +33,7 @@ This document summarizes the implementation of the ParamSpace Variants system, w
   - `detect_dimension_for_step(...) -> Optional[enum]`
 
 ### Part 3: Precision Variants ✅
-- Created `src/quantumvitas/presets/precision_variants.py`
+- Created `src/qmatsuite/presets/precision_variants.py`
 - Defines 3 precision variants with different key sets:
   - `PRECISION_PW_DEFAULT`: Includes K_POINTS
   - `PRECISION_PW_NSCF`: Includes K_POINTS (with nscf_factor=2.0)
@@ -151,15 +151,15 @@ This specifically prevents the "bands_pw K_POINTS deleted but not replaced" bug.
 ## Files Changed
 
 ### New Files
-- `src/quantumvitas/presets/space_variant.py`
-- `src/quantumvitas/presets/variants_registry.py`
-- `src/quantumvitas/presets/precision_variants.py`
+- `src/qmatsuite/presets/space_variant.py`
+- `src/qmatsuite/presets/variants_registry.py`
+- `src/qmatsuite/presets/precision_variants.py`
 - `tests/integration/test_precision_variants_bands_pw.py`
 
 ### Modified Files
-- `src/quantumvitas/presets/integration.py`: Updated `apply_presets_to_step()`
-- `src/quantumvitas/presets/detector.py`: Updated `detect_dimension_from_steps()`
-- `src/quantumvitas/presets/integration.py`: Marked `DIMENSION_OWNED_KEYS` as deprecated
+- `src/qmatsuite/presets/integration.py`: Updated `apply_presets_to_step()`
+- `src/qmatsuite/presets/detector.py`: Updated `detect_dimension_from_steps()`
+- `src/qmatsuite/presets/integration.py`: Marked `DIMENSION_OWNED_KEYS` as deprecated
 
 ## Summary
 

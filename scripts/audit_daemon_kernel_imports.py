@@ -2,9 +2,9 @@
 """
 Audit daemon kernel imports to generate a dependency manifest.
 
-Scans src/quantumvitas/daemon/server.py using AST and reports all forbidden
-imports (quantumvitas.core, quantumvitas.calculation, quantumvitas.analysis,
-quantumvitas.io, quantumvitas.drivers).
+Scans src/qmatsuite/daemon/server.py using AST and reports all forbidden
+imports (qmatsuite.core, qmatsuite.calculation, qmatsuite.analysis,
+qmatsuite.io, qmatsuite.drivers).
 
 Outputs JSON manifest with:
 - Total violations
@@ -22,14 +22,14 @@ from typing import Any, Dict, List, Optional
 
 # Forbidden prefixes (must match test_import_rules.py)
 FORBIDDEN_PREFIXES = (
-    "quantumvitas.core",
-    "quantumvitas.calculation",
-    "quantumvitas.analysis",
-    "quantumvitas.io",
-    "quantumvitas.drivers",
-    "quantumvitas.engine",
-    "quantumvitas.workflow",
-    "quantumvitas.presets",
+    "qmatsuite.core",
+    "qmatsuite.calculation",
+    "qmatsuite.analysis",
+    "qmatsuite.io",
+    "qmatsuite.drivers",
+    "qmatsuite.engine",
+    "qmatsuite.workflow",
+    "qmatsuite.presets",
 )
 
 
@@ -192,7 +192,7 @@ def main():
     args = parser.parse_args()
     
     repo_root = Path(__file__).parent.parent
-    daemon_file = repo_root / "src" / "quantumvitas" / "daemon" / "server.py"
+    daemon_file = repo_root / "src" / "qmatsuite" / "daemon" / "server.py"
     
     if not daemon_file.exists():
         print(f"Error: Daemon file not found: {daemon_file}", file=sys.stderr)

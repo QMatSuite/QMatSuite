@@ -5,7 +5,7 @@ This document tracks changes made to fix tests or address test-related issues th
 ## 2025-01-10: Contract Cleanup (Phase 3C)
 
 ### Contract I1: Step ULID Stability Fix
-**File**: `src/quantumvitas/calculation/calculation.py`
+**File**: `src/qmatsuite/calculation/calculation.py`
 
 **Change**: Modified `_build_step()` to use `step_resolved.meta` directly (from step.yaml) instead of calling `_build_step_meta()` with `step_data` from calculation.yaml. This fixes step ULID stability - ULIDs no longer change between fixture creation and execution.
 

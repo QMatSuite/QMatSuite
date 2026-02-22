@@ -67,13 +67,13 @@ Harden the preset capability system to be fully self-consistent with a single pu
 
 ```bash
 # Show all capability functions
-rg "supported_presets|list_presets_for_engine|list_dimensions_for_gen_step" src/quantumvitas --type py -n
+rg "supported_presets|list_presets_for_engine|list_dimensions_for_gen_step" src/qmatsuite --type py -n
 
 # Show apply_presets_to_step usage
-rg "apply_presets_to_step" src/quantumvitas --type py -C 3
+rg "apply_presets_to_step" src/qmatsuite --type py -C 3
 
 # Show engine validation in apply
-rg "engine.*supported|supported.*engine" src/quantumvitas/presets/integration.py
+rg "engine.*supported|supported.*engine" src/qmatsuite/presets/integration.py
 # (Expected: no matches - this is the gap)
 ```
 
@@ -114,7 +114,7 @@ def require_preset_capability(engine_name: str, gen_step: str, preset_id: str) -
 ## 3. Implementation Plan
 
 ### PR0: Create capability resolver module
-- [x] Create `src/quantumvitas/presets/capability.py`
+- [x] Create `src/qmatsuite/presets/capability.py`
 - [x] Move `list_presets_for_engine()` from `catalog.py` (keep re-export for backwards compat)
 - [x] Add `list_profiles_for_preset()` 
 - [x] Add `validate_preset_capability()`
@@ -122,13 +122,13 @@ def require_preset_capability(engine_name: str, gen_step: str, preset_id: str) -
 - [x] Add engine lookup helper that determines engine from step context
 
 **Files to modify**:
-- Create: `src/quantumvitas/presets/capability.py`
-- Modify: `src/quantumvitas/presets/__init__.py` (add exports)
+- Create: `src/qmatsuite/presets/capability.py`
+- Modify: `src/qmatsuite/presets/__init__.py` (add exports)
 
 **Tests to run**:
 ```bash
 pytest tests/unit/test_preset_capability_contract.py -v
-python -c "from quantumvitas.presets.capability import list_presets_for_engine, require_preset_capability"
+python -c "from qmatsuite.presets.capability import list_presets_for_engine, require_preset_capability"
 ```
 
 ---
@@ -140,7 +140,7 @@ python -c "from quantumvitas.presets.capability import list_presets_for_engine, 
 - [x] Add clear error message: "Preset '{preset_id}' is not available for engine '{engine}' on gen step '{gen_step}'"
 
 **Files to modify**:
-- `src/quantumvitas/presets/integration.py`
+- `src/qmatsuite/presets/integration.py`
 
 **Tests to run**:
 ```bash
@@ -157,8 +157,8 @@ pytest tests/presets/ -v
 - [x] Update daemon handlers to pass engine filter
 
 **Files to modify**:
-- `src/quantumvitas/presets/integration.py`
-- `src/quantumvitas/daemon/server.py`
+- `src/qmatsuite/presets/integration.py`
+- `src/qmatsuite/daemon/server.py`
 
 **Tests to run**:
 ```bash
@@ -203,7 +203,7 @@ import subprocess
 def test_no_accepts_presets_field():
     """Production code must not reference StepTypeSpec.accepts_presets."""
     result = subprocess.run(
-        ["rg", "accepts_presets", "src/quantumvitas", "--type", "py", "-l"],
+        ["rg", "accepts_presets", "src/qmatsuite", "--type", "py", "-l"],
         capture_output=True, text=True
     )
     assert result.stdout.strip() == "", f"Found accepts_presets in: {result.stdout}"
@@ -211,7 +211,7 @@ def test_no_accepts_presets_field():
 def test_no_allowed_dimensions_field():
     """Production code must not reference StepTypeSpec.allowed_dimensions."""
     result = subprocess.run(
-        ["rg", "allowed_dimensions", "src/quantumvitas", "--type", "py", "-l"],
+        ["rg", "allowed_dimensions", "src/qmatsuite", "--type", "py", "-l"],
         capture_output=True, text=True
     )
     assert result.stdout.strip() == "", f"Found allowed_dimensions in: {result.stdout}"
@@ -220,7 +220,7 @@ def test_all_apply_paths_validate_capability():
     """All apply_presets_to_step calls must go through validated path."""
     # Check that integration.py calls require_preset_capability
     result = subprocess.run(
-        ["rg", "require_preset_capability", "src/quantumvitas/presets/integration.py"],
+        ["rg", "require_preset_capability", "src/qmatsuite/presets/integration.py"],
         capture_output=True, text=True
     )
     assert "require_preset_capability" in result.stdout, \
@@ -242,7 +242,7 @@ pytest tests/unit/test_no_deprecated_preset_fields.py -v
 - [x] Update spec document with capability resolver SSOT
 
 **Files to modify**:
-- `src/quantumvitas/presets/catalog.py`
+- `src/qmatsuite/presets/catalog.py`
 - `docs/dev/spec-preset-paramspace-ir-engine-contract.md`
 
 **Tests to run**:
@@ -299,7 +299,7 @@ You are AUTO implementing PR0 from docs/dev/plan-capability-resolver-ssot.md
 
 TASK: Create capability resolver module.
 
-CREATE FILE: src/quantumvitas/presets/capability.py
+CREATE FILE: src/qmatsuite/presets/capability.py
 
 Content must include:
 - CapabilityError exception class
@@ -308,11 +308,11 @@ Content must include:
 - validate_preset_capability(engine_name, gen_step, preset_id) -> bool
 - require_preset_capability(engine_name, gen_step, preset_id) -> None (raises CapabilityError)
 
-MODIFY: src/quantumvitas/presets/__init__.py
+MODIFY: src/qmatsuite/presets/__init__.py
 - Add exports for new functions
 
 VERIFICATION:
-python -c "from quantumvitas.presets.capability import list_presets_for_engine, require_preset_capability, CapabilityError"
+python -c "from qmatsuite.presets.capability import list_presets_for_engine, require_preset_capability, CapabilityError"
 pytest tests/unit/test_preset_capability_contract.py -v
 
 TICK CHECKBOXES: PR0 in plan file section 6
@@ -327,7 +327,7 @@ You are AUTO implementing PR1 from docs/dev/plan-capability-resolver-ssot.md
 
 TASK: Add engine context resolution and capability validation to apply.
 
-MODIFY: src/quantumvitas/presets/integration.py
+MODIFY: src/qmatsuite/presets/integration.py
 
 Changes:
 1. Add _resolve_engine_for_step(step_path) helper that:
@@ -356,11 +356,11 @@ You are AUTO implementing PR2 from docs/dev/plan-capability-resolver-ssot.md
 
 TASK: Add detection filtering by engine.
 
-MODIFY: src/quantumvitas/presets/integration.py
+MODIFY: src/qmatsuite/presets/integration.py
 - Add optional engine_filter param to detect_presets_from_calculation()
 - When provided, only detect presets in engine.supported_presets
 
-MODIFY: src/quantumvitas/daemon/server.py
+MODIFY: src/qmatsuite/daemon/server.py
 - Update detection handlers to optionally pass engine filter
 
 VERIFICATION:
@@ -427,7 +427,7 @@ You are AUTO implementing PR5 from docs/dev/plan-capability-resolver-ssot.md
 
 TASK: Cleanup and documentation.
 
-MODIFY: src/quantumvitas/presets/catalog.py
+MODIFY: src/qmatsuite/presets/catalog.py
 - Remove list_presets_for_engine implementation (keep re-export from capability module)
 
 MODIFY: docs/dev/spec-preset-paramspace-ir-engine-contract.md

@@ -10,7 +10,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import type { PrimitiveBundleData, PrimitiveGeometryFrames } from '../../types/qv';
+import type { PrimitiveBundleData, PrimitiveGeometryFrames } from '../../types/qms';
 
 interface TrajectoryVizPanelProps {
   availableObjectTypes: string[];
@@ -130,7 +130,7 @@ export function TrajectoryVizPanel({
 
   if (availableObjectTypes.length === 0) {
     return (
-      <div className="analysis-surface__placeholder" data-testid="qv-analysis-no-objects">
+      <div className="analysis-surface__placeholder" data-testid="qms-analysis-no-objects">
         No analysis object is available for this step in the current run.
       </div>
     );
@@ -156,8 +156,8 @@ export function TrajectoryVizPanel({
         </div>
       </div>
 
-      {loading ? <div className="analysis-surface__placeholder" data-testid="qv-analysis-loading">Loading analysis...</div> : null}
-      {error ? <div className="analysis-surface__error" data-testid="qv-analysis-error">{error}</div> : null}
+      {loading ? <div className="analysis-surface__placeholder" data-testid="qms-analysis-loading">Loading analysis...</div> : null}
+      {error ? <div className="analysis-surface__error" data-testid="qms-analysis-error">{error}</div> : null}
 
       {!loading && !error && bundle ? (
         <>
@@ -184,7 +184,7 @@ export function TrajectoryVizPanel({
 
           {/* Observable time-series chart */}
           {chartData.length > 0 ? (
-            <div className="analysis-viz__plot" data-testid={`qv-analysis-${selectedObjectType ?? 'trajectory'}-chart`}>
+            <div className="analysis-viz__plot" data-testid={`qms-analysis-${selectedObjectType ?? 'trajectory'}-chart`}>
               <ResponsiveContainer height={300} width="100%">
                 <LineChart data={chartData} margin={{ top: 12, right: 20, left: 16, bottom: 16 }}>
                   <CartesianGrid strokeDasharray="3 3" />

@@ -10,44 +10,44 @@
 ### 1.1 Calculation YAML Read/Write
 
 **Entry Points:**
-- `src/quantumvitas/core/yamldoc.py::CalcDoc.load()` / `CalcDoc.save()`
-- `src/quantumvitas/core/models.py::load_calculation()` / `save_calculation()`
-- `src/quantumvitas/core/yaml_io.py::save_yaml_doc()` - **SINGLE COMMIT POINT** for all YAML saves
-- `src/quantumvitas/calculation/calculation.py::Calculation.from_yaml()` - loads calc + steps with `materialize_steps` flag
+- `src/qmatsuite/core/yamldoc.py::CalcDoc.load()` / `CalcDoc.save()`
+- `src/qmatsuite/core/models.py::load_calculation()` / `save_calculation()`
+- `src/qmatsuite/core/yaml_io.py::save_yaml_doc()` - **SINGLE COMMIT POINT** for all YAML saves
+- `src/qmatsuite/calculation/calculation.py::Calculation.from_yaml()` - loads calc + steps with `materialize_steps` flag
 
 **Key Classes:**
-- `CalcDoc` (`src/quantumvitas/core/yamldoc.py:598-624`) - wrapper for `calculation.yaml`
-- `Calculation` (`src/quantumvitas/calculation/calculation.py:23-552`) - runtime representation
-- `CalculationModel` (`src/quantumvitas/core/models.py:125-320`) - data model
+- `CalcDoc` (`src/qmatsuite/core/yamldoc.py:598-624`) - wrapper for `calculation.yaml`
+- `Calculation` (`src/qmatsuite/calculation/calculation.py:23-552`) - runtime representation
+- `CalculationModel` (`src/qmatsuite/core/models.py:125-320`) - data model
 
 **Step YAML:**
-- `StepDoc` (`src/quantumvitas/core/yamldoc.py:454-596`) - wrapper for step YAML
+- `StepDoc` (`src/qmatsuite/core/yamldoc.py:454-596`) - wrapper for step YAML
 - Steps stored as `calculations/<id>/steps/<step_id>.step.yaml`
 - Referenced in `calculation.yaml` via `steps[]` array with `step_id` (ULID)
 
 **Registry:**
-- `src/quantumvitas/core/resolution.py` - `ResourceIndex` maintains cache of all resources
-- `project.qv.yml` contains calculation/structure references by ULID only (DAG model)
+- `src/qmatsuite/core/resolution.py` - `ResourceIndex` maintains cache of all resources
+- `project.qms.yml` contains calculation/structure references by ULID only (DAG model)
 
 ### 1.2 Materialization Flow
 
 **Materialization Entry Point:**
-- `src/quantumvitas/calculation/calculation.py::Calculation.from_yaml(..., materialize_steps=True)` (line 109-212)
+- `src/qmatsuite/calculation/calculation.py::Calculation.from_yaml(..., materialize_steps=True)` (line 109-212)
   - When `materialize_steps=True`, calls `_build_step()` which calls `materialize_step_spec()`
   
 **Core Materialization Function:**
-- `src/quantumvitas/calculation/structure_steps.py::materialize_step_spec()` (line 588-942)
+- `src/qmatsuite/calculation/structure_steps.py::materialize_step_spec()` (line 588-942)
   - Takes step spec (YAML or `StructureStepSpec`) and generates QE input file
   - Writes to `output_dir` (typically `calc/raw`)
   - Returns `(generated_input_path, StructureStepSpec)`
 
 **Materialization in Runner:**
-- `src/quantumvitas/api.py::QVService.run_calculation()` (line 1129-1225)
+- `src/qmatsuite/api.py::QMSService.run_calculation()` (line 1129-1225)
   - Calls `Calculation.from_yaml(..., materialize_steps=True)` at line 1178
   - Materialization happens **INSIDE** the run path, NOT before submission
 
 **Step Building:**
-- `src/quantumvitas/calculation/calculation.py::_build_step()` (line 215-351)
+- `src/qmatsuite/calculation/calculation.py::_build_step()` (line 215-351)
   - Resolves step via registry using `step_id`
   - Loads step spec via `StructureStepSpec.from_yaml()`
   - Calls `materialize_step_spec()` to generate input file into `working_dir` (calc/raw)
@@ -62,75 +62,75 @@
 
 **GUI → Daemon Flow:**
 - `gui/src/App.tsx::handleRunCalculation()` (line 1713-1767)
-  - Calls `qv.call('run_calculation', { project_root, calculation: calculation.slug })`
+  - Calls `qms.call('run_calculation', { project_root, calculation: calculation.slug })`
   
 **Daemon Handler:**
-- `src/quantumvitas/daemon/server.py::_handle_run_calculation()` (line 5358-5440)
+- `src/qmatsuite/daemon/server.py::_handle_run_calculation()` (line 5358-5440)
   - Receives `project_root`, `calculation` (slug)
   - Normalizes paths
   - Submits job via `JobManager.submit_with_id()` (line 5417-5438)
   
 **Job Manager:**
-- `src/quantumvitas/daemon/jobs.py::JobManager` (line 112-684)
+- `src/qmatsuite/daemon/jobs.py::JobManager` (line 112-684)
   - Uses `ThreadPoolExecutor(max_workers=1)` - **sequential execution only**
   - Maintains in-memory `_jobs` dict keyed by job_id (ULID)
   - Thread-safe with `Lock()` for job state updates (line 133)
   - **NO cross-process locking** - only protects in-memory state
 
 **Service Layer:**
-- `src/quantumvitas/api.py::QVService.run_calculation()` (line 1129-1225)
+- `src/qmatsuite/api.py::QMSService.run_calculation()` (line 1129-1225)
   - Loads calculation: `Calculation.from_yaml(..., materialize_steps=True)` (line 1178)
   - Creates `CalculationRunner` and calls `runner.run()` (line 1195)
   
 **Calculation Runner:**
-- `src/quantumvitas/calculation/runner.py::CalculationRunner.run()` (line 67-355)
+- `src/qmatsuite/calculation/runner.py::CalculationRunner.run()` (line 67-355)
   - Iterates through `calculation.steps` sequentially (line 161)
   - For each step: calls `step.run()` which executes QE engine (line 194-199)
   - No skipping logic - always executes all steps
   - Records history via `_start_history_recording()` and `_complete_history_recording()`
 
 **History Recording:**
-- `src/quantumvitas/calculation/runner.py::_start_history_recording()` (line 357-455)
+- `src/qmatsuite/calculation/runner.py::_start_history_recording()` (line 357-455)
   - Creates `RunRevision` via `create_run_revision()` (line 413-429)
   - Stores snapshot in `.history/runs/run_<ULID>/run_revision.json`
   - Records `RunStartedEvent` to `.history/events.jsonl`
   
-- `src/quantumvitas/history/run_revision.py::create_run_revision()` creates run directory and saves snapshot
+- `src/qmatsuite/history/run_revision.py::create_run_revision()` creates run directory and saves snapshot
 
 ### 1.4 Analysis Generation
 
 **Analysis Entry Points:**
-- `src/quantumvitas/api.py::QVService.analyze_scf()` (line 1517-1571)
-- `src/quantumvitas/api.py::QVService.analyze_dos()` (line 1573-1661)
-- `src/quantumvitas/api.py::QVService.analyze_band()` (line 1663-1695)
-- `src/quantumvitas/analysis/calculation_analysis.py::analyze_calculation()` - called after run
+- `src/qmatsuite/api.py::QMSService.analyze_scf()` (line 1517-1571)
+- `src/qmatsuite/api.py::QMSService.analyze_dos()` (line 1573-1661)
+- `src/qmatsuite/api.py::QMSService.analyze_band()` (line 1663-1695)
+- `src/qmatsuite/analysis/calculation_analysis.py::analyze_calculation()` - called after run
 
 **File Discovery:**
 - Analysis functions read from `calc/raw/` directory
-- `src/quantumvitas/analysis/parsers.py` - `find_bands_files()`, `find_dos_files()` scan raw dir
-- CLI: `src/quantumvitas/cli/main.py::analyze_output_command()` (line 3386-3535) auto-locates files in `calc/raw`
+- `src/qmatsuite/analysis/parsers.py` - `find_bands_files()`, `find_dos_files()` scan raw dir
+- CLI: `src/qmatsuite/cli/main.py::analyze_output_command()` (line 3386-3535) auto-locates files in `calc/raw`
 
 **Output File Patterns:**
 - QE outputs: `*.out`, `*.dat`, `*.gnu` in `calc/raw`
 - Analysis artifacts: `calc/.analysis/` (JSON, plots)
-- Artifacts managed via `src/quantumvitas/analysis/artifacts.py`
+- Artifacts managed via `src/qmatsuite/analysis/artifacts.py`
 
 ### 1.5 History Persistence
 
 **History Storage:**
-- `src/quantumvitas/history/storage.py::ProjectHistory` - manages `.history/` directory
+- `src/qmatsuite/history/storage.py::ProjectHistory` - manages `.history/` directory
 - History directory: `project/.history/`
 - Events: `.history/events.jsonl` (append-only JSONL)
 - Runs: `.history/runs/run_<ULID>/` per run
 
 **Run Revision:**
-- `src/quantumvitas/history/run_revision.py::RunRevision` (line 41-480)
+- `src/qmatsuite/history/run_revision.py::RunRevision` (line 41-480)
 - `create_run_revision()` (line 153-268) - creates run directory, saves snapshot
 - `complete_run_revision()` (line 270-341) - computes digests, finalizes run
 - Snapshot stored as `run_revision.json` + optional `snapshot.tar.zst`
 
 **File Locking:**
-- `src/quantumvitas/history/storage.py::_atomic_append()` (line 180-198)
+- `src/qmatsuite/history/storage.py::_atomic_append()` (line 180-198)
   - Uses `fcntl.flock(f.fileno(), fcntl.LOCK_EX)` for cross-process file locking
   - **EXISTING CROSS-PROCESS LOCKING** - but only for JSONL appends, not for calc-level coordination
 
@@ -146,19 +146,19 @@
 ### 2.1 Race Conditions
 
 **Critical: Concurrent Run Attempts**
-- **Location:** `src/quantumvitas/daemon/jobs.py::JobManager` uses `ThreadPoolExecutor(max_workers=1)` but only prevents concurrent runs **within a single daemon process**
+- **Location:** `src/qmatsuite/daemon/jobs.py::JobManager` uses `ThreadPoolExecutor(max_workers=1)` but only prevents concurrent runs **within a single daemon process**
 - **Risk:** Multiple daemon processes (e.g., multiple GUI instances, CLI + GUI) can run the same calculation concurrently
 - **Evidence:** `JobManager._lock` is in-memory only (line 133). No file-based locking prevents cross-process conflicts.
 - **Impact:** Two runs can materialize inputs simultaneously, overwrite each other's outputs, corrupt state
 
 **Edit-While-Run Race**
-- **Location:** `src/quantumvitas/core/yaml_io.py::save_yaml_doc()` (line 117-210)
+- **Location:** `src/qmatsuite/core/yaml_io.py::save_yaml_doc()` (line 117-210)
 - **Risk:** User edits `calculation.yaml` or step YAML while a run is executing
 - **Current Behavior:** Runner reads YAML once at start (line 1178 in `api.py`), but if YAML is edited mid-run, next run uses new YAML
 - **Impact:** Low (runner already materialized), but no explicit protection
 
 **Materialization Race**
-- **Location:** `src/quantumvitas/calculation/calculation.py::Calculation.from_yaml()` (line 183-195)
+- **Location:** `src/qmatsuite/calculation/calculation.py::Calculation.from_yaml()` (line 183-195)
 - **Risk:** Materialization writes input files without locking `calc/raw/`
 - **Evidence:** `materialize_step_spec()` writes directly to `output_dir` (line 913, 901)
 - **Impact:** If two runs materialize simultaneously, input files can be partially written
@@ -166,13 +166,13 @@
 ### 2.2 Stale Outputs
 
 **No Incremental Run Detection**
-- **Location:** `src/quantumvitas/calculation/runner.py::CalculationRunner.run()` (line 161-330)
+- **Location:** `src/qmatsuite/calculation/runner.py::CalculationRunner.run()` (line 161-330)
 - **Risk:** Runner always executes all steps, even if inputs haven't changed
 - **Evidence:** No hash/manifest comparison before step execution (line 161-194)
 - **Impact:** Unnecessary recomputation, wasted time
 
 **No Output Validation**
-- **Location:** `src/quantumvitas/calculation/runner.py` - no check if output exists before running
+- **Location:** `src/qmatsuite/calculation/runner.py` - no check if output exists before running
 - **Risk:** No verification that previous run's outputs are still valid
 - **Impact:** User might expect reuse but runner always reruns
 
@@ -185,7 +185,7 @@
 ### 2.3 YAML Reading During Execution
 
 **Current Behavior:**
-- `QVService.run_calculation()` loads YAML once at start (line 1178)
+- `QMSService.run_calculation()` loads YAML once at start (line 1178)
 - Runner only reads materialized input files from `calc/raw/` during execution (line 194-199)
 - **Safe:** Runner does NOT re-read YAML mid-execution
 
@@ -256,7 +256,7 @@ calculations/<calc_id>/
 ### 3.3 Run Lock (Long-Held)
 
 **Acquisition Point:**
-- `src/quantumvitas/api.py::QVService.run_calculation()` (line 1129)
+- `src/qmatsuite/api.py::QMSService.run_calculation()` (line 1129)
   - **BEFORE** `Calculation.from_yaml()` (line 1178)
   - **BEFORE** materialization begins
 
@@ -271,7 +271,7 @@ calculations/<calc_id>/
 
 **Implementation:**
 ```python
-# In api.py::QVService.run_calculation()
+# In api.py::QMSService.run_calculation()
 from pathlib import Path
 import portalocker
 
@@ -285,7 +285,7 @@ try:
         try:
             portalocker.lock(lock_file, portalocker.LOCK_EX | portalocker.LOCK_NB)
         except portalocker.LockException:
-            raise QVServiceError(
+            raise QMSServiceError(
                 f"Calculation '{calculation_selector}' is currently running. "
                 "Wait for the current run to complete or stop it first."
             )
@@ -304,7 +304,7 @@ finally:
 ### 3.4 Edit Lock (Short-Held)
 
 **Acquisition Point:**
-- `src/quantumvitas/core/yaml_io.py::save_yaml_doc()` (line 117)
+- `src/qmatsuite/core/yaml_io.py::save_yaml_doc()` (line 117)
   - Wrap the entire save operation
   - Only for `CalcDoc` and `StepDoc` (not `ProjectDoc`)
 
@@ -357,7 +357,7 @@ if lock_path and isinstance(doc, (CalcDoc, StepDoc)):
 ### 3.5 Lock Failure Behaviors
 
 **Run Lock Acquisition Failure:**
-- Return `QVServiceError` with code `CALCULATION_LOCKED`
+- Return `QMSServiceError` with code `CALCULATION_LOCKED`
 - Daemon returns JSON-RPC error: `{"ok": false, "error": {"code": "CALCULATION_LOCKED", "message": "..."}}`
 - GUI shows notification: "Cannot run: calculation is already running"
 
@@ -547,7 +547,7 @@ for i, step in enumerate(calculation.steps[start_idx:], start=start_idx):
 
 ### 4.6 Manifest Persistence Functions
 
-**Location:** `src/quantumvitas/calculation/manifest.py` (new file)
+**Location:** `src/qmatsuite/calculation/manifest.py` (new file)
 
 **Functions:**
 ```python
@@ -579,9 +579,9 @@ def clear_manifest_from_step(calculation_dir: Path, from_step_idx: int) -> None:
 - `YAML_EDIT_LOCKED` - returned when edit lock acquisition fails (optional, can use generic error)
 
 **API Changes (None Required):**
-- `QVService.run_calculation()` signature unchanged
+- `QMSService.run_calculation()` signature unchanged
 - Lock acquisition is internal implementation detail
-- Error returned via existing `QVServiceError` mechanism
+- Error returned via existing `QMSServiceError` mechanism
 
 **New RPC Response Field (Optional):**
 - `run_mode: "full" | "incremental"` in `run_calculation` response
@@ -590,7 +590,7 @@ def clear_manifest_from_step(calculation_dir: Path, from_step_idx: int) -> None:
 ### 5.2 CLI Changes
 
 **New Option (Optional):**
-- `qv run calculation --force` - force full run, ignore manifest
+- `qms run calculation --force` - force full run, ignore manifest
 - Default: incremental (if manifest exists)
 
 ### 5.3 UI Changes
@@ -717,14 +717,14 @@ def clear_manifest_from_step(calculation_dir: Path, from_step_idx: int) -> None:
 
 ### Phase 1: Locking Infrastructure
 1. Add `portalocker` to `requirements.txt`
-2. Create `src/quantumvitas/core/locking.py` with lock utilities
-3. Implement run lock in `QVService.run_calculation()`
+2. Create `src/qmatsuite/core/locking.py` with lock utilities
+3. Implement run lock in `QMSService.run_calculation()`
 4. Implement edit lock in `save_yaml_doc()`
 5. Add unit tests for locks
 6. Add integration tests for cross-process locks
 
 ### Phase 2: Manifest System
-1. Create `src/quantumvitas/calculation/manifest.py`
+1. Create `src/qmatsuite/calculation/manifest.py`
 2. Implement manifest load/save functions
 3. Implement hash computation utilities
 4. Add manifest update hooks in `CalculationRunner`
@@ -766,7 +766,7 @@ def clear_manifest_from_step(calculation_dir: Path, from_step_idx: int) -> None:
 
 **Implementation:**
 - Move materialization out of `Calculation.from_yaml()` (keep `materialize_steps=False`)
-- Add explicit materialization step in `QVService.run_calculation()` after lock acquisition
+- Add explicit materialization step in `QMSService.run_calculation()` after lock acquisition
 
 ### 8.2 Manifest vs History
 

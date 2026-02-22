@@ -33,7 +33,7 @@ ORCA, Gaussian, Psi4, PySCF, xTB, LAMMPS, QMCPACK, Wannier90, Yambo -- no period
 ## What Was Implemented
 
 ### QE Fatbands (NEW)
-- **Parser**: `src/quantumvitas/drivers/qe/parsers/bands.py`
+- **Parser**: `src/qmatsuite/drivers/qe/parsers/bands.py`
   - Added `parse_projwfc_up()` function to parse QE `filproj` output
   - Parses atomic wfc headers (atom index, element, n, l, m)
   - Groups projections by (atom, l) with m-components summed
@@ -44,7 +44,7 @@ ORCA, Gaussian, Psi4, PySCF, xTB, LAMMPS, QMCPACK, Wannier90, Yambo -- no period
   - Matching bands: `si_fatbands.bands.dat.gnu`, `si_fatbands.bands.pp.out`, `si_fatbands.nscf.out`
 
 ### ABINIT PDOS (NEW)
-- **Parser**: `src/quantumvitas/drivers/abinit/parsers/dos.py`
+- **Parser**: `src/qmatsuite/drivers/abinit/parsers/dos.py`
   - Added `_parse_abinit_pdos_at()` for `_DOS_AT` files (l-projected per-atom DOS)
   - Converts energy from Hartree to eV, DOS from states/Hartree to states/eV
   - Integrated into `ABINITDOSProvider.parse()` with grid consistency check
@@ -60,8 +60,8 @@ ORCA, Gaussian, Psi4, PySCF, xTB, LAMMPS, QMCPACK, Wannier90, Yambo -- no period
 
 | File | Action |
 |------|--------|
-| `src/quantumvitas/drivers/qe/parsers/bands.py` | MODIFIED: added `parse_projwfc_up()`, projections integration |
-| `src/quantumvitas/drivers/abinit/parsers/dos.py` | MODIFIED: added `_parse_abinit_pdos_at()`, PDOS integration |
+| `src/qmatsuite/drivers/qe/parsers/bands.py` | MODIFIED: added `parse_projwfc_up()`, projections integration |
+| `src/qmatsuite/drivers/abinit/parsers/dos.py` | MODIFIED: added `_parse_abinit_pdos_at()`, PDOS integration |
 | `tests/data/analysis_bands/si_bands.projwfc_up` | CREATED: QE fatbands fixture |
 | `tests/data/analysis_bands/si_fatbands.bands.dat.gnu` | CREATED: matching bands fixture |
 | `tests/data/analysis_bands/si_fatbands.bands.pp.out` | CREATED: matching symmetry fixture |

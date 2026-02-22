@@ -3,13 +3,13 @@
 **Last reviewed**: 2025-01-19
 **CP2K version target**: 2025.1
 **QMatSuite modules consulted**:
-- `src/quantumvitas/engine/registry.py` - Engine registration
-- `src/quantumvitas/engine/vasp_engine.py` - VASP directory-state pattern
-- `src/quantumvitas/engine/lammps_engine.py` - LAMMPS directory-state pattern
-- `src/quantumvitas/engine/orca_engine.py` - ORCA strong-chain pattern
-- `src/quantumvitas/workflow/registry.py` - Step type definitions
-- `src/quantumvitas/execution/recipes.py` - Recipe patterns
-- `src/quantumvitas/calculation/manifest.py` - Fingerprint/manifest system
+- `src/qmatsuite/engine/registry.py` - Engine registration
+- `src/qmatsuite/engine/vasp_engine.py` - VASP directory-state pattern
+- `src/qmatsuite/engine/lammps_engine.py` - LAMMPS directory-state pattern
+- `src/qmatsuite/engine/orca_engine.py` - ORCA strong-chain pattern
+- `src/qmatsuite/workflow/registry.py` - Step type definitions
+- `src/qmatsuite/execution/recipes.py` - Recipe patterns
+- `src/qmatsuite/calculation/manifest.py` - Fingerprint/manifest system
 
 ---
 
@@ -48,7 +48,7 @@
 
 ### 2.1 Available Patterns
 
-From `src/quantumvitas/execution/recipes.py`:
+From `src/qmatsuite/execution/recipes.py`:
 
 1. **QERecipe** (Directory-state, step-run model)
    - One job per step
@@ -95,11 +95,11 @@ CP2K (proposed):
 
 | Component | Location | Description |
 |-----------|----------|-------------|
-| `Cp2kEngine` | `src/quantumvitas/engine/cp2k_engine.py` | Engine backend class |
-| `cp2k_writer.py` | `src/quantumvitas/engine/cp2k_writer.py` | Input file generator |
-| `cp2k_parser.py` | `src/quantumvitas/engine/cp2k_parser.py` | Output parser |
-| `cp2k_resolver.py` | `src/quantumvitas/core/engines/cp2k_resolver.py` | Binary discovery |
-| Step type entries | `src/quantumvitas/workflow/registry.py` | Registry additions |
+| `Cp2kEngine` | `src/qmatsuite/engine/cp2k_engine.py` | Engine backend class |
+| `cp2k_writer.py` | `src/qmatsuite/engine/cp2k_writer.py` | Input file generator |
+| `cp2k_parser.py` | `src/qmatsuite/engine/cp2k_parser.py` | Output parser |
+| `cp2k_resolver.py` | `src/qmatsuite/core/engines/cp2k_resolver.py` | Binary discovery |
+| Step type entries | `src/qmatsuite/workflow/registry.py` | Registry additions |
 
 ### 3.2 Core Changes Required?
 

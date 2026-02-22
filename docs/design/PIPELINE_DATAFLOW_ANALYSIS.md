@@ -671,7 +671,7 @@ class ArtifactCatalog:
     
     # Metadata:
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    qv_version: str = __version__
+    qms_version: str = __version__
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -681,7 +681,7 @@ class ArtifactCatalog:
             "volume_artifacts": [a.to_metadata() for a in self.volume_artifacts],
             "properties_artifacts": [a.to_metadata() for a in self.properties_artifacts],
             "created_at": self.created_at,
-            "qv_version": self.qv_version,
+            "qms_version": self.qms_version,
         }
     
     def save(self, path: Path) -> None:

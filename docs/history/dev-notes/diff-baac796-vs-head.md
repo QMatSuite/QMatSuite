@@ -68,11 +68,11 @@ $ git rev-parse origin/v2-python
 
 | 文件路径 | 变更类型 | 是否核心 | 说明 |
 |---------|---------|---------|------|
-| **src/quantumvitas/presets/paramspace.py** | M | ✅ **是** | 删除了 key access enforcement 机制（~163 行），degauss 从 precision 移回 occupations_scheme |
-| **src/quantumvitas/presets/integration.py** | M | ✅ **是** | 删除了 apply_invariants() 调用和 Oracle 使用，大幅简化 apply 逻辑 |
-| **src/quantumvitas/presets/variants_registry.py** | M | ✅ **是** | 删除了 Oracle 使用，degauss 写入逻辑从 precision 移除 |
-| **src/quantumvitas/presets/oracle.py** | D | ✅ **是** | **文件被删除** - Oracle 类完全移除 |
-| **src/quantumvitas/presets/dimensions.py** | M | ⚠️ 部分 | 添加了 ConvergenceOption enum |
+| **src/qmatsuite/presets/paramspace.py** | M | ✅ **是** | 删除了 key access enforcement 机制（~163 行），degauss 从 precision 移回 occupations_scheme |
+| **src/qmatsuite/presets/integration.py** | M | ✅ **是** | 删除了 apply_invariants() 调用和 Oracle 使用，大幅简化 apply 逻辑 |
+| **src/qmatsuite/presets/variants_registry.py** | M | ✅ **是** | 删除了 Oracle 使用，degauss 写入逻辑从 precision 移除 |
+| **src/qmatsuite/presets/oracle.py** | D | ✅ **是** | **文件被删除** - Oracle 类完全移除 |
+| **src/qmatsuite/presets/dimensions.py** | M | ⚠️ 部分 | 添加了 ConvergenceOption enum |
 | **CONSTITUTION_ZH.md** | M | ✅ **是** | 删除了 §10.8.9 Key Access 规则章节 |
 | **OCCUPATION_DEGAUSS_DEPENDENCY_DIAGNOSTIC.md** | D | ⚠️ 重要 | **文件被删除** - 诊断文档丢失 |
 | **YAML_DICT_USAGE_REVIEW.md** | D | ⚠️ 重要 | **文件被删除** - YAML 使用审查文档丢失 |
@@ -84,7 +84,7 @@ $ git rev-parse origin/v2-python
 
 ### 2.3 核心文件详细差异摘要
 
-#### 2.3.1 src/quantumvitas/presets/paramspace.py
+#### 2.3.1 src/qmatsuite/presets/paramspace.py
 
 **关键变化** (baac796 → HEAD):
 
@@ -115,7 +115,7 @@ $ git rev-parse origin/v2-python
 - HEAD: 940 行
 - **差异**: -147 行（主要是 key access enforcement 代码）
 
-#### 2.3.2 src/quantumvitas/presets/integration.py
+#### 2.3.2 src/qmatsuite/presets/integration.py
 
 **关键变化**:
 
@@ -136,7 +136,7 @@ $ git rev-parse origin/v2-python
 - HEAD: ~568 行
 - **差异**: -132 行
 
-#### 2.3.3 src/quantumvitas/presets/variants_registry.py
+#### 2.3.3 src/qmatsuite/presets/variants_registry.py
 
 **关键变化**:
 
@@ -152,7 +152,7 @@ $ git rev-parse origin/v2-python
    - **baac796**: occupations_scheme detect 不读取 degauss（key access enforcement 阻止）
    - **HEAD**: occupations_scheme detect 读取 degauss（要求 degauss=0.02）
 
-#### 2.3.4 src/quantumvitas/presets/oracle.py
+#### 2.3.4 src/qmatsuite/presets/oracle.py
 
 **文件状态**: ❌ **被删除**
 
@@ -488,7 +488,7 @@ pytest tests/unit/test_key_access_enforcement.py tests/unit/test_paramspace_inva
 
 **预期冲突文件**:
 
-1. **src/quantumvitas/presets/paramspace.py** (高冲突风险):
+1. **src/qmatsuite/presets/paramspace.py** (高冲突风险):
    - **冲突点**: 
      - key access enforcement 代码（baac796 有，HEAD 无）
      - degauss 归属（baac796: precision, HEAD: occupations_scheme）
@@ -498,7 +498,7 @@ pytest tests/unit/test_key_access_enforcement.py tests/unit/test_paramspace_inva
      - 决定 degauss 归属（建议：precision，符合 baac796 设计）
      - 更新 profile 名称映射
 
-2. **src/quantumvitas/presets/integration.py** (高冲突风险):
+2. **src/qmatsuite/presets/integration.py** (高冲突风险):
    - **冲突点**: 
      - `apply_invariants()` 调用（baac796 有，HEAD 无）
      - Oracle 使用（baac796 有，HEAD 无）
@@ -508,7 +508,7 @@ pytest tests/unit/test_key_access_enforcement.py tests/unit/test_paramspace_inva
      - 恢复 Oracle 使用
      - 恢复分阶段 apply 顺序
 
-3. **src/quantumvitas/presets/variants_registry.py** (中冲突风险):
+3. **src/qmatsuite/presets/variants_registry.py** (中冲突风险):
    - **冲突点**: 
      - Oracle 使用（baac796 有，HEAD 无）
      - degauss 写入逻辑（baac796: precision 写入，HEAD: 不写入）

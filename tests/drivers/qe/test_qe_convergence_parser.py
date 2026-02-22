@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.convergence import Convergence
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.qe.parsers.convergence import QEConvergenceProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.convergence import Convergence
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.qe.parsers.convergence import QEConvergenceProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_qe_trajectory"

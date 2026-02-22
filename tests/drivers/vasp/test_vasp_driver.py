@@ -1,9 +1,9 @@
 """Tests for VASP driver bundle."""
 
 import pytest
-from quantumvitas.drivers.vasp import VASPDriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.vasp import VASPDriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestVASPDriver:
@@ -71,7 +71,7 @@ class TestVASPRegistration:
 
     def test_vasp_registered(self):
         """VASP should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("vasp")
         driver = DriverRegistry.get_driver("vasp")
@@ -79,7 +79,7 @@ class TestVASPRegistration:
 
     def test_vasp_step_types_registered(self):
         """VASP step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("vasp_scf")
         assert DriverRegistry.is_step_type_registered("vasp_relax")
@@ -87,14 +87,14 @@ class TestVASPRegistration:
 
     def test_vasp_handler_via_registry(self):
         """Should get VASP handler via registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         handler = DriverRegistry.get_handler("vasp_scf")
         assert callable(handler)
 
     def test_vasp_recipe_via_registry(self):
         """Should get VASP recipe via registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         recipe_class = DriverRegistry.get_recipe_class("vasp")
         assert recipe_class is not None
@@ -107,7 +107,7 @@ class TestVASPIsolation:
         """handlers.py should not contain vasp_step_handler."""
         from pathlib import Path
         # Use absolute path from project root
-        handlers_path = Path(__file__).parent.parent.parent.parent / "src" / "quantumvitas" / "execution" / "handlers.py"
+        handlers_path = Path(__file__).parent.parent.parent.parent / "src" / "qmatsuite" / "execution" / "handlers.py"
         source = handlers_path.read_text()
 
         assert "def vasp_step_handler" not in source, (
@@ -118,7 +118,7 @@ class TestVASPIsolation:
         """recipes.py should not contain VASPRecipe."""
         from pathlib import Path
         # Use absolute path from project root
-        recipes_path = Path(__file__).parent.parent.parent.parent / "src" / "quantumvitas" / "execution" / "recipes.py"
+        recipes_path = Path(__file__).parent.parent.parent.parent / "src" / "qmatsuite" / "execution" / "recipes.py"
         source = recipes_path.read_text()
 
         assert "class VASPRecipe" not in source, (
@@ -130,9 +130,9 @@ class TestVASPIsolation:
         from pathlib import Path
 
         kernel_files = [
-            "src/quantumvitas/core/calc_identity.py",
-            "src/quantumvitas/calculation/step_done.py",
-            "src/quantumvitas/calculation/structure_steps.py",
+            "src/qmatsuite/core/calc_identity.py",
+            "src/qmatsuite/calculation/step_done.py",
+            "src/qmatsuite/calculation/structure_steps.py",
         ]
 
         for filepath in kernel_files:

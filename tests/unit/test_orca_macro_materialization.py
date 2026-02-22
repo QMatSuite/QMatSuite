@@ -9,7 +9,7 @@ import pytest
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
+from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
 
 
 @dataclass

@@ -4,7 +4,7 @@ Tests for parameter scan validation.
 
 import pytest
 
-from quantumvitas.calculation.scan_validation import (
+from qmatsuite.calculation.scan_validation import (
     is_scan_ref,
     validate_scan_ref_format,
     find_all_scan_refs,

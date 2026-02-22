@@ -6,13 +6,13 @@ Verifies capability resolver SSOT and edge cases, including ORCA binary-optional
 
 import pytest
 
-from quantumvitas.presets.capability import (
+from qmatsuite.presets.capability import (
     list_presets_for_engine,
     validate_preset_capability,
     require_preset_capability,
     CapabilityError,
 )
-from quantumvitas.engine.registry import create_default_registry
+from qmatsuite.engine.registry import create_default_registry
 
 
 class TestCapabilityResolverInvariants:

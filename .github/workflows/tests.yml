@@ -326,7 +326,7 @@ jobs:
         # Configure settings.json to use internal QE (two-state model)
         # Setting qe.bin_dir to None enables internal QE auto-selection
         python -c "
-        from quantumvitas.core.settings import load_settings, save_settings
+        from qmatsuite.core.settings import load_settings, save_settings
         
         settings = load_settings()
         # Set qe.bin_dir to None to use internal QE (auto-selected from .qmatsuite/engines/qe/**/bin)
@@ -344,7 +344,7 @@ jobs:
         # Exclude ORCA and PySCF real integration tests (they require external binaries)
         # QE tests (requires_qe) MUST run and will FAIL if QE is not available
         # LAMMPS tests are included (lammps installed in system dependencies step)
-        python -m pytest tests/ -v --tb=short -n auto --dist=loadfile --cov=src/quantumvitas --cov-report=xml --cov-report=term -m "not requires_orca and not requires_pyscf"
+        python -m pytest tests/ -v --tb=short -n auto --dist=loadfile --cov=src/qmatsuite --cov-report=xml --cov-report=term -m "not requires_orca and not requires_pyscf"
       env:
         QE_HOME: ${{ env.QMATSUITE_ENGINE_DIR }}
         QMATSUITE_TEST_QE_ENGINE_ID: ${{ env.ENGINE_ID }}

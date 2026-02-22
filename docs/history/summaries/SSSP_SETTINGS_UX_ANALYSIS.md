@@ -33,7 +33,7 @@
 
 ### 2. Backend/RPC Endpoints
 
-**RPC Handlers in `src/quantumvitas/daemon/server.py`:**
+**RPC Handlers in `src/qmatsuite/daemon/server.py`:**
 
 | Handler Method | RPC Name | Payload | Key Function Called |
 |----------------|----------|---------|---------------------|
@@ -46,7 +46,7 @@
 | `_handle_download_sssp_library` (line 855) | `download_sssp_library` | `{flavor, version?, force?}` | `download_sssp_library()` |
 | `_handle_download_all_sssp` (line 912) | `download_all_sssp` | `{force?}` | `download_all_sssp()` |
 
-**Core Functions in `src/quantumvitas/core/pseudo_config.py`:**
+**Core Functions in `src/qmatsuite/core/pseudo_config.py`:**
 - `load_pseudo_config()` (line 154) - loads from user config file
 - `save_pseudo_config()` (line 174) - saves to user config file
 - `validate_pseudo_config()` (line 216) - validates config and directories
@@ -60,9 +60,9 @@
 #### 3.1 "Allow Network Downloads" Storage
 
 **Location:** User config file (platform-specific)
-- **macOS:** `~/Library/Application Support/QuantumVITAS/config.json`
-- **Linux:** `~/.config/quantumvitas/config.json`
-- **Windows:** `%APPDATA%/QuantumVITAS/config.json`
+- **macOS:** `~/Library/Application Support/QMatSuite/config.json`
+- **Linux:** `~/.config/qmatsuite/config.json`
+- **Windows:** `%APPDATA%/QMatSuite/config.json`
 
 **Structure:**
 ```json

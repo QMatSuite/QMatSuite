@@ -10,7 +10,7 @@
 
 ### 1.1 Definition Location
 
-**File**: `src/quantumvitas/calculation/types.py` (lines 10-30)
+**File**: `src/qmatsuite/calculation/types.py` (lines 10-30)
 
 ```python
 class StepType(str, Enum):
@@ -89,7 +89,7 @@ steps:
 
 ### 1.6 Bug Found
 
-**File**: `src/quantumvitas/cli/main.py:1746`
+**File**: `src/qmatsuite/cli/main.py:1746`
 ```python
 step_type=StepType.from_string(spec.step_type) if spec.step_type else None,
 ```
@@ -117,7 +117,7 @@ step_type=StepType.from_string(spec.step_type) if spec.step_type else None,
 **Task**: Fix the non-existent `StepType.from_string()` call.
 
 **Files**:
-- [ ] `src/quantumvitas/cli/main.py` - line 1746
+- [ ] `src/qmatsuite/cli/main.py` - line 1746
 
 **Changes**:
 ```python
@@ -136,7 +136,7 @@ step_type=_coerce_step_type(spec.step_type) if spec.step_type else None,
 **Verification**:
 ```bash
 pytest tests/unit/test_step_type_mapping.py -v -x
-python -c "from quantumvitas.cli.main import *; print('CLI imports OK')"
+python -c "from qmatsuite.cli.main import *; print('CLI imports OK')"
 ```
 
 **Tick checkboxes**: [ ] A. CLI bug fixed
@@ -148,9 +148,9 @@ python -c "from quantumvitas.cli.main import *; print('CLI imports OK')"
 **Task**: Change `step_type` fields from `StepType` to `Optional[str]`.
 
 **Files**:
-- [ ] `src/quantumvitas/calculation/step.py`
-- [ ] `src/quantumvitas/calculation/results.py`
-- [ ] `src/quantumvitas/calculation/__init__.py`
+- [ ] `src/qmatsuite/calculation/step.py`
+- [ ] `src/qmatsuite/calculation/results.py`
+- [ ] `src/qmatsuite/calculation/__init__.py`
 
 **Changes in step.py**:
 ```python
@@ -197,7 +197,7 @@ from .types import StepMode, StepStatus
 ```bash
 pytest tests/unit/test_workflow.py -v -x
 pytest tests/unit/execution/test_recipes.py -v -x
-python -c "from quantumvitas.calculation import Step; print(Step.__annotations__)"
+python -c "from qmatsuite.calculation import Step; print(Step.__annotations__)"
 ```
 
 **Tick checkboxes**: [ ] A. step.py updated, [ ] B. results.py updated, [ ] C. __init__.py updated
@@ -209,8 +209,8 @@ python -c "from quantumvitas.calculation import Step; print(Step.__annotations__
 **Task**: Remove coercion functions and update callers to use strings directly.
 
 **Files**:
-- [ ] `src/quantumvitas/calculation/runner.py` - remove `_coerce_step_type()` (lines 50-77)
-- [ ] `src/quantumvitas/calculation/calculation.py` - remove `_coerce_step_type()` (lines 774-801)
+- [ ] `src/qmatsuite/calculation/runner.py` - remove `_coerce_step_type()` (lines 50-77)
+- [ ] `src/qmatsuite/calculation/calculation.py` - remove `_coerce_step_type()` (lines 774-801)
 - [ ] Update all call sites to use string values
 
 **Changes in runner.py**:
@@ -258,7 +258,7 @@ pytest tests/daemon/test_gui_job_and_step_flows.py -v -x
 **Task**: Replace StepType enum sets with string sets.
 
 **File**:
-- [ ] `src/quantumvitas/calculation/verification.py`
+- [ ] `src/qmatsuite/calculation/verification.py`
 
 **Changes**:
 ```python
@@ -291,7 +291,7 @@ def evaluate_step_result(mode: StepMode, step_type: str, ...
 **Verification**:
 ```bash
 pytest tests/unit/test_step_type_mapping.py -v -x
-python -c "from quantumvitas.calculation.verification import ENERGY_STEP_TYPES; print(ENERGY_STEP_TYPES)"
+python -c "from qmatsuite.calculation.verification import ENERGY_STEP_TYPES; print(ENERGY_STEP_TYPES)"
 ```
 
 **Tick checkboxes**: [ ] A. verification.py updated to strings
@@ -303,12 +303,12 @@ python -c "from quantumvitas.calculation.verification import ENERGY_STEP_TYPES; 
 **Task**: Replace `StepType.RELAX.value` with string literals.
 
 **File**:
-- [ ] `src/quantumvitas/api.py`
+- [ ] `src/qmatsuite/api.py`
 
 **Changes**:
 ```python
 # Before (lines 7756-7757, 7866-7867):
-from quantumvitas.calculation.types import StepType
+from qmatsuite.calculation.types import StepType
 if step_type not in (StepType.RELAX.value, StepType.VC_RELAX.value):
 
 # After:
@@ -317,7 +317,7 @@ if step_type not in ("relax", "vc-relax"):
 
 **Verification**:
 ```bash
-python -c "from quantumvitas.api import QVService; print('API imports OK')"
+python -c "from qmatsuite.api import QMSService; print('API imports OK')"
 ```
 
 **Tick checkboxes**: [ ] A. api.py updated
@@ -329,12 +329,12 @@ python -c "from quantumvitas.api import QVService; print('API imports OK')"
 **Task**: Remove StepType usage from CLI.
 
 **File**:
-- [ ] `src/quantumvitas/cli/main.py`
+- [ ] `src/qmatsuite/cli/main.py`
 
 **Changes**:
 ```python
 # Remove import (line 1668):
-from quantumvitas.calculation.types import StepType
+from qmatsuite.calculation.types import StepType
 
 # Update Step construction (line 1746):
 step_type=spec.step_type,  # Already a string from spec
@@ -342,7 +342,7 @@ step_type=spec.step_type,  # Already a string from spec
 
 **Verification**:
 ```bash
-python -c "from quantumvitas.cli.main import *; print('CLI imports OK')"
+python -c "from qmatsuite.cli.main import *; print('CLI imports OK')"
 ```
 
 **Tick checkboxes**: [ ] A. cli/main.py updated
@@ -354,7 +354,7 @@ python -c "from quantumvitas.cli.main import *; print('CLI imports OK')"
 **Task**: Delete the enum definition and update all tests.
 
 **Files**:
-- [ ] `src/quantumvitas/calculation/types.py` - remove StepType class
+- [ ] `src/qmatsuite/calculation/types.py` - remove StepType class
 - [ ] `tests/unit/test_pyscf_integration.py` - remove enum tests
 - [ ] `tests/unit/test_wannier90_integration.py` - remove enum tests
 - [ ] `tests/unit/execution/test_recipes.py` - use strings for mock steps
@@ -379,7 +379,7 @@ python -c "from quantumvitas.cli.main import *; print('CLI imports OK')"
 **Changes in test_recipes.py**:
 ```python
 # Before:
-from quantumvitas.calculation.types import StepType
+from qmatsuite.calculation.types import StepType
 step_type: Optional[StepType]
 def create_mock_step(ulid: str, step_type: StepType) -> MockStep:
 steps = [create_mock_step("01ABCDEF", StepType.SCF)]
@@ -437,7 +437,7 @@ import pytest
 def test_no_steptype_import_in_production():
     """Production code must not import StepType."""
     result = subprocess.run(
-        ["rg", "-l", r"from.*StepType|import.*StepType", "src/quantumvitas"],
+        ["rg", "-l", r"from.*StepType|import.*StepType", "src/qmatsuite"],
         capture_output=True,
         text=True,
     )
@@ -455,7 +455,7 @@ def test_no_steptype_import_in_production():
 def test_no_steptype_enum_definition():
     """StepType enum must not exist in types.py."""
     result = subprocess.run(
-        ["rg", "-l", r"class StepType", "src/quantumvitas"],
+        ["rg", "-l", r"class StepType", "src/qmatsuite"],
         capture_output=True,
         text=True,
     )
@@ -469,7 +469,7 @@ def test_no_steptype_enum_definition():
 def test_no_coerce_step_type_function():
     """_coerce_step_type must not exist."""
     result = subprocess.run(
-        ["rg", "-l", r"def _coerce_step_type", "src/quantumvitas"],
+        ["rg", "-l", r"def _coerce_step_type", "src/qmatsuite"],
         capture_output=True,
         text=True,
     )
@@ -493,16 +493,16 @@ pytest tests/unit/test_no_steptype_enum.py -v
 
 ```bash
 # Find all StepType imports
-rg -l "from.*StepType|import.*StepType" src/quantumvitas
+rg -l "from.*StepType|import.*StepType" src/qmatsuite
 
 # Find all StepType usages
-rg "StepType\." src/quantumvitas
+rg "StepType\." src/qmatsuite
 
 # Find StepType in tests
 rg "StepType" tests --stats
 
 # Find _coerce_step_type
-rg "def _coerce_step_type" src/quantumvitas
+rg "def _coerce_step_type" src/qmatsuite
 
 # Verify step.yaml format
 cat tests/fixtures/*/step.yaml 2>/dev/null | head -20

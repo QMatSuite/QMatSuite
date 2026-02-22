@@ -1,17 +1,17 @@
 # Library Manager UX Documentation
 
 ## Overview
-The Library Manager provides a generic, package-manager-like interface for managing pseudopotential libraries (SSSP, PseudoDojo, etc.) in QuantumVITAS.
+The Library Manager provides a generic, package-manager-like interface for managing pseudopotential libraries (SSSP, PseudoDojo, etc.) in QMatSuite.
 
 ## Architecture
 
 ### Backend
-- **Generic Layer**: `src/quantumvitas/core/library_manager.py`
+- **Generic Layer**: `src/qmatsuite/core/library_manager.py`
   - Provides generic functions: `get_supported_libraries()`, `get_library_status()`, `install_library()`, `remove_library()`, `repair_library()`
   - Wraps existing SSSP-specific functions without rewriting them
   - Designed to be extensible for future libraries (PseudoDojo, etc.)
 
-- **RPC Handlers**: `src/quantumvitas/daemon/server.py`
+- **RPC Handlers**: `src/qmatsuite/daemon/server.py`
   - `list_libraries`: Returns metadata for all supported libraries
   - `get_library_status`: Returns status of a specific library
   - `install_library`: Installs library variants from various sources
@@ -231,8 +231,8 @@ To add a new library (e.g., PseudoDojo):
 ## Files Modified
 
 ### Backend
-- `src/quantumvitas/core/library_manager.py` (new)
-- `src/quantumvitas/daemon/server.py` (added generic RPC handlers)
+- `src/qmatsuite/core/library_manager.py` (new)
+- `src/qmatsuite/daemon/server.py` (added generic RPC handlers)
 
 ### Frontend
 - `gui/src/hooks/useLibraryManager.ts` (new)

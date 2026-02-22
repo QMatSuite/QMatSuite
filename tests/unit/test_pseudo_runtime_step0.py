@@ -17,7 +17,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from quantumvitas.core.pseudo_libinfo import (
+from qmatsuite.core.pseudo_libinfo import (
     compute_sha256_bytes,
     compute_sha_family_file,
 )
@@ -27,7 +27,7 @@ def compute_sha256_file(path: Path) -> str:
     """Compute SHA256 hash of a file."""
     data = path.read_bytes()
     return compute_sha256_bytes(data)
-from quantumvitas.core.pseudo_runtime import (
+from qmatsuite.core.pseudo_runtime import (
     analyze_project_pseudo_effects,
     prepare_project_pseudos_for_run,
     refresh_calc_pseudo_records_after_step0,
@@ -55,20 +55,20 @@ def create_dummy_pseudo_file_different_family(path: Path, content: str = "DIFFER
 
 @pytest.fixture
 def temp_project(tmp_path: Path) -> Path:
-    """Create a temporary project with project.qv.yml and pseudo directory."""
+    """Create a temporary project with project.qms.yml and pseudo directory."""
     import yaml
     
     project_root = tmp_path / "test_project"
     project_root.mkdir()
     
-    # Create project.qv.yml
+    # Create project.qms.yml
     project_config = {
         "project": {
             "name": "Test Project",
             "ulid": "test-project-id",
         }
     }
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(project_config))
     
     # Create pseudo directory
     pseudo_dir = project_root / "pseudo"
@@ -411,8 +411,8 @@ def test_refresh_calc_pseudo_records_missing_file(temp_project: Path) -> None:
     
     Expected: Log warning and keep stored triplet unchanged (no mutation).
     """
-    from quantumvitas.core.pseudo_runtime import refresh_calc_pseudo_records_after_step0
-    from quantumvitas.core.models import CalculationModel, save_calculation, load_calculation, ResourceMeta
+    from qmatsuite.core.pseudo_runtime import refresh_calc_pseudo_records_after_step0
+    from qmatsuite.core.models import CalculationModel, save_calculation, load_calculation, ResourceMeta
     import logging
     
     # Create calculation with pseudo_basename but file doesn't exist
@@ -455,7 +455,7 @@ def test_refresh_calc_pseudo_records_missing_file(temp_project: Path) -> None:
     log_capture = io.StringIO()
     handler = logging.StreamHandler(log_capture)
     handler.setLevel(logging.WARNING)
-    logger = logging.getLogger("quantumvitas.core.pseudo_runtime")
+    logger = logging.getLogger("qmatsuite.core.pseudo_runtime")
     logger.addHandler(handler)
     logger.setLevel(logging.WARNING)
     

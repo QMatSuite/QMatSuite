@@ -53,7 +53,7 @@ The JobGraph infrastructure is **correctly implemented** and follows the Constit
 - **Error**: `AssertionError: atom.in: JOB DONE not found in output for step scf`
 - **Root Cause**: StepResultSummary has empty `input_file` field (Path())
 - **Evidence**: `runner.py:594` sets `input_file=Path()` for executed steps
-- **Location**: `src/quantumvitas/calculation/runner.py:594`
+- **Location**: `src/qmatsuite/calculation/runner.py:594`
 
 **Test**: `tests/unit/test_project_and_cli.py::test_cli_show_command_import_preserves_original_parameters`
 - **Error**: Missing CONTROL parameters (`outdir`, `prefix`, `pseudo_dir`) in generated QE input
@@ -63,8 +63,8 @@ The JobGraph infrastructure is **correctly implemented** and follows the Constit
 #### Cluster B: ORCA Project-Level Tests
 
 **Status**: ✅ All 6 tests passing
-- Tests use `QVService.run_calculation()` correctly
-- No `QVService.run_calc` method exists (correct - method is `run_calculation`)
+- Tests use `QMSService.run_calculation()` correctly
+- No `QMSService.run_calc` method exists (correct - method is `run_calculation`)
 
 #### Cluster C: Incremental Run Regressions
 
@@ -72,16 +72,16 @@ The JobGraph infrastructure is **correctly implemented** and follows the Constit
 - **Error**: `AssertionError: calc.yaml pseudo_set_sha not updated: expected 52d2d9..., got WRONG_SHA`
 - **Root Cause**: `pseudo_set_sha` computed in preflight but not written to calc.yaml
 - **Evidence**: `api.py:1227` computes `fresh_pseudo_sha` but only warns on mismatch
-- **Location**: `src/quantumvitas/api.py:1241-1245` (warns but doesn't update)
+- **Location**: `src/qmatsuite/api.py:1241-1245` (warns but doesn't update)
 
 **Test**: `tests/integration/test_incremental_run.py::test_crash_recovery_incremental_rerun_from_failed_step`
 - **Error**: `ValueError: K_POINTS option 'crystal_b' requires 'data' to be provided`
 - **Root Cause**: K_POINTS validation too strict for k-path formats
-- **Location**: `src/quantumvitas/calculation/input_runner.py:687`
+- **Location**: `src/qmatsuite/calculation/input_runner.py:687`
 
 **Test**: `tests/integration/test_incremental_run.py::test_pseudo_preflight_update_failure_non_blocking`
 - **Error**: Same K_POINTS validation error
-- **Location**: `src/quantumvitas/calculation/input_runner.py:687`
+- **Location**: `src/qmatsuite/calculation/input_runner.py:687`
 
 ---
 
@@ -89,7 +89,7 @@ The JobGraph infrastructure is **correctly implemented** and follows the Constit
 
 ### A) New Execution Modules
 
-#### `src/quantumvitas/execution/job_graph.py`
+#### `src/qmatsuite/execution/job_graph.py`
 - **Responsibilities**: Runtime-only Job and JobGraph dataclasses
 - **Inputs**: Step objects, step SHAs (for fingerprinting)
 - **Outputs**: JobGraph with topologically sorted jobs
@@ -105,7 +105,7 @@ The JobGraph infrastructure is **correctly implemented** and follows the Constit
 - `SelectionMode`: Enum (ALL, TARGET) (lines 22-26)
 - `compute_job_fingerprint()`: SHA computation (lines 182-203)
 
-#### `src/quantumvitas/execution/recipes.py`
+#### `src/qmatsuite/execution/recipes.py`
 - **Responsibilities**: Materialize JobGraph from calculation steps
 - **Inputs**: Steps, calc_raw_dir, step_shas
 - **Outputs**: JobGraph
@@ -123,7 +123,7 @@ The JobGraph infrastructure is **correctly implemented** and follows the Constit
   - Working dir: `calc/raw/scf_<suffix>/`
   - Command: `["<internal>"]`
 
-#### `src/quantumvitas/execution/executor.py`
+#### `src/qmatsuite/execution/executor.py`
 - **Responsibilities**: Execute JobGraph with selection mode and incremental skip logic
 - **Inputs**: JobGraph, Calculation, selection mode, manifest, step_shas
 - **Outputs**: ExecutionResult with JobResult list
@@ -139,7 +139,7 @@ The JobGraph infrastructure is **correctly implemented** and follows the Constit
   - Checks manifest entries and fingerprints
   - Never skips target job
 
-#### `src/quantumvitas/execution/handlers.py`
+#### `src/qmatsuite/execution/handlers.py`
 - **Responsibilities**: Bridge JobExecutor to existing engine execution
 - **Inputs**: Job, Calculation, engine_registry, context
 - **Outputs**: JobResult
@@ -154,7 +154,7 @@ The JobGraph infrastructure is **correctly implemented** and follows the Constit
 
 ### B) Runner Integration
 
-**File**: `src/quantumvitas/calculation/runner.py`
+**File**: `src/qmatsuite/calculation/runner.py`
 
 **Entrypoint**: `CalculationRunner.run()` (lines 132-443)
 - Parameters: `target_step_id` for Run Step mode (line 139)
@@ -177,7 +177,7 @@ The JobGraph infrastructure is **correctly implemented** and follows the Constit
 
 ### C) Engine Handlers
 
-**File**: `src/quantumvitas/execution/handlers.py`
+**File**: `src/qmatsuite/execution/handlers.py`
 
 **Handler Signature**: `(job: Job, calculation: Calculation, engine_registry: EngineRegistry, context: Dict) -> JobResult`
 
@@ -199,19 +199,19 @@ The JobGraph infrastructure is **correctly implemented** and follows the Constit
 
 ### D) API Entrypoints
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 
 **Public Methods**:
-- `QVService.run_calculation()` (line 1146)
+- `QMSService.run_calculation()` (line 1146)
   - Calls `CalculationRunner.run(calculation, target_step_id=None)` (line 1407)
   - Selection mode: ALL
-- `QVService.run_step()` (line 1319)
+- `QMSService.run_step()` (line 1319)
   - Calls `CalculationRunner.run(calculation, target_step_id=step_id)` (line 1407)
   - Selection mode: TARGET
 
 **Call Chain**:
 ```
-QVService.run_calculation() / run_step()
+QMSService.run_calculation() / run_step()
   → CalculationRunner.run()
     → _execute_with_jobgraph()
       → get_recipe_for_engine()
@@ -242,7 +242,7 @@ QVService.run_calculation() / run_step()
 
 **Remaining Normalization**:
 - `api.py:3464-3465`: Used for UI display only (not persisted)
-- **Location**: `src/quantumvitas/api.py:3464-3465`
+- **Location**: `src/qmatsuite/api.py:3464-3465`
 - **Impact**: Low (UI-only, not persisted)
 
 ### B) Dispatch Mapping
@@ -293,7 +293,7 @@ QVService.run_calculation() / run_step()
 
 **Status**: ✅ All tests passing
 
-**Note**: Tests correctly use `QVService.run_calculation()` (not `run_calc`)
+**Note**: Tests correctly use `QMSService.run_calculation()` (not `run_calc`)
 
 ### Cluster C: Incremental Run Regressions
 
@@ -320,7 +320,7 @@ QVService.run_calculation() / run_step()
 
 **Fix Direction**:
 - Review K_POINTS validation logic for k-path formats
-- Location: `src/quantumvitas/calculation/input_runner.py:687`
+- Location: `src/qmatsuite/calculation/input_runner.py:687`
 - May need to allow k-path formats without `data` field if structure provides k-path
 
 ---
@@ -367,12 +367,12 @@ QVService.run_calculation() / run_step()
 
 | File | Purpose | Key Lines |
 |------|---------|-----------|
-| `src/quantumvitas/execution/job_graph.py` | Job/JobGraph definitions | 29-203 |
-| `src/quantumvitas/execution/recipes.py` | Recipe implementations | 82-405 |
-| `src/quantumvitas/execution/executor.py` | JobExecutor execution loop | 75-265 |
-| `src/quantumvitas/execution/handlers.py` | Engine handler bridges | 37-395 |
-| `src/quantumvitas/calculation/runner.py` | Runner integration | 445-604 |
-| `src/quantumvitas/api.py` | Public API entrypoints | 1146-1416 |
+| `src/qmatsuite/execution/job_graph.py` | Job/JobGraph definitions | 29-203 |
+| `src/qmatsuite/execution/recipes.py` | Recipe implementations | 82-405 |
+| `src/qmatsuite/execution/executor.py` | JobExecutor execution loop | 75-265 |
+| `src/qmatsuite/execution/handlers.py` | Engine handler bridges | 37-395 |
+| `src/qmatsuite/calculation/runner.py` | Runner integration | 445-604 |
+| `src/qmatsuite/api.py` | Public API entrypoints | 1146-1416 |
 
 ### Call Chain Evidence
 

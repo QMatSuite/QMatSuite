@@ -12,16 +12,16 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.api.errors import APIError
-from quantumvitas.core.exceptions import MissingArtifactError
-from quantumvitas.execution.relax_artifacts import (
+from qmatsuite.api import QMSService
+from qmatsuite.api.errors import APIError
+from qmatsuite.core.exceptions import MissingArtifactError
+from qmatsuite.execution.relax_artifacts import (
     get_generated_structure_path,
     read_generated_structure,
     write_generated_structure,
     is_relax_step_type,
 )
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 
 
 class TestRelaxE2E:
@@ -79,10 +79,10 @@ class TestRelaxE2E:
         
         # Verify metadata
         data = json.loads(written_path.read_text())
-        assert "__qv_meta__" in data
-        assert data["__qv_meta__"]["type"] == "generated_structure"
-        assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == "qe_relax"
+        assert "__qms_meta__" in data
+        assert data["__qms_meta__"]["type"] == "generated_structure"
+        assert data["__qms_meta__"]["source_step_ulid"] == step_ulid
+        assert data["__qms_meta__"]["provenance"]["method"] == "qe_relax"
         
         # Read
         loaded = read_generated_structure(calc_dir, step_ulid)
@@ -96,7 +96,7 @@ class TestRelaxE2E:
         from pymatgen.core import Structure, Lattice
         
         # Create project
-        project_root = QVService.init_project(tmp_path / "project")
+        project_root = QMSService.init_project(tmp_path / "project")
         
         # Import initial structure
         source = tmp_path / "si.json"
@@ -104,14 +104,14 @@ class TestRelaxE2E:
         initial_structure = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
         source.write_text(json.dumps(initial_structure.as_dict()))
         
-        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
+        struct_result = QMSService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
+        calc_result = QMSService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
         calc_ulid = calc_result.ulid
         
         # Create relax step
-        step_result = QVService(project_root).calculation.add_step(calc_ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
+        step_result = QMSService(project_root).calculation.add_step(calc_ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         step_ulid = step_result.ulid
         
         # Write generated structure (simulating relax execution)
@@ -133,7 +133,7 @@ class TestRelaxE2E:
         assert artifact_path.exists()
         
         # Promote
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         promoted_result = svc.structure.promote_relax_structure(
             calculation_selector=calc_ulid,
             step_selector=step_ulid,
@@ -148,14 +148,14 @@ class TestRelaxE2E:
         assert structure_path.exists()
 
         # Verify structure content
-        from quantumvitas.io import read_structure
+        from qmatsuite.io import read_structure
         loaded = read_structure(structure_path)
         assert loaded.lattice.a == pytest.approx(5.5)
 
     def test_promote_requires_current_json(self, tmp_path):
         """Promote fails if current.json doesn't exist."""
         # Create project
-        project_root = QVService.init_project(tmp_path / "project")
+        project_root = QMSService.init_project(tmp_path / "project")
         
         # Import structure
         source = tmp_path / "si.json"
@@ -164,14 +164,14 @@ class TestRelaxE2E:
         structure = Structure(lattice, ["Si"], [[0, 0, 0]])
         source.write_text(json.dumps(structure.as_dict()))
         
-        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
+        struct_result = QMSService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and relax step
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
-        step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
+        calc_result = QMSService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
+        step_result = QMSService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="relax", name="relax")  # GEN type for UI layer
         
         # Try to promote without current.json
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         with pytest.raises(APIError) as exc_info:
             svc.structure.promote_relax_structure(
                 calculation_selector=calc_result.ulid,
@@ -183,7 +183,7 @@ class TestRelaxE2E:
     def test_promote_requires_relax_step_type(self, tmp_path):
         """Promote fails if step is not a relax step."""
         # Create project
-        project_root = QVService.init_project(tmp_path / "project")
+        project_root = QMSService.init_project(tmp_path / "project")
         
         # Import structure
         source = tmp_path / "si.json"
@@ -192,14 +192,14 @@ class TestRelaxE2E:
         structure = Structure(lattice, ["Si"], [[0, 0, 0]])
         source.write_text(json.dumps(structure.as_dict()))
         
-        struct_result = QVService(project_root).structure.import_file(source, name="Silicon")
+        struct_result = QMSService(project_root).structure.import_file(source, name="Silicon")
         
         # Create calculation and SCF step (not relax)
-        calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
-        step_result = QVService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
+        calc_result = QMSService(project_root).project.init_calculation(name="calc001", structure_selector=struct_result.meta.ulid, engine_family="qe")
+        step_result = QMSService(project_root).calculation.add_step(calc_result.ulid, step_type_gen="scf", name="scf")  # GEN type for UI layer
         
         # Try to promote non-relax step
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         with pytest.raises(APIError) as exc_info:
             svc.structure.promote_relax_structure(
                 calculation_selector=calc_result.ulid,
@@ -233,7 +233,7 @@ class TestRelaxE2E:
         
         # Read and verify metadata
         data = json.loads(get_generated_structure_path(calc_dir, step_ulid).read_text())
-        meta = data["__qv_meta__"]
+        meta = data["__qms_meta__"]
         
         assert meta["type"] == "generated_structure"
         assert meta["source_step_ulid"] == step_ulid

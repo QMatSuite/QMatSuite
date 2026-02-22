@@ -376,7 +376,7 @@ cp2k.ssmp -i test_md.inp -o output.log
 
 ### 1.1 Create CP2K Resolver
 
-**File**: `src/quantumvitas/core/engines/cp2k_resolver.py`
+**File**: `src/qmatsuite/core/engines/cp2k_resolver.py`
 
 ```python
 """CP2K binary resolver."""
@@ -472,7 +472,7 @@ def get_cp2k_data_dir() -> Optional[Path]:
 
 ### 1.2 Create mtime-based Latest Selector
 
-**File**: `src/quantumvitas/execution/latest_selector.py`
+**File**: `src/qmatsuite/execution/latest_selector.py`
 
 ```python
 """mtime-based latest artifact selection."""
@@ -506,7 +506,7 @@ def find_latest_by_mtime(workdir: Path, pattern: str) -> Optional[Path]:
 
 ### 1.3 Create CP2K Engine Class
 
-**File**: `src/quantumvitas/engine/cp2k_engine.py`
+**File**: `src/qmatsuite/engine/cp2k_engine.py`
 
 ```python
 """CP2K engine implementation."""
@@ -515,15 +515,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Any
 from dataclasses import dataclass
 
-from quantumvitas.engine.base import Engine, StepResult
-from quantumvitas.core.engines.cp2k_resolver import (
+from qmatsuite.engine.base import Engine, StepResult
+from qmatsuite.core.engines.cp2k_resolver import (
     find_cp2k_executable,
     get_cp2k_version,
 )
-from quantumvitas.execution.latest_selector import find_latest_by_mtime
+from qmatsuite.execution.latest_selector import find_latest_by_mtime
 
 if TYPE_CHECKING:
-    from quantumvitas.calculation.calculation import Calculation
+    from qmatsuite.calculation.calculation import Calculation
 
 
 @dataclass
@@ -593,7 +593,7 @@ class Cp2kEngine(Engine):
             working_dir: Directory to write inputs
             calculation: Calculation context
         """
-        from quantumvitas.engine.cp2k_writer import write_cp2k_input
+        from qmatsuite.engine.cp2k_writer import write_cp2k_input
 
         working_dir.mkdir(parents=True, exist_ok=True)
 
@@ -739,7 +739,7 @@ class Cp2kEngine(Engine):
 
 ### 2.1 Create CP2K Writer
 
-**File**: `src/quantumvitas/engine/cp2k_writer.py`
+**File**: `src/qmatsuite/engine/cp2k_writer.py`
 
 Key functions:
 - `write_cp2k_input(step, structure, output_path)`
@@ -791,7 +791,7 @@ def _write_print_section(f, step_type, params):
 
 ### 3.1 Create CP2K Parser
 
-**File**: `src/quantumvitas/engine/cp2k_parser.py`
+**File**: `src/qmatsuite/engine/cp2k_parser.py`
 
 Key functions:
 - `parse_cp2k_output(output_path) -> dict` - Main log parsing
@@ -846,7 +846,7 @@ def parse_cp2k_cell(cell_path: Path) -> list[dict]:
 
 ### 4.1 Create Preflight Checker (General Feature)
 
-**File**: `src/quantumvitas/execution/preflight.py`
+**File**: `src/qmatsuite/execution/preflight.py`
 
 ```python
 """General preflight checker for missing artifacts."""
@@ -856,7 +856,7 @@ from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from quantumvitas.calculation.calculation import Calculation
+    from qmatsuite.calculation.calculation import Calculation
 
 
 @dataclass
@@ -944,7 +944,7 @@ class PreflightChecker:
 
 ### 4.2 Create CP2KRecipe
 
-**File**: `src/quantumvitas/execution/recipes.py` (add class)
+**File**: `src/qmatsuite/execution/recipes.py` (add class)
 
 ```python
 class CP2KRecipe(BaseRecipe):
@@ -967,7 +967,7 @@ class CP2KRecipe(BaseRecipe):
 
         CP2K declares requirements based on restart_policy.
         """
-        from quantumvitas.execution.preflight import PreflightRequirement
+        from qmatsuite.execution.preflight import PreflightRequirement
 
         reqs = []
         params = step.parameters
@@ -1053,7 +1053,7 @@ class CP2KRecipe(BaseRecipe):
 
 ### 4.3 Create cp2k_step_handler
 
-**File**: `src/quantumvitas/execution/handlers.py` (add function)
+**File**: `src/qmatsuite/execution/handlers.py` (add function)
 
 ```python
 def cp2k_step_handler(
@@ -1072,8 +1072,8 @@ def cp2k_step_handler(
     - Dependencies resolved from Runtime SSOT only (never raw/scan/)
     """
     from datetime import datetime, timezone
-    from quantumvitas.execution.preflight import PreflightChecker
-    from quantumvitas.execution.recipes import CP2KRecipe
+    from qmatsuite.execution.preflight import PreflightChecker
+    from qmatsuite.execution.recipes import CP2KRecipe
 
     started = datetime.now(timezone.utc)
 
@@ -1093,8 +1093,8 @@ def cp2k_step_handler(
     # DO NOT add shutil.rmtree() here - critical alignment decision
 
     # 4. Load step spec (like LAMMPS)
-    from quantumvitas.calculation.structure_steps import StructureStepSpec
-    from quantumvitas.core.resolution import require_step
+    from qmatsuite.calculation.structure_steps import StructureStepSpec
+    from qmatsuite.core.resolution import require_step
 
     step_resolved = require_step(...)
     step_spec = StructureStepSpec.from_yaml(step_resolved.absolute_path)
@@ -1162,7 +1162,7 @@ def _resolve_cp2k_restart_artifacts(step_spec, calculation) -> Optional[Dict]:
     CRITICAL: Always reads from Runtime SSOT (raw/<predecessor_ulid>/),
     NEVER from scan archive (raw/scan/).
     """
-    from quantumvitas.execution.latest_selector import find_latest_by_mtime
+    from qmatsuite.execution.latest_selector import find_latest_by_mtime
 
     params = step_spec.parameters
     restart_policy = params.get("restart_policy", {})
@@ -1195,7 +1195,7 @@ def _resolve_cp2k_restart_artifacts(step_spec, calculation) -> Optional[Dict]:
 
 ### 4.4 Update Handler Map
 
-**File**: `src/quantumvitas/execution/handlers.py` (modify `create_handler_map`)
+**File**: `src/qmatsuite/execution/handlers.py` (modify `create_handler_map`)
 
 ```python
 return {
@@ -1206,7 +1206,7 @@ return {
 
 ### 4.5 Update Recipe Factory
 
-**File**: `src/quantumvitas/execution/recipes.py` (modify `get_recipe_for_engine`)
+**File**: `src/qmatsuite/execution/recipes.py` (modify `get_recipe_for_engine`)
 
 ```python
 recipes = {
@@ -1229,7 +1229,7 @@ recipes = {
 
 ### 5.1 Add Step Types
 
-**File**: `src/quantumvitas/workflow/registry.py` (add to `_STEP_TYPES`)
+**File**: `src/qmatsuite/workflow/registry.py` (add to `_STEP_TYPES`)
 
 ```python
 "cp2k_scf": StepTypeSpec(
@@ -1275,7 +1275,7 @@ recipes = {
 
 ### 5.2 Add MATERIALIZATION_MAP Entries
 
-**File**: `src/quantumvitas/workflow/generalized_steps.py` (add to `MATERIALIZATION_MAP`)
+**File**: `src/qmatsuite/workflow/generalized_steps.py` (add to `MATERIALIZATION_MAP`)
 
 ```python
 # CP2K family mappings
@@ -1288,10 +1288,10 @@ recipes = {
 
 ### 5.3 Register Engine
 
-**File**: `src/quantumvitas/engine/registry.py` (add to `create_default_registry`)
+**File**: `src/qmatsuite/engine/registry.py` (add to `create_default_registry`)
 
 ```python
-from quantumvitas.engine.cp2k_engine import Cp2kEngine
+from qmatsuite.engine.cp2k_engine import Cp2kEngine
 
 registry.register("cp2k", Cp2kEngine())
 ```
@@ -1363,7 +1363,7 @@ def test_cp2k_md_incremental_skip_disabled():
 
 ### 7.1 Add CP2K Relax Handler
 
-**File**: `src/quantumvitas/execution/relax_artifacts.py` (add handler)
+**File**: `src/qmatsuite/execution/relax_artifacts.py` (add handler)
 
 ```python
 def _handle_cp2k_trajectory_artifact(
@@ -1383,8 +1383,8 @@ def _handle_cp2k_trajectory_artifact(
     Returns:
         Path to current.json
     """
-    from quantumvitas.engine.cp2k_parser import extract_final_structure
-    from quantumvitas.execution.latest_selector import find_latest_by_mtime
+    from qmatsuite.engine.cp2k_parser import extract_final_structure
+    from qmatsuite.execution.latest_selector import find_latest_by_mtime
 
     # Find cell file in same directory
     workdir = artifact_path.parent
@@ -1401,7 +1401,7 @@ def _handle_cp2k_trajectory_artifact(
     )
 
     # Canonicalize
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
     canonicalize_structure_like_in_place(structure)
 
     # Write current.json
@@ -1434,12 +1434,12 @@ RELAX_ARTIFACT_HANDLERS["cp2k_trajectory"] = _handle_cp2k_trajectory_artifact
 
 | File | Lines (est.) |
 |------|--------------|
-| `src/quantumvitas/core/engines/cp2k_resolver.py` | 80 |
-| `src/quantumvitas/execution/latest_selector.py` | 30 |
-| `src/quantumvitas/execution/preflight.py` | 100 |
-| `src/quantumvitas/engine/cp2k_engine.py` | 220 |
-| `src/quantumvitas/engine/cp2k_writer.py` | 400 |
-| `src/quantumvitas/engine/cp2k_parser.py` | 250 |
+| `src/qmatsuite/core/engines/cp2k_resolver.py` | 80 |
+| `src/qmatsuite/execution/latest_selector.py` | 30 |
+| `src/qmatsuite/execution/preflight.py` | 100 |
+| `src/qmatsuite/engine/cp2k_engine.py` | 220 |
+| `src/qmatsuite/engine/cp2k_writer.py` | 400 |
+| `src/qmatsuite/engine/cp2k_parser.py` | 250 |
 | `tests/unit/engine/test_cp2k_engine.py` | 150 |
 | `tests/integration/test_cp2k_integration.py` | 120 |
 
@@ -1447,12 +1447,12 @@ RELAX_ARTIFACT_HANDLERS["cp2k_trajectory"] = _handle_cp2k_trajectory_artifact
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/workflow/registry.py` | Add 3 StepTypeSpec entries (md skip=False) |
-| `src/quantumvitas/workflow/generalized_steps.py` | Add 5 MATERIALIZATION_MAP entries |
-| `src/quantumvitas/execution/recipes.py` | Add CP2KRecipe class with preflight, update factory |
-| `src/quantumvitas/execution/handlers.py` | Add cp2k_step_handler with preflight, update handler map |
-| `src/quantumvitas/execution/relax_artifacts.py` | Add cp2k_trajectory handler with cell support |
-| `src/quantumvitas/engine/registry.py` | Register Cp2kEngine |
+| `src/qmatsuite/workflow/registry.py` | Add 3 StepTypeSpec entries (md skip=False) |
+| `src/qmatsuite/workflow/generalized_steps.py` | Add 5 MATERIALIZATION_MAP entries |
+| `src/qmatsuite/execution/recipes.py` | Add CP2KRecipe class with preflight, update factory |
+| `src/qmatsuite/execution/handlers.py` | Add cp2k_step_handler with preflight, update handler map |
+| `src/qmatsuite/execution/relax_artifacts.py` | Add cp2k_trajectory handler with cell support |
+| `src/qmatsuite/engine/registry.py` | Register Cp2kEngine |
 
 ---
 

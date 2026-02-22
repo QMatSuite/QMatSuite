@@ -106,8 +106,8 @@ Moved pseudopotential management from step-level to calculation-level, making it
 ## Files Not Modified (But Used)
 
 1. `gui/src/components/common_cards/CommonCardPseudo.tsx` - Reused in modal (no changes needed)
-2. `gui/src/hooks/useQVClient.ts` - RPC methods already existed (no changes needed)
-3. `src/quantumvitas/api.py` - Backend RPCs already existed (no changes needed)
+2. `gui/src/hooks/useQMSClient.ts` - RPC methods already existed (no changes needed)
+3. `src/qmatsuite/api.py` - Backend RPCs already existed (no changes needed)
 
 ## Backward Compatibility
 

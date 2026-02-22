@@ -6,12 +6,12 @@ They detect IMPORTS using AST, not method calls.
 
 CRITICAL: These must NOT false-positive on legitimate method calls like:
     svc.resolve_calculation(...)  # OK - method call
-    QVService().resolve_calculation(...)  # OK - method call
+    QMSService().resolve_calculation(...)  # OK - method call
 
 They SHOULD catch:
-    from quantumvitas.core.resolution import resolve_calculation  # FORBIDDEN
-    import quantumvitas.core.resolution  # FORBIDDEN
-    from quantumvitas.core import resolution  # FORBIDDEN
+    from qmatsuite.core.resolution import resolve_calculation  # FORBIDDEN
+    import qmatsuite.core.resolution  # FORBIDDEN
+    from qmatsuite.core import resolution  # FORBIDDEN
 """
 
 import ast
@@ -68,7 +68,7 @@ def _report_violations(violations: list, violation_type: str, context_path: Opti
         if isinstance(v, tuple):  # Bare resolve calls: (line_num, func_name)
             # Use context_path or default to cli/main.py for bare calls
             target_file = context_path if context_path and context_path.is_file() else (
-                PROJECT_ROOT / "src/quantumvitas/cli/main.py"
+                PROJECT_ROOT / "src/qmatsuite/cli/main.py"
             )
             by_file[target_file].append(v)
         else:  # Violation object
@@ -95,7 +95,7 @@ def _report_violations(violations: list, violation_type: str, context_path: Opti
             if isinstance(v, tuple):
                 # Bare resolve call
                 lines.append(f"    Line {v[0]}: bare call to {v[1]}()")
-                lines.append(f"      Suggested fix: use QVService.{v[1]}_ref() or svc.{v[1]}_ref()")
+                lines.append(f"      Suggested fix: use QMSService.{v[1]}_ref() or svc.{v[1]}_ref()")
             else:
                 # Import violation
                 import_stmt = f"{v.import_type} {v.module_name}"
@@ -104,7 +104,7 @@ def _report_violations(violations: list, violation_type: str, context_path: Opti
                 lines.append(f"    Line {v.line_number}: {import_stmt}")
                 lines.append(f"      Module: {v.module_name}")
                 lines.append(f"      Forbidden prefix: {v.forbidden_prefix}")
-                lines.append(f"      Suggested fix: use quantumvitas.api (QVService wrapper or re-export)")
+                lines.append(f"      Suggested fix: use qmatsuite.api (QMSService wrapper or re-export)")
         
         if len(file_violations) > 5:
             lines.append(f"    ... and {len(file_violations) - 5} more violation(s)")
@@ -130,7 +130,7 @@ def _discover_cli_entry_module() -> str:
     Discover the CLI entry module from pyproject.toml.
 
     Returns:
-        Module path (e.g., "quantumvitas.cli.main")
+        Module path (e.g., "qmatsuite.cli.main")
     """
     pyproject_path = PROJECT_ROOT / "pyproject.toml"
     if not pyproject_path.exists():
@@ -148,28 +148,28 @@ def _discover_cli_entry_module() -> str:
         except ImportError:
             # Last resort: parse manually for console_scripts
             content = pyproject_path.read_text()
-            if 'qv = "quantumvitas.cli:app"' in content:
-                # Default based on known structure
-                return "quantumvitas.cli.main"
+            if 'qms = "qmatsuite.cli:app"' in content:
+                return "qmatsuite.cli.main"
+            if 'qms = "qmatsuite.cli:app"' in content:
+                return "qmatsuite.cli.main"
             raise RuntimeError("Cannot parse pyproject.toml - install tomli or toml")
 
     # Extract console_scripts entry
     scripts = config.get("project", {}).get("scripts", {})
-    if "qv" in scripts:
-        entry_point = scripts["qv"]
-        # Format: "quantumvitas.cli:app" -> module is "quantumvitas.cli"
+    if "qms" in scripts:
+        entry_point = scripts["qms"]
+        # Format: "qmatsuite.cli:app" -> module is "qmatsuite.cli"
         if ":" in entry_point:
             module_part = entry_point.split(":")[0]
-            # The actual module with app is cli/main.py
-            if module_part == "quantumvitas.cli":
-                return "quantumvitas.cli.main"
+            if module_part in {"qmatsuite.cli", "qmatsuite.cli"}:
+                return f"{module_part}.main"
             return module_part
         return entry_point
 
     # Fallback: search for Typer app
-    cli_main = PROJECT_ROOT / "src/quantumvitas/cli/main.py"
+    cli_main = PROJECT_ROOT / "src/qmatsuite/cli/main.py"
     if cli_main.exists():
-        return "quantumvitas.cli.main"
+        return "qmatsuite.cli.main"
 
     raise RuntimeError("Cannot discover CLI entry module")
 
@@ -179,15 +179,15 @@ def _discover_daemon_entry_module() -> str:
     Discover the daemon entry module.
 
     Returns:
-        Module path (e.g., "quantumvitas.daemon.server")
+        Module path (e.g., "qmatsuite.daemon.server")
     """
     # Check if daemon/server.py exists
-    daemon_server = PROJECT_ROOT / "src/quantumvitas/daemon/server.py"
+    daemon_server = PROJECT_ROOT / "src/qmatsuite/daemon/server.py"
     if daemon_server.exists():
-        # Check if it has QVDaemon class
+        # Check if it has QMSDaemon class
         content = daemon_server.read_text()
-        if "class QVDaemon" in content:
-            return "quantumvitas.daemon.server"
+        if "class QMSDaemon" in content:
+            return "qmatsuite.daemon.server"
 
     # Fallback: search for server/app factory patterns
     # This is a last resort - we expect daemon/server.py to exist
@@ -203,10 +203,10 @@ def _get_bootstrap_allowlist() -> dict[str, set[str]]:
         Only ONE file should be allowed, and only minimal imports.
     """
     allowlist = {}
-    bootstrap_path = PROJECT_ROOT / "src/quantumvitas/frontends/_shared/bootstrap.py"
+    bootstrap_path = PROJECT_ROOT / "src/qmatsuite/frontends/_shared/bootstrap.py"
     if bootstrap_path.exists():
-        # Allow ONLY quantumvitas.core.context for bootstrap
-        allowlist[str(bootstrap_path)] = {"quantumvitas.core.context"}
+        # Allow ONLY qmatsuite.core.context for bootstrap
+        allowlist[str(bootstrap_path)] = {"qmatsuite.core.context"}
     
     return allowlist
 
@@ -215,19 +215,19 @@ class TestFrontendImportRules:
     """Frontends must not import from kernel modules."""
 
     FORBIDDEN_PREFIXES = (
-        "quantumvitas.core",
-        "quantumvitas.calculation",
-        "quantumvitas.analysis",
-        "quantumvitas.io",
-        "quantumvitas.drivers",
-        "quantumvitas.engine",
-        "quantumvitas.workflow",
-        "quantumvitas.presets",
+        "qmatsuite.core",
+        "qmatsuite.calculation",
+        "qmatsuite.analysis",
+        "qmatsuite.io",
+        "qmatsuite.drivers",
+        "qmatsuite.engine",
+        "qmatsuite.workflow",
+        "qmatsuite.presets",
     )
 
     def test_cli_no_kernel_imports(self):
         """cli/* must not import from kernel modules."""
-        cli_dir = PROJECT_ROOT / "src/quantumvitas/cli"
+        cli_dir = PROJECT_ROOT / "src/qmatsuite/cli"
         if not cli_dir.exists():
             pytest.skip("CLI directory does not exist")
 
@@ -249,7 +249,7 @@ class TestFrontendImportRules:
 
     def test_daemon_no_kernel_imports(self):
         """daemon/* must not import from kernel modules."""
-        daemon_dir = PROJECT_ROOT / "src/quantumvitas/daemon"
+        daemon_dir = PROJECT_ROOT / "src/qmatsuite/daemon"
         if not daemon_dir.exists():
             pytest.skip("Daemon directory does not exist")
 
@@ -270,7 +270,7 @@ class TestFrontendImportRules:
 
     def test_notebook_no_kernel_imports(self):
         """notebook/* must not import from kernel modules."""
-        notebook_dir = PROJECT_ROOT / "src/quantumvitas/frontends/notebook"
+        notebook_dir = PROJECT_ROOT / "src/qmatsuite/frontends/notebook"
         if not notebook_dir.exists():
             pytest.skip("Notebook frontend does not exist")
 
@@ -311,17 +311,17 @@ class TestToolsImportRules:
     """Tools must only import from api."""
 
     FORBIDDEN_PREFIXES = (
-        "quantumvitas.core",
-        "quantumvitas.calculation",
-        "quantumvitas.drivers",
-        "quantumvitas.analysis",
-        "quantumvitas.io",
-        "quantumvitas.engine",
+        "qmatsuite.core",
+        "qmatsuite.calculation",
+        "qmatsuite.drivers",
+        "qmatsuite.analysis",
+        "qmatsuite.io",
+        "qmatsuite.engine",
     )
 
     def test_tools_no_kernel_imports(self):
         """tools/* must not import from kernel modules."""
-        tools_dir = PROJECT_ROOT / "src/quantumvitas/tools"
+        tools_dir = PROJECT_ROOT / "src/qmatsuite/tools"
         if not tools_dir.exists():
             pytest.skip("Tools directory does not exist")
 
@@ -348,13 +348,13 @@ class TestToolsImportRules:
 class TestAPIImportRules:
     """API must not import from frontends or tools."""
 
-    FORBIDDEN_PREFIXES = ("quantumvitas.frontends", "quantumvitas.cli", "quantumvitas.daemon", "quantumvitas.tools")
+    FORBIDDEN_PREFIXES = ("qmatsuite.frontends", "qmatsuite.cli", "qmatsuite.daemon", "qmatsuite.tools")
 
     def test_api_no_frontend_imports(self):
         """api/* must not import from frontends/*."""
         # Check for api/ directory (new structure) or api.py (legacy)
-        api_dir = PROJECT_ROOT / "src/quantumvitas/api"
-        api_file = PROJECT_ROOT / "src/quantumvitas/api.py"
+        api_dir = PROJECT_ROOT / "src/qmatsuite/api"
+        api_file = PROJECT_ROOT / "src/qmatsuite/api.py"
 
         if api_dir.exists():
             # New structure: scan api/ directory
@@ -397,7 +397,7 @@ class TestCLIThinRule:
 
     def test_cli_no_bare_resolve_calls(self):
         """CLI must not make bare calls to resolve_* functions."""
-        cli_file = PROJECT_ROOT / "src/quantumvitas/cli/main.py"
+        cli_file = PROJECT_ROOT / "src/qmatsuite/cli/main.py"
         if not cli_file.exists():
             pytest.skip("CLI main.py does not exist")
 
@@ -439,7 +439,7 @@ class TestCLIThinRule:
             return ""
         lines = ["Bare resolve_* function calls found (use svc.resolve_*_ref() instead):"]
         for line_num, func_name in violations:
-            lines.append(f"  {PROJECT_ROOT / 'src/quantumvitas/cli/main.py'}:{line_num}: {func_name}()")
+            lines.append(f"  {PROJECT_ROOT / 'src/qmatsuite/cli/main.py'}:{line_num}: {func_name}()")
         return "\n".join(lines)
 
 
@@ -475,29 +475,29 @@ class TestImportabilitySmoke:
 
         try:
             module = importlib.import_module(daemon_module_path)
-            # Check that 'QVDaemon' class exists
-            if not hasattr(module, "QVDaemon"):
-                pytest.fail(f"Daemon module {daemon_module_path} does not have 'QVDaemon' class")
+            # Check that 'QMSDaemon' class exists
+            if not hasattr(module, "QMSDaemon"):
+                pytest.fail(f"Daemon module {daemon_module_path} does not have 'QMSDaemon' class")
         except ImportError as e:
             pytest.fail(f"Daemon import failed: {e}")
 
     def test_api_importable(self):
         """API must be importable."""
         try:
-            from quantumvitas.api import QVService
+            from qmatsuite.api import QMSService
         except ImportError as e:
             pytest.fail(f"API import failed: {e}")
 
     def test_package_importable(self):
         """Main package must be importable."""
         try:
-            import quantumvitas
+            import qmatsuite
         except ImportError as e:
             pytest.fail(f"Package import failed: {e}")
 
     def test_cli_compiles(self):
         """CLI must compile without syntax errors."""
-        cli_file = PROJECT_ROOT / "src/quantumvitas/cli/main.py"
+        cli_file = PROJECT_ROOT / "src/qmatsuite/cli/main.py"
         if not cli_file.exists():
             pytest.skip("CLI main.py does not exist")
 
@@ -513,7 +513,7 @@ class TestImportabilitySmoke:
 
     def test_daemon_compiles(self):
         """Daemon must compile without syntax errors."""
-        daemon_file = PROJECT_ROOT / "src/quantumvitas/daemon/server.py"
+        daemon_file = PROJECT_ROOT / "src/qmatsuite/daemon/server.py"
         if not daemon_file.exists():
             pytest.skip("Daemon server.py does not exist")
 
@@ -526,4 +526,3 @@ class TestImportabilitySmoke:
         assert result.returncode == 0, (
             f"Daemon compilation failed:\n{result.stderr}"
         )
-

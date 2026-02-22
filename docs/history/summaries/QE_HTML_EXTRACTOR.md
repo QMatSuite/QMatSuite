@@ -2,7 +2,7 @@
 
 ## Overview
 
-The QE HTML extractor (`tools/extract_qe_parameters_v*.py`) scrapes Quantum ESPRESSO HTML documentation files (`INPUT_*.html`) to extract structured parameter metadata for use in the QuantumVITAS GUI.
+The QE HTML extractor (`tools/extract_qe_parameters_v*.py`) scrapes Quantum ESPRESSO HTML documentation files (`INPUT_*.html`) to extract structured parameter metadata for use in the QMatSuite GUI.
 
 **Purpose**: Generate machine-readable JSON metadata from QE's human-readable HTML documentation.
 
@@ -11,7 +11,7 @@ The QE HTML extractor (`tools/extract_qe_parameters_v*.py`) scrapes Quantum ESPR
 - One HTML file per QE module (pw, ph, cp, neb, etc.)
 
 **Outputs**:
-- `src/quantumvitas/data/qe_module_parameters.json` - Schema v3 JSON with parameter metadata and section hierarchy
+- `src/qmatsuite/data/qe_module_parameters.json` - Schema v3 JSON with parameter metadata and section hierarchy
 - Legacy versions preserved as `qe_module_parameters.legacy.v*.json`
 
 **Why ToC-driven ordering?**
@@ -456,7 +456,7 @@ After the initial v3 implementation, a final robustness pass addressed several e
 ### 4) Regeneration and Invariants
 
 After the robustness pass:
-- **JSON regenerated**: `src/quantumvitas/data/qe_module_parameters.json` updated
+- **JSON regenerated**: `src/qmatsuite/data/qe_module_parameters.json` updated
 - **Schema version**: Remains 3 (no schema changes)
 - **Parameter count**: Unchanged (no accidental drops)
 - **Order preservation**: Still guaranteed:
@@ -528,12 +528,12 @@ To validate the v3 extractor locally:
 ### 1. Run Extractor
 
 ```bash
-cd <HOME>/quantumVITAS
+cd <HOME>/QMatSuite
 python3 tools/extract_qe_parameters_v3.py --use-cache --pretty
 ```
 
 **Check**:
-- Only one canonical output JSON path: `src/quantumvitas/data/qe_module_parameters.json`
+- Only one canonical output JSON path: `src/qmatsuite/data/qe_module_parameters.json`
 - No errors or warnings (check stderr)
 
 ### 2. Verify Schema and Structure
@@ -542,7 +542,7 @@ python3 tools/extract_qe_parameters_v3.py --use-cache --pretty
 import json
 from pathlib import Path
 
-v4_path = Path('src/quantumvitas/data/qe_module_parameters.json')
+v4_path = Path('src/qmatsuite/data/qe_module_parameters.json')
 v4_data = json.loads(v4_path.read_text())
 
 # Check schema version
@@ -668,7 +668,7 @@ tools/
   extract_qe_parameters_v2.py  # Current (documented, preserved)
   extract_qe_parameters_v3.py  # Current (active)
 
-src/quantumvitas/data/
+src/qmatsuite/data/
   qe_module_parameters.json              # Schema v3 (current)
   qe_module_parameters.legacy.v0.json    # Schema v0
   qe_module_parameters.legacy.v1.json    # Schema v1
@@ -684,4 +684,4 @@ docs/
 
 - QE Documentation: https://www.quantum-espresso.org/Doc/
 - HTML files: `temp/qe_docs/INPUT_*.html`
-- JSON schema: See `src/quantumvitas/data/qe_module_parameters.json` (schema_version field)
+- JSON schema: See `src/qmatsuite/data/qe_module_parameters.json` (schema_version field)

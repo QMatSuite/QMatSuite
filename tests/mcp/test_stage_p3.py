@@ -23,31 +23,31 @@ import pytest
 class TestServerStartup:
     """Verify the server auto-load block in server.py."""
 
-    def test_server_loads_existing_project(self, qv_project, monkeypatch):
+    def test_server_loads_existing_project(self, qms_project, monkeypatch):
         """When QMATSUITE_PROJECT points at an existing project, it is auto-loaded."""
-        from quantumvitas.mcp import project as mcp_project
+        from qmatsuite.mcp import project as mcp_project
 
         # Reset the override so auto-load logic can be exercised
         monkeypatch.setattr(mcp_project, "_project_root_override", None)
-        monkeypatch.setenv("QMATSUITE_PROJECT", str(qv_project))
+        monkeypatch.setenv("QMATSUITE_PROJECT", str(qms_project))
 
         # Simulate the startup auto-load logic from server.py
         import os
         from pathlib import Path
-        from quantumvitas.core.project_utils import find_project_root
+        from qmatsuite.core.project_utils import find_project_root
 
         project_dir = Path(os.environ["QMATSUITE_PROJECT"]).resolve()
         found = find_project_root(start=project_dir) if project_dir.exists() else None
         assert found is not None
         mcp_project.set_project_root(found)
 
-        assert mcp_project.get_project_root() == qv_project
+        assert mcp_project.get_project_root() == qms_project
 
     def test_server_starts_without_project(self, tmp_path, monkeypatch):
         """When QMATSUITE_PROJECT points at a non-project dir, startup still succeeds."""
         monkeypatch.setenv("QMATSUITE_PROJECT", str(tmp_path))
 
-        from quantumvitas.core.project_utils import find_project_root
+        from qmatsuite.core.project_utils import find_project_root
 
         found = find_project_root(start=tmp_path)
         assert found is None  # No crash, just no project
@@ -66,45 +66,45 @@ class TestInitProjectSimplified:
         target.mkdir()
         monkeypatch.setenv("QMATSUITE_PROJECT", str(target))
 
-        from quantumvitas.mcp import project as mcp_project
+        from qmatsuite.mcp import project as mcp_project
         monkeypatch.setattr(mcp_project, "_project_root_override", None)
 
-        from quantumvitas.mcp.tools.init_project import init_project
+        from qmatsuite.mcp.tools.init_project import init_project
 
         result = init_project.fn(name="TestProject")
         assert result["status"] == "success"
         assert result["data"]["loaded"] is False
-        assert (target / "project.qv.yml").exists()
+        assert (target / "project.qms.yml").exists()
 
-    def test_init_loads_existing(self, qv_project, monkeypatch):
+    def test_init_loads_existing(self, qms_project, monkeypatch):
         """init_project with an existing project returns loaded=True."""
-        monkeypatch.setenv("QMATSUITE_PROJECT", str(qv_project))
+        monkeypatch.setenv("QMATSUITE_PROJECT", str(qms_project))
 
-        from quantumvitas.mcp import project as mcp_project
+        from qmatsuite.mcp import project as mcp_project
         monkeypatch.setattr(mcp_project, "_project_root_override", None)
 
-        from quantumvitas.mcp.tools.init_project import init_project
+        from qmatsuite.mcp.tools.init_project import init_project
 
         result = init_project.fn()
         assert result["status"] == "success"
         assert result["data"]["loaded"] is True
-        assert result["data"]["project_root"] == str(qv_project)
+        assert result["data"]["project_root"] == str(qms_project)
 
-    def test_init_finds_parent_project(self, qv_project, monkeypatch):
+    def test_init_finds_parent_project(self, qms_project, monkeypatch):
         """init_project from a subdirectory finds the parent project."""
-        subdir = qv_project / "subdir"
+        subdir = qms_project / "subdir"
         subdir.mkdir()
         monkeypatch.setenv("QMATSUITE_PROJECT", str(subdir))
 
-        from quantumvitas.mcp import project as mcp_project
+        from qmatsuite.mcp import project as mcp_project
         monkeypatch.setattr(mcp_project, "_project_root_override", None)
 
-        from quantumvitas.mcp.tools.init_project import init_project
+        from qmatsuite.mcp.tools.init_project import init_project
 
         result = init_project.fn()
         assert result["status"] == "success"
         assert result["data"]["loaded"] is True
-        assert result["data"]["project_root"] == str(qv_project)
+        assert result["data"]["project_root"] == str(qms_project)
 
 
 # ---------------------------------------------------------------------------
@@ -114,10 +114,10 @@ class TestInitProjectSimplified:
 class TestDryRunComplete:
     """Verify dry_run includes K_POINTS and nat/ntyp."""
 
-    def test_dry_run_includes_kpoints(self, qv_project):
+    def test_dry_run_includes_kpoints(self, qms_project):
         """QE dry_run output must contain K_POINTS card."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="silicon",
@@ -136,10 +136,10 @@ class TestDryRunComplete:
         pw_content = pw_files[0]["content"]
         assert "K_POINTS" in pw_content, f"K_POINTS card missing from dry_run output:\n{pw_content}"
 
-    def test_dry_run_includes_nat_ntyp(self, qv_project):
+    def test_dry_run_includes_nat_ntyp(self, qms_project):
         """QE dry_run output must contain nat and ntyp in SYSTEM namelist."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="silicon",
@@ -167,11 +167,11 @@ class TestDryRunComplete:
 class TestPresetEnumValues:
     """Verify preset profile names are accepted by apply_preset."""
 
-    def test_get_presets_values_accepted_by_apply(self, qv_project):
+    def test_get_presets_values_accepted_by_apply(self, qms_project):
         """Values from get_presets() must be accepted by apply_preset()."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.get_presets import get_presets
-        from quantumvitas.mcp.tools.apply_preset import apply_preset
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.get_presets import get_presets
+        from qmatsuite.mcp.tools.apply_preset import apply_preset
 
         # Get preset options
         presets_result = get_presets.fn(engine="qe", workflow="scf")
@@ -198,10 +198,10 @@ class TestPresetEnumValues:
                     f"{result.get('message', '')}"
                 )
 
-    def test_magnetism_nm_accepted(self, qv_project):
+    def test_magnetism_nm_accepted(self, qms_project):
         """apply_preset with magnetism='NM' must not raise 'Unknown MagnetismOption'."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.apply_preset import apply_preset
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.apply_preset import apply_preset
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="silicon",
@@ -225,9 +225,9 @@ class TestPresetEnumValues:
 class TestCifImport:
     """Verify CIF error messages are helpful."""
 
-    def test_cif_error_message_helpful(self, qv_project):
+    def test_cif_error_message_helpful(self, qms_project):
         """import_structure with broken CIF gives a CIF-specific hint."""
-        from quantumvitas.mcp.tools.import_structure import import_structure
+        from qmatsuite.mcp.tools.import_structure import import_structure
 
         result = import_structure.fn(
             file_content="data_invalid\n_cell_length_a  5.43\n",
@@ -250,10 +250,10 @@ class TestCifImport:
 class TestDemoStructureRegistration:
     """Verify load_demo registers the structure properly."""
 
-    def test_load_demo_structure_in_list(self, qv_project):
+    def test_load_demo_structure_in_list(self, qms_project):
         """After load_demo, the demo's structure appears in list_structures."""
-        from quantumvitas.mcp.tools.demo_store import search_demos, load_demo
-        from quantumvitas.mcp.tools.list_structures import list_structures
+        from qmatsuite.mcp.tools.demo_store import search_demos, load_demo
+        from qmatsuite.mcp.tools.list_structures import list_structures
 
         # Find a demo
         demos = search_demos.fn(engine="qe")
@@ -275,11 +275,11 @@ class TestDemoStructureRegistration:
         # Should have at least 2 structures (original Silicon + demo's structure)
         assert len(struct_names) >= 2, f"Expected >=2 structures, got: {struct_names}"
 
-    def test_load_demo_structure_reusable(self, qv_project):
+    def test_load_demo_structure_reusable(self, qms_project):
         """After load_demo, the demo's structure can be used in create_calculation."""
-        from quantumvitas.mcp.tools.demo_store import search_demos, load_demo
-        from quantumvitas.mcp.tools.list_structures import list_structures
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.demo_store import search_demos, load_demo
+        from qmatsuite.mcp.tools.list_structures import list_structures
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
 
         # Find and load a QE demo
         demos = search_demos.fn(engine="qe")
@@ -319,10 +319,10 @@ class TestDemoStructureRegistration:
 class TestPreflightKpoints:
     """Verify no false positive MISSING_KPOINTS from preflight."""
 
-    def test_no_false_positive_kpoints(self, qv_project):
+    def test_no_false_positive_kpoints(self, qms_project):
         """Default QE SCF calc should NOT report MISSING_KPOINTS in preflight."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="silicon",
@@ -347,7 +347,7 @@ class TestContextHints:
 
     def test_list_engines_mentions_demos(self):
         """list_engines hint should mention search_demos."""
-        from quantumvitas.mcp.tools.list_engines import list_engines
+        from qmatsuite.mcp.tools.list_engines import list_engines
 
         result = list_engines.fn()
         assert result["status"] == "success"

@@ -157,4 +157,4 @@ When adding new curated samples:
 
 - QMCPACK Manual: https://qmcpack.readthedocs.io/en/develop/
 - QMCPACK GitHub: https://github.com/QMCPACK/qmcpack
-- Metadata catalog: `src/quantumvitas/drivers/qmcpack/data/qmcpack_tags.json`
+- Metadata catalog: `src/qmatsuite/drivers/qmcpack/data/qmcpack_tags.json`

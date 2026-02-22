@@ -13,7 +13,7 @@ This report audits the current QMatSuite repository against the target "single c
 
 **Key Findings**:
 - ✅ Core modules correctly avoid frontend imports (good dependency direction)
-- ✅ Daemon consistently uses QVService for most operations
+- ✅ Daemon consistently uses QMSService for most operations
 - ❌ CLI imports directly from 15+ core modules instead of using api layer
 - ❌ No structured error model (exceptions are stringly-typed)
 - ❌ `tools/` directory contains maintenance scripts (naming conflict)
@@ -29,16 +29,16 @@ This report audits the current QMatSuite repository against the target "single c
 
 | Module | Files | LOC (est.) | Purpose |
 |--------|-------|------------|---------|
-| `src/quantumvitas/core/` | 59 | ~15,000 | Kernel: models, resolution, locking, resources |
-| `src/quantumvitas/drivers/` | 53 | ~12,000 | Engine drivers (QE, VASP, LAMMPS, etc.) |
-| `src/quantumvitas/calculation/` | 27 | ~8,000 | Calculation orchestration, runner |
-| `src/quantumvitas/engine/` | 18 | ~4,000 | Engine interfaces |
-| `src/quantumvitas/io/` | 14 | ~4,000 | Structure I/O, format conversion |
-| `src/quantumvitas/analysis/` | 13 | ~3,500 | Output parsing, plotting |
-| `src/quantumvitas/daemon/` | 3 | ~10,000 | JSON-RPC daemon for GUI |
-| `src/quantumvitas/cli/` | 3 | ~6,500 | Typer CLI |
-| `src/quantumvitas/api.py` | 1 | ~12,000 | QVService (current API layer) |
-| `src/quantumvitas/data/` | 2 | ~500 | Static JSON metadata |
+| `src/qmatsuite/core/` | 59 | ~15,000 | Kernel: models, resolution, locking, resources |
+| `src/qmatsuite/drivers/` | 53 | ~12,000 | Engine drivers (QE, VASP, LAMMPS, etc.) |
+| `src/qmatsuite/calculation/` | 27 | ~8,000 | Calculation orchestration, runner |
+| `src/qmatsuite/engine/` | 18 | ~4,000 | Engine interfaces |
+| `src/qmatsuite/io/` | 14 | ~4,000 | Structure I/O, format conversion |
+| `src/qmatsuite/analysis/` | 13 | ~3,500 | Output parsing, plotting |
+| `src/qmatsuite/daemon/` | 3 | ~10,000 | JSON-RPC daemon for GUI |
+| `src/qmatsuite/cli/` | 3 | ~6,500 | Typer CLI |
+| `src/qmatsuite/api.py` | 1 | ~12,000 | QMSService (current API layer) |
+| `src/qmatsuite/data/` | 2 | ~500 | Static JSON metadata |
 | Other | ~80 | ~15,000 | Presets, workflow, history, IR, project |
 | **Total** | ~270 | ~90,000 | |
 
@@ -60,7 +60,7 @@ This report audits the current QMatSuite repository against the target "single c
        ▼                           ▼
 ┌──────────────────────────────────────────────┐
 │                   api.py                      │
-│                 (QVService)                   │
+│                 (QMSService)                   │
 └───────────────────────┬──────────────────────┘
                         │
                         ▼
@@ -78,68 +78,68 @@ This report audits the current QMatSuite repository against the target "single c
 
 **Verification Command**:
 ```bash
-rg "from quantumvitas\.(cli|daemon)" src/quantumvitas/core/
-rg "from quantumvitas\.(cli|daemon)" src/quantumvitas/calculation/
-rg "from quantumvitas\.(cli|daemon)" src/quantumvitas/drivers/
-rg "from quantumvitas\.(cli|daemon)" src/quantumvitas/io/
+rg "from qmatsuite\.(cli|daemon)" src/qmatsuite/core/
+rg "from qmatsuite\.(cli|daemon)" src/qmatsuite/calculation/
+rg "from qmatsuite\.(cli|daemon)" src/qmatsuite/drivers/
+rg "from qmatsuite\.(cli|daemon)" src/qmatsuite/io/
 ```
 
 **Result**: ✅ **ZERO MATCHES** - Core modules correctly do not import from frontends.
 
 ### 2.2 Daemon → API (MOSTLY CORRECT)
 
-**Evidence** (`src/quantumvitas/daemon/server.py:31`):
+**Evidence** (`src/qmatsuite/daemon/server.py:31`):
 ```python
-from quantumvitas.api import QVService, QVServiceError
+from qmatsuite.api import QMSService, QMSServiceError
 ```
 
 **Observations**:
-- Daemon imports `QVService` and calls it for most operations ✅
+- Daemon imports `QMSService` and calls it for most operations ✅
 - Daemon also imports from `core.resolution`, `core.project_utils` directly ⚠️
 - These should be routed through API layer
 
 **Direct Core Imports in Daemon** (lines 33-52):
 ```python
-from quantumvitas.core.exceptions import LegacyProjectError
-from quantumvitas.core.resolution import (
+from qmatsuite.core.exceptions import LegacyProjectError
+from qmatsuite.core.resolution import (
     ResourceNotFoundError, RegistryOutOfSyncError, SelectorNotFoundError,
     build_resource_index, resolve_calculation, resolve_step, ResourceIndex,
 )
-from quantumvitas.core.project_utils import load_project_config
+from qmatsuite.core.project_utils import load_project_config
 ```
 
 **Verdict**: ⚠️ PARTIAL VIOLATION - 6 direct core imports should be routed through API.
 
 ### 2.3 CLI → API (SIGNIFICANT VIOLATIONS)
 
-**Evidence** (`src/quantumvitas/cli/main.py` lines 1-100):
+**Evidence** (`src/qmatsuite/cli/main.py` lines 1-100):
 
 ```python
 # Direct core imports (VIOLATIONS):
-from quantumvitas.core.resources import (...)           # 8 imports
-from quantumvitas.core.context import (...)             # 2 imports
-from quantumvitas.core.exceptions import (...)          # 1 import
-from quantumvitas.core.resolution import (...)          # 7 imports
-from quantumvitas.core.selectors import (...)           # 6 imports
-from quantumvitas.core.project_utils import (...)       # 19 imports
-from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe_installation import get_qe_home
+from qmatsuite.core.resources import (...)           # 8 imports
+from qmatsuite.core.context import (...)             # 2 imports
+from qmatsuite.core.exceptions import (...)          # 1 import
+from qmatsuite.core.resolution import (...)          # 7 imports
+from qmatsuite.core.selectors import (...)           # 6 imports
+from qmatsuite.core.project_utils import (...)       # 19 imports
+from qmatsuite.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe_installation import get_qe_home
 
 # Other direct imports:
-from quantumvitas.analysis import bands, dos, energy
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.types import StepMode, StepStatus
-from quantumvitas.calculation.input_runner import (...)
+from qmatsuite.analysis import bands, dos, energy
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.types import StepMode, StepStatus
+from qmatsuite.calculation.input_runner import (...)
 ```
 
 **API Usage in CLI** (sparse):
 ```python
-# Only 4 occurrences of QVService import:
+# Only 4 occurrences of QMSService import:
 # Line 1610, 3943, 4060, 4134
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 ```
 
 **Verdict**: ❌ MAJOR VIOLATION - CLI bypasses API layer for most operations. Imports from 15+ core modules directly.
@@ -165,7 +165,7 @@ from quantumvitas.api import QVService
 | `save_project_config()` | `core/project_utils.py` | No lock ⚠️ |
 | `save_calculation()` | `core/models.py` | Via `save_yaml_doc` ✅ |
 
-**Finding**: Most YAML writes are centralized through `save_yaml_doc()` which acquires `calc_edit_lock`. However, project config writes (`project.qv.yml`) do not acquire locks.
+**Finding**: Most YAML writes are centralized through `save_yaml_doc()` which acquires `calc_edit_lock`. However, project config writes (`project.qms.yml`) do not acquire locks.
 
 **Recommendation**: Add project-level edit lock or ensure project config writes go through a locked path.
 
@@ -187,8 +187,8 @@ from quantumvitas.api import QVService
 
 **API-Level Error** (`api.py`):
 ```python
-class QVServiceError(Exception):
-    """Base exception for QVService operations."""
+class QMSServiceError(Exception):
+    """Base exception for QMSService operations."""
     pass
 ```
 
@@ -205,12 +205,12 @@ tools/
 ├── extract_qe_parameters_v3.py
 ├── generate_demo_snapshots.py
 ├── generate_pyscf_demo.py
-├── qv_migrate_legacy_project.py
+├── qms_migrate_legacy_project.py
 ├── verify_demos.py
 └── ... (25 total scripts)
 ```
 
-**Finding**: The repo-level `tools/` contains maintenance/development scripts. This conflicts with the desired `quantumvitas/tools/` module for agent-ready primitives.
+**Finding**: The repo-level `tools/` contains maintenance/development scripts. This conflicts with the desired `qmatsuite/tools/` module for agent-ready primitives.
 
 **Recommendation**: Rename repo-level `tools/` to `scripts/`.
 
@@ -249,10 +249,10 @@ tools/
 
 | Hazard | Mitigation |
 |--------|------------|
-| Breaking `qv` CLI entrypoint | Add re-export shim at old location |
+| Breaking `qms` CLI entrypoint | Add re-export shim at old location |
 | Breaking daemon startup for GUI | Add re-export shim at old location |
 | CI workflow references `tools/` | Update to `scripts/` in one commit |
-| Third-party imports from `quantumvitas.cli` | Deprecation warning + shim |
+| Third-party imports from `qmatsuite.cli` | Deprecation warning + shim |
 
 ---
 
@@ -267,7 +267,7 @@ tools/
 
 2. **Create directory structure skeleton**
    ```
-   src/quantumvitas/
+   src/qmatsuite/
    ├── api/           # Create, move api.py → api/service.py
    ├── tools/         # Create empty, add __init__.py
    └── frontends/     # Create with cli/, daemon/, notebook/, agent/
@@ -275,7 +275,7 @@ tools/
 
 3. **Add ErrorSpec infrastructure**
    - Create `api/errors.py` with `ErrorSpec` class
-   - Update `QVServiceError` to carry `ErrorSpec`
+   - Update `QMSServiceError` to carry `ErrorSpec`
    - Do not yet wrap all exceptions (gradual rollout)
 
 ### Phase 2: API Layer Consolidation (MEDIUM)
@@ -287,13 +287,13 @@ tools/
 
 5. **Create missing API methods for CLI**
    - Audit CLI handlers that bypass API
-   - Add corresponding methods to `QVService`
-   - Example: `list_qe_parameter_metadata()` → `QVService.list_param_metadata()`
+   - Add corresponding methods to `QMSService`
+   - Example: `list_qe_parameter_metadata()` → `QMSService.list_param_metadata()`
 
 6. **Wrap core exceptions in ErrorSpec**
-   - `QVService` catches core exceptions
+   - `QMSService` catches core exceptions
    - Wraps in `ErrorSpec` with code, category, evidence
-   - Returns `QVServiceError(error_spec)`
+   - Returns `QMSServiceError(error_spec)`
 
 ### Phase 3: Frontend Relocation (MEDIUM)
 
@@ -313,18 +313,18 @@ tools/
 9. **Refactor CLI to use API layer**
    - Command by command, replace direct core imports
    - Move parameter adaptation logic to command handlers
-   - Business logic moves to `QVService` methods
+   - Business logic moves to `QMSService` methods
    - This is the most effort-intensive phase
 
 10. **Remove direct core imports from CLI**
-    - Target: zero `from quantumvitas.core` in `frontends/cli/`
-    - Verify with `rg "from quantumvitas.core" src/quantumvitas/frontends/cli/`
+    - Target: zero `from qmatsuite.core` in `frontends/cli/`
+    - Verify with `rg "from qmatsuite.core" src/qmatsuite/frontends/cli/`
 
 ### Phase 5: Tool Surface and Notebook (MEDIUM)
 
 11. **Implement tools/ surface**
     - Create `tools/schema.py`, `tools/calc.py`, `tools/params.py`, `tools/run.py`, `tools/results.py`
-    - Each function calls `QVService` internally
+    - Each function calls `QMSService` internally
     - Add structured input validation
     - Return structured dicts (not dataclasses)
 
@@ -352,15 +352,15 @@ tools/
 
 ```bash
 # Frontends should not import from core (after refactor)
-rg "from quantumvitas\.core" src/quantumvitas/frontends/
+rg "from qmatsuite\.core" src/qmatsuite/frontends/
 # Expected: 0 matches
 
 # Frontends should not import from calculation (after refactor)
-rg "from quantumvitas\.calculation" src/quantumvitas/frontends/
+rg "from qmatsuite\.calculation" src/qmatsuite/frontends/
 # Expected: 0 matches
 
 # Frontends should not import from drivers (after refactor)
-rg "from quantumvitas\.drivers" src/quantumvitas/frontends/
+rg "from qmatsuite\.drivers" src/qmatsuite/frontends/
 # Expected: 0 matches
 ```
 
@@ -368,11 +368,11 @@ rg "from quantumvitas\.drivers" src/quantumvitas/frontends/
 
 ```bash
 # Frontends should import from api or tools
-rg "from quantumvitas\.(api|tools)" src/quantumvitas/frontends/
+rg "from qmatsuite\.(api|tools)" src/qmatsuite/frontends/
 # Expected: Many matches
 
 # API should not import from frontends
-rg "from quantumvitas\.frontends" src/quantumvitas/api/
+rg "from qmatsuite\.frontends" src/qmatsuite/api/
 # Expected: 0 matches
 ```
 
@@ -380,7 +380,7 @@ rg "from quantumvitas\.frontends" src/quantumvitas/api/
 
 ```bash
 # Tools should only import from api
-rg "from quantumvitas\." src/quantumvitas/tools/ | grep -v "from quantumvitas.api"
+rg "from qmatsuite\." src/qmatsuite/tools/ | grep -v "from qmatsuite.api"
 # Expected: 0 matches (tools only use api)
 ```
 
@@ -416,13 +416,13 @@ ls scripts/
 
 | Current Location | New Location |
 |------------------|--------------|
-| `src/quantumvitas/api.py` | `src/quantumvitas/api/service.py` |
-| `src/quantumvitas/cli/main.py` | `src/quantumvitas/frontends/cli/app.py` |
-| `src/quantumvitas/cli/__init__.py` | `src/quantumvitas/frontends/cli/__init__.py` |
-| `src/quantumvitas/cli/__main__.py` | `src/quantumvitas/frontends/cli/__main__.py` |
-| `src/quantumvitas/daemon/server.py` | `src/quantumvitas/frontends/daemon/server.py` |
-| `src/quantumvitas/daemon/jobs.py` | `src/quantumvitas/frontends/daemon/jobs.py` |
-| `src/quantumvitas/daemon/__init__.py` | `src/quantumvitas/frontends/daemon/__init__.py` |
+| `src/qmatsuite/api.py` | `src/qmatsuite/api/service.py` |
+| `src/qmatsuite/cli/main.py` | `src/qmatsuite/frontends/cli/app.py` |
+| `src/qmatsuite/cli/__init__.py` | `src/qmatsuite/frontends/cli/__init__.py` |
+| `src/qmatsuite/cli/__main__.py` | `src/qmatsuite/frontends/cli/__main__.py` |
+| `src/qmatsuite/daemon/server.py` | `src/qmatsuite/frontends/daemon/server.py` |
+| `src/qmatsuite/daemon/jobs.py` | `src/qmatsuite/frontends/daemon/jobs.py` |
+| `src/qmatsuite/daemon/__init__.py` | `src/qmatsuite/frontends/daemon/__init__.py` |
 | `tools/*` (repo level) | `scripts/*` (repo level) |
 
 ---
@@ -431,46 +431,46 @@ ls scripts/
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/api/__init__.py` | API package exports |
-| `src/quantumvitas/api/errors.py` | ErrorSpec definition |
-| `src/quantumvitas/api/types.py` | Public return types |
-| `src/quantumvitas/tools/__init__.py` | Tools surface exports |
-| `src/quantumvitas/tools/schema.py` | `discover()` |
-| `src/quantumvitas/tools/calc.py` | `get_summary()`, `get_digest()` |
-| `src/quantumvitas/tools/params.py` | `validate_patch()`, `apply_patch()` |
-| `src/quantumvitas/tools/run.py` | `run_step()`, `run_calc()` |
-| `src/quantumvitas/tools/results.py` | `extract()` |
-| `src/quantumvitas/frontends/__init__.py` | Frontends package |
-| `src/quantumvitas/frontends/cli/__init__.py` | CLI frontend |
-| `src/quantumvitas/frontends/daemon/__init__.py` | Daemon frontend |
-| `src/quantumvitas/frontends/notebook/__init__.py` | Notebook frontend |
-| `src/quantumvitas/frontends/notebook/display.py` | Notebook display helpers |
-| `src/quantumvitas/frontends/agent/__init__.py` | Reserved for MCP |
+| `src/qmatsuite/api/__init__.py` | API package exports |
+| `src/qmatsuite/api/errors.py` | ErrorSpec definition |
+| `src/qmatsuite/api/types.py` | Public return types |
+| `src/qmatsuite/tools/__init__.py` | Tools surface exports |
+| `src/qmatsuite/tools/schema.py` | `discover()` |
+| `src/qmatsuite/tools/calc.py` | `get_summary()`, `get_digest()` |
+| `src/qmatsuite/tools/params.py` | `validate_patch()`, `apply_patch()` |
+| `src/qmatsuite/tools/run.py` | `run_step()`, `run_calc()` |
+| `src/qmatsuite/tools/results.py` | `extract()` |
+| `src/qmatsuite/frontends/__init__.py` | Frontends package |
+| `src/qmatsuite/frontends/cli/__init__.py` | CLI frontend |
+| `src/qmatsuite/frontends/daemon/__init__.py` | Daemon frontend |
+| `src/qmatsuite/frontends/notebook/__init__.py` | Notebook frontend |
+| `src/qmatsuite/frontends/notebook/display.py` | Notebook display helpers |
+| `src/qmatsuite/frontends/agent/__init__.py` | Reserved for MCP |
 
 ---
 
 ## Appendix C: Compatibility Shims
 
 ```python
-# src/quantumvitas/cli/__init__.py (TEMPORARY SHIM)
-"""Backward compatibility shim. Use quantumvitas.frontends.cli instead."""
+# src/qmatsuite/cli/__init__.py (TEMPORARY SHIM)
+"""Backward compatibility shim. Use qmatsuite.frontends.cli instead."""
 import warnings
 warnings.warn(
-    "quantumvitas.cli is deprecated. Use quantumvitas.frontends.cli instead.",
+    "qmatsuite.cli is deprecated. Use qmatsuite.frontends.cli instead.",
     DeprecationWarning,
     stacklevel=2,
 )
-from quantumvitas.frontends.cli import app
+from qmatsuite.frontends.cli import app
 
-# src/quantumvitas/daemon/__init__.py (TEMPORARY SHIM)
-"""Backward compatibility shim. Use quantumvitas.frontends.daemon instead."""
+# src/qmatsuite/daemon/__init__.py (TEMPORARY SHIM)
+"""Backward compatibility shim. Use qmatsuite.frontends.daemon instead."""
 import warnings
 warnings.warn(
-    "quantumvitas.daemon is deprecated. Use quantumvitas.frontends.daemon instead.",
+    "qmatsuite.daemon is deprecated. Use qmatsuite.frontends.daemon instead.",
     DeprecationWarning,
     stacklevel=2,
 )
-from quantumvitas.frontends.daemon import QVDaemon
+from qmatsuite.frontends.daemon import QMSDaemon
 ```
 
 ---

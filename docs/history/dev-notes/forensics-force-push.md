@@ -100,7 +100,7 @@ Implement key access enforcement for ParamSpace: Introduced a comprehensive key-
 - `CONSTITUTION_ZH.md` (+58 lines) - 添加了 §10.8.9 ParamSpace Key Access 规则
 - `OCCUPATION_DEGAUSS_DEPENDENCY_DIAGNOSTIC.md` (+336 lines) - **新增诊断文档**
 - `YAML_DICT_USAGE_REVIEW.md` (+679 lines) - **新增审查文档**
-- `src/quantumvitas/presets/paramspace.py` (大幅修改，+511 lines)
+- `src/qmatsuite/presets/paramspace.py` (大幅修改，+511 lines)
 - `tests/unit/test_key_access_enforcement.py` (+267 lines) - **新增测试文件**
 
 **父提交**: `b4a7b0f` - "Merge ParamSpace Constitution into global framework"
@@ -291,7 +291,7 @@ git merge rescue/baac796-key-access-enforcement
    - `YAML_DICT_USAGE_REVIEW.md` (679 lines)
 
 2. **代码实现**:
-   - `src/quantumvitas/presets/paramspace.py` (key access enforcement)
+   - `src/qmatsuite/presets/paramspace.py` (key access enforcement)
    - `tests/unit/test_key_access_enforcement.py` (267 lines)
 
 3. **宪法更新**:

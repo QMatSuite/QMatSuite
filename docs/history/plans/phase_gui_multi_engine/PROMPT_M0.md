@@ -8,22 +8,22 @@ Add `ENGINE_ROLE` and `COMPANION_ENGINES` class attributes to all 15 engine driv
 
 ### Modify
 
-1. `src/quantumvitas/core/driver_protocol.py` — Add 2 class attributes to `BaseEngineDriver` (around line 161)
-2. `src/quantumvitas/drivers/qe/driver.py`
-3. `src/quantumvitas/drivers/vasp/driver.py`
-4. `src/quantumvitas/drivers/abinit/driver.py`
-5. `src/quantumvitas/drivers/cp2k/driver.py`
-6. `src/quantumvitas/drivers/siesta/driver.py`
-7. `src/quantumvitas/drivers/gpaw/driver.py`
-8. `src/quantumvitas/drivers/orca/driver.py`
-9. `src/quantumvitas/drivers/gaussian/driver.py`
-10. `src/quantumvitas/drivers/psi4/driver.py`
-11. `src/quantumvitas/drivers/pyscf/driver.py`
-12. `src/quantumvitas/drivers/xtb/driver.py`
-13. `src/quantumvitas/drivers/lammps/driver.py`
-14. `src/quantumvitas/drivers/w90/driver.py`
-15. `src/quantumvitas/drivers/qmcpack/driver.py`
-16. `src/quantumvitas/drivers/yambo/driver.py`
+1. `src/qmatsuite/core/driver_protocol.py` — Add 2 class attributes to `BaseEngineDriver` (around line 161)
+2. `src/qmatsuite/drivers/qe/driver.py`
+3. `src/qmatsuite/drivers/vasp/driver.py`
+4. `src/qmatsuite/drivers/abinit/driver.py`
+5. `src/qmatsuite/drivers/cp2k/driver.py`
+6. `src/qmatsuite/drivers/siesta/driver.py`
+7. `src/qmatsuite/drivers/gpaw/driver.py`
+8. `src/qmatsuite/drivers/orca/driver.py`
+9. `src/qmatsuite/drivers/gaussian/driver.py`
+10. `src/qmatsuite/drivers/psi4/driver.py`
+11. `src/qmatsuite/drivers/pyscf/driver.py`
+12. `src/qmatsuite/drivers/xtb/driver.py`
+13. `src/qmatsuite/drivers/lammps/driver.py`
+14. `src/qmatsuite/drivers/w90/driver.py`
+15. `src/qmatsuite/drivers/qmcpack/driver.py`
+16. `src/qmatsuite/drivers/yambo/driver.py`
 
 ### Create
 
@@ -33,9 +33,9 @@ Add `ENGINE_ROLE` and `COMPANION_ENGINES` class attributes to all 15 engine driv
 
 ## Do NOT Touch
 
-- `src/quantumvitas/api/service.py`
-- `src/quantumvitas/daemon/server.py`
-- `src/quantumvitas/core/driver_registry.py`
+- `src/qmatsuite/api/service.py`
+- `src/qmatsuite/daemon/server.py`
+- `src/qmatsuite/core/driver_registry.py`
 - Any GUI files
 - Any workflow/ files
 
@@ -43,7 +43,7 @@ Add `ENGINE_ROLE` and `COMPANION_ENGINES` class attributes to all 15 engine driv
 
 ### Step 1: Add defaults to BaseEngineDriver
 
-In `src/quantumvitas/core/driver_protocol.py`, find `class BaseEngineDriver:` (line 161). Add these two class attributes immediately after the class docstring, before the first method (`get_workdir_policy`):
+In `src/qmatsuite/core/driver_protocol.py`, find `class BaseEngineDriver:` (line 161). Add these two class attributes immediately after the class docstring, before the first method (`get_workdir_policy`):
 
 ```python
     # ─────────────────────────────────────────────────────────────────────
@@ -92,8 +92,8 @@ import pytest
 
 def test_postproc_gen_steps_unique_across_postproc_engines():
     """No postprocessing gen step appears in more than one postproc engine."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     postproc_engines = []
     for engine_family in DriverRegistry.get_all_engines():
@@ -115,8 +115,8 @@ def test_postproc_gen_steps_unique_across_postproc_engines():
 
 def test_postproc_gen_steps_not_in_base_engines():
     """No postprocessing gen step appears in any base engine's SUPPORTED_GEN_STEPS."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     postproc_gen_steps = set()
     base_gen_steps = {}  # gen_step -> [engine_families]
@@ -154,8 +154,8 @@ import pytest
 
 def test_companion_engines_are_postprocessing():
     """Every engine listed in COMPANION_ENGINES must have ENGINE_ROLE='postprocessing'."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     violations = []
     for engine_family in DriverRegistry.get_all_engines():
@@ -175,8 +175,8 @@ def test_companion_engines_are_postprocessing():
 
 def test_every_postproc_engine_has_a_host():
     """Every postprocessing engine appears in at least one base engine's COMPANION_ENGINES."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     postproc_engines = set()
     hosted_engines = set()
@@ -195,8 +195,8 @@ def test_every_postproc_engine_has_a_host():
 
 def test_companion_engines_is_frozenset():
     """COMPANION_ENGINES must be a frozenset on all drivers."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     violations = []
     for engine_family in DriverRegistry.get_all_engines():
@@ -212,8 +212,8 @@ def test_companion_engines_is_frozenset():
 
 def test_engine_role_is_valid():
     """ENGINE_ROLE must be 'base' or 'postprocessing' on all drivers."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     violations = []
     for engine_family in DriverRegistry.get_all_engines():
@@ -260,8 +260,8 @@ def _get_prefix(step_type_spec: str) -> str:
 
 def test_all_demos_have_engine_family():
     """Every demo calculation must have explicit engine_family."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     violations = []
     for yml_path in sorted(DEMO_DIR.glob("*.yml")):
@@ -276,8 +276,8 @@ def test_all_demos_have_engine_family():
 
 def test_demo_step_type_spec_matches_engine_family():
     """Every step's step_type_spec prefix must match engine_family or its companion engines."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     violations = []
     for yml_path in sorted(DEMO_DIR.glob("*.yml")):
@@ -326,10 +326,10 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 python -m pytest tests/gates/test_postproc_gen_uniqueness.py tests/gates/test_companion_completeness.py tests/gates/test_demo_integrity.py -v
 
 # 3. Count driver attributes
-grep -rn "ENGINE_ROLE" src/quantumvitas/drivers/*/driver.py | wc -l
+grep -rn "ENGINE_ROLE" src/qmatsuite/drivers/*/driver.py | wc -l
 # Expected: 15
 
-grep -rn "COMPANION_ENGINES" src/quantumvitas/drivers/*/driver.py | wc -l
+grep -rn "COMPANION_ENGINES" src/qmatsuite/drivers/*/driver.py | wc -l
 # Expected: 15
 ```
 

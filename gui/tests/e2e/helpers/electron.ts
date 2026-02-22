@@ -143,7 +143,7 @@ export async function navigateToView(
   page: Page,
   view: 'home' | 'structures' | 'calculations' | 'jobs' | 'analysis' | 'resources' | 'settings'
 ): Promise<void> {
-  await page.getByTestId(`qv-nav-${view}`).click();
+  await page.getByTestId(`qms-nav-${view}`).click();
   
   // Wait for view to be active
   await page.waitForTimeout(500);

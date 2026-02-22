@@ -6,12 +6,12 @@ from unittest.mock import patch, MagicMock, mock_open
 import tempfile
 import time
 
-from quantumvitas.engine.cp2k_engine import Cp2kEngine
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.engine.base import EngineConfig
-from quantumvitas.workflow.registry import get_registry
-from quantumvitas.execution.latest_selector import find_latest_by_mtime
-from quantumvitas.execution.preflight import PreflightChecker, PreflightRequirement
+from qmatsuite.engine.cp2k_engine import Cp2kEngine
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.engine.base import EngineConfig
+from qmatsuite.workflow.registry import get_registry
+from qmatsuite.execution.latest_selector import find_latest_by_mtime
+from qmatsuite.execution.preflight import PreflightChecker, PreflightRequirement
 
 
 class TestCp2kEngine:
@@ -156,7 +156,7 @@ class TestPreflightChecker:
     
     def test_preflight_check_passes(self, tmp_path):
         """Test preflight check when artifact exists."""
-        from quantumvitas.execution.preflight import PreflightChecker, PreflightRequirement
+        from qmatsuite.execution.preflight import PreflightChecker, PreflightRequirement
         
         # Create step directory and artifact file
         step_dir = tmp_path / "test123"
@@ -190,7 +190,7 @@ class TestPreflightChecker:
     
     def test_preflight_check_fails_missing(self, tmp_path):
         """Test preflight check fails when artifact missing."""
-        from quantumvitas.execution.preflight import PreflightChecker, PreflightRequirement
+        from qmatsuite.execution.preflight import PreflightChecker, PreflightRequirement
         
         mock_calc = MagicMock()
         mock_calc.io.raw_dir = tmp_path
@@ -220,9 +220,9 @@ class TestCp2kInputGeneration:
     
     def test_cp2k_input_generation_with_cell(self, tmp_path):
         """Test input file generation includes CELL print."""
-        from quantumvitas.engine.cp2k_writer import write_cp2k_input
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
-        from quantumvitas.core.resources import ResourceMeta
+        from qmatsuite.engine.cp2k_writer import write_cp2k_input
+        from qmatsuite.calculation.structure_steps import StructureStepSpec
+        from qmatsuite.core.resources import ResourceMeta
         from pymatgen.core import Structure, Lattice
         
         # Create simple structure
@@ -262,9 +262,9 @@ class TestCp2kInputGeneration:
     
     def test_cp2k_input_scf_no_motion(self, tmp_path):
         """Test SCF input doesn't have MOTION section."""
-        from quantumvitas.engine.cp2k_writer import write_cp2k_input
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
-        from quantumvitas.core.resources import ResourceMeta
+        from qmatsuite.engine.cp2k_writer import write_cp2k_input
+        from qmatsuite.calculation.structure_steps import StructureStepSpec
+        from qmatsuite.core.resources import ResourceMeta
         from pymatgen.core import Structure, Lattice
         
         lattice = Lattice.cubic(5.431)
@@ -291,9 +291,9 @@ class TestCp2kInputGeneration:
     
     def test_cp2k_input_md_has_cell(self, tmp_path):
         """Test MD input has CELL print."""
-        from quantumvitas.engine.cp2k_writer import write_cp2k_input
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
-        from quantumvitas.core.resources import ResourceMeta
+        from qmatsuite.engine.cp2k_writer import write_cp2k_input
+        from qmatsuite.calculation.structure_steps import StructureStepSpec
+        from qmatsuite.core.resources import ResourceMeta
         from pymatgen.core import Structure, Lattice
         
         lattice = Lattice.cubic(5.431)
@@ -331,7 +331,7 @@ class TestCp2kParser:
     
     def test_parse_cp2k_cell(self, tmp_path):
         """Test parsing cell file."""
-        from quantumvitas.engine.cp2k_parser import parse_cp2k_cell
+        from qmatsuite.engine.cp2k_parser import parse_cp2k_cell
         
         cell_file = tmp_path / "test.cell"
         cell_file.write_text("""#  Step   Time [fs]       Ax [Angstrom]       Ay [Angstrom]       Az [Angstrom]       Bx [Angstrom]       By [Angstrom]       Bz [Angstrom]       Cx [Angstrom]       Cy [Angstrom]       Cz [Angstrom]      Volume [Angstrom^3]
@@ -348,7 +348,7 @@ class TestCp2kParser:
     
     def test_parse_cp2k_ener(self, tmp_path):
         """Test parsing energy file."""
-        from quantumvitas.engine.cp2k_parser import parse_cp2k_ener
+        from qmatsuite.engine.cp2k_parser import parse_cp2k_ener
         
         ener_file = tmp_path / "test.ener"
         ener_file.write_text("""#   Step   Time[fs]       Kin.[a.u.]   Temp[K]     Pot.[a.u.]   Cons Qty[a.u.]   CPU[s]
@@ -365,7 +365,7 @@ class TestCp2kParser:
     
     def test_parse_cp2k_xyz_comment(self):
         """Test parsing XYZ comment line."""
-        from quantumvitas.engine.cp2k_parser import parse_cp2k_xyz_comment
+        from qmatsuite.engine.cp2k_parser import parse_cp2k_xyz_comment
         
         comment = " i =        5, E =      -17.12345678"
         result = parse_cp2k_xyz_comment(comment)

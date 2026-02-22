@@ -150,11 +150,11 @@ structures = [dto.to_dict() for dto in structure_dtos]  # Includes all compatibi
 
 ## Related Files
 
-- `src/quantumvitas/api/types/structure.py` - StructureDTO implementation
-- `src/quantumvitas/api/types/calculation.py` - CalculationDTO implementation
-- `src/quantumvitas/api/types/run.py` - RunResultDTO implementation with legacy status mapping
-- `src/quantumvitas/cli/main.py` - CLI integration using `to_dict()`
-- `src/quantumvitas/daemon/server.py` - Daemon handlers using `to_dict()`
+- `src/qmatsuite/api/types/structure.py` - StructureDTO implementation
+- `src/qmatsuite/api/types/calculation.py` - CalculationDTO implementation
+- `src/qmatsuite/api/types/run.py` - RunResultDTO implementation with legacy status mapping
+- `src/qmatsuite/cli/main.py` - CLI integration using `to_dict()`
+- `src/qmatsuite/daemon/server.py` - Daemon handlers using `to_dict()`
 - `tests/api/test_dto_frontend_contracts.py` - DTO contract tests
 - `tests/daemon/test_daemon_payload_contracts.py` - Daemon handler contract tests
 - `tests/cli/test_cli_output_contracts.py` - CLI output contract tests

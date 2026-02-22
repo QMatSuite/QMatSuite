@@ -12,7 +12,7 @@ Investigated why `pw2wannier90` step is not running in the diamond Wannier90 dem
 - A space after `&inputpp` (reference format has `&inputpp ` with trailing space)
 - A trailing newline at end of file
 
-**Fix**: Updated `Pw2Wannier90Input.to_string()` in `src/quantumvitas/io/wannier90_input.py` to:
+**Fix**: Updated `Pw2Wannier90Input.to_string()` in `src/qmatsuite/io/wannier90_input.py` to:
 - Add space after `&inputpp`: `"&inputpp "` instead of `"&inputpp"`
 - Add trailing newline: `return "\n".join(lines) + "\n"`
 
@@ -74,8 +74,8 @@ From `.qmatsuite/engines/qe/q-e-qe-7.5/PP/Doc/INPUT_pw2wannier90.txt`:
 
 ## Related Code
 
-- `src/quantumvitas/core/engines/qe_calculation.py`: `QECalculationRunner.run_step()` - handles stdin redirection
-- `src/quantumvitas/core/engines/qe.py`: `uses_stdin()` - returns `True` for `pw2wannier90` step type
-- `src/quantumvitas/io/wannier90_input.py`: `Pw2Wannier90Input.to_string()` - generates `.pw2wan` file (now fixed)
-- `src/quantumvitas/calculation/structure_steps.py`: `materialize_step_spec()` - generates `.pw2wan` file for `pw2wannier90` step type
+- `src/qmatsuite/core/engines/qe_calculation.py`: `QECalculationRunner.run_step()` - handles stdin redirection
+- `src/qmatsuite/core/engines/qe.py`: `uses_stdin()` - returns `True` for `pw2wannier90` step type
+- `src/qmatsuite/io/wannier90_input.py`: `Pw2Wannier90Input.to_string()` - generates `.pw2wan` file (now fixed)
+- `src/qmatsuite/calculation/structure_steps.py`: `materialize_step_spec()` - generates `.pw2wan` file for `pw2wannier90` step type
 

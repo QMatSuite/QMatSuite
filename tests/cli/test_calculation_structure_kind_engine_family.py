@@ -7,7 +7,7 @@ import yaml
 from pathlib import Path
 from typer.testing import CliRunner
 
-from quantumvitas.cli.main import app as cli_app
+from qmatsuite.cli.main import app as cli_app
 
 
 @pytest.fixture
@@ -15,11 +15,11 @@ def test_project(tmp_path: Path):
     """Create a minimal test project with a structure."""
     project_root = tmp_path / "test_project"
     
-    # Create project using QVService API (more reliable than CLI)
-    from quantumvitas.api import QVService
-    project_root = QVService.init_project(target_dir=project_root, name="TestProject")
+    # Create project using QMSService API (more reliable than CLI)
+    from qmatsuite.api import QMSService
+    project_root = QMSService.init_project(target_dir=project_root, name="TestProject")
     
-    # Create a structure using QVService API
+    # Create a structure using QMSService API
     from pymatgen.core import Structure, Lattice
     import tempfile
     
@@ -32,7 +32,7 @@ def test_project(tmp_path: Path):
     try:
         structure.to(filename=str(cif_path), fmt="cif")
         
-        QVService(project_root).structure.import_file(
+        QMSService(project_root).structure.import_file(
             source=cif_path,
             name="test_structure",
         )

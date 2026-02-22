@@ -2,9 +2,9 @@
 
 import pytest
 from pathlib import Path
-from quantumvitas.drivers.w90 import W90Driver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.w90 import W90Driver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestW90Driver:
@@ -59,7 +59,7 @@ class TestW90Registration:
 
     def test_w90_registered(self):
         """W90 should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("w90")
         driver = DriverRegistry.get_driver("w90")
@@ -67,13 +67,13 @@ class TestW90Registration:
 
     def test_w90_wannier_registered(self):
         """w90_wannier step type should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("w90_wannier")
 
     def test_wannierprep_in_w90(self):
         """wannierprep should be registered with W90 engine."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("w90_wannierprep")
         engine = DriverRegistry.get_engine_for_step_type("w90_wannierprep")
@@ -85,7 +85,7 @@ class TestW90Isolation:
 
     def test_w90_driver_exists(self):
         """W90 driver package should exist."""
-        from quantumvitas.drivers.w90 import W90Driver
+        from qmatsuite.drivers.w90 import W90Driver
         assert W90Driver is not None
 
 
@@ -94,7 +94,7 @@ class TestW90ArtifactResolver:
 
     def test_find_artifacts(self, tmp_path):
         """Test finding W90 artifacts in directory."""
-        from quantumvitas.drivers.w90.artifact_resolver import _find_artifacts_in_dir
+        from qmatsuite.drivers.w90.artifact_resolver import _find_artifacts_in_dir
 
         # Create mock artifact files
         (tmp_path / "wannier90.amn").touch()
@@ -113,7 +113,7 @@ class TestW90ArtifactResolver:
 
     def test_missing_artifacts(self, tmp_path):
         """Test partial artifacts found."""
-        from quantumvitas.drivers.w90.artifact_resolver import _find_artifacts_in_dir
+        from qmatsuite.drivers.w90.artifact_resolver import _find_artifacts_in_dir
 
         # Only create one artifact
         (tmp_path / "wannier90.amn").touch()
@@ -132,7 +132,7 @@ class TestW90Recipe:
 
     def test_win_file_generation(self, tmp_path):
         """Test .win file generation."""
-        from quantumvitas.drivers.w90.recipe import W90Recipe
+        from qmatsuite.drivers.w90.recipe import W90Recipe
 
         recipe = W90Recipe()
         config = {

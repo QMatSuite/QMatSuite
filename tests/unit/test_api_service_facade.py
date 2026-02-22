@@ -14,7 +14,7 @@ Use original modules directly for IO, parsing, plotting, etc.
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService, APIError, NotFoundError
+from qmatsuite.api import QMSService, APIError, NotFoundError
 
 
 class TestAPIServiceFacade:
@@ -26,8 +26,8 @@ class TestAPIServiceFacade:
         project_root = tmp_path / "test_project"
         project_root.mkdir()
 
-        # Create minimal project.qv.yml
-        (project_root / "project.qv.yml").write_text("""project:
+        # Create minimal project.qms.yml
+        (project_root / "project.qms.yml").write_text("""project:
   name: test_project
   meta:
     ulid: 01ARZ3NDEKTSV4RRFFQ69G5FAV
@@ -52,29 +52,29 @@ calculations: []
     # -------------------------------------------------------------------------
 
     def test_service_initialization(self, demo_project):
-        """QVService can be initialized with project_root."""
-        svc = QVService(demo_project)
+        """QMSService can be initialized with project_root."""
+        svc = QMSService(demo_project)
         assert svc.project_root == demo_project.resolve()
 
     def test_service_initialization_fails_for_non_project(self, tmp_path):
-        """QVService raises error for non-project directory."""
+        """QMSService raises error for non-project directory."""
         non_project = tmp_path / "not_a_project"
         non_project.mkdir()
 
         with pytest.raises(ValueError, match="Not a project"):
-            QVService(non_project)
+            QMSService(non_project)
 
     def test_load_project_config(self, demo_project):
         """API can load project config via svc.project.get_config()."""
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
         config = svc.project.get_config()
         assert "project" in config
         assert config["project"]["name"] == "test_project"
 
     def test_api_importable(self):
         """API module is importable."""
-        from quantumvitas.api import QVService, APIError
-        assert QVService is not None
+        from qmatsuite.api import QMSService, APIError
+        assert QMSService is not None
         assert APIError is not None
 
     # -------------------------------------------------------------------------
@@ -83,20 +83,20 @@ calculations: []
 
     def test_structure_list_empty(self, demo_project):
         """svc.structure.list() returns empty list for project with no structures."""
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
         structures = svc.structure.list()
         assert isinstance(structures, list)
         assert len(structures) == 0
 
     def test_structure_get_not_found(self, demo_project):
         """svc.structure.get() raises NotFoundError for non-existent structure."""
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
         with pytest.raises(APIError):
             svc.structure.get("nonexistent")
 
     def test_structure_require_ref_not_found(self, demo_project):
         """svc.structure.require_ref() raises APIError for non-existent structure."""
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
         with pytest.raises(APIError):
             svc.structure.require_ref("nonexistent")
 
@@ -106,32 +106,32 @@ calculations: []
 
     def test_calculation_list_empty(self, demo_project):
         """svc.calculation.list() returns empty list for project with no calculations."""
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
         calcs = svc.calculation.list()
         assert isinstance(calcs, list)
         assert len(calcs) == 0
 
     def test_calculation_get_not_found(self, demo_project):
         """svc.calculation.get() raises NotFoundError for non-existent calculation."""
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
         with pytest.raises(APIError):
             svc.calculation.get("nonexistent")
 
     def test_calculation_require_ref_not_found(self, demo_project):
         """svc.calculation.require_ref() raises APIError for non-existent calculation."""
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
         with pytest.raises(APIError):
             svc.calculation.require_ref("nonexistent")
 
     def test_calculation_list_steps_not_found(self, demo_project):
         """svc.calculation.list_steps() raises APIError for non-existent calculation."""
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
         with pytest.raises(APIError):
             svc.calculation.list_steps("nonexistent")
 
     def test_calculation_resolve_enclosing_returns_none(self, demo_project):
         """svc.calculation.resolve_enclosing_path() returns None when not in calculation."""
-        svc = QVService(demo_project)
+        svc = QMSService(demo_project)
         result = svc.calculation.resolve_enclosing_path(demo_project / "structures")
         assert result is None
 
@@ -140,8 +140,8 @@ calculations: []
     # -------------------------------------------------------------------------
 
     def test_get_default_step_params_wrapper(self):
-        """QVService.get_default_step_params() returns step defaults (spec-keyed)."""
-        defaults = QVService.get_default_step_params("qe_scf")
+        """QMSService.get_default_step_params() returns step defaults (spec-keyed)."""
+        defaults = QMSService.get_default_step_params("qe_scf")
 
         assert isinstance(defaults, dict)
         assert "parameters" in defaults
@@ -153,13 +153,13 @@ calculations: []
         assert defaults["parameters"]["CONTROL"]["calculation"] == "scf"
 
         # Test with unknown step type (should return empty dicts)
-        unknown_defaults = QVService.get_default_step_params("unknown_step_type")
+        unknown_defaults = QMSService.get_default_step_params("unknown_step_type")
         assert isinstance(unknown_defaults, dict)
         assert "parameters" in unknown_defaults
 
     def test_get_workflow_service_wrapper(self, monkeypatch):
-        """QVService.get_workflow_service() returns workflow service."""
-        import quantumvitas.workflow.templates as templates_module
+        """QMSService.get_workflow_service() returns workflow service."""
+        import qmatsuite.workflow.templates as templates_module
 
         called = {}
 
@@ -175,7 +175,7 @@ calculations: []
 
         monkeypatch.setattr(templates_module, "get_workflow_service", fake_get_workflow_service)
 
-        result = QVService.get_workflow_service()
+        result = QMSService.get_workflow_service()
 
         assert result == fake_service
         assert called["called"] is True
@@ -185,8 +185,8 @@ calculations: []
     # -------------------------------------------------------------------------
 
     def test_domain_accessors_exist(self, demo_project):
-        """All domain accessors exist on QVService instance."""
-        svc = QVService(demo_project)
+        """All domain accessors exist on QMSService instance."""
+        svc = QMSService(demo_project)
 
         # Check domain accessors exist
         assert hasattr(svc, "structure")
@@ -224,7 +224,7 @@ class TestAPIUtils:
 
     def test_utils_importable(self):
         """api.utils functions are importable."""
-        from quantumvitas.api.utils import (
+        from qmatsuite.api.utils import (
             slugify,
             ensure_relative_path,
             read_structure,
@@ -243,7 +243,7 @@ class TestAPIUtils:
 
     def test_slugify(self):
         """slugify converts names to slugs."""
-        from quantumvitas.api.utils import slugify
+        from qmatsuite.api.utils import slugify
 
         assert slugify("Test Name") == "test-name"
         assert slugify("UPPER_CASE") == "upper_case"  # underscores preserved
@@ -251,7 +251,7 @@ class TestAPIUtils:
 
     def test_is_ulid_like(self):
         """is_ulid_like correctly identifies ULID strings."""
-        from quantumvitas.api.utils import is_ulid_like
+        from qmatsuite.api.utils import is_ulid_like
 
         assert is_ulid_like("01ARZ3NDEKTSV4RRFFQ69G5FAV")
         assert not is_ulid_like("short")
@@ -259,7 +259,7 @@ class TestAPIUtils:
 
     def test_ensure_relative_path(self, tmp_path):
         """ensure_relative_path converts absolute to relative."""
-        from quantumvitas.api.utils import ensure_relative_path
+        from qmatsuite.api.utils import ensure_relative_path
 
         abs_path = tmp_path / "subdir" / "file.txt"
         rel_path = ensure_relative_path(abs_path, base=tmp_path)
@@ -274,7 +274,7 @@ class TestAPITypes:
 
     def test_types_importable(self):
         """API types are importable."""
-        from quantumvitas.api import (
+        from qmatsuite.api import (
             CalculationDTO,
             StepDTO,
             StructureDTO,
@@ -297,7 +297,7 @@ class TestAPIErrors:
 
     def test_errors_importable(self):
         """API error types are importable."""
-        from quantumvitas.api import (
+        from qmatsuite.api import (
             APIError,
             NotFoundError,
             AmbiguousError,
@@ -322,7 +322,7 @@ class TestAPIErrors:
 
     def test_error_instantiation(self):
         """API errors can be instantiated with message and context."""
-        from quantumvitas.api import NotFoundError
+        from qmatsuite.api import NotFoundError
 
         err = NotFoundError("Resource not found", context={"ulid": "123"})
         assert "Resource not found" in str(err)

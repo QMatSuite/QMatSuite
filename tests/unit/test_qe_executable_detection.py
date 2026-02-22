@@ -9,8 +9,8 @@ from pathlib import Path
 import os
 import stat
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 
 class TestQEExecutableDetection:

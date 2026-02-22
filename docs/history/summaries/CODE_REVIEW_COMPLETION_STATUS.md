@@ -34,8 +34,8 @@
   - ✅ All demos have `K_POINTS` in `cards`
 
 ### Step 3: Backend Conflict Metadata ✅
-- **File**: `src/quantumvitas/api.py`
-- **Method**: `QVService._detect_prefix_outdir_injection()`
+- **File**: `src/qmatsuite/api.py`
+- **Method**: `QMSService._detect_prefix_outdir_injection()`
 - **Integration**: Returns metadata in `get_step_detail()` response
 - **Status**: Complete and tested (method exists, correct signature)
 
@@ -94,7 +94,7 @@
 - Same issue in: `si_bands_demo.yml`, `si_dos_demo.yml`, and all tutorial demos
 
 **Root Cause**:
-- `build_step_spec_from_qe_input()` in `src/quantumvitas/calculation/importers.py` (line 220) extracts `pseudopot` from ATOMIC_SPECIES card into `species_overrides`
+- `build_step_spec_from_qe_input()` in `src/qmatsuite/calculation/importers.py` (line 220) extracts `pseudopot` from ATOMIC_SPECIES card into `species_overrides`
 
 **Impact**:
 - Runtime behavior is correct: `species_map` (calculation-level) takes precedence (line 444-446 in `structure_steps.py`)
@@ -105,7 +105,7 @@
 2. Or filter out `pseudopot` when exporting demos
 3. Regenerate all demos after fix
 
-**Location**: `src/quantumvitas/calculation/importers.py:216-223`
+**Location**: `src/qmatsuite/calculation/importers.py:216-223`
 
 ---
 
@@ -136,7 +136,7 @@
 - Option 2: Add a migration step that removes them from existing projects
 - Regenerate demos after fix
 
-**Location**: `src/quantumvitas/project/snapshot.py:export_project_to_snapshot()`
+**Location**: `src/qmatsuite/project/snapshot.py:export_project_to_snapshot()`
 
 ---
 
@@ -190,7 +190,7 @@ grep -r "parameters\[.*k_points\|parameters\.get\(.*k_points" src/
 # Result: (empty)
 
 # CLI correctly handles k_points as card ✅
-grep -A 5 "CARD_KEYWORDS.*k_points" src/quantumvitas/cli/main.py
+grep -A 5 "CARD_KEYWORDS.*k_points" src/qmatsuite/cli/main.py
 # Result: Routes to card_overrides (correct)
 ```
 

@@ -1,5 +1,5 @@
 /**
- * QuantumVITAS Electron Main Process
+ * QMatSuite Electron Main Process
  * 
  * Responsibilities:
  * - Create and manage the main window
@@ -35,18 +35,18 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 // =============================================================================
 
 interface PendingRequest {
-  resolve: (value: QVResponse) => void;
+  resolve: (value: QMSResponse) => void;
   reject: (reason: Error) => void;
   timeoutId: NodeJS.Timeout;
 }
 
-interface QVRequest {
+interface QMSRequest {
   id: string;
   type: string;
   payload: Record<string, unknown>;
 }
 
-interface QVResponse {
+interface QMSResponse {
   id: string;
   ok: boolean;
   data?: Record<string, unknown>;
@@ -56,7 +56,7 @@ interface QVResponse {
   };
 }
 
-type E2ERpcMockResponse = Omit<QVResponse, 'id'>;
+type E2ERpcMockResponse = Omit<QMSResponse, 'id'>;
 
 interface DaemonStatus {
   connected: boolean;
@@ -120,7 +120,7 @@ const REQUEST_TIMEOUT_MS = 60000; // 60 seconds for long operations
 let currentProjectPath: string | null = null;
 
 // Log file name
-const LOG_FILE_NAME = '.qv-daemon.log';
+const LOG_FILE_NAME = '.qms-daemon.log';
 
 /**
  * Safely send a message to the renderer process.
@@ -143,13 +143,13 @@ function setUpdaterState(partial: Partial<UpdaterState>): void {
 }
 
 function isUpdaterEnabled(): boolean {
-  if (process.env.QV_DISABLE_UPDATER === '1') {
+  if (process.env.QMS_DISABLE_UPDATER === '1') {
     return false;
   }
-  if (process.env.E2E_TEST_MODE === 'true' && process.env.QV_ENABLE_UPDATER !== '1') {
+  if (process.env.E2E_TEST_MODE === 'true' && process.env.QMS_ENABLE_UPDATER !== '1') {
     return false;
   }
-  return app.isPackaged || process.env.QV_ENABLE_UPDATER === '1';
+  return app.isPackaged || process.env.QMS_ENABLE_UPDATER === '1';
 }
 
 function configureAutoUpdater(): void {
@@ -272,8 +272,8 @@ function setCurrentProject(projectPath: string | null): void {
  */
 function getProjectRoot(): string {
   // Check environment variable first
-  if (process.env.QV_PROJECT_ROOT) {
-    return process.env.QV_PROJECT_ROOT;
+  if (process.env.QMS_PROJECT_ROOT) {
+    return process.env.QMS_PROJECT_ROOT;
   }
   // Go up from gui/dist-electron to project root
   return path.resolve(__dirname, '..', '..');
@@ -282,7 +282,7 @@ function getProjectRoot(): string {
 function isDevCheckout(projectRoot: string): boolean {
   return (
     fs.existsSync(path.join(projectRoot, 'pyproject.toml')) &&
-    fs.existsSync(path.join(projectRoot, 'src', 'quantumvitas'))
+    fs.existsSync(path.join(projectRoot, 'src', 'qmatsuite'))
   );
 }
 
@@ -328,7 +328,7 @@ function getRuntimePythonPath(): string {
 
 function getRuntimeTarballCandidates(): string[] {
   const candidates = [
-    process.env.QV_RUNTIME_TARBALL || '',
+    process.env.QMS_RUNTIME_TARBALL || '',
     path.join(process.resourcesPath, 'runtime.tar.zst'),
     path.join(process.resourcesPath, 'resources', 'runtime.tar.zst'),
     path.join(process.env.APP_ROOT || '', 'runtime.tar.zst'),
@@ -387,7 +387,7 @@ function findRuntimeRoot(extractRoot: string): string | null {
 function verifyRuntimePython(pythonPath: string): { ok: boolean; error: string | null } {
   const result = spawnSync(
     pythonPath,
-    ['-c', 'import quantumvitas; print(quantumvitas.__version__)'],
+    ['-c', 'import qmatsuite; print(qmatsuite.__version__)'],
     {
       encoding: 'utf-8',
       timeout: 30_000,
@@ -523,7 +523,7 @@ async function ensureRuntimeReady(): Promise<boolean> {
  * Find the Python interpreter
  * 
  * Search order:
- * 1. QV_DAEMON_PYTHON environment variable (if set)
+ * 1. QMS_DAEMON_PYTHON environment variable (if set)
  * 2. .venv/bin/python (Unix/macOS) or .venv/Scripts/python.exe (Windows)
  * 3. [Reserved] compiled daemon binary lookup (future)
  * 4. runtime/bin/python (distribution runtime)
@@ -535,12 +535,12 @@ function findPythonPath(): { path: string; found: boolean; source: string } {
   const projectRoot = getProjectRoot();
   
   // 1. Check environment variable first
-  if (process.env.QV_DAEMON_PYTHON) {
-    const envPath = process.env.QV_DAEMON_PYTHON;
+  if (process.env.QMS_DAEMON_PYTHON) {
+    const envPath = process.env.QMS_DAEMON_PYTHON;
     if (fs.existsSync(envPath)) {
-      return { path: envPath, found: true, source: 'QV_DAEMON_PYTHON env var' };
+      return { path: envPath, found: true, source: 'QMS_DAEMON_PYTHON env var' };
     }
-    console.warn(`[main] QV_DAEMON_PYTHON set to ${envPath} but file not found`);
+    console.warn(`[main] QMS_DAEMON_PYTHON set to ${envPath} but file not found`);
   }
   
   // 2. Check .venv in project root
@@ -582,10 +582,10 @@ function findPythonPath(): { path: string; found: boolean; source: string } {
  */
 function getDaemonModule(): string {
   // Allow override via environment variable
-  if (process.env.QV_DAEMON_MODULE) {
-    return process.env.QV_DAEMON_MODULE;
+  if (process.env.QMS_DAEMON_MODULE) {
+    return process.env.QMS_DAEMON_MODULE;
   }
-  return 'quantumvitas.daemon.server';
+  return 'qmatsuite.daemon.server';
 }
 
 // =============================================================================
@@ -727,7 +727,7 @@ function handleDaemonLine(line: string): void {
   if (!line.trim()) return;
   
   try {
-    const response: QVResponse = JSON.parse(line);
+    const response: QMSResponse = JSON.parse(line);
     
     const pending = pendingRequests.get(response.id);
     if (pending) {
@@ -746,7 +746,7 @@ function handleDaemonLine(line: string): void {
 /**
  * Send a request to the daemon
  */
-async function sendDaemonRequest(request: QVRequest): Promise<QVResponse> {
+async function sendDaemonRequest(request: QMSRequest): Promise<QMSResponse> {
   // Robust guards: check process exists, stdin exists, and stdin is writable
   if (!daemonProcess || !daemonProcess.stdin || !daemonStatus.connected) {
     return {
@@ -896,9 +896,9 @@ async function shutdownDaemon(): Promise<void> {
 // =============================================================================
 
 /**
- * Handle qv-request IPC from renderer
+ * Handle qms-request IPC from renderer
  */
-ipcMain.handle('qv-request', async (_event, request: QVRequest): Promise<QVResponse> => {
+ipcMain.handle('qms-request', async (_event, request: QMSRequest): Promise<QMSResponse> => {
   console.log(`[main] IPC request: ${request.type} (${request.id})`);
 
   if (process.env.E2E_TEST_MODE === 'true') {
@@ -935,26 +935,26 @@ ipcMain.handle('qv-request', async (_event, request: QVRequest): Promise<QVRespo
 /**
  * Check if daemon is connected
  */
-ipcMain.handle('qv-is-connected', async (): Promise<boolean> => {
+ipcMain.handle('qms-is-connected', async (): Promise<boolean> => {
   return daemonStatus.connected && daemonProcess !== null;
 });
 
 /**
  * Get daemon status including any startup errors
  */
-ipcMain.handle('qv-daemon-status', async (): Promise<DaemonStatus> => {
+ipcMain.handle('qms-daemon-status', async (): Promise<DaemonStatus> => {
   return { ...daemonStatus };
 });
 
-ipcMain.handle('qv-runtime-setup-status', async (): Promise<RuntimeSetupStatus> => {
+ipcMain.handle('qms-runtime-setup-status', async (): Promise<RuntimeSetupStatus> => {
   return { ...runtimeSetupStatus };
 });
 
-ipcMain.handle('qv-updater-state', async (): Promise<UpdaterState> => {
+ipcMain.handle('qms-updater-state', async (): Promise<UpdaterState> => {
   return { ...updaterState };
 });
 
-ipcMain.handle('qv-check-for-updates', async (): Promise<{ ok: boolean; message?: string }> => {
+ipcMain.handle('qms-check-for-updates', async (): Promise<{ ok: boolean; message?: string }> => {
   if (!isUpdaterEnabled()) {
     return { ok: false, message: 'Updater is disabled in this build' };
   }
@@ -968,7 +968,7 @@ ipcMain.handle('qv-check-for-updates', async (): Promise<{ ok: boolean; message?
   }
 });
 
-ipcMain.handle('qv-download-update', async (): Promise<{ ok: boolean; message?: string }> => {
+ipcMain.handle('qms-download-update', async (): Promise<{ ok: boolean; message?: string }> => {
   if (!isUpdaterEnabled()) {
     return { ok: false, message: 'Updater is disabled in this build' };
   }
@@ -987,7 +987,7 @@ ipcMain.handle('qv-download-update', async (): Promise<{ ok: boolean; message?: 
   }
 });
 
-ipcMain.handle('qv-quit-and-install-update', async (): Promise<{ ok: boolean; message?: string }> => {
+ipcMain.handle('qms-quit-and-install-update', async (): Promise<{ ok: boolean; message?: string }> => {
   if (!isUpdaterEnabled()) {
     return { ok: false, message: 'Updater is disabled in this build' };
   }
@@ -1005,7 +1005,7 @@ ipcMain.handle('qv-quit-and-install-update', async (): Promise<{ ok: boolean; me
   }
 });
 
-ipcMain.handle('qv-e2e-set-updater-state', async (_event, state: Partial<UpdaterState>): Promise<void> => {
+ipcMain.handle('qms-e2e-set-updater-state', async (_event, state: Partial<UpdaterState>): Promise<void> => {
   if (process.env.E2E_TEST_MODE === 'true') {
     setUpdaterState(state);
   }
@@ -1022,14 +1022,14 @@ let e2eTestDirectory: string | null = null;
 /**
  * Set E2E test directory (for testing only)
  */
-ipcMain.handle('qv-set-e2e-test-directory', async (_event, dir: string): Promise<void> => {
+ipcMain.handle('qms-set-e2e-test-directory', async (_event, dir: string): Promise<void> => {
   if (process.env.E2E_TEST_MODE === 'true') {
     e2eTestDirectory = dir;
   }
 });
 
 ipcMain.handle(
-  'qv-set-e2e-rpc-mock',
+  'qms-set-e2e-rpc-mock',
   async (
     _event,
     method: string,
@@ -1046,13 +1046,13 @@ ipcMain.handle(
   },
 );
 
-ipcMain.handle('qv-clear-e2e-rpc-mocks', async (): Promise<void> => {
+ipcMain.handle('qms-clear-e2e-rpc-mocks', async (): Promise<void> => {
   if (process.env.E2E_TEST_MODE === 'true') {
     e2eRpcMocks.clear();
   }
 });
 
-ipcMain.handle('qv-open-directory', async (): Promise<string | null> => {
+ipcMain.handle('qms-open-directory', async (): Promise<string | null> => {
   if (!win) return null;
   
   // In E2E test mode, check for a test directory set via IPC
@@ -1083,7 +1083,7 @@ ipcMain.handle('qv-open-directory', async (): Promise<string | null> => {
  * 
  * @returns Selected file path or null if cancelled
  */
-ipcMain.handle('qv-open-file', async (_event, options?: {
+ipcMain.handle('qms-open-file', async (_event, options?: {
   title?: string;
   filters?: { name: string; extensions: string[] }[];
 }): Promise<string | null> => {
@@ -1109,21 +1109,21 @@ ipcMain.handle('qv-open-file', async (_event, options?: {
 /**
  * Set current project path for log file storage
  */
-ipcMain.handle('qv-set-project', async (_event, projectPath: string | null): Promise<void> => {
+ipcMain.handle('qms-set-project', async (_event, projectPath: string | null): Promise<void> => {
   setCurrentProject(projectPath);
 });
 
 /**
  * Read logs from the project's log file
  */
-ipcMain.handle('qv-read-logs', async (_event, projectPath: string, tailLines?: number): Promise<string[]> => {
+ipcMain.handle('qms-read-logs', async (_event, projectPath: string, tailLines?: number): Promise<string[]> => {
   return readLogFile(projectPath, tailLines || 500);
 });
 
 /**
  * Reveal a file or folder in the native file manager (Finder/Explorer)
  */
-ipcMain.handle('qv-reveal-path', async (_event, targetPath: string): Promise<boolean> => {
+ipcMain.handle('qms-reveal-path', async (_event, targetPath: string): Promise<boolean> => {
   try {
     // showItemInFolder works on all platforms (macOS, Windows, Linux)
     shell.showItemInFolder(targetPath);
@@ -1144,7 +1144,7 @@ ipcMain.handle('qv-reveal-path', async (_event, targetPath: string): Promise<boo
  * 4. Resolve realpath and verify it's within blobs_dir
  * 5. Read file and return ArrayBuffer
  */
-ipcMain.handle('qv-read-blob', async (_event, blobId: string, calcDir: string): Promise<ArrayBuffer> => {
+ipcMain.handle('qms-read-blob', async (_event, blobId: string, calcDir: string): Promise<ArrayBuffer> => {
   try {
     const calcPath = path.resolve(calcDir);
     const blobsDir = path.join(calcPath, 'analysis', 'blobs');
@@ -1203,7 +1203,7 @@ ipcMain.handle('qv-read-blob', async (_event, blobId: string, calcDir: string): 
  * 3. Resolve realpath and verify it's within calcDir/.scratch/
  * 4. Read file and return ArrayBuffer
  */
-ipcMain.handle('qv-read-scratch-file', async (_event, calcDir: string, relativePath: string): Promise<ArrayBuffer> => {
+ipcMain.handle('qms-read-scratch-file', async (_event, calcDir: string, relativePath: string): Promise<ArrayBuffer> => {
   try {
     // Validate relativePath starts with .scratch/
     if (!relativePath.startsWith('.scratch/') && !relativePath.startsWith('.scratch\\')) {

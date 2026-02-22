@@ -16,12 +16,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
-from quantumvitas.core.yamldoc import StepDoc
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
+from qmatsuite.api import QMSService
+from qmatsuite.core.yamldoc import StepDoc
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
 
 
-def send_request(daemon: QVDaemon, request_type: str, payload: dict) -> dict:
+def send_request(daemon: QMSDaemon, request_type: str, payload: dict) -> dict:
     """Send a request to the daemon and return the response data."""
     response = daemon.handle_request(RPCRequest(
         id="test",
@@ -47,7 +47,7 @@ def temp_project(tmp_path: Path) -> tuple[Path, str, str]:
     Returns:
         (project_root, calc_ulid, step_ulid) tuple
     """
-    project_root = QVService.init_project(tmp_path / "project")
+    project_root = QMSService.init_project(tmp_path / "project")
 
     # Import structure
     source = tmp_path / "si.json"
@@ -57,14 +57,14 @@ def temp_project(tmp_path: Path) -> tuple[Path, str, str]:
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService(project_root).structure.import_file(source, name="Silicon")
+    QMSService(project_root).structure.import_file(source, name="Silicon")
 
     # Create calculation and get ULID
-    calc_result = QVService(project_root).project.init_calculation(name="calc001", structure_selector="silicon", engine_family="qe")
+    calc_result = QMSService(project_root).project.init_calculation(name="calc001", structure_selector="silicon", engine_family="qe")
     calc_ulid = calc_result.ulid
 
     # Create step and get ULID
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     step_dto = svc.calculation.add_step(calc_selector=calc_ulid, step_type_gen="scf", name="step001")
     step_ulid = step_dto.step_ulid
 
@@ -74,7 +74,7 @@ def temp_project(tmp_path: Path) -> tuple[Path, str, str]:
 def test_update_step_params_scalar_persists_to_disk(temp_project: tuple[Path, str, str]):
     """Test that scalar parameter changes persist to disk via daemon RPC."""
     project_root, calc_ulid, step_ulid = temp_project
-    daemon = QVDaemon()
+    daemon = QMSDaemon()
 
     # Get step YAML path
     step_yaml_path = _get_step_yaml_path(project_root, "calc001", "step001")
@@ -117,7 +117,7 @@ def test_update_step_params_scalar_persists_to_disk(temp_project: tuple[Path, st
 def test_update_step_params_scan_persists_to_disk(temp_project: tuple[Path, str, str]):
     """Test that scan value changes persist to disk via daemon RPC."""
     project_root, calc_ulid, step_ulid = temp_project
-    daemon = QVDaemon()
+    daemon = QMSDaemon()
 
     # Get step YAML path
     step_yaml_path = _get_step_yaml_path(project_root, "calc001", "step001")
@@ -132,7 +132,7 @@ def test_update_step_params_scan_persists_to_disk(temp_project: tuple[Path, str,
             "scan001": {"values": [30, 40, 50]},
         },
     })
-    from quantumvitas.workflow.step_factory import save_step_doc
+    from qmatsuite.workflow.step_factory import save_step_doc
     save_step_doc(step_doc, step_yaml_path)
 
     # Record initial mtime
@@ -180,7 +180,7 @@ def test_update_step_params_scan_persists_to_disk(temp_project: tuple[Path, str,
 def test_update_step_params_scalar_and_scan_persist_to_disk(temp_project: tuple[Path, str, str]):
     """Test that both scalar and scan changes persist in a single RPC call."""
     project_root, calc_ulid, step_ulid = temp_project
-    daemon = QVDaemon()
+    daemon = QMSDaemon()
 
     # Get step YAML path
     step_yaml_path = _get_step_yaml_path(project_root, "calc001", "step001")
@@ -198,7 +198,7 @@ def test_update_step_params_scalar_and_scan_persist_to_disk(temp_project: tuple[
             "scan001": {"values": [30, 40, 50]},
         },
     })
-    from quantumvitas.workflow.step_factory import save_step_doc
+    from qmatsuite.workflow.step_factory import save_step_doc
     save_step_doc(step_doc, step_yaml_path)
 
     # Record initial mtime

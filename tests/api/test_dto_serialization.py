@@ -12,7 +12,7 @@ from uuid import UUID
 
 import pytest
 
-from quantumvitas.api.types.base import to_json_value
+from qmatsuite.api.types.base import to_json_value
 
 
 def test_primitives_pass_through():

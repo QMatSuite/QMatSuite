@@ -58,9 +58,9 @@ Five additional **spec gaps** are identified: bandspw→bands adjacency semantic
 
 | # | File | Path | Role |
 |---|------|------|------|
-| 16 | capability.py | `src/quantumvitas/core/analysis/capability.py` | `AnalysisCapability` dataclass, `find_contiguous_match()` — the matching primitive |
-| 17 | orchestrator.py | `src/quantumvitas/core/analysis/orchestrator.py` | `run_post_run_analysis()` — the dispatch loop (first-match-per-type) |
-| 18 | Driver capabilities | `src/quantumvitas/drivers/*/driver.py` | `ANALYSIS_CAPABILITIES` class attribute (13 engines declare; QMCPACK + Yambo = empty) |
+| 16 | capability.py | `src/qmatsuite/core/analysis/capability.py` | `AnalysisCapability` dataclass, `find_contiguous_match()` — the matching primitive |
+| 17 | orchestrator.py | `src/qmatsuite/core/analysis/orchestrator.py` | `run_post_run_analysis()` — the dispatch loop (first-match-per-type) |
+| 18 | Driver capabilities | `src/qmatsuite/drivers/*/driver.py` | `ANALYSIS_CAPABILITIES` class attribute (13 engines declare; QMCPACK + Yambo = empty) |
 | 19 | Gate tests | `tests/gates/test_analysis_invariants.py` | 109 gate tests enforcing Inv-A1–A14, §5.2/§5.3 |
 | 20 | Capability tests | `tests/core/analysis/test_capability.py` | 8 unit tests for `find_contiguous_match()` |
 | 21 | Orchestrator tests | `tests/core/analysis/test_orchestrator.py` | ~10 tests for `run_post_run_analysis()` |
@@ -98,7 +98,7 @@ Five additional **spec gaps** are identified: bandspw→bands adjacency semantic
 
 #### Source 3: CODE (actual behavior)
 
-`src/quantumvitas/core/analysis/orchestrator.py`, lines 42–63:
+`src/qmatsuite/core/analysis/orchestrator.py`, lines 42–63:
 
 ```python
 # Deterministic capability resolution:
@@ -119,7 +119,7 @@ for object_type in type_order:
             break  # ← ONE result per object_type
 ```
 
-`src/quantumvitas/core/analysis/capability.py`, lines 50–58:
+`src/qmatsuite/core/analysis/capability.py`, lines 50–58:
 
 ```python
 for start in range(0, len(ordered_gen_steps) - n_required + 1):

@@ -1,5 +1,5 @@
 /**
- * AppShell - Main layout wrapper for QuantumVITAS GUI
+ * AppShell - Main layout wrapper for QMatSuite GUI
  * 
  * Provides the overall layout structure with sidebar, main content, 
  * optional footer (debug panel), and status bar.

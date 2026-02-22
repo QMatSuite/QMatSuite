@@ -26,7 +26,7 @@ def test_canonicalize_frac_coords_usage_is_restricted():
     # Find structure_viz.py
     test_file = pathlib.Path(__file__)
     repo_root = test_file.parents[2]
-    structure_viz_path = repo_root / "src" / "quantumvitas" / "analysis" / "structure_viz.py"
+    structure_viz_path = repo_root / "src" / "qmatsuite" / "analysis" / "structure_viz.py"
     
     assert structure_viz_path.exists(), f"File not found: {structure_viz_path}"
     
@@ -116,7 +116,7 @@ def test_canonicalize_structure_in_place_usage_is_restricted():
     # Find structure_viz.py
     test_file = pathlib.Path(__file__)
     repo_root = test_file.parents[2]
-    structure_viz_path = repo_root / "src" / "quantumvitas" / "analysis" / "structure_viz.py"
+    structure_viz_path = repo_root / "src" / "qmatsuite" / "analysis" / "structure_viz.py"
     
     assert structure_viz_path.exists(), f"File not found: {structure_viz_path}"
     
@@ -239,7 +239,7 @@ def test_bond_detection_functions_do_not_canonicalize():
     # Find structure_viz.py
     test_file = pathlib.Path(__file__)
     repo_root = test_file.parents[2]
-    structure_viz_path = repo_root / "src" / "quantumvitas" / "analysis" / "structure_viz.py"
+    structure_viz_path = repo_root / "src" / "qmatsuite" / "analysis" / "structure_viz.py"
     
     assert structure_viz_path.exists(), f"File not found: {structure_viz_path}"
     

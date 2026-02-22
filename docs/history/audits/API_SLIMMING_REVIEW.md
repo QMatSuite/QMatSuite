@@ -1,7 +1,7 @@
 # API Slimming Review
 
 **Date**: 2026-02-02 (v4: Final Closeout)
-**Scope**: Full `quantumvitas.api` traversal
+**Scope**: Full `qmatsuite.api` traversal
 **Status**: CLOSED — Post-slimming stable surface
 
 ---
@@ -11,8 +11,8 @@
 | Category | Count |
 |----------|-------|
 | `api/__init__.py` exports | 2 |
-| QVService static methods | 23 |
-| QVService nested service methods | 88 |
+| QMSService static methods | 23 |
+| QMSService nested service methods | 88 |
 | Utils exports (functions + classes) | 79 |
 | DTOs | 11 |
 | Errors | 10 |
@@ -115,7 +115,7 @@ for module in modules:
 
 **Current**: 6 utils functions + class
 
-**Proposed**: `QVService.OnlineSearch` static nested class with `search()`, `fetch()`, `create_cache()` methods.
+**Proposed**: `QMSService.OnlineSearch` static nested class with `search()`, `fetch()`, `create_cache()` methods.
 
 **Entrypoint reduction**: 6 → 1 = **-5** (nested class counts as 1 domain, not 3 methods)
 
@@ -175,12 +175,12 @@ archives = bundle["seed_archives"]
 
 ```python
 # Before (utils function)
-from quantumvitas.api.utils import search_online_structures
+from qmatsuite.api.utils import search_online_structures
 results = search_online_structures(query, max_results=50)
 
 # After (service capability)
-from quantumvitas.api import QVService
-results = QVService.OnlineSearch.search(query, max_results=50)
+from qmatsuite.api import QMSService
+results = QMSService.OnlineSearch.search(query, max_results=50)
 ```
 
 ---
@@ -371,7 +371,7 @@ class PseudoStatusBundle(BaseDTO):
     "environment": {
         "python_version": str,
         "python_executable": str,
-        "qv_version": str,
+        "qms_version": str,
         "qe_home": str | None,
         "qe_found": bool
     },
@@ -398,7 +398,7 @@ class QEEnvironmentInfo:
     """Environment info."""
     python_version: str
     python_executable: str
-    qv_version: str
+    qms_version: str
     qe_home: str | None
     qe_found: bool
 
@@ -492,8 +492,8 @@ class CalculationPresetBundle(BaseDTO):
 | Category | Baseline | Final | Delta |
 |----------|----------|-------|-------|
 | `api/__init__.py` exports | 24 | 2 | -22 |
-| QVService static methods | 38 | 23 | -15 |
-| QVService nested methods | ~100 | 90 | -10 |
+| QMSService static methods | 38 | 23 | -15 |
+| QMSService nested methods | ~100 | 90 | -10 |
 | Utils exports | 88 | 68 | -20 |
 | DTOs | 13 | 11 | -2 |
 | Errors | 9 | 10 | +1 |
@@ -510,7 +510,7 @@ The 204 remaining entrypoints are the **post-slimming stable API surface**. They
 - **23 static methods**: Bootstrap/factory operations
 - **11 DTOs**: Data transfer objects for the API boundary
 - **10 errors**: Error taxonomy per Law H6
-- **2 api_init**: `QVService` and `get_service`
+- **2 api_init**: `QMSService` and `get_service`
 
 ### 8.3 Disallowed Changes (Now Gated)
 

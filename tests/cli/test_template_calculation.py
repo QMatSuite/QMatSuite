@@ -12,7 +12,7 @@ import shutil
 
 from typer.testing import CliRunner
 
-from quantumvitas.cli.main import app
+from qmatsuite.cli.main import app
 
 runner = CliRunner()
 
@@ -28,7 +28,7 @@ def template_project(tmp_path, project_root_path):
     shutil.copytree(example_project, project_dir)
     
     assert project_dir.exists()
-    assert (project_dir / "project.qv.yml").exists()
+    assert (project_dir / "project.qms.yml").exists()
     
     # Configure species_map using official CLI command (required for project runs)
     # Use the SCF input file from the example project's raw directory
@@ -53,8 +53,8 @@ def test_template_project_structure(template_project):
     """Test that project template creates correct structure."""
     project_dir = template_project
     
-    # Check project.qv.yml exists
-    assert (project_dir / "project.qv.yml").exists()
+    # Check project.qms.yml exists
+    assert (project_dir / "project.qms.yml").exists()
     
     # Check structures directory
     structures_dir = project_dir / "structures"
@@ -78,14 +78,14 @@ def test_template_project_structure(template_project):
 
 
 def test_template_calculation_ulids_consistent(template_project):
-    """Test that calculation ULID in project.qv.yml matches step parent_calculation_id."""
+    """Test that calculation ULID in project.qms.yml matches step parent_calculation_id."""
     project_dir = template_project
     
     # Load project config
-    config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
+    config = yaml.safe_load((project_dir / "project.qms.yml").read_text())
     
     # Find si-dos calculation using centralized selector extraction
-    from quantumvitas.core.selectors import extract_calculation_selector_from_entry
+    from qmatsuite.core.selectors import extract_calculation_selector_from_entry
     
     calculation_entry = None
     for wf in config.get("calculations", []):
@@ -99,7 +99,7 @@ def test_template_calculation_ulids_consistent(template_project):
         if calculation_selector and "si-dos" in str(calculation_selector).lower():
             # Resolve to check if it's actually si-dos
             try:
-                from quantumvitas.core.resolution import build_resource_index, require_calculation
+                from qmatsuite.core.resolution import build_resource_index, require_calculation
                 index = build_resource_index(project_dir)
                 resolved = require_calculation(project_dir, calculation_selector, index=index)
                 if resolved.meta.slug == "si-dos" or resolved.meta.name == "si-dos":
@@ -122,7 +122,7 @@ def test_template_calculation_ulids_consistent(template_project):
                         calculation_entry = wf
                         break
     
-    assert calculation_entry is not None, "si-dos calculation not found in project.qv.yml"
+    assert calculation_entry is not None, "si-dos calculation not found in project.qms.yml"
 
     # API model: calculation entry has meta with ulid
     calculation_ulid = (calculation_entry.get("meta") or {}).get("ulid")
@@ -152,7 +152,7 @@ def test_template_structure_copied(template_project):
     assert structure_ulid, "Calculation should reference a structure via structure_ulid"
     
     # Check structure file exists by resolving via project
-    from quantumvitas.project.model import Project
+    from qmatsuite.project.model import Project
     project = Project.open(project_dir)
     structure_ref = project.get_structure(structure_ulid)
     assert structure_ref.absolute_path.exists(), f"Structure file {structure_ref.absolute_path} should exist"
@@ -197,14 +197,14 @@ def test_init_calculation_from_template_with_custom_structure(tmp_path):
     structures_dir.mkdir(exist_ok=True)
     
     # Generate proper ULID for structure
-    from quantumvitas.core.resources import generate_resource_id
+    from qmatsuite.core.resources import generate_resource_id
     structure_ulid = generate_resource_id()
     
     struct_file = structures_dir / "custom_si.json"
     with open(struct_file, "w") as f:
         json.dump({
             "structure": struct.as_dict(),
-            "__qv_meta__": {
+            "__qms_meta__": {
                 "ulid": structure_ulid,
                 "name": "custom_si",
                 "slug": "custom_si",
@@ -214,11 +214,11 @@ def test_init_calculation_from_template_with_custom_structure(tmp_path):
         }, f)
     
     # Register structure in project
-    config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
+    config = yaml.safe_load((project_dir / "project.qms.yml").read_text())
     config.setdefault("structures", []).append({
         "structure_ulid": structure_ulid,  # ID-only reference (ULID)
     })
-    with open(project_dir / "project.qv.yml", "w") as f:
+    with open(project_dir / "project.qms.yml", "w") as f:
         yaml.safe_dump(config, f)
     
     # Create calculation from template using the custom structure
@@ -239,7 +239,7 @@ def test_init_calculation_from_template_with_custom_structure(tmp_path):
     # Verify structure_ulid is a ULID (26 chars), not a human-readable name
     assert len(structure_ulid) == 26, "structure_ulid should be a ULID, not a human-readable name"
     # Verify it resolves to the custom structure
-    from quantumvitas.core.resolution import resolve_structure
+    from qmatsuite.core.resolution import resolve_structure
     resolved_structure = resolve_structure(project_dir, structure_ulid)
     assert resolved_structure.meta.slug == "custom_si", "Calculation should reference custom_si structure"
     

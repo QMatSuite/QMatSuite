@@ -14,7 +14,7 @@ High-level integration tests that run three workflows (SCF, bands, DOS) through 
 
 ```
 Level 4: Daemon/Project Tests          [PR6+]
-  └── Full workflow through QVService API
+  └── Full workflow through QMSService API
 Level 3: Runner Tests with fake_vasp   [PR4-5]
   └── Manifest, history, locking integration
 Level 2: Materialization Tests         [PR3]
@@ -38,7 +38,7 @@ Prepare the repository structure for VASP integration.
 | `docs/engines/vasp/01_qe_backend_code_review.md` | CREATE | This document |
 | `docs/engines/vasp/02_vasp_research_and_specs.md` | CREATE | Specs document |
 | `docs/engines/vasp/03_vasp_integration_implementation_plan.md` | CREATE | This plan |
-| `src/quantumvitas/engines/vasp/` | CREATE | Empty directory with `__init__.py` |
+| `src/qmatsuite/engines/vasp/` | CREATE | Empty directory with `__init__.py` |
 | `tests/integration/vasp/` | CREATE | Empty directory with `__init__.py` |
 | `tests/utils/fake_vasp.py` | STUB | Empty file with docstring |
 
@@ -57,8 +57,8 @@ Implement VASP binary discovery and executable selection logic.
 ### Files to Create
 
 ```
-src/quantumvitas/core/engines/vasp_resolver.py
-src/quantumvitas/engine/vasp_engine.py
+src/qmatsuite/core/engines/vasp_resolver.py
+src/qmatsuite/engine/vasp_engine.py
 tests/unit/vasp/test_vasp_resolver.py
 tests/unit/vasp/test_vasp_engine_registration.py
 ```
@@ -144,8 +144,8 @@ def select_vasp_executable(step_params: dict) -> str:
 
 from pathlib import Path
 from typing import Optional, List
-from quantumvitas.engine.base import Engine, EngineConfig, StepResult
-from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin, is_vasp_available
+from qmatsuite.engine.base import Engine, EngineConfig, StepResult
+from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin, is_vasp_available
 
 class VaspEngine(Engine):
     """VASP engine implementation."""
@@ -197,7 +197,7 @@ def create_default_registry(...) -> EngineRegistry:
 
 import pytest
 from pathlib import Path
-from quantumvitas.core.engines.vasp_resolver import (
+from qmatsuite.core.engines.vasp_resolver import (
     resolve_vasp_bin,
     resolve_potcar_library,
     is_vasp_available,
@@ -244,7 +244,7 @@ class TestVaspResolverWithEnv:
 """Tests for VASP engine registration."""
 
 import pytest
-from quantumvitas.engine.registry import create_default_registry
+from qmatsuite.engine.registry import create_default_registry
 
 def test_vasp_engine_registered():
     """VASP engine should be in default registry."""
@@ -276,7 +276,7 @@ Define VASP step types and ensure bijection with public types.
 ### Files to Create/Modify
 
 ```
-src/quantumvitas/workflow/registry.py  (MODIFY)
+src/qmatsuite/workflow/registry.py  (MODIFY)
 tests/unit/vasp/test_vasp_step_types.py
 tests/unit/vasp/test_vasp_gen_spec_bijection.py
 ```
@@ -341,7 +341,7 @@ tests/unit/vasp/test_vasp_gen_spec_bijection.py
 """Tests for VASP step type definitions."""
 
 import pytest
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 
 class TestVaspStepTypes:
     @pytest.fixture
@@ -376,7 +376,7 @@ class TestVaspStepTypes:
 """Test gen→spec bijection for VASP step types."""
 
 import pytest
-from quantumvitas.workflow.registry import get_registry, normalize_step_type_to_public
+from qmatsuite.workflow.registry import get_registry, normalize_step_type_to_public
 
 class TestVaspGenSpecBijection:
     @pytest.fixture
@@ -419,9 +419,9 @@ Implement VASP input file generation with species_map integration.
 ### Files to Create
 
 ```
-src/quantumvitas/engines/vasp/__init__.py
-src/quantumvitas/engines/vasp/input_writer.py
-src/quantumvitas/engines/vasp/potcar_assembly.py
+src/qmatsuite/engines/vasp/__init__.py
+src/qmatsuite/engines/vasp/input_writer.py
+src/qmatsuite/engines/vasp/potcar_assembly.py
 tests/unit/vasp/test_vasp_poscar_writer.py
 tests/unit/vasp/test_vasp_incar_writer.py
 tests/unit/vasp/test_vasp_kpoints_writer.py
@@ -519,7 +519,7 @@ def materialize_vasp_inputs(
     incar_path = write_incar(step_params.get("incar", {}), working_dir / "INCAR", system_name)
     kpoints_path = write_kpoints(step_params.get("kpoints", {}), working_dir / "KPOINTS")
     
-    from quantumvitas.engines.vasp.potcar_assembly import assemble_potcar
+    from qmatsuite.engines.vasp.potcar_assembly import assemble_potcar
     potcar_path = assemble_potcar(structure, species_map, potcar_library, working_dir)
     
     return {
@@ -538,7 +538,7 @@ def materialize_vasp_inputs(
 from pathlib import Path
 from typing import Dict, Any
 from pymatgen.core import Structure
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from qmatsuite.core.pseudo_provenance import compute_sha256_file
 
 def assemble_potcar(
     structure: Structure,
@@ -614,7 +614,7 @@ def compute_vasp_pseudo_set_sha(
 
 import pytest
 from pymatgen.core import Structure, Lattice
-from quantumvitas.engines.vasp.input_writer import write_poscar
+from qmatsuite.engines.vasp.input_writer import write_poscar
 
 @pytest.fixture
 def si_structure():
@@ -649,7 +649,7 @@ class TestPoscarWriter:
 
 import pytest
 from pymatgen.core import Structure, Lattice
-from quantumvitas.engines.vasp.input_writer import materialize_vasp_inputs
+from qmatsuite.engines.vasp.input_writer import materialize_vasp_inputs
 
 class TestMaterializeDeterminism:
     @pytest.fixture
@@ -708,8 +708,8 @@ Implement VASP execution with fake_vasp harness for testing.
 ### Files to Create
 
 ```
-src/quantumvitas/engines/vasp/runner.py
-src/quantumvitas/execution/vasp_handler.py
+src/qmatsuite/engines/vasp/runner.py
+src/qmatsuite/execution/vasp_handler.py
 tests/utils/fake_vasp.py
 tests/integration/vasp/conftest.py
 tests/integration/vasp/test_vasp_runner_fake.py
@@ -729,7 +729,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 
-from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin, select_vasp_executable
+from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin, select_vasp_executable
 
 @dataclass
 class VaspStepResult:
@@ -922,7 +922,7 @@ import pytest
 from pathlib import Path
 from pymatgen.core import Structure, Lattice
 
-from quantumvitas.engines.vasp.input_writer import materialize_vasp_inputs
+from qmatsuite.engines.vasp.input_writer import materialize_vasp_inputs
 from tests.utils.fake_vasp import fake_vasp_scf
 
 class TestVaspRunnerFake:
@@ -975,8 +975,8 @@ Implement output parsing for OSZICAR, OUTCAR, and optional vasprun.xml.
 ### Files to Create
 
 ```
-src/quantumvitas/engines/vasp/output_parser.py
-src/quantumvitas/engines/vasp/digest.py
+src/qmatsuite/engines/vasp/output_parser.py
+src/qmatsuite/engines/vasp/digest.py
 tests/unit/vasp/test_vasp_oszicar_parser.py
 tests/unit/vasp/test_vasp_outcar_parser.py
 tests/unit/vasp/test_vasp_digest.py
@@ -1126,7 +1126,7 @@ def compute_vasp_step_digest(working_dir: Path) -> VaspStepDigest:
 # tests/unit/vasp/test_vasp_oszicar_parser.py
 
 import pytest
-from quantumvitas.engines.vasp.output_parser import parse_oszicar
+from qmatsuite.engines.vasp.output_parser import parse_oszicar
 
 SAMPLE_OSZICAR = """       N       E                     dE             d eps       ncg     rms
 DAV:   1    -0.100000000000E+02   -0.10000E+02   -0.10000E+02   100   0.100E+01
@@ -1160,8 +1160,8 @@ Complete VASP workflow support with all three target workflows.
 ### Files to Create/Modify
 
 ```
-src/quantumvitas/engines/vasp/workflows.py
-src/quantumvitas/execution/vasp_handler.py (EXTEND)
+src/qmatsuite/engines/vasp/workflows.py
+src/qmatsuite/execution/vasp_handler.py (EXTEND)
 tests/integration/vasp/test_vasp_scf_workflow.py
 tests/integration/vasp/test_vasp_bands_workflow.py
 tests/integration/vasp/test_vasp_dos_workflow.py
@@ -1212,8 +1212,8 @@ import pytest
 from pathlib import Path
 from pymatgen.core import Structure, Lattice
 
-from quantumvitas.engines.vasp.input_writer import materialize_vasp_inputs
-from quantumvitas.engines.vasp.digest import compute_vasp_step_digest
+from qmatsuite.engines.vasp.input_writer import materialize_vasp_inputs
+from qmatsuite.engines.vasp.digest import compute_vasp_step_digest
 from tests.utils.fake_vasp import fake_vasp_scf
 
 class TestVaspScfWorkflow:
@@ -1260,7 +1260,7 @@ class TestVaspScfWorkflow:
 
 import pytest
 from tests.utils.fake_vasp import fake_vasp_scf, fake_vasp_bands
-from quantumvitas.engines.vasp.workflows import setup_bands_workflow
+from qmatsuite.engines.vasp.workflows import setup_bands_workflow
 
 class TestVaspBandsWorkflow:
     def test_bands_requires_chgcar(self, tmp_path):
@@ -1306,7 +1306,7 @@ class TestVaspBandsWorkflow:
 
 import pytest
 from pathlib import Path
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 pytestmark = pytest.mark.skipif(
     not is_vasp_available(),
@@ -1319,13 +1319,13 @@ class TestVaspProjectRuns:
     @pytest.fixture
     def vasp_project(self, tmp_path):
         """Create minimal VASP project."""
-        project_root = QVService.init_project(tmp_path / "vasp_test_project")
+        project_root = QMSService.init_project(tmp_path / "vasp_test_project")
         # ... setup structure, calculation, steps ...
         return project_root
     
     def test_scf_through_api(self, vasp_project):
-        """Run SCF through QVService.run_step()."""
-        result = QVService.run_step(
+        """Run SCF through QMSService.run_step()."""
+        result = QMSService.run_step(
             vasp_project,
             calc_selector="si_scf",
             step_selector="scf",
@@ -1391,7 +1391,7 @@ class TestVaspProjectRuns:
 3. **Verify Parser Outputs**
    ```python
    # After VASP run
-   from quantumvitas.engines.vasp.output_parser import parse_oszicar, parse_outcar
+   from qmatsuite.engines.vasp.output_parser import parse_oszicar, parse_outcar
    from pathlib import Path
    
    workdir = Path("/tmp/vasp_test")
@@ -1433,20 +1433,20 @@ Each PR is independently testable and landable. Tests grow from unit to integrat
 ## Appendix: File Summary by PR
 
 ### PR1
-- `src/quantumvitas/core/engines/vasp_resolver.py`
-- `src/quantumvitas/engine/vasp_engine.py`
+- `src/qmatsuite/core/engines/vasp_resolver.py`
+- `src/qmatsuite/engine/vasp_engine.py`
 - `tests/unit/vasp/test_vasp_resolver.py`
 - `tests/unit/vasp/test_vasp_engine_registration.py`
 
 ### PR2
-- `src/quantumvitas/workflow/registry.py` (modify)
+- `src/qmatsuite/workflow/registry.py` (modify)
 - `tests/unit/vasp/test_vasp_step_types.py`
 - `tests/unit/vasp/test_vasp_gen_spec_bijection.py`
 
 ### PR3
-- `src/quantumvitas/engines/vasp/__init__.py`
-- `src/quantumvitas/engines/vasp/input_writer.py`
-- `src/quantumvitas/engines/vasp/potcar_assembly.py`
+- `src/qmatsuite/engines/vasp/__init__.py`
+- `src/qmatsuite/engines/vasp/input_writer.py`
+- `src/qmatsuite/engines/vasp/potcar_assembly.py`
 - `tests/unit/vasp/test_vasp_poscar_writer.py`
 - `tests/unit/vasp/test_vasp_incar_writer.py`
 - `tests/unit/vasp/test_vasp_kpoints_writer.py`
@@ -1454,23 +1454,23 @@ Each PR is independently testable and landable. Tests grow from unit to integrat
 - `tests/unit/vasp/test_vasp_materialize_determinism.py`
 
 ### PR4
-- `src/quantumvitas/engines/vasp/runner.py`
-- `src/quantumvitas/execution/vasp_handler.py`
+- `src/qmatsuite/engines/vasp/runner.py`
+- `src/qmatsuite/execution/vasp_handler.py`
 - `tests/utils/fake_vasp.py`
 - `tests/integration/vasp/conftest.py`
 - `tests/integration/vasp/test_vasp_runner_fake.py`
 - `tests/integration/vasp/test_vasp_manifest_integration.py`
 
 ### PR5
-- `src/quantumvitas/engines/vasp/output_parser.py`
-- `src/quantumvitas/engines/vasp/digest.py`
+- `src/qmatsuite/engines/vasp/output_parser.py`
+- `src/qmatsuite/engines/vasp/digest.py`
 - `tests/unit/vasp/test_vasp_oszicar_parser.py`
 - `tests/unit/vasp/test_vasp_outcar_parser.py`
 - `tests/unit/vasp/test_vasp_digest.py`
 
 ### PR6
-- `src/quantumvitas/engines/vasp/workflows.py`
-- `src/quantumvitas/execution/vasp_handler.py` (extend)
+- `src/qmatsuite/engines/vasp/workflows.py`
+- `src/qmatsuite/execution/vasp_handler.py` (extend)
 - `tests/integration/vasp/test_vasp_scf_workflow.py`
 - `tests/integration/vasp/test_vasp_bands_workflow.py`
 - `tests/integration/vasp/test_vasp_dos_workflow.py`

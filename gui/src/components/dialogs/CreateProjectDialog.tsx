@@ -1,5 +1,5 @@
 /**
- * CreateProjectDialog - Dialog for creating a new QV project
+ * CreateProjectDialog - Dialog for creating a new QMS project
  * 
  * Uses parent directory + project name approach:
  * - User picks a parent directory (default: from settings)
@@ -11,8 +11,8 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Modal } from './Modal';
-import { useQVClient } from '../../hooks/useQVClient';
-import type { DemoProjectResult } from '../../types/qv';
+import { useQMSClient } from '../../hooks/useQMSClient';
+import type { DemoProjectResult } from '../../types/qms';
 import './CreateProjectDialog.css';
 
 interface CreateProjectDialogProps {
@@ -42,7 +42,7 @@ export function CreateProjectDialog({
   isDemoProject = false,
   defaultParentDir = '',
 }: CreateProjectDialogProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   
   const [parentDir, setParentDir] = useState(defaultParentDir);
   const [projectName, setProjectName] = useState(isDemoProject ? 'demo-si-project' : 'my-project');
@@ -68,8 +68,8 @@ export function CreateProjectDialog({
   }, [parentDir, projectSlug]);
   
   const handleBrowseParent = useCallback(async () => {
-    if (window.qv?.openDirectory) {
-      const path = await window.qv.openDirectory();
+    if (window.qms?.openDirectory) {
+      const path = await window.qms.openDirectory();
       if (path) {
         setParentDir(path);
       }
@@ -94,7 +94,7 @@ export function CreateProjectDialog({
     
     if (isDemoProject) {
       // Create demo project
-      const response = await qv.call('create_demo_project', {
+      const response = await qms.call('create_demo_project', {
         target_dir: parentDir,
         name: projectSlug,
       });
@@ -110,7 +110,7 @@ export function CreateProjectDialog({
       }
     } else {
       // Create empty project
-      const response = await qv.call('create_project', {
+      const response = await qms.call('create_project', {
         target_dir: finalTargetDir,
         name: projectName.trim(),
       });
@@ -127,7 +127,7 @@ export function CreateProjectDialog({
         // Don't close dialog - let user fix the folder choice
       }
     }
-  }, [qv, parentDir, projectName, projectSlug, previewPath, isDemoProject, onSuccess]);
+  }, [qms, parentDir, projectName, projectSlug, previewPath, isDemoProject, onSuccess]);
   
   const handleClose = useCallback(() => {
     setParentDir('');
@@ -139,7 +139,7 @@ export function CreateProjectDialog({
   const title = isDemoProject ? 'Create Demo Project' : 'Create New Project';
   const description = isDemoProject 
     ? 'Create a demo Silicon project with a ready-to-run SCF/DOS calculation.'
-    : 'Create a new QuantumVITAS project in the specified location.';
+    : 'Create a new QMatSuite project in the specified location.';
   
   return (
     <Modal
@@ -149,21 +149,21 @@ export function CreateProjectDialog({
       size="medium"
       footer={
         <>
-          <button className="btn btn--secondary" onClick={handleClose} data-testid="qv-btn-cancel-create">
+          <button className="btn btn--secondary" onClick={handleClose} data-testid="qms-btn-cancel-create">
             Cancel
           </button>
           <button 
             className={`btn btn--primary ${isCreating ? 'btn--loading' : ''}`}
             onClick={handleCreate}
             disabled={isCreating || !parentDir || !projectName.trim()}
-            data-testid="qv-btn-confirm-create"
+            data-testid="qms-btn-confirm-create"
           >
             {isDemoProject ? 'Create Demo' : 'Create Project'}
           </button>
         </>
       }
     >
-      <div className="modal-form" data-testid="qv-create-project-dialog">
+      <div className="modal-form" data-testid="qms-create-project-dialog">
         <p className="form-description">{description}</p>
         
         <div className="form-group">
@@ -177,7 +177,7 @@ export function CreateProjectDialog({
               value={parentDir}
               onChange={(e) => setParentDir(e.target.value)}
               placeholder="/path/to/projects"
-              data-testid="qv-input-parent-dir"
+              data-testid="qms-input-parent-dir"
             />
             <button className="form-button" onClick={handleBrowseParent}>
               📂
@@ -198,7 +198,7 @@ export function CreateProjectDialog({
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
             placeholder="my-project"
-            data-testid="qv-input-project-name"
+            data-testid="qms-input-project-name"
           />
           <span className="form-hint">
             A folder with this name will be created in the parent directory
@@ -207,14 +207,14 @@ export function CreateProjectDialog({
         
         {/* Preview Path */}
         {previewPath && (
-          <div className="form-preview" data-testid="qv-project-preview-path">
+          <div className="form-preview" data-testid="qms-project-preview-path">
             <span className="form-preview__label">Project will be created at:</span>
             <code className="form-preview__path">{previewPath}</code>
           </div>
         )}
         
         {error && (
-          <div className="form-error" data-testid="qv-create-project-error">
+          <div className="form-error" data-testid="qms-create-project-error">
             ⚠️ {error}
           </div>
         )}

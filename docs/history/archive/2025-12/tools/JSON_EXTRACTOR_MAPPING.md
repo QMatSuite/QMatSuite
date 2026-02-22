@@ -144,4 +144,4 @@ v3 (旧 v4) → extract_qe_parameters_v3.py (生产版本)
 
 3. 所有提取器都使用 `json.dump(..., sort_keys=False)` 来保持文档顺序
 
-4. 生产 JSON 路径始终是: `src/quantumvitas/data/qe_module_parameters.json`
+4. 生产 JSON 路径始终是: `src/qmatsuite/data/qe_module_parameters.json`

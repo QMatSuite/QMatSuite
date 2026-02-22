@@ -6,7 +6,7 @@
 
 **版本**: 2.0 (已废弃；权威版本为 `CONSTITUTION.md` v2.1)
 **最后更新**: 2026-02-03
-**适用范围**: QMatSuite / QuantumVITAS v2 代码库
+**适用范围**: QMatSuite / QMatSuite v2 代码库
 
 ---
 
@@ -137,7 +137,7 @@ Skip 判定只使用：`(kind/step_type, pseudo_set_sha, structure_sha, step_sha
 
 ### 6.2 Project Root
 
-- Project root marker 固定为：`project.qv.yml`。
+- Project root marker 固定为：`project.qms.yml`。
 - 查找逻辑：向上遍历目录树找到包含 marker 的目录。
 
 ### 6.3 身份不变性
@@ -425,15 +425,15 @@ Structure canonicalization 只允许发生一次（在几何入口/准备层）�
 
 | 层 | 包 | 导入规则 |
 |----|---|---------|
-| **Frontend** | daemon, CLI, GUI | 只能从 `quantumvitas.api` 导入 |
-| **API Facade** | `quantumvitas.api` | DTOs + Errors + Utils + Service |
+| **Frontend** | daemon, CLI, GUI | 只能从 `qmatsuite.api` 导入 |
+| **API Facade** | `qmatsuite.api` | DTOs + Errors + Utils + Service |
 | **Core/Runtime** | 其余所有包 | Frontend 不可直接导入 |
 
 ### 18.2 Utils 策略
 
 默认不允许 utils reexport。例外仅限于：
 - 真正的 frontend boundary helper
-- 不能合理地成为 QVService capability method
+- 不能合理地成为 QMSService capability method
 - 有 docstring justification
 
 ### 18.3 DTO 边界

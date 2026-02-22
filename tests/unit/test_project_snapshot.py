@@ -13,21 +13,21 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.api import QVService
-from quantumvitas.core.models import load_project, load_structure_model, load_calculation
-from quantumvitas.core.resources import get_resources_dir
-from quantumvitas.project.snapshot import (
+from qmatsuite.api import QMSService
+from qmatsuite.core.models import load_project, load_structure_model, load_calculation
+from qmatsuite.core.resources import get_resources_dir
+from qmatsuite.project.snapshot import (
     ProjectSnapshot,
     export_project_to_snapshot,
     materialize_project_from_snapshot,
 )
-from quantumvitas.calculation.structure_steps import StructureStepSpec
+from qmatsuite.calculation.structure_steps import StructureStepSpec
 
 
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for materialized test projects."""
-    tmp = tempfile.mkdtemp(prefix="qv_snapshot_test_")
+    tmp = tempfile.mkdtemp(prefix="qms_snapshot_test_")
     yield Path(tmp)
     shutil.rmtree(tmp, ignore_errors=True)
 
@@ -90,7 +90,7 @@ class TestProjectSnapshot:
         )
         
         assert new_project_root.exists()
-        assert (new_project_root / "project.qv.yml").exists()
+        assert (new_project_root / "project.qms.yml").exists()
         assert (new_project_root / "structures" / "si.json").exists()
         assert (new_project_root / "calculations" / "si-dos" / "calculation.yaml").exists()
         
@@ -124,7 +124,7 @@ class TestProjectSnapshot:
         
         # Verify step
         # Resolve step file via registry using step_id (ID-only model)
-        from quantumvitas.core.resolution import build_resource_index
+        from qmatsuite.core.resolution import build_resource_index
         index = build_resource_index(new_project_root)
         step_entry = calculation_model.steps[0]
         step_meta = index.by_id.get(step_entry.step_ulid)
@@ -170,14 +170,14 @@ class TestProjectSnapshot:
         
         # But names/slugs should match
         assert original_project.meta.name == new_project.meta.name
-        # Compare calculation entry names (from project.qv.yml), not calculation model names
-        # Note: calculation entry meta.name comes from project.qv.yml (which has "Si dos")
+        # Compare calculation entry names (from project.qms.yml), not calculation model names
+        # Note: calculation entry meta.name comes from project.qms.yml (which has "Si dos")
         # but calculation.yaml meta.name might be "si-dos" (slug) if it was created with old format
-        # So we compare the calculation entry meta.name (from project.qv.yml) which should be preserved
+        # So we compare the calculation entry meta.name (from project.qms.yml) which should be preserved
         original_wf_entry_name = original_project.calculations[0].meta.name
         new_wf_entry_name = new_project.calculations[0].meta.name
-        # The snapshot export should preserve the name from project.qv.yml (legacy format)
-        # So both should have "Si dos" from the original project.qv.yml
+        # The snapshot export should preserve the name from project.qms.yml (legacy format)
+        # So both should have "Si dos" from the original project.qms.yml
         assert original_wf_entry_name == new_wf_entry_name, \
             f"Calculation entry names should match: original={original_wf_entry_name}, new={new_wf_entry_name}"
     
@@ -208,8 +208,8 @@ class TestSnapshotCLI:
     """Test CLI commands for snapshot operations."""
 
     def test_save_project_snapshot_cli(self, project1_path: Path, temp_dir: Path):
-        """Test qv save-project CLI command."""
-        from quantumvitas.project.snapshot import export_project_to_snapshot
+        """Test qms save-project CLI command."""
+        from qmatsuite.project.snapshot import export_project_to_snapshot
         import yaml as pyyaml
 
         snapshot_path = temp_dir / "snapshot.yml"
@@ -230,8 +230,8 @@ class TestSnapshotCLI:
     def test_create_project_from_snapshot_cli(
         self, project1_path: Path, temp_dir: Path
     ):
-        """Test qv init project --snapshot CLI command."""
-        from quantumvitas.project.snapshot import (
+        """Test qms init project --snapshot CLI command."""
+        from qmatsuite.project.snapshot import (
             export_project_to_snapshot,
             materialize_project_from_snapshot,
         )
@@ -250,7 +250,7 @@ class TestSnapshotCLI:
         )
 
         assert new_project_root.exists()
-        assert (new_project_root / "project.qv.yml").exists()
+        assert (new_project_root / "project.qms.yml").exists()
 
         new_project = load_project(new_project_root)
         assert new_project.name == "CLI Test Project"
@@ -261,7 +261,7 @@ class TestSnapshotCLI:
         self, project1_path: Path, temp_dir: Path
     ):
         """Test that snapshot save fails if file exists and overwrite=False."""
-        from quantumvitas.project.snapshot import export_project_to_snapshot
+        from qmatsuite.project.snapshot import export_project_to_snapshot
         import yaml as pyyaml
 
         snapshot_path = temp_dir / "snapshot.yml"
@@ -340,7 +340,7 @@ class TestSnapshotRoundtrip:
         # Note: The test project may have step_id mismatches between calculation.yaml and step files
         # This is a data inconsistency, but we can still verify the roundtrip by comparing step counts
         # and checking that steps exist. For detailed comparison, we'll use the first step file found.
-        from quantumvitas.core.resolution import build_resource_index
+        from qmatsuite.core.resolution import build_resource_index
         original_index = build_resource_index(project1_path)
         new_index = build_resource_index(new_project_root)
         
@@ -467,9 +467,9 @@ class TestSnapshotRoundtrip:
     
     def test_create_demo_project_defaults_to_bands(self, temp_dir: Path):
         """Test that create_demo_project defaults to si_bands_demo when demo_id is not specified."""
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
 
-        result = QVService.create_demo_project(
+        result = QMSService.create_demo_project(
             target_dir=temp_dir,
             name="test-demo-project",
         )
@@ -478,7 +478,7 @@ class TestSnapshotRoundtrip:
 
         # Verify project was created
         assert project_root.exists()
-        assert (project_root / "project.qv.yml").exists()
+        assert (project_root / "project.qms.yml").exists()
 
         # Verify project structure
         project_model = load_project(project_root)
@@ -494,12 +494,12 @@ class TestSnapshotRoundtrip:
 
     def test_create_demo_project_with_explicit_demo_id(self, temp_dir: Path):
         """Test creating a demo project with explicit demo_id."""
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
 
         # Test DOS demo - use unique subdir to avoid conflict
         dos_dir = temp_dir / "dos_demo"
         dos_dir.mkdir(parents=True, exist_ok=True)
-        result = QVService.create_demo_project(
+        result = QMSService.create_demo_project(
             target_dir=dos_dir,
             name="test-dos-project",
             demo_id="si_dos_demo",
@@ -602,7 +602,7 @@ class TestSnapshotEdgeCases:
         )
         
         # Find a step file and delete it
-        from quantumvitas.core.models import load_project
+        from qmatsuite.core.models import load_project
         project = load_project(project_root)
         if len(project.calculations) > 0:
             calculation_entry = project.calculations[0]
@@ -617,7 +617,7 @@ class TestSnapshotEdgeCases:
                     deleted_step_file.unlink()
                     
                     # Try to load the calculation - should handle missing step gracefully
-                    from quantumvitas.core.models import load_calculation
+                    from qmatsuite.core.models import load_calculation
                     try:
                         calculation_model = load_calculation(calculation_dir / "calculation.yaml", project_root)
                         # Calculation should load, but the step file is missing
@@ -634,13 +634,13 @@ class TestSnapshotEdgeCases:
         """Test that restoring a snapshot into a non-empty project handles conflicts."""
         # Create a non-empty project
         existing_project = temp_dir / "existing_project"
-        QVService.init_project(existing_project, name="Existing Project")
+        QMSService.init_project(existing_project, name="Existing Project")
         
         # Import a structure with the same name as in the snapshot
-        from quantumvitas.io.structure_io import write_structure
+        from qmatsuite.io.structure_io import write_structure
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.core.resources import generate_resource_id
-        from quantumvitas.core.project_utils import load_project_config, save_project_config
+        from qmatsuite.core.resources import generate_resource_id
+        from qmatsuite.core.project_utils import load_project_config, save_project_config
         
         # Create structure with same name as snapshot (Si)
         struct = Structure(Lattice.cubic(5.43), ['Si'], [[0, 0, 0]])
@@ -679,7 +679,7 @@ class TestSnapshotEdgeCases:
         assert existing_project.exists(), "Existing project should still exist"
         
         # Verify both projects can coexist
-        from quantumvitas.core.models import load_project
+        from qmatsuite.core.models import load_project
         existing = load_project(existing_project)
         restored = load_project(new_project_root)
         
@@ -710,7 +710,7 @@ class TestSnapshotEdgeCases:
             
             # Verify project was created
             assert project_root.exists()
-            assert (project_root / "project.qv.yml").exists()
+            assert (project_root / "project.qms.yml").exists()
             
             # Load and verify
             project_model = load_project(project_root)

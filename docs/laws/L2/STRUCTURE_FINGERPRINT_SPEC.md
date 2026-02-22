@@ -89,7 +89,7 @@ PBC Structure Canonicalization:
 3. Applied ONCE at import/visualization entry points
 ```
 
-**Location**: `src/quantumvitas/analysis/structure_viz.py:208-253`
+**Location**: `src/qmatsuite/analysis/structure_viz.py:208-253`
 
 **No changes required** to PBC canonicalization logic.
 
@@ -199,7 +199,7 @@ where `eps = 1e-12` (dimensionless).
 | Fractional coordinates | Nx3 matrix (as-is) | `quantize_scalar(frac / frac_tol)` → int64 |
 | Species symbols | List of strings | Exact |
 
-**Fields excluded**: `__qv_meta__`, provenance, ULIDs, charge, spin, properties.
+**Fields excluded**: `__qms_meta__`, provenance, ULIDs, charge, spin, properties.
 
 ### 4.3 Molecule Fingerprint
 
@@ -234,7 +234,7 @@ def _fingerprint_molecule(molecule: Molecule, tol_ang: float) -> str:
 | Cartesian coordinates | Nx3 matrix in Å (already centered) | `quantize_scalar(value / tol_ang)` → int64 |
 | Species symbols | List of strings | Exact |
 
-**Fields excluded**: `__qv_meta__`, provenance, charge, spin_multiplicity, properties.
+**Fields excluded**: `__qms_meta__`, provenance, charge, spin_multiplicity, properties.
 
 ---
 
@@ -289,7 +289,7 @@ fingerprint = structure_like_fingerprint(structure, tol_ang=1e-3)
 
 ### 6.2 Executor effective_structure_sha
 
-**Location**: `src/quantumvitas/execution/executor.py`
+**Location**: `src/qmatsuite/execution/executor.py`
 
 Must use the same entrypoint, assuming structure is already canonicalized:
 ```python
@@ -336,7 +336,7 @@ When reading `current.json` for promote:
 ## 8. File Layout
 
 ```
-src/quantumvitas/core/structure_fingerprint.py
+src/qmatsuite/core/structure_fingerprint.py
 ├── structure_like_fingerprint()      # Unified entry point (NO transforms)
 ├── _fingerprint_pbc_structure()      # PBC implementation (NO mod/wrap)
 ├── _fingerprint_molecule()           # Molecule implementation (NO COG shift)
@@ -350,7 +350,7 @@ src/quantumvitas/core/structure_fingerprint.py
 │   # Reason: They used np.mod() and violated the two-phase contract.
 │   # Dedup now uses fingerprint identity only. No secondary verification.
 
-src/quantumvitas/core/structure_canonicalize.py  (NEW or extend existing)
+src/qmatsuite/core/structure_canonicalize.py  (NEW or extend existing)
 ├── canonicalize_structure_like_in_place()  # Unified canonicalization entry
 ├── _canonicalize_molecule_in_place()       # Molecule COG shift
 └── (uses existing canonicalize_structure_in_place for PBC)

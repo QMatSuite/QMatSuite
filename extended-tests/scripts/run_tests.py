@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unified test runner for QuantumVITAS.
+Unified test runner for QMatSuite.
 
 This script provides a unified interface to run all types of tests:
 - QE official test-suite tests
@@ -70,7 +70,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="QuantumVITAS Unified Test Runner",
+        description="QMatSuite Unified Test Runner",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -135,8 +135,8 @@ Examples:
     args = parser.parse_args()
     
     # Setup QE engine (auto-detect if not provided)
-    from quantumvitas.core.engines.qe import QuantumEspressoEngine
-    from quantumvitas.core.engines.base import EngineConfig
+    from qmatsuite.core.engines.qe import QuantumEspressoEngine
+    from qmatsuite.core.engines.base import EngineConfig
     
     if args.qe_home:
         config = EngineConfig(name="qe", executable_path=args.qe_home)

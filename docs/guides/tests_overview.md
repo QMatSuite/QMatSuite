@@ -54,18 +54,18 @@ Tests are automatically marked based on location:
 
 ### QE-backed Integration Tests
 
-**QE-backed integration tests** are test modules that actually run Quantum ESPRESSO executables (pw.x, bands.x, dos.x, ph.x, etc.) either via the `qv` CLI or directly through the `CalculationRunner` or engine API. These tests exercise complete calculations end-to-end and require a QE installation.
+**QE-backed integration tests** are test modules that actually run Quantum ESPRESSO executables (pw.x, bands.x, dos.x, ph.x, etc.) either via the `qms` CLI or directly through the `CalculationRunner` or engine API. These tests exercise complete calculations end-to-end and require a QE installation.
 
 **Convention: "One QE-running test per file"**
 
 Each QE-backed test module must have exactly **one** QE-running test function (the canonical integration test for that calculation). This test is responsible for:
 - Creating the project and calculation (via CLI or fixtures)
-- Running the calculation (`qv run calculation ...`)
+- Running the calculation (`qms run calculation ...`)
 - Verifying raw outputs (e.g., DOS/bands/SCF/NSCF outputs)
-- Running `qv analyze ...`
+- Running `qms analyze ...`
 - Checking plots and summary output
 
-Any additional tests in the same module must NOT spawn QE processes or call `qv run calculation`. They are pure unit tests that may:
+Any additional tests in the same module must NOT spawn QE processes or call `qms run calculation`. They are pure unit tests that may:
 - Inspect YAML configurations
 - Parse existing output files
 - Check metadata
@@ -89,7 +89,7 @@ For more details on QE-backed tests and how to run them, see the [Testing Guide]
 ### Subsystems Covered
 
 1. **Project & Calculation Models** - DAG + ULID architecture, schema validation
-2. **CLI Commands** - All `qv` CLI commands (init, run, configure, analyze, etc.)
+2. **CLI Commands** - All `qms` CLI commands (init, run, configure, analyze, etc.)
 3. **Daemon RPC** - JSON-RPC endpoints used by GUI
 4. **QE Engine Integration** - Quantum ESPRESSO execution, input generation, output parsing
 5. **Analysis** - Band structure, DOS, SCF convergence parsing and plotting
@@ -131,8 +131,8 @@ For more details on QE-backed tests and how to run them, see the [Testing Guide]
 |-----------|-------------------|---------------------|------------------|
 | `tests/unit/test_models.py` | Project/calculation DAG & schema | Load/save project/calculation models, ULID validation, legacy format detection | `tmp_path`, in-memory YAML data |
 | `tests/unit/test_project_and_cli.py` | Project model + CLI integration | Project operations, calculation creation, step creation, CLI roundtrips | `tmp_path`, `sample_project` fixture |
-| `tests/unit/test_api_service.py` | QVService API | Project init, structure import, calculation init, step creation | `tmp_path`, minimal project fixtures |
-| `tests/unit/test_api_service_steps.py` | QVService step operations | Step creation, step detail retrieval, step updates | `tmp_path`, project fixtures |
+| `tests/unit/test_api_service.py` | QMSService API | Project init, structure import, calculation init, step creation | `tmp_path`, minimal project fixtures |
+| `tests/unit/test_api_service_steps.py` | QMSService step operations | Step creation, step detail retrieval, step updates | `tmp_path`, project fixtures |
 | `tests/unit/test_resolution.py` | Resource selector resolution | ULID/slug/path selector resolution, resource lookup | `tmp_path`, project fixtures |
 | `tests/unit/test_legacy_migration.py` | Legacy project migration | Legacy format detection, migration script validation | `tmp_path`, manually created legacy projects |
 | `tests/unit/test_calculation_dag_constitution.py` | Calculation DAG structure | DAG invariants, step ordering, structure inheritance | `tmp_path`, project fixtures |
@@ -154,8 +154,8 @@ For more details on QE-backed tests and how to run them, see the [Testing Guide]
 | `tests/unit/test_structure_viz.py` | Structure visualization | 3D structure visualization data | `tmp_path`, structure fixtures |
 | `tests/unit/test_pseudopotential_resolution.py` | Pseudopotential resolution | PP file lookup, path resolution | `tmp_path`, pseudo directory fixtures |
 | `tests/unit/test_context.py` | Path context detection | Calculation/structure context from CWD | `tmp_path`, project fixtures |
-| `tests/unit/test_daemon.py` | Daemon core | Daemon initialization, RPC request handling | `tmp_path`, `QVDaemon` |
-| `tests/unit/test_qvservice_gui.py` | QVService GUI paths | GUI-specific API methods | `tmp_path`, project fixtures |
+| `tests/unit/test_daemon.py` | Daemon core | Daemon initialization, RPC request handling | `tmp_path`, `QMSDaemon` |
+| `tests/unit/test_qmsservice_gui.py` | QMSService GUI paths | GUI-specific API methods | `tmp_path`, project fixtures |
 | `tests/unit/test_project_snapshot.py` | Project snapshots | Snapshot creation, restoration | `tmp_path`, project fixtures |
 | `tests/unit/test_snapshot_id_regeneration.py` | Snapshot ID handling | ULID regeneration in snapshots | `tmp_path`, project fixtures |
 | `tests/unit/test_resource_rename_safety.py` | Resource renaming | Safe resource renaming, path updates | `tmp_path`, project fixtures |
@@ -166,10 +166,10 @@ For more details on QE-backed tests and how to run them, see the [Testing Guide]
 | `tests/cli/test_si_dos_calculation_comprehensive.py` | CLI DOS calculation comprehensive | Full DOS calculation with analysis | `project_root_path`, QE installation |
 | `tests/cli/test_si_bands_calculation_comprehensive.py` | CLI bands calculation comprehensive | Full bands calculation with manual/auto k-path | `project_root_path`, QE installation |
 | `tests/cli/test_template_workflow.py` | CLI calculation templates | Template-based calculation creation | `tmp_path`, `CliRunner` |
-| `tests/cli/test_cli_show_command_integration.py` | CLI show command | `qv show` command integration | `tests/data/project_examples`, `CliRunner` |
-| `tests/daemon/test_gui_workflow_detail.py` | Daemon calculation detail | `get_calculation_detail`, `change_calculation_structure` | `tmp_path`, `QVDaemon`, `QVService` |
-| `tests/daemon/test_gui_job_and_step_flows.py` | Daemon job/step flows | Job submission, step detail, DAG invariants | `tmp_path`, `QVDaemon`, `QVService` |
-| `tests/daemon/test_si_bands_calculation_daemon.py` | Daemon bands calculation | Full bands calculation via daemon RPC | `project_root_path`, QE installation, `QVDaemon` |
+| `tests/cli/test_cli_show_command_integration.py` | CLI show command | `qms show` command integration | `tests/data/project_examples`, `CliRunner` |
+| `tests/daemon/test_gui_workflow_detail.py` | Daemon calculation detail | `get_calculation_detail`, `change_calculation_structure` | `tmp_path`, `QMSDaemon`, `QMSService` |
+| `tests/daemon/test_gui_job_and_step_flows.py` | Daemon job/step flows | Job submission, step detail, DAG invariants | `tmp_path`, `QMSDaemon`, `QMSService` |
+| `tests/daemon/test_si_bands_calculation_daemon.py` | Daemon bands calculation | Full bands calculation via daemon RPC | `project_root_path`, QE installation, `QMSDaemon` |
 | `tests/integration/test_si_bands_calculation.py` | Integration bands calculation | SCF→NSCF→Bands calculation execution | `ci_test_data_dir`, QE installation, `create_calculation_project` |
 | `tests/integration/test_si_dos_calculation.py` | Integration DOS calculation | SCF→NSCF→DOS calculation execution | `ci_test_data_dir`, QE installation, `create_calculation_project` |
 | `tests/integration/test_qe_engine.py` | QE engine integration | QE engine input generation, execution | `tmp_path`, QE installation |
@@ -200,7 +200,7 @@ pytest -m qe_cli            # QE integration via the Typer CLI
 
 **Run with coverage:**
 ```bash
-pytest tests/ --cov=src/quantumvitas --cov-report=html
+pytest tests/ --cov=src/qmatsuite --cov-report=html
 ```
 
 ### Extended Tests
@@ -243,8 +243,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Legacy format detection
 
 **Related production code:**
-- `quantumvitas.core.models`
-- `quantumvitas.core.resources.ResourceMeta`
+- `qmatsuite.core.models`
+- `qmatsuite.core.resources.ResourceMeta`
 
 **Key dependencies:**
 - Fixtures:
@@ -286,9 +286,9 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Calculation and step creation
 
 **Related production code:**
-- `quantumvitas.project.model.Project`
-- `quantumvitas.cli.main`
-- `quantumvitas.calculation.input_runner.PreparedInputStep`
+- `qmatsuite.project.model.Project`
+- `qmatsuite.cli.main`
+- `qmatsuite.calculation.input_runner.PreparedInputStep`
 
 **Key dependencies:**
 - Fixtures:
@@ -309,10 +309,10 @@ See `extended-tests/README.md` for detailed extended test documentation.
 ### `tests/unit/test_api_service.py`
 
 **Module / feature:**
-- `QVService` API methods for project, structure, calculation, and step operations
+- `QMSService` API methods for project, structure, calculation, and step operations
 
 **Related production code:**
-- `quantumvitas.api.QVService`
+- `qmatsuite.api.QMSService`
 
 **Key dependencies:**
 - Fixtures:
@@ -321,33 +321,33 @@ See `extended-tests/README.md` for detailed extended test documentation.
 
 **Contained tests:**
 
-- `TestQVServiceProject` - Project operations
+- `TestQMSServiceProject` - Project operations
   - `test_init_project` - Initialize new project
   - `test_init_project_default_name` - Default name from directory
   - `test_configure_project` - Configure project settings
   - `test_init_project_prevents_nested_project` - Prevent nested projects
   - `test_create_demo_project_prevents_nested_project` - Prevent nested demo projects
 
-- `TestQVServiceStructure` - Structure operations
+- `TestQMSServiceStructure` - Structure operations
   - `test_import_structure_from_json` - Import structure from JSON
   - `test_import_structure_duplicate_id_fails` - Duplicate ID detection
   - `test_list_structures` - List structures
 
-- `TestQVServiceWorkflow` - Calculation operations
+- `TestQMSServiceWorkflow` - Calculation operations
   - `test_init_workflow` - Initialize calculation
   - `test_list_calculations` - List calculations
 
-- `TestQVServiceStep` - Step operations
+- `TestQMSServiceStep` - Step operations
   - `test_add_step_to_calculation` - Add step to calculation
   - `test_get_step_detail` - Get step detail
 
 ### `tests/unit/test_api_service_steps.py`
 
 **Module / feature:**
-- `QVService` step-specific operations
+- `QMSService` step-specific operations
 
 **Related production code:**
-- `quantumvitas.api.QVService`
+- `qmatsuite.api.QMSService`
 
 **Key dependencies:**
 - Fixtures:
@@ -366,7 +366,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Resource selector resolution (ULID, slug, path, name)
 
 **Related production code:**
-- `quantumvitas.core.resolution`
+- `qmatsuite.core.resolution`
 
 **Key dependencies:**
 - Fixtures:
@@ -399,9 +399,9 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Legacy project migration script
 
 **Related production code:**
-- `quantumvitas.legacy.migrate.migrate_legacy_project`
-- `quantumvitas.core.models.load_calculation`, `load_project`
-- `quantumvitas.core.exceptions.LegacyProjectError`
+- `qmatsuite.legacy.migrate.migrate_legacy_project`
+- `qmatsuite.core.models.load_calculation`, `load_project`
+- `qmatsuite.core.exceptions.LegacyProjectError`
 
 **Key dependencies:**
 - Fixtures:
@@ -429,8 +429,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Structure inheritance
 
 **Related production code:**
-- `quantumvitas.core.models.CalculationModel`
-- `quantumvitas.calculation.calculation`
+- `qmatsuite.core.models.CalculationModel`
+- `qmatsuite.calculation.calculation`
 
 **Key dependencies:**
 - Fixtures:
@@ -450,8 +450,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - ULID-based references
 
 **Related production code:**
-- `quantumvitas.core.models`
-- `quantumvitas.core.resolution`
+- `qmatsuite.core.models`
+- `qmatsuite.core.resolution`
 
 **Key dependencies:**
 - Fixtures:
@@ -469,7 +469,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Format conversion (CIF, JSON, QE input)
 
 **Related production code:**
-- `quantumvitas.io.structure_io`
+- `qmatsuite.io.structure_io`
 
 **Key dependencies:**
 - Fixtures:
@@ -488,9 +488,9 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Structure → QE input → structure roundtrip conversion
 
 **Related production code:**
-- `quantumvitas.io.structure_io`
-- `quantumvitas.io.parser.qe_parser`
-- `quantumvitas.calculation.geometry`
+- `qmatsuite.io.structure_io`
+- `qmatsuite.io.parser.qe_parser`
+- `qmatsuite.calculation.geometry`
 
 **Key dependencies:**
 - Fixtures:
@@ -510,7 +510,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Namelist and card extraction
 
 **Related production code:**
-- `quantumvitas.io.parser.qe_parser.QEInputParser`
+- `qmatsuite.io.parser.qe_parser.QEInputParser`
 
 **Key dependencies:**
 - Fixtures:
@@ -529,7 +529,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - QE geometry format conversion (ibrav, cell_parameters)
 
 **Related production code:**
-- `quantumvitas.calculation.geometry`
+- `qmatsuite.calculation.geometry`
 
 **Key dependencies:**
 - Fixtures:
@@ -548,7 +548,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - QE_HOME resolution
 
 **Related production code:**
-- `quantumvitas.core.engines.qe_installation`
+- `qmatsuite.core.engines.qe_installation`
 
 **Key dependencies:**
 - Fixtures:
@@ -568,7 +568,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Module parameter validation
 
 **Related production code:**
-- `quantumvitas.data.qe_module_parameters`
+- `qmatsuite.data.qe_module_parameters`
 
 **Key dependencies:**
 - Fixtures:
@@ -585,7 +585,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - QE parameter defaults application
 
 **Related production code:**
-- `quantumvitas.calculation.step_defaults`
+- `qmatsuite.calculation.step_defaults`
 
 **Key dependencies:**
 - Fixtures:
@@ -604,7 +604,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Parameter override application
 
 **Related production code:**
-- `quantumvitas.cli.main._parse_override_args`
+- `qmatsuite.cli.main._parse_override_args`
 
 **Key dependencies:**
 - Fixtures:
@@ -621,7 +621,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Calculation import from QE input files
 
 **Related production code:**
-- `quantumvitas.calculation.importers`
+- `qmatsuite.calculation.importers`
 
 **Key dependencies:**
 - Fixtures:
@@ -639,7 +639,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Calculation input file generation
 
 **Related production code:**
-- `quantumvitas.calculation.input_runner`
+- `qmatsuite.calculation.input_runner`
 
 **Key dependencies:**
 - Fixtures:
@@ -657,8 +657,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Step creation with structure inheritance
 
 **Related production code:**
-- `quantumvitas.api.QVService`
-- `quantumvitas.calculation.structure_steps`
+- `qmatsuite.api.QMSService`
+- `qmatsuite.calculation.structure_steps`
 
 **Key dependencies:**
 - Fixtures:
@@ -676,7 +676,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - QE output parsing (SCF, DOS, bands)
 
 **Related production code:**
-- `quantumvitas.analysis.parsers`
+- `qmatsuite.analysis.parsers`
 
 **Key dependencies:**
 - Data files:
@@ -707,7 +707,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Band structure and DOS plotting
 
 **Related production code:**
-- `quantumvitas.analysis.plotting`
+- `qmatsuite.analysis.plotting`
 
 **Key dependencies:**
 - Data files:
@@ -729,7 +729,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Artifact file management
 
 **Related production code:**
-- `quantumvitas.analysis.artifacts`
+- `qmatsuite.analysis.artifacts`
 
 **Key dependencies:**
 - Fixtures:
@@ -747,7 +747,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - 3D structure visualization data generation
 
 **Related production code:**
-- `quantumvitas.analysis.structure_viz`
+- `qmatsuite.analysis.structure_viz`
 
 **Key dependencies:**
 - Fixtures:
@@ -766,7 +766,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - PP path resolution
 
 **Related production code:**
-- `quantumvitas.core.pseudo`
+- `qmatsuite.core.pseudo`
 
 **Key dependencies:**
 - Fixtures:
@@ -784,7 +784,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Path context detection (calculation/structure from CWD)
 
 **Related production code:**
-- `quantumvitas.core.context`
+- `qmatsuite.core.context`
 
 **Key dependencies:**
 - Fixtures:
@@ -803,12 +803,12 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - RPC request handling
 
 **Related production code:**
-- `quantumvitas.daemon.server.QVDaemon`
+- `qmatsuite.daemon.server.QMSDaemon`
 
 **Key dependencies:**
 - Fixtures:
   - `tmp_path` - Temporary directories
-  - `QVDaemon` instance
+  - `QMSDaemon` instance
 
 **Contained tests:**
 
@@ -816,13 +816,13 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - RPC request handling tests
 - Error handling tests
 
-### `tests/unit/test_qvservice_gui.py`
+### `tests/unit/test_qmsservice_gui.py`
 
 **Module / feature:**
 - GUI-specific API methods
 
 **Related production code:**
-- `quantumvitas.api.QVService`
+- `qmatsuite.api.QMSService`
 
 **Key dependencies:**
 - Fixtures:
@@ -840,7 +840,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Project snapshot creation and restoration
 
 **Related production code:**
-- `quantumvitas.project.snapshot`
+- `qmatsuite.project.snapshot`
 
 **Key dependencies:**
 - Fixtures:
@@ -860,7 +860,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - ULID regeneration in snapshots
 
 **Related production code:**
-- `quantumvitas.project.snapshot`
+- `qmatsuite.project.snapshot`
 
 **Key dependencies:**
 - Fixtures:
@@ -879,7 +879,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Path updates after rename
 
 **Related production code:**
-- `quantumvitas.api.QVService`
+- `qmatsuite.api.QMSService`
 
 **Key dependencies:**
 - Fixtures:
@@ -896,7 +896,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Demo project snapshot/restore
 
 **Related production code:**
-- `quantumvitas.api.QVService`
+- `qmatsuite.api.QMSService`
 
 **Key dependencies:**
 - Fixtures:
@@ -927,7 +927,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Complete calculation setup via CLI commands
 
 **Related production code:**
-- `quantumvitas.cli.main`
+- `qmatsuite.cli.main`
 
 **Key dependencies:**
 - Data files:
@@ -940,11 +940,11 @@ See `extended-tests/README.md` for detailed extended test documentation.
 **Contained tests:**
 
 - `test_graphene_workflow_setup` - Complete calculation setup sequence
-  - **What it tests:** End-to-end calculation setup: `qv init project` → `qv import-structure` → `qv init calculation` → `qv init step` → `qv configure calculation`
+  - **What it tests:** End-to-end calculation setup: `qms init project` → `qms import-structure` → `qms init calculation` → `qms init step` → `qms configure calculation`
   - **Dependencies:** Uses `CliRunner.isolated_filesystem()` to simulate `cd` commands, requires `tests/data/13_graphene/graphene.2_scf.in`
 
 - `test_init_step_fails_at_project_root_without_workflow` - Error handling for invalid step init
-  - **What it tests:** `qv init step` at project root without `--calculation` fails with clear error message
+  - **What it tests:** `qms init step` at project root without `--calculation` fails with clear error message
   - **Dependencies:** Creates project via CLI, then tries to init step at project root
 
 ### `tests/cli/test_si_dos_calculation_cli.py`
@@ -953,7 +953,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - DOS calculation execution via CLI
 
 **Related production code:**
-- `quantumvitas.cli.main`
+- `qmatsuite.cli.main`
 
 **Key dependencies:**
 - Data files:
@@ -974,8 +974,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Comprehensive DOS calculation with analysis
 
 **Related production code:**
-- `quantumvitas.cli.main`
-- `quantumvitas.analysis`
+- `qmatsuite.cli.main`
+- `qmatsuite.analysis`
 
 **Key dependencies:**
 - Fixtures:
@@ -997,8 +997,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Comprehensive bands calculation with manual and auto k-path
 
 **Related production code:**
-- `quantumvitas.cli.main`
-- `quantumvitas.analysis`
+- `qmatsuite.cli.main`
+- `qmatsuite.analysis`
 
 **Key dependencies:**
 - Fixtures:
@@ -1032,8 +1032,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Template-based calculation creation
 
 **Related production code:**
-- `quantumvitas.cli.main`
-- `quantumvitas.core.templates`
+- `qmatsuite.cli.main`
+- `qmatsuite.core.templates`
 
 **Key dependencies:**
 - Fixtures:
@@ -1052,10 +1052,10 @@ See `extended-tests/README.md` for detailed extended test documentation.
 ### `tests/cli/test_cli_show_command_integration.py`
 
 **Module / feature:**
-- `qv show` command integration
+- `qms show` command integration
 
 **Related production code:**
-- `quantumvitas.cli.main`
+- `qmatsuite.cli.main`
 
 **Key dependencies:**
 - Data files:
@@ -1067,7 +1067,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 **Contained tests:**
 
 - `test_cli_show_command_executes_against_references` - Show command against reference projects
-  - **What it tests:** `qv show` command works correctly against reference projects in `tests/data/project_examples/`
+  - **What it tests:** `qms show` command works correctly against reference projects in `tests/data/project_examples/`
   - **Dependencies:** Uses `tests/data/project_examples/project1` and `project2_bands` as reference
 
 ### `tests/daemon/test_gui_workflow_detail.py`
@@ -1076,13 +1076,13 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Daemon RPC endpoints for calculation detail and structure changes
 
 **Related production code:**
-- `quantumvitas.daemon.server.QVDaemon`
-- `quantumvitas.api.QVService`
+- `qmatsuite.daemon.server.QMSDaemon`
+- `qmatsuite.api.QMSService`
 
 **Key dependencies:**
 - Fixtures:
   - `temp_project` - Temporary project with calculation and steps
-  - `daemon` - `QVDaemon` instance
+  - `daemon` - `QMSDaemon` instance
 - Data:
   - Uses `tests/data/calculation_bands/si.0_scf.in` for structure import
 
@@ -1102,14 +1102,14 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Daemon RPC endpoints for job submission, step detail, DAG invariants
 
 **Related production code:**
-- `quantumvitas.daemon.server.QVDaemon`
-- `quantumvitas.daemon.jobs.JobManager`
-- `quantumvitas.api.QVService`
+- `qmatsuite.daemon.server.QMSDaemon`
+- `qmatsuite.daemon.jobs.JobManager`
+- `qmatsuite.api.QMSService`
 
 **Key dependencies:**
 - Fixtures:
   - `temp_project` - Temporary project with calculation and step
-  - `daemon` - `QVDaemon` instance
+  - `daemon` - `QMSDaemon` instance
 - Data:
   - Uses `tests/data/calculation_bands/si.0_scf.in` for structure import
 
@@ -1142,16 +1142,16 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Full bands calculation execution via daemon RPC
 
 **Related production code:**
-- `quantumvitas.daemon.server.QVDaemon`
-- `quantumvitas.api.QVService`
-- `quantumvitas.daemon.jobs.JobManager`
+- `qmatsuite.daemon.server.QMSDaemon`
+- `qmatsuite.api.QMSService`
+- `qmatsuite.daemon.jobs.JobManager`
 
 **Key dependencies:**
 - Fixtures:
   - `project_root_path` - Project root for temp directory
   - `test_project_dir` - Temporary project directory (module scope)
   - `project_with_structure` - Project with Si structure (module scope)
-  - `daemon` - `QVDaemon` instance (class scope)
+  - `daemon` - `QMSDaemon` instance (class scope)
   - QE installation (required)
 
 **Contained tests:**
@@ -1188,9 +1188,9 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - SCF → NSCF → Bands → bands.x calculation execution
 
 **Related production code:**
-- `quantumvitas.project.model.Project`
-- `quantumvitas.calculation.runner.CalculationRunner`
-- `quantumvitas.engine.registry`
+- `qmatsuite.project.model.Project`
+- `qmatsuite.calculation.runner.CalculationRunner`
+- `qmatsuite.engine.registry`
 
 **Key dependencies:**
 - Data files:
@@ -1215,9 +1215,9 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - SCF → NSCF → DOS calculation execution
 
 **Related production code:**
-- `quantumvitas.project.model.Project`
-- `quantumvitas.calculation.runner.CalculationRunner`
-- `quantumvitas.engine.registry`
+- `qmatsuite.project.model.Project`
+- `qmatsuite.calculation.runner.CalculationRunner`
+- `qmatsuite.engine.registry`
 
 **Key dependencies:**
 - Data files:
@@ -1242,8 +1242,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - QE engine input generation and execution
 
 **Related production code:**
-- `quantumvitas.core.engines.qe.QuantumEspressoEngine`
-- `quantumvitas.io.QEInputGenerator`
+- `qmatsuite.core.engines.qe.QuantumEspressoEngine`
+- `qmatsuite.io.QEInputGenerator`
 
 **Key dependencies:**
 - Fixtures:
@@ -1263,7 +1263,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - QE executable detection and execution
 
 **Related production code:**
-- `quantumvitas.core.engines.qe_installation`
+- `qmatsuite.core.engines.qe_installation`
 
 **Key dependencies:**
 - Fixtures:
@@ -1281,8 +1281,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Various PW step types and input generation
 
 **Related production code:**
-- `quantumvitas.calculation.structure_steps`
-- `quantumvitas.io.QEInputGenerator`
+- `qmatsuite.calculation.structure_steps`
+- `qmatsuite.io.QEInputGenerator`
 
 **Key dependencies:**
 - Data files:
@@ -1303,8 +1303,8 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - SCF with different ibrav values
 
 **Related production code:**
-- `quantumvitas.calculation.structure_steps`
-- `quantumvitas.io.QEInputGenerator`
+- `qmatsuite.calculation.structure_steps`
+- `qmatsuite.io.QEInputGenerator`
 
 **Key dependencies:**
 - Data files:
@@ -1325,7 +1325,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Quick PW tests for CI
 
 **Related production code:**
-- `quantumvitas.calculation.runner.CalculationRunner`
+- `qmatsuite.calculation.runner.CalculationRunner`
 
 **Key dependencies:**
 - Data files:
@@ -1345,7 +1345,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Phonon calculation tests
 
 **Related production code:**
-- `quantumvitas.calculation.runner.CalculationRunner`
+- `qmatsuite.calculation.runner.CalculationRunner`
 
 **Key dependencies:**
 - Data files:
@@ -1365,7 +1365,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - CI validation calculations
 
 **Related production code:**
-- `quantumvitas.calculation.runner.CalculationRunner`
+- `qmatsuite.calculation.runner.CalculationRunner`
 
 **Key dependencies:**
 - Data files:
@@ -1382,7 +1382,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Example CLI command sequences
 
 **Related production code:**
-- `quantumvitas.cli.main`
+- `qmatsuite.cli.main`
 
 **Key dependencies:**
 - Fixtures:
@@ -1409,7 +1409,7 @@ See `extended-tests/README.md` for detailed extended test documentation.
 - Example structure import/export
 
 **Related production code:**
-- `quantumvitas.io.structure_io`
+- `qmatsuite.io.structure_io`
 
 **Key dependencies:**
 - Fixtures:

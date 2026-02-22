@@ -34,8 +34,8 @@ The previous C2 fix made `filband` injection **conditional** — if the user alr
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/calculation/structure_steps.py` | `input_name` param, unconditional filband+fildos injection, `RUNTIME_KEYS` expanded |
-| `src/quantumvitas/calculation/step_defaults.py` | Removed `fildos: "dos.dat"` default from `qe_dos` (now runtime-managed) |
+| `src/qmatsuite/calculation/structure_steps.py` | `input_name` param, unconditional filband+fildos injection, `RUNTIME_KEYS` expanded |
+| `src/qmatsuite/calculation/step_defaults.py` | Removed `fildos: "dos.dat"` default from `qe_dos` (now runtime-managed) |
 | `tests/mcp/test_bands_workflow.py` | Rewrote `TestC2FilbandInjection`: 8 tests for unconditional injection + fildos + override + no-input-name edge case |
 | `tests/cli/test_si_bands_manual_calculation_cli.py` | Glob-based bands output discovery (replaces hardcoded filename) |
 | `tests/cli/test_si_bands_auto_calculation_cli.py` | Glob-based bands output discovery (replaces hardcoded filename) |

@@ -110,7 +110,7 @@ export function AddParameterPalette({
         className="add-parameter-palette__trigger section-action-btn section-action-btn--primary"
         onClick={() => setIsOpen(!isOpen)}
         title="Add QE parameter"
-        data-testid="qv-add-parameter-trigger"
+        data-testid="qms-add-parameter-trigger"
       >
         ➕ Add Parameter
       </button>
@@ -137,7 +137,7 @@ export function AddParameterPalette({
                 placeholder="Search by parameter name, description, section/category..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                data-testid="qv-add-parameter-search"
+                data-testid="qms-add-parameter-search"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && filteredResults.length > 0) {
                     const firstResult = filteredResults[0];
@@ -185,7 +185,7 @@ export function AddParameterPalette({
                           className={`add-parameter-palette__result-item ${
                             isSet ? 'add-parameter-palette__result-item--set' : ''
                           }`}
-                          data-testid={`qv-add-parameter-result-${result.name.toLowerCase()}`}
+                          data-testid={`qms-add-parameter-result-${result.name.toLowerCase()}`}
                           onClick={() => {
                             if (isSet) {
                               handleScrollToParameter(result);
