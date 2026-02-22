@@ -191,7 +191,7 @@ def run_micromamba(
 
     env = dict(os.environ)
     env["MAMBA_ROOT_PREFIX"] = str(root_prefix)
-    env.setdefault("MAMBA_NO_RC", "1")
+    env.setdefault("MAMBA_NO_RC", "true")
 
     kwargs.setdefault("check", True)
     kwargs.setdefault("capture_output", True)
