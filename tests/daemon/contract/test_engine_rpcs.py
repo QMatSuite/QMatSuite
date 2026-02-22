@@ -57,3 +57,56 @@ class TestSetEngineFamily:
                 "calculation": calc_ulid,
                 "engine_family": "nonexistent_engine"
             })
+
+
+class TestEngineInstallManagement:
+    """Contract tests for Step 3 engine installation RPC endpoints."""
+
+    def test_engine_list_installable_happy_path(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "quantumvitas.api.engines.list_installable_engines",
+            lambda: [
+                {"engine": "xtb", "manual_only": False},
+                {"engine": "vasp", "manual_only": True},
+            ],
+        )
+
+        response = send_request(daemon, "engine.list_installable", {})
+        assert response["count"] == 2
+        assert response["engines"][0]["engine"] == "xtb"
+
+    def test_engine_install_returns_job_id(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_submit(job_type, func, params, target_name=None, project_root_display=None, **kwargs):
+            captured["job_type"] = job_type
+            captured["params"] = params
+            captured["target_name"] = target_name
+            return "job-install-1"
+
+        monkeypatch.setattr(daemon.job_manager, "submit", fake_submit)
+
+        response = send_request(
+            daemon,
+            "engine.install",
+            {"engine_family": "xtb", "version": "6.7.1", "source": "conda"},
+        )
+        assert response["job_id"] == "job-install-1"
+        assert response["status"] == "pending"
+        assert captured["job_type"] == "engine_install"
+        assert captured["params"] == {
+            "engine_family": "xtb",
+            "version": "6.7.1",
+            "source": "conda",
+        }
+
+    def test_engine_uninstall_returns_job_id(self, daemon: QVDaemon, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(daemon.job_manager, "submit", lambda *args, **kwargs: "job-uninstall-1")
+
+        response = send_request(
+            daemon,
+            "engine.uninstall",
+            {"engine_family": "xtb", "installation_id": "conda-6.7.1"},
+        )
+        assert response["job_id"] == "job-uninstall-1"
+        assert response["status"] == "pending"

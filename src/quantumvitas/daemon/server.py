@@ -244,6 +244,9 @@ class QVDaemon:
             "list_engine_ui_parameters": self._handle_list_engine_ui_parameters,
             "list_engine_parameter_metadata": self._handle_list_engine_parameter_metadata,
             "set_engine_family": self._handle_set_engine_family,
+            "engine.install": self._handle_engine_install,
+            "engine.uninstall": self._handle_engine_uninstall,
+            "engine.list_installable": self._handle_engine_list_installable,
             
             # Pseudopotential configuration
             "get_pseudo_config": self._handle_get_pseudo_config,
@@ -1378,6 +1381,99 @@ class QVDaemon:
         svc.calculation.set_engine_family(calculation_selector, engine_family)
         self.log(f"[RPC] set_engine_family: {calculation_selector} -> {engine_family}")
         return {"success": True, "engine_family": engine_family}
+
+    def _handle_engine_list_installable(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """List engines that can be installed automatically."""
+        from quantumvitas.api.engines import list_installable_engines
+
+        items = list_installable_engines()
+        return {"engines": items, "count": len(items)}
+
+    def _handle_engine_install(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Submit or execute an engine installation task.
+
+        Payload:
+            engine_family: str (required)
+            version: str (optional)
+            source: str (optional, default: auto)
+            async: bool (optional, default: true)
+        """
+        engine_family = self._require_str(payload, "engine_family").strip().lower()
+        version = payload.get("version")
+        source = str(payload.get("source", "auto") or "auto")
+        is_async = bool(payload.get("async", True))
+
+        if not is_async:
+            from quantumvitas.api.engines import install_engine as api_install_engine
+
+            return api_install_engine(engine_family, version=version, source=source)
+
+        def install_wrapper(**kwargs):
+            from quantumvitas.api.engines import install_engine as api_install_engine
+
+            return api_install_engine(
+                kwargs["engine_family"],
+                version=kwargs.get("version"),
+                source=str(kwargs.get("source", "auto")),
+            )
+
+        job_id = self.job_manager.submit(
+            job_type="engine_install",
+            func=install_wrapper,
+            params={"engine_family": engine_family, "version": version, "source": source},
+            target_name=engine_family,
+            engine_family=engine_family,
+            version=version,
+            source=source,
+        )
+        return {"job_id": job_id, "status": "pending", "target_name": engine_family}
+
+    def _handle_engine_uninstall(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Submit or execute an engine uninstall task.
+
+        Payload:
+            engine_family: str (required)
+            installation_id: str (optional; active installation if omitted)
+            async: bool (optional, default: true)
+        """
+        engine_family = self._require_str(payload, "engine_family").strip().lower()
+        installation_id = str(payload.get("installation_id") or "").strip()
+        is_async = bool(payload.get("async", True))
+
+        if not installation_id:
+            from quantumvitas.api.engines import get_active_engine
+
+            active = get_active_engine(engine_family)
+            if not active or not active.get("id"):
+                raise ValueError(
+                    "installation_id is required when no active installation exists."
+                )
+            installation_id = str(active["id"])
+
+        if not is_async:
+            from quantumvitas.api.engines import uninstall_engine as api_uninstall_engine
+
+            return api_uninstall_engine(engine_family, installation_id)
+
+        def uninstall_wrapper(**kwargs):
+            from quantumvitas.api.engines import uninstall_engine as api_uninstall_engine
+
+            return api_uninstall_engine(
+                kwargs["engine_family"],
+                kwargs["installation_id"],
+            )
+
+        job_id = self.job_manager.submit(
+            job_type="engine_uninstall",
+            func=uninstall_wrapper,
+            params={"engine_family": engine_family, "installation_id": installation_id},
+            target_name=f"{engine_family}/{installation_id}",
+            engine_family=engine_family,
+            installation_id=installation_id,
+        )
+        return {"job_id": job_id, "status": "pending", "target_name": engine_family}
     
     # -------------------------------------------------------------------------
     # Project/resource handlers

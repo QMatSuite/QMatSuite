@@ -88,6 +88,7 @@ analyze_app = typer.Typer(
 )
 
 history_app = typer.Typer(help="View and manage project history.", no_args_is_help=True)
+engine_app = typer.Typer(help="Manage engine installations and paths.", no_args_is_help=True)
 
 app.add_typer(init_app, name="init")
 app.add_typer(rename_app, name="rename")
@@ -96,6 +97,7 @@ app.add_typer(configure_app, name="configure")
 app.add_typer(run_app, name="run")
 app.add_typer(analyze_app, name="analyze")
 app.add_typer(history_app, name="history")
+app.add_typer(engine_app, name="engine")
 
 
 def _svc_from_cwd(cwd: Optional[Path] = None) -> "QVService":
@@ -1499,6 +1501,138 @@ def detect_qe(
     typer.echo("Key executables:")
     for exe_name, exe_path in info["executables"].items():
         typer.echo(f"  {exe_name:<8} -> {exe_path or 'not found'}")
+
+
+@engine_app.command("list")
+def engine_list(
+    installed_only: bool = typer.Option(
+        False,
+        "--installed-only",
+        help="Show only engines detected as installed.",
+    ),
+) -> None:
+    """List engine installation status."""
+    from quantumvitas.api.engines import list_engines
+
+    rows = list_engines(installed_only=installed_only)
+    if not rows:
+        typer.echo("No engines found.")
+        return
+
+    for row in rows:
+        engine = row.get("engine", "unknown")
+        installed = bool(row.get("installed"))
+        source = row.get("active_source") or "-"
+        install_id = row.get("active_installation_id") or "-"
+        status = "installed" if installed else "missing"
+        typer.echo(f"{engine:<10} {status:<10} source={source:<14} active={install_id}")
+
+
+@engine_app.command("install")
+def engine_install(
+    engine_family: str = typer.Argument(..., help="Engine family name (e.g. xtb, qe, pyscf)."),
+    version: Optional[str] = typer.Option(None, "--version", help="Version to install."),
+    source: str = typer.Option(
+        "auto",
+        "--source",
+        help="Install source: auto, conda, github_release.",
+    ),
+) -> None:
+    """Install an engine with micromamba or GitHub release assets."""
+    from quantumvitas.api.engines import install_engine
+
+    try:
+        result = install_engine(engine_family, version=version, source=source)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    installation = result.get("installation") or {}
+    typer.secho(
+        f"Installed {result.get('engine')} ({result.get('source')}): {installation.get('id', 'unknown')}",
+        fg=typer.colors.GREEN,
+    )
+
+    install_path = installation.get("path") or installation.get("python_executable")
+    if install_path:
+        typer.echo(f"path: {install_path}")
+    if installation.get("version"):
+        typer.echo(f"version: {installation['version']}")
+
+
+@engine_app.command("uninstall")
+def engine_uninstall(
+    engine_family: str = typer.Argument(..., help="Engine family name."),
+    installation_id: Optional[str] = typer.Option(
+        None,
+        "--installation-id",
+        help="Specific installation ID to remove. Defaults to active installation.",
+    ),
+) -> None:
+    """Uninstall a registered engine installation."""
+    from quantumvitas.api.engines import get_active_engine, uninstall_engine
+
+    install_id = installation_id
+    if not install_id:
+        active = get_active_engine(engine_family)
+        if not active or not active.get("id"):
+            raise typer.BadParameter(
+                "No active installation found. Provide --installation-id explicitly."
+            )
+        install_id = str(active["id"])
+
+    try:
+        result = uninstall_engine(engine_family, install_id)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    typer.secho(
+        f"Uninstalled {result.get('engine')} installation {result.get('installation_id')}",
+        fg=typer.colors.GREEN,
+    )
+
+
+@engine_app.command("verify")
+def engine_verify(
+    engine_family: str = typer.Argument(..., help="Engine family name."),
+) -> None:
+    """Verify the active installation of an engine."""
+    from quantumvitas.api.engines import verify_engine
+
+    ok, message = verify_engine(engine_family)
+    if ok:
+        typer.secho(f"{engine_family}: OK", fg=typer.colors.GREEN)
+        return
+
+    typer.secho(f"{engine_family}: {message}", fg=typer.colors.RED, err=True)
+    raise typer.Exit(1)
+
+
+@engine_app.command("path")
+def engine_path(
+    engine_family: str = typer.Argument(..., help="Engine family name."),
+    path: Path = typer.Argument(..., exists=True, resolve_path=True, help="Binary path or env path."),
+    source: str = typer.Option(
+        "user_path",
+        "--source",
+        help="Registration source (user_path or user_venv).",
+    ),
+) -> None:
+    """Register a user-provided engine path and make it active."""
+    from quantumvitas.api.engines import register_engine
+
+    try:
+        installation = register_engine(engine_family, path, source=source)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    typer.secho(
+        f"Registered {engine_family} installation {installation.get('id', 'unknown')}",
+        fg=typer.colors.GREEN,
+    )
+    if installation.get("path"):
+        typer.echo(f"path: {installation['path']}")
+    if installation.get("python_executable"):
+        typer.echo(f"python_executable: {installation['python_executable']}")
 
 
 @run_app.command(

@@ -13,6 +13,13 @@ from quantumvitas.core.engines.engine_meta import (
     ENGINE_META,
     get_platform_primary_binary,
 )
+from quantumvitas.core.engines.engine_installer import (
+    install_engine_conda,
+    install_engine_github_release,
+    list_installable_engines as _list_installable_engines_kernel,
+    resolve_qe_github_release_asset,
+    uninstall_engine as uninstall_engine_kernel,
+)
 from quantumvitas.core.engines.engine_registry import EngineRegistry
 
 
@@ -157,6 +164,77 @@ def unregister_engine(engine_family: str, installation_id: str) -> bool:
     return registry.remove_installation(engine_family, installation_id)
 
 
+def install_engine(
+    engine_family: str,
+    version: str | None = None,
+    source: str = "auto",
+) -> Dict[str, Any]:
+    """
+    Install an engine via conda/micromamba or GitHub release.
+
+    Args:
+        engine_family: Engine family key (e.g. ``xtb``)
+        version: Optional version string
+        source: ``auto`` | ``conda`` | ``github_release``
+    """
+    family = (engine_family or "").strip().lower()
+    if family not in ENGINE_META:
+        raise ValueError(f"Unknown engine family: {engine_family}")
+
+    selected_source = (source or "auto").strip().lower()
+    if selected_source == "auto":
+        if ENGINE_META[family].get("conda_package"):
+            selected_source = "conda"
+        elif family == "qe":
+            selected_source = "github_release"
+        else:
+            raise ValueError(
+                f"Engine '{family}' has no automatic installer. Use register_engine(path=...) instead."
+            )
+
+    if selected_source == "conda":
+        installation = install_engine_conda(family, version=version)
+    elif selected_source == "github_release":
+        if family != "qe":
+            raise ValueError(
+                f"GitHub release installer is currently supported for QE only (got '{family}')."
+            )
+        release_asset = resolve_qe_github_release_asset(version=version, variant="openmp")
+        installation = install_engine_github_release(
+            family,
+            asset_url=release_asset["asset_url"],
+            checksum_url=release_asset.get("checksum_url") or None,
+        )
+    else:
+        raise ValueError(
+            "Invalid source. Expected one of: auto, conda, github_release"
+        )
+
+    return {
+        "engine": family,
+        "source": selected_source,
+        "installation": installation,
+    }
+
+
+def uninstall_engine(engine_family: str, installation_id: str) -> Dict[str, Any]:
+    """Uninstall an engine installation by installation ID."""
+    family = (engine_family or "").strip().lower()
+    if family not in ENGINE_META:
+        raise ValueError(f"Unknown engine family: {engine_family}")
+    uninstall_engine_kernel(family, installation_id)
+    return {
+        "engine": family,
+        "installation_id": installation_id,
+        "removed": True,
+    }
+
+
+def list_installable_engines() -> List[Dict[str, Any]]:
+    """Return engine families with available install methods."""
+    return _list_installable_engines_kernel()
+
+
 __all__ = [
     "list_engines",
     "get_active_engine",
@@ -164,4 +242,7 @@ __all__ = [
     "verify_engine",
     "register_engine",
     "unregister_engine",
+    "install_engine",
+    "uninstall_engine",
+    "list_installable_engines",
 ]
