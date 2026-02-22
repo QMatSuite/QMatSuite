@@ -76,7 +76,7 @@ jobs:
       - name: Upload to TestPyPI
         if: ${{ inputs.target == 'testpypi' }}
         env:
-          TWINE_USERNAME: __token__
+          TWINE_USERNAME: ${{ secrets.TESTPYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.TESTPYPI_API_TOKEN }}
         run: |
           python -m twine upload --repository testpypi --skip-existing dist/*
@@ -84,7 +84,7 @@ jobs:
       - name: Upload to PyPI
         if: ${{ inputs.target == 'pypi' }}
         env:
-          TWINE_USERNAME: __token__
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           python -m twine upload --skip-existing dist/*
