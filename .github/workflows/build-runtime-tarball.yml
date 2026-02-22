@@ -1,0 +1,122 @@
+name: Build Runtime Tarball
+
+on:
+  workflow_dispatch:
+    inputs:
+      quantumvitas_version:
+        description: "quantumvitas version to install (PyPI version or \"local\")"
+        required: true
+        type: string
+        default: "local"
+
+permissions:
+  contents: read
+
+jobs:
+  build-tarball:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            platform: macos-arm64
+            python: "3.12"
+          - os: windows-latest
+            platform: windows-x64
+            python: "3.12"
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      RUNTIME_ENV_PREFIX: ${{ github.workspace }}/runtime-env
+      RUNTIME_ARCHIVE: runtime-${{ matrix.platform }}.tar.zst
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Set up micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          init-shell: bash
+          cache-downloads: true
+          cache-environment: false
+
+      - name: Create runtime environment
+        run: |
+          micromamba create -y -p "$RUNTIME_ENV_PREFIX" -c conda-forge python=${{ matrix.python }} pip
+
+      - name: Install quantumvitas from local checkout
+        if: ${{ inputs.quantumvitas_version == 'local' }}
+        run: |
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install --upgrade pip
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install '.[mcp]'
+
+      - name: Install quantumvitas from PyPI
+        if: ${{ inputs.quantumvitas_version != 'local' }}
+        run: |
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install --upgrade pip
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install "quantumvitas[mcp]==${{ inputs.quantumvitas_version }}"
+
+      - name: Verify runtime import chain and CLI
+        run: |
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "import quantumvitas, importlib.metadata as m; print('quantumvitas:', m.version('quantumvitas'))"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from quantumvitas.daemon.server import main; print('daemon OK')"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from quantumvitas.mcp.server import create_server; print('MCP OK')"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" qv --help | head -n 5
+
+      - name: Install zstandard helper
+        run: |
+          python -m pip install --upgrade pip zstandard
+
+      - name: Build runtime tar.zst archive and print size metrics
+        run: |
+          python - <<'PY'
+          import os
+          import tarfile
+          from pathlib import Path
+
+          import zstandard as zstd
+
+          env_dir = Path(os.environ["RUNTIME_ENV_PREFIX"]).resolve()
+          out_path = Path(os.environ["RUNTIME_ARCHIVE"]).resolve()
+          tmp_tar = out_path.with_suffix("")
+
+          if not env_dir.is_dir():
+              raise SystemExit(f"Runtime env not found: {env_dir}")
+
+          def dir_size_bytes(path: Path) -> int:
+              total = 0
+              for p in path.rglob("*"):
+                  if p.is_file():
+                      total += p.stat().st_size
+              return total
+
+          uncompressed_bytes = dir_size_bytes(env_dir)
+
+          with tarfile.open(tmp_tar, "w") as tf:
+              tf.add(env_dir, arcname=".")
+
+          cctx = zstd.ZstdCompressor(level=19, threads=-1)
+          with tmp_tar.open("rb") as src, out_path.open("wb") as dst:
+              cctx.copy_stream(src, dst)
+
+          tmp_tar.unlink(missing_ok=True)
+
+          compressed_bytes = out_path.stat().st_size
+          print(f"runtime env path: {env_dir}")
+          print(f"uncompressed bytes: {uncompressed_bytes}")
+          print(f"compressed bytes: {compressed_bytes}")
+          print(f"archive: {out_path.name}")
+          PY
+
+      - name: Upload runtime artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: ${{ env.RUNTIME_ARCHIVE }}
