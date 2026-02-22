@@ -19,10 +19,10 @@ This document codifies the **engine recipe system** and **runner independence** 
 - Engine assets (pseudo, potentials) SSOT maps
 
 **Code SSOT locations**:
-- Driver protocol: `src/quantumvitas/core/driver_protocol.py`
-- Driver registry: `src/quantumvitas/core/driver_registry.py`
-- Recipe base: `src/quantumvitas/execution/recipes.py`
-- Driver bundles: `src/quantumvitas/drivers/<engine>/`
+- Driver protocol: `src/qmatsuite/core/driver_protocol.py`
+- Driver registry: `src/qmatsuite/core/driver_registry.py`
+- Recipe base: `src/qmatsuite/execution/recipes.py`
+- Driver bundles: `src/qmatsuite/drivers/<engine>/`
 
 ---
 
@@ -117,13 +117,13 @@ class MyDriver(BaseEngineDriver):
 Drivers register at import time via the driver package `__init__.py`:
 
 ```python
-# src/quantumvitas/drivers/myeng/__init__.py
-from quantumvitas.core.driver_registry import DriverRegistry
+# src/qmatsuite/drivers/myeng/__init__.py
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import MyEngDriver
 DriverRegistry.register(MyEngDriver())
 ```
 
-All drivers are imported through `src/quantumvitas/drivers/__init__.py`.
+All drivers are imported through `src/qmatsuite/drivers/__init__.py`.
 
 ### 2.4 Validation at Registration
 
@@ -346,8 +346,8 @@ No hardcoded mapping tables in:
 
 ```python
 # FORBIDDEN in runner.py / executor.py:
-from quantumvitas.drivers.qe.handler import qe_step_handler
-from quantumvitas.engine.qe import QEEngine
+from qmatsuite.drivers.qe.handler import qe_step_handler
+from qmatsuite.engine.qe import QEEngine
 
 # REQUIRED: Use registry
 handler = DriverRegistry.get_handler(step_type_spec)
@@ -386,7 +386,7 @@ engine = DriverRegistry.get_engine_for_step_type(step_type)
 
 ### 10.1 Checklist
 
-1. **Create driver bundle**: `src/quantumvitas/drivers/<engine>/`
+1. **Create driver bundle**: `src/qmatsuite/drivers/<engine>/`
    ```
    drivers/<engine>/
    ├── __init__.py      # DriverRegistry.register()

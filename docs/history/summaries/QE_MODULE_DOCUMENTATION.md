@@ -5,14 +5,14 @@ This document lists all QE modules and their official documentation links follow
 
 ## Runtime Metadata
 
-**At runtime, QE parameter/namelist membership is driven by `qe_module_parameters.json` via `quantumvitas.data.qe_metadata`.**
+**At runtime, QE parameter/namelist membership is driven by `qe_module_parameters.json` via `qmatsuite.data.qe_metadata`.**
 
 ### Runtime Access Rules
 
 **`safe_load_metadata()` is the only runtime entry point for QE parameter metadata.**
 
 - **CLI/daemon code must never read `qe_module_parameters.json` directly.**
-- All runtime access must go through `quantumvitas.data.qe_metadata` helper functions:
+- All runtime access must go through `qmatsuite.data.qe_metadata` helper functions:
   - `safe_load_metadata()` - Main entry point (raises `RuntimeError` for better error handling)
   - `get_module_param_sections(module)` - Get parameter sections for a module
   - `list_supported_modules()` - List all supported QE modules
@@ -29,7 +29,7 @@ This ensures:
 ### QE metadata schema and legacy snapshot
 
 **Runtime uses:**
-- `src/quantumvitas/data/qe_module_parameters.json` (schema v2, loaded via `qe_metadata`)
+- `src/qmatsuite/data/qe_module_parameters.json` (schema v2, loaded via `qe_metadata`)
   - This is the active metadata file used by all runtime code.
   - Uses schema v2: `modules → parameters` map where each parameter has:
     - `namelist`: Section name (e.g., "&CONTROL")
@@ -42,7 +42,7 @@ This ensures:
   - The `qe_metadata` module is schema-aware and provides a stable API regardless of schema version.
 
 **Legacy snapshot:**
-- `src/quantumvitas/data/qe_module_parameters.legacy.json`
+- `src/qmatsuite/data/qe_module_parameters.legacy.json`
   - Frozen v1 snapshot, kept for historical reference.
   - Only used by `tools/compare_qe_parameter_maps.py` to compare schemas.
   - Not used by runtime code or tests.
@@ -73,7 +73,7 @@ This ensures:
   - Derives sections from current JSON regardless of schema version.
   - Useful for verifying schema migrations and parameter coverage.
 
-**Important:** All new code should access QE metadata only through `quantumvitas.data.qe_metadata` helper functions. Do not open `qe_module_parameters.json` directly. This ensures compatibility when the schema migrates from v1 to v2.
+**Important:** All new code should access QE metadata only through `qmatsuite.data.qe_metadata` helper functions. Do not open `qe_module_parameters.json` directly. This ensures compatibility when the schema migrates from v1 to v2.
 
 **Runtime entry point:** Use `safe_load_metadata()` for all QE metadata access. CLI/daemon code must never read the JSON file directly.
 
@@ -223,14 +223,14 @@ To add support for a new QE module:
    - Replace hyphens with underscores
    - Check: `https://www.quantum-espresso.org/Doc/INPUT_{MODULE_NAME}.html`
 
-2. **Add to QEModule enum** in `src/quantumvitas/core/engines/qe_input.py`:
+2. **Add to QEModule enum** in `src/qmatsuite/core/engines/qe_input.py`:
    ```python
    MODULE_NAME = "module"  # module.x - description
    ```
 
 3. **Update detect_module()** method with detection logic
 
-4. **Add to MODULE_NAMELISTS** in `src/quantumvitas/core/engines/qe.py`
+4. **Add to MODULE_NAMELISTS** in `src/qmatsuite/core/engines/qe.py`
 
 5. **Add documentation link** to enum docstring and comments
 

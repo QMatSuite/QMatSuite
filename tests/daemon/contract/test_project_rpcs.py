@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 
 from .conftest import send_request
 
@@ -20,7 +20,7 @@ from .conftest import send_request
 class TestFindProjectRoot:
     """Contract tests for find_project_root RPC."""
 
-    def test_find_project_root_from_root(self, temp_project: Path, daemon: QVDaemon):
+    def test_find_project_root_from_root(self, temp_project: Path, daemon: QMSDaemon):
         """find_project_root returns project root when given project root."""
         response = send_request(daemon, "find_project_root", {
             "start_dir": str(temp_project)
@@ -32,7 +32,7 @@ class TestFindProjectRoot:
         assert response["project_root"] is not None
         assert Path(response["project_root"]).resolve() == temp_project.resolve()
 
-    def test_find_project_root_from_subdirectory(self, temp_project: Path, daemon: QVDaemon):
+    def test_find_project_root_from_subdirectory(self, temp_project: Path, daemon: QMSDaemon):
         """find_project_root returns project root from subdirectory."""
         # Create a subdirectory
         subdir = temp_project / "structures"
@@ -46,7 +46,7 @@ class TestFindProjectRoot:
         assert response["project_root"] is not None
         assert Path(response["project_root"]).resolve() == temp_project.resolve()
 
-    def test_find_project_root_not_found(self, tmp_path: Path, daemon: QVDaemon):
+    def test_find_project_root_not_found(self, tmp_path: Path, daemon: QMSDaemon):
         """find_project_root returns found=False for non-project directory."""
         non_project = tmp_path / "not_a_project"
         non_project.mkdir()
@@ -64,7 +64,7 @@ class TestFindProjectRoot:
 class TestGetProjectSummary:
     """Contract tests for get_project_summary RPC."""
 
-    def test_get_project_summary_happy_path(self, temp_project: Path, daemon: QVDaemon):
+    def test_get_project_summary_happy_path(self, temp_project: Path, daemon: QMSDaemon):
         """get_project_summary returns project metadata."""
         response = send_request(daemon, "get_project_summary", {
             "project_root": str(temp_project)
@@ -82,14 +82,14 @@ class TestGetProjectSummary:
         assert struct_count == 0
         assert calc_count == 0
 
-    def test_get_project_summary_missing_param(self, daemon: QVDaemon):
+    def test_get_project_summary_missing_param(self, daemon: QMSDaemon):
         """get_project_summary errors on missing project_root."""
         with pytest.raises(RuntimeError) as exc_info:
             send_request(daemon, "get_project_summary", {})
 
         assert "invalid_argument" in str(exc_info.value) or "missing" in str(exc_info.value).lower()
 
-    def test_get_project_summary_not_found(self, tmp_path: Path, daemon: QVDaemon):
+    def test_get_project_summary_not_found(self, tmp_path: Path, daemon: QMSDaemon):
         """get_project_summary errors on non-project directory."""
         non_project = tmp_path / "not_a_project"
         non_project.mkdir()
@@ -105,7 +105,7 @@ class TestGetProjectSummary:
 class TestListStructures:
     """Contract tests for list_structures RPC."""
 
-    def test_list_structures_empty_project(self, temp_project: Path, daemon: QVDaemon):
+    def test_list_structures_empty_project(self, temp_project: Path, daemon: QMSDaemon):
         """list_structures returns empty list for new project."""
         response = send_request(daemon, "list_structures", {
             "project_root": str(temp_project)
@@ -116,7 +116,7 @@ class TestListStructures:
         assert response["structures"] == []
         assert response["count"] == 0
 
-    def test_list_structures_with_data(self, demo_project_with_structure, daemon: QVDaemon):
+    def test_list_structures_with_data(self, demo_project_with_structure, daemon: QMSDaemon):
         """list_structures returns structure metadata."""
         project_root, structure_ulid = demo_project_with_structure
 
@@ -139,7 +139,7 @@ class TestListStructures:
         struct_id = struct.get("ulid") or struct.get("structure_ulid") or struct.get("id")
         assert struct_id == structure_ulid
 
-    def test_list_structures_missing_param(self, daemon: QVDaemon):
+    def test_list_structures_missing_param(self, daemon: QMSDaemon):
         """list_structures errors on missing project_root."""
         with pytest.raises(RuntimeError) as exc_info:
             send_request(daemon, "list_structures", {})
@@ -150,7 +150,7 @@ class TestListStructures:
 class TestListCalculations:
     """Contract tests for list_calculations RPC."""
 
-    def test_list_calculations_empty_project(self, temp_project: Path, daemon: QVDaemon):
+    def test_list_calculations_empty_project(self, temp_project: Path, daemon: QMSDaemon):
         """list_calculations returns empty list for new project."""
         response = send_request(daemon, "list_calculations", {
             "project_root": str(temp_project)
@@ -161,7 +161,7 @@ class TestListCalculations:
         assert response["calculations"] == []
         assert response["count"] == 0
 
-    def test_list_calculations_with_data(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_list_calculations_with_data(self, demo_project_with_calculation, daemon: QMSDaemon):
         """list_calculations returns calculation metadata with n_steps."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -189,7 +189,7 @@ class TestListCalculations:
         if step_count is not None:
             assert step_count == 1  # We added one SCF step
 
-    def test_list_calculations_missing_param(self, daemon: QVDaemon):
+    def test_list_calculations_missing_param(self, daemon: QMSDaemon):
         """list_calculations errors on missing project_root."""
         with pytest.raises(RuntimeError) as exc_info:
             send_request(daemon, "list_calculations", {})

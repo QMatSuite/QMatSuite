@@ -66,7 +66,7 @@ Steps 1 and 3 can proceed in parallel.
 - Create `data/vasp_metadata.py` (~250 lines)
 - API: safe_load_metadata, get_tag_info, list_tags, list_categories, validate_incar_params, etc.
 - Module-level cache with optional hot-reload via env var
-- Uses `importlib.resources` anchored at `quantumvitas.drivers.vasp.data`
+- Uses `importlib.resources` anchored at `qmatsuite.drivers.vasp.data`
 - Tests: load, lookup, case-insensitive, category filter, validation
 
 ## Step 3: Expanded Example Library (12 Cases)

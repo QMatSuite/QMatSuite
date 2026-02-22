@@ -5,13 +5,13 @@
 ## Definition: Kernel vs Driver
 
 **Kernel**: Engine-agnostic infrastructure that should work with any engine via DriverRegistry
-- `src/quantumvitas/calculation/` (except engine-specific files)
-- `src/quantumvitas/core/` (except `core/engines/`)
-- `src/quantumvitas/execution/` (except engine handlers/recipes)
-- `src/quantumvitas/workflow/`
-- `src/quantumvitas/presets/` (core infrastructure)
+- `src/qmatsuite/calculation/` (except engine-specific files)
+- `src/qmatsuite/core/` (except `core/engines/`)
+- `src/qmatsuite/execution/` (except engine handlers/recipes)
+- `src/qmatsuite/workflow/`
+- `src/qmatsuite/presets/` (core infrastructure)
 
-**Driver**: Engine-specific code that should live under `src/quantumvitas/drivers/<engine>/`
+**Driver**: Engine-specific code that should live under `src/qmatsuite/drivers/<engine>/`
 
 ---
 

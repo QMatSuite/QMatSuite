@@ -38,7 +38,7 @@ PR10 Definition of Done is **ACHIEVED**. All PR10 gates pass (35 passed, 3 skipp
    - **Action**: Mark PR0 test as "superseded by PR10 gates" in docs
 
 4. ✅ Directory structure matches spec
-   - **Evidence**: `src/quantumvitas/api/` structure exists with all required subdirectories
+   - **Evidence**: `src/qmatsuite/api/` structure exists with all required subdirectories
    - **Status**: DONE
 
 **Conclusion**: PR0 gates are **superseded** by PR10 gates. PR0 tests exist but are not enforcing PR10 requirements.
@@ -73,35 +73,35 @@ PR10 Definition of Done is **ACHIEVED**. All PR10 gates pass (35 passed, 3 skipp
 
 ## GATE 4 (FINAL) Definition of Done Checklist
 
-### ✅ `quantumvitas.api` top-level exports ONLY:
-- ✅ `QVService` - **Evidence**: In `__all__`
+### ✅ `qmatsuite.api` top-level exports ONLY:
+- ✅ `QMSService` - **Evidence**: In `__all__`
 - ✅ API-owned errors (9 classes + 13 code constants) - **Evidence**: All in `__all__`
 - ✅ API-owned DTOs (8 classes) - **Evidence**: All in `__all__`
 
 **Verification Command**:
 ```bash
-python -c "import quantumvitas.api as api; print(len(api.__all__))"
+python -c "import qmatsuite.api as api; print(len(api.__all__))"
 # Result: 21 ≤ 30 ✅
 ```
 
 ### ✅ ZERO kernel types exposed:
 **Verification Command**:
 ```bash
-grep "^from quantumvitas\.(core|calculation|drivers|execution|workflow)" src/quantumvitas/api/__init__.py
+grep "^from qmatsuite\.(core|calculation|drivers|execution|workflow)" src/qmatsuite/api/__init__.py
 # Result: 0 matches ✅
 ```
 
 ### ✅ ZERO re-export symbols remain:
 **Verification Command**:
 ```bash
-grep "^from quantumvitas\." src/quantumvitas/api/__init__.py | grep -v "api\."
+grep "^from qmatsuite\." src/qmatsuite/api/__init__.py | grep -v "api\."
 # Result: 0 matches (only api.* imports) ✅
 ```
 
 ### ✅ Frontends NEVER import kernel:
 **Verification Command**:
 ```bash
-grep -rn "^from quantumvitas\.(core|calculation|drivers|execution|workflow)" src/quantumvitas/cli/ src/quantumvitas/daemon/ 2>/dev/null
+grep -rn "^from qmatsuite\.(core|calculation|drivers|execution|workflow)" src/qmatsuite/cli/ src/qmatsuite/daemon/ 2>/dev/null
 # Result: 0 matches ✅
 ```
 **Gate Test**: `tests/gates/test_import_rules.py` enforces this ✅
@@ -109,14 +109,14 @@ grep -rn "^from quantumvitas\.(core|calculation|drivers|execution|workflow)" src
 ### ✅ Frontends NEVER instantiate kernel models:
 **Verification Command**:
 ```bash
-grep -rn "Calculation\(\|Step\(\|Structure\(" src/quantumvitas/cli/ src/quantumvitas/daemon/
+grep -rn "Calculation\(\|Step\(\|Structure\(" src/qmatsuite/cli/ src/qmatsuite/daemon/
 # Result: 0 matches ✅
 ```
 
 ### ✅ Daemon endpoints NEVER hand-serialize:
 **Verification Command**:
 ```bash
-grep -rn "json\.dumps\|__dict__" src/quantumvitas/daemon/server.py | grep -v "def to_json\|# " | grep -v "write_text\|sqlite\|db_path\|cursor.execute\|conn.execute"
+grep -rn "json\.dumps\|__dict__" src/qmatsuite/daemon/server.py | grep -v "def to_json\|# " | grep -v "write_text\|sqlite\|db_path\|cursor.execute\|conn.execute"
 # Result: 0 violations (only acceptable uses) ✅
 ```
 **Gate Test**: `tests/gates/test_daemon_no_hand_serialization.py` enforces this ✅
@@ -124,7 +124,7 @@ grep -rn "json\.dumps\|__dict__" src/quantumvitas/daemon/server.py | grep -v "de
 ### ✅ No huge arrays in DTO:
 **Verification Command**:
 ```bash
-grep -rn "eigenvalues\|positions\|trajectory" src/quantumvitas/api/types/
+grep -rn "eigenvalues\|positions\|trajectory" src/qmatsuite/api/types/
 # Result: Only in comments/preview (not as main fields) ✅
 ```
 
@@ -149,7 +149,7 @@ grep -rn "_api_legacy" src/ tests/
 ```
 
 **Results**:
-- **Found**: 5 references in `src/quantumvitas/api/service.py` (lines 624, 1118, 1457, 1736, 1778)
+- **Found**: 5 references in `src/qmatsuite/api/service.py` (lines 624, 1118, 1457, 1736, 1778)
 - **Context**: All imports are **inside function bodies** (not at module level)
 - **Plan Compliance**: ✅ Acceptable per plan (kernel imports allowed inside function bodies)
 - **Status**: NO ACTION REQUIRED
@@ -169,7 +169,7 @@ grep -rn "_api_legacy" src/ tests/
 
 **Search Command**:
 ```bash
-grep "^from quantumvitas\.(core|calculation|engine|io)" src/quantumvitas/cli/ src/quantumvitas/daemon/
+grep "^from qmatsuite\.(core|calculation|engine|io)" src/qmatsuite/cli/ src/qmatsuite/daemon/
 ```
 
 **Results**:
@@ -224,23 +224,23 @@ PR0 tests remain for historical reference but do not enforce PR10 requirements.
 
 ```bash
 # Export count
-python -c "import quantumvitas.api as api; print(len(api.__all__))"
+python -c "import qmatsuite.api as api; print(len(api.__all__))"
 # Result: 21
 
 # Kernel re-exports
-grep "^from quantumvitas\.(core|calculation|drivers|execution|workflow)" src/quantumvitas/api/__init__.py
+grep "^from qmatsuite\.(core|calculation|drivers|execution|workflow)" src/qmatsuite/api/__init__.py
 # Result: 0 matches
 
 # Frontend kernel imports
-grep -rn "^from quantumvitas\.(core|calculation|drivers|execution|workflow)" src/quantumvitas/cli/ src/quantumvitas/daemon/
+grep -rn "^from qmatsuite\.(core|calculation|drivers|execution|workflow)" src/qmatsuite/cli/ src/qmatsuite/daemon/
 # Result: 0 matches
 
 # Kernel model instantiation
-grep -rn "Calculation\(\|Step\(\|Structure\(" src/quantumvitas/cli/ src/quantumvitas/daemon/
+grep -rn "Calculation\(\|Step\(\|Structure\(" src/qmatsuite/cli/ src/qmatsuite/daemon/
 # Result: 0 matches
 
 # Daemon hand-serialization
-grep -rn "json\.dumps\|__dict__" src/quantumvitas/daemon/server.py | grep -v "def to_json\|# " | grep -v "write_text\|sqlite\|db_path"
+grep -rn "json\.dumps\|__dict__" src/qmatsuite/daemon/server.py | grep -v "def to_json\|# " | grep -v "write_text\|sqlite\|db_path"
 # Result: 0 violations
 
 # Gates

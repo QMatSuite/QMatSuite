@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useQVClient } from '../../hooks/useQVClient';
+import { useQMSClient } from '../../hooks/useQMSClient';
 import type {
   CalculationDetailResult,
   CalculationInfo,
   PrimitiveBundleData,
-} from '../../types/qv';
+} from '../../types/qms';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import { AnalysisVizPanel } from './AnalysisVizPanel';
 import { FatbandsVizPanel } from './FatbandsVizPanel';
@@ -35,7 +35,7 @@ export function CalculationAnalysisPanel({
   projectRoot,
   calculation,
 }: CalculationAnalysisPanelProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   const steps = calculation
     ? ((calculation as CalculationDetailResult).steps ??
       (calculation as CalculationInfo).steps ??
@@ -96,7 +96,7 @@ export function CalculationAnalysisPanel({
 
     let cancelled = false;
     setRunInfoError(null);
-    qv.call('get_latest_run_for_step', {
+    qms.call('get_latest_run_for_step', {
       project_root: normalizedRoot,
       step_ulid: selectedStepId,
     })
@@ -120,7 +120,7 @@ export function CalculationAnalysisPanel({
     return () => {
       cancelled = true;
     };
-  }, [calcSelector, projectRoot, qv, selectedStepId]);
+  }, [calcSelector, projectRoot, qms, selectedStepId]);
 
   useEffect(() => {
     if (!runInfo?.run_ulid || !selectedStepId) {
@@ -141,7 +141,7 @@ export function CalculationAnalysisPanel({
     let cancelled = false;
     setDigestLoading(true);
     setDigestError(null);
-    qv.call('get_step_digest', {
+    qms.call('get_step_digest', {
       project_root: normalizedRoot,
       run_ulid: runInfo.run_ulid,
       step_ulid: selectedStepId,
@@ -177,7 +177,7 @@ export function CalculationAnalysisPanel({
     return () => {
       cancelled = true;
     };
-  }, [projectRoot, qv, runInfo?.run_ulid, selectedStepId]);
+  }, [projectRoot, qms, runInfo?.run_ulid, selectedStepId]);
 
   useEffect(() => {
     const runUlid = runInfo?.run_ulid;
@@ -211,7 +211,7 @@ export function CalculationAnalysisPanel({
         const cacheKey = `${runUlid}:${objectType}:canonical`;
         let payload = analysisCacheRef.current[cacheKey];
         if (!payload) {
-          const response = await qv.call('get_analysis', {
+          const response = await qms.call('get_analysis', {
             project_root: normalizedRoot,
             run_ulid: runUlid,
             object_type: objectType,
@@ -244,7 +244,7 @@ export function CalculationAnalysisPanel({
     return () => {
       cancelled = true;
     };
-  }, [projectRoot, qv, referenceOnlyMode, runInfo?.run_ulid, selectedStepId]);
+  }, [projectRoot, qms, referenceOnlyMode, runInfo?.run_ulid, selectedStepId]);
 
   useEffect(() => {
     const runUlid = runInfo?.run_ulid;
@@ -276,7 +276,7 @@ export function CalculationAnalysisPanel({
     let cancelled = false;
     setAnalysisLoading(true);
     setAnalysisError(null);
-    qv.call('get_analysis', {
+    qms.call('get_analysis', {
       project_root: normalizedRoot,
       run_ulid: runUlid,
       object_type: selectedObjectType,
@@ -308,7 +308,7 @@ export function CalculationAnalysisPanel({
     return () => {
       cancelled = true;
     };
-  }, [projectRoot, qv, runInfo?.run_ulid, selectedObjectType, shiftToFermi]);
+  }, [projectRoot, qms, runInfo?.run_ulid, selectedObjectType, shiftToFermi]);
 
   // Reference-only mode: when no run available, probe for reference types
   useEffect(() => {
@@ -351,7 +351,7 @@ export function CalculationAnalysisPanel({
       const refCache: Record<string, AnalysisResponse> = {};
 
       for (const objType of probeTypes) {
-        const response = await qv.call('get_reference_analysis', {
+        const response = await qms.call('get_reference_analysis', {
           project_root: normalizedRoot,
           calculation: calcSelector,
           analysis_type: objType,
@@ -384,7 +384,7 @@ export function CalculationAnalysisPanel({
 
     void probeReferenceTypes();
     return () => { cancelled = true; };
-  }, [calcSelector, projectRoot, qv, runInfo, runInfoError, selectedStepId, steps]);
+  }, [calcSelector, projectRoot, qms, runInfo, runInfoError, selectedStepId, steps]);
 
   // Fetch reference data when selectedObjectType changes (for reference-only mode or overlay)
   const referenceCacheRef = useRef<Record<string, AnalysisResponse>>({});
@@ -408,7 +408,7 @@ export function CalculationAnalysisPanel({
     }
 
     let cancelled = false;
-    qv.call('get_reference_analysis', {
+    qms.call('get_reference_analysis', {
       project_root: normalizedRoot,
       calculation: calcSelector,
       analysis_type: selectedObjectType,
@@ -427,7 +427,7 @@ export function CalculationAnalysisPanel({
         if (!cancelled) setReferenceData(null);
       });
     return () => { cancelled = true; };
-  }, [calcSelector, projectRoot, qv, selectedObjectType]);
+  }, [calcSelector, projectRoot, qms, selectedObjectType]);
 
   useEffect(() => {
     if (!pinMessage) {
@@ -450,7 +450,7 @@ export function CalculationAnalysisPanel({
     setPinning(true);
     setPinMessage(null);
     try {
-      const response = await qv.call('pin_analysis_to_history', {
+      const response = await qms.call('pin_analysis_to_history', {
         project_root: normalizedRoot,
         step_ulid: selectedStepId,
         analysis_kind: analysisResponse.object_type,
@@ -467,7 +467,7 @@ export function CalculationAnalysisPanel({
     } finally {
       setPinning(false);
     }
-  }, [analysisResponse, projectRoot, qv, selectedStepId]);
+  }, [analysisResponse, projectRoot, qms, selectedStepId]);
 
   if (!calculation) {
     return (
@@ -486,7 +486,7 @@ export function CalculationAnalysisPanel({
   }
 
   return (
-    <div className="calculation-analysis-panel" data-testid="qv-calc-analysis-panel">
+    <div className="calculation-analysis-panel" data-testid="qms-calc-analysis-panel">
       <div className="calculation-analysis-panel__header">
         <h3>Analysis: {calculation.name}</h3>
         {(referenceData || referenceOnlyMode) && (
@@ -494,7 +494,7 @@ export function CalculationAnalysisPanel({
             <input
               checked={showReference}
               onChange={(e) => setShowReference(e.target.checked)}
-              data-testid="qv-analysis-reference-toggle"
+              data-testid="qms-analysis-reference-toggle"
               type="checkbox"
             />
             Reference
@@ -509,7 +509,7 @@ export function CalculationAnalysisPanel({
             className={`calculation-analysis-panel__step-tab${
               step.ulid === selectedStepId ? ' calculation-analysis-panel__step-tab--active' : ''
             }`}
-            data-testid={`qv-analysis-step-tab-${step.step_type_gen}`}
+            data-testid={`qms-analysis-step-tab-${step.step_type_gen}`}
             data-step-type-gen={step.step_type_gen}
             onClick={() => setSelectedStepId(step.ulid)}
             type="button"
@@ -554,7 +554,7 @@ export function CalculationAnalysisPanel({
         {referenceOnlyMode && showReference && referenceData && (
           <div
             className="calculation-analysis-panel__reference-banner"
-            data-testid="qv-analysis-reference-banner"
+            data-testid="qms-analysis-reference-banner"
           >
             Reference data (pre-computed, no engine run required)
           </div>

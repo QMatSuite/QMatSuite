@@ -49,7 +49,7 @@ Test Fixture
 
 ## Evidence from Code
 
-### File: `src/quantumvitas/core/engines/qe.py:94-114`
+### File: `src/qmatsuite/core/engines/qe.py:94-114`
 
 ```python
 def __init__(self, config: EngineConfig):
@@ -64,7 +64,7 @@ def __init__(self, config: EngineConfig):
 
 **Problem**: When no explicit path provided, uses legacy auto-detection.
 
-### File: `src/quantumvitas/core/engines/qe_installation.py:88-113`
+### File: `src/qmatsuite/core/engines/qe_installation.py:88-113`
 
 ```python
 def _initialize_qe_home() -> None:
@@ -82,7 +82,7 @@ def _initialize_qe_home() -> None:
 
 **Problem**: Always checks `QE_HOME` and runs auto-detection, regardless of registry settings.
 
-### File: `src/quantumvitas/core/engines/qe_installation.py:203-365`
+### File: `src/qmatsuite/core/engines/qe_installation.py:203-365`
 
 ```python
 def _detect_qe_home() -> Optional[Path]:
@@ -118,7 +118,7 @@ engine = QuantumEspressoEngine(config)  # ← Bypasses registry
 
 ### 2. CLI Commands
 
-**File**: `src/quantumvitas/cli/main.py:1627`
+**File**: `src/qmatsuite/cli/main.py:1627`
 ```python
 engine_config = EngineConfig(name="qe")
 engine = QuantumEspressoEngine(engine_config)  # ← Bypasses registry
@@ -126,7 +126,7 @@ engine = QuantumEspressoEngine(engine_config)  # ← Bypasses registry
 
 ### 3. API/Service Layer
 
-**File**: `src/quantumvitas/api.py:1270`
+**File**: `src/qmatsuite/api.py:1270`
 ```python
 engine_config = EngineConfig(name="qe")
 engine = QuantumEspressoEngine(engine_config)  # ← Bypasses registry
@@ -149,7 +149,7 @@ The `QEEngineRegistry` class exists and implements the correct priority order:
 
 ### 1. Diagnostic Module
 
-**File**: `src/quantumvitas/core/engines/qe_diagnostics.py`
+**File**: `src/qmatsuite/core/engines/qe_diagnostics.py`
 
 **Functions**:
 - `diagnose_qe_resolution()`: Returns `QEResolutionReport` showing how QE would be resolved
@@ -176,7 +176,7 @@ The `QEEngineRegistry` class exists and implements the correct priority order:
 
 ### Fix 1: Wire Registry into QuantumEspressoEngine (CRITICAL)
 
-**File**: `src/quantumvitas/core/engines/qe.py:94-114`
+**File**: `src/qmatsuite/core/engines/qe.py:94-114`
 
 **Change**: Use registry when no explicit path provided, fallback to legacy only if `allow_path_fallback=true`.
 
@@ -206,7 +206,7 @@ The `QEEngineRegistry` class exists and implements the correct priority order:
 
 ## Files Changed (Diagnostics Only)
 
-1. ✅ `src/quantumvitas/core/engines/qe_diagnostics.py` - Diagnostic module
+1. ✅ `src/qmatsuite/core/engines/qe_diagnostics.py` - Diagnostic module
 2. ✅ `tests/test_qe_resolution_diagnostics.py` - Diagnostic test
 3. ✅ `tests/conftest.py` - Added warning in fixture
 4. ✅ `docs/QE_RESOLUTION_ANALYSIS.md` - Full analysis document

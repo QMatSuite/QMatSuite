@@ -13,10 +13,10 @@ sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "extended-tests"))
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
-# Pseudopotential resolution: use ensure_qe_pseudos from quantumvitas.core.pseudo
+# Pseudopotential resolution: use ensure_qe_pseudos from qmatsuite.core.pseudo
 from tests.core import run_and_verify_step_with_assert
 
 

@@ -55,7 +55,7 @@
 ### 3.3 Implement Dependency Chain Resolution (C3)
 
 - [x] Implement _resolve_dependency_chain(target_step_ulid, calculation_steps)
-  - Created: `src/quantumvitas/engines/pyscf/chain.py` with `resolve_dependency_chain()` function
+  - Created: `src/qmatsuite/engines/pyscf/chain.py` with `resolve_dependency_chain()` function
 - [x] Implement nearest-provider rule (scan left for produces_state)
   - Implemented: recursive resolution, scans left for nearest provider
 - [x] Handle missing provider (hard error)
@@ -66,7 +66,7 @@
   - [ ] Multiple SCFs in list: post step binds to nearest left SCF
 
 **Files Changed**: 
-- `src/quantumvitas/engines/pyscf/chain.py` (new file with resolve_dependency_chain function)
+- `src/qmatsuite/engines/pyscf/chain.py` (new file with resolve_dependency_chain function)
 **Tests Added**: (to be added next)
 **Commands Run**: (to be run after tests added)
 

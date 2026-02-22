@@ -6,7 +6,7 @@ import json
 from importlib import resources
 from pathlib import Path
 
-from quantumvitas.drivers.xtb.data.xtb_metadata import (
+from qmatsuite.drivers.xtb.data.xtb_metadata import (
     get_metadata_file_info,
     get_tag_default,
     get_tag_info,
@@ -20,7 +20,7 @@ from quantumvitas.drivers.xtb.data.xtb_metadata import (
 
 
 def _raw_catalog() -> dict:
-    data_path = resources.files("quantumvitas.drivers.xtb.data").joinpath("xtb_tags.json")
+    data_path = resources.files("qmatsuite.drivers.xtb.data").joinpath("xtb_tags.json")
     with resources.as_file(data_path) as path:
         return json.loads(Path(path).read_text(encoding="utf-8"))
 

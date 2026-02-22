@@ -9,23 +9,23 @@
 
 ### A. Project Structure Loading
 
-**Entry Point**: `QVService.get_structure_vis_data()`  
-**File**: `src/quantumvitas/api.py:2243`
+**Entry Point**: `QMSService.get_structure_vis_data()`  
+**File**: `src/qmatsuite/api.py:2243`
 
 **Flow**:
 1. **Structure Resolution**: `resolve_structure(project_root, selector)` → `ResolvedResource`
-   - File: `src/quantumvitas/api.py` (via import)
+   - File: `src/qmatsuite/api.py` (via import)
    - Returns path to structure file
 
 2. **Structure Loading**: `read_structure(resolved.absolute_path)` → `PMGStructure`
-   - File: `src/quantumvitas/io/structure_io.py:30`
+   - File: `src/qmatsuite/io/structure_io.py:30`
    - Supports formats: QE input (`.in`), JSON, CIF, POSCAR, etc.
    - **Fractional coordinates**: NOT assumed canonical at this stage
    - **Canonicalization**: NOT called here
 
 3. **QE Input Parsing** (if format is QE):
    - Function: `structure_from_qe_input(qe_input)`
-   - File: `src/quantumvitas/io/structure_io.py:211`
+   - File: `src/qmatsuite/io/structure_io.py:211`
    - Handles `ibrav` rules and coordinate system conversion
    - Creates `PMGStructure` with fractional or Cartesian coords based on `ATOMIC_POSITIONS` option
    - **No canonicalization** at this stage
@@ -33,11 +33,11 @@
 ### B. Online Structure Fetching (OPTIMADE)
 
 **Entry Point**: `_handle_get_structure_vis()` (online path)  
-**File**: `src/quantumvitas/daemon/server.py:2548`
+**File**: `src/qmatsuite/daemon/server.py:2548`
 
 **Flow**:
 1. **Structure Fetch**: `fetch_structure_from_optimade(base_url, entry_id)`
-   - File: `src/quantumvitas/io/online_search.py:331`
+   - File: `src/qmatsuite/io/online_search.py:331`
    - Fetches from OPTIMADE API
    - Receives Cartesian coordinates from API
    - Creates `PMGStructure` with `coords_are_cartesian=True`
@@ -45,7 +45,7 @@
    - **No canonicalization** at fetch stage
 
 2. **Primitive Conversion**: `structure.get_primitive_structure()`
-   - File: `src/quantumvitas/daemon/server.py:1544`
+   - File: `src/qmatsuite/daemon/server.py:1544`
    - Uses pymatgen's `SpacegroupAnalyzer` to get primitive cell
    - **Fractional coordinates**: May be outside [0,1) after primitive conversion
    - **No canonicalization** at this stage
@@ -56,9 +56,9 @@
 **File**: `gui/src/components/dialogs/ImportStructureDialog.tsx:16`
 
 **Flow**:
-1. **RPC Call**: `qv.call('import_structure', {project_root, source_file, name})`
-   - File: `src/quantumvitas/daemon/server.py` (handler)
-   - Calls `QVService.import_structure()`
+1. **RPC Call**: `qms.call('import_structure', {project_root, source_file, name})`
+   - File: `src/qmatsuite/daemon/server.py` (handler)
+   - Calls `QMSService.import_structure()`
 
 2. **Structure Loading**: Uses `read_structure()` (same as project path)
    - **Fractional coordinates**: NOT assumed canonical
@@ -67,7 +67,7 @@
 ### D. CLI Structure Loading
 
 **Entry Point**: `_resolve_structure_input()`  
-**File**: `src/quantumvitas/cli/main.py:579`
+**File**: `src/qmatsuite/cli/main.py:579`
 
 **Flow**:
 - Uses `read_structure()` for file-based structures
@@ -80,7 +80,7 @@
 ### A. Core Canonicalization Functions
 
 #### 1. `canonicalize_structure_in_place()`
-- **File**: `src/quantumvitas/analysis/structure_viz.py:194`
+- **File**: `src/qmatsuite/analysis/structure_viz.py:194`
 - **When Called**: 
   - `build_display_atoms()` (line 1314) - main entry point
   - `visualize_structure()` (line 1727) - high-level API
@@ -90,7 +90,7 @@
 - **Algorithm**: Calls `canonicalize_frac_coords()` for each site
 
 #### 2. `canonicalize_frac_coords()`
-- **File**: `src/quantumvitas/analysis/structure_viz.py:237`
+- **File**: `src/qmatsuite/analysis/structure_viz.py:237`
 - **When Called**: 
   - Only from `canonicalize_structure_in_place()` (line 232)
   - Also from `wrap_fractional_coords()` wrapper (line 328)
@@ -106,7 +106,7 @@
   4. Boundary snapping near 0.0: `result < 0.0101` OR `result < 1e-12` → snap to 0.0
 
 #### 3. `wrap_fractional_coords()`
-- **File**: `src/quantumvitas/analysis/structure_viz.py:337`
+- **File**: `src/qmatsuite/analysis/structure_viz.py:337`
 - **When Called**: 
   - Wrapper for backward compatibility
   - Calls `canonicalize_frac_coords()` internally
@@ -114,7 +114,7 @@
 - **Thresholds**: Uses `BOUNDARY_FRAC_TOL` (default)
 
 #### 4. `wrap_cartesian_coords()`
-- **File**: `src/quantumvitas/analysis/structure_viz.py:353`
+- **File**: `src/qmatsuite/analysis/structure_viz.py:353`
 - **When Called**: Not found in active code paths (legacy/unused?)
 - **Modifies**: Returns new array
 - **Algorithm**: Converts to fractional → wraps → converts back to Cartesian
@@ -133,7 +133,7 @@
 ### A. Boundary Atom Generation
 
 #### `generate_boundary_atoms()`
-- **File**: `src/quantumvitas/analysis/structure_viz.py:952`
+- **File**: `src/qmatsuite/analysis/structure_viz.py:952`
 - **Input Assumption**: Structure is already canonicalized (fractional coords in [0,1))
 - **When Called**: 
   - `build_display_atoms()` (lines 1348, 1396, 1446) - when `repeat_boundary=True`
@@ -150,7 +150,7 @@
 ### B. Supercell Expansion
 
 #### `make_supercell()`
-- **File**: `src/quantumvitas/analysis/structure_viz.py:1031`
+- **File**: `src/qmatsuite/analysis/structure_viz.py:1031`
 - **Input Assumption**: Structure is already canonicalized (line 1038 comment)
 - **When Called**: 
   - `build_display_atoms()` (line 1371) - when mode is "supercell"
@@ -165,7 +165,7 @@
 ### C. Display Mode: Box
 
 #### `enumerate_atoms_in_aabb()`
-- **File**: `src/quantumvitas/analysis/structure_viz.py:1150` (referenced, not shown in detail)
+- **File**: `src/qmatsuite/analysis/structure_viz.py:1150` (referenced, not shown in detail)
 - **When Called**: `build_display_atoms()` (line 1471) - when mode is "box"
 - **Input**: Canonicalized structure + box bounds
 - **Output**: List of `DisplayAtom` objects
@@ -175,7 +175,7 @@
 ### D. Display Mode: Conventional
 
 #### `get_conventional_cell()`
-- **File**: `src/quantumvitas/analysis/structure_viz.py:1045` (referenced)
+- **File**: `src/qmatsuite/analysis/structure_viz.py:1045` (referenced)
 - **When Called**: `build_display_atoms()` (line 1418) - when mode is "conventional"
 - **Input**: Canonicalized structure
 - **Output**: New `PMGStructure` with conventional cell
@@ -187,12 +187,12 @@
 
 ### A. Main Entry Point: `build_display_atoms()`
 
-**File**: `src/quantumvitas/analysis/structure_viz.py:1288`
+**File**: `src/qmatsuite/analysis/structure_viz.py:1288`
 
 **Call Chain**:
 ```
-QVService.get_structure_vis_data()
-  → QVService._build_structure_vis_payload()
+QMSService.get_structure_vis_data()
+  → QMSService._build_structure_vis_payload()
     → build_display_atoms(structure, params)
 ```
 
@@ -241,7 +241,7 @@ Throughout `build_display_atoms()`, there are verification checks:
 
 ### C. High-Level API: `visualize_structure()`
 
-**File**: `src/quantumvitas/analysis/structure_viz.py:1727`
+**File**: `src/qmatsuite/analysis/structure_viz.py:1727`
 
 **Flow**:
 1. Calls `canonicalize_structure_in_place()` (line 1747)
@@ -250,7 +250,7 @@ Throughout `build_display_atoms()`, there are verification checks:
 
 ### D. Matplotlib API: `plot_structure_3d()`
 
-**File**: `src/quantumvitas/analysis/structure_viz.py:1517`
+**File**: `src/qmatsuite/analysis/structure_viz.py:1517`
 
 **Flow**:
 1. Calls `canonicalize_structure_in_place()` (line 1292)
@@ -263,10 +263,10 @@ Throughout `build_display_atoms()`, there are verification checks:
 
 ### A. Public API: `build_bonds()`
 
-**File**: `src/quantumvitas/analysis/structure_viz.py:754`
+**File**: `src/qmatsuite/analysis/structure_viz.py:754`
 
 **When Called**:
-- `QVService._build_structure_vis_payload()` (line 1982)
+- `QMSService._build_structure_vis_payload()` (line 1982)
 - `detect_bonds()` (line 909) - legacy wrapper
 
 **Input**:
@@ -287,7 +287,7 @@ Throughout `build_display_atoms()`, there are verification checks:
 
 ### B. Internal Implementation: `_build_bonds()`
 
-**File**: `src/quantumvitas/analysis/structure_viz.py:660`
+**File**: `src/qmatsuite/analysis/structure_viz.py:660`
 
 **Algorithm Selection**:
 - Default: `build_bonds_cell_list()` (cell-list neighbor search)
@@ -300,7 +300,7 @@ Throughout `build_display_atoms()`, there are verification checks:
 ### C. Bond Detection Algorithms
 
 #### 1. `build_bonds_bruteforce()`
-- **File**: `src/quantumvitas/analysis/structure_viz.py:455`
+- **File**: `src/qmatsuite/analysis/structure_viz.py:455`
 - **Algorithm**: O(N²) pairwise distance check
 - **Bond Criterion**: `distance <= min(max_cutoff, (r_i + r_j) * max_factor + tolerance)`
 - **Default Parameters**:
@@ -310,14 +310,14 @@ Throughout `build_display_atoms()`, there are verification checks:
 - **No coordinate modification**: Pure Euclidean distance on provided coordinates
 
 #### 2. `build_bonds_cell_list()`
-- **File**: `src/quantumvitas/analysis/structure_viz.py:530`
+- **File**: `src/qmatsuite/analysis/structure_viz.py:530`
 - **Algorithm**: Cell-list (neighbor-grid) acceleration
 - **Same bond criterion** as brute-force
 - **Guaranteed to match brute-force results** (validated in tests)
 - **No coordinate modification**: Pure geometric function
 
 #### 3. `detect_bonds()` (Legacy Wrapper)
-- **File**: `src/quantumvitas/analysis/structure_viz.py:888`
+- **File**: `src/qmatsuite/analysis/structure_viz.py:888`
 - **Input**: `PMGStructure` object
 - **Assumption**: Structure is already canonicalized (line 879)
 - **Does NOT canonicalize** (line 884)
@@ -325,7 +325,7 @@ Throughout `build_display_atoms()`, there are verification checks:
 
 ### D. Bond Computation in Visualization Pipeline
 
-**Call Site**: `QVService._build_structure_vis_payload()` (line 1982)
+**Call Site**: `QMSService._build_structure_vis_payload()` (line 1982)
 
 **Flow**:
 ```
@@ -449,12 +449,12 @@ Bonds serialized to JSON payload
    [Fractional coords: NOT canonicalized]
 
 2. Service Entry
-   QVService.get_structure_vis_data()
+   QMSService.get_structure_vis_data()
    → read_structure() → PMGStructure
    [Still NOT canonicalized]
 
 3. Shared Builder
-   QVService._build_structure_vis_payload()
+   QMSService._build_structure_vis_payload()
    → build_display_atoms(structure, params)
    [CANONICALIZATION HAPPENS HERE - ONCE]
    → canonicalize_structure_in_place(structure_canon)
@@ -491,7 +491,7 @@ Bonds serialized to JSON payload
 
 3. Service Entry
    _handle_get_structure_vis() (online path)
-   → QVService._build_structure_vis_payload()
+   → QMSService._build_structure_vis_payload()
    [Same as project path from here]
 ```
 

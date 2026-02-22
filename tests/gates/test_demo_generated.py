@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 DEMO_DIR = get_resources_dir() / "demo_projects"
 MANIFEST_PATH = DEMO_DIR / ".generator_manifest.json"

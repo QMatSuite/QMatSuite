@@ -37,7 +37,7 @@ The `pw2wannier90.x` execution was capturing stderr to a variable but not writin
 
 ### Fix 1: Extract Kpoints from nscf Step (Preserve Order)
 
-**New Module**: `src/quantumvitas/calculation/wannier90_kpoints.py`
+**New Module**: `src/qmatsuite/calculation/wannier90_kpoints.py`
 
 This module provides:
 - `extract_kpoints_from_qe_input()`: Extract kpoints from a QE input file, preserving exact order
@@ -46,7 +46,7 @@ This module provides:
 - `find_nscf_input_file()`: Locate the nscf step input file from calculation directory
 - `extract_kpoints_from_nscf_step()`: Main function to extract kpoints from nscf step
 
-**Modified**: `src/quantumvitas/calculation/structure_steps.py`
+**Modified**: `src/qmatsuite/calculation/structure_steps.py`
 
 In `materialize_step_spec()`, for `w90_preproc` and `w90_run` steps:
 1. **Extract kpoints from nscf step** instead of generating from `mp_grid`
@@ -54,7 +54,7 @@ In `materialize_step_spec()`, for `w90_preproc` and `w90_run` steps:
 3. **Add consistency check**: Verify that kpoints count matches `mp_grid[0] * mp_grid[1] * mp_grid[2]`
 4. **Fallback**: If nscf kpoints cannot be extracted, generate from `mp_grid` but log a warning
 
-**Modified**: `src/quantumvitas/io/wannier90_input.py`
+**Modified**: `src/qmatsuite/io/wannier90_input.py`
 
 In `Wannier90Input.to_string()`:
 1. **Canonicalize kpoints** before writing (snap near 0 and 1)
@@ -63,7 +63,7 @@ In `Wannier90Input.to_string()`:
 
 ### Fix 2: Write pw2wannier90 stderr to File
 
-**Modified**: `src/quantumvitas/core/engines/qe_calculation.py`
+**Modified**: `src/qmatsuite/core/engines/qe_calculation.py`
 
 In `QECalculationRunner.run_step()`:
 1. **For `pw2wannier90` step type**: Write stderr to `<seedname>.pw2wan.stderr` file
@@ -86,10 +86,10 @@ All tests pass ✅
 
 ## Files Modified
 
-1. `src/quantumvitas/calculation/wannier90_kpoints.py` (new)
-2. `src/quantumvitas/calculation/structure_steps.py`
-3. `src/quantumvitas/io/wannier90_input.py`
-4. `src/quantumvitas/core/engines/qe_calculation.py`
+1. `src/qmatsuite/calculation/wannier90_kpoints.py` (new)
+2. `src/qmatsuite/calculation/structure_steps.py`
+3. `src/qmatsuite/io/wannier90_input.py`
+4. `src/qmatsuite/core/engines/qe_calculation.py`
 5. `tests/unit/test_wannier90_kpoints_inheritance.py` (new)
 
 ## Verification

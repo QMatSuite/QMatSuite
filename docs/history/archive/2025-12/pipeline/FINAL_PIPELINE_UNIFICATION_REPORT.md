@@ -21,7 +21,7 @@ payload = {
 
 ### 新 Contract（强制）
 
-**文件：** `src/quantumvitas/api.py:1980-1998`
+**文件：** `src/qmatsuite/api.py:1980-1998`
 
 ```python
 payload = {
@@ -38,7 +38,7 @@ payload = {
 
 ### 硬断言（后端 + 前端）
 
-**后端断言：** `src/quantumvitas/api.py:2046-2052, 2151-2160`
+**后端断言：** `src/qmatsuite/api.py:2046-2052, 2151-2160`
 ```python
 # HARD ASSERT: bonds must only reference atoms array
 if bonds and max_bond_idx >= atoms_len:
@@ -60,17 +60,17 @@ if (bondsLen > 0) {
 
 ### 删除的旧代码
 
-**文件：** `src/quantumvitas/daemon/server.py:1756`
+**文件：** `src/qmatsuite/daemon/server.py:1756`
 - **删除：** 旧 viewer 日志 `[viewer] kind=online ... inAtoms=12 outAtoms=12 supercell=(5,5,5)`
 - **原因：** 共享 pipeline 已提供正确的 `[viz]` 日志，旧日志显示错误数据
 
 ### Online Handler 清理
 
-**文件：** `src/quantumvitas/daemon/server.py:1649-1750`
+**文件：** `src/qmatsuite/daemon/server.py:1649-1750`
 
 **唯一调用：**
 ```python
-vis_payload = QVService._build_structure_vis_payload(
+vis_payload = QMSService._build_structure_vis_payload(
     structure,
     params,
     structure_meta={"structure_id": f"online:{candidate_id}"},
@@ -97,7 +97,7 @@ vis_payload = QVService._build_structure_vis_payload(
 
 ### 修复后
 
-**文件：** `src/quantumvitas/daemon/server.py:1680-1713`
+**文件：** `src/qmatsuite/daemon/server.py:1680-1713`
 
 - **统一使用：** `idx1`/`idx2`
 - **兼容性：** 保留 fallback（`bond.get("idx1", bond.get("atom1", 0))`）
@@ -134,7 +134,7 @@ vis_payload = QVService._build_structure_vis_payload(
 
 **唯一来源：** GUI state (`viewerSettings.supercell`)
 
-**验证：** `src/quantumvitas/daemon/server.py:1427`
+**验证：** `src/qmatsuite/daemon/server.py:1427`
 ```python
 supercell = tuple(payload.get("supercell", [1, 1, 1]))  # 从 payload 获取，默认 [1,1,1]
 ```
@@ -145,7 +145,7 @@ supercell = tuple(payload.get("supercell", [1, 1, 1]))  # 从 payload 获取，�
 
 ### 后端标签
 
-**文件：** `src/quantumvitas/daemon/server.py:506`
+**文件：** `src/qmatsuite/daemon/server.py:506`
 ```python
 tag = " [polling]" if request.type in self.NOISY_POLLING_RPC else ""
 self.log(f"[RPC]{tag} {request.type} ...")
@@ -172,7 +172,7 @@ self.log(f"[RPC]{tag} {request.type} ...")
 ### 修复的测试
 
 1. **`test_boundary_repeat_adds_image_atoms`**
-   - **文件：** `tests/unit/test_qvservice_gui.py:176-228`
+   - **文件：** `tests/unit/test_qmsservice_gui.py:176-228`
    - **修复：** 更新测试以符合新 contract（`atoms` 包含所有 display atoms）
    - **验证：** `boundary_atoms` 是 `atoms` 的子集
 
@@ -291,13 +291,13 @@ self.log(f"[RPC]{tag} {request.type} ...")
 
 ### 后端
 
-1. **`src/quantumvitas/api.py`**
+1. **`src/qmatsuite/api.py`**
    - 行 1980-1998：修复 `atoms` 包含所有 display atoms
    - 行 2038-2045：添加 bond index 硬断言
    - 行 2043-2063：添加证据日志
    - 行 2151-2160：添加最终 payload contract 验证
 
-2. **`src/quantumvitas/daemon/server.py`**
+2. **`src/qmatsuite/daemon/server.py`**
    - 行 1679-1713：修复 bond schema（idx1/idx2），添加硬断言
    - 行 1756：删除旧 viewer 日志
    - 行 1658-1678：确保 atoms_data 包含所有 display atoms
@@ -316,7 +316,7 @@ self.log(f"[RPC]{tag} {request.type} ...")
 
 ### 测试
 
-5. **`tests/unit/test_qvservice_gui.py`**
+5. **`tests/unit/test_qmsservice_gui.py`**
    - 行 176-228：修复 `test_boundary_repeat_adds_image_atoms` 以符合新 contract
 
 6. **`tests/unit/test_daemon.py`**
@@ -351,10 +351,10 @@ self.log(f"[RPC]{tag} {request.type} ...")
 pytest tests/unit/test_online_project_payload_contract.py -v
 
 # Boundary 测试
-pytest tests/unit/test_qvservice_gui.py::TestGetStructureVisData::test_boundary_repeat_adds_image_atoms -v
+pytest tests/unit/test_qmsservice_gui.py::TestGetStructureVisData::test_boundary_repeat_adds_image_atoms -v
 
 # Polling 日志测试
-pytest tests/unit/test_daemon.py::TestQVDaemonLogging -v
+pytest tests/unit/test_daemon.py::TestQMSDaemonLogging -v
 
 # OPTIMADE 离线测试
 pytest tests/unit/test_optimade_offline.py -v
@@ -441,7 +441,7 @@ firstBondKeys = ['idx1', 'idx2', 'coord1', 'coord2', 'distance']
 
 **运行验证：**
 ```bash
-pytest tests/unit/test_online_project_payload_contract.py tests/unit/test_qvservice_gui.py::TestGetStructureVisData::test_boundary_repeat_adds_image_atoms tests/unit/test_daemon.py::TestQVDaemonLogging -v
+pytest tests/unit/test_online_project_payload_contract.py tests/unit/test_qmsservice_gui.py::TestGetStructureVisData::test_boundary_repeat_adds_image_atoms tests/unit/test_daemon.py::TestQMSDaemonLogging -v
 ```
 
 所有测试应全部通过。

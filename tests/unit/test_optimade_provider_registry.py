@@ -11,7 +11,7 @@ from unittest.mock import patch, Mock, MagicMock
 
 import pytest
 
-from quantumvitas.io.providers.optimade import (
+from qmatsuite.io.providers.optimade import (
     ProviderConfig,
     CURATED_DEFAULT_PROVIDERS,
     fetch_optimade_registry,
@@ -62,15 +62,15 @@ class TestProviderRegistry:
             ]
         }
         
-        with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = mock_response_data
             mock_response.raise_for_status = Mock()
             mock_get.return_value = mock_response
             
             # Mock cache to return None (cache miss)
-            with patch('quantumvitas.io.providers.optimade._load_registry_cache', return_value=None):
-                with patch('quantumvitas.io.providers.optimade._save_registry_cache') as mock_save:
+            with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=None):
+                with patch('qmatsuite.io.providers.optimade._save_registry_cache') as mock_save:
                     providers = fetch_optimade_registry(refresh=False)
                     
                     # Should include curated defaults + registry providers
@@ -89,11 +89,11 @@ class TestProviderRegistry:
     
     def test_fetch_registry_fallback_on_error(self):
         """Test fallback to curated defaults when registry fetch fails."""
-        with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
             mock_get.side_effect = Exception("Network error")
             
             # Mock cache to return None
-            with patch('quantumvitas.io.providers.optimade._load_registry_cache', return_value=None):
+            with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=None):
                 providers = fetch_optimade_registry(refresh=False)
                 
                 # Should return only curated defaults
@@ -118,8 +118,8 @@ class TestProviderRegistry:
             ]
         }
 
-        with patch('quantumvitas.io.providers.optimade._load_registry_cache', return_value=cached_data):
-            with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=cached_data):
+            with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
                 providers = fetch_optimade_registry(refresh=False)
 
                 # Should use cached data (no network call)
@@ -134,14 +134,14 @@ class TestProviderRegistry:
         # Mock cache to return None (expired cache - TTL check happens inside _load_registry_cache)
         mock_response_data = {"data": []}
         
-        with patch('quantumvitas.io.providers.optimade._load_registry_cache', return_value=None):
-            with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=None):
+            with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
                 mock_response = Mock()
                 mock_response.json.return_value = mock_response_data
                 mock_response.raise_for_status = Mock()
                 mock_get.return_value = mock_response
                 
-                with patch('quantumvitas.io.providers.optimade._save_registry_cache'):
+                with patch('qmatsuite.io.providers.optimade._save_registry_cache'):
                     providers = fetch_optimade_registry(refresh=False)
                     
                     # Should fetch fresh (network call made) because cache returned None
@@ -156,14 +156,14 @@ class TestProviderRegistry:
         
         mock_response_data = {"data": []}
         
-        with patch('quantumvitas.io.providers.optimade._load_registry_cache', return_value=cached_data):
-            with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=cached_data):
+            with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
                 mock_response = Mock()
                 mock_response.json.return_value = mock_response_data
                 mock_response.raise_for_status = Mock()
                 mock_get.return_value = mock_response
                 
-                with patch('quantumvitas.io.providers.optimade._save_registry_cache'):
+                with patch('qmatsuite.io.providers.optimade._save_registry_cache'):
                     providers = fetch_optimade_registry(refresh=True)
                     
                     # Should fetch fresh (network call made despite valid cache)
@@ -193,14 +193,14 @@ class TestProviderRegistry:
             ]
         }
         
-        with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = mock_response_data
             mock_response.raise_for_status = Mock()
             mock_get.return_value = mock_response
             
-            with patch('quantumvitas.io.providers.optimade._load_registry_cache', return_value=None):
-                with patch('quantumvitas.io.providers.optimade._save_registry_cache'):
+            with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=None):
+                with patch('qmatsuite.io.providers.optimade._save_registry_cache'):
                     providers = get_providers_with_settings(user_settings, refresh_registry=False)
 
                     # Check settings applied
@@ -226,14 +226,14 @@ class TestProviderRegistry:
             ]
         }
         
-        with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.json.return_value = mock_response_data
             mock_response.raise_for_status = Mock()
             mock_get.return_value = mock_response
             
-            with patch('quantumvitas.io.providers.optimade._load_registry_cache', return_value=None):
-                with patch('quantumvitas.io.providers.optimade._save_registry_cache'):
+            with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=None):
+                with patch('qmatsuite.io.providers.optimade._save_registry_cache'):
                     providers = fetch_optimade_registry(refresh=False)
                     
                     newprovider = next((p for p in providers if p.provider_key == "newprovider"), None)
@@ -244,10 +244,10 @@ class TestProviderRegistry:
     def test_curated_providers_enabled_by_default(self):
         """Test that curated providers are enabled by default (R6)."""
         # Fetch with no user settings
-        with patch('quantumvitas.io.providers.optimade.requests.get') as mock_get:
+        with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
             mock_get.side_effect = Exception("Network error")  # Force fallback
             
-            with patch('quantumvitas.io.providers.optimade._load_registry_cache', return_value=None):
+            with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=None):
                 providers = fetch_optimade_registry(refresh=False)
                 
                 # All curated providers should be enabled
@@ -257,7 +257,7 @@ class TestProviderRegistry:
     
     def test_parse_registry_response(self):
         """Test parsing of registry response format."""
-        from quantumvitas.io.providers.optimade import _parse_registry_response
+        from qmatsuite.io.providers.optimade import _parse_registry_response
         
         response_data = {
             "data": [
@@ -293,7 +293,7 @@ class TestProviderRegistry:
     
     def test_cache_ttl_mocking(self):
         """Test cache TTL behavior with mocked time (R5: non-flaky)."""
-        from quantumvitas.io.providers.optimade import _load_registry_cache, _save_registry_cache
+        from qmatsuite.io.providers.optimade import _load_registry_cache, _save_registry_cache
         
         # Save cache with fixed timestamp
         fixed_time = 1000000.0

@@ -44,7 +44,7 @@ def test_apply_calls_require_capability():
     
     # Get the repo root
     repo_root = Path(__file__).parent.parent.parent
-    integration_file = repo_root / "src" / "quantumvitas" / "presets" / "integration.py"
+    integration_file = repo_root / "src" / "qmatsuite" / "presets" / "integration.py"
     
     # Read the file and check for require_preset_capability
     if integration_file.exists():
@@ -67,12 +67,12 @@ def test_no_direct_paramspace_apply_bypass():
     
     # Get the repo root
     repo_root = Path(__file__).parent.parent.parent
-    integration_file = repo_root / "src" / "quantumvitas" / "presets" / "integration.py"
+    integration_file = repo_root / "src" / "qmatsuite" / "presets" / "integration.py"
     
     # Read the file and check for capability import
     if integration_file.exists():
         content = integration_file.read_text()
-        assert "from quantumvitas.presets.capability import" in content or "import.*capability" in content, (
+        assert "from qmatsuite.presets.capability import" in content or "import.*capability" in content, (
             "integration.py must import from capability module for validation"
         )
     else:

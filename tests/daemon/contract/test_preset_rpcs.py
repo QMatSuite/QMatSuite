@@ -1,14 +1,14 @@
 """RPC contract tests for preset management endpoints."""
 
 import pytest
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 from .conftest import send_request
 
 
 class TestGetPresetCatalog:
     """Contract tests for get_preset_catalog RPC."""
 
-    def test_get_preset_catalog_happy_path(self, daemon: QVDaemon):
+    def test_get_preset_catalog_happy_path(self, daemon: QMSDaemon):
         """get_preset_catalog returns available presets."""
         response = send_request(daemon, "get_preset_catalog", {})
 
@@ -17,14 +17,14 @@ class TestGetPresetCatalog:
         assert response is not None
         assert isinstance(response, dict)
 
-    def test_get_preset_catalog_for_step_type(self, daemon: QVDaemon):
+    def test_get_preset_catalog_for_step_type(self, daemon: QMSDaemon):
         """get_preset_catalog can filter by step_type."""
         response = send_request(daemon, "get_preset_catalog", {
             "step_type_gen": "scf"
         })
         assert response is not None
 
-    def test_get_preset_catalog_workflow(self, daemon: QVDaemon):
+    def test_get_preset_catalog_workflow(self, daemon: QMSDaemon):
         """get_preset_catalog before apply_presets."""
         catalog = send_request(daemon, "get_preset_catalog", {})
         assert catalog is not None
@@ -33,7 +33,7 @@ class TestGetPresetCatalog:
 class TestApplyPresetsToStep:
     """Contract tests for apply_presets_to_step RPC."""
 
-    def test_apply_presets_invalid_preset(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_apply_presets_invalid_preset(self, demo_project_with_calculation, daemon: QMSDaemon):
         """apply_presets_to_step with invalid preset options."""
         project_root, _, calc_ulid = demo_project_with_calculation
         calc = send_request(daemon, "get_calculation_detail", {
@@ -51,7 +51,7 @@ class TestApplyPresetsToStep:
                 "presets": {"invalid_key": "invalid_value"}
             })
 
-    def test_apply_presets_workflow(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_apply_presets_workflow(self, demo_project_with_calculation, daemon: QMSDaemon):
         """apply_presets in full editing workflow."""
         project_root, _, calc_ulid = demo_project_with_calculation
         calc = send_request(daemon, "get_calculation_detail", {

@@ -175,12 +175,12 @@ Yambo and QMCPACK have no ANALYSIS_CAPABILITIES -- they run successfully but pro
 
 ### Generator Tool: `tools/demo_store/generate_ref_packs_realrun.py`
 
-Uses `QVService` as the programmatic entry point (same API the daemon uses).
+Uses `QMSService` as the programmatic entry point (same API the daemon uses).
 
 ```
 For each demo_slug:
-  1. QVService.create_demo_project(tmp_dir, demo_slug, demo_slug)
-  2. svc = QVService(project_root)
+  1. QMSService.create_demo_project(tmp_dir, demo_slug, demo_slug)
+  2. svc = QMSService(project_root)
   3. calc = svc.calculation.list()[0]
   4. run_result = svc.run.run_calculation(calc.calc_ulid, run_mode="full")
   5. If run succeeded:
@@ -234,8 +234,8 @@ Sequential execution, debug failures iteratively.
 | Action | File | Purpose |
 |--------|------|---------|
 | CREATE | `tools/demo_store/generate_ref_packs_realrun.py` | Real-run ref pack generator |
-| MODIFY | `src/quantumvitas/calculation/calculation.py` | Fix ULID resolution bugs |
-| MODIFY | `src/quantumvitas/api/service.py` | Relax structure check |
+| MODIFY | `src/qmatsuite/calculation/calculation.py` | Fix ULID resolution bugs |
+| MODIFY | `src/qmatsuite/api/service.py` | Relax structure check |
 | MODIFY | `resources/demo_projects/lammps_*.yml` | Add dump commands |
 | REGENERATE | `resources/demo_projects/ref_packs/*/` | All ref pack directories |
 | UPDATE | `docs/demo_store/DEMO_MATRIX.md` | Accurate ref pack column |

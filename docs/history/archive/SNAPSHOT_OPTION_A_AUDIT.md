@@ -15,7 +15,7 @@
 - When materializing a snapshot, **keep the same ULIDs exactly** (do not regenerate)
 - IDs only need to be unique within a project, not globally
 
-**Future "template/clone with fresh IDs"** will be a separate flow (`qv snapshot materialize --fresh-ids`).
+**Future "template/clone with fresh IDs"** will be a separate flow (`qms snapshot materialize --fresh-ids`).
 
 ---
 
@@ -23,7 +23,7 @@
 
 ### ✅ Export (`export_project_to_snapshot`)
 
-**Location**: `src/quantumvitas/project/snapshot.py:97-209`
+**Location**: `src/qmatsuite/project/snapshot.py:97-209`
 
 **Current behavior**: ✅ **Already matches Option A**
 - Exports `meta.id` for all resources (project, structures, calculations, steps)
@@ -53,7 +53,7 @@ calculations:
 
 ### ❌ Materialize (`materialize_project_from_snapshot`)
 
-**Location**: `src/quantumvitas/project/snapshot.py:212-541`
+**Location**: `src/qmatsuite/project/snapshot.py:212-541`
 
 **Current behavior**: ❌ **Does NOT match Option A**
 - **Regenerates ALL IDs** instead of keeping snapshot IDs
@@ -98,18 +98,18 @@ Generates new ULIDs for all resources and rewrites references to maintain consis
 
 ### ✅ Demo Project Creation Path
 
-**Location**: `src/quantumvitas/api.py:2898-2987`
+**Location**: `src/qmatsuite/api.py:2898-2987`
 
 **Current behavior**: ✅ **Uses snapshot materialization correctly**
 - `create_demo_project()` calls `materialize_project_from_snapshot()`
-- Stores demo origin info in `project.qv.yml` settings
+- Stores demo origin info in `project.qms.yml` settings
 - No assumptions about new IDs (just passes through to materialize)
 
 **No changes needed** - once materialization is fixed, demo creation will work correctly.
 
 ### ✅ ResourceIndex
 
-**Location**: `src/quantumvitas/core/resolution.py:168-256`
+**Location**: `src/qmatsuite/core/resolution.py:168-256`
 
 **Current behavior**: ✅ **No global uniqueness assumption**
 - `ResourceIndex` is built per-project (scans one project_root)
@@ -125,7 +125,7 @@ Generates new ULIDs for all resources and rewrites references to maintain consis
 
 ### 1. ❌ `materialize_project_from_snapshot` Regenerates All IDs
 
-**Location**: `src/quantumvitas/project/snapshot.py:257-297`
+**Location**: `src/qmatsuite/project/snapshot.py:257-297`
 
 **Problem**: 
 - Lines 263, 274, 286, 296: All IDs are regenerated via `generate_resource_id()`
@@ -155,7 +155,7 @@ assert original_calculation.meta.id != new_calculation.meta.id
 
 ### 3. ❌ Docstring Contradicts Option A
 
-**Location**: `src/quantumvitas/project/snapshot.py:48-49`
+**Location**: `src/qmatsuite/project/snapshot.py:48-49`
 
 **Problem**:
 ```python
@@ -176,7 +176,7 @@ ULIDs are preserved for reference but will be regenerated when materializing the
 
 #### 1. Remove ID Regeneration in `materialize_project_from_snapshot`
 
-**File**: `src/quantumvitas/project/snapshot.py`
+**File**: `src/qmatsuite/project/snapshot.py`
 
 **Changes needed**:
 - **Remove** lines 257-297 (id_mapping construction and ID regeneration)
@@ -207,7 +207,7 @@ ULIDs are preserved for reference but will be regenerated when materializing the
 
 #### 2. Update Docstrings
 
-**File**: `src/quantumvitas/project/snapshot.py`
+**File**: `src/qmatsuite/project/snapshot.py`
 
 **Changes needed**:
 - **Line 48-49** (ProjectSnapshot class docstring):
@@ -294,7 +294,7 @@ ULIDs are preserved for reference but will be regenerated when materializing the
 **Finding**: ✅ **Handled correctly**
 - Names/slugs are derived from snapshot meta
 - IDs are preserved from snapshot
-- If user wants to rename after materialization, they can use `qv configure`
+- If user wants to rename after materialization, they can use `qms configure`
 - This is correct for Option A
 
 **No changes needed**.

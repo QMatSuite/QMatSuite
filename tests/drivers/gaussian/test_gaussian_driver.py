@@ -5,9 +5,9 @@ and kernel isolation gates.
 """
 
 import pytest
-from quantumvitas.drivers.gaussian import GaussianDriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.gaussian import GaussianDriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestGaussianDriver:
@@ -93,7 +93,7 @@ class TestGaussianRegistration:
 
     def test_gaussian_registered(self):
         """Gaussian should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("gaussian")
         driver = DriverRegistry.get_driver("gaussian")
@@ -101,7 +101,7 @@ class TestGaussianRegistration:
 
     def test_gaussian_step_types_registered(self):
         """Gaussian step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("gaussian_scf")
         assert DriverRegistry.is_step_type_registered("gaussian_relax")
@@ -109,7 +109,7 @@ class TestGaussianRegistration:
 
     def test_gaussian_handler_via_registry(self):
         """Should get Gaussian handler via registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         handler = DriverRegistry.get_handler("gaussian_scf")
         assert callable(handler)
@@ -125,7 +125,7 @@ class TestGaussianIsolation:
         handlers_path = (
             Path(__file__).parent.parent.parent.parent
             / "src"
-            / "quantumvitas"
+            / "qmatsuite"
             / "execution"
             / "handlers.py"
         )
@@ -142,7 +142,7 @@ class TestGaussianIsolation:
         recipes_path = (
             Path(__file__).parent.parent.parent.parent
             / "src"
-            / "quantumvitas"
+            / "qmatsuite"
             / "execution"
             / "recipes.py"
         )
@@ -159,7 +159,7 @@ class TestGaussianIsolation:
         io_path = (
             Path(__file__).parent.parent.parent.parent
             / "src"
-            / "quantumvitas"
+            / "qmatsuite"
             / "drivers"
             / "gaussian"
             / "io"
@@ -169,11 +169,11 @@ class TestGaussianIsolation:
 
         # Must not import from kernel, core, calculation, etc.
         for forbidden in [
-            "from quantumvitas.core",
-            "from quantumvitas.calculation",
-            "from quantumvitas.execution",
-            "from quantumvitas.api",
-            "import quantumvitas.core",
+            "from qmatsuite.core",
+            "from qmatsuite.calculation",
+            "from qmatsuite.execution",
+            "from qmatsuite.api",
+            "import qmatsuite.core",
         ]:
             assert forbidden not in source, (
                 f"io/gaussian_input.py must not import '{forbidden}' (leaf package rule P5)"
@@ -186,7 +186,7 @@ class TestGaussianIsolation:
         meta_path = (
             Path(__file__).parent.parent.parent.parent
             / "src"
-            / "quantumvitas"
+            / "qmatsuite"
             / "drivers"
             / "gaussian"
             / "data"
@@ -195,9 +195,9 @@ class TestGaussianIsolation:
         source = meta_path.read_text()
 
         for forbidden in [
-            "from quantumvitas.core",
-            "from quantumvitas.calculation",
-            "from quantumvitas.execution",
+            "from qmatsuite.core",
+            "from qmatsuite.calculation",
+            "from qmatsuite.execution",
         ]:
             assert forbidden not in source, (
                 f"data/gaussian_metadata.py must not import '{forbidden}' (leaf package rule P5)"

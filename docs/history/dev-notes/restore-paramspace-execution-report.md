@@ -13,14 +13,14 @@
 
 **Commit 1**: `b4a7b0f` - "Merge ParamSpace Constitution into global framework"
 - **状态**: ✅ 成功
-- **冲突文件**: `src/quantumvitas/presets/integration.py`
+- **冲突文件**: `src/qmatsuite/presets/integration.py`
 - **解决方式**: 保留b4a7b0f的compile顺序和apply_invariants逻辑，适配HEAD的StepDoc使用方式
 
 **Commit 2**: `baac796` - "Implement key access enforcement for ParamSpace"
 - **状态**: ✅ 成功
 - **冲突文件**: 
   - `.DS_Store` (二进制，忽略)
-  - `src/quantumvitas/presets/variants_registry.py`
+  - `src/qmatsuite/presets/variants_registry.py`
 - **解决方式**: 保留baac796的ParamSpace内核和key access enforcement，添加IR↔QE转换适配层
 
 ### 1.2 冲突文件列表及解决方式
@@ -75,7 +75,7 @@
 ### 2.2 具体入口函数
 
 **编译适配入口**:
-- **文件**: `src/quantumvitas/presets/variants_registry.py`
+- **文件**: `src/qmatsuite/presets/variants_registry.py`
 - **函数**: `compile_dimension_patch_for_step()` (行260-346)
 - **适配代码**:
   ```python
@@ -93,7 +93,7 @@
   ```
 
 **检测适配入口**:
-- **文件**: `src/quantumvitas/presets/variants_registry.py`
+- **文件**: `src/qmatsuite/presets/variants_registry.py`
 - **函数**: `detect_dimension_for_step()` (行499-529)
 - **适配代码**:
   ```python
@@ -111,13 +111,13 @@
 
 ### 3.1 映射位置
 
-**文件**: `src/quantumvitas/presets/variants_registry.py`  
+**文件**: `src/qmatsuite/presets/variants_registry.py`  
 **函数**: `get_variant(dimension: str, step_type: str)` (行245-258)
 
 **实现**:
 ```python
 # STEP TYPE MAPPING: Map machine_type to public_type for variant lookup
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 registry = get_registry()
 spec = registry.get(step_type)
 if spec and spec.public_type:
@@ -134,7 +134,7 @@ apply_presets_to_step(step_path, options)
   → get_variant(dimension, public_type) → variant lookup
 ```
 
-**证据**: `src/quantumvitas/presets/integration.py:378-380`
+**证据**: `src/qmatsuite/presets/integration.py:378-380`
 
 ---
 
@@ -142,7 +142,7 @@ apply_presets_to_step(step_path, options)
 
 ### 4.1 Oracle生效证据
 
-**位置**: `src/quantumvitas/presets/integration.py:619`
+**位置**: `src/qmatsuite/presets/integration.py:619`
 
 **代码**:
 ```python
@@ -150,14 +150,14 @@ oracle = Oracle(current_yaml_state)
 ```
 
 **使用位置**:
-- `src/quantumvitas/presets/variants_registry.py:445` - precision编译时检查degauss适用性
-- `src/quantumvitas/presets/paramspace.py:967` - precision_apply_invariants中检查degauss适用性
+- `src/qmatsuite/presets/variants_registry.py:445` - precision编译时检查degauss适用性
+- `src/qmatsuite/presets/paramspace.py:967` - precision_apply_invariants中检查degauss适用性
 
 **验证**: `tests/unit/test_key_access_enforcement.py::test_precision_uses_oracle_for_occupations` ✅ 通过
 
 ### 4.2 Compile顺序生效证据
 
-**位置**: `src/quantumvitas/presets/integration.py:414-424, 436-573`
+**位置**: `src/qmatsuite/presets/integration.py:414-424, 436-573`
 
 **实现**:
 ```python
@@ -182,17 +182,17 @@ step_yaml["ELECTRONS"].update(unified_patch["parameters"]["ELECTRONS"])
 
 ### 4.3 apply_invariants生效证据
 
-**位置**: `src/quantumvitas/presets/integration.py:621-626`
+**位置**: `src/qmatsuite/presets/integration.py:621-626`
 
 **代码**:
 ```python
-from quantumvitas.presets.spaces_registry import SPACES
+from qmatsuite.presets.spaces_registry import SPACES
 for dimension_name, paramspace in SPACES.items():
     paramspace.apply_invariants(current_yaml_state, oracle)
 ```
 
 **precision_apply_invariants实现**:
-- **位置**: `src/quantumvitas/presets/paramspace.py:957-974`
+- **位置**: `src/qmatsuite/presets/paramspace.py:957-974`
 - **逻辑**: 检查`oracle.degauss_applicability()`，如果不适用则删除degauss
 
 **验证**: 

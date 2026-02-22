@@ -2,7 +2,7 @@
 
 ## 已完成的重构
 
-### 1. ✅ 创建 `src/quantumvitas/core/engines/qe_pseudopotentials.py`
+### 1. ✅ 创建 `src/qmatsuite/core/engines/qe_pseudopotentials.py`
 - **移动的函数**:
   - `download_pseudopotential()` - 从网络下载赝势文件
   - `ensure_pseudopotentials()` - 确保所有需要的赝势文件可用
@@ -17,12 +17,12 @@
 - **状态**: ✅ 已完成并导出到 `tests/core/__init__.py`
 
 ### 3. ✅ 已迁移的输入准备功能
-- `set_outdir_to_temp()` / `set_pseudo_dir_to_temp()` → `quantumvitas.calculation.input_runner`
+- `set_outdir_to_temp()` / `set_pseudo_dir_to_temp()` → `qmatsuite.calculation.input_runner`
 - `prepare_input_step()` / `run_prepared_step()` 供 CLI 与测试共享
 - `verify_qe_output()` - 已被 `tests/core/qe_step_verification.py::verify_step_result()` 替代
 
 ### 4. ✅ Parse 和 Generate 功能
-- **位置**: `src/quantumvitas/core/engines/qe_input.py`
+- **位置**: `src/qmatsuite/core/engines/qe_input.py`
 - **函数**:
   - `QEInputParser.parse_file()` - 解析 QE 输入文件
   - `QEInputParser.parse_string()` - 从字符串解析
@@ -34,7 +34,7 @@
 
 ### 从主程序导入（src/）
 ```python
-from quantumvitas.core.engines import (
+from qmatsuite.core.engines import (
     ensure_pseudopotentials,
     download_pseudopotential,
     QEInputParser,
@@ -65,7 +65,7 @@ from tests.core import (
 ### 新的文件结构
 
 ```
-src/quantumvitas/core/engines/
+src/qmatsuite/core/engines/
 ├── qe_input.py              # ✅ 已有：解析和生成
 ├── qe_pseudopotentials.py   # ✅ 新建：赝势管理
 ├── qe_calculation.py           # ✅ 已有：calculation 执行
@@ -83,7 +83,7 @@ extended-tests/utils/
 ## 使用建议
 
 ### 对于新代码
-- **赝势管理**: 使用 `from quantumvitas.core.engines import ensure_pseudopotentials`
+- **赝势管理**: 使用 `from qmatsuite.core.engines import ensure_pseudopotentials`
 - **测试执行**: 使用 `from tests.core import run_and_verify_step_with_assert`
 - **命令执行**: 使用 `from tests.core import run_command_with_timeout`
 

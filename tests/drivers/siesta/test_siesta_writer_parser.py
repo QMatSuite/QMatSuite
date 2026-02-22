@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from quantumvitas.drivers.siesta.io.fdf import parse_fdf_text
-from quantumvitas.drivers.siesta.parser import parse_main_output
-from quantumvitas.drivers.siesta.writer import write_fdf
+from qmatsuite.drivers.siesta.io.fdf import parse_fdf_text
+from qmatsuite.drivers.siesta.parser import parse_main_output
+from qmatsuite.drivers.siesta.writer import write_fdf
 
 
 def test_write_fdf_preserves_scaledcartesian_lattice_constant(tmp_path: Path) -> None:

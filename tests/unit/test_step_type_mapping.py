@@ -11,7 +11,7 @@ GEN = Public/generalized step type (e.g., "scf", "mp2", "td")
 """
 
 import pytest
-from quantumvitas.workflow.registry import get_registry, _STEP_TYPES
+from qmatsuite.workflow.registry import get_registry, _STEP_TYPES
 
 
 class TestStepTypeMappingCompleteness:
@@ -192,18 +192,18 @@ class TestLegacyCodeRemoval:
 
     def test_no_run_step_legacy_in_api(self):
         """Verify run_step_legacy() has been deleted from api.py."""
-        from quantumvitas import api
+        from qmatsuite import api
 
         # run_step_legacy should not exist
-        assert not hasattr(api.QVService, 'run_step_legacy'), (
-            "run_step_legacy() still exists in QVService. "
+        assert not hasattr(api.QMSService, 'run_step_legacy'), (
+            "run_step_legacy() still exists in QMSService. "
             "Constitution §C requires removing legacy execution paths."
         )
 
     def test_no_legacy_fallback_in_runner(self):
         """Verify legacy execution loop fallback has been removed from runner.py."""
         import inspect
-        from quantumvitas.calculation.runner import CalculationRunner
+        from qmatsuite.calculation.runner import CalculationRunner
 
         # Get the source code of the run() method
         source = inspect.getsource(CalculationRunner.run)
@@ -225,7 +225,7 @@ class TestSpecTruthPreservation:
 
     def test_structure_step_spec_preserves_spec_type(self, tmp_path):
         """Loading step.yaml must preserve SPEC step_type_spec without normalization to GEN."""
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from qmatsuite.calculation.structure_steps import StructureStepSpec
 
         # Create a step.yaml with SPEC step_type_spec
         step_yaml = tmp_path / "test_step.yaml"
@@ -250,7 +250,7 @@ parameters:
 
     def test_structure_step_spec_preserves_orca_spec_type(self, tmp_path):
         """Loading ORCA step.yaml must preserve SPEC step_type_spec."""
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from qmatsuite.calculation.structure_steps import StructureStepSpec
 
         step_yaml = tmp_path / "orca_step.yaml"
         step_yaml.write_text("""
@@ -270,7 +270,7 @@ parameters:
 
     def test_sha_computation_uses_spec_type(self, tmp_path):
         """SHA computation must use SPEC step_type_spec (matching YAML content)."""
-        from quantumvitas.calculation.hash_utils import compute_step_sha
+        from qmatsuite.calculation.hash_utils import compute_step_sha
 
         # Create step.yaml with SPEC type
         step_yaml = tmp_path / "step.yaml"
@@ -303,7 +303,7 @@ parameters:
         Constitution §C requires explicit dispatch mapping. This test ensures
         that _get_engine_family_from_step uses registry lookup.
         """
-        from quantumvitas.calculation.runner import _get_engine_family_from_step
+        from qmatsuite.calculation.runner import _get_engine_family_from_step
         from unittest.mock import MagicMock
 
         # Create a mock step with a step_type that has GEN value (no prefix)
@@ -323,7 +323,7 @@ parameters:
 
     def test_engine_family_for_pyscf_step(self):
         """Verify PySCF steps are correctly identified via registry."""
-        from quantumvitas.calculation.runner import _get_engine_family_from_step
+        from qmatsuite.calculation.runner import _get_engine_family_from_step
         from unittest.mock import MagicMock
 
         mock_step = MagicMock()
@@ -334,7 +334,7 @@ parameters:
 
     def test_engine_family_for_orca_step(self):
         """Verify ORCA steps are correctly identified via registry."""
-        from quantumvitas.calculation.runner import _get_engine_family_from_step
+        from qmatsuite.calculation.runner import _get_engine_family_from_step
         from unittest.mock import MagicMock
 
         mock_step = MagicMock()

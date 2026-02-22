@@ -29,7 +29,7 @@
 ## In Progress
 
 ### 🔄 C2: Run Mode Plumbling
-- [x] Verified `run_mode` parameter exists in `CalculationRunner.run()` and `QVService.run_calculation()`
+- [x] Verified `run_mode` parameter exists in `CalculationRunner.run()` and `QMSService.run_calculation()`
 - [ ] Verify UI dropdown for "Full Run" option (if separate UI code)
 - [ ] Ensure `run_mode` reaches PySCF runner layer
 - [ ] Implement SCF init_guess control based on `run_mode`
@@ -62,17 +62,17 @@
 
 ## Files Modified
 
-- `src/quantumvitas/workflow/generalized_steps.py` (added TD enum and materialization)
-- `src/quantumvitas/workflow/registry.py` (added consumes_state/produces_state, pyscf_td)
-- `src/quantumvitas/workflow/templates.py` (added scf_td workflow)
+- `src/qmatsuite/workflow/generalized_steps.py` (added TD enum and materialization)
+- `src/qmatsuite/workflow/registry.py` (added consumes_state/produces_state, pyscf_td)
+- `src/qmatsuite/workflow/templates.py` (added scf_td workflow)
 
 ---
 
 ## Files to Modify Next
 
-- `src/quantumvitas/engines/pyscf/runner.py` (chain execution, init_guess control)
-- `src/quantumvitas/calculation/runner.py` (integrate PySCF chain execution)
-- `src/quantumvitas/engine/pyscf_engine.py` (if needed for engine interface)
+- `src/qmatsuite/engines/pyscf/runner.py` (chain execution, init_guess control)
+- `src/qmatsuite/calculation/runner.py` (integrate PySCF chain execution)
+- `src/qmatsuite/engine/pyscf_engine.py` (if needed for engine interface)
 - `tests/unit/test_pyscf_runner.py` (new test file)
 - `tests/integration/test_pyscf_execution.py` (add chain execution tests)
 

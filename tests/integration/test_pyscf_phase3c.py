@@ -10,12 +10,12 @@ import shutil
 from pathlib import Path
 from typing import Dict, Any
 
-from quantumvitas.project.model import Project
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.api import QVService
-from quantumvitas.core.resolution import build_resource_index
+from qmatsuite.project.model import Project
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.api import QMSService
+from qmatsuite.core.resolution import build_resource_index
 
 
 def _pyscf_available() -> bool:
@@ -39,7 +39,7 @@ def temp_project(tmp_path: Path) -> Path:
     project_root.mkdir()
     
     # Initialize project using service API
-    project_root = QVService.init_project(target_dir=project_root, name="test_project")
+    project_root = QMSService.init_project(target_dir=project_root, name="test_project")
     
     # Create structure file using pymatgen Molecule (compatible with structure reader)
     from pymatgen.core import Molecule
@@ -60,8 +60,8 @@ def temp_project(tmp_path: Path) -> Path:
     h2_structure_file.write_text(json.dumps(mol_dict, indent=2))
     
     # Register structure in project config manually
-    from quantumvitas.core.project_utils import load_project_config, save_project_config
-    from quantumvitas.core.resources import generate_resource_id
+    from qmatsuite.core.project_utils import load_project_config, save_project_config
+    from qmatsuite.core.resources import generate_resource_id
     config = load_project_config(project_root)
     if "structures" not in config:
         config["structures"] = []
@@ -81,12 +81,12 @@ def temp_project(tmp_path: Path) -> Path:
 @pytest.fixture
 def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     """Create a PySCF calculation with SCF step using service API."""
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.core.models import load_calculation
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yamldoc import CalcDoc
+    from qmatsuite.core.models import load_calculation
     
     # Get structure ID from project config
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.project_utils import load_project_config
     config = load_project_config(temp_project)
     structure_ulid = None
     for struct in config.get("structures", []):
@@ -96,7 +96,7 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     assert structure_ulid is not None, "Structure h2 not found in project config"
     
     # Create calculation using service API
-    calc_resolved = QVService(temp_project).project.init_calculation(
+    calc_resolved = QMSService(temp_project).project.init_calculation(
         name="test_calc",
         structure_selector=structure_ulid,
     )
@@ -111,11 +111,11 @@ def pyscf_calculation(temp_project: Path) -> Dict[str, Any]:
     save_yaml_doc(calc_doc, calc_data_path)
     
     # Create SCF step using service API
-    step_dto = QVService(temp_project).calculation.add_step(calc_id, step_type_gen="scf", name="scf")
+    step_dto = QMSService(temp_project).calculation.add_step(calc_id, step_type_gen="scf", name="scf")
     step_id = step_dto.meta.ulid
 
     # Configure step parameters using domain accessor
-    svc = QVService(temp_project)
+    svc = QMSService(temp_project)
     svc.calculation.update_step_params(
         calc_selector=calc_id,
         step_selector=step_id,
@@ -150,7 +150,7 @@ class TestPySCFPhase3CIntegration:
         calc_id = pyscf_calculation["calc_id"]
         
         # First run: create checkpoint
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result1 = svc.run.run_calculation(
             calc_selector=calc_id,
             run_mode="full",  # Full run first to create checkpoint
@@ -185,7 +185,7 @@ class TestPySCFPhase3CIntegration:
         calc_id = pyscf_calculation["calc_id"]
         
         # First run: create checkpoint
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result1 = svc.run.run_calculation(
             calc_selector=calc_id,
             run_mode="full",
@@ -216,7 +216,7 @@ class TestPySCFPhase3CIntegration:
         step_id = pyscf_calculation["step_ulid"]
         
         # First run: create checkpoint
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result1 = svc.run.run_calculation(
             calc_selector=calc_id,
             run_mode="full",
@@ -243,10 +243,10 @@ class TestPySCFPhase3CIntegration:
     def test_t4_runstep_mp2_chain_execution(self, temp_project: Path):
         """T4: RunStep(mp2) executes scf→mp2 in one session."""
         # Create calculation with SCF and MP2 steps using service API
-        from quantumvitas.core.yaml_io import save_yaml_doc
-        from quantumvitas.core.yamldoc import CalcDoc
-        from quantumvitas.core.models import load_calculation
-        from quantumvitas.core.project_utils import load_project_config
+        from qmatsuite.core.yaml_io import save_yaml_doc
+        from qmatsuite.core.yamldoc import CalcDoc
+        from qmatsuite.core.models import load_calculation
+        from qmatsuite.core.project_utils import load_project_config
         
         config = load_project_config(temp_project)
         structure_ulid = None
@@ -256,7 +256,7 @@ class TestPySCFPhase3CIntegration:
                 break
         assert structure_ulid is not None, "Structure h2 not found"
         
-        calc_resolved = QVService(temp_project).project.init_calculation(
+        calc_resolved = QMSService(temp_project).project.init_calculation(
             name="test_calc_mp2",
             structure_selector=structure_ulid,
         )
@@ -271,9 +271,9 @@ class TestPySCFPhase3CIntegration:
         save_yaml_doc(calc_doc, calc_data_path)
         
         # Create SCF step
-        scf_step_dto = QVService(temp_project).calculation.add_step(calc_id, step_type_gen="scf", name="scf")
+        scf_step_dto = QMSService(temp_project).calculation.add_step(calc_id, step_type_gen="scf", name="scf")
         scf_step_id = scf_step_dto.meta.ulid
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         svc.calculation.update_step_params(
             calc_selector=calc_id,
             step_selector=scf_step_id,
@@ -288,7 +288,7 @@ class TestPySCFPhase3CIntegration:
         )
 
         # Create MP2 step
-        mp2_step_dto = QVService(temp_project).calculation.add_step(calc_id, step_type_gen="mp2", name="mp2")
+        mp2_step_dto = QMSService(temp_project).calculation.add_step(calc_id, step_type_gen="mp2", name="mp2")
         mp2_step_id = mp2_step_dto.meta.ulid
         svc.calculation.update_step_params(
             calc_selector=calc_id,
@@ -301,7 +301,7 @@ class TestPySCFPhase3CIntegration:
         )
 
         # Run Step(MP2): should execute SCF then MP2 in one session
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         result = svc.run.run_step(
             calc_selector=calc_id,
             step_selector=mp2_step_id,
@@ -330,10 +330,10 @@ class TestPySCFPhase3CIntegration:
     def test_t5_missing_dependency_error(self, temp_project: Path):
         """T5: RunStep(mp2) without prior SCF errors cleanly."""
         # Create calculation with ONLY MP2 step (no SCF) using service API
-        from quantumvitas.core.yaml_io import save_yaml_doc
-        from quantumvitas.core.yamldoc import CalcDoc
-        from quantumvitas.core.models import load_calculation
-        from quantumvitas.core.project_utils import load_project_config
+        from qmatsuite.core.yaml_io import save_yaml_doc
+        from qmatsuite.core.yamldoc import CalcDoc
+        from qmatsuite.core.models import load_calculation
+        from qmatsuite.core.project_utils import load_project_config
         
         config = load_project_config(temp_project)
         structure_ulid = None
@@ -343,7 +343,7 @@ class TestPySCFPhase3CIntegration:
                 break
         assert structure_ulid is not None, "Structure h2 not found"
         
-        calc_resolved = QVService(temp_project).project.init_calculation(
+        calc_resolved = QMSService(temp_project).project.init_calculation(
             name="test_calc_mp2_only",
             structure_selector=structure_ulid,
         )
@@ -358,9 +358,9 @@ class TestPySCFPhase3CIntegration:
         save_yaml_doc(calc_doc, calc_data_path)
         
         # Create MP2 step (no SCF dependency)
-        mp2_step_dto = QVService(temp_project).calculation.add_step(calc_id, step_type_gen="mp2", name="mp2")
+        mp2_step_dto = QMSService(temp_project).calculation.add_step(calc_id, step_type_gen="mp2", name="mp2")
         mp2_step_id = mp2_step_dto.meta.ulid
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         svc.calculation.update_step_params(
             calc_selector=calc_id,
             step_selector=mp2_step_id,
@@ -373,7 +373,7 @@ class TestPySCFPhase3CIntegration:
 
         # Run Step(MP2): should fail because no SCF provider exists
         # Note: The unified pipeline returns errors in the result dict rather than raising exceptions
-        svc = QVService(temp_project)
+        svc = QMSService(temp_project)
         result = svc.run.run_step(
             calc_selector=calc_id,
             step_selector=mp2_step_id,

@@ -62,10 +62,10 @@ ReaxFF:
 
 ### 4.1 Project-Level Definition
 
-In `project.qv.yml` or a dedicated `potentials.yml`:
+In `project.qms.yml` or a dedicated `potentials.yml`:
 
 ```yaml
-# project.qv.yml
+# project.qms.yml
 potentials:
   # Simple EAM potential
   eam_cu:
@@ -142,7 +142,7 @@ project_root/
 │   ├── NiAlH_jea.eam.alloy
 │   ├── ffield.reax.CHO
 │   └── dp_si.pb
-├── project.qv.yml                 # Contains potential_map
+├── project.qms.yml                 # Contains potential_map
 └── calculations/
     └── ...
 ```
@@ -372,7 +372,7 @@ def validate_potential_files(
 
 | Location | Role | Mutability |
 |----------|------|------------|
-| `project.qv.yml` or `potentials.yml` | Define available potentials | User-editable |
+| `project.qms.yml` or `potentials.yml` | Define available potentials | User-editable |
 | `calculation.yaml` | Select potential for calculation | User-editable |
 | `step.yaml` | Override for specific step | User-editable |
 | `calc/raw/potentials/` | Staged copies | Runtime-generated |

@@ -15,7 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 import yaml
 
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 
 from .conftest import send_request
 
@@ -26,7 +26,7 @@ class TestRealRunSiDOS:
     def test_si_dos_complete_workflow(
         self,
         qe_project_with_si: tuple[Path, str],
-        daemon: QVDaemon,
+        daemon: QMSDaemon,
         wait_for_job,
     ) -> None:
         project_root, structure_ulid = qe_project_with_si

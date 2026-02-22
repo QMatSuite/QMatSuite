@@ -65,7 +65,7 @@
 ## Files Modified/Created
 
 ### UI Changes
-- `gui/src/types/qv.ts`: Added `prefix_outdir_injection` field
+- `gui/src/types/qms.ts`: Added `prefix_outdir_injection` field
 - `gui/src/components/step_parameters/ActiveParametersPanel.tsx`: Added injection display
 - `gui/src/components/step_parameters/ActiveParametersPanel.css`: Added injection styles
 

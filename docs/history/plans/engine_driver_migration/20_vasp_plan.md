@@ -12,7 +12,7 @@
 
 ## 1. Objective
 
-Extract all VASP-specific code from kernel files into a self-contained driver bundle at `src/quantumvitas/drivers/vasp/`. After this migration:
+Extract all VASP-specific code from kernel files into a self-contained driver bundle at `src/qmatsuite/drivers/vasp/`. After this migration:
 
 1. All VASP code lives in `drivers/vasp/`
 2. VASP is registered via DriverRegistry
@@ -26,7 +26,7 @@ Extract all VASP-specific code from kernel files into a self-contained driver bu
 
 ### 2.1 Handler Code
 
-**Source**: `src/quantumvitas/execution/handlers.py`
+**Source**: `src/qmatsuite/execution/handlers.py`
 
 | Function | Lines | Description |
 |----------|-------|-------------|
@@ -35,7 +35,7 @@ Extract all VASP-specific code from kernel files into a self-contained driver bu
 
 ### 2.2 Recipe Code
 
-**Source**: `src/quantumvitas/execution/recipes.py`
+**Source**: `src/qmatsuite/execution/recipes.py`
 
 | Class | Lines | Description |
 |-------|-------|-------------|
@@ -44,7 +44,7 @@ Extract all VASP-specific code from kernel files into a self-contained driver bu
 
 ### 2.3 Step Types
 
-**Source**: `src/quantumvitas/workflow/registry.py` (conceptual) and `step_done.py`
+**Source**: `src/qmatsuite/workflow/registry.py` (conceptual) and `step_done.py`
 
 ```
 vasp_scf, vasp_relax, vasp_vc_relax, vasp_md, vasp_bands, vasp_dos,
@@ -53,7 +53,7 @@ vasp_static, vasp_neb, vasp_phonon, vasp_elastic, vasp_dielectric
 
 ### 2.4 Materialization Map
 
-**Source**: `src/quantumvitas/workflow/generalized_steps.py`
+**Source**: `src/qmatsuite/workflow/generalized_steps.py`
 
 ```python
 ("vasp", "GEN_SCF"): "vasp_scf"
@@ -66,16 +66,16 @@ vasp_static, vasp_neb, vasp_phonon, vasp_elastic, vasp_dielectric
 ### 2.5 Additional VASP Logic
 
 **Locations to check**:
-- `src/quantumvitas/io/generator/` - VASP input generators (POSCAR, INCAR, KPOINTS, POTCAR)
-- `src/quantumvitas/io/parser/` - VASP output parsers (OUTCAR, vasprun.xml)
-- `src/quantumvitas/calculation/step_done.py` - VASP done detection
+- `src/qmatsuite/io/generator/` - VASP input generators (POSCAR, INCAR, KPOINTS, POTCAR)
+- `src/qmatsuite/io/parser/` - VASP output parsers (OUTCAR, vasprun.xml)
+- `src/qmatsuite/calculation/step_done.py` - VASP done detection
 
 ---
 
 ## 3. Target Structure
 
 ```
-src/quantumvitas/drivers/vasp/
+src/qmatsuite/drivers/vasp/
 ├── __init__.py          # Registration (15 lines)
 ├── driver.py            # VASPDriver class (80 lines)
 ├── handler.py           # vasp_step_handler (162 lines, moved)
@@ -93,17 +93,17 @@ src/quantumvitas/drivers/vasp/
 ### Step 1: Create Directory Structure
 
 ```bash
-mkdir -p src/quantumvitas/drivers/vasp
-touch src/quantumvitas/drivers/vasp/__init__.py
-touch src/quantumvitas/drivers/vasp/driver.py
-touch src/quantumvitas/drivers/vasp/handler.py
-touch src/quantumvitas/drivers/vasp/recipe.py
-touch src/quantumvitas/drivers/vasp/staging.py
+mkdir -p src/qmatsuite/drivers/vasp
+touch src/qmatsuite/drivers/vasp/__init__.py
+touch src/qmatsuite/drivers/vasp/driver.py
+touch src/qmatsuite/drivers/vasp/handler.py
+touch src/qmatsuite/drivers/vasp/recipe.py
+touch src/qmatsuite/drivers/vasp/staging.py
 ```
 
 ### Step 2: Create driver.py
 
-**Create file**: `src/quantumvitas/drivers/vasp/driver.py`
+**Create file**: `src/qmatsuite/drivers/vasp/driver.py`
 
 ```python
 """VASP engine driver.
@@ -115,7 +115,7 @@ This driver handles all VASP calculations including:
 - NEB transition state searches
 """
 
-from quantumvitas.core.driver_protocol import (
+from qmatsuite.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
     WorkdirPolicy,
@@ -354,7 +354,7 @@ class VASPDriver(BaseEngineDriver):
 
 ### Step 3: Move Handler to handler.py
 
-**Create file**: `src/quantumvitas/drivers/vasp/handler.py`
+**Create file**: `src/qmatsuite/drivers/vasp/handler.py`
 
 **Copy** the `vasp_step_handler` function from `handlers.py` (lines 294-456).
 
@@ -372,9 +372,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 # Keep existing imports from the handler code
-from quantumvitas.core.job import Job
-from quantumvitas.core.step_context import StepContext
-from quantumvitas.core.job_result import JobResult
+from qmatsuite.core.job import Job
+from qmatsuite.core.step_context import StepContext
+from qmatsuite.core.job_result import JobResult
 
 # Import staging utilities
 from .staging import stage_chgcar, stage_wavecar, stage_potcar
@@ -413,7 +413,7 @@ def vasp_step_handler(job: Job, context: StepContext) -> JobResult:
 
 ### Step 4: Move Recipe to recipe.py
 
-**Create file**: `src/quantumvitas/drivers/vasp/recipe.py`
+**Create file**: `src/qmatsuite/drivers/vasp/recipe.py`
 
 **Copy** the `VASPRecipe` class from `recipes.py` (lines 236-334).
 
@@ -427,7 +427,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from quantumvitas.execution.recipes import BaseRecipe
+from qmatsuite.execution.recipes import BaseRecipe
 
 logger = logging.getLogger(__name__)
 
@@ -452,7 +452,7 @@ class VASPRecipe(BaseRecipe):
 
 ### Step 5: Create staging.py
 
-**Create file**: `src/quantumvitas/drivers/vasp/staging.py`
+**Create file**: `src/qmatsuite/drivers/vasp/staging.py`
 
 **Extract** CHGCAR/WAVECAR staging functions from `recipes.py` (lines 800-890).
 
@@ -549,7 +549,7 @@ def stage_potcar(
 
 ### Step 6: Create reference.py
 
-**Create file**: `src/quantumvitas/drivers/vasp/reference.py`
+**Create file**: `src/qmatsuite/drivers/vasp/reference.py`
 
 ```python
 """VASP reference step resolution.
@@ -562,7 +562,7 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from quantumvitas.core.step_context import StepContext
+    from qmatsuite.core.step_context import StepContext
 
 logger = logging.getLogger(__name__)
 
@@ -603,17 +603,17 @@ def resolve_reference_step(
 
 ### Step 7: Create __init__.py
 
-**Create file**: `src/quantumvitas/drivers/vasp/__init__.py`
+**Create file**: `src/qmatsuite/drivers/vasp/__init__.py`
 
 ```python
 """VASP driver bundle.
 
-This package provides the VASP engine driver for QuantumVitas.
+This package provides the VASP engine driver for QMatSuite.
 It handles all VASP calculations including SCF, relaxation, MD,
 band structure, DOS, and various property calculations.
 """
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import VASPDriver
 
 # Register driver at import time
@@ -624,19 +624,19 @@ __all__ = ["VASPDriver"]
 
 ### Step 8: Update drivers/__init__.py
 
-**File**: `src/quantumvitas/drivers/__init__.py`
+**File**: `src/qmatsuite/drivers/__init__.py`
 
 **Add** VASP import:
 
 ```python
 # Import all driver packages to trigger registration
-from quantumvitas.drivers import qe_shim
-from quantumvitas.drivers import vasp  # ADD THIS LINE
+from qmatsuite.drivers import qe_shim
+from qmatsuite.drivers import vasp  # ADD THIS LINE
 ```
 
 ### Step 9: Remove VASP from handlers.py
 
-**File**: `src/quantumvitas/execution/handlers.py`
+**File**: `src/qmatsuite/execution/handlers.py`
 
 **Remove**:
 1. VASP-specific imports (if any become unused)
@@ -649,7 +649,7 @@ from quantumvitas.drivers import vasp  # ADD THIS LINE
 
 ### Step 10: Remove VASP from recipes.py
 
-**File**: `src/quantumvitas/execution/recipes.py`
+**File**: `src/qmatsuite/execution/recipes.py`
 
 **Remove**:
 1. `VASPRecipe` class (lines 236-334)
@@ -663,7 +663,7 @@ from quantumvitas.drivers import vasp  # ADD THIS LINE
 
 ### Step 11: Clean up step_done.py
 
-**File**: `src/quantumvitas/calculation/step_done.py`
+**File**: `src/qmatsuite/calculation/step_done.py`
 
 **Verify** that VASP_STEP_TYPES is now provided by registry (from PR 2).
 
@@ -677,9 +677,9 @@ from quantumvitas.drivers import vasp  # ADD THIS LINE
 """Tests for VASP driver bundle."""
 
 import pytest
-from quantumvitas.drivers.vasp import VASPDriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.vasp import VASPDriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestVASPDriver:
@@ -747,7 +747,7 @@ class TestVASPRegistration:
 
     def test_vasp_registered(self):
         """VASP should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("vasp")
         driver = DriverRegistry.get_driver("vasp")
@@ -755,7 +755,7 @@ class TestVASPRegistration:
 
     def test_vasp_step_types_registered(self):
         """VASP step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("vasp_scf")
         assert DriverRegistry.is_step_type_registered("vasp_relax")
@@ -763,14 +763,14 @@ class TestVASPRegistration:
 
     def test_vasp_handler_via_registry(self):
         """Should get VASP handler via registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         handler = DriverRegistry.get_handler("vasp_scf")
         assert callable(handler)
 
     def test_vasp_recipe_via_registry(self):
         """Should get VASP recipe via registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         recipe_class = DriverRegistry.get_recipe_class("vasp")
         assert recipe_class is not None
@@ -782,7 +782,7 @@ class TestVASPIsolation:
     def test_handlers_no_vasp_handler(self):
         """handlers.py should not contain vasp_step_handler."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/handlers.py").read_text()
+        source = Path("src/qmatsuite/execution/handlers.py").read_text()
 
         assert "def vasp_step_handler" not in source, (
             "vasp_step_handler should be moved to drivers/vasp/handler.py"
@@ -791,7 +791,7 @@ class TestVASPIsolation:
     def test_recipes_no_vasp_recipe(self):
         """recipes.py should not contain VASPRecipe."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/recipes.py").read_text()
+        source = Path("src/qmatsuite/execution/recipes.py").read_text()
 
         assert "class VASPRecipe" not in source, (
             "VASPRecipe should be moved to drivers/vasp/recipe.py"
@@ -802,9 +802,9 @@ class TestVASPIsolation:
         from pathlib import Path
 
         kernel_files = [
-            "src/quantumvitas/core/calc_identity.py",
-            "src/quantumvitas/calculation/step_done.py",
-            "src/quantumvitas/calculation/structure_steps.py",
+            "src/qmatsuite/core/calc_identity.py",
+            "src/qmatsuite/calculation/step_done.py",
+            "src/qmatsuite/calculation/structure_steps.py",
         ]
 
         for filepath in kernel_files:

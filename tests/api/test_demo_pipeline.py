@@ -1,7 +1,7 @@
 """P3 hardening: Demo load pipeline — API-level verification.
 
 Verifies that load_demo_as_calculation correctly registers structures,
-creates calculations, and configures species_map through the QVService API.
+creates calculations, and configures species_map through the QMSService API.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api.service import QVService
+from qmatsuite.api.service import QMSService
 
 
 # Minimal pymatgen-format Silicon structure for fallback.
@@ -31,7 +31,7 @@ _SI_STRUCTURE_JSON = json.dumps({
 
 def _get_qe_demo_id() -> str | None:
     """Return the first available QE demo id, or None."""
-    demos = QVService.list_demo_projects()
+    demos = QMSService.list_demo_projects()
     for d in demos:
         demo_id = d.get("ulid") or d.get("id", "")
         if demo_id.startswith("qe_"):
@@ -42,8 +42,8 @@ def _get_qe_demo_id() -> str | None:
 @pytest.fixture
 def svc_with_structure(tmp_path):
     """Create a project with an imported Si structure."""
-    project_root = QVService.init_project(tmp_path / "project")
-    svc = QVService(project_root)
+    project_root = QMSService.init_project(tmp_path / "project")
+    svc = QMSService(project_root)
     source = tmp_path / "si.json"
     source.write_text(_SI_STRUCTURE_JSON)
     svc.structure.import_file(source, name="Silicon")
@@ -148,7 +148,7 @@ class TestDemoLoadPipeline:
         struct_ulid = result["structure_ulid"]
 
         # Create a NEW calculation using the demo's structure
-        import quantumvitas.drivers  # noqa: F401 — trigger registration
+        import qmatsuite.drivers  # noqa: F401 — trigger registration
         new_calc = svc.project.init_calculation(
             name="reuse_test",
             structure_selector=struct_ulid,
@@ -173,8 +173,8 @@ class TestDemoLoadPipeline:
             pytest.skip("Demo has no steps")
 
         # Run preflight on first step
-        import quantumvitas.drivers  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         engine = detail.get("engine_family", "qe")
         try:

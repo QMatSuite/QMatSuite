@@ -16,7 +16,7 @@
 
 - **A3.2 Run Calc → Dropdown "Full Run"**:
   - SCF must NOT use chkfile init_guess (fresh start)
-  - **Where it should live**: `QVService.run_calculation(run_mode="full")` → `CalculationRunner.run(run_mode="full")` → PySCF runner
+  - **Where it should live**: `QMSService.run_calculation(run_mode="full")` → `CalculationRunner.run(run_mode="full")` → PySCF runner
 
 - **A3.3 Run Step(X)**:
   - Resolve dependency chain from X back to root using nearest-provider rule
@@ -24,7 +24,7 @@
   - Target step X always full rerun
   - If X is SCF: forbid chkfile init_guess
   - Prerequisite steps: use normal incremental semantics (SCF may use chkfile)
-  - **Where it should live**: `QVService.run_step()` or new `run_step_with_chain()` → dependency resolution → one-session PySCF execution
+  - **Where it should live**: `QMSService.run_step()` or new `run_step_with_chain()` → dependency resolution → one-session PySCF execution
 
 - **A4 Checkpointing Policy**:
   - Only SCF produces restartable checkpoint (chkfile)
@@ -46,11 +46,11 @@
 **A) What exactly is unclear**: How does `run_mode` flow from UI/API through service layer to `CalculationRunner.run()`, and how should it control PySCF init_guess behavior in step execution?
 
 **B) Where in code this is decided today**:
-- `src/quantumvitas/api.py::QVService.run_calculation()` (line 1129-1138): Receives `run_mode: str = "incremental"` parameter
-- `src/quantumvitas/api.py::QVService.run_calculation()` (line 1260-1263): Calls `runner.run(calculation, run_id=run_id, run_mode=run_mode)`
-- `src/quantumvitas/calculation/runner.py::CalculationRunner.run()` (line 67-73): Receives `run_mode: str = "incremental"` parameter
-- `src/quantumvitas/calculation/runner.py::CalculationRunner.run()` (line 267-447): Executes steps sequentially, but `run_mode` is only used for manifest reconciliation (line 176, 218), not passed to step execution
-- Call chain: `QVService.run_calculation()` → `CalculationRunner.run()` → `step.run()` → `engine.run_step()` (no run_mode passed)
+- `src/qmatsuite/api.py::QMSService.run_calculation()` (line 1129-1138): Receives `run_mode: str = "incremental"` parameter
+- `src/qmatsuite/api.py::QMSService.run_calculation()` (line 1260-1263): Calls `runner.run(calculation, run_id=run_id, run_mode=run_mode)`
+- `src/qmatsuite/calculation/runner.py::CalculationRunner.run()` (line 67-73): Receives `run_mode: str = "incremental"` parameter
+- `src/qmatsuite/calculation/runner.py::CalculationRunner.run()` (line 267-447): Executes steps sequentially, but `run_mode` is only used for manifest reconciliation (line 176, 218), not passed to step execution
+- Call chain: `QMSService.run_calculation()` → `CalculationRunner.run()` → `step.run()` → `engine.run_step()` (no run_mode passed)
 
 **C) What the spec requires**: RunCalc incremental should allow chkfile init_guess; RunCalc full should forbid it. (Section A3.1, A3.2)
 
@@ -74,8 +74,8 @@
 **E) Which option I will pick**: **Option 2** - Store run_mode in step.options. This matches spec requirement (run_mode controls behavior) and requires minimal changes. QE execution ignores this option, so no breaking changes.
 
 **F) Files to re-read**: 
-- `src/quantumvitas/calculation/runner.py` (step execution loop, where to set step.options)
-- `src/quantumvitas/engine/pyscf_engine.py` (run_step method, where to read run_mode from options)
+- `src/qmatsuite/calculation/runner.py` (step execution loop, where to set step.options)
+- `src/qmatsuite/engine/pyscf_engine.py` (run_step method, where to read run_mode from options)
 
 **G) Narrow question**: None - Option 2 is clear and minimal.
 
@@ -86,10 +86,10 @@
 **A) What exactly is unclear**: Where is the Run Step(X) entry point implemented, and how does it currently execute a single step? Does it need to change to support dependency chain resolution and one-session execution?
 
 **B) Where in code this is decided today**:
-- `src/quantumvitas/api.py::QVService.run_step()` (line 1302-1525): Entry point for Run Step
-- `src/quantumvitas/api.py::QVService.run_step()` (line 1405): Calls `run_input_step()` (QE-specific, uses legacy input_runner)
-- `src/quantumvitas/cli/main.py::run_step_command()` (line 1427-1456): CLI entry point (deprecated, redirects to API)
-- Call chain: `QVService.run_step()` → `run_input_step()` (QE only) OR could call `CalculationRunner` for PySCF
+- `src/qmatsuite/api.py::QMSService.run_step()` (line 1302-1525): Entry point for Run Step
+- `src/qmatsuite/api.py::QMSService.run_step()` (line 1405): Calls `run_input_step()` (QE-specific, uses legacy input_runner)
+- `src/qmatsuite/cli/main.py::run_step_command()` (line 1427-1456): CLI entry point (deprecated, redirects to API)
+- Call chain: `QMSService.run_step()` → `run_input_step()` (QE only) OR could call `CalculationRunner` for PySCF
 - Current implementation: QE-specific, uses `run_input_step()` directly, does NOT use `CalculationRunner` or `Step.run()`
 
 **C) What the spec requires**: Run Step(X) must resolve dependency chain and execute in ONE session. (Section A3.3)
@@ -97,7 +97,7 @@
 **D) Two concrete implementation options**:
 
 **Option 1**: Create new PySCF-specific RunStep path
-- Add new method `QVService.run_step_with_chain()` or modify `run_step()` to detect PySCF steps
+- Add new method `QMSService.run_step_with_chain()` or modify `run_step()` to detect PySCF steps
 - For PySCF steps: resolve dependency chain using `resolve_dependency_chain()`
 - Call new `_run_pyscf_chain()` function that executes chain in one session
 - For QE steps: keep existing `run_input_step()` path (unchanged)
@@ -108,16 +108,16 @@
 - Modify `CalculationRunner.run()` to accept optional `target_step_ulid` parameter
 - If `target_step_ulid` provided: resolve chain, execute only that chain
 - If not provided: execute all steps (current behavior)
-- `QVService.run_step()` loads calculation, calls `CalculationRunner.run(target_step_ulid=step_ulid)`
+- `QMSService.run_step()` loads calculation, calls `CalculationRunner.run(target_step_ulid=step_ulid)`
 - Pros: Reuses CalculationRunner infrastructure
 - Cons: CalculationRunner becomes more complex
 
 **E) Which option I will pick**: **Option 1** - Create PySCF-specific RunStep path. This matches spec (RunStep has different semantics than RunCalc) and keeps QE behavior unchanged. Clear separation of concerns.
 
 **F) Files to re-read**:
-- `src/quantumvitas/api.py::QVService.run_step()` (current implementation)
-- `src/quantumvitas/engines/pyscf/chain.py` (resolve_dependency_chain function)
-- `src/quantumvitas/calculation/runner.py` (to understand CalculationRunner structure for reference)
+- `src/qmatsuite/api.py::QMSService.run_step()` (current implementation)
+- `src/qmatsuite/engines/pyscf/chain.py` (resolve_dependency_chain function)
+- `src/qmatsuite/calculation/runner.py` (to understand CalculationRunner structure for reference)
 
 **G) Narrow question**: None - Option 1 is clear and preserves QE behavior.
 
@@ -128,9 +128,9 @@
 **A) What exactly is unclear**: Does PySCF currently run each step in a separate subprocess, or in the same process? How should one-session chain execution work?
 
 **B) Where in code this is decided today**:
-- `src/quantumvitas/engine/pyscf_engine.py::PySCFEngine.run_step()` (line 145-304): Creates job.json, runs subprocess
-- `src/quantumvitas/engine/pyscf_engine.py::PySCFEngine.run_step()` (line 235): `cmd = self._get_runner_command() + [str(job_file)]` - ONE subprocess per step
-- `src/quantumvitas/engines/pyscf/runner.py::run_job()` (line 568): Entry point for subprocess, runs ONE step per invocation
+- `src/qmatsuite/engine/pyscf_engine.py::PySCFEngine.run_step()` (line 145-304): Creates job.json, runs subprocess
+- `src/qmatsuite/engine/pyscf_engine.py::PySCFEngine.run_step()` (line 235): `cmd = self._get_runner_command() + [str(job_file)]` - ONE subprocess per step
+- `src/qmatsuite/engines/pyscf/runner.py::run_job()` (line 568): Entry point for subprocess, runs ONE step per invocation
 - Call chain: `PySCFEngine.run_step()` → subprocess → `runner.run_job(job.json)` → `run_scf()` or `run_mp2()`
 - Current model: Each step runs in SEPARATE subprocess (one job.json per step, one Python process per step)
 
@@ -156,8 +156,8 @@
 **E) Which option I will pick**: **Option 1** - New `run_job_chain()` function. This matches spec requirement (one session for RunStep chain) and keeps single-step execution unchanged. Clear separation.
 
 **F) Files to re-read**:
-- `src/quantumvitas/engines/pyscf/runner.py::run_job()` (current structure)
-- `src/quantumvitas/engines/pyscf/runner.py::run_scf()` and `run_mp2()` (to understand how to chain them)
+- `src/qmatsuite/engines/pyscf/runner.py::run_job()` (current structure)
+- `src/qmatsuite/engines/pyscf/runner.py::run_scf()` and `run_mp2()` (to understand how to chain them)
 
 **G) Narrow question**: None - Option 1 is clear.
 
@@ -168,8 +168,8 @@
 **A) What exactly is unclear**: Where and how are step artifact directories created and cleared? The spec says "clear that step's artifacts directory before each step run".
 
 **B) Where in code this is decided today**:
-- `src/quantumvitas/calculation/runner.py::CalculationRunner.run()` (line 437): `raw_dir = calculation.raw_dir` (single raw_dir for all steps)
-- `src/quantumvitas/engine/pyscf_engine.py::PySCFEngine.run_step()` (line 158): `working_dir.mkdir(parents=True, exist_ok=True)` (creates working_dir if needed)
+- `src/qmatsuite/calculation/runner.py::CalculationRunner.run()` (line 437): `raw_dir = calculation.raw_dir` (single raw_dir for all steps)
+- `src/qmatsuite/engine/pyscf_engine.py::PySCFEngine.run_step()` (line 158): `working_dir.mkdir(parents=True, exist_ok=True)` (creates working_dir if needed)
 - No evidence of per-step artifact directories or clearing logic found in codebase search
 - Current model: All steps write to `calculation.raw_dir` (single directory)
 
@@ -193,8 +193,8 @@
 **E) Which option I will pick**: **Option 1** - Per-step artifact directories. This matches spec requirement ("per-step artifacts directory") and provides clean separation. For PySCF, use `raw_dir / "step_artifacts" / {step_ulid}`.
 
 **F) Files to re-read**:
-- `src/quantumvitas/calculation/runner.py` (where to create/clear artifacts dir)
-- `src/quantumvitas/engine/pyscf_engine.py` (where to set working_dir to artifacts dir)
+- `src/qmatsuite/calculation/runner.py` (where to create/clear artifacts dir)
+- `src/qmatsuite/engine/pyscf_engine.py` (where to set working_dir to artifacts dir)
 
 **G) Narrow question**: None - Option 1 matches spec requirement.
 
@@ -205,11 +205,11 @@
 **A) What exactly is unclear**: Where is chkfile created today, and is the path constant? How is init_guess currently controlled, and how should run_mode affect it?
 
 **B) Where in code this is decided today**:
-- `src/quantumvitas/engines/pyscf/runner.py::run_scf()` (line 180): `checkpoint_file = working_dir / "checkpoint.chk"` (constant path)
-- `src/quantumvitas/engines/pyscf/runner.py::run_scf()` (line 181): `mf.chkfile = str(checkpoint_file)` (sets chkfile path)
-- `src/quantumvitas/engines/pyscf/runner.py::run_scf()` (line 184-189): Always uses checkpoint if exists: `if checkpoint_file.exists(): mf.init_guess = 'chkfile'`
-- `src/quantumvitas/engines/pyscf/runner.py::run_scf()` (line 117): Now accepts `allow_chkfile_init_guess: bool = True` parameter (recently added)
-- `src/quantumvitas/engines/pyscf/runner.py::run_job()` (line 632): Calls `run_scf(params, working_dir)` - does NOT pass allow_chkfile_init_guess yet
+- `src/qmatsuite/engines/pyscf/runner.py::run_scf()` (line 180): `checkpoint_file = working_dir / "checkpoint.chk"` (constant path)
+- `src/qmatsuite/engines/pyscf/runner.py::run_scf()` (line 181): `mf.chkfile = str(checkpoint_file)` (sets chkfile path)
+- `src/qmatsuite/engines/pyscf/runner.py::run_scf()` (line 184-189): Always uses checkpoint if exists: `if checkpoint_file.exists(): mf.init_guess = 'chkfile'`
+- `src/qmatsuite/engines/pyscf/runner.py::run_scf()` (line 117): Now accepts `allow_chkfile_init_guess: bool = True` parameter (recently added)
+- `src/qmatsuite/engines/pyscf/runner.py::run_job()` (line 632): Calls `run_scf(params, working_dir)` - does NOT pass allow_chkfile_init_guess yet
 - Current model: Chkfile path is constant (`working_dir / "checkpoint.chk"`), init_guess always uses chkfile if exists
 
 **C) What the spec requires**: Chkfile path is fixed convention. Init_guess control: incremental=True, full=False, RunStep(scf)=False. (Section A3, A4, A5)
@@ -232,8 +232,8 @@
 **E) Which option I will pick**: **Option 1** - Pass `allow_chkfile_init_guess` through job.json. This is already partially implemented (run_scf accepts parameter), just needs wiring through job.json and PySCFEngine. Clear and explicit.
 
 **F) Files to re-read**:
-- `src/quantumvitas/engines/pyscf/runner.py::run_job()` (where to read allow_chkfile_init_guess)
-- `src/quantumvitas/engine/pyscf_engine.py::PySCFEngine.run_step()` (where to set it in job.json)
+- `src/qmatsuite/engines/pyscf/runner.py::run_job()` (where to read allow_chkfile_init_guess)
+- `src/qmatsuite/engine/pyscf_engine.py::PySCFEngine.run_step()` (where to set it in job.json)
 
 **G) Narrow question**: None - Option 1 is straightforward.
 
@@ -244,10 +244,10 @@
 **A) What exactly is unclear**: Where should the one-session chain execution be inserted for RunStep mode, without breaking QE/W90 behavior?
 
 **B) Where in code this is decided today**:
-- `src/quantumvitas/api.py::QVService.run_step()` (line 1302): Current entry point
-- `src/quantumvitas/api.py::QVService.run_step()` (line 1405): Calls `run_input_step()` (QE-specific)
-- `src/quantumvitas/calculation/runner.py::CalculationRunner.run()` (line 442): Calls `step.run()` for each step
-- `src/quantumvitas/calculation/step.py::Step.run()` (line 78-79): `if engine.name != "qe": return engine.run_step(self, calculation_raw_dir)` (PySCF path)
+- `src/qmatsuite/api.py::QMSService.run_step()` (line 1302): Current entry point
+- `src/qmatsuite/api.py::QMSService.run_step()` (line 1405): Calls `run_input_step()` (QE-specific)
+- `src/qmatsuite/calculation/runner.py::CalculationRunner.run()` (line 442): Calls `step.run()` for each step
+- `src/qmatsuite/calculation/step.py::Step.run()` (line 78-79): `if engine.name != "qe": return engine.run_step(self, calculation_raw_dir)` (PySCF path)
 - Current model: RunStep uses QE-specific path, does NOT use CalculationRunner
 
 **C) What the spec requires**: Run Step(X) for PySCF must resolve chain and execute in one session. QE/W90 behavior unchanged. (Section A3.3)
@@ -256,7 +256,7 @@
 
 **Option 1**: Engine-specific run_step_with_chain method
 - Add `run_step_with_chain(step, chain_steps, ...)` method to Engine interface (optional, PySCF implements it)
-- `QVService.run_step()` detects PySCF steps, resolves chain, calls `engine.run_step_with_chain()`
+- `QMSService.run_step()` detects PySCF steps, resolves chain, calls `engine.run_step_with_chain()`
 - QE/W90 engines don't implement it (fallback to run_step)
 - Pros: Engine-specific, QE unchanged
 - Cons: New interface method
@@ -265,16 +265,16 @@
 - Add optional `chain_context` parameter to `run_step()`
 - If provided: execute chain in one session
 - If not provided: execute single step (current behavior)
-- `QVService.run_step()` for PySCF resolves chain, calls `engine.run_step(step, ..., chain_context=chain_steps)`
+- `QMSService.run_step()` for PySCF resolves chain, calls `engine.run_step(step, ..., chain_context=chain_steps)`
 - Pros: Reuses run_step() signature
 - Cons: Parameter pollution, less clear
 
 **E) Which option I will pick**: **Option 1** - Engine-specific `run_step_with_chain()` method. This matches spec (RunStep has different semantics) and keeps QE/W90 engines unchanged (they don't implement the method). Clear separation.
 
 **F) Files to re-read**:
-- `src/quantumvitas/engine/base.py` (Engine interface)
-- `src/quantumvitas/api.py::QVService.run_step()` (where to add PySCF chain detection)
-- `src/quantumvitas/engine/pyscf_engine.py` (where to implement run_step_with_chain)
+- `src/qmatsuite/engine/base.py` (Engine interface)
+- `src/qmatsuite/api.py::QMSService.run_step()` (where to add PySCF chain detection)
+- `src/qmatsuite/engine/pyscf_engine.py` (where to implement run_step_with_chain)
 
 **G) Narrow question**: None - Option 1 is clear and preserves QE behavior.
 
@@ -286,16 +286,16 @@
 - (None - run_mode already flows from API, no UI changes needed for this phase)
 
 ### Service/Core Runner Layer
-1. `src/quantumvitas/api.py::QVService.run_step()` - Add PySCF chain resolution and execution
-2. `src/quantumvitas/calculation/runner.py::CalculationRunner.run()` - Set run_mode in step.options before execution
+1. `src/qmatsuite/api.py::QMSService.run_step()` - Add PySCF chain resolution and execution
+2. `src/qmatsuite/calculation/runner.py::CalculationRunner.run()` - Set run_mode in step.options before execution
 
 ### Engine/PySCF Runner Layer
-3. `src/quantumvitas/engine/pyscf_engine.py::PySCFEngine.run_step()` - Read run_mode from step.options, set allow_chkfile_init_guess in job.json
-4. `src/quantumvitas/engine/pyscf_engine.py::PySCFEngine` - Add `run_step_with_chain()` method (new)
-5. `src/quantumvitas/engines/pyscf/runner.py::run_job()` - Read allow_chkfile_init_guess from job.json, pass to run_scf()
-6. `src/quantumvitas/engines/pyscf/runner.py` - Add `run_job_chain()` function (new)
-7. `src/quantumvitas/engines/pyscf/runner.py` - Add `_run_pyscf_chain_session()` helper (new, for one-session execution)
-8. `src/quantumvitas/engine/base.py` - Add optional `run_step_with_chain()` to Engine interface (optional method)
+3. `src/qmatsuite/engine/pyscf_engine.py::PySCFEngine.run_step()` - Read run_mode from step.options, set allow_chkfile_init_guess in job.json
+4. `src/qmatsuite/engine/pyscf_engine.py::PySCFEngine` - Add `run_step_with_chain()` method (new)
+5. `src/qmatsuite/engines/pyscf/runner.py::run_job()` - Read allow_chkfile_init_guess from job.json, pass to run_scf()
+6. `src/qmatsuite/engines/pyscf/runner.py` - Add `run_job_chain()` function (new)
+7. `src/qmatsuite/engines/pyscf/runner.py` - Add `_run_pyscf_chain_session()` helper (new, for one-session execution)
+8. `src/qmatsuite/engine/base.py` - Add optional `run_step_with_chain()` to Engine interface (optional method)
 
 ### Tests
 9. `tests/unit/test_pyscf_chain.py` - Unit tests for chain resolution (already created)

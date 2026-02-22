@@ -11,7 +11,7 @@ Tests cover:
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 
 def _pyscf_importable() -> bool:
@@ -33,7 +33,7 @@ class TestPySCFStepTypeRegistration:
     
     def test_pyscf_scf_in_registry(self):
         """PYSCF_SCF step type is registered in StepTypeRegistry."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         registry = get_registry()
         # Per constitution: has() only accepts GEN types
@@ -42,7 +42,7 @@ class TestPySCFStepTypeRegistration:
     
     def test_pyscf_scf_spec_properties(self):
         """PYSCF_SCF StepTypeSpec has correct properties."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         # Per constitution: get() only accepts GEN types
         # Use get_for_engine for engine-specific lookup
@@ -58,13 +58,13 @@ class TestPySCFStepTypeRegistration:
     
     def test_pyscf_scf_in_known_step_types(self):
         """PYSCF_SCF is in CLI KNOWN_STEP_TYPES."""
-        from quantumvitas.cli.main import KNOWN_STEP_TYPES
+        from qmatsuite.cli.main import KNOWN_STEP_TYPES
         
         assert "pyscf_scf" in KNOWN_STEP_TYPES
     
     def test_pyscf_mp2_in_registry(self):
         """PYSCF_MP2 step type is registered in StepTypeRegistry (Phase 3C)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         registry = get_registry()
         # Per constitution: has() only accepts GEN types
@@ -72,7 +72,7 @@ class TestPySCFStepTypeRegistration:
     
     def test_pyscf_mp2_spec_properties(self):
         """PYSCF_MP2 StepTypeSpec has correct properties (Phase 3C)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         # Per constitution: get() only accepts GEN types
         spec = get_registry().get_for_engine("mp2", "pyscf")
@@ -89,14 +89,14 @@ class TestPySCFStepTypeRegistration:
     
     def test_pyscf_scf_supports_incremental_skip(self):
         """PYSCF_SCF supports incremental skip (Phase 3C)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         spec = get_registry().get_for_engine("scf", "pyscf")
         assert spec.supports_incremental_skip is True
     
     def test_pyscf_td_in_registry(self):
         """PYSCF_TD step type is registered in StepTypeRegistry (Phase 3C)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         registry = get_registry()
         # Per constitution: has() only accepts GEN types
@@ -104,7 +104,7 @@ class TestPySCFStepTypeRegistration:
     
     def test_pyscf_td_spec_properties(self):
         """PYSCF_TD StepTypeSpec has correct properties (Phase 3C)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         # Per constitution: get() only accepts GEN types
         spec = get_registry().get_for_engine("td", "pyscf")
@@ -121,7 +121,7 @@ class TestPySCFStepTypeRegistration:
     
     def test_pyscf_scf_state_fields(self):
         """PYSCF_SCF has correct state dependency fields (Phase 3C)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         spec = get_registry().get_for_engine("scf", "pyscf")
         assert spec.consumes_state is None  # No dependency
@@ -129,7 +129,7 @@ class TestPySCFStepTypeRegistration:
     
     def test_pyscf_mp2_state_fields(self):
         """PYSCF_MP2 has correct state dependency fields (Phase 3C)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         spec = get_registry().get_for_engine("mp2", "pyscf")
         assert spec.consumes_state == "mf"  # Consumes mean-field state from SCF
@@ -137,7 +137,7 @@ class TestPySCFStepTypeRegistration:
     
     def test_qe_steps_have_none_state_fields(self):
         """QE steps have None defaults for state fields (Phase 3C backward compat)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
 
         registry = get_registry()
         # Per constitution: get() only accepts GEN types
@@ -152,20 +152,20 @@ class TestPySCFEngineAvailability:
     
     def test_engine_import(self):
         """PySCFEngine can be imported."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         assert PySCFEngine is not None
     
     def test_engine_instantiation(self):
         """PySCFEngine can be instantiated."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         assert engine.name == "pyscf"
     
     def test_engine_in_default_registry(self):
         """PySCFEngine is registered in default registry."""
-        from quantumvitas.engine.registry import create_default_registry
+        from qmatsuite.engine.registry import create_default_registry
         
         registry = create_default_registry()
         assert registry.has("pyscf")
@@ -175,7 +175,7 @@ class TestPySCFEngineAvailability:
     
     def test_probe_returns_dict(self):
         """Engine probe() returns a dict with expected keys."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         import sys
         
         engine = PySCFEngine()
@@ -198,7 +198,7 @@ class TestPySCFEngineAvailability:
     )
     def test_pyscf_available_when_installed(self):
         """Engine detects PySCF when installed."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         import sys
         
         if sys.platform == "win32":
@@ -213,7 +213,7 @@ class TestPySCFEngineAvailability:
     
     def test_graceful_failure_without_pyscf(self, tmp_path, monkeypatch):
         """Engine returns error when PySCF not available."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -245,7 +245,7 @@ class TestPySCFSubprocessRunner:
     
     def test_runner_import(self):
         """Runner module can be imported."""
-        from quantumvitas.engines.pyscf import runner
+        from qmatsuite.engines.pyscf import runner
         
         assert runner is not None
         assert hasattr(runner, "run_job")
@@ -254,7 +254,7 @@ class TestPySCFSubprocessRunner:
     
     def test_build_water_molecule(self):
         """Build H2O molecule from parameters."""
-        from quantumvitas.engines.pyscf.runner import build_mole
+        from qmatsuite.engines.pyscf.runner import build_mole
         
         params = {
             "atoms": [
@@ -277,7 +277,7 @@ class TestPySCFSubprocessRunner:
     
     def test_build_molecule_with_coords_format(self):
         """Build molecule using coords list format."""
-        from quantumvitas.engines.pyscf.runner import build_mole
+        from qmatsuite.engines.pyscf.runner import build_mole
         
         params = {
             "atoms": [
@@ -296,7 +296,7 @@ class TestPySCFSubprocessRunner:
     
     def test_build_charged_molecule(self):
         """Build charged molecule."""
-        from quantumvitas.engines.pyscf.runner import build_mole
+        from qmatsuite.engines.pyscf.runner import build_mole
         
         params = {
             "atoms": [
@@ -314,7 +314,7 @@ class TestPySCFSubprocessRunner:
     
     def test_build_open_shell_molecule(self):
         """Build open-shell (radical) molecule."""
-        from quantumvitas.engines.pyscf.runner import build_mole
+        from qmatsuite.engines.pyscf.runner import build_mole
         
         params = {
             "atoms": [
@@ -331,7 +331,7 @@ class TestPySCFSubprocessRunner:
     
     def test_detect_molecular_system(self):
         """Detect molecular (no cell) system."""
-        from quantumvitas.engines.pyscf.runner import detect_system_type
+        from qmatsuite.engines.pyscf.runner import detect_system_type
         
         params = {
             "atoms": [{"element": "H", "x": 0, "y": 0, "z": 0}],
@@ -341,7 +341,7 @@ class TestPySCFSubprocessRunner:
     
     def test_detect_periodic_system(self):
         """Detect periodic (with cell) system."""
-        from quantumvitas.engines.pyscf.runner import detect_system_type
+        from qmatsuite.engines.pyscf.runner import detect_system_type
         
         params = {
             "atoms": [{"element": "H", "x": 0, "y": 0, "z": 0}],
@@ -360,7 +360,7 @@ class TestPySCFSCFExecution:
     
     def test_rhf_h2(self, tmp_path):
         """Run RHF on H2 molecule."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -390,7 +390,7 @@ class TestPySCFSCFExecution:
     
     def test_rks_h2o(self, tmp_path):
         """Run RKS DFT on H2O molecule."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -418,7 +418,7 @@ class TestPySCFSCFExecution:
     
     def test_input_script_generation(self, tmp_path):
         """Input script is generated for reproducibility."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -494,28 +494,28 @@ class TestPySCFPhase3CMaterialization:
     
     def test_scf_materializes_to_pyscf_scf(self):
         """PUBLIC key 'scf' materializes to 'pyscf_scf' for PySCF family (Phase 3C)."""
-        from quantumvitas.workflow.generalized_steps import materialize_public_step_key
+        from qmatsuite.workflow.generalized_steps import materialize_public_step_key
         
         result = materialize_public_step_key("scf", "pyscf")
         assert result == "pyscf_scf"
     
     def test_mp2_materializes_to_pyscf_mp2(self):
         """PUBLIC key 'mp2' materializes to 'pyscf_mp2' for PySCF family (Phase 3C)."""
-        from quantumvitas.workflow.generalized_steps import materialize_public_step_key
+        from qmatsuite.workflow.generalized_steps import materialize_public_step_key
         
         result = materialize_public_step_key("mp2", "pyscf")
         assert result == "pyscf_mp2"
     
     def test_scf_mp2_workflow_materializes(self):
         """Workflow template 'scf_mp2' materializes correctly for PySCF family (Phase 3C)."""
-        from quantumvitas.workflow.generalized_steps import materialize_workflow
+        from qmatsuite.workflow.generalized_steps import materialize_workflow
         
         result = materialize_workflow(["scf", "mp2"], "pyscf")
         assert result == ["pyscf_scf", "pyscf_mp2"]
     
     def test_scf_mp2_template_exists(self):
         """Workflow template 'scf_mp2' exists (Phase 3C)."""
-        from quantumvitas.workflow.templates import get_workflow_service
+        from qmatsuite.workflow.templates import get_workflow_service
         
         service = get_workflow_service()
         template = service.get_template("scf_mp2")
@@ -526,7 +526,7 @@ class TestPySCFPhase3CMaterialization:
     
     def test_mp2_not_supported_by_qe_family(self):
         """PUBLIC key 'mp2' does not materialize for QE family (Phase 3C)."""
-        from quantumvitas.workflow.generalized_steps import materialize_public_step_key
+        from qmatsuite.workflow.generalized_steps import materialize_public_step_key
         
         result = materialize_public_step_key("mp2", "qe")
         assert result is None

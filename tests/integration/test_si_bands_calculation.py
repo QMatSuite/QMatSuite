@@ -11,11 +11,11 @@ This test validates the complete calculation:
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.resources import get_resources_dir
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.calculation.types import StepStatus
+from qmatsuite.core.resources import get_resources_dir
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.calculation.types import StepStatus
 from tests.utils.calculation_projects import create_calculation_project
 
 pytestmark = pytest.mark.qe_core
@@ -35,7 +35,7 @@ def si_bands_project(project_root_path: Path, si_bands_dir: Path) -> Path:
         {"ulid": "bands_pw", "input": "si.2_bands.in", "reference": "si.2_bands.out"},
         {"ulid": "bands", "input": "si.3_bands.pp.in", "reference": "si.3_bands.pp.out"},
     ]
-    from quantumvitas.core.paths import tmp_runs_dir
+    from qmatsuite.core.paths import tmp_runs_dir
     destination = tmp_runs_dir() / "calculation_si_bands"
     return create_calculation_project(
         project_root=destination,

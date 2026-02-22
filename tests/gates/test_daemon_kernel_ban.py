@@ -3,12 +3,12 @@ Daemon kernel import ban gate.
 
 P0 LAW: Daemon package MUST NOT import from kernel modules.
 Allowed imports:
-- quantumvitas.api.*
-- quantumvitas.daemon.* (same package)
+- qmatsuite.api.*
+- qmatsuite.daemon.* (same package)
 - stdlib
 - third-party packages
 
-This test scans ALL files in src/quantumvitas/daemon/.
+This test scans ALL files in src/qmatsuite/daemon/.
 
 NOTE: This test has its own DAEMON_KERNEL_PREFIXES constant and does NOT
 modify test_import_rules.py's FORBIDDEN_PREFIXES to avoid collateral.
@@ -19,38 +19,38 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DAEMON_DIR = PROJECT_ROOT / "src/quantumvitas/daemon"
+DAEMON_DIR = PROJECT_ROOT / "src/qmatsuite/daemon"
 
 # Complete list of kernel module prefixes (daemon MUST NOT import these)
 # This is a SUPERSET of test_import_rules.py's FORBIDDEN_PREFIXES
 # We keep our own copy to avoid collateral impact on other tests
 DAEMON_KERNEL_PREFIXES = (
     # Original set from test_import_rules.py
-    "quantumvitas.core",
-    "quantumvitas.calculation",
-    "quantumvitas.analysis",
-    "quantumvitas.io",
-    "quantumvitas.drivers",
-    "quantumvitas.engine",
-    "quantumvitas.workflow",
-    "quantumvitas.presets",
+    "qmatsuite.core",
+    "qmatsuite.calculation",
+    "qmatsuite.analysis",
+    "qmatsuite.io",
+    "qmatsuite.drivers",
+    "qmatsuite.engine",
+    "qmatsuite.workflow",
+    "qmatsuite.presets",
     # Additional kernel modules (daemon-specific enforcement)
-    "quantumvitas.project",
-    "quantumvitas.data",
-    "quantumvitas.execution",
-    "quantumvitas.history",
-    "quantumvitas.ir",
-    "quantumvitas.legacy",
-    "quantumvitas.parsers",
-    "quantumvitas.viz",
-    "quantumvitas._vault",
-    "quantumvitas.engines",
+    "qmatsuite.project",
+    "qmatsuite.data",
+    "qmatsuite.execution",
+    "qmatsuite.history",
+    "qmatsuite.ir",
+    "qmatsuite.legacy",
+    "qmatsuite.parsers",
+    "qmatsuite.viz",
+    "qmatsuite._vault",
+    "qmatsuite.engines",
 )
 
-# Allowed quantumvitas imports for daemon
+# Allowed qmatsuite imports for daemon
 DAEMON_ALLOWED_PREFIXES = (
-    "quantumvitas.api",
-    "quantumvitas.daemon",
+    "qmatsuite.api",
+    "qmatsuite.daemon",
 )
 
 # Exception: Engine metadata imports in server.py handlers (M4)
@@ -60,18 +60,18 @@ DAEMON_ALLOWED_PREFIXES = (
 # specific engine_family requested."
 # Also allow DriverRegistry and core imports needed for generic RPC handlers (M4).
 DAEMON_METADATA_IMPORT_EXCEPTIONS = {
-    "src/quantumvitas/daemon/server.py": [
-        "quantumvitas.drivers.vasp.data",
-        "quantumvitas.drivers.orca.data",
-        "quantumvitas.drivers.lammps.data",
-        "quantumvitas.drivers.gaussian.data",
-        "quantumvitas.drivers.abinit.data",
-        "quantumvitas.drivers.cp2k.data",
-        "quantumvitas.drivers.qmcpack.data",
-        "quantumvitas.core.driver_registry",  # M4: Generic RPC handlers need DriverRegistry
-        "quantumvitas.drivers",  # M4: Generic RPC handlers need to import drivers package
-        "quantumvitas.core.resolution",  # M4: set_engine_family needs require_calculation
-        "quantumvitas.core.models",  # M4: set_engine_family needs load_calculation, save_calculation
+    "src/qmatsuite/daemon/server.py": [
+        "qmatsuite.drivers.vasp.data",
+        "qmatsuite.drivers.orca.data",
+        "qmatsuite.drivers.lammps.data",
+        "qmatsuite.drivers.gaussian.data",
+        "qmatsuite.drivers.abinit.data",
+        "qmatsuite.drivers.cp2k.data",
+        "qmatsuite.drivers.qmcpack.data",
+        "qmatsuite.core.driver_registry",  # M4: Generic RPC handlers need DriverRegistry
+        "qmatsuite.drivers",  # M4: Generic RPC handlers need to import drivers package
+        "qmatsuite.core.resolution",  # M4: set_engine_family needs require_calculation
+        "qmatsuite.core.models",  # M4: set_engine_family needs load_calculation, save_calculation
     ]
 }
 
@@ -117,8 +117,8 @@ def test_daemon_no_kernel_imports():
             continue
 
         for line_num, import_type, module in find_imports(py_file):
-            # Skip non-quantumvitas imports
-            if not module.startswith("quantumvitas"):
+            # Skip non-qmatsuite imports
+            if not module.startswith("qmatsuite"):
                 continue
 
             # Check if allowed
@@ -143,7 +143,7 @@ def test_daemon_no_kernel_imports():
         pytest.fail(
             f"Daemon kernel import ban violated!\n"
             f"P0 LAW: Daemon MUST NOT import from kernel modules.\n"
-            f"Allowed: quantumvitas.api.*, quantumvitas.daemon.*\n"
+            f"Allowed: qmatsuite.api.*, qmatsuite.daemon.*\n"
             f"Violations:\n" + "\n".join(violations)
         )
 

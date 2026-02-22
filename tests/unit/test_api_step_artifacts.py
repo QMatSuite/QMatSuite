@@ -1,15 +1,15 @@
-"""Unit tests for QVService step artifact methods (list_step_artifacts, read_step_artifact_text)."""
+"""Unit tests for QMSService step artifact methods (list_step_artifacts, read_step_artifact_text)."""
 
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService, APIError, get_service
+from qmatsuite.api import QMSService, APIError, get_service
 
 
 @pytest.fixture
 def project_with_step(tmp_path):
     """Create a project with a calculation and step for testing."""
-    project_dir = QVService.init_project(tmp_path / "test_project")
+    project_dir = QMSService.init_project(tmp_path / "test_project")
 
     # Import structure (required for calculation)
     source = tmp_path / "si.json"
@@ -19,11 +19,11 @@ def project_with_step(tmp_path):
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService(project_dir).structure.import_file(source, name="Silicon")
+    QMSService(project_dir).structure.import_file(source, name="Silicon")
 
     # Create calculation and step using domain API
     calc_slug = "test-calc"
-    QVService(project_dir).project.init_calculation(calc_slug, structure_selector="silicon", engine_family="qe")
+    QMSService(project_dir).project.init_calculation(calc_slug, structure_selector="silicon", engine_family="qe")
 
     # Use domain API for add_step
     svc = get_service(project_dir)
@@ -36,7 +36,7 @@ def project_with_step(tmp_path):
 
 
 class TestListStepArtifacts:
-    """Tests for QVService.list_step_artifacts()."""
+    """Tests for QMSService.list_step_artifacts()."""
     
     def test_list_step_artifacts_empty_raw_dir(self, project_with_step):
         """Test listing artifacts when raw directory doesn't exist."""

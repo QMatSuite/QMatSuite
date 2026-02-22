@@ -9,9 +9,9 @@ from typing import Any
 
 import pytest
 
-from quantumvitas.drivers.siesta.inputspec import get_siesta_input_spec
-from quantumvitas.drivers.siesta.io.fdf import parse_fdf_text
-from quantumvitas.inputformat import parse_engine_inputs, write_engine_inputs
+from qmatsuite.drivers.siesta.inputspec import get_siesta_input_spec
+from qmatsuite.drivers.siesta.io.fdf import parse_fdf_text
+from qmatsuite.inputformat import parse_engine_inputs, write_engine_inputs
 
 
 SAMPLES_DIR = Path(__file__).parent / "samples" / "siesta"

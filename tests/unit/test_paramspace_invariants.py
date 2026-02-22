@@ -15,17 +15,17 @@ import shutil
 from pathlib import Path
 import yaml
 
-from quantumvitas.presets.integration import (
+from qmatsuite.presets.integration import (
     apply_presets_to_step,
     detect_presets_from_calculation,
 )
-from quantumvitas.presets.detector import detect_occupations_scheme, detect_precision
-from quantumvitas.presets.dimensions import (
+from qmatsuite.presets.detector import detect_occupations_scheme, detect_precision
+from qmatsuite.presets.dimensions import (
     OccupationsSchemeOption,
     PrecisionOption,
     CUSTOM,
 )
-from quantumvitas.presets.precision import PrecisionAdvisor
+from qmatsuite.presets.precision import PrecisionAdvisor
 
 
 class TestInvariantEnforcement:
@@ -42,9 +42,9 @@ class TestInvariantEnforcement:
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir()
         
-        # Create project.qv.yml
-        project_qv_yml = project_root / "project.qv.yml"
-        project_qv_yml.write_text(yaml.safe_dump({
+        # Create project.qms.yml
+        project_qms_yml = project_root / "project.qms.yml"
+        project_qms_yml.write_text(yaml.safe_dump({
             "name": "Test Project",
             "version": "1.0",
         }))
@@ -60,7 +60,7 @@ class TestInvariantEnforcement:
         )
         structure_file = structures_dir / "test_structure.json"
         import json
-        from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+        from qmatsuite.io.structure_io import STRUCTURE_META_KEY
         struct_dict = structure.as_dict()
         struct_dict[STRUCTURE_META_KEY] = {
             "ulid": "test_structure",

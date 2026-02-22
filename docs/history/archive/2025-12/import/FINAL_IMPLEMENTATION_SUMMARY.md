@@ -10,10 +10,10 @@ Successfully implemented automatic pseudopotential downloading and resolution fo
 
 1. **Demo Import Phase** (`tools/import_tutorial_datasets.py`)
    - Downloads missing pseudos to `repo/pseudo` during import
-   - Uses `QVService.download_pseudo_by_filename()`
+   - Uses `QMSService.download_pseudo_by_filename()`
    - Handles errors gracefully (warnings, continues processing)
 
-2. **Demo Expansion Phase** (`src/quantumvitas/project/snapshot.py`)
+2. **Demo Expansion Phase** (`src/qmatsuite/project/snapshot.py`)
    - Copies pseudos from `repo/pseudo` to `project/pseudo` during materialization
    - Falls back to download if not in repo
    - Non-blocking (warnings logged, project creation continues)
@@ -64,7 +64,7 @@ resources/demo_projects/*.yml → materialize → project/
 - Downloads to `repo/pseudo` when pseudo not found
 - Updates search directories after successful download
 
-### 2. Materialization (`src/quantumvitas/project/snapshot.py`)
+### 2. Materialization (`src/qmatsuite/project/snapshot.py`)
 - Enhanced `materialize_project_from_snapshot()` to handle pseudos
 - Copies from `repo/pseudo` first (fast, no network)
 - Falls back to download if not in repo
@@ -82,8 +82,8 @@ python tools/import_tutorial_datasets.py
 
 ### Expansion Test
 ```python
-from quantumvitas.api import QVService
-result = QVService.create_demo_project(
+from qmatsuite.api import QMSService
+result = QMSService.create_demo_project(
     target_dir=Path("/tmp/test"),
     demo_id="00_Si_scf"
 )
@@ -99,7 +99,7 @@ result = QVService.create_demo_project(
 ## Files Modified
 
 1. `tools/import_tutorial_datasets.py` - Added download logic
-2. `src/quantumvitas/project/snapshot.py` - Added copy/download logic
+2. `src/qmatsuite/project/snapshot.py` - Added copy/download logic
 
 ## Notes
 

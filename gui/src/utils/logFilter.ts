@@ -30,7 +30,7 @@ function isPollingRpcLog(line: string): boolean {
 /**
  * Filter log lines based on polling visibility.
  * 
- * @param allLines - All log lines from useQVLogs
+ * @param allLines - All log lines from useQMSLogs
  * @param showPolling - Whether to include polling RPC logs (job_counts, list_jobs)
  * @returns Filtered array of log lines
  */
@@ -50,7 +50,7 @@ export function getVisibleLogLines(allLines: string[], showPolling: boolean): st
  * Get the visible log text as a single string (for copying).
  * Uses the same filtering logic as rendering.
  * 
- * @param allLines - All log lines from useQVLogs
+ * @param allLines - All log lines from useQMSLogs
  * @param showPolling - Whether to include polling RPC logs
  * @returns Filtered log text joined with newlines
  */

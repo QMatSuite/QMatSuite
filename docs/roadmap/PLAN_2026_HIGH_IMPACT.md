@@ -152,7 +152,7 @@ Key statistics:
 │        └──────────────┴──────────────┴──────────────┘           │
 │                              │                                   │
 │  ┌───────────────────────────┴───────────────────────────┐      │
-│  │                   QVService (Core API)                 │      │
+│  │                   QMSService (Core API)                 │      │
 │  ├────────────────────────────────────────────────────────┤      │
 │  │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐ │      │
 │  │ │  Preset  │ │ Workflow │ │  Bundle  │ │ Calc Type  │ │      │
@@ -539,7 +539,7 @@ _STEP_TYPES["pyscf_rhf"] = StepTypeSpec(
 
 ### 10.1 Current State
 
-- Python package: `pip install quantumvitas`
+- Python package: `pip install qmatsuite`
 - Electron GUI: Development build only
 - No managed engines bundled
 
@@ -563,7 +563,7 @@ QMatSuite.app/
 │   │   └── QMatSuite
 │   ├── Resources/
 │   │   ├── python/           # Bundled Python
-│   │   ├── quantumvitas/     # Python package
+│   │   ├── qmatsuite/     # Python package
 │   │   └── engines/
 │   │       ├── qe/           # Pre-built QE
 │   │       └── wannier90/    # Pre-built W90
@@ -1040,7 +1040,7 @@ python -m pytest tests/integration/test_pyscf_execution.py -v
 # Install pyscf (optional dependency)
 pip install pyscf
 # OR
-pip install quantumvitas[pyscf]
+pip install qmatsuite[pyscf]
 ```
 
 ### 14.5 Test Results (2026-01-02)

@@ -53,12 +53,12 @@ Combined M2–M5 into a single batch since removing compat.py is atomic once gol
 infrastructure is gone (M1).
 
 ### Files Deleted
-- `src/quantumvitas/daemon/compat.py` (~997 lines — 12 payload adapters, 27 response shapers)
+- `src/qmatsuite/daemon/compat.py` (~997 lines — 12 payload adapters, 27 response shapers)
 
 ### Files Modified
 
-#### `src/quantumvitas/daemon/server.py`
-- Removed import: `from quantumvitas.daemon.compat import adapt_payload, shape_response`
+#### `src/qmatsuite/daemon/server.py`
+- Removed import: `from qmatsuite.daemon.compat import adapt_payload, shape_response`
 - Removed `adapt_payload()` / `shape_response()` dispatch from `_dispatch_request()`:
   - Before: `adapted_payload → handler → shaped_result`
   - After: `handler(request.payload)` directly
@@ -66,7 +66,7 @@ infrastructure is gone (M1).
 - Removed `_project_root` injection from `_handle_list_calculations`
 - Updated `_handle_set_pseudo_config` to return full config bundle via `get_pseudo_status_bundle()`
 
-#### `src/quantumvitas/api/utils.py`
+#### `src/qmatsuite/api/utils.py`
 - Added `default_store_dir` and `default_seed_dir` to `get_pseudo_status_bundle()` config output
 - Import `PseudoConfig` from core layer (API layer is allowed to import from core)
 - This provides the defaults that compat.py used to inject
@@ -85,7 +85,7 @@ infrastructure is gone (M1).
 - Comment on removed test preserved for audit trail
 
 ### Errors Encountered & Fixed
-1. **Gate test: daemon kernel import ban** — Initially added `from quantumvitas.core.pseudo_config import PseudoConfig` directly in `server.py`. This violated P0 gate (daemon must not import from kernel). Fixed by moving the default dir computation into `api/utils.py:get_pseudo_status_bundle()`.
+1. **Gate test: daemon kernel import ban** — Initially added `from qmatsuite.core.pseudo_config import PseudoConfig` directly in `server.py`. This violated P0 gate (daemon must not import from kernel). Fixed by moving the default dir computation into `api/utils.py:get_pseudo_status_bundle()`.
 
 2. **test_calculation_rpcs.py**: 2 assertion failures — native `add_step_to_calculation` returns `{steps: [...]}` not `{step_ulid: ...}`. Fixed assertions.
 

@@ -2,7 +2,7 @@
 Gate 0.4: Legacy accessor side-door detector
 
 Detects attribute access patterns that indicate side-door legacy usage:
-- any attribute named "_legacy" accessed off service/svc/QVService instances
+- any attribute named "_legacy" accessed off service/svc/QMSService instances
 - any usage of names api_legacy / _api_legacy / LegacyService as identifiers
 """
 
@@ -23,7 +23,7 @@ class LegacyAccessorVisitor(ast.NodeVisitor):
             # Check if it's accessed off something that looks like service
             if isinstance(node.value, ast.Name):
                 var_name = node.value.id
-                if var_name in ("service", "svc", "qvservice", "qv_service"):
+                if var_name in ("service", "svc", "qmsservice", "qms_service"):
                     self.violations.append({
                         "file": str(self.file_path),
                         "line": node.lineno,
@@ -54,7 +54,7 @@ class LegacyAccessorVisitor(ast.NodeVisitor):
 
 def test_no_legacy_accessor_side_door():
     """Ensure no legacy accessor side-doors in production code."""
-    src = Path("src/quantumvitas")
+    src = Path("src/qmatsuite")
     all_violations = []
 
     for py_file in src.rglob("*.py"):

@@ -12,9 +12,9 @@ import yaml
 import tempfile
 import shutil
 
-from quantumvitas.core.resources import generate_resource_id
-from quantumvitas.core.settings import QMatSuiteSettings, QEConfig, save_settings
-from quantumvitas.api import QVService
+from qmatsuite.core.resources import generate_resource_id
+from qmatsuite.core.settings import QMatSuiteSettings, QEConfig, save_settings
+from qmatsuite.api import QMSService
 
 
 @pytest.mark.unit
@@ -26,7 +26,7 @@ class TestQEDetection:
         # Create minimal project
         project_root = tmp_path / "project"
         project_root.mkdir()
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump({"project": {"name": "Test", "ulid": generate_resource_id()}}, sort_keys=False)
         )
         
@@ -63,8 +63,8 @@ class TestQEDetection:
             os.environ["HOME"] = str(tmp_path)
             
             # Call preflight_check via domain accessor - should succeed without visiting Settings
-            from quantumvitas.api import QVService
-            svc = QVService(project_root)
+            from qmatsuite.api import QMSService
+            svc = QMSService(project_root)
             result = svc.run.preflight()
             
             # Should find QE (internal)
@@ -84,7 +84,7 @@ class TestQEDetection:
         # Create minimal project
         project_root = tmp_path / "project"
         project_root.mkdir()
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump({"project": {"name": "Test", "ulid": generate_resource_id()}}, sort_keys=False)
         )
         
@@ -112,12 +112,12 @@ class TestQEDetection:
         
         # Mock get_settings_json_path to return our test settings file
         # Patch kernel module for this API test (verifies API method uses kernel function correctly)
-        from quantumvitas.core import paths as paths_module
+        from qmatsuite.core import paths as paths_module
         monkeypatch.setattr(paths_module, "get_settings_json_path", lambda: settings_file)
         
         # Call preflight_check via domain accessor
-        from quantumvitas.api import QVService
-        svc = QVService(project_root)
+        from qmatsuite.api import QMSService
+        svc = QMSService(project_root)
         result = svc.run.preflight()
         
         # Should find QE from settings (external)

@@ -40,7 +40,7 @@ This document tracks open questions and future work items for the Analysis Objec
 - Document performance tradeoffs: when is strict mode worth the cost?
 - Decide whether strict mode should be per-analysis-object-type or global.
 
-**Where**: Spec + `src/quantumvitas/core/analysis/cache.py` + Settings.
+**Where**: Spec + `src/qmatsuite/core/analysis/cache.py` + Settings.
 
 ---
 
@@ -59,7 +59,7 @@ This document tracks open questions and future work items for the Analysis Objec
 - Consider whether we need streaming readers/writers for huge datasets (avoid loading entire trajectory into memory).
 - Define maximum cache size policies (eviction, user warnings).
 
-**Where**: Spec + `src/quantumvitas/core/analysis/trajectory/io.py` + future bands/DOS IO modules.
+**Where**: Spec + `src/qmatsuite/core/analysis/trajectory/io.py` + future bands/DOS IO modules.
 
 ---
 
@@ -80,7 +80,7 @@ This document tracks open questions and future work items for the Analysis Objec
   - Virtual machines may have clock drift.
 - Define tolerance thresholds for mtime comparisons (currently 0.01s; is this sufficient?).
 
-**Where**: Spec + `src/quantumvitas/core/artifact_scanning.py` + `src/quantumvitas/core/analysis/base.py` + cross-platform test suite.
+**Where**: Spec + `src/qmatsuite/core/artifact_scanning.py` + `src/qmatsuite/core/analysis/base.py` + cross-platform test suite.
 
 ---
 
@@ -98,7 +98,7 @@ This document tracks open questions and future work items for the Analysis Objec
 - Consider whether history should be in a separate file (`.runtime/provenance_history.json`) vs. embedded in main file.
 - Decide on retention policy: keep forever vs. bounded window vs. user-configurable.
 
-**Where**: Spec + `src/quantumvitas/core/provenance.py` + migration utilities.
+**Where**: Spec + `src/qmatsuite/core/provenance.py` + migration utilities.
 
 ---
 
@@ -122,7 +122,7 @@ This document tracks open questions and future work items for the Analysis Objec
   - DOS: missing dos.out → error? warning?
 - Define UI presentation: error banners, warning badges, "retry parse" buttons.
 
-**Where**: Spec + `src/quantumvitas/core/analysis/base.py` (add `NotAvailable` exception types) + UI components.
+**Where**: Spec + `src/qmatsuite/core/analysis/base.py` (add `NotAvailable` exception types) + UI components.
 
 ---
 
@@ -166,7 +166,7 @@ This document tracks open questions and future work items for the Analysis Objec
   - Or keep only unwrapped and require explicit `wrap_positions()` call?
 - Document any coordinate system conversions (crystal vs. Cartesian, alat scaling) and where they happen (parser vs. utilities).
 
-**Where**: Spec + `src/quantumvitas/core/analysis/trajectory/model.py` + `src/quantumvitas/core/analysis/trajectory/utils.py`.
+**Where**: Spec + `src/qmatsuite/core/analysis/trajectory/model.py` + `src/qmatsuite/core/analysis/trajectory/utils.py`.
 
 ---
 
@@ -209,7 +209,7 @@ This document tracks open questions and future work items for the Analysis Objec
 - Decide whether to support reading old cache formats or require re-parse.
 - Consider versioning at the object level (trajectory v1.0, v1.1) vs. framework level (analysis objects v1.0).
 
-**Where**: Spec + `src/quantumvitas/core/analysis/cache.py` + migration utilities.
+**Where**: Spec + `src/qmatsuite/core/analysis/cache.py` + migration utilities.
 
 ---
 
@@ -224,7 +224,7 @@ This document tracks open questions and future work items for the Analysis Objec
 - Decide whether parsers should be lazy-loaded or eagerly registered.
 - Consider plugin-style extensions for third-party parsers (future).
 
-**Where**: `src/quantumvitas/parsers/registry.py` + documentation.
+**Where**: `src/qmatsuite/parsers/registry.py` + documentation.
 
 ---
 
@@ -240,7 +240,7 @@ This document tracks open questions and future work items for the Analysis Objec
 - Decide whether to add new primitives or extend existing ones.
 - Keep primitives data-only (no style) as per spec.
 
-**Where**: Spec + `src/quantumvitas/core/analysis/primitives.py` + bands/DOS implementations.
+**Where**: Spec + `src/qmatsuite/core/analysis/primitives.py` + bands/DOS implementations.
 
 ---
 

@@ -8,15 +8,15 @@ as defined in DEMO_STORE_SPEC.md Draft v6 §MP.2.
 
 ## 1. Current Capability Map
 
-### 1.1 API Service Layer (`src/quantumvitas/api/service.py`)
+### 1.1 API Service Layer (`src/qmatsuite/api/service.py`)
 
-The QVService class exposes 35+ authoring methods organised in nested domain
+The QMSService class exposes 35+ authoring methods organised in nested domain
 classes.  These are the operations needed to build a project from scratch
 without loading a snapshot:
 
 | Operation | Method | Line | Granularity |
 |-----------|--------|------|-------------|
-| Init project | `QVService.init_project()` | 7416 | Static, creates dirs + project.qv.yml |
+| Init project | `QMSService.init_project()` | 7416 | Static, creates dirs + project.qms.yml |
 | Import structure | `svc.structure.import_file()` | 1527 | Single file, returns StructureDTO |
 | Create calculation | `svc.calculation.create()` | 3073 | One calc, binds engine + structure |
 | Add step | `svc.calculation.add_step()` | 3955 | One step, accepts gen/spec + params |
@@ -32,7 +32,7 @@ in `core/yamldoc.py`).  Delete Semantics A: `None` = delete.  All
 
 **Snapshot machinery:** `export_project_to_snapshot()` (line 189) and
 `materialize_project_from_snapshot()` (line 521) in
-`src/quantumvitas/project/snapshot.py`.  The `ProjectSnapshot` dataclass
+`src/qmatsuite/project/snapshot.py`.  The `ProjectSnapshot` dataclass
 (line 42) carries `version, project, structures, calculations, pseudo, extra,
 meta`.
 
@@ -41,27 +41,27 @@ a complete authoring sequence:
 `init_project → import_structure → create_calculation → add_step(×N) →
 update_step_params(×N) → configure_species → run → analyse`.
 
-### 1.2 Daemon RPC Layer (`src/quantumvitas/daemon/server.py`)
+### 1.2 Daemon RPC Layer (`src/qmatsuite/daemon/server.py`)
 
 86 `_handle_*` methods routed via `self._handlers` dict (lines 236–401).
 The authoring-relevant subset:
 
 | RPC method | Handler | Delegation |
 |------------|---------|------------|
-| `create_project` | `_handle_create_project` (2071) | `QVService.init_project()` |
+| `create_project` | `_handle_create_project` (2071) | `QMSService.init_project()` |
 | `import_structure` | `_handle_import_structure` (2109) | `svc.structure.import_file()` |
 | `create_calculation` | `_handle_create_calculation` (2824) | `svc.calculation.create()` |
 | `add_step_to_calculation` | `_handle_add_step_to_calculation` (4171) | `svc.calculation.add_step()` |
 | `update_step_params` | `_handle_update_step_params` (3175) | `svc.calculation.update_step_params()` |
 | `set_engine_family` | `_handle_set_engine_family` (1945) | **DIRECT YAML** (see §3.1) |
 | `apply_presets_to_calculation` | `_handle_apply_presets_to_calculation` (3879) | **EMBEDDED LOGIC** (see §3.2) |
-| `create_demo_project` | `_handle_create_demo_project` (4620) | `QVService.create_demo_project()` |
+| `create_demo_project` | `_handle_create_demo_project` (4620) | `QMSService.create_demo_project()` |
 | `run_calculation` | `_handle_run_calculation` (5247) | `svc.run.run_calculation()` |
 
-Most handlers are thin wrappers around QVService.  Two exceptions are
+Most handlers are thin wrappers around QMSService.  Two exceptions are
 flagged as architectural issues in §3.
 
-### 1.3 CLI Layer (`src/quantumvitas/cli/main.py`)
+### 1.3 CLI Layer (`src/qmatsuite/cli/main.py`)
 
 ~40 subcommands covering the full CRUD lifecycle:
 
@@ -75,7 +75,7 @@ flagged as architectural issues in §3.
 | **run** | `step`, `calculation`, `structure` |
 | **save** | `save-project` (export snapshot) |
 
-All CLI commands call QVService methods.  No direct YAML manipulation.
+All CLI commands call QMSService methods.  No direct YAML manipulation.
 
 ---
 
@@ -87,10 +87,10 @@ Several existing test suites already exercise the exact authoring sequence
 that Path B requires:
 
 **`tests/unit/test_api_service.py`** — Most comprehensive:
-- `TestQVServiceProject`: `init_project`, `configure_project`
-- `TestQVServiceStructure`: `import_file`, `list`, `get`, `update_meta`, `delete`
-- `TestQVServiceCalculation`: `init_calculation`, `list`, `get`, `set_structure`, `delete`
-- `TestQVServiceStep`: `add_step`, `list`, `remove_step`
+- `TestQMSServiceProject`: `init_project`, `configure_project`
+- `TestQMSServiceStructure`: `import_file`, `list`, `get`, `update_meta`, `delete`
+- `TestQMSServiceCalculation`: `init_calculation`, `list`, `get`, `set_structure`, `delete`
+- `TestQMSServiceStep`: `add_step`, `list`, `remove_step`
 
 **`tests/unit/test_api_service_steps.py`** — Step configuration:
 - `test_add_step_to_calculation_creates_valid_spec`
@@ -113,17 +113,17 @@ that Path B requires:
 
 **`tests/utils/calculation_projects.py`** — Helper:
 - `create_calculation_project()` — programmatic scaffolding (lower-level
-  than QVService, writes YAML directly for test speed)
+  than QMSService, writes YAML directly for test speed)
 
 ### 2.2 Reuse Assessment
 
 | Component | Reusable for Path B? | Notes |
 |-----------|---------------------|-------|
-| `QVService.*` methods | **YES — directly** | All authoring ops exist |
+| `QMSService.*` methods | **YES — directly** | All authoring ops exist |
 | `YamlDoc.apply_patch()` | **YES** | Core mutation primitive |
 | `ProjectSnapshot` export | **YES** | Roundtrip B needs re-snapshot |
 | Test patterns in `test_api_service.py` | **YES — as templates** | Copy-adapt for demo-specific sequences |
-| `create_calculation_project()` helper | **PARTIAL** | Bypasses QVService; useful for reference only |
+| `create_calculation_project()` helper | **PARTIAL** | Bypasses QMSService; useful for reference only |
 | Daemon RPC handlers | **YES — mostly** | Two exceptions (§3.1, §3.2) |
 | `generate_ref_packs_realrun.py` | **YES** | Analysis probe logic reusable as-is |
 
@@ -137,14 +137,14 @@ that Path B requires:
 
 ```python
 def _handle_set_engine_family(self, payload):
-    from quantumvitas.api.utils import load_calculation, save_calculation
+    from qmatsuite.api.utils import load_calculation, save_calculation
     calc_yaml = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_yaml, project_root)
     calc_model.engine_family = engine_family
     save_calculation(calc_model, calc_dir)
 ```
 
-This handler bypasses QVService entirely and performs **direct YAML
+This handler bypasses QMSService entirely and performs **direct YAML
 load/save** via `api.utils` proxies.  This is a "second truth" because:
 
 1. It does not call `svc.calculation.create()` or any service method.
@@ -158,10 +158,10 @@ load/save** via `api.utils` proxies.  This is a "second truth" because:
 `engine_family` as a parameter (delegating to `svc.calculation.create()`).
 So for **new** calculations, the violation is avoidable.  But the
 standalone `set_engine_family` RPC — used by the GUI when the user switches
-engines on an existing calculation — has no QVService equivalent.
+engines on an existing calculation — has no QMSService equivalent.
 
 **Fix required:** Add `svc.calculation.set_engine_family(calc_selector,
-engine_family)` to QVService, then refactor the daemon handler to delegate.
+engine_family)` to QMSService, then refactor the daemon handler to delegate.
 
 ### 3.2 MODERATE: `apply_presets_to_calculation` — Embedded Broadcast Logic
 
@@ -176,7 +176,7 @@ This handler contains ~160 lines of embedded logic for:
 
 While it does call `svc.calculation.update_step_params()` for each step,
 the **orchestration logic** (iteration, compilation, broadcast) lives in
-the daemon, not in QVService.
+the daemon, not in QMSService.
 
 **Impact on Path B:** If Path B replays preset application, it must either:
 (a) call the daemon RPC (coupling to daemon), or (b) duplicate the
@@ -186,7 +186,7 @@ broadcast logic.  Neither is clean.
 presets)` method that encapsulates the broadcast.  The daemon handler
 becomes a thin wrapper.
 
-### 3.3 MODERATE: Missing `init_calculation` on QVService.Calculation
+### 3.3 MODERATE: Missing `init_calculation` on QMSService.Calculation
 
 The existing test fixture pattern uses `svc.project.init_calculation()` —
 a method on the `Project` nested class that creates a calculation and
@@ -267,14 +267,14 @@ Roundtrip A (snapshot load → re-snapshot → diff).
 | **Preset support** | ★★☆☆☆ | ★★★★★ | ★☆☆☆☆ |
 | **GUI fidelity** | ★★☆☆☆ | ★★★★★ | ★☆☆☆☆ |
 
-**Recommended route:** API Service (QVService).
+**Recommended route:** API Service (QMSService).
 
 Rationale:
 1. All authoring ops exist and are architecturally clean.
 2. No daemon process needed → faster tests, no IPC overhead.
 3. DTO-based returns are easy to assert on.
 4. Two missing capabilities (set engine family, apply presets) should be
-   fixed by promoting daemon-embedded logic into QVService (§3.1, §3.2).
+   fixed by promoting daemon-embedded logic into QMSService (§3.1, §3.2).
 5. CLI adds subprocess overhead and string parsing with no benefit.
 6. Daemon adds IPC overhead and inherits the two architectural issues.
 
@@ -294,7 +294,7 @@ Rationale:
 
 Build `compile_snapshot_to_authoring_ops(snapshot: ProjectSnapshot) →
 list[AuthoringOp]` that decomposes a Level-2 YAML into an ordered
-sequence of QVService calls.
+sequence of QMSService calls.
 
 **AuthoringOp** vocabulary (minimum viable set):
 
@@ -315,9 +315,9 @@ order (structures before calculations, calculations before steps).
 ### Phase 2: Authoring Replay Engine
 
 Build `replay_authoring_ops(ops: list[AuthoringOp], target_dir: Path) →
-Path` that executes the op sequence against QVService.
+Path` that executes the op sequence against QMSService.
 
-This is straightforward — each op maps 1:1 to a QVService call.
+This is straightforward — each op maps 1:1 to a QMSService call.
 ~100–150 lines.
 
 ### Phase 3: Roundtrip B Test Harness
@@ -361,7 +361,7 @@ Extend `generate_ref_packs_realrun.py` (or add a parallel tool) that:
 
 ### What must be built
 
-1. **Fix two daemon handlers** that bypass QVService (small, well-scoped).
+1. **Fix two daemon handlers** that bypass QMSService (small, well-scoped).
 2. **Authoring compiler** — the primary gap (~300 lines).
 3. **Replay engine** — mechanical mapping of ops to API calls (~150 lines).
 4. **Roundtrip B test harness** — analogous to existing integrity suite.
@@ -371,7 +371,7 @@ Extend `generate_ref_packs_realrun.py` (or add a parallel tool) that:
 | Risk | Likelihood | Mitigation |
 |------|-----------|------------|
 | Snapshot → ops lossy (info lost in compilation) | Medium | Semantic diff tolerances; iterate on compiler |
-| Preset broadcast needs daemon-only logic | High | Extract to QVService first (Phase 0) |
+| Preset broadcast needs daemon-only logic | High | Extract to QMSService first (Phase 0) |
 | ULID non-determinism breaks naive diff | Certain | Already handled: semantic diff ignores ULIDs |
 | Multi-step dependency ordering fragile | Low | Snapshot already encodes order via step lists |
 

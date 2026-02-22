@@ -16,8 +16,8 @@ Implement strict typing for "Class A" (preset/IR-participating) keys while keepi
 
 ### 1.1 UI Control Type Source
 
-**Location**: `src/quantumvitas/data/qe_ui_parameters.json`  
-**Loaded by**: `src/quantumvitas/data/qe_metadata.py:_load_ui_parameters()`  
+**Location**: `src/qmatsuite/data/qe_ui_parameters.json`  
+**Loaded by**: `src/qmatsuite/data/qe_metadata.py:_load_ui_parameters()`  
 **Daemon handler**: `server.py:_handle_list_qe_ui_parameters()`
 
 Current types in JSON:
@@ -29,7 +29,7 @@ Current types in JSON:
 
 ### 1.2 YAML Patching (Critical Bug)
 
-**Location**: `src/quantumvitas/api.py:4545`
+**Location**: `src/qmatsuite/api.py:4545`
 ```python
 # STRING-ONLY: Convert all values to strings for YAML storage
 param_patch[namelist_upper][key] = str(value)
@@ -39,7 +39,7 @@ param_patch[namelist_upper][key] = str(value)
 
 ### 1.3 ParamSpace Owned Keys (Class A definition)
 
-**Location**: `src/quantumvitas/presets/paramspace.py`
+**Location**: `src/qmatsuite/presets/paramspace.py`
 
 | Dimension | Keys | Types |
 |-----------|------|-------|
@@ -50,13 +50,13 @@ param_patch[namelist_upper][key] = str(value)
 
 ### 1.4 IR Key Mapping
 
-**Location**: `src/quantumvitas/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING`
+**Location**: `src/qmatsuite/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING`
 
 This provides the complete list of IR-mapped keys (Class A candidates).
 
 ### 1.5 QE Writer Behavior (Correct)
 
-**Location**: `src/quantumvitas/io/generator/qe_generator.py:20-30`
+**Location**: `src/qmatsuite/io/generator/qe_generator.py:20-30`
 ```python
 def format_value(value: Any) -> str:
     if isinstance(value, bool):
@@ -70,16 +70,16 @@ def format_value(value: Any) -> str:
 
 ### 1.6 StepDoc Normalization
 
-**Location**: `src/quantumvitas/core/yamldoc.py:551-554`
+**Location**: `src/qmatsuite/core/yamldoc.py:551-554`
 
 Only does alias normalization for specific keys (gauss→gaussian). Does NOT globally lowercase values. This is correct behavior.
 
 ### 1.7 Existing Parse Helpers
 
-**Location**: `src/quantumvitas/presets/integration.py:41-52`
+**Location**: `src/qmatsuite/presets/integration.py:41-52`
 - `_parse_bool_value()`: Parses various bool representations (.true., true, t, etc.)
 
-**Location**: `src/quantumvitas/presets/paramspace.py`
+**Location**: `src/qmatsuite/presets/paramspace.py`
 - `parse_bool()`, `parse_int()`, `parse_float()`: Used for ParamSpace matching
 
 These are for detection/matching, not UI validation.
@@ -134,7 +134,7 @@ These are for detection/matching, not UI validation.
 **Goal**: Provide a single SSOT function to determine if a key is Class A.
 
 **Files to modify**:
-- `src/quantumvitas/ir/backends/qe/mapping.py`
+- `src/qmatsuite/ir/backends/qe/mapping.py`
 
 **Changes**:
 1. Add function:
@@ -184,7 +184,7 @@ pytest tests/unit/test_class_a_keys.py -v
 **Goal**: Add type parsing/validation functions for Class A keys.
 
 **Files to create**:
-- `src/quantumvitas/core/param_validation.py`
+- `src/qmatsuite/core/param_validation.py`
 
 **Content**:
 ```python
@@ -301,7 +301,7 @@ pytest tests/unit/test_param_validation.py -v
 **Goal**: Fix `update_step_params` to respect Class A/B typing.
 
 **Files to modify**:
-- `src/quantumvitas/api.py` (update_step_params method)
+- `src/qmatsuite/api.py` (update_step_params method)
 
 **Changes**:
 Replace lines 4539-4545:
@@ -317,8 +317,8 @@ for key, value in params.items():
 
 With:
 ```python
-from quantumvitas.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
-from quantumvitas.core.param_validation import (
+from qmatsuite.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
+from qmatsuite.core.param_validation import (
     validate_and_parse,
     normalize_class_b_value,
     ValidationError,
@@ -340,7 +340,7 @@ for key, value in params.items():
                     )
                     param_patch[namelist_upper][key] = typed_value
                 except ValidationError as e:
-                    raise QVServiceError(str(e))
+                    raise QMSServiceError(str(e))
             else:
                 # Class A but no type info - store as trimmed string
                 param_patch[namelist_upper][key] = raw_value.strip()
@@ -378,7 +378,7 @@ pytest tests/unit/test_param_validation.py -v
 **Goal**: Ensure UI metadata includes all Class A keys with correct types.
 
 **Files to modify**:
-- `src/quantumvitas/data/qe_ui_parameters.json`
+- `src/qmatsuite/data/qe_ui_parameters.json`
 
 **Changes**:
 Add missing Class A parameters with correct types:
@@ -435,7 +435,7 @@ Add missing Class A parameters with correct types:
 **Verification**:
 ```bash
 pytest tests/unit/test_ui_param_metadata.py -v
-python -c "from quantumvitas.data.qe_metadata import validate_ui_parameters; print(validate_ui_parameters())"
+python -c "from qmatsuite.data.qe_metadata import validate_ui_parameters; print(validate_ui_parameters())"
 ```
 
 **Do NOT change**:
@@ -520,7 +520,7 @@ class TestClassABIntegration:
     def test_class_a_validation_error_blocks_save(self, tmp_path):
         """Invalid Class A value should raise error, not save."""
         # Try to set ecutwfc="not a number"
-        # Verify raises QVServiceError
+        # Verify raises QMSServiceError
         pass
     
     def test_class_b_dot_true_preserved(self, tmp_path):
@@ -609,7 +609,7 @@ You are AUTO implementing PR0 from docs/dev/plan-ui-param-typing-a-vs-b.md
 
 TASK: Export Class A Key Registry
 
-MODIFY: src/quantumvitas/ir/backends/qe/mapping.py
+MODIFY: src/qmatsuite/ir/backends/qe/mapping.py
 
 ADD after IR_TO_QE_MAPPING:
 
@@ -665,7 +665,7 @@ You are AUTO implementing PR1 from docs/dev/plan-ui-param-typing-a-vs-b.md
 
 TASK: Backend Validation Helpers
 
-CREATE: src/quantumvitas/core/param_validation.py
+CREATE: src/qmatsuite/core/param_validation.py
 (Use content from plan file section PR1)
 
 CREATE TEST: tests/unit/test_param_validation.py
@@ -693,7 +693,7 @@ You are AUTO implementing PR2 from docs/dev/plan-ui-param-typing-a-vs-b.md
 
 TASK: Fix YAML Patching for Class A/B
 
-MODIFY: src/quantumvitas/api.py
+MODIFY: src/qmatsuite/api.py
 
 In update_step_params() method (around line 4539-4545):
 Replace the loop that converts all values to str(value).
@@ -714,7 +714,7 @@ You are AUTO implementing PR3 from docs/dev/plan-ui-param-typing-a-vs-b.md
 
 TASK: Add Class A Keys to qe_ui_parameters.json
 
-MODIFY: src/quantumvitas/data/qe_ui_parameters.json
+MODIFY: src/qmatsuite/data/qe_ui_parameters.json
 
 Add missing boolean parameters under "pw" -> "scf":
 - noncolin (type: "bool")
@@ -723,7 +723,7 @@ Add missing boolean parameters under "pw" -> "scf":
 - noinv (type: "bool")
 
 VERIFICATION:
-python -c "from quantumvitas.data.qe_metadata import validate_ui_parameters; errors = validate_ui_parameters(); print('OK' if not errors else errors)"
+python -c "from qmatsuite.data.qe_metadata import validate_ui_parameters; errors = validate_ui_parameters(); print('OK' if not errors else errors)"
 
 TICK CHECKBOX: PR3 in plan file
 COMMIT: "Data: add bool parameters to qe_ui_parameters.json (PR3)"

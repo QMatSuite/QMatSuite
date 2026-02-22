@@ -29,8 +29,8 @@ Reviewed all TODO items from the demo generator refactoring and prefix/outdir in
 
 ### Step 3: Backend Conflict Metadata ✅
 - **Status**: COMPLETE
-- **Implementation**: `QVService._detect_prefix_outdir_injection()` method added
-- **Integration**: `QVService.get_step_detail()` returns `prefix_outdir_injection` field
+- **Implementation**: `QMSService._detect_prefix_outdir_injection()` method added
+- **Integration**: `QMSService.get_step_detail()` returns `prefix_outdir_injection` field
 - **Metadata includes**:
   - `effective_prefix`: calculation.meta.slug
   - `effective_outdir`: "./outdir" (default)
@@ -138,9 +138,9 @@ python tools/verify_demos.py
 
 # Verify prefix/outdir injection metadata exists
 python -c "
-from src.quantumvitas.api import QVService
-print('✓ QVService._detect_prefix_outdir_injection exists')
-print('✓ Method signature:', QVService._detect_prefix_outdir_injection.__name__)
+from src.qmatsuite.api import QMSService
+print('✓ QMSService._detect_prefix_outdir_injection exists')
+print('✓ Method signature:', QMSService._detect_prefix_outdir_injection.__name__)
 "
 ```
 

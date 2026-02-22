@@ -11,8 +11,8 @@ import { Suspense, useCallback, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 
-import { useQVClient } from '../../hooks/useQVClient';
-import type { PrimitiveBundleData } from '../../types/qv';
+import { useQMSClient } from '../../hooks/useQMSClient';
+import type { PrimitiveBundleData } from '../../types/qms';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import type { VolumeStats } from '../../utils/marchingCubes';
 import { IsosurfaceMesh, type IsosurfaceMetadata } from '../three/IsosurfaceMesh';
@@ -59,7 +59,7 @@ export function Field3DVizPanel({
   projectRoot,
   runUlid,
 }: Field3DVizPanelProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
 
   const [gridState, setGridState] = useState<GridState | null>(null);
   const [gridLoading, setGridLoading] = useState(false);
@@ -105,7 +105,7 @@ export function Field3DVizPanel({
 
     try {
       // Step 1: RPC to materialize grid to .scratch/
-      const response = await qv.call('get_field3d_grid', {
+      const response = await qms.call('get_field3d_grid', {
         project_root: normalizedRoot,
         run_ulid: runUlid,
       });
@@ -118,7 +118,7 @@ export function Field3DVizPanel({
       const meta = response.data;
 
       // Step 2: Read binary grid via Electron IPC
-      const buffer = await (window as any).qv.readScratchFile(
+      const buffer = await (window as any).qms.readScratchFile(
         meta.calc_dir,
         '.scratch/field3d/active.f32',
       );
@@ -159,18 +159,18 @@ export function Field3DVizPanel({
     } finally {
       setGridLoading(false);
     }
-  }, [projectRoot, runUlid, qv]);
+  }, [projectRoot, runUlid, qms]);
 
   if (availableObjectTypes.length === 0) {
     return (
-      <div className="analysis-surface__placeholder" data-testid="qv-analysis-no-objects">
+      <div className="analysis-surface__placeholder" data-testid="qms-analysis-no-objects">
         No analysis object is available for this step in the current run.
       </div>
     );
   }
 
   return (
-    <div className="analysis-viz" data-testid="qv-analysis-field3d-panel">
+    <div className="analysis-viz" data-testid="qms-analysis-field3d-panel">
       {/* Object type tiles */}
       <div className="analysis-viz__controls">
         <div className="analysis-viz__tiles">
@@ -190,13 +190,13 @@ export function Field3DVizPanel({
         </div>
       </div>
 
-      {loading ? <div className="analysis-surface__placeholder" data-testid="qv-analysis-loading">Loading analysis...</div> : null}
-      {error ? <div className="analysis-surface__error" data-testid="qv-analysis-error">{error}</div> : null}
+      {loading ? <div className="analysis-surface__placeholder" data-testid="qms-analysis-loading">Loading analysis...</div> : null}
+      {error ? <div className="analysis-surface__error" data-testid="qms-analysis-error">{error}</div> : null}
 
       {!loading && !error && bundle ? (
         <>
           {/* Metadata card */}
-          <div className="analysis-viz__field3d-card" data-testid="qv-analysis-field3d-card">
+          <div className="analysis-viz__field3d-card" data-testid="qms-analysis-field3d-card">
             <h4>Field3D{fieldKind ? ` (${fieldKind})` : ''}</h4>
             <table className="analysis-viz__field3d-table">
               <tbody>
@@ -228,7 +228,7 @@ export function Field3DVizPanel({
             <div className="field3d-viz__load-section">
               <button
                 className="field3d-viz__load-btn"
-                data-testid="qv-field3d-load-grid"
+                data-testid="qms-field3d-load-grid"
                 disabled={gridLoading || !runUlid}
                 onClick={() => void handleLoadGrid()}
                 type="button"

@@ -2,7 +2,7 @@
 Quick integration tests for PH module.
 
 These tests run selected PH calculations using local CI test data.
-They assume `quantumvitas` is importable (e.g. via `pip install -e .` or
+They assume `qmatsuite` is importable (e.g. via `pip install -e .` or
 `PYTHONPATH=src`).
 """
 
@@ -11,9 +11,9 @@ from typing import Dict, Any, List
 
 import pytest
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.io import QEInputParser, QEInputGenerator
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
+from qmatsuite.io import QEInputParser, QEInputGenerator
 from tests.core.qe_test_utils import parse_jobconfig
 from tests.core.qe_step_runner import run_and_verify_step_with_assert, get_default_working_dir
 

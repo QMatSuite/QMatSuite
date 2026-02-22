@@ -33,7 +33,7 @@ python -m pytest tests/gates/ -v --tb=short
 ## Completed Work
 
 ### PR-K0: Gate Tests
-- `tests/gates/test_kernel_no_api_import.py` (G-K0) — AST scan kernel for `from quantumvitas.api`
+- `tests/gates/test_kernel_no_api_import.py` (G-K0) — AST scan kernel for `from qmatsuite.api`
 - `tests/gates/test_kernel_no_frontend_import.py` (G-K1) — AST scan kernel for CLI/daemon imports
 - `tests/gates/test_engine_no_ssot_import.py` (G-K6) — Scan engine/ for SSOT imports and yaml.safe_load
 
@@ -81,7 +81,7 @@ python -m pytest tests/gates/ -v --tb=short
 ### PR-K3b: Resources Meta-Only Enforcement (Law K7, Spec §2.2)
 - **Date**: 2026-02-03
 - Created `load_yaml_meta_subtree()` and `load_json_meta_subtree()` in `core/yaml_io.py`
-  - Returns ONLY the `meta` (or `__qv_meta__`) subtree from YAML/JSON files
+  - Returns ONLY the `meta` (or `__qms_meta__`) subtree from YAML/JSON files
   - Exported from `core/public.py`
 - Migrated `build_resource_index()` — 3 sites:
   - `CalcDoc.load(calculation_yaml).to_dict()` → `load_yaml_meta_subtree(calculation_yaml)`
@@ -109,9 +109,9 @@ python -m pytest tests/gates/ -v --tb=short
   - `workflow/public.py`: ~4 new symbols (normalize_step_type_to_gen, generate_subchain_basename, normalize_step_type, get_chain_namespace_folder, is_spec, is_gen)
   - `analysis/public.py`: ~1 new symbol (extract_energy_metrics_from_text)
 - Migrated 169 cross-domain deep imports across 43 files to use `public.py`
-- Consolidated duplicate `from quantumvitas.<domain>.public import` in 15 files
+- Consolidated duplicate `from qmatsuite.<domain>.public import` in 15 files
 - Circular import fixes: `core/public.py` lazy-loads structure_canonicalize/structure_fingerprint/legacy engines; `calculation/public.py` lazy-loads CalculationRunner
-- Remaining deep imports (15): private symbols not exported via public.py (_find_quantumvitas_root, resolvers, RunManifest, geometry helpers)
+- Remaining deep imports (15): private symbols not exported via public.py (_find_qmatsuite_root, resolvers, RunManifest, geometry helpers)
 - DAG violations (63): deferred to PR-K7 (need code movement)
 - `tests/gates/test_no_deep_domain_import.py` — NEW gate test (G-K2b), 2 tests:
   - No cross-domain deep imports bypassing public.py (with DAG + not-in-public allowlists)

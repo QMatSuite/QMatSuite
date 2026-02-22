@@ -477,7 +477,7 @@ def promote_frame(
 Provenance stored in promoted structure:
 ```python
 {
-    "__qv_meta__": {
+    "__qms_meta__": {
         "type": "structure",
         "id": "01J...",  # ULID
         "provenance": {
@@ -750,7 +750,7 @@ These MUST be tested for any parser/writer implementation:
 |----|-----------|------|
 | T12 | Promoted structure matches frame | Compare positions/cell/species |
 | T13 | Promote is idempotent (dedup) | Same frame → same ULID (if fingerprint matches) |
-| T14 | Provenance recorded | `promoted_structure.__qv_meta__["provenance"]["source"] == "trajectory_frame"` |
+| T14 | Provenance recorded | `promoted_structure.__qms_meta__["provenance"]["source"] == "trajectory_frame"` |
 
 ### 11.5 Parser Contract
 
@@ -868,12 +868,12 @@ Patterns explicitly NOT adopted:
 
 | Existing Pattern | Location | How Trajectory Extends It |
 |------------------|----------|---------------------------|
-| Relax artifacts in calc-scope | `src/quantumvitas/execution/relax_artifacts.py:24-82` | Trajectory is multi-frame artifact with same scope |
+| Relax artifacts in calc-scope | `src/qmatsuite/execution/relax_artifacts.py:24-82` | Trajectory is multi-frame artifact with same scope |
 | Provenance tracking | `RELAX_SPEC.md` §3.1 | TrajectoryMeta includes run_id, calc_ulid, step_ulid |
-| Structure fingerprint | `src/quantumvitas/core/structure_fingerprint.py` | promote_frame uses same fingerprinting |
+| Structure fingerprint | `src/qmatsuite/core/structure_fingerprint.py` | promote_frame uses same fingerprinting |
 | Raw sandbox contract | `docs/JOB_IO_DIRECTORY_SEMANTICS.md` | Trajectory in raw/trajectory/ |
-| @scan: token pattern | `src/quantumvitas/calculation/scan_tokens.py` | @traj: follows same scalar-string pattern |
-| ULID for resources | `src/quantumvitas/core/resources.py:40-42` | Frames get ULID only after promote |
+| @scan: token pattern | `src/qmatsuite/calculation/scan_tokens.py` | @traj: follows same scalar-string pattern |
+| ULID for resources | `src/qmatsuite/core/resources.py:40-42` | Frames get ULID only after promote |
 
 ---
 

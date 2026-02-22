@@ -12,7 +12,7 @@
 | Metric | Original (2026-02-14) | Current | Delta |
 |--------|----------------------|---------|-------|
 | **Total API methods (all depths)** | 117 | 125 | +8 |
-| **Depth-0 methods on QVService** | 23 | 18 | -5 |
+| **Depth-0 methods on QMSService** | 23 | 18 | -5 |
 | **Depth-1 sub-objects** | 8 | 9 | +1 (`pseudo`) |
 | **Depth-1 methods (total)** | 94 | 107 | +13 |
 | **api.utils public functions** | ~65 | 72 | +7 |
@@ -29,7 +29,7 @@
 
 ### Method count detail
 
-**Depth-0 on QVService (18):**
+**Depth-0 on QMSService (18):**
 - 9 properties (sub-object accessors): `analysis`, `structure`, `online_search`, `calculation`, `run`, `project`, `engine`, `history`, `pseudo`
 - 9 static methods: `init_project`, `get_settings`, `get_workflow_service`, `run_single_step`, `get_default_step_params`, `resolve_step_type_spec`, `generate_kpath`, `create_demo_project`, `list_demo_projects`
 
@@ -66,7 +66,7 @@ The compat.py deletion (-1,011 lines) and daemon cleanup (-890 lines) more than 
 **Current state:** Still present at `api/utils.py:618-634`.
 
 ```python
-from quantumvitas.drivers.qe.data.qe_metadata import (
+from qmatsuite.drivers.qe.data.qe_metadata import (
     get_ui_parameters, list_supported_modules, get_module_param_sections,
     get_module_card_sections, get_module_doc_url, get_metadata_file_info,
     get_qe_metadata_debug_info, safe_load_metadata, reload_metadata,
@@ -181,7 +181,7 @@ Plus `svc.project.build_resource_index()` is called directly in:
 
 ### A3.1 Duplicate method definitions in server.py
 
-**CRITICAL:** Two methods are defined TWICE in the QVDaemon class:
+**CRITICAL:** Two methods are defined TWICE in the QMSDaemon class:
 
 1. `_handle_detect_workflow` — defined at line 2903 AND line 5303. The second definition silently shadows the first. The dict registers the key twice (lines 333 and 389), so the LAST dict entry wins (line 389, pointing to the shadowed method at line 5303). The first definition (line 2903) is dead code.
 
@@ -215,12 +215,12 @@ This is the **single largest remaining business logic leak** in the daemon. A Ju
 
 ### A3.4 Daemon _handle_create_demo_project enriches response
 
-Lines 3576-3647: After calling `QVService.create_demo_project()`, the handler:
+Lines 3576-3647: After calling `QMSService.create_demo_project()`, the handler:
 - Rebuilds registry
 - Enriches response with GUI-specific fields: structures list, calculations list with expanded detail
 - Adds `project_root` field
 
-This is moderate business logic (response enrichment for GUI). A Jupyter user calling `QVService.create_demo_project()` gets a less detailed response.
+This is moderate business logic (response enrichment for GUI). A Jupyter user calling `QMSService.create_demo_project()` gets a less detailed response.
 
 **Recommendation:** Move the enrichment into the API method itself (the create_demo_project static method should return all the data the GUI needs).
 - **Effort: S** | **Risk: Low**
@@ -293,8 +293,8 @@ This is acceptable short-term but means:
 
 | Step | API Method | Status |
 |------|-----------|--------|
-| List demos | `QVService.list_demo_projects()` | OK |
-| Create demo | `QVService.create_demo_project()` | OK |
+| List demos | `QMSService.list_demo_projects()` | OK |
+| Create demo | `QMSService.create_demo_project()` | OK |
 | Run calculation | `svc.run.run_calculation()` | OK |
 | Check run status | `svc.run.list_runs()` | OK |
 | Get step digest | `svc.analysis.get_step_digest()` | OK |
@@ -309,7 +309,7 @@ This is acceptable short-term but means:
 
 | Step | API Method | Status |
 |------|-----------|--------|
-| Create project | `QVService.init_project()` | OK |
+| Create project | `QMSService.init_project()` | OK |
 | Import local structure | `svc.structure.import_file()` | OK |
 | Search online structures | `svc.online_search.search_structures()` | OK |
 | Preview online candidate | `svc.online_search.get_candidate_detail()` | OK |
@@ -364,12 +364,12 @@ This is acceptable short-term but means:
 
 | File | Lines |
 |------|-------|
-| `src/quantumvitas/api/service.py` | 8,988 |
-| `src/quantumvitas/api/utils.py` | 2,685 |
-| `src/quantumvitas/daemon/server.py` | 5,519 |
-| `src/quantumvitas/daemon/compat.py` | **DELETED** |
-| `src/quantumvitas/daemon/jobs.py` | ~707 |
-| `src/quantumvitas/cli/main.py` | 5,374 |
+| `src/qmatsuite/api/service.py` | 8,988 |
+| `src/qmatsuite/api/utils.py` | 2,685 |
+| `src/qmatsuite/daemon/server.py` | 5,519 |
+| `src/qmatsuite/daemon/compat.py` | **DELETED** |
+| `src/qmatsuite/daemon/jobs.py` | ~707 |
+| `src/qmatsuite/cli/main.py` | 5,374 |
 | **Total** | **~23,273** |
 
 ## Appendix: RPC Handler Dispatch (122 entries, 120 unique)

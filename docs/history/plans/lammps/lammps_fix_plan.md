@@ -13,7 +13,7 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 brew --prefix lammps
 ls -l /opt/homebrew/opt/lammps/bin
 /opt/homebrew/opt/lammps/bin/lmp_serial -h | head -n 5
-python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
+python -c "from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
 ```
 并修复 discovery/marker，**不许改 tests 去 skip**。
 
@@ -25,7 +25,7 @@ python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_
 
 #### A) 移除 structure_steps.py 污染
 
-**文件**：`src/quantumvitas/calculation/structure_steps.py`
+**文件**：`src/qmatsuite/calculation/structure_steps.py`
 
 **删除 #1**（第785-787行，`is_lammps_step` 定义）：
 ```python
@@ -46,7 +46,7 @@ python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_
             f"LAMMPS engine will build input dynamically from structure + parameters."
         )
         # Generate a dummy input file path (LAMMPS engine doesn't use it, but Step.input_file requires a path)
-        from quantumvitas.calculation.naming import CalculationFileNaming
+        from qmatsuite.calculation.naming import CalculationFileNaming
         if input_name:
             filename = input_name
         else:
@@ -62,7 +62,7 @@ python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_
 
 #### B) 回滚 VASPRecipe 映射 + 实现 LAMMPSRecipe
 
-**文件**：`src/quantumvitas/execution/recipes.py`
+**文件**：`src/qmatsuite/execution/recipes.py`
 
 **修改 #1**（第577行，删除 VASPRecipe 映射）：
 ```python
@@ -233,7 +233,7 @@ ls -l /opt/homebrew/opt/lammps/bin
 /opt/homebrew/opt/lammps/bin/lmp_serial -h | head -n 5
 
 # 验证 Python resolver 能找到
-python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
+python -c "from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
 ```
 
 ### 2.2 可能的修复
@@ -281,7 +281,7 @@ def ensure_lammps_path():
 
 #### 如果需要改进 resolver 诊断
 
-**文件**：`src/quantumvitas/core/engines/lammps_resolver.py`
+**文件**：`src/qmatsuite/core/engines/lammps_resolver.py`
 
 **添加 debug logging**（在 FileNotFoundError 前）：
 ```python

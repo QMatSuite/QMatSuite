@@ -70,7 +70,7 @@ This `demo_source` field is:
 | Aspect | `create_demo_project()` | `load_demo_as_calculation()` |
 |--------|------------------------|------------------------------|
 | Event-based provenance (opctx) | NO | NO |
-| `demo_source` metadata (S11) | YES — written to `project.qv.yml:settings` | NO |
+| `demo_source` metadata (S11) | YES — written to `project.qms.yml:settings` | NO |
 | Scope | Creates new project | Loads into existing project |
 
 ---
@@ -165,7 +165,7 @@ Pass opctx to all `save_yaml_doc()` calls in `load_demo_as_calculation()`. This 
 ### Verification of existing meta consistency (already tested)
 
 The existing Stage 10 tests (188 passing) already verify:
-- ULID consistency across project.qv.yml ↔ calculation.yaml ↔ step files
+- ULID consistency across project.qms.yml ↔ calculation.yaml ↔ step files
 - Slug uniqueness on repeated loads
 - Step parameter preservation for all 52 demos
 

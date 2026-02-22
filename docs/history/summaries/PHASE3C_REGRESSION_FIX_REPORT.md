@@ -13,10 +13,10 @@ Fixed Groups A and B as specified. Groups C and D require additional investigati
 `StepResult` import was incorrect in `step.py`.
 
 ### Fix Applied
-- **File**: `src/quantumvitas/calculation/step.py`
-- **Change**: Line 120 - Updated import from `quantumvitas.calculation.results` to `quantumvitas.engine.base`
-- **Before**: `from quantumvitas.calculation.results import StepResult as StepResultClass`
-- **After**: `from quantumvitas.engine.base import StepResult as StepResultClass`
+- **File**: `src/qmatsuite/calculation/step.py`
+- **Change**: Line 120 - Updated import from `qmatsuite.calculation.results` to `qmatsuite.engine.base`
+- **Before**: `from qmatsuite.calculation.results import StepResult as StepResultClass`
+- **After**: `from qmatsuite.engine.base import StepResult as StepResultClass`
 
 ### Tests to Run
 ```bash
@@ -36,7 +36,7 @@ pytest tests/integration/test_pyscf_phase3c.py::test_t3_runstep_scf_forbids_chkf
 `pyscf_td` step type exists in materialization map but was missing from registry.
 
 ### Fix Applied
-- **File**: `src/quantumvitas/workflow/registry.py`
+- **File**: `src/qmatsuite/workflow/registry.py`
 - **Change**: Added `pyscf_td` StepTypeSpec entry after `pyscf_mp2` (line ~359)
 - **Spec Added**:
   ```python
@@ -74,12 +74,12 @@ pytest tests/unit/test_pyscf_chain.py::test_td_resolves_to_scf -v
 ## ⚠️ Group C — Restore Deprecated CLI run step Path (NEEDS INVESTIGATION)
 
 ### Problem
-Deprecated CLI path (`qv run step <step.yaml>`) references structure variable that is undefined.
+Deprecated CLI path (`qms run step <step.yaml>`) references structure variable that is undefined.
 
 ### Analysis
-Upon code review, the current implementation in `src/quantumvitas/cli/main.py` (lines 1520-1633) appears to handle structure resolution correctly:
+Upon code review, the current implementation in `src/qmatsuite/cli/main.py` (lines 1520-1633) appears to handle structure resolution correctly:
 - When `target` (step.yaml path) is provided, it resolves the calculation from the step path
-- It then calls `QVService.run_step()` which handles structure resolution via `calculation.structure_id`
+- It then calls `QMSService.run_step()` which handles structure resolution via `calculation.structure_id`
 
 The code path does not appear to have an undefined `structure` variable based on the current implementation. The issue may be:
 1. An edge case not visible in the code paths reviewed
@@ -112,19 +112,19 @@ The test `test_t4_runstep_mp2_chain_execution` creates:
 3. MP2 step with `step_type="mp2"` (public type)
 
 The issue is likely in step materialization:
-- `QVService.init_step()` calls `create_step_doc()` with the public type (e.g., "scf")
+- `QMSService.init_step()` calls `create_step_doc()` with the public type (e.g., "scf")
 - `create_step_doc()` calls `registry.get(step_type)` to get the machine type
 - However, `registry.get()` may not correctly resolve "scf" → "pyscf_scf" when there are multiple engines with the same public type
 
 The review document states:
-> "init_step materialization: QVService.init_step(...) must map public → machine using calculation.engine_family"
+> "init_step materialization: QMSService.init_step(...) must map public → machine using calculation.engine_family"
 
 However, `create_step_doc()` does not currently receive `engine_family` as a parameter, so it cannot use it for materialization.
 
 ### Code Locations
-- `src/quantumvitas/api.py` - `init_step()` method (line ~810)
-- `src/quantumvitas/workflow/step_factory.py` - `create_step_doc()` function (line ~24)
-- `src/quantumvitas/engines/pyscf/chain.py` - `resolve_dependency_chain()` function (line ~13)
+- `src/qmatsuite/api.py` - `init_step()` method (line ~810)
+- `src/qmatsuite/workflow/step_factory.py` - `create_step_doc()` function (line ~24)
+- `src/qmatsuite/engines/pyscf/chain.py` - `resolve_dependency_chain()` function (line ~13)
 
 ### Recommendation
 1. Verify step.yaml files contain `step_type: pyscf_scf` (not `step_type: scf`)
@@ -144,10 +144,10 @@ pytest tests/integration/test_pyscf_phase3c.py::test_t4_runstep_mp2_chain_execut
 ## Files Changed
 
 ### Group B
-- `src/quantumvitas/calculation/step.py` - Fixed StepResult import
+- `src/qmatsuite/calculation/step.py` - Fixed StepResult import
 
 ### Group A
-- `src/quantumvitas/workflow/registry.py` - Added pyscf_td StepTypeSpec
+- `src/qmatsuite/workflow/registry.py` - Added pyscf_td StepTypeSpec
 
 ## Next Steps
 

@@ -17,7 +17,7 @@ Error [Errno 21] Is a directory: '.'
 
 ## 修复内容
 
-### 1. 修复 `build_command` 中的路径处理 (`src/quantumvitas/core/engines/qe.py`)
+### 1. 修复 `build_command` 中的路径处理 (`src/qmatsuite/core/engines/qe.py`)
 
 **Before** (有问题):
 ```python
@@ -58,7 +58,7 @@ elif step_type == "pw2wannier90":
 - 确保使用 `working_dir.resolve()` 进行比较
 - 明确处理相对和绝对路径
 
-### 2. 增强 `run_step` 中的验证和日志 (`src/quantumvitas/core/engines/qe_calculation.py`)
+### 2. 增强 `run_step` 中的验证和日志 (`src/qmatsuite/core/engines/qe_calculation.py`)
 
 添加了详细的验证逻辑：
 
@@ -95,7 +95,7 @@ if step_type == "pw2wannier90":
 - 列出 working_dir 中的文件用于调试
 - 详细的日志记录
 
-### 3. 修复 `run_prepared_step` 中的路径处理 (`src/quantumvitas/calculation/input_runner.py`)
+### 3. 修复 `run_prepared_step` 中的路径处理 (`src/qmatsuite/calculation/input_runner.py`)
 
 确保传递给 `run_step` 的路径是正确的：
 

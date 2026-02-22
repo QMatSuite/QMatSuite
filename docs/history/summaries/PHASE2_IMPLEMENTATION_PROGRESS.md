@@ -6,12 +6,12 @@
 ## Completed Tasks
 
 ### 1. Engine-Prefixed Step Types ✅
-- Updated `src/quantumvitas/workflow/registry.py` to use engine-prefixed step types (qe_*, w90_*, pyscf_*)
+- Updated `src/qmatsuite/workflow/registry.py` to use engine-prefixed step types (qe_*, w90_*, pyscf_*)
 - Added backward compatibility mapping in `StepTypeRegistry.get()` and `has()` methods
 - All step types now consistently use engine prefixes
 
 ### 2. Generalized Step Taxonomy ✅
-- Created `src/quantumvitas/workflow/generalized_steps.py` with:
+- Created `src/qmatsuite/workflow/generalized_steps.py` with:
   - `GeneralizedStep` enum defining engine-agnostic physical operations
   - `MATERIALIZATION_MAP` for (engine_family, generalized_step) → engine_specific_step_type
   - `materialize_step()` and `materialize_workflow()` functions
@@ -19,7 +19,7 @@
   - Support functions for listing supported steps per family
 
 ### 3. Calc.yaml Metadata (structure_kind + engine_family) ✅
-- Updated `src/quantumvitas/core/models.py::CalculationModel` to include:
+- Updated `src/qmatsuite/core/models.py::CalculationModel` to include:
   - `structure_kind: Optional[str]` (periodic | molecule)
   - `engine_family: Optional[str]` (qe | pyscf | etc.)
 - Added `to_dict()` serialization for these fields
@@ -28,19 +28,19 @@
   - Defaults: periodic → qe, molecule → pyscf
 
 ### 4. Workflow Materialization ✅
-- Updated `src/quantumvitas/workflow/templates.py`:
+- Updated `src/qmatsuite/workflow/templates.py`:
   - Workflow templates now use generalized steps (SCF, NSCF, DOS, etc.)
   - `instantiate_workflow()` materializes generalized steps to engine-specific steps
   - `detect_workflow()` maps engine-specific steps back to generalized steps for matching
 - Added BANDS_POST generalized step for bands.x post-processing
 
 ### 5. CLI Updates ✅
-- Updated `src/quantumvitas/cli/main.py`:
+- Updated `src/qmatsuite/cli/main.py`:
   - `KNOWN_STEP_TYPES` now includes both engine-prefixed and legacy names
   - `init_calculation_command()` adds structure_kind and engine_family to calc.yaml (defaults to periodic/qe)
 
 ### 6. Step Defaults Backward Compatibility ✅
-- Updated `src/quantumvitas/calculation/step_defaults.py::get_default_step_params()`:
+- Updated `src/qmatsuite/calculation/step_defaults.py::get_default_step_params()`:
   - Supports both engine-prefixed (qe_scf) and legacy (scf) step type names
   - Maps engine-prefixed names to legacy defaults
 
@@ -66,12 +66,12 @@
 
 ## Key Files Modified
 
-- `src/quantumvitas/workflow/registry.py`: Engine-prefixed step types, backward compat mapping
-- `src/quantumvitas/workflow/generalized_steps.py`: **NEW** - Generalized step taxonomy and materialization
-- `src/quantumvitas/workflow/templates.py`: Updated to use generalized steps, materialization logic
-- `src/quantumvitas/core/models.py`: Added structure_kind and engine_family fields
-- `src/quantumvitas/cli/main.py`: Updated KNOWN_STEP_TYPES, added structure_kind/engine_family to calc creation
-- `src/quantumvitas/calculation/step_defaults.py`: Backward compatibility for engine-prefixed step types
+- `src/qmatsuite/workflow/registry.py`: Engine-prefixed step types, backward compat mapping
+- `src/qmatsuite/workflow/generalized_steps.py`: **NEW** - Generalized step taxonomy and materialization
+- `src/qmatsuite/workflow/templates.py`: Updated to use generalized steps, materialization logic
+- `src/qmatsuite/core/models.py`: Added structure_kind and engine_family fields
+- `src/qmatsuite/cli/main.py`: Updated KNOWN_STEP_TYPES, added structure_kind/engine_family to calc creation
+- `src/qmatsuite/calculation/step_defaults.py`: Backward compatibility for engine-prefixed step types
 
 ## Architecture Notes
 

@@ -23,7 +23,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_PYTHON="$REPO_ROOT/.venv/bin/python"
 
-# ---- Paths (from src/quantumvitas/core/paths.py) ----
+# ---- Paths (from src/qmatsuite/core/paths.py) ----
 
 PSEUDO_LIB="$REPO_ROOT/.qmatsuite/libraries/pseudo"
 SEED_DIR="$REPO_ROOT/.qmatsuite/seeds/pseudo"
@@ -34,37 +34,37 @@ SSSP_LIB="$PSEUDO_LIB/SSSP"
 [[ -f "$VENV_PYTHON" ]] || { echo "ABORT: .venv/bin/python not found" >&2; exit 1; }
 command -v claude &>/dev/null || { echo "ABORT: 'claude' CLI not in PATH" >&2; exit 1; }
 
-# ---- Gate: no project.qv.yml in walk-up path from .tmp to / ----
+# ---- Gate: no project.qms.yml in walk-up path from .tmp to / ----
 #
-# If a project.qv.yml exists anywhere above the task directories, the MCP
+# If a project.qms.yml exists anywhere above the task directories, the MCP
 # server's init_project() will attach to it instead of creating a fresh
 # project.  Abort early if found.
 
 _walk="$REPO_ROOT/.tmp"
 while [[ "$_walk" != "/" && "$_walk" != "." ]]; do
-    if [[ -f "$_walk/project.qv.yml" ]]; then
-        echo "ABORT: project.qv.yml found at $_walk" >&2
+    if [[ -f "$_walk/project.qms.yml" ]]; then
+        echo "ABORT: project.qms.yml found at $_walk" >&2
         echo "  Agents will attach to this project instead of creating fresh ones." >&2
-        echo "  Fix: rm $_walk/project.qv.yml" >&2
+        echo "  Fix: rm $_walk/project.qms.yml" >&2
         exit 1
     fi
     _walk="$(dirname "$_walk")"
 done
-if [[ -f "/project.qv.yml" ]]; then
-    echo "ABORT: project.qv.yml found at /" >&2; exit 1
+if [[ -f "/project.qms.yml" ]]; then
+    echo "ABORT: project.qms.yml found at /" >&2; exit 1
 fi
 # Also check inside .tmp/agent_mcp_test/ at intermediate levels (stale from old runs)
 if [[ -d "$REPO_ROOT/.tmp/agent_mcp_test" ]]; then
-    _stale="$(find "$REPO_ROOT/.tmp/agent_mcp_test" -maxdepth 2 -name project.qv.yml \
-              ! -path "*/task_*/project.qv.yml" 2>/dev/null || true)"
+    _stale="$(find "$REPO_ROOT/.tmp/agent_mcp_test" -maxdepth 2 -name project.qms.yml \
+              ! -path "*/task_*/project.qms.yml" 2>/dev/null || true)"
     if [[ -n "$_stale" ]]; then
-        echo "ABORT: stale project.qv.yml in .tmp/agent_mcp_test/ (not inside a task dir):" >&2
+        echo "ABORT: stale project.qms.yml in .tmp/agent_mcp_test/ (not inside a task dir):" >&2
         echo "$_stale" >&2
         exit 1
     fi
 fi
 unset _walk _stale
-echo "GATE PASS: no project.qv.yml in walk-up path"
+echo "GATE PASS: no project.qms.yml in walk-up path"
 
 # ---- Run directory ----
 
@@ -170,8 +170,8 @@ fi
 echo "GATE PASS: SSSP library present at $SSSP_LIB"
 
 # Gate: agent 0 must have created a project
-if [[ ! -f "$T0_DIR/project.qv.yml" ]]; then
-    echo "GATE FAIL: agent 0 (na_scf) did not create project.qv.yml in $T0_DIR" >&2
+if [[ ! -f "$T0_DIR/project.qms.yml" ]]; then
+    echo "GATE FAIL: agent 0 (na_scf) did not create project.qms.yml in $T0_DIR" >&2
     echo "  Check: $TRACES_DIR/task_00.log" >&2
     exit 1
 fi
@@ -280,7 +280,7 @@ _check() {
     local wlog proj lines status
 
     wlog="$(test -f "$tdir/WORKLOG.md" && echo "✓" || echo "✗")"
-    proj="$(test -f "$tdir/project.qv.yml" && echo "✓" || echo "✗")"
+    proj="$(test -f "$tdir/project.qms.yml" && echo "✓" || echo "✗")"
     lines="$(wc -l < "$TRACES_DIR/task_${tnum}.log" 2>/dev/null || echo 0)"
     lines="${lines// /}"
 

@@ -54,25 +54,25 @@ These changes represent **intentional architectural improvements** but carry **h
 
 The following directories/modules are considered **kernel scope** for this audit:
 
-- `src/quantumvitas/core/*` - Resource models, resolution, context, selectors, SSOT
-- `src/quantumvitas/workflow/*` - Step type registry, step factory, templates, DAG
-- `src/quantumvitas/calculation/*` - Structure steps, parameter handling
-- `src/quantumvitas/analysis/*` - Artifact parsing, structure visualization
-- `src/quantumvitas/io/*` - Persistence, manifest, fingerprinting
-- `src/quantumvitas/drivers/*` - QE, VASP, LAMMPS, etc. input/output
-- `src/quantumvitas/engine/*` - Engine dispatch, writer utilities
-- `src/quantumvitas/presets/*` - Preset system, parameter spaces
-- `src/quantumvitas/project/*` - Project model, snapshot
+- `src/qmatsuite/core/*` - Resource models, resolution, context, selectors, SSOT
+- `src/qmatsuite/workflow/*` - Step type registry, step factory, templates, DAG
+- `src/qmatsuite/calculation/*` - Structure steps, parameter handling
+- `src/qmatsuite/analysis/*` - Artifact parsing, structure visualization
+- `src/qmatsuite/io/*` - Persistence, manifest, fingerprinting
+- `src/qmatsuite/drivers/*` - QE, VASP, LAMMPS, etc. input/output
+- `src/qmatsuite/engine/*` - Engine dispatch, writer utilities
+- `src/qmatsuite/presets/*` - Preset system, parameter spaces
+- `src/qmatsuite/project/*` - Project model, snapshot
 
 **Rationale**: These modules define core semantics, invariants, and data contracts. Changes here affect reproducibility, correctness, and architectural integrity.
 
 ### Excluded (Non-Kernel)
 
-- `src/quantumvitas/api/*` - New API facade layer (pure wrapper, no logic)
-- `src/quantumvitas/_api_legacy.py` - Legacy API wrapper (facade only)
-- `src/quantumvitas/api_legacy.py` - Renamed old API (legacy compatibility)
-- `src/quantumvitas/cli/*` - CLI frontend (presentation layer)
-- `src/quantumvitas/daemon/*` - RPC/daemon server (transport layer)
+- `src/qmatsuite/api/*` - New API facade layer (pure wrapper, no logic)
+- `src/qmatsuite/_api_legacy.py` - Legacy API wrapper (facade only)
+- `src/qmatsuite/api_legacy.py` - Renamed old API (legacy compatibility)
+- `src/qmatsuite/cli/*` - CLI frontend (presentation layer)
+- `src/qmatsuite/daemon/*` - RPC/daemon server (transport layer)
 - `tests/*` - Test code (may be overfit)
 - `docs/*` - Documentation
 - `scripts/*` - Utility scripts
@@ -81,7 +81,7 @@ The following directories/modules are considered **kernel scope** for this audit
 
 ### Borderline Cases
 
-- `src/quantumvitas/__init__.py` - Package exports (borderline: affects public API but not kernel logic)
+- `src/qmatsuite/__init__.py` - Package exports (borderline: affects public API but not kernel logic)
   - **Decision**: Include for API contract review only
 
 ---
@@ -92,13 +92,13 @@ The following directories/modules are considered **kernel scope** for this audit
 
 | File | Status | Lines Changed | Risk |
 |------|--------|---------------|------|
-| `src/quantumvitas/core/models.py` | M | 29 | MEDIUM |
-| `src/quantumvitas/core/resolution.py` | M | 56 | **HIGH** |
-| `src/quantumvitas/workflow/step_factory.py` | M | 15 | **HIGH** |
-| `src/quantumvitas/workflow/registry.py` | M | 37 | LOW |
-| `src/quantumvitas/workflow/templates.py` | M | 4 | LOW |
-| `src/quantumvitas/analysis/structure_viz.py` | M | 159 | LOW |
-| `src/quantumvitas/engine/vasp_writer.py` | M | 1 | NONE |
+| `src/qmatsuite/core/models.py` | M | 29 | MEDIUM |
+| `src/qmatsuite/core/resolution.py` | M | 56 | **HIGH** |
+| `src/qmatsuite/workflow/step_factory.py` | M | 15 | **HIGH** |
+| `src/qmatsuite/workflow/registry.py` | M | 37 | LOW |
+| `src/qmatsuite/workflow/templates.py` | M | 4 | LOW |
+| `src/qmatsuite/analysis/structure_viz.py` | M | 159 | LOW |
+| `src/qmatsuite/engine/vasp_writer.py` | M | 1 | NONE |
 
 **Total kernel changes**: 301 lines across 7 files
 
@@ -106,7 +106,7 @@ The following directories/modules are considered **kernel scope** for this audit
 
 ## Detailed Per-File Analysis
 
-### 1. `src/quantumvitas/core/models.py`
+### 1. `src/qmatsuite/core/models.py`
 
 **Diff Summary**: Bug fix for path handling in `load_calculation()`
 
@@ -146,7 +146,7 @@ elif path.name == "calculation.yaml":
 
 ---
 
-### 2. `src/quantumvitas/core/resolution.py` ⚠️ CRITICAL
+### 2. `src/qmatsuite/core/resolution.py` ⚠️ CRITICAL
 
 **Diff Summary**: Changed `absolute_path` contract for calculations
 
@@ -197,7 +197,7 @@ calc_yaml = calc_dir / "calculation.yaml"
 
 ---
 
-### 3. `src/quantumvitas/workflow/step_factory.py` ⚠️ CRITICAL
+### 3. `src/qmatsuite/workflow/step_factory.py` ⚠️ CRITICAL
 
 **Diff Summary**: Removed `structure_id` and `parent_calculation_id` from step YAML
 
@@ -245,7 +245,7 @@ data = {
 
 ---
 
-### 4. `src/quantumvitas/workflow/registry.py`
+### 4. `src/qmatsuite/workflow/registry.py`
 
 **Diff Summary**: Added `get_for_engine()` method
 
@@ -278,18 +278,18 @@ spec = registry.get_for_engine("bands", "lammps")  # Falls back to qe_bands
 
 ---
 
-### 5. `src/quantumvitas/workflow/templates.py`
+### 5. `src/qmatsuite/workflow/templates.py`
 
 **Diff Summary**: Import change (domain API → LegacyService)
 
 **Semantic Delta**:
 ```python
 # BEFORE:
-from quantumvitas.api import QVService
-QVService.calc_set_steps(...)
+from qmatsuite.api import QMSService
+QMSService.calc_set_steps(...)
 
 # AFTER:
-from quantumvitas._api_legacy import QVService as LegacyService
+from qmatsuite._api_legacy import QMSService as LegacyService
 LegacyService.calc_set_steps(...)
 ```
 
@@ -307,7 +307,7 @@ LegacyService.calc_set_steps(...)
 
 ---
 
-### 6. `src/quantumvitas/analysis/structure_viz.py`
+### 6. `src/qmatsuite/analysis/structure_viz.py`
 
 **Diff Summary**: Added new `build_structure_vis_payload()` function
 
@@ -340,7 +340,7 @@ def build_structure_vis_payload(
 
 ---
 
-### 7. `src/quantumvitas/engine/vasp_writer.py`
+### 7. `src/qmatsuite/engine/vasp_writer.py`
 
 **Diff Summary**: Whitespace change (added blank line at EOF)
 

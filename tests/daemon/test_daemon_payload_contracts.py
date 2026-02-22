@@ -15,8 +15,8 @@ import pytest
 from pathlib import Path
 from io import StringIO
 
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
-from quantumvitas.api import QVService
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
+from qmatsuite.api import QMSService
 
 
 @pytest.fixture
@@ -25,13 +25,13 @@ def temp_project(tmp_path: Path):
     project_root = tmp_path / "test_project"
     project_root.mkdir()
     
-    # Initialize as a proper QuantumVITAS project
-    QVService.init_project(project_root, name="test_project")
+    # Initialize as a proper QMatSuite project
+    QMSService.init_project(project_root, name="test_project")
     
     # Create a structure
     from pymatgen.core import Structure, Lattice
-    from quantumvitas.api.utils import meta_from_name
-    from quantumvitas.core.resources import generate_resource_id
+    from qmatsuite.api.utils import meta_from_name
+    from qmatsuite.core.resources import generate_resource_id
     import yaml
     
     structures_dir = project_root / "structures"
@@ -46,11 +46,11 @@ def temp_project(tmp_path: Path):
     import json
     struct_file.write_text(json.dumps({
         "structure": structure.as_dict(),
-        "__qv_meta__": struct_meta
+        "__qms_meta__": struct_meta
     }))
     
     # Update project config
-    config = yaml.safe_load((project_root / "project.qv.yml").read_text())
+    config = yaml.safe_load((project_root / "project.qms.yml").read_text())
     config["structures"] = [{"ulid": struct_id}]
     
     # Create a calculation
@@ -71,18 +71,18 @@ def temp_project(tmp_path: Path):
     }))
     
     config["calculations"] = [{"ulid": calc_id}]
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
     
     return project_root
 
 
 @pytest.fixture
 def daemon():
-    """Create a QVDaemon instance."""
-    return QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+    """Create a QMSDaemon instance."""
+    return QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
 
 
-def send_request(daemon: QVDaemon, request_type: str, payload: dict) -> dict:
+def send_request(daemon: QMSDaemon, request_type: str, payload: dict) -> dict:
     """Send a request to the daemon and return the response data."""
     response = daemon.handle_request(RPCRequest(
         id="test",

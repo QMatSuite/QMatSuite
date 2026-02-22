@@ -20,7 +20,7 @@
 | **Curated samples** | 13 cases | `tests/inputformat/samples/vasp/` |
 | **Real-run validation** | 13 cases (V3 layout) | `.tmp/engine_research/vasp/real_run/` |
 | **Corpus (.tmp)** | 15 extracted + 15 normalized | `.tmp/engine_research/vasp/` |
-| **Metadata catalog** | 238 INCAR tags | `src/quantumvitas/drivers/vasp/data/vasp_incar_tags.json` |
+| **Metadata catalog** | 238 INCAR tags | `src/qmatsuite/drivers/vasp/data/vasp_incar_tags.json` |
 | **Composite pipeline** | si_w90_pipeline (partial) | Step 1 OK; Step 2 needs W90-linked binary |
 | **Diversity** | 7 workflow + 6 physics, 9 elements | See CURATED_INDEX.md |
 

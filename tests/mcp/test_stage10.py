@@ -6,14 +6,14 @@ Tests for:
 - load_demo tool (load demo into current project, ALL engines)
 - Integration: search → load → inspect
 
-Shared fixtures (qv_project, etc.) are in conftest.py.
+Shared fixtures (qms_project, etc.) are in conftest.py.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
 # ---------------------------------------------------------------------------
@@ -22,7 +22,7 @@ from quantumvitas.api import QVService
 
 def _all_demo_ids() -> list[str]:
     """Return sorted list of every demo ID in bundled demo_projects resources."""
-    from quantumvitas.core.resources import get_resources_dir
+    from qmatsuite.core.resources import get_resources_dir
 
     demo_dir = get_resources_dir() / "demo_projects"
     if not demo_dir.exists():
@@ -43,7 +43,7 @@ class TestSearchDemos:
 
     def test_search_all_returns_demos(self):
         """No filters → returns all demos."""
-        from quantumvitas.mcp.tools.demo_store import search_demos
+        from qmatsuite.mcp.tools.demo_store import search_demos
 
         result = search_demos.fn()
         assert result["status"] == "success"
@@ -60,7 +60,7 @@ class TestSearchDemos:
 
     def test_search_by_engine(self):
         """engine='qe' → only QE demos."""
-        from quantumvitas.mcp.tools.demo_store import search_demos
+        from qmatsuite.mcp.tools.demo_store import search_demos
 
         result = search_demos.fn(engine="qe")
         assert result["status"] == "success"
@@ -71,7 +71,7 @@ class TestSearchDemos:
 
     def test_search_by_tag(self):
         """tag='scf' → only demos tagged 'scf'."""
-        from quantumvitas.mcp.tools.demo_store import search_demos
+        from qmatsuite.mcp.tools.demo_store import search_demos
 
         result = search_demos.fn(tag="scf")
         assert result["status"] == "success"
@@ -83,7 +83,7 @@ class TestSearchDemos:
 
     def test_search_by_difficulty(self):
         """difficulty='beginner' → only beginner demos."""
-        from quantumvitas.mcp.tools.demo_store import search_demos
+        from qmatsuite.mcp.tools.demo_store import search_demos
 
         result = search_demos.fn(difficulty="beginner")
         assert result["status"] == "success"
@@ -94,7 +94,7 @@ class TestSearchDemos:
 
     def test_search_by_query(self):
         """query='Si' → matches title/description/name containing 'Si'."""
-        from quantumvitas.mcp.tools.demo_store import search_demos
+        from qmatsuite.mcp.tools.demo_store import search_demos
 
         result = search_demos.fn(query="Si")
         assert result["status"] == "success"
@@ -103,7 +103,7 @@ class TestSearchDemos:
 
     def test_search_no_results(self):
         """engine='nonexistent' → empty list."""
-        from quantumvitas.mcp.tools.demo_store import search_demos
+        from qmatsuite.mcp.tools.demo_store import search_demos
 
         result = search_demos.fn(engine="nonexistent_engine_xyz")
         assert result["status"] == "success"
@@ -112,7 +112,7 @@ class TestSearchDemos:
 
     def test_search_combined_filters(self):
         """engine + tag combined → AND logic."""
-        from quantumvitas.mcp.tools.demo_store import search_demos
+        from qmatsuite.mcp.tools.demo_store import search_demos
 
         result = search_demos.fn(engine="qe", tag="scf")
         assert result["status"] == "success"
@@ -131,7 +131,7 @@ class TestGetDemoResults:
 
     def _find_demo_with_ref_pack(self):
         """Find a demo that has a ref pack."""
-        from quantumvitas.demo_store.ref_packs import list_all_ref_packs
+        from qmatsuite.demo_store.ref_packs import list_all_ref_packs
 
         packs = list_all_ref_packs()
         if not packs:
@@ -141,7 +141,7 @@ class TestGetDemoResults:
     def test_list_available_types(self):
         """object_type='' → returns available types list."""
         demo_id = self._find_demo_with_ref_pack()
-        from quantumvitas.mcp.tools.demo_store import get_demo_results
+        from qmatsuite.mcp.tools.demo_store import get_demo_results
 
         result = get_demo_results.fn(demo_id=demo_id)
         assert result["status"] == "success"
@@ -152,8 +152,8 @@ class TestGetDemoResults:
     def test_get_specific_result(self):
         """Load a specific object_type from a ref pack (compact summary, no raw arrays)."""
         demo_id = self._find_demo_with_ref_pack()
-        from quantumvitas.demo_store.ref_packs import list_ref_pack_types
-        from quantumvitas.mcp.tools.demo_store import get_demo_results
+        from qmatsuite.demo_store.ref_packs import list_ref_pack_types
+        from qmatsuite.mcp.tools.demo_store import get_demo_results
 
         types = list_ref_pack_types(demo_id)
         assert len(types) > 0
@@ -166,7 +166,7 @@ class TestGetDemoResults:
 
     def test_invalid_demo_id(self):
         """Nonexistent demo → error."""
-        from quantumvitas.mcp.tools.demo_store import get_demo_results
+        from qmatsuite.mcp.tools.demo_store import get_demo_results
 
         result = get_demo_results.fn(demo_id="nonexistent_demo_xyz")
         assert result["status"] == "error"
@@ -175,7 +175,7 @@ class TestGetDemoResults:
     def test_invalid_object_type(self):
         """Valid demo but invalid object_type → error."""
         demo_id = self._find_demo_with_ref_pack()
-        from quantumvitas.mcp.tools.demo_store import get_demo_results
+        from qmatsuite.mcp.tools.demo_store import get_demo_results
 
         result = get_demo_results.fn(demo_id=demo_id, object_type="nonexistent_type")
         assert result["status"] == "error"
@@ -197,14 +197,14 @@ class TestLoadDemoAllEngines:
     @pytest.mark.parametrize("demo_id", ALL_DEMO_IDS)
     def test_load_demo_succeeds(self, demo_id, tmp_path, monkeypatch):
         """load_demo(demo_id) → success for every demo snapshot."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         # Fresh project per demo (isolation)
-        project_root = QVService.init_project(tmp_path / demo_id)
-        from quantumvitas.mcp import project as mcp_project
+        project_root = QMSService.init_project(tmp_path / demo_id)
+        from qmatsuite.mcp import project as mcp_project
         monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
-        import quantumvitas.drivers  # noqa: F401
+        import qmatsuite.drivers  # noqa: F401
 
         result = load_demo.fn(demo_id=demo_id)
         assert result["status"] == "success", (
@@ -219,8 +219,8 @@ class TestLoadDemoAllEngines:
     def test_load_demo_steps_match_snapshot(self, demo_id, tmp_path, monkeypatch):
         """Loaded demo has same number of steps as snapshot YAML."""
         import yaml
-        from quantumvitas.core.resources import get_resources_dir
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.core.resources import get_resources_dir
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         # Load snapshot to get expected step count
         demo_path = get_resources_dir() / "demo_projects" / f"{demo_id}.yml"
@@ -229,11 +229,11 @@ class TestLoadDemoAllEngines:
         expected_steps = len(snapshot["calculations"][0].get("steps", []))
 
         # Fresh project
-        project_root = QVService.init_project(tmp_path / demo_id)
-        from quantumvitas.mcp import project as mcp_project
+        project_root = QMSService.init_project(tmp_path / demo_id)
+        from qmatsuite.mcp import project as mcp_project
         monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
-        import quantumvitas.drivers  # noqa: F401
+        import qmatsuite.drivers  # noqa: F401
 
         result = load_demo.fn(demo_id=demo_id)
         assert result["status"] == "success", (
@@ -248,8 +248,8 @@ class TestLoadDemoAllEngines:
     def test_load_demo_step_yaml_has_parameters(self, demo_id, tmp_path, monkeypatch):
         """Each step YAML file written to disk has the demo's parameters."""
         import yaml as _yaml
-        from quantumvitas.core.resources import get_resources_dir
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.core.resources import get_resources_dir
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         # Load snapshot for reference
         demo_path = get_resources_dir() / "demo_projects" / f"{demo_id}.yml"
@@ -258,11 +258,11 @@ class TestLoadDemoAllEngines:
         snapshot_steps = snapshot["calculations"][0].get("steps", [])
 
         # Fresh project
-        project_root = QVService.init_project(tmp_path / demo_id)
-        from quantumvitas.mcp import project as mcp_project
+        project_root = QMSService.init_project(tmp_path / demo_id)
+        from qmatsuite.mcp import project as mcp_project
         monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
-        import quantumvitas.drivers  # noqa: F401
+        import qmatsuite.drivers  # noqa: F401
 
         result = load_demo.fn(demo_id=demo_id)
         assert result["status"] == "success", (
@@ -271,7 +271,7 @@ class TestLoadDemoAllEngines:
 
         # Read back each step YAML and compare parameters
         calc_ulid = result["data"]["calc_ulid"]
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         detail = svc.calculation.get_detail(calc_ulid)
         disk_steps = detail.get("steps", [])
 
@@ -295,16 +295,16 @@ class TestLoadDemoAllEngines:
 
 
 # ===========================================================================
-# load_demo tests — basic (single demo, qv_project fixture)
+# load_demo tests — basic (single demo, qms_project fixture)
 # ===========================================================================
 
 
 class TestLoadDemo:
-    """Focused load_demo tests with the shared qv_project fixture."""
+    """Focused load_demo tests with the shared qms_project fixture."""
 
-    def test_load_demo_creates_calculation(self, qv_project):
+    def test_load_demo_creates_calculation(self, qms_project):
         """Loading qe_si_scf → calc created in current project."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success", f"Failed: {result}"
@@ -313,9 +313,9 @@ class TestLoadDemo:
         assert data["demo_id"] == "qe_si_scf"
         assert data["engine"] == "qe"
 
-    def test_load_demo_imports_structure(self, qv_project):
+    def test_load_demo_imports_structure(self, qms_project):
         """Loaded demo has structure in project."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success"
@@ -323,14 +323,14 @@ class TestLoadDemo:
         assert data["structure_ulid"] is not None
 
         # Verify structure exists in project
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         structures = svc.structure.list()
         ulids = [s.structure_ulid for s in structures]
         assert data["structure_ulid"] in ulids
 
-    def test_load_demo_has_steps(self, qv_project):
+    def test_load_demo_has_steps(self, qms_project):
         """Loaded calculation has expected steps."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success"
@@ -339,39 +339,39 @@ class TestLoadDemo:
         step_types = [s["step_type_spec"] for s in steps]
         assert any("scf" in t for t in step_types)
 
-    def test_load_demo_invalid_id(self, qv_project):
+    def test_load_demo_invalid_id(self, qms_project):
         """Nonexistent demo → error."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="nonexistent_demo_xyz")
         assert result["status"] == "error"
         assert result["error_type"] == "demo_not_found"
 
-    def test_load_demo_custom_name(self, qv_project):
+    def test_load_demo_custom_name(self, qms_project):
         """load_demo with custom name sets that name on the calculation."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf", name="My Custom Calc")
         assert result["status"] == "success"
         assert result["data"]["name"] == "My Custom Calc"
 
-    def test_load_demo_species_map_preserved(self, qv_project):
+    def test_load_demo_species_map_preserved(self, qms_project):
         """Demo with species_map (e.g. QE) has it on the calculation."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success"
 
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         detail = svc.calculation.get_detail(result["data"]["calc_ulid"])
         species_map = detail.get("species_map")
         # QE Si demo should have species_map with Si entry
         assert species_map is not None
         assert "Si" in species_map
 
-    def test_load_two_demos_same_project(self, qv_project):
+    def test_load_two_demos_same_project(self, qms_project):
         """Loading two different demos → two distinct calculations."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         r1 = load_demo.fn(demo_id="qe_si_scf")
         assert r1["status"] == "success"
@@ -383,7 +383,7 @@ class TestLoadDemo:
         assert r2["data"]["engine"] == "orca"
 
         # Both should be in the project
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         calcs = svc.calculation.list()
         calc_ulids = [c.calc_ulid for c in calcs]
         assert r1["data"]["calc_ulid"] in calc_ulids
@@ -398,9 +398,9 @@ class TestLoadDemo:
 class TestLoadDemoRepeated:
     """Loading the same demo multiple times: ULIDs unique, slugs never collide."""
 
-    def test_load_same_demo_three_times(self, qv_project):
+    def test_load_same_demo_three_times(self, qms_project):
         """Load qe_si_scf 3× → 3 distinct calc_ulids, no slug collision."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         results = []
         for _ in range(3):
@@ -425,7 +425,7 @@ class TestLoadDemoRepeated:
         )
 
         # All calcs must be in the project
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         calcs = svc.calculation.list()
         project_calc_ulids = {c.calc_ulid for c in calcs}
         for cid in calc_ulids:
@@ -437,9 +437,9 @@ class TestLoadDemoRepeated:
         for sid in struct_ulids:
             assert sid in project_struct_ulids
 
-    def test_repeated_load_slugs_unique_on_disk(self, qv_project):
+    def test_repeated_load_slugs_unique_on_disk(self, qms_project):
         """3× load → calculation directories have distinct slugs on disk."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         for _ in range(3):
             r = load_demo.fn(demo_id="qe_si_scf")
@@ -447,7 +447,7 @@ class TestLoadDemoRepeated:
 
         # Check disk: each should be a separate directory
         calc_dirs = sorted(
-            (qv_project / "calculations").iterdir()
+            (qms_project / "calculations").iterdir()
         )
         # At least 3 calculation directories (fixture may have others)
         assert len(calc_dirs) >= 3, (
@@ -463,30 +463,30 @@ class TestLoadDemoRepeated:
 class TestLoadDemoMetaConsistency:
     """Verify all resource meta (structure, calculation, steps) are internally consistent."""
 
-    def test_meta_ulids_consistent(self, qv_project):
-        """calc_ulid in project.qv.yml matches calculation.yaml meta.ulid."""
+    def test_meta_ulids_consistent(self, qms_project):
+        """calc_ulid in project.qms.yml matches calculation.yaml meta.ulid."""
         import yaml
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success"
         data = result["data"]
 
-        # Read project.qv.yml — entries use flat {calculation_id: ULID} format
-        with open(qv_project / "project.qv.yml") as f:
+        # Read project.qms.yml — entries use flat {calculation_id: ULID} format
+        with open(qms_project / "project.qms.yml") as f:
             project_config = yaml.safe_load(f)
 
         calc_entries = project_config.get("calculations", [])
         calc_ids = [e.get("calculation_id") for e in calc_entries]
         assert data["calc_ulid"] in calc_ids, (
-            f"calc_ulid {data['calc_ulid']} not in project.qv.yml calc_ids: {calc_ids}"
+            f"calc_ulid {data['calc_ulid']} not in project.qms.yml calc_ids: {calc_ids}"
         )
 
         # Also verify calculation.yaml has matching meta.ulid
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         detail = svc.calculation.get_detail(data["calc_ulid"])
         calc_slug = detail.get("slug", "")
-        calc_yaml_path = qv_project / "calculations" / calc_slug / "calculation.yaml"
+        calc_yaml_path = qms_project / "calculations" / calc_slug / "calculation.yaml"
         with open(calc_yaml_path) as f:
             calc_config = yaml.safe_load(f)
         calc_meta = calc_config.get("meta", {})
@@ -494,32 +494,32 @@ class TestLoadDemoMetaConsistency:
         assert calc_meta.get("kind") == "calculation"
         assert calc_meta.get("slug") == calc_slug
 
-    def test_structure_meta_consistent(self, qv_project):
-        """structure_ulid in project.qv.yml matches structure file meta."""
+    def test_structure_meta_consistent(self, qms_project):
+        """structure_ulid in project.qms.yml matches structure file meta."""
         import json
         import yaml
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success"
         struct_ulid = result["data"]["structure_ulid"]
 
-        # Read project.qv.yml — entries use flat {structure_ulid: ULID} format
-        with open(qv_project / "project.qv.yml") as f:
+        # Read project.qms.yml — entries use flat {structure_ulid: ULID} format
+        with open(qms_project / "project.qms.yml") as f:
             project_config = yaml.safe_load(f)
 
         struct_entries = project_config.get("structures", [])
         struct_ids = [e.get("structure_ulid") for e in struct_entries]
         assert struct_ulid in struct_ids, (
-            f"struct_ulid {struct_ulid} not in project.qv.yml struct_ids: {struct_ids}"
+            f"struct_ulid {struct_ulid} not in project.qms.yml struct_ids: {struct_ids}"
         )
 
         # Find the actual structure JSON file by scanning structures/
-        structures_dir = qv_project / "structures"
+        structures_dir = qms_project / "structures"
         found = False
         for sf in structures_dir.glob("*.json"):
             struct_json = json.loads(sf.read_text())
-            file_meta = struct_json.get("__qv_meta__", {})
+            file_meta = struct_json.get("__qms_meta__", {})
             if file_meta.get("ulid") == struct_ulid:
                 found = True
                 assert file_meta.get("kind") == "structure"
@@ -527,20 +527,20 @@ class TestLoadDemoMetaConsistency:
                 break
         assert found, f"No structure file found with ulid {struct_ulid}"
 
-    def test_step_ulids_in_calculation_yaml(self, qv_project):
+    def test_step_ulids_in_calculation_yaml(self, qms_project):
         """Step ULIDs returned by load_demo match calculation.yaml step list."""
         import yaml
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success"
         data = result["data"]
 
         # Find calculation directory
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         detail = svc.calculation.get_detail(data["calc_ulid"])
         calc_slug = detail.get("slug", "")
-        calc_yaml_path = qv_project / "calculations" / calc_slug / "calculation.yaml"
+        calc_yaml_path = qms_project / "calculations" / calc_slug / "calculation.yaml"
         assert calc_yaml_path.exists(), f"calculation.yaml missing: {calc_yaml_path}"
 
         with open(calc_yaml_path) as f:
@@ -555,18 +555,18 @@ class TestLoadDemoMetaConsistency:
             f"Step ULIDs mismatch: yaml={yaml_step_ulids}, returned={returned_step_ulids}"
         )
 
-    def test_step_yaml_files_exist_on_disk(self, qv_project):
+    def test_step_yaml_files_exist_on_disk(self, qms_project):
         """Each step has a corresponding .step.yaml file in steps/ dir."""
         import yaml
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success"
 
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         detail = svc.calculation.get_detail(result["data"]["calc_ulid"])
         calc_slug = detail.get("slug", "")
-        steps_dir = qv_project / "calculations" / calc_slug / "steps"
+        steps_dir = qms_project / "calculations" / calc_slug / "steps"
 
         step_files = list(steps_dir.glob("*.step.yaml"))
         assert len(step_files) == len(result["data"]["steps"]), (
@@ -582,19 +582,19 @@ class TestLoadDemoMetaConsistency:
             assert step_meta.get("ulid"), f"Step file {sf.name} missing meta.ulid"
             assert step_meta.get("kind") == "step"
 
-    def test_calc_structure_ulid_points_to_loaded_structure(self, qv_project):
+    def test_calc_structure_ulid_points_to_loaded_structure(self, qms_project):
         """calculation.yaml structure_ulid matches the loaded structure."""
         import yaml
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success"
         data = result["data"]
 
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         detail = svc.calculation.get_detail(data["calc_ulid"])
         calc_slug = detail.get("slug", "")
-        calc_yaml_path = qv_project / "calculations" / calc_slug / "calculation.yaml"
+        calc_yaml_path = qms_project / "calculations" / calc_slug / "calculation.yaml"
 
         with open(calc_yaml_path) as f:
             calc_config = yaml.safe_load(f)
@@ -603,27 +603,27 @@ class TestLoadDemoMetaConsistency:
 
 
 # ===========================================================================
-# Integration tests (require qv_project fixture)
+# Integration tests (require qms_project fixture)
 # ===========================================================================
 
 
 class TestDemoOrigin:
     """Tests for per-calculation demo_origin provenance tracking."""
 
-    def test_load_demo_has_demo_origin(self, qv_project):
+    def test_load_demo_has_demo_origin(self, qms_project):
         """Loading a demo → calculation.yaml has demo_origin with correct fields."""
         import yaml
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success"
         data = result["data"]
 
         # Read calculation.yaml directly to verify demo_origin persisted
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         detail = svc.calculation.get_detail(data["calc_ulid"])
         calc_slug = detail.get("slug", "")
-        calc_yaml_path = qv_project / "calculations" / calc_slug / "calculation.yaml"
+        calc_yaml_path = qms_project / "calculations" / calc_slug / "calculation.yaml"
         with open(calc_yaml_path) as f:
             calc_config = yaml.safe_load(f)
 
@@ -636,15 +636,15 @@ class TestDemoOrigin:
         from datetime import datetime
         datetime.fromisoformat(demo_origin["materialized_at"])
 
-    def test_regular_calc_no_demo_origin(self, qv_project):
+    def test_regular_calc_no_demo_origin(self, qms_project):
         """A normal (non-demo) calculation has no demo_origin."""
-        from quantumvitas.core.models import CalculationModel, save_calculation, load_calculation
-        from quantumvitas.core.resources import ResourceMeta, generate_resource_id, slugify
+        from qmatsuite.core.models import CalculationModel, save_calculation, load_calculation
+        from qmatsuite.core.resources import ResourceMeta, generate_resource_id, slugify
 
         calc_ulid = generate_resource_id()
         calc_name = "Manual Calculation"
         calc_slug = slugify(calc_name)
-        calc_dir = qv_project / "calculations" / calc_slug
+        calc_dir = qms_project / "calculations" / calc_slug
         calc_dir.mkdir(parents=True, exist_ok=True)
 
         model = CalculationModel(
@@ -660,34 +660,34 @@ class TestDemoOrigin:
         save_calculation(model, calc_dir / "calculation.yaml")
 
         # Reload and verify demo_origin is None
-        reloaded = load_calculation(calc_dir / "calculation.yaml", project_root=qv_project)
+        reloaded = load_calculation(calc_dir / "calculation.yaml", project_root=qms_project)
         assert reloaded.demo_origin is None
 
-    def test_demo_origin_preserved_on_reload(self, qv_project):
+    def test_demo_origin_preserved_on_reload(self, qms_project):
         """demo_origin survives save → reload cycle via CalculationModel."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.mcp.tools.demo_store import load_demo
+        from qmatsuite.core.models import load_calculation
 
         result = load_demo.fn(demo_id="qe_si_scf")
         assert result["status"] == "success"
         data = result["data"]
 
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         detail = svc.calculation.get_detail(data["calc_ulid"])
         calc_slug = detail.get("slug", "")
-        calc_yaml_path = qv_project / "calculations" / calc_slug / "calculation.yaml"
+        calc_yaml_path = qms_project / "calculations" / calc_slug / "calculation.yaml"
 
         # Reload via CalculationModel (not raw YAML) — tests from_dict roundtrip
-        model = load_calculation(calc_yaml_path, project_root=qv_project)
+        model = load_calculation(calc_yaml_path, project_root=qms_project)
         assert model.demo_origin is not None
         assert model.demo_origin["demo_id"] == "qe_si_scf"
         assert model.demo_origin["engine"] == "qe"
         assert "materialized_at" in model.demo_origin
 
-    def test_get_reference_analysis_via_calc_demo_origin(self, qv_project):
+    def test_get_reference_analysis_via_calc_demo_origin(self, qms_project):
         """get_reference_analysis() finds ref pack via calculation.demo_origin."""
-        from quantumvitas.demo_store.ref_packs import list_all_ref_packs, list_ref_pack_types
-        from quantumvitas.mcp.tools.demo_store import load_demo
+        from qmatsuite.demo_store.ref_packs import list_all_ref_packs, list_ref_pack_types
+        from qmatsuite.mcp.tools.demo_store import load_demo
 
         # Find a demo that has a ref pack
         packs = list_all_ref_packs()
@@ -706,7 +706,7 @@ class TestDemoOrigin:
 
         # The project is NOT a demo project (no project-level demo_source),
         # so get_reference_analysis should find the ref pack via demo_origin
-        svc = QVService(qv_project)
+        svc = QMSService(qms_project)
         ref = svc.analysis.get_reference_analysis(calc_ulid, types[0])
         assert ref is not None, (
             f"get_reference_analysis returned None for demo {demo_id}, type {types[0]}. "
@@ -720,9 +720,9 @@ class TestDemoOrigin:
 class TestDemoStoreIntegration:
     """Integration tests — search → load → inspect."""
 
-    def test_search_then_load(self, qv_project):
+    def test_search_then_load(self, qms_project):
         """Search for QE demos, pick first, load it."""
-        from quantumvitas.mcp.tools.demo_store import load_demo, search_demos
+        from qmatsuite.mcp.tools.demo_store import load_demo, search_demos
 
         search_result = search_demos.fn(engine="qe")
         assert search_result["status"] == "success"
@@ -734,10 +734,10 @@ class TestDemoStoreIntegration:
         assert load_result["status"] == "success"
         assert load_result["data"]["engine"] == "qe"
 
-    def test_load_then_inspect(self, qv_project):
+    def test_load_then_inspect(self, qms_project):
         """Load demo, then inspect_calculation works on it."""
-        from quantumvitas.mcp.tools.demo_store import load_demo
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.demo_store import load_demo
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         load_result = load_demo.fn(demo_id="qe_si_scf")
         assert load_result["status"] == "success"

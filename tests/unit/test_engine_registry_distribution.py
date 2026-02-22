@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.engines.engine_meta import ENGINE_META
-from quantumvitas.core.engines.engine_registry import EngineRegistry
+from qmatsuite.core.engines.engine_meta import ENGINE_META
+from qmatsuite.core.engines.engine_registry import EngineRegistry
 
 _INSTALL_ID_KEY = "id"
 
@@ -54,21 +54,21 @@ def test_engine_meta_completeness() -> None:
 def test_engine_meta_binaries_match_runtime_sources() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     checks = {
-        "qe": ("src/quantumvitas/drivers/qe/recipe.py", "pw.x"),
-        "vasp": ("src/quantumvitas/drivers/vasp/recipe.py", "vasp_std"),
-        "xtb": ("src/quantumvitas/drivers/xtb/writer.py", 'executable: str = "xtb"'),
-        "lammps": ("src/quantumvitas/drivers/lammps/recipe.py", '"lmp"'),
-        "orca": ("src/quantumvitas/drivers/orca/recipe.py", '"orca"'),
-        "gaussian": ("src/quantumvitas/drivers/gaussian/handler.py", "g09 or g16"),
-        "abinit": ("src/quantumvitas/drivers/abinit/recipe.py", '"abinit"'),
-        "cp2k": ("src/quantumvitas/drivers/cp2k/recipe.py", "cp2k.ssmp"),
-        "siesta": ("src/quantumvitas/drivers/siesta/recipe.py", '"siesta"'),
-        "w90": ("src/quantumvitas/drivers/w90/recipe.py", "wannier90.x"),
-        "yambo": ("src/quantumvitas/drivers/yambo/recipe.py", '"yambo"'),
-        "qmcpack": ("src/quantumvitas/drivers/qmcpack/recipe.py", '"qmcpack"'),
-        "pyscf": ("src/quantumvitas/engine/pyscf_engine.py", "import pyscf"),
-        "psi4": ("src/quantumvitas/engine/psi4_engine.py", "import psi4"),
-        "gpaw": ("src/quantumvitas/engine/gpaw_engine.py", "import gpaw"),
+        "qe": ("src/qmatsuite/drivers/qe/recipe.py", "pw.x"),
+        "vasp": ("src/qmatsuite/drivers/vasp/recipe.py", "vasp_std"),
+        "xtb": ("src/qmatsuite/drivers/xtb/writer.py", 'executable: str = "xtb"'),
+        "lammps": ("src/qmatsuite/drivers/lammps/recipe.py", '"lmp"'),
+        "orca": ("src/qmatsuite/drivers/orca/recipe.py", '"orca"'),
+        "gaussian": ("src/qmatsuite/drivers/gaussian/handler.py", "g09 or g16"),
+        "abinit": ("src/qmatsuite/drivers/abinit/recipe.py", '"abinit"'),
+        "cp2k": ("src/qmatsuite/drivers/cp2k/recipe.py", "cp2k.ssmp"),
+        "siesta": ("src/qmatsuite/drivers/siesta/recipe.py", '"siesta"'),
+        "w90": ("src/qmatsuite/drivers/w90/recipe.py", "wannier90.x"),
+        "yambo": ("src/qmatsuite/drivers/yambo/recipe.py", '"yambo"'),
+        "qmcpack": ("src/qmatsuite/drivers/qmcpack/recipe.py", '"qmcpack"'),
+        "pyscf": ("src/qmatsuite/engine/pyscf_engine.py", "import pyscf"),
+        "psi4": ("src/qmatsuite/engine/psi4_engine.py", "import psi4"),
+        "gpaw": ("src/qmatsuite/engine/gpaw_engine.py", "import gpaw"),
     }
     for engine, (relpath, expected_fragment) in checks.items():
         text = (repo_root / relpath).read_text(encoding="utf-8")

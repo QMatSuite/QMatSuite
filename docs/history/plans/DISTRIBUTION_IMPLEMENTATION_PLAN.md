@@ -56,11 +56,11 @@
 ### 步骤3：Micromamba Module 📦
 | 项目 | 内容 |
 |------|------|
-| **做什么** | micromamba 下载/SHA256 验证模块、conda env 创建/管理、engine install/verify/set-active daemon RPC 命令、CLI 命令 `qv engine install xtb`、GitHub Release 下载机制（QE binary 双版本） |
+| **做什么** | micromamba 下载/SHA256 验证模块、conda env 创建/管理、engine install/verify/set-active daemon RPC 命令、CLI 命令 `qms engine install xtb`、GitHub Release 下载机制（QE binary 双版本） |
 | **改Code** | ✅ Python |
 | **预估** | 3-5天 |
 | **入口条件** | 步骤2完成 |
-| **出口条件** | pytest 全绿 + `qv engine install xtb` 装到 micromamba env + `list_engines` 显示 xTB installed + 能用装好的 xTB 跑计算 |
+| **出口条件** | pytest 全绿 + `qms engine install xtb` 装到 micromamba env + `list_engines` 显示 xTB installed + 能用装好的 xTB 跑计算 |
 | **架构要求** | 同步骤2——先读 law/spec，kernel vs API 分层。micromamba binary 管理/conda env CRUD → kernel。engine_install()/engine_uninstall() → API。daemon RPC/CLI/MCP 只调 API。 |
 | **测试要求** | micromamba 下载用 mock HTTP。conda env 创建标记 `@pytest.mark.integration`（CI 有 micromamba 时跑）。端到端：如果 xTB conda 包可用，真实装一个验证。 |
 | **Prompt** | 待写 |
@@ -74,7 +74,7 @@
 | **改Code** | ❌ 不改 |
 | **预估** | 半天 |
 | **入口条件** | 步骤1完成 |
-| **出口条件** | `pip install quantumvitas` 工作、`qv --help` 正常、MCP server 能启动 |
+| **出口条件** | `pip install qmatsuite` 工作、`qms --help` 正常、MCP server 能启动 |
 | **你的参与** | 配 PyPI token 到 GitHub Secrets 或手动 `twine upload` |
 | **Prompt** | 待写 |
 
@@ -83,11 +83,11 @@
 ### 步骤5：Runtime Tarball CI 🏗️
 | 项目 | 内容 |
 |------|------|
-| **做什么** | GitHub Actions workflow：micromamba env → pip install quantumvitas → tar --zstd → upload artifact。矩阵：macOS-arm64 + Windows-x64。 |
+| **做什么** | GitHub Actions workflow：micromamba env → pip install qmatsuite → tar --zstd → upload artifact。矩阵：macOS-arm64 + Windows-x64。 |
 | **改Code** | ❌ 只加 CI workflow YAML |
 | **预估** | 1天 |
 | **入口条件** | 步骤4完成（PyPI wheel 可用）|
-| **出口条件** | CI 产出 runtime tarball，解压后 python 能 import quantumvitas |
+| **出口条件** | CI 产出 runtime tarball，解压后 python 能 import qmatsuite |
 | **Prompt** | 待写 |
 
 ---
@@ -214,8 +214,8 @@
 | full→Si bands | macOS arm64 | 下载290MB → .pkg安装 → 启动 → Load demo → Run → band plot |
 | lite→探索→装QE→跑 | macOS arm64 | 下载190MB → 拖装 → 首次启动解压(30s) → 浏览demo ref results → 点Run→引导装QE → 跑demo |
 | lite→配VASP | Win x64 | 下载190MB → 安装 → Settings→Engine Manager → Configure VASP path → Run VASP SCF |
-| pip→MCP | Linux x64 | `pip install quantumvitas[mcp]` → MCP server → agent 跑 QE 计算 |
-| pip→CLI engine | macOS arm64 | `pip install quantumvitas` → `qv engine install xtb` → xTB 计算完成 |
+| pip→MCP | Linux x64 | `pip install qmatsuite[mcp]` → MCP server → agent 跑 QE 计算 |
+| pip→CLI engine | macOS arm64 | `pip install qmatsuite` → `qms engine install xtb` → xTB 计算完成 |
 
 ## 不在 Launch 范围内（defer post-launch）
 

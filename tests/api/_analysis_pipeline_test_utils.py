@@ -8,10 +8,10 @@ from pathlib import Path
 
 import yaml
 
-from quantumvitas.api.service import QVService
-from quantumvitas.calculation.types import StepStatus
-from quantumvitas.provenance import record_run_complete, record_run_start
-from quantumvitas.provenance.recording import generate_ulid
+from qmatsuite.api.service import QMSService
+from qmatsuite.calculation.types import StepStatus
+from qmatsuite.provenance import record_run_complete, record_run_start
+from qmatsuite.provenance.recording import generate_ulid
 
 
 @dataclass
@@ -39,8 +39,8 @@ class _CalculationStub:
 def setup_qe_bands_run(tmp_path: Path) -> dict[str, object]:
     """Create a minimal project with one QE bands step and persisted analysis snapshots."""
     project_root = tmp_path / "project"
-    QVService.init_project(project_root, name="analysis-test")
-    svc = QVService(project_root)
+    QMSService.init_project(project_root, name="analysis-test")
+    svc = QMSService(project_root)
 
     calc_dto = svc.calculation.create(engine="qe", name="qe_bands_calc")
     calc_ulid = calc_dto.calc_ulid
@@ -122,8 +122,8 @@ def setup_qe_bands_run(tmp_path: Path) -> dict[str, object]:
 def setup_vasp_bands_run(tmp_path: Path) -> dict[str, object]:
     """Create a minimal project with one VASP bands step and persisted analysis snapshots."""
     project_root = tmp_path / "project"
-    QVService.init_project(project_root, name="analysis-test")
-    svc = QVService(project_root)
+    QMSService.init_project(project_root, name="analysis-test")
+    svc = QMSService(project_root)
 
     calc_dto = svc.calculation.create(engine="vasp", name="vasp_bands_calc")
     calc_ulid = calc_dto.calc_ulid

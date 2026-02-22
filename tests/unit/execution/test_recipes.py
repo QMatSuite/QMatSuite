@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 from dataclasses import dataclass
 from typing import Optional
 
-from quantumvitas.execution.recipes import (
+from qmatsuite.execution.recipes import (
     QERecipe,
     ORCARecipe,
     PySCFRecipe,
@@ -330,7 +330,7 @@ class TestGetRecipeForEngine:
 
     def test_unknown_engine_raises(self):
         """get_recipe_for_engine raises for unknown engine."""
-        from quantumvitas.core.driver_exceptions import UnknownEngineError
+        from qmatsuite.core.driver_exceptions import UnknownEngineError
         with pytest.raises(UnknownEngineError):
             get_recipe_for_engine("unknown")
 

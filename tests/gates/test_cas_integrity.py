@@ -22,8 +22,8 @@ def test_cas_content_addressed(tmp_path):
 
     Same content always produces same SHA, and duplicate writes are no-ops.
     """
-    from quantumvitas.provenance.cas import CAS
-    from quantumvitas.provenance.db import ensure_provenance_initialized
+    from qmatsuite.provenance.cas import CAS
+    from qmatsuite.provenance.db import ensure_provenance_initialized
 
     ensure_provenance_initialized(tmp_path)
     cas = CAS(tmp_path)
@@ -53,8 +53,8 @@ def test_cas_immutable(tmp_path):
 
     Once written, retrieving the same SHA returns the same content.
     """
-    from quantumvitas.provenance.cas import CAS
-    from quantumvitas.provenance.db import ensure_provenance_initialized
+    from qmatsuite.provenance.cas import CAS
+    from qmatsuite.provenance.db import ensure_provenance_initialized
 
     ensure_provenance_initialized(tmp_path)
     cas = CAS(tmp_path)
@@ -82,8 +82,8 @@ def test_cas_duplicate_noop(tmp_path):
 
     Storing the same content twice doesn't create duplicate files.
     """
-    from quantumvitas.provenance.cas import CAS
-    from quantumvitas.provenance.db import ensure_provenance_initialized
+    from qmatsuite.provenance.cas import CAS
+    from qmatsuite.provenance.db import ensure_provenance_initialized
 
     ensure_provenance_initialized(tmp_path)
     cas = CAS(tmp_path)
@@ -115,8 +115,8 @@ def test_cas_path_derivation(tmp_path):
 
     Path format: .cas/objects/<first2>/<rest>
     """
-    from quantumvitas.provenance.cas import CAS
-    from quantumvitas.provenance.db import ensure_provenance_initialized
+    from qmatsuite.provenance.cas import CAS
+    from qmatsuite.provenance.db import ensure_provenance_initialized
 
     ensure_provenance_initialized(tmp_path)
     cas = CAS(tmp_path)
@@ -139,9 +139,9 @@ def test_cas_integrity_check(tmp_path):
 
     Corrupting a CAS object should raise CASIntegrityError on retrieve.
     """
-    from quantumvitas.provenance.cas import CAS
-    from quantumvitas.provenance.db import ensure_provenance_initialized
-    from quantumvitas.provenance.errors import CASIntegrityError
+    from qmatsuite.provenance.cas import CAS
+    from qmatsuite.provenance.db import ensure_provenance_initialized
+    from qmatsuite.provenance.errors import CASIntegrityError
 
     ensure_provenance_initialized(tmp_path)
     cas = CAS(tmp_path)
@@ -162,9 +162,9 @@ def test_cas_not_found(tmp_path):
     """
     CAS should raise SnapshotNotFoundError for missing objects.
     """
-    from quantumvitas.provenance.cas import CAS
-    from quantumvitas.provenance.db import ensure_provenance_initialized
-    from quantumvitas.provenance.errors import SnapshotNotFoundError
+    from qmatsuite.provenance.cas import CAS
+    from qmatsuite.provenance.db import ensure_provenance_initialized
+    from qmatsuite.provenance.errors import SnapshotNotFoundError
 
     ensure_provenance_initialized(tmp_path)
     cas = CAS(tmp_path)
@@ -181,8 +181,8 @@ def test_cas_json_roundtrip(tmp_path):
     """
     CAS JSON store/retrieve preserves data.
     """
-    from quantumvitas.provenance.cas import CAS
-    from quantumvitas.provenance.db import ensure_provenance_initialized
+    from qmatsuite.provenance.cas import CAS
+    from qmatsuite.provenance.db import ensure_provenance_initialized
 
     ensure_provenance_initialized(tmp_path)
     cas = CAS(tmp_path)
@@ -203,8 +203,8 @@ def test_cas_tier_recorded(tmp_path):
     """
     CAS objects should have their tier recorded in the database.
     """
-    from quantumvitas.provenance.cas import CAS
-    from quantumvitas.provenance.db import open_provenance_db, ensure_provenance_initialized
+    from qmatsuite.provenance.cas import CAS
+    from qmatsuite.provenance.db import open_provenance_db, ensure_provenance_initialized
 
     ensure_provenance_initialized(tmp_path)
     cas = CAS(tmp_path)

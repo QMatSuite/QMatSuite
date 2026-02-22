@@ -11,20 +11,20 @@ This worklog tracks the implementation of Structure Fetch V2 features as specifi
 **Timestamp:** 2025-01-XX (completed before worklog creation)
 
 **Files Touched:**
-- `src/quantumvitas/api/types/online_search.py` (created)
-- `src/quantumvitas/api/service.py` (modified)
-- `src/quantumvitas/api/utils.py` (modified)
-- `src/quantumvitas/daemon/server.py` (modified)
-- `src/quantumvitas/io/online_cache.py` (modified)
+- `src/qmatsuite/api/types/online_search.py` (created)
+- `src/qmatsuite/api/service.py` (modified)
+- `src/qmatsuite/api/utils.py` (modified)
+- `src/qmatsuite/daemon/server.py` (modified)
+- `src/qmatsuite/io/online_cache.py` (modified)
 - `tests/integration/test_online_search_api.py` (created)
 - `tests/integration/test_online_search_daemon.py` (created)
 - `tests/gates/test_api_utils_online_search_removed.py` (created)
 
 **Changes:**
 - Created DTOs for online search (SearchRequestDTO, CandidateDTO, SearchResultDTO, etc.)
-- Added QVService.OnlineSearch nested class with 4 methods (temporary passthroughs)
+- Added QMSService.OnlineSearch nested class with 4 methods (temporary passthroughs)
 - Removed search_online_structures and fetch_structure_from_optimade re-exports from api.utils
-- Updated daemon to call QVService.OnlineSearch.search_structures() instead of kernel directly
+- Updated daemon to call QMSService.OnlineSearch.search_structures() instead of kernel directly
 - Migrated cache to global location (~/.qmatsuite/cache/online_structures/)
 - Created integration tests for API methods
 - Created gate test to enforce no utils re-exports
@@ -52,9 +52,9 @@ python -m pytest tests/integration/test_online_search_api.py -v --tb=short
 **Timestamp:** 2025-01-XX (in progress)
 
 **Files Touched:**
-- `src/quantumvitas/io/providers/__init__.py` (created)
-- `src/quantumvitas/io/providers/optimade.py` (created)
-- `src/quantumvitas/core/settings.py` (modified - added OnlineStructuresConfig)
+- `src/qmatsuite/io/providers/__init__.py` (created)
+- `src/qmatsuite/io/providers/optimade.py` (created)
+- `src/qmatsuite/core/settings.py` (modified - added OnlineStructuresConfig)
 - `tests/unit/test_optimade_provider_registry.py` (created)
 
 **Changes:**
@@ -98,7 +98,7 @@ python -m pytest tests/gates/test_import_gate.py tests/gates/test_daemon_kernel_
 **Timestamp:** 2025-01-XX
 
 **Files Touched:**
-- `src/quantumvitas/io/providers/optimade.py` (modified - added parallel search, deduplication, ranking)
+- `src/qmatsuite/io/providers/optimade.py` (modified - added parallel search, deduplication, ranking)
 - `tests/unit/test_optimade_parallel_search.py` (created)
 - `tests/unit/test_deduplication.py` (created)
 - `tests/unit/test_ranking.py` (created)
@@ -129,7 +129,7 @@ python -m pytest tests/unit/test_optimade_parallel_search.py tests/unit/test_ded
 **Timestamp:** 2025-01-XX
 
 **Files Touched:**
-- `src/quantumvitas/io/online_search.py` (modified - removed COD MySQL code)
+- `src/qmatsuite/io/online_search.py` (modified - removed COD MySQL code)
 - `tests/integration/test_online_search_api.py` (updated - removed COD MySQL references)
 
 **Changes:**
@@ -157,8 +157,8 @@ python -m pytest tests/integration/test_online_search_api.py -v --tb=short
 **Timestamp:** 2025-01-XX
 
 **Files Touched:**
-- `src/quantumvitas/io/providers/pubchem.py` (created)
-- `src/quantumvitas/core/settings.py` (modified - added `pubchem_enabled` default True)
+- `src/qmatsuite/io/providers/pubchem.py` (created)
+- `src/qmatsuite/core/settings.py` (modified - added `pubchem_enabled` default True)
 - `tests/unit/test_pubchem_provider.py` (created)
 
 **Changes:**
@@ -189,8 +189,8 @@ python -m pytest tests/unit/test_pubchem_provider.py -v --tb=short
 **Timestamp:** 2025-01-XX
 
 **Files Touched:**
-- `src/quantumvitas/io/providers/materials_project.py` (created)
-- `src/quantumvitas/core/settings.py` (modified - added `MaterialsProjectConfig` dataclass)
+- `src/qmatsuite/io/providers/materials_project.py` (created)
+- `src/qmatsuite/core/settings.py` (modified - added `MaterialsProjectConfig` dataclass)
 - `pyproject.toml` (modified - added `mp-api` as optional dependency)
 - `tests/unit/test_materials_project_provider.py` (created)
 
@@ -222,19 +222,19 @@ python -m pytest tests/unit/test_materials_project_provider.py -v --tb=short
 **Timestamp:** 2025-01-XX
 
 **Files Touched:**
-- `src/quantumvitas/api/service.py` (modified - replaced passthroughs with unified provider system)
-- `src/quantumvitas/io/providers/__init__.py` (modified - added `unified_search` function)
-- `src/quantumvitas/api/utils.py` (modified - removed temporary re-exports)
-- `src/quantumvitas/daemon/server.py` (modified - updated to use API facade exclusively)
+- `src/qmatsuite/api/service.py` (modified - replaced passthroughs with unified provider system)
+- `src/qmatsuite/io/providers/__init__.py` (modified - added `unified_search` function)
+- `src/qmatsuite/api/utils.py` (modified - removed temporary re-exports)
+- `src/qmatsuite/daemon/server.py` (modified - updated to use API facade exclusively)
 - `tests/integration/test_online_search_api.py` (updated - mock unified_search)
 - `tests/integration/test_online_search_daemon.py` (updated - mock unified_search)
 
 **Changes:**
-- Implemented `unified_search` function in `quantumvitas.io.providers` to orchestrate OPTIMADE, PubChem, and MP providers
-- Updated `QVService.OnlineSearch.search_structures()` to call `unified_search` and convert provider models to DTOs
-- Updated `QVService.OnlineSearch.fetch_structure()` to use provider-specific fetch functions based on `ref.source`
-- Updated `QVService.OnlineSearch.list_providers()` to aggregate provider information from registry, curated defaults, and settings
-- Updated `QVService.OnlineSearch.update_online_sources()` to persist settings correctly
+- Implemented `unified_search` function in `qmatsuite.io.providers` to orchestrate OPTIMADE, PubChem, and MP providers
+- Updated `QMSService.OnlineSearch.search_structures()` to call `unified_search` and convert provider models to DTOs
+- Updated `QMSService.OnlineSearch.fetch_structure()` to use provider-specific fetch functions based on `ref.source`
+- Updated `QMSService.OnlineSearch.list_providers()` to aggregate provider information from registry, curated defaults, and settings
+- Updated `QMSService.OnlineSearch.update_online_sources()` to persist settings correctly
 - Removed all direct kernel imports from daemon (strict layering enforced)
 - Removed temporary re-exports from `api.utils` (OnlineStructureCache, CandidateSummary)
 - Updated daemon handler to remove `project_root` argument (uses global cache)
@@ -269,7 +269,7 @@ python -m pytest tests/gates/test_daemon_kernel_ban.py -v --tb=short
 **Timestamp:** 2025-01-XX
 
 **Files Touched:**
-- `gui/src/types/qv.ts` (modified - added/updated RPC type definitions)
+- `gui/src/types/qms.ts` (modified - added/updated RPC type definitions)
 - `gui/src/components/panels/OnlineImportPanel.tsx` (modified - added mode selection, provider badges, structure type indicators)
 - `gui/src/components/panels/SettingsPanel.tsx` (modified - added OnlineStructuresSettingsSection component)
 - `gui/src/App.tsx` (modified - updated structure validation and model construction to support molecules)
@@ -334,12 +334,12 @@ python -m pytest tests/gates/test_daemon_kernel_ban.py -v --tb=short
 **Timestamp:** 2025-01-XX
 
 **Files Touched:**
-- `src/quantumvitas/daemon/server.py` (added handlers for `structure_list_providers` and `structure_update_online_sources`)
-- `tools/api_dangling_calls_scanner.py` (updated to handle nested classes like `QVService.OnlineSearch`)
-- `src/quantumvitas/api/types/online_search.py` (replaced `id` with `provider_key` in DTOs)
-- `src/quantumvitas/io/providers/optimade.py` (replaced `id` with `provider_key` in `ProviderConfig`)
-- `src/quantumvitas/api/service.py` (updated to use `provider_key` instead of `id`)
-- `src/quantumvitas/daemon/server.py` (updated to use `provider_key` in handlers)
+- `src/qmatsuite/daemon/server.py` (added handlers for `structure_list_providers` and `structure_update_online_sources`)
+- `tools/api_dangling_calls_scanner.py` (updated to handle nested classes like `QMSService.OnlineSearch`)
+- `src/qmatsuite/api/types/online_search.py` (replaced `id` with `provider_key` in DTOs)
+- `src/qmatsuite/io/providers/optimade.py` (replaced `id` with `provider_key` in `ProviderConfig`)
+- `src/qmatsuite/api/service.py` (updated to use `provider_key` instead of `id`)
+- `src/qmatsuite/daemon/server.py` (updated to use `provider_key` in handlers)
 - `tests/unit/test_ranking.py` (updated `ProviderConfig` calls to use `provider_key`)
 - `tests/unit/test_optimade_parallel_search.py` (updated `ProviderConfig` calls to use `provider_key`)
 - `tests/daemon/test_online_candidate_handler.py` (updated to use global cache instead of project-specific)
@@ -349,8 +349,8 @@ python -m pytest tests/gates/test_daemon_kernel_ban.py -v --tb=short
 
 **STEP A - Wire daemon handlers + remove dangling calls:**
 - Added `_handle_structure_list_providers` and `_handle_structure_update_online_sources` handlers to daemon
-- Updated `api_dangling_calls_scanner.py` to properly handle nested classes (`QVService.OnlineSearch.method()`)
-- Scanner now recognizes nested class instantiation (e.g., `QVService.Analysis(self)`) as valid
+- Updated `api_dangling_calls_scanner.py` to properly handle nested classes (`QMSService.OnlineSearch.method()`)
+- Scanner now recognizes nested class instantiation (e.g., `QMSService.Analysis(self)`) as valid
 
 **STEP B - Remove forbidden "id" field:**
 - Replaced `id` with `provider_key` in:
@@ -415,7 +415,7 @@ python -m pytest tests/contract_crawler/test_golden_contracts.py::TestGoldenCont
 **Files fixed:**
 | File | Change |
 |------|--------|
-| `src/quantumvitas/io/providers/optimade.py` | `p.id` → `p.provider_key` in `_merge_providers` (2 sites) |
+| `src/qmatsuite/io/providers/optimade.py` | `p.id` → `p.provider_key` in `_merge_providers` (2 sites) |
 | `tests/unit/test_optimade_provider_registry.py` | `.id` → `.provider_key` in assertions (6 sites); `"id"` → `"provider_key"` in test data dicts |
 | `tests/integration/test_online_search_api.py` | `.id` → `.provider_key` in assertion (1 site) |
 
@@ -426,7 +426,7 @@ python -m pytest tests/contract_crawler/test_golden_contracts.py::TestGoldenCont
 **Files fixed:**
 | File | Change |
 |------|--------|
-| `src/quantumvitas/daemon/server.py` | Replaced manual dict construction with `result_dto.to_dict()` in all 3 handlers; removed `p.get("id")` backward compat in `ProviderPatchDTO` construction |
+| `src/qmatsuite/daemon/server.py` | Replaced manual dict construction with `result_dto.to_dict()` in all 3 handlers; removed `p.get("id")` backward compat in `ProviderPatchDTO` construction |
 
 #### Class C: Contract crawler coverage gap (2 failures)
 
@@ -443,11 +443,11 @@ python -m pytest tests/contract_crawler/test_golden_contracts.py::TestGoldenCont
 
 | File | Change | Reason |
 |------|--------|--------|
-| `gui/src/types/qv.ts` | `id: string` → `provider_key: string` (3 sites) | Identity field ban (Constitution) |
+| `gui/src/types/qms.ts` | `id: string` → `provider_key: string` (3 sites) | Identity field ban (Constitution) |
 | `gui/src/components/panels/SettingsPanel.tsx` | `provider.id` → `provider.provider_key` (6 sites) | Identity field ban |
-| `src/quantumvitas/core/settings.py` | Comment `{"id": "mp"}` → `{"provider_key": "mp"}` | Docstring accuracy |
-| `src/quantumvitas/api/service.py` | Migration logic in `update_online_sources` for legacy `"id"` → `"provider_key"` | Backward-compat read path |
-| `src/quantumvitas/io/providers/optimade.py` | `get_providers_with_settings` settings_map fallback | Handles both old and new key names |
+| `src/qmatsuite/core/settings.py` | Comment `{"id": "mp"}` → `{"provider_key": "mp"}` | Docstring accuracy |
+| `src/qmatsuite/api/service.py` | Migration logic in `update_online_sources` for legacy `"id"` → `"provider_key"` | Backward-compat read path |
+| `src/qmatsuite/io/providers/optimade.py` | `get_providers_with_settings` settings_map fallback | Handles both old and new key names |
 
 ### Commands Run
 ```bash
@@ -467,7 +467,7 @@ All 7 failures are preexisting (5 demo schema + 2 QE integration). All 10 PR-rel
 |-----|--------|
 | No forbidden `id` field in DTOs/configs | ✅ All instances replaced with `provider_key` |
 | No hand-serialization in daemon | ✅ All 3 handlers use `DTO.to_dict()` |
-| No kernel imports in daemon | ✅ Daemon uses `QVService.OnlineSearch.*` exclusively |
+| No kernel imports in daemon | ✅ Daemon uses `QMSService.OnlineSearch.*` exclusively |
 | Contract crawler coverage | ✅ Both new RPC methods registered and covered |
 | No sensitive paths in committed files | ✅ No real usernames/hostnames introduced |
 | GUI uses `provider_key` (not `id`) | ✅ All GUI types and components migrated |

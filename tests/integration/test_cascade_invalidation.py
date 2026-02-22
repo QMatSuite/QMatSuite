@@ -14,20 +14,20 @@ from unittest.mock import patch, MagicMock
 import pytest
 import yaml
 
-from quantumvitas.calculation.manifest import (
+from qmatsuite.calculation.manifest import (
     Manifest,
     ManifestStepEntry,
     load_manifest,
     save_manifest_atomic,
     clear_manifest_from_step,
 )
-from quantumvitas.calculation.manifest_reconcile import reconcile_manifest
-from quantumvitas.calculation.hash_utils import (
+from qmatsuite.calculation.manifest_reconcile import reconcile_manifest
+from qmatsuite.calculation.hash_utils import (
     compute_pseudo_set_sha,
     compute_structure_sha,
     compute_step_sha,
 )
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ from quantumvitas.api import QVService
 def tmp_project(tmp_path):
     """Create a minimal project structure using service API."""
     project_root = tmp_path / "project"
-    project_root = QVService.init_project(target_dir=project_root, name="test_cascade")
+    project_root = QMSService.init_project(target_dir=project_root, name="test_cascade")
     return project_root
 
 
@@ -56,7 +56,7 @@ def minimal_structure(tmp_project):
 
     try:
         structure.to(filename=str(cif_path), fmt="cif")
-        structure_resolved = QVService(tmp_project).structure.import_file(
+        structure_resolved = QMSService(tmp_project).structure.import_file(
             source=cif_path,
             name="test_structure",
         )
@@ -77,7 +77,7 @@ def minimal_calculation(tmp_project, minimal_structure):
     """Create a minimal 3-step QE calculation (scf/nscf/bands)."""
     structure_ulid, structure_path = minimal_structure
 
-    calc_resolved = QVService(tmp_project).project.init_calculation(
+    calc_resolved = QMSService(tmp_project).project.init_calculation(
         name="test_cascade_calc",
         structure_selector=structure_ulid,
         engine_family="qe",
@@ -86,9 +86,9 @@ def minimal_calculation(tmp_project, minimal_structure):
     calc_dir = calc_resolved.absolute_path
 
     # Set species_map
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.core.models import load_calculation
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yamldoc import CalcDoc
+    from qmatsuite.core.models import load_calculation
 
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -101,7 +101,7 @@ def minimal_calculation(tmp_project, minimal_structure):
         save_yaml_doc(calc_doc, calc_data_path)
 
     # Add 3 steps
-    svc = QVService(tmp_project)
+    svc = QMSService(tmp_project)
     step1_dto = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="scf")
     step2_dto = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="nscf")
     step3_dto = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="bands")
@@ -129,10 +129,10 @@ def minimal_calculation(tmp_project, minimal_structure):
 
 def _compute_shas(tmp_project, calc_id, calc_dir, step_ids):
     """Compute all SHAs for manifest entries (structure, pseudo, per-step)."""
-    from quantumvitas.core.models import load_calculation
-    from quantumvitas.core.resolution import require_structure, require_step, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
-    from quantumvitas.core.yamldoc import StepDoc
+    from qmatsuite.core.models import load_calculation
+    from qmatsuite.core.resolution import require_structure, require_step, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
+    from qmatsuite.core.yamldoc import StepDoc
 
     calc_data_path = calc_dir / "calculation.yaml"
     calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -180,8 +180,8 @@ def _build_done_manifest(step_ids, structure_sha, pseudo_sha, step_shas):
 
 def _mutate_step_sha(tmp_project, calc_id, step_id, config=None, index=None):
     """Modify a step's YAML to change its SHA (add a harmless parameter)."""
-    from quantumvitas.core.resolution import require_step, build_resource_index
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.resolution import require_step, build_resource_index
+    from qmatsuite.core.project_utils import load_project_config
 
     if config is None:
         config = load_project_config(tmp_project)
@@ -216,7 +216,7 @@ class TestReconcileCascade:
         """Step 1 SHA changes -> step 1 done=False AND step 2 done=False (cascade)."""
         calc_id, calc_dir, step_ids = minimal_calculation
         monkeypatch.setattr(
-            "quantumvitas.calculation.manifest_reconcile.is_step_done",
+            "qmatsuite.calculation.manifest_reconcile.is_step_done",
             lambda *a, **kw: True,
         )
 
@@ -232,8 +232,8 @@ class TestReconcileCascade:
         _mutate_step_sha(tmp_project, calc_id, step_ids[1])
 
         # Reconcile
-        from quantumvitas.calculation.calculation import Calculation
-        from quantumvitas.project.model import Project
+        from qmatsuite.calculation.calculation import Calculation
+        from qmatsuite.project.model import Project
 
         project = Project.open(tmp_project)
         calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
@@ -257,7 +257,7 @@ class TestReconcileCascade:
         """Step 0 SHA changes -> ALL 3 steps done=False (cascade from beginning)."""
         calc_id, calc_dir, step_ids = minimal_calculation
         monkeypatch.setattr(
-            "quantumvitas.calculation.manifest_reconcile.is_step_done",
+            "qmatsuite.calculation.manifest_reconcile.is_step_done",
             lambda *a, **kw: True,
         )
 
@@ -271,8 +271,8 @@ class TestReconcileCascade:
         # Mutate step 0
         _mutate_step_sha(tmp_project, calc_id, step_ids[0])
 
-        from quantumvitas.calculation.calculation import Calculation
-        from quantumvitas.project.model import Project
+        from qmatsuite.calculation.calculation import Calculation
+        from qmatsuite.project.model import Project
 
         project = Project.open(tmp_project)
         calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
@@ -296,7 +296,7 @@ class TestReconcileCascade:
         """No mutations, all SHAs match -> all steps remain done=True."""
         calc_id, calc_dir, step_ids = minimal_calculation
         monkeypatch.setattr(
-            "quantumvitas.calculation.manifest_reconcile.is_step_done",
+            "qmatsuite.calculation.manifest_reconcile.is_step_done",
             lambda *a, **kw: True,
         )
 
@@ -307,8 +307,8 @@ class TestReconcileCascade:
         manifest = _build_done_manifest(step_ids, structure_sha, pseudo_sha, step_shas)
         save_manifest_atomic(calc_dir, manifest)
 
-        from quantumvitas.calculation.calculation import Calculation
-        from quantumvitas.project.model import Project
+        from qmatsuite.calculation.calculation import Calculation
+        from qmatsuite.project.model import Project
 
         project = Project.open(tmp_project)
         calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
@@ -332,7 +332,7 @@ class TestReconcileCascade:
         """Modify only last step -> steps 0,1 remain done=True, step 2 done=False."""
         calc_id, calc_dir, step_ids = minimal_calculation
         monkeypatch.setattr(
-            "quantumvitas.calculation.manifest_reconcile.is_step_done",
+            "qmatsuite.calculation.manifest_reconcile.is_step_done",
             lambda *a, **kw: True,
         )
 
@@ -346,8 +346,8 @@ class TestReconcileCascade:
         # Mutate only the last step
         _mutate_step_sha(tmp_project, calc_id, step_ids[2])
 
-        from quantumvitas.calculation.calculation import Calculation
-        from quantumvitas.project.model import Project
+        from qmatsuite.calculation.calculation import Calculation
+        from qmatsuite.project.model import Project
 
         project = Project.open(tmp_project)
         calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
@@ -371,12 +371,12 @@ class TestReconcileCascade:
         """Single-step calc with SHA change -> done=False, no IndexError."""
         structure_ulid, structure_path = minimal_structure
         monkeypatch.setattr(
-            "quantumvitas.calculation.manifest_reconcile.is_step_done",
+            "qmatsuite.calculation.manifest_reconcile.is_step_done",
             lambda *a, **kw: True,
         )
 
         # Create 1-step calculation
-        calc_resolved = QVService(tmp_project).project.init_calculation(
+        calc_resolved = QMSService(tmp_project).project.init_calculation(
             name="single_step",
             structure_selector=structure_ulid,
             engine_family="qe",
@@ -384,9 +384,9 @@ class TestReconcileCascade:
         calc_id = calc_resolved.meta.ulid
         calc_dir = calc_resolved.absolute_path
 
-        from quantumvitas.core.yaml_io import save_yaml_doc
-        from quantumvitas.core.yamldoc import CalcDoc
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.yaml_io import save_yaml_doc
+        from qmatsuite.core.yamldoc import CalcDoc
+        from qmatsuite.core.models import load_calculation
 
         calc_data_path = calc_dir / "calculation.yaml"
         calc_model = load_calculation(calc_data_path, project_root=tmp_project)
@@ -395,7 +395,7 @@ class TestReconcileCascade:
             calc_doc = CalcDoc(calc_model.to_dict())
             save_yaml_doc(calc_doc, calc_data_path)
 
-        svc = QVService(tmp_project)
+        svc = QMSService(tmp_project)
         step_dto = svc.calculation.add_step(calc_selector=calc_id, step_type_gen="scf")
         step_id = step_dto.step_ulid
 
@@ -420,8 +420,8 @@ class TestReconcileCascade:
         # Mutate the single step
         _mutate_step_sha(tmp_project, calc_id, step_id)
 
-        from quantumvitas.calculation.calculation import Calculation
-        from quantumvitas.project.model import Project
+        from qmatsuite.calculation.calculation import Calculation
+        from qmatsuite.project.model import Project
 
         project = Project.open(tmp_project)
         calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
@@ -458,9 +458,9 @@ class TestTargetModeInvalidation:
 
         # Mock the entire runner to simulate successful target execution
         # then check that clear_manifest_from_step was called
-        from quantumvitas.calculation.runner import CalculationRunner
-        from quantumvitas.calculation.results import CalculationResult
-        from quantumvitas.calculation.types import StepStatus
+        from qmatsuite.calculation.runner import CalculationRunner
+        from qmatsuite.calculation.results import CalculationResult
+        from qmatsuite.calculation.types import StepStatus
         from datetime import datetime, timezone
 
         def mock_run(self, calculation, *, run_ulid=None, run_mode="incremental",
@@ -484,9 +484,9 @@ class TestTargetModeInvalidation:
         monkeypatch.setattr(CalculationRunner, "run", mock_run)
 
         # Run with target = step 1 (middle)
-        from quantumvitas.calculation.calculation import Calculation
-        from quantumvitas.project.model import Project
-        from quantumvitas.engine.registry import create_default_registry
+        from qmatsuite.calculation.calculation import Calculation
+        from qmatsuite.project.model import Project
+        from qmatsuite.engine.registry import create_default_registry
 
         project = Project.open(tmp_project)
         calculation = Calculation.from_yaml(calc_dir, project, materialize_steps=False)

@@ -9,8 +9,8 @@ import pytest
 
 def test_companion_engines_are_postprocessing():
     """Every engine listed in COMPANION_ENGINES must have ENGINE_ROLE='postprocessing'."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     violations = []
     for engine_family in DriverRegistry.get_all_engines():
@@ -30,8 +30,8 @@ def test_companion_engines_are_postprocessing():
 
 def test_every_postproc_engine_has_a_host():
     """Every postprocessing engine appears in at least one base engine's COMPANION_ENGINES."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     postproc_engines = set()
     hosted_engines = set()
@@ -50,8 +50,8 @@ def test_every_postproc_engine_has_a_host():
 
 def test_companion_engines_is_frozenset():
     """COMPANION_ENGINES must be a frozenset on all drivers."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     violations = []
     for engine_family in DriverRegistry.get_all_engines():
@@ -67,8 +67,8 @@ def test_companion_engines_is_frozenset():
 
 def test_engine_role_is_valid():
     """ENGINE_ROLE must be 'base' or 'postprocessing' on all drivers."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     violations = []
     for engine_family in DriverRegistry.get_all_engines():

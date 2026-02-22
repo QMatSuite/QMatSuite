@@ -50,7 +50,7 @@ class TestDeterministicQuantization:
     
     def test_quantize_scalar_ties_go_up(self):
         """Half-integers must round up (ties go up, not banker's rounding)."""
-        from quantumvitas.core.structure_fingerprint import quantize_scalar
+        from qmatsuite.core.structure_fingerprint import quantize_scalar
         
         # With tol=1.0, test half-integer cases
         assert quantize_scalar(0.5, 1.0) == 1, "0.5 should round to 1 (ties up)"
@@ -68,8 +68,8 @@ class TestDeterministicQuantization:
         0.25 / frac_tol = 1357.5 (half-integer).
         Adding tiny noise (1e-6) should NOT change fingerprint.
         """
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         from pymatgen.core import Structure, Lattice
         import numpy as np
         
@@ -117,8 +117,8 @@ class TestKnifeEdgeRegression:
         Structure with small negative frac in canonical interval [-WRAP_TOL, 1-WRAP_TOL).
         Fingerprint must NOT mod this to ~1.0.
         """
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         from pymatgen.core import Structure, Lattice
         
         lattice = Lattice.cubic(5.43)
@@ -152,9 +152,9 @@ class TestKnifeEdgeRegression:
         """
         Structure with edge coords → write → read → fingerprint unchanged.
         """
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
-        from quantumvitas.io.structure_io import write_structure, read_structure
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.io.structure_io import write_structure, read_structure
         from pymatgen.core import Structure, Lattice
         import tempfile
         from pathlib import Path
@@ -194,7 +194,7 @@ class TestPBCCanonicalization:
     
     def test_pbc_canonicalization_idempotent(self):
         """Canonicalizing twice produces same result."""
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         from pymatgen.core import Structure, Lattice
         import numpy as np
         
@@ -228,7 +228,7 @@ class TestFingerprintPurity:
     
     def test_fingerprint_does_not_modify_structure(self, si_structure):
         """Fingerprint call does not modify input structure."""
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
         import numpy as np
         
         coords_before = np.array(si_structure.frac_coords).copy()
@@ -244,7 +244,7 @@ class TestFingerprintPurity:
     
     def test_fingerprint_deterministic(self, si_structure):
         """Same structure yields same fingerprint."""
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
         
         fp1 = structure_like_fingerprint(si_structure, tol_ang=1e-3)
         fp2 = structure_like_fingerprint(si_structure, tol_ang=1e-3)
@@ -267,8 +267,8 @@ class TestPBCNoiseTolerance:
     
     def test_pbc_noise_tolerance(self, si_structure):
         """Perturbation < tol does not change fingerprint."""
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         from pymatgen.core import Structure
         import numpy as np
         
@@ -309,7 +309,7 @@ class TestMoleculeCanonicalization:
     
     def test_molecule_canonicalization_centers_at_origin(self):
         """After canonicalization, molecule is centered at origin."""
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         from pymatgen.core import Molecule
         import numpy as np
         
@@ -326,7 +326,7 @@ class TestMoleculeCanonicalization:
     
     def test_molecule_canonicalization_idempotent(self):
         """Canonicalizing twice produces same result."""
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         from pymatgen.core import Molecule
         import numpy as np
         
@@ -343,7 +343,7 @@ class TestMoleculeCanonicalization:
     
     def test_molecule_canonicalization_preserves_geometry(self):
         """Relative positions (distances) are preserved."""
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         from pymatgen.core import Molecule
         import numpy as np
         
@@ -379,8 +379,8 @@ def test_molecule_tie_case_stable(self):
     Add tiny noise < tol_ang.
     Fingerprint MUST be identical due to deterministic quantization.
     """
-    from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-    from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+    from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+    from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
     from pymatgen.core import Molecule
     
     tol_ang = 1e-3
@@ -415,8 +415,8 @@ class TestMoleculeTranslationInvariance:
     
     def test_molecule_translation_invariance(self):
         """Same geometry at different origins → same fingerprint after canonicalization."""
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         from pymatgen.core import Molecule
         
         h2_origin = Molecule(["H", "H"], [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]])
@@ -432,8 +432,8 @@ class TestMoleculeTranslationInvariance:
     
     def test_molecule_translation_large_offset(self):
         """Large translation offset → same fingerprint."""
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         from pymatgen.core import Molecule
         
         h2o_origin = Molecule(
@@ -475,8 +475,8 @@ class TestMoleculeFingerprintPurity:
     
     def test_molecule_fingerprint_does_not_modify(self, h2_molecule):
         """Fingerprint call does not modify input molecule."""
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         import numpy as np
         
         canonicalize_structure_like_in_place(h2_molecule)
@@ -506,9 +506,9 @@ class TestRoundtripStability:
     
     def test_pbc_roundtrip_json(self, si_structure, tmp_path):
         """PBC Structure → JSON → Structure → same fingerprint."""
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
-        from quantumvitas.io.structure_io import write_structure, read_structure
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.io.structure_io import write_structure, read_structure
         
         canonicalize_structure_like_in_place(si_structure)
         fp_before = structure_like_fingerprint(si_structure, tol_ang=1e-3)
@@ -524,9 +524,9 @@ class TestRoundtripStability:
     
     def test_molecule_roundtrip_json(self, h2_molecule, tmp_path):
         """Molecule → JSON → Molecule → same fingerprint."""
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
-        from quantumvitas.io.structure_io import write_structure, read_structure
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.io.structure_io import write_structure, read_structure
         
         canonicalize_structure_like_in_place(h2_molecule)
         fp_before = structure_like_fingerprint(h2_molecule, tol_ang=1e-3)
@@ -561,26 +561,26 @@ class TestImportStructureIntegration:
     
     def test_import_structure_no_hash_fork(self, tmp_path):
         """import_structure stores fingerprint matching structure_like_fingerprint()."""
-        from quantumvitas.api import QVService
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
-        from quantumvitas.io.structure_io import write_structure, read_structure
+        from qmatsuite.api import QMSService
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.io.structure_io import write_structure, read_structure
         from pymatgen.core import Molecule
         import json
         
         project_root = tmp_path / "test_project"
-        QVService.init_project(target_dir=project_root, name="test")
+        QMSService.init_project(target_dir=project_root, name="test")
         
         h2 = Molecule(["H", "H"], [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]])
         mol_file = tmp_path / "h2.json"
         write_structure(h2, mol_file)
         
-        resolved = QVService.import_structure(project_root, mol_file, name="h2")
+        resolved = QMSService.import_structure(project_root, mol_file, name="h2")
         
         # Read stored fingerprint
         structure_path = project_root / resolved.meta.path
         struct_data = json.loads(structure_path.read_text())
-        stored_fingerprint = struct_data.get("__qv_meta__", {}).get("fingerprint")
+        stored_fingerprint = struct_data.get("__qms_meta__", {}).get("fingerprint")
         
         # Compute expected: canonicalize then fingerprint
         h2_copy = Molecule(["H", "H"], [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]])
@@ -592,12 +592,12 @@ class TestImportStructureIntegration:
     
     def test_import_molecule_translation_dedup(self, tmp_path):
         """Two Molecules at different origins dedup correctly."""
-        from quantumvitas.api import QVService
-        from quantumvitas.io.structure_io import write_structure
+        from qmatsuite.api import QMSService
+        from qmatsuite.io.structure_io import write_structure
         from pymatgen.core import Molecule
         
         project_root = tmp_path / "test_project"
-        QVService.init_project(target_dir=project_root, name="test")
+        QMSService.init_project(target_dir=project_root, name="test")
         
         h2_origin = Molecule(["H", "H"], [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]])
         h2_translated = Molecule(["H", "H"], [[10.0, 5.0, 3.0], [10.74, 5.0, 3.0]])
@@ -607,8 +607,8 @@ class TestImportStructureIntegration:
         write_structure(h2_origin, mol_file1)
         write_structure(h2_translated, mol_file2)
         
-        resolved1 = QVService.import_structure(project_root, mol_file1, name="h2_1", dedup_by_fingerprint=True)
-        resolved2 = QVService.import_structure(project_root, mol_file2, name="h2_2", dedup_by_fingerprint=True)
+        resolved1 = QMSService.import_structure(project_root, mol_file1, name="h2_1", dedup_by_fingerprint=True)
+        resolved2 = QMSService.import_structure(project_root, mol_file2, name="h2_2", dedup_by_fingerprint=True)
         
         assert resolved1.meta.id == resolved2.meta.id, \
             "Translated molecules should dedup to same structure_id"
@@ -633,8 +633,8 @@ class TestEdgeCases:
     
     def test_single_atom_molecule(self):
         """Single-atom molecule should have valid fingerprint."""
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
-        from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
         from pymatgen.core import Molecule
         
         h_atom = Molecule(["H"], [[0.0, 0.0, 0.0]])
@@ -646,7 +646,7 @@ class TestEdgeCases:
     
     def test_type_error_on_wrong_type(self):
         """Passing non-Structure/Molecule raises TypeError."""
-        from quantumvitas.core.structure_fingerprint import structure_like_fingerprint
+        from qmatsuite.core.structure_fingerprint import structure_like_fingerprint
         import pytest
         
         with pytest.raises(TypeError):

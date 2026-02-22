@@ -33,9 +33,9 @@ The contract ensures:
 
 **Evidence**:
 - SSOT principle: `docs/dev/post-detour-deep-review-params-presets-ir-steps.md` (section 2.1)
-- Reversibility: `src/quantumvitas/presets/paramspace.py:match_profile()` (line 461-534), `compile_profile_patch()` (line 541-612)
-- Key ownership: `src/quantumvitas/presets/paramspace.py:register_paramspace()` (line 168-205), `check_key_access()` (line 207-254)
-- Engine isolation: `src/quantumvitas/presets/paramspace.py:ParamKey` docstring (lines 64-71)
+- Reversibility: `src/qmatsuite/presets/paramspace.py:match_profile()` (line 461-534), `compile_profile_patch()` (line 541-612)
+- Key ownership: `src/qmatsuite/presets/paramspace.py:register_paramspace()` (line 168-205), `check_key_access()` (line 207-254)
+- Engine isolation: `src/qmatsuite/presets/paramspace.py:ParamKey` docstring (lines 64-71)
 
 ---
 
@@ -47,7 +47,7 @@ The contract ensures:
 
 **ParamSpace**: Declarative data structure with keys, profiles, and compile/match algorithms. Operates on IR keys (IR is SSOT).
 
-**Dimension**: String identifier for a physical concept (e.g., `"precision"`, `"magnetism"`). Defined in `src/quantumvitas/presets/dimensions.py`.
+**Dimension**: String identifier for a physical concept (e.g., `"precision"`, `"magnetism"`). Defined in `src/qmatsuite/presets/dimensions.py`.
 
 **Variant**: `ParamSpaceVariant` instance that binds a `ParamSpace` to specific `step_type`s via `applies_to_step_types` (frozenset of public step types).
 
@@ -62,10 +62,10 @@ The contract ensures:
 **Spec/Machine Step Type**: Engine-prefixed step type string (e.g., `"qe_scf"`, `"orca_scf"`). Used for persisted execution + engine dispatch.
 
 **Evidence**:
-- Preset definition: `src/quantumvitas/presets/variants_registry.py:ENUM_TO_PROFILE` (line 233-238)
-- ParamSpace: `src/quantumvitas/presets/paramspace.py:ParamSpace` (line 298-372)
-- Variant: `src/quantumvitas/presets/space_variant.py:ParamSpaceVariant` (line 16-51)
-- Gen/Spec step: `src/quantumvitas/workflow/registry.py:StepTypeSpec` (lines 23-58)
+- Preset definition: `src/qmatsuite/presets/variants_registry.py:ENUM_TO_PROFILE` (line 233-238)
+- ParamSpace: `src/qmatsuite/presets/paramspace.py:ParamSpace` (line 298-372)
+- Variant: `src/qmatsuite/presets/space_variant.py:ParamSpaceVariant` (line 16-51)
+- Gen/Spec step: `src/qmatsuite/workflow/registry.py:StepTypeSpec` (lines 23-58)
 
 ### 2.2 SSOT Boundaries
 
@@ -77,7 +77,7 @@ The contract ensures:
 
 **Evidence**:
 - SSOT principle: `docs/dev/post-detour-deep-review-params-presets-ir-steps.md` (section 2.1)
-- step.yaml storage: `src/quantumvitas/workflow/step_factory.py:create_step_doc()` (line 73)
+- step.yaml storage: `src/qmatsuite/workflow/step_factory.py:create_step_doc()` (line 73)
 - Preset non-persistence: `docs/dev/post-detour-deep-review-params-presets-ir-steps.md` (section 3.1)
 
 ---
@@ -98,9 +98,9 @@ The contract ensures:
 5. On reload, preset detected from `step.yaml` via `match_profile()`
 
 **Evidence**:
-- Preset mapping: `src/quantumvitas/presets/variants_registry.py:ENUM_TO_PROFILE` (line 233-238)
-- Detection: `src/quantumvitas/presets/paramspace.py:match_profile()` (line 461-534)
-- Compilation: `src/quantumvitas/presets/paramspace.py:compile_profile_patch()` (line 541-612)
+- Preset mapping: `src/qmatsuite/presets/variants_registry.py:ENUM_TO_PROFILE` (line 233-238)
+- Detection: `src/qmatsuite/presets/paramspace.py:match_profile()` (line 461-534)
+- Compilation: `src/qmatsuite/presets/paramspace.py:compile_profile_patch()` (line 541-612)
 
 ### 3.2 ParamSpace (matrix, profiles/variants, ownership, compile ordering)
 
@@ -119,9 +119,9 @@ The contract ensures:
 - Phase ordering enforced by `apply_presets_to_step()` (lines 414-576 in `integration.py`)
 
 **Evidence**:
-- ParamSpace definition: `src/quantumvitas/presets/paramspace.py:ParamSpace` (line 298-372)
-- Key ownership: `src/quantumvitas/presets/paramspace.py:register_paramspace()` (line 168-205)
-- Compile ordering: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (lines 414-576)
+- ParamSpace definition: `src/qmatsuite/presets/paramspace.py:ParamSpace` (line 298-372)
+- Key ownership: `src/qmatsuite/presets/paramspace.py:register_paramspace()` (line 168-205)
+- Compile ordering: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (lines 414-576)
 
 ### 3.3 IR Dialects (logical patch, non-persisted)
 
@@ -147,8 +147,8 @@ The contract ensures:
 **Future 2x2 generalization** (PBC/MOL × PW/AO) is out of scope; this spec documents only the chosen `ir.pw`/`ir.qc` dialect split.
 
 **Evidence**:
-- IR parameter registry: `src/quantumvitas/ir/parameters.py:IRParameter` (lines 14-27)
-- IR→QE mapping: `src/quantumvitas/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74)
+- IR parameter registry: `src/qmatsuite/ir/parameters.py:IRParameter` (lines 14-27)
+- IR→QE mapping: `src/qmatsuite/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74)
 - Note: IR dialect split (`ir.pw`/`ir.qc`) is a future design decision; current code uses single IR namespace
 
 ### 3.4 Engine params (step.yaml persisted spec)
@@ -162,9 +162,9 @@ The contract ensures:
 **Materialization**: Engine writers convert IR patches to engine-specific format (e.g., QE `.true.`/`.false.` strings) during materialization.
 
 **Evidence**:
-- step.yaml storage: `src/quantumvitas/workflow/step_factory.py:create_step_doc()` (line 73)
-- StepDoc apply_patch: `src/quantumvitas/core/yamldoc.py:apply_patch()` (lines 358-396)
-- Materialization: `src/quantumvitas/calculation/structure_steps.py:materialize_step_spec()` (line 671-1797)
+- step.yaml storage: `src/qmatsuite/workflow/step_factory.py:create_step_doc()` (line 73)
+- StepDoc apply_patch: `src/qmatsuite/core/yamldoc.py:apply_patch()` (lines 358-396)
+- Materialization: `src/qmatsuite/calculation/structure_steps.py:materialize_step_spec()` (line 671-1797)
 
 ### 3.5 Gen/public step vs spec/machine step vs legacy enum
 
@@ -187,9 +187,9 @@ The contract ensures:
 - **MAY**: Be used for coercion/formatting only (type hinting, API responses)
 
 **Evidence**:
-- Gen/Spec step: `src/quantumvitas/workflow/registry.py:StepTypeSpec` (lines 23-58)
-- Enum definition: `src/quantumvitas/calculation/types.py:StepType` (lines 10-30)
-- Enum violations: `src/quantumvitas/api.py:set_relax_final_cell()` (lines 7756-7758), `get_relax_final_cell()` (lines 7866-7868)
+- Gen/Spec step: `src/qmatsuite/workflow/registry.py:StepTypeSpec` (lines 23-58)
+- Enum definition: `src/qmatsuite/calculation/types.py:StepType` (lines 10-30)
+- Enum violations: `src/qmatsuite/api.py:set_relax_final_cell()` (lines 7756-7758), `get_relax_final_cell()` (lines 7866-7868)
 
 ---
 
@@ -205,19 +205,19 @@ The contract ensures:
 
 **Rationale**: Prevents UI from showing presets that cannot be materialized by the target engine. Ensures detection only matches presets that the engine can actually apply.
 
-**Capability Resolver SSOT**: The capability resolver (`src/quantumvitas/presets/capability.py`) is the single source of truth for all capability queries. All callers must use:
+**Capability Resolver SSOT**: The capability resolver (`src/qmatsuite/presets/capability.py`) is the single source of truth for all capability queries. All callers must use:
 - `list_presets_for_engine(engine_name, gen_step)` - Returns intersection of engine.supported_presets and ParamSpace applicability
 - `validate_preset_capability(engine_name, gen_step, preset_id)` - Validates if preset is available
 - `require_preset_capability(engine_name, gen_step, preset_id)` - Raises CapabilityError if not available
 
 **Evidence**:
-- Engine declaration: `src/quantumvitas/engine/base.py:supported_presets` (abstract property, line 28)
-- QE implementation: `src/quantumvitas/engine/qe_engine.py:supported_presets` (line 29-36)
-- PySCF implementation: `src/quantumvitas/engine/pyscf_engine.py:supported_presets` (line 63-70)
-- ORCA implementation: `src/quantumvitas/engine/orca_engine.py:supported_presets` (line 115-122)
-- Capability resolver: `src/quantumvitas/presets/capability.py` (SSOT for capability queries)
-- Apply validation: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (line 496) calls `require_preset_capability()`
-- Detection filtering: `src/quantumvitas/presets/integration.py:detect_presets_from_calculation()` (line 189-201) filters by engine.supported_presets
+- Engine declaration: `src/qmatsuite/engine/base.py:supported_presets` (abstract property, line 28)
+- QE implementation: `src/qmatsuite/engine/qe_engine.py:supported_presets` (line 29-36)
+- PySCF implementation: `src/qmatsuite/engine/pyscf_engine.py:supported_presets` (line 63-70)
+- ORCA implementation: `src/qmatsuite/engine/orca_engine.py:supported_presets` (line 115-122)
+- Capability resolver: `src/qmatsuite/presets/capability.py` (SSOT for capability queries)
+- Apply validation: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (line 496) calls `require_preset_capability()`
+- Detection filtering: `src/qmatsuite/presets/integration.py:detect_presets_from_calculation()` (line 189-201) filters by engine.supported_presets
 
 ---
 
@@ -243,7 +243,7 @@ Write to step.yaml (StepDoc.apply_patch)
 
 ### 5.2 Compile Phase
 
-**Entrypoint**: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (line 328)
+**Entrypoint**: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (line 328)
 
 **Phase 1 (Prerequisite)**:
 - Dimensions: `occupations_scheme`, `magnetism`
@@ -256,14 +256,14 @@ Write to step.yaml (StepDoc.apply_patch)
 - Oracle passed to `apply_invariants()` (line 629)
 
 **Evidence**:
-- Compile phases: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (lines 414-576)
-- Oracle creation: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (line 622)
+- Compile phases: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (lines 414-576)
+- Oracle creation: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (line 622)
 
 ### 5.3 Materialization
 
 **IR Patch → Engine Params**:
 - Function: `ir_params_to_engine_params()` (engine-specific)
-- QE example: `src/quantumvitas/ir/backends/qe/mapping.py:ir_params_to_qe_params()` (lines 218-278)
+- QE example: `src/qmatsuite/ir/backends/qe/mapping.py:ir_params_to_qe_params()` (lines 218-278)
 - Converts IR canonical values to engine-specific format (e.g., Python `bool` → `.true.`/`.false.` strings for QE)
 
 **Write to step.yaml**:
@@ -271,8 +271,8 @@ Write to step.yaml (StepDoc.apply_patch)
 - Stores values as-is (no type conversion)
 
 **Evidence**:
-- IR→QE conversion: `src/quantumvitas/ir/backends/qe/mapping.py:ir_params_to_qe_params()` (lines 218-278)
-- StepDoc apply_patch: `src/quantumvitas/core/yamldoc.py:apply_patch()` (lines 358-396)
+- IR→QE conversion: `src/qmatsuite/ir/backends/qe/mapping.py:ir_params_to_qe_params()` (lines 218-278)
+- StepDoc apply_patch: `src/qmatsuite/core/yamldoc.py:apply_patch()` (lines 358-396)
 
 ### 5.4 Apply Semantics
 
@@ -281,7 +281,7 @@ Write to step.yaml (StepDoc.apply_patch)
 **MUST**: Apply MUST be atomic: if backend cannot fully materialize required keys, apply MUST fail and MUST NOT write partial YAML.
 
 **Evidence**:
-- Apply entrypoint: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (line 328)
+- Apply entrypoint: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (line 328)
 
 ---
 
@@ -303,7 +303,7 @@ If match: return preset (ENUM_TO_PROFILE reverse lookup)
 
 ### 6.2 Match Logic
 
-**Function**: `src/quantumvitas/presets/paramspace.py:match_profile()` (line 461-534)
+**Function**: `src/qmatsuite/presets/paramspace.py:match_profile()` (line 461-534)
 
 **Algorithm**:
 1. For each owned key, get effective value from YAML (after canonicalization)
@@ -317,8 +317,8 @@ If match: return preset (ENUM_TO_PROFILE reverse lookup)
 **Custom Rule**: Reverse inference is full-pattern match; any mismatch => custom; custom is not auto-overwritten without explicit user action.
 
 **Evidence**:
-- Match logic: `src/quantumvitas/presets/paramspace.py:match_profile()` (line 461-534)
-- Custom detection: `src/quantumvitas/presets/variants_registry.py:detect_dimension_for_step()` (line 485-520)
+- Match logic: `src/qmatsuite/presets/paramspace.py:match_profile()` (line 461-534)
+- Custom detection: `src/qmatsuite/presets/variants_registry.py:detect_dimension_for_step()` (line 485-520)
 
 ---
 
@@ -356,9 +356,9 @@ for the same preset/profile + gen_step.
 **Scope**: This normalization is ONLY for match/detect robustness; it does not redefine engine canonicalization.
 
 **Evidence**:
-- String canonicalization: `src/quantumvitas/presets/paramspace.py:canonicalize_string()` (lines 671-676)
-- Bool canonicalization: `src/quantumvitas/presets/paramspace.py:canonicalize_bool()` (lines 679-681)
-- ParamKey canonicalize: `src/quantumvitas/presets/paramspace.py:ParamKey.canonicalize()` (lines 86-100)
+- String canonicalization: `src/qmatsuite/presets/paramspace.py:canonicalize_string()` (lines 671-676)
+- Bool canonicalization: `src/qmatsuite/presets/paramspace.py:canonicalize_bool()` (lines 679-681)
+- ParamKey canonicalize: `src/qmatsuite/presets/paramspace.py:ParamKey.canonicalize()` (lines 86-100)
 
 ### 8.2 Engine Canonicalization SSOT
 
@@ -380,8 +380,8 @@ for the same preset/profile + gen_step.
 **MUST**: YAML read before materialize/detect MAY re-canonicalize in engine (idempotent).
 
 **Evidence**:
-- QE canonicalization: `src/quantumvitas/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 92-124)
-- IR bool encoder: `src/quantumvitas/ir/backends/qe/mapping.py:ir_bool()` (lines 14-41)
+- QE canonicalization: `src/qmatsuite/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 92-124)
+- IR bool encoder: `src/qmatsuite/ir/backends/qe/mapping.py:ir_bool()` (lines 14-41)
 - Note: `.in -> YAML` canonicalization is a future requirement; current code may not fully implement this
 
 ### 8.3 Canonicalization Boundary
@@ -397,8 +397,8 @@ for the same preset/profile + gen_step.
 - Operations: synonym mapping, text form conversion, unit conversion
 
 **Evidence**:
-- ParamSpace normalization: `src/quantumvitas/presets/paramspace.py:ParamKey.canonicalize()` (lines 86-100)
-- Engine canonicalization: `src/quantumvitas/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 92-124)
+- ParamSpace normalization: `src/qmatsuite/presets/paramspace.py:ParamKey.canonicalize()` (lines 86-100)
+- Engine canonicalization: `src/qmatsuite/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 92-124)
 
 ---
 
@@ -413,7 +413,7 @@ for the same preset/profile + gen_step.
 **Rationale**: Different engines may support different preset profiles. UI must reflect engine capabilities accurately.
 
 **Evidence**:
-- Profile display: `src/quantumvitas/presets/catalog.py:get_preset_catalog()` (line 90)
+- Profile display: `src/qmatsuite/presets/catalog.py:get_preset_catalog()` (line 90)
 - Note: Per-engine profile lists are a future design requirement; current code may not fully implement this
 
 ---
@@ -450,7 +450,7 @@ for the same preset/profile + gen_step.
 **Rationale**: Maintains backward compatibility with existing QE/PW code. Only minimal changes required to introduce dialect split and clarify bool canonicalization.
 
 **Evidence**:
-- Current PW IR keys: `src/quantumvitas/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74)
+- Current PW IR keys: `src/qmatsuite/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74)
 - Note: Minimal-change principle ensures existing QE/PW code remains stable
 
 ---
@@ -464,30 +464,30 @@ for the same preset/profile + gen_step.
    - **Test**: Verify no preset/IR state is written to disk
 
 2. **step.yaml stores spec/machine step_type**: `step.yaml` `step_type` field stores `machine_type`, not `public_type`.
-   - **Evidence**: `src/quantumvitas/workflow/step_factory.py:create_step_doc()` (line 73)
+   - **Evidence**: `src/qmatsuite/workflow/step_factory.py:create_step_doc()` (line 73)
    - **Test**: Verify `step.yaml` contains `machine_type` (e.g., `"qe_scf"`)
 
 ### 10.2 Step Vocabulary Invariants
 
 3. **Gen/public step type is stable string**: Used for UI + ParamSpace scope, not persisted.
-   - **Evidence**: `src/quantumvitas/workflow/registry.py:StepTypeSpec.public_type` (line 46)
+   - **Evidence**: `src/qmatsuite/workflow/registry.py:StepTypeSpec.public_type` (line 46)
    - **Test**: Verify preset targeting uses `public_type`
 
 4. **Spec/machine step_type used for persisted execution**: `step.yaml` stores `machine_type`; runner reads `machine_type`.
-   - **Evidence**: `src/quantumvitas/calculation/step.py:Step.run()` (line 92)
+   - **Evidence**: `src/qmatsuite/calculation/step.py:Step.run()` (line 92)
    - **Test**: Verify runner execution uses `machine_type` from `step.yaml`
 
 5. **StepType Enum is legacy-only**: MUST NOT be used for core logic decisions.
-   - **Evidence**: `src/quantumvitas/api.py:set_relax_final_cell()` (lines 7756-7758) - **VIOLATION**
+   - **Evidence**: `src/qmatsuite/api.py:set_relax_final_cell()` (lines 7756-7758) - **VIOLATION**
    - **Test**: Verify no Enum usage in validation/routing logic
 
 ### 10.3 Engine Declaration Invariants
 
 6. **Only supported_presets are detected/shown/applied**: UI shows only presets in `supported_presets`; detection only matches within `supported_presets`; apply fails if preset not in `supported_presets`.
    - **Evidence**: 
-     - Capability resolver: `src/quantumvitas/presets/capability.py:list_presets_for_engine()` (line 29-62)
-     - Apply validation: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (line 496)
-     - Detection filtering: `src/quantumvitas/presets/integration.py:detect_presets_from_calculation()` (line 189-201)
+     - Capability resolver: `src/qmatsuite/presets/capability.py:list_presets_for_engine()` (line 29-62)
+     - Apply validation: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (line 496)
+     - Detection filtering: `src/qmatsuite/presets/integration.py:detect_presets_from_calculation()` (line 189-201)
    - **Test**: `tests/unit/test_capability_enforcement.py` verifies contract enforcement
 
 ### 10.4 IR Value Type Invariants
@@ -495,7 +495,7 @@ for the same preset/profile + gen_step.
 7. **IR bool representation is dialect-specific**: 
    - **`ir.pw` dialect**: Bool uses `.true.`/`.false.` strings for backward compatibility (v0 freeze)
    - **`ir.qc` dialect**: Bool MUST be Python `True/False` (fresh start, no legacy burden)
-   - **Evidence**: `src/quantumvitas/presets/paramspace.py:compile_profile_patch()` (lines 601-605) uses `ir_bool()` for PW; QC will use Python native types
+   - **Evidence**: `src/qmatsuite/presets/paramspace.py:compile_profile_patch()` (lines 601-605) uses `ir_bool()` for PW; QC will use Python native types
    - **Test**: Verify `ir.pw` patches contain `.true.`/`.false.` strings; verify `ir.qc` patches contain Python `bool`
 
 8. **IR strings lowercase**: IR canonical string values MUST be lowercase (e.g., `gauss`, not `Gauss`).
@@ -505,21 +505,21 @@ for the same preset/profile + gen_step.
 ### 10.5 ParamSpace Robustness Invariants
 
 9. **ParamSpace string normalization (trim+lower) before compare**: ParamSpace MUST trim whitespace and lowercase strings before matching.
-   - **Evidence**: `src/quantumvitas/presets/paramspace.py:canonicalize_string()` (lines 671-676)
+   - **Evidence**: `src/qmatsuite/presets/paramspace.py:canonicalize_string()` (lines 671-676)
    - **Test**: Verify `match_profile()` handles `"  GAUSS  "` as `"gauss"`
 
 10. **ParamSpace does not synonym-map gaussian↔gauss**: ParamSpace MUST NOT implement domain synonym mapping beyond lowercase/trim.
-   - **Evidence**: `src/quantumvitas/presets/paramspace.py:canonicalize_string()` (lines 671-676)
+   - **Evidence**: `src/qmatsuite/presets/paramspace.py:canonicalize_string()` (lines 671-676)
    - **Test**: Verify `match_profile()` does NOT map `"gaussian"` to `"gauss"`
 
 ### 10.6 Engine Canonicalization Invariants
 
 11. **Engine canonicalization is single entry point**: Engine MUST provide one canonicalization function/module used everywhere.
-   - **Evidence**: `src/quantumvitas/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 92-124)
+   - **Evidence**: `src/qmatsuite/ir/backends/qe/mapping.py:ir_to_qe_param()` (lines 92-124)
    - **Test**: Verify all canonicalization goes through engine mapping module
 
 12. **Engine defines canonical forms**: Engine MUST define canonical forms for all parameters (synonyms, text forms, units).
-   - **Evidence**: `src/quantumvitas/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74)
+   - **Evidence**: `src/qmatsuite/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74)
    - **Test**: Verify engine mapping defines canonical forms
 
 13. **`.true.` representation is dialect-specific**: 
@@ -541,11 +541,11 @@ for the same preset/profile + gen_step.
 ### 10.8 Apply/Detect Invariants
 
 16. **Apply is atomic**: If backend cannot fully materialize required keys, apply MUST fail and MUST NOT write partial YAML.
-   - **Evidence**: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (line 328)
+   - **Evidence**: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (line 328)
    - **Test**: Verify apply fails fast if materialization fails
 
 17. **Detect is full-pattern match or custom**: Reverse inference is full-pattern match; any mismatch => custom.
-   - **Evidence**: `src/quantumvitas/presets/paramspace.py:match_profile()` (line 461-534)
+   - **Evidence**: `src/qmatsuite/presets/paramspace.py:match_profile()` (line 461-534)
    - **Test**: Verify `match_profile()` returns `None` on any mismatch
 
 ### 10.9 Reversibility Invariants
@@ -574,7 +574,7 @@ for the same preset/profile + gen_step.
 - Detect preset
 - Verify detected preset is `CUSTOM`
 
-**Evidence**: `src/quantumvitas/presets/variants_registry.py:detect_dimension_for_step()` (line 485-520)
+**Evidence**: `src/qmatsuite/presets/variants_registry.py:detect_dimension_for_step()` (line 485-520)
 
 ### 11.3 `.in` Import Canonicalization Tests
 
@@ -665,7 +665,7 @@ All other engine-specific parameters.
 - **`ir.qc` dialect**: Uses Python `True/False` in `step.yaml` (fresh start, no legacy burden)
 
 **Evidence**:
-- Current behavior: `src/quantumvitas/presets/paramspace.py:compile_profile_patch()` (lines 601-605) converts Python `bool` → `.true.`/`.false.` strings for PW
+- Current behavior: `src/qmatsuite/presets/paramspace.py:compile_profile_patch()` (lines 601-605) converts Python `bool` → `.true.`/`.false.` strings for PW
 - Spec requirement: Dialect-specific bool representation as documented in section 3.3
 
 **Impact**: No impact; dialect split resolves the discrepancy. PW maintains v0 behavior; QC uses native types.
@@ -675,7 +675,7 @@ All other engine-specific parameters.
 **Question**: Current code uses single IR namespace (QE-equivalent). Spec requires `ir.pw` and `ir.qc` dialects. When will dialect split be implemented?
 
 **Evidence**:
-- Current: `src/quantumvitas/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (single namespace)
+- Current: `src/qmatsuite/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (single namespace)
 - Spec requirement: Two dialects (`ir.pw`, `ir.qc`)
 
 **Impact**: Affects ORCA/PySCF onboarding strategy.
@@ -687,10 +687,10 @@ All other engine-specific parameters.
 **Answer**: ✅ **Implemented** (see `docs/dev/plan-capability-resolver-ssot.md`)
 
 **Evidence**:
-- Engine declaration: `src/quantumvitas/engine/base.py:supported_presets` (abstract property)
-- Capability resolver: `src/quantumvitas/presets/capability.py` (SSOT for capability queries)
-- Apply validation: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` validates capability
-- Detection filtering: `src/quantumvitas/presets/integration.py:detect_presets_from_calculation()` filters by engine
+- Engine declaration: `src/qmatsuite/engine/base.py:supported_presets` (abstract property)
+- Capability resolver: `src/qmatsuite/presets/capability.py` (SSOT for capability queries)
+- Apply validation: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` validates capability
+- Detection filtering: `src/qmatsuite/presets/integration.py:detect_presets_from_calculation()` filters by engine
 - Tests: `tests/unit/test_capability_enforcement.py` verifies contract enforcement
 
 ### Q4: Dual-Path Rules Implementation
@@ -719,31 +719,31 @@ All other engine-specific parameters.
 
 ### ParamSpace Core
 
-- `src/quantumvitas/presets/paramspace.py:ParamSpace` (line 298-372) - ParamSpace definition
-- `src/quantumvitas/presets/paramspace.py:ParamKey` (line 59-121) - ParamKey definition
-- `src/quantumvitas/presets/paramspace.py:register_paramspace()` (line 168-205) - Key ownership registration
-- `src/quantumvitas/presets/paramspace.py:check_key_access()` (line 207-254) - Key access enforcement
-- `src/quantumvitas/presets/paramspace.py:match_profile()` (line 461-534) - Reverse inference
-- `src/quantumvitas/presets/paramspace.py:compile_profile_patch()` (line 541-612) - Forward compilation
+- `src/qmatsuite/presets/paramspace.py:ParamSpace` (line 298-372) - ParamSpace definition
+- `src/qmatsuite/presets/paramspace.py:ParamKey` (line 59-121) - ParamKey definition
+- `src/qmatsuite/presets/paramspace.py:register_paramspace()` (line 168-205) - Key ownership registration
+- `src/qmatsuite/presets/paramspace.py:check_key_access()` (line 207-254) - Key access enforcement
+- `src/qmatsuite/presets/paramspace.py:match_profile()` (line 461-534) - Reverse inference
+- `src/qmatsuite/presets/paramspace.py:compile_profile_patch()` (line 541-612) - Forward compilation
 
 ### Integration Layer
 
-- `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (line 328) - Main apply entrypoint
-- `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (lines 414-576) - Compile phase ordering
-- `src/quantumvitas/presets/oracle.py:Oracle` (line 18-60) - Oracle interface
+- `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (line 328) - Main apply entrypoint
+- `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (lines 414-576) - Compile phase ordering
+- `src/qmatsuite/presets/oracle.py:Oracle` (line 18-60) - Oracle interface
 
 ### IR Layer
 
-- `src/quantumvitas/ir/parameters.py:IRParameter` (lines 14-27) - IR parameter definition
-- `src/quantumvitas/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74) - IR→QE mapping
-- `src/quantumvitas/ir/backends/qe/mapping.py:ir_bool()` (lines 14-41) - IR bool encoder
-- `src/quantumvitas/ir/backends/qe/mapping.py:ir_params_to_qe_params()` (lines 218-278) - IR→QE conversion
+- `src/qmatsuite/ir/parameters.py:IRParameter` (lines 14-27) - IR parameter definition
+- `src/qmatsuite/ir/backends/qe/mapping.py:IR_TO_QE_MAPPING` (line 46-74) - IR→QE mapping
+- `src/qmatsuite/ir/backends/qe/mapping.py:ir_bool()` (lines 14-41) - IR bool encoder
+- `src/qmatsuite/ir/backends/qe/mapping.py:ir_params_to_qe_params()` (lines 218-278) - IR→QE conversion
 
 ### Step Vocabulary
 
-- `src/quantumvitas/workflow/registry.py:StepTypeSpec` (lines 23-58) - Gen/Spec step definition
-- `src/quantumvitas/workflow/step_factory.py:create_step_doc()` (line 73) - step.yaml storage
-- `src/quantumvitas/calculation/types.py:StepType` (lines 10-30) - Enum definition
+- `src/qmatsuite/workflow/registry.py:StepTypeSpec` (lines 23-58) - Gen/Spec step definition
+- `src/qmatsuite/workflow/step_factory.py:create_step_doc()` (line 73) - step.yaml storage
+- `src/qmatsuite/calculation/types.py:StepType` (lines 10-30) - Enum definition
 
 ### Tests
 

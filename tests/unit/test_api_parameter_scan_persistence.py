@@ -9,9 +9,9 @@ Verifies that:
 
 import pytest
 from pathlib import Path
-from quantumvitas.api import QVService, get_service
-from quantumvitas.core.yamldoc import StepDoc
-from quantumvitas.workflow.step_factory import save_step_doc
+from qmatsuite.api import QMSService, get_service
+from qmatsuite.core.yamldoc import StepDoc
+from qmatsuite.workflow.step_factory import save_step_doc
 
 
 def test_update_step_params_parameter_scan_merge(tmp_path):
@@ -20,8 +20,8 @@ def test_update_step_params_parameter_scan_merge(tmp_path):
     Note: The domain API uses merge semantics, not full replace. Orphan scans are
     preserved with a warning, not automatically deleted. Use explicit deletion if needed.
     """
-    # Create project using QVService
-    project_root = QVService.init_project(tmp_path / "project")
+    # Create project using QMSService
+    project_root = QMSService.init_project(tmp_path / "project")
 
     # Import structure (required for calculation)
     source = tmp_path / "si.json"
@@ -31,10 +31,10 @@ def test_update_step_params_parameter_scan_merge(tmp_path):
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService(project_root).structure.import_file(source, name="Silicon")
+    QMSService(project_root).structure.import_file(source, name="Silicon")
 
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon", engine_family="qe")
+    calc_result = QMSService(project_root).project.init_calculation("calc001", structure_selector="silicon", engine_family="qe")
     calc_ulid = calc_result.ulid
 
     # Create step using domain API
@@ -94,8 +94,8 @@ def test_update_step_params_parameter_scan_preserves_array_values(tmp_path):
 
     This is an end-to-end test: update with array of length 3, reload, verify length is 3.
     """
-    # Create project using QVService
-    project_root = QVService.init_project(tmp_path / "project")
+    # Create project using QMSService
+    project_root = QMSService.init_project(tmp_path / "project")
 
     # Import structure (required for calculation)
     source = tmp_path / "si.json"
@@ -105,10 +105,10 @@ def test_update_step_params_parameter_scan_preserves_array_values(tmp_path):
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService(project_root).structure.import_file(source, name="Silicon")
+    QMSService(project_root).structure.import_file(source, name="Silicon")
 
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon", engine_family="qe")
+    calc_result = QMSService(project_root).project.init_calculation("calc001", structure_selector="silicon", engine_family="qe")
     calc_ulid = calc_result.ulid
 
     # Create step using domain API
@@ -153,8 +153,8 @@ def test_update_step_params_parameter_scan_empty_preserves(tmp_path):
     so existing scans are preserved. This is intentional - use explicit
     field deletion if clearing is needed.
     """
-    # Create project using QVService
-    project_root = QVService.init_project(tmp_path / "project")
+    # Create project using QMSService
+    project_root = QMSService.init_project(tmp_path / "project")
 
     # Import structure (required for calculation)
     source = tmp_path / "si.json"
@@ -164,10 +164,10 @@ def test_update_step_params_parameter_scan_empty_preserves(tmp_path):
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService(project_root).structure.import_file(source, name="Silicon")
+    QMSService(project_root).structure.import_file(source, name="Silicon")
 
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon", engine_family="qe")
+    calc_result = QMSService(project_root).project.init_calculation("calc001", structure_selector="silicon", engine_family="qe")
     calc_ulid = calc_result.ulid
 
     # Create step using domain API
@@ -214,8 +214,8 @@ def test_update_step_params_parameter_scan_empty_preserves(tmp_path):
 
 def test_update_step_params_parameter_scan_multiple_scans(tmp_path):
     """Test that multiple scan definitions persist correctly."""
-    # Create project using QVService
-    project_root = QVService.init_project(tmp_path / "project")
+    # Create project using QMSService
+    project_root = QMSService.init_project(tmp_path / "project")
 
     # Import structure (required for calculation)
     source = tmp_path / "si.json"
@@ -225,10 +225,10 @@ def test_update_step_params_parameter_scan_multiple_scans(tmp_path):
         "lattice": {"matrix": [[5.43,0,0],[0,5.43,0],[0,0,5.43]], "a": 5.43, "b": 5.43, "c": 5.43, "alpha": 90, "beta": 90, "gamma": 90},
         "sites": [{"species": [{"element": "Si", "occu": 1}], "abc": [0,0,0], "xyz": [0,0,0]}]
     }""")
-    QVService(project_root).structure.import_file(source, name="Silicon")
+    QMSService(project_root).structure.import_file(source, name="Silicon")
 
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation("calc001", structure_selector="silicon", engine_family="qe")
+    calc_result = QMSService(project_root).project.init_calculation("calc001", structure_selector="silicon", engine_family="qe")
     calc_ulid = calc_result.ulid
 
     # Create step using domain API

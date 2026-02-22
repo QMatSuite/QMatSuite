@@ -85,7 +85,7 @@ ATOMIC_SPECIES
    - The extracted `CONTROL.pseudo_dir` parameter is written to `step.yaml`
 
 4. **Parameters applied during materialization**:
-   - `src/quantumvitas/calculation/structure_steps.py:514-522`:
+   - `src/qmatsuite/calculation/structure_steps.py:514-522`:
      ```python
      spec_overrides = parameter_dict_to_overrides(spec.parameters)
      combined_overrides: list[ParameterOverride] = list(spec_overrides)
@@ -98,7 +98,7 @@ ATOMIC_SPECIES
    - The `pseudo_dir` parameter from `spec.parameters` is applied as an override, setting it in the generated QE input
 
 5. **set_pseudo_dir_in_input() called but too late**:
-   - `src/quantumvitas/calculation/structure_steps.py:1192`:
+   - `src/qmatsuite/calculation/structure_steps.py:1192`:
      ```python
      set_pseudo_dir_in_input(qe_input, project_pseudo_dir, output_dir)
      ```
@@ -160,7 +160,7 @@ Actually, wait - the integration test might be using the original .in file direc
    - Directory is created but empty (no `copytree`)
 
 2. **Staging should happen in `materialize_step_spec()`**:
-   - `src/quantumvitas/calculation/structure_steps.py:1166-1171`:
+   - `src/qmatsuite/calculation/structure_steps.py:1166-1171`:
      ```python
      pseudo_result = ensure_qe_pseudos(
          qe_input_file=temp_input,
@@ -176,7 +176,7 @@ Actually, wait - the integration test might be using the original .in file direc
    - Result: `calculation_species_map = None`
 
 4. **ensure_qe_pseudos() falls back to parsing QE input**:
-   - `src/quantumvitas/core/pseudo.py:193-212`:
+   - `src/qmatsuite/core/pseudo.py:193-212`:
      ```python
      else:
          # FALLBACK PATH: Parse from QE input ATOMIC_SPECIES (legacy/standalone)
@@ -205,11 +205,11 @@ Actually, wait - the integration test might be using the original .in file direc
 
 ### CLI Test Path
 
-**Command**: `qv run calculation si_dos --project <path>`
+**Command**: `qms run calculation si_dos --project <path>`
 
 **Call chain** (inferred):
 ```
-CLI command → QVService.run_calculation() → CalculationRunner.run() → ...
+CLI command → QMSService.run_calculation() → CalculationRunner.run() → ...
 ```
 
 **Materialization**:
@@ -283,7 +283,7 @@ if parameters:
 
 ### Snippet 4: Parameters applied during materialization
 
-**File**: `src/quantumvitas/calculation/structure_steps.py:514-522`
+**File**: `src/qmatsuite/calculation/structure_steps.py:514-522`
 ```python
 spec_overrides = parameter_dict_to_overrides(spec.parameters)
 combined_overrides: list[ParameterOverride] = list(spec_overrides)
@@ -296,12 +296,12 @@ qe_input = generate_qe_input_from_structure(
 
 ### Snippet 5: set_pseudo_dir_in_input() should override
 
-**File**: `src/quantumvitas/calculation/structure_steps.py:1192`
+**File**: `src/qmatsuite/calculation/structure_steps.py:1192`
 ```python
 set_pseudo_dir_in_input(qe_input, project_pseudo_dir, output_dir)
 ```
 
-**File**: `src/quantumvitas/calculation/input_runner.py:152-156`
+**File**: `src/qmatsuite/calculation/input_runner.py:152-156`
 ```python
 for namelist in qe_input.namelists:
     if "pseudo_dir" in namelist.parameters:
@@ -311,7 +311,7 @@ for namelist in qe_input.namelists:
 
 ### Snippet 6: ensure_qe_pseudos() called with None species_map
 
-**File**: `src/quantumvitas/calculation/structure_steps.py:1166-1171`
+**File**: `src/qmatsuite/calculation/structure_steps.py:1166-1171`
 ```python
 pseudo_result = ensure_qe_pseudos(
     qe_input_file=temp_input,
@@ -371,7 +371,7 @@ if "CONTROL" in parameters:
 
 ### Hypothesis 2: Ensure spec.species_overrides is passed to ensure_qe_pseudos()
 
-**Location**: `src/quantumvitas/calculation/structure_steps.py:1166-1171`
+**Location**: `src/qmatsuite/calculation/structure_steps.py:1166-1171`
 
 **Change**: When `calculation_species_map` is None, pass `spec.species_overrides` to `ensure_qe_pseudos()`.
 
@@ -404,7 +404,7 @@ pseudo_result = ensure_qe_pseudos(
 
 ### Hypothesis 3: Remove runtime-managed parameters in generate_qe_input_from_spec()
 
-**Location**: `src/quantumvitas/calculation/structure_steps.py:571-578` (after applying overrides)
+**Location**: `src/qmatsuite/calculation/structure_steps.py:571-578` (after applying overrides)
 
 **Change**: After applying parameter overrides, remove `pseudo_dir`, `outdir`, `prefix` from QE input. These will be set by `materialize_step_spec()` later.
 

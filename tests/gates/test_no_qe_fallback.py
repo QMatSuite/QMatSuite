@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).parent.parent.parent
-SCAN_DIRS = [REPO_ROOT / "src" / "quantumvitas"]
+SCAN_DIRS = [REPO_ROOT / "src" / "qmatsuite"]
 
 # Patterns that indicate a silent QE default
 FALLBACK_PATTERNS = [

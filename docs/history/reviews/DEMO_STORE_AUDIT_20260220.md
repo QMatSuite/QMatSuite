@@ -336,7 +336,7 @@ All 52 demo YAMLs are at `resources/demo_projects/<demo_slug>.yml`. All generate
 **Three generation strategies**:
 1. **Preserve existing** (`generate_demo_from_existing`): For demos that already have a YAML at the expected slug path, regenerate with deterministic ULIDs (seeded from demo_slug + component type), update gallery metadata, preserve `reference_artifacts`. Strip runtime-managed parameters via `_strip_managed_params()`.
 2. **Direct snapshot** (`build_direct_snapshot`): For cases with `parser_mode == "direct_snapshot"` — not currently used in the 52 demos.
-3. **Full translator** (`generate_demo_via_translator`): Calls `translate_corpus_case()` in `src/quantumvitas/demo_store/translator.py`, which runs the full inputformat parser pipeline.
+3. **Full translator** (`generate_demo_via_translator`): Calls `translate_corpus_case()` in `src/qmatsuite/demo_store/translator.py`, which runs the full inputformat parser pipeline.
 
 **Deterministic ULIDs**: All ULIDs seeded deterministically via `ulid_seed.py`. Regeneration is idempotent.
 
@@ -355,7 +355,7 @@ All 52 demo YAMLs are at `resources/demo_projects/<demo_slug>.yml`. All generate
 **Discovery**: Scans `resources/demo_projects/*.yml` for demo slugs and engine names (from `meta.corpus_engine`).
 
 **Pipeline per demo**:
-1. `QVService.create_demo_project(target_dir, name, demo_id)` — loads demo YAML into fresh workdir
+1. `QMSService.create_demo_project(target_dir, name, demo_id)` — loads demo YAML into fresh workdir
 2. `svc.run.run_calculation(calc_selector, run_mode="full")` — runs engine calculation(s)
 3. `_get_engine_analysis_types(engine)` — derives probe list from `driver.ANALYSIS_CAPABILITIES`
 4. `svc.analysis.get_analysis(run_ulid, obj_type)` — extracts CanonicalPrimitiveBundle for each type
@@ -554,7 +554,7 @@ All 52 ref packs have `manifest.json` with SHA-256 checksums for all analysis JS
 
 ### 7.3 Demo Loading Test
 
-The realrun generator calls `QVService.create_demo_project()` for all 52 demos — this exercises the full load path. All 52 loaded successfully.
+The realrun generator calls `QMSService.create_demo_project()` for all 52 demos — this exercises the full load path. All 52 loaded successfully.
 
 ### 7.4 search_demos Metadata Sufficiency
 
@@ -598,7 +598,7 @@ The `search_demos` MCP tool's free-text query covers title + subtitle + tags. En
 
 ### 9.1 Engines with Zero Demos
 
-**Wannier90 (w90)**: 8 corpus cases, 0 demo-eligible. W90 cannot run standalone — it requires prior DFT nscf data. W90 functionality is covered via `qe_copper_wannier` and `qe_diamond_wannier` cross-engine demos. **No action needed** unless standalone W90 demo support is added to QVService.
+**Wannier90 (w90)**: 8 corpus cases, 0 demo-eligible. W90 cannot run standalone — it requires prior DFT nscf data. W90 functionality is covered via `qe_copper_wannier` and `qe_diamond_wannier` cross-engine demos. **No action needed** unless standalone W90 demo support is added to QMSService.
 
 **Yambo**: 4 corpus cases, 0 demo-eligible. Yambo requires QE nscf + database initialization. Covered via `qe_si_yambo_gw` and `qe_si_yambo_bse`. **No action needed** for standalone demos.
 
@@ -830,5 +830,5 @@ All engines confirmed installed and used in this audit run:
 | `.tmp/refpack_results_matrix.json` | Machine-readable run results |
 | `tools/demo_store/generate_all.py` | Layer 1→2 generator |
 | `tools/demo_store/generate_ref_packs_realrun.py` | Real-run ref pack generator |
-| `src/quantumvitas/demo_store/` | Demo store Python infrastructure |
-| `src/quantumvitas/mcp/tools/demo_store.py` | MCP tools: search_demos, load_demo, get_demo_results |
+| `src/qmatsuite/demo_store/` | Demo store Python infrastructure |
+| `src/qmatsuite/mcp/tools/demo_store.py` | MCP tools: search_demos, load_demo, get_demo_results |

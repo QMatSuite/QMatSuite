@@ -351,7 +351,7 @@ Add to CI:
 
 | New File | Purpose |
 |----------|---------|
-| `src/quantumvitas/workflow/role_inference.py` | Role enum and inference algorithm |
+| `src/qmatsuite/workflow/role_inference.py` | Role enum and inference algorithm |
 | `tests/unit/test_role_inference.py` | Role inference tests |
 
 ### 7.2 Migration

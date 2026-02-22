@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from quantumvitas.core.engines.discovery import (
+from qmatsuite.core.engines.discovery import (
     EngineDiscoveryResult,
     EngineProbe,
     _search_bundled,
@@ -48,17 +48,17 @@ class TestEngineProbeRegistry:
 
     def test_cp2k_has_psmp_first(self):
         """CP2K probe should list cp2k.psmp as highest-priority binary."""
-        from quantumvitas.core.engines.discovery import _ENGINE_PROBES
+        from qmatsuite.core.engines.discovery import _ENGINE_PROBES
         probe = _ENGINE_PROBES["cp2k"]
         assert probe.binary_names[0] == "cp2k.psmp"
 
     def test_python_native_engines_have_module(self):
-        from quantumvitas.core.engines.discovery import _ENGINE_PROBES
+        from qmatsuite.core.engines.discovery import _ENGINE_PROBES
         for name in ("pyscf", "psi4", "gpaw"):
             assert _ENGINE_PROBES[name].python_module is not None
 
     def test_psi4_has_conda_package(self):
-        from quantumvitas.core.engines.discovery import _ENGINE_PROBES
+        from qmatsuite.core.engines.discovery import _ENGINE_PROBES
         assert _ENGINE_PROBES["psi4"].conda_package == "psi4"
 
 

@@ -14,19 +14,19 @@ import shutil
 from pathlib import Path
 import yaml
 
-from quantumvitas.presets.integration import (
+from qmatsuite.presets.integration import (
     apply_presets_to_step,
     detect_presets_from_calculation,
     _load_step_parameters_with_types,
 )
-from quantumvitas.presets.precision import (
+from qmatsuite.presets.precision import (
     PrecisionAdvisor,
     NSCF_KMESH_FACTOR,
     PRECISION_CONSTANTS,
 )
-from quantumvitas.presets.dimensions import PrecisionOption
-from quantumvitas.presets.receivers import get_precision_receiver_spec
-from quantumvitas.presets.detector import detect_all_presets
+from qmatsuite.presets.dimensions import PrecisionOption
+from qmatsuite.presets.receivers import get_precision_receiver_spec
+from qmatsuite.presets.detector import detect_all_presets
 
 
 class TestPrecisionScfNscf:
@@ -43,9 +43,9 @@ class TestPrecisionScfNscf:
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir()
         
-        # Create project.qv.yml
-        project_qv_yml = project_root / "project.qv.yml"
-        project_qv_yml.write_text(yaml.safe_dump({
+        # Create project.qms.yml
+        project_qms_yml = project_root / "project.qms.yml"
+        project_qms_yml.write_text(yaml.safe_dump({
             "name": "Test Project",
             "version": "1.0",
         }))
@@ -61,7 +61,7 @@ class TestPrecisionScfNscf:
         )
         structure_file = structures_dir / "test_structure.json"
         import json
-        from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+        from qmatsuite.io.structure_io import STRUCTURE_META_KEY
         struct_dict = structure.as_dict()
         struct_dict[STRUCTURE_META_KEY] = {
             "ulid": "test_structure",
@@ -87,9 +87,9 @@ class TestPrecisionScfNscf:
     
     def test_scf_nscf_precision_med(self, temp_calc_dir):
         """Apply precision=med to scf+nscf, verify nscf gets 2x mesh."""
-        from quantumvitas.presets.precision import compute_kmesh
+        from qmatsuite.presets.precision import compute_kmesh
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.core.models import CalculationModel, ResourceMeta
+        from qmatsuite.core.models import CalculationModel, ResourceMeta
         from unittest.mock import patch
         
         # Si lattice (a ≈ 5.43 Å)
@@ -183,9 +183,9 @@ class TestPrecisionBandsPw:
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir()
         
-        # Create project.qv.yml
-        project_qv_yml = project_root / "project.qv.yml"
-        project_qv_yml.write_text(yaml.safe_dump({
+        # Create project.qms.yml
+        project_qms_yml = project_root / "project.qms.yml"
+        project_qms_yml.write_text(yaml.safe_dump({
             "name": "Test Project",
             "version": "1.0",
         }))
@@ -266,9 +266,9 @@ class TestPrecisionCustomOnMismatch:
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir()
         
-        # Create project.qv.yml
-        project_qv_yml = project_root / "project.qv.yml"
-        project_qv_yml.write_text(yaml.safe_dump({
+        # Create project.qms.yml
+        project_qms_yml = project_root / "project.qms.yml"
+        project_qms_yml.write_text(yaml.safe_dump({
             "name": "Test Project",
             "version": "1.0",
         }))
@@ -284,7 +284,7 @@ class TestPrecisionCustomOnMismatch:
         )
         structure_file = structures_dir / "test_structure.json"
         import json
-        from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+        from qmatsuite.io.structure_io import STRUCTURE_META_KEY
         struct_dict = structure.as_dict()
         struct_dict[STRUCTURE_META_KEY] = {
             "ulid": "test_structure",
@@ -305,7 +305,7 @@ class TestPrecisionCustomOnMismatch:
     
     def test_custom_on_single_dimension_change(self, temp_calc_dir):
         """Apply med precision, then manually change ecutrho → should detect Custom."""
-        from quantumvitas.presets.detector import detect_precision_strict_for_step_type
+        from qmatsuite.presets.detector import detect_precision_strict_for_step_type
         
         # Create scf step
         scf_step = temp_calc_dir / "steps" / "scf.step.yaml"
@@ -327,7 +327,7 @@ class TestPrecisionCustomOnMismatch:
         )
         
         # Get base cutoffs for strict detection
-        from quantumvitas.presets.precision import aggregate_cutoffs, get_pseudo_index
+        from qmatsuite.presets.precision import aggregate_cutoffs, get_pseudo_index
         index_files = get_pseudo_index()
         base_ecutwfc, base_ecutrho = aggregate_cutoffs(species_map, index_files)
         
@@ -372,7 +372,7 @@ class TestDaemonHandlerRegression:
     
     def test_resolved_resource_uses_absolute_path(self):
         """Test that ResolvedResource uses absolute_path, not path."""
-        from quantumvitas.core.resolution import ResolvedResource, ResourceMeta
+        from qmatsuite.core.resolution import ResolvedResource, ResourceMeta
         
         calc_yaml = Path("/tmp/test_calc_regression/calculation.yaml")
         calc_yaml.parent.mkdir(parents=True, exist_ok=True)

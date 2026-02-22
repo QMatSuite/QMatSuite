@@ -20,7 +20,7 @@
 - ✅ All generators use `QEInputParser` and `_build_step_spec_from_qe_input_data`
 
 ### Step 3: Backend Conflict Metadata ✅
-- ✅ `QVService._detect_prefix_outdir_injection()` implemented
+- ✅ `QMSService._detect_prefix_outdir_injection()` implemented
 - ✅ Integrated into `get_step_detail()` response
 - ✅ Returns: `effective_prefix`, `effective_outdir`, `ignored_step_prefix`, `ignored_step_outdir`
 
@@ -135,11 +135,11 @@ All due to missing pseudopotentials (404 from QE repository):
 ## Files Modified
 
 ### Core Changes
-- `src/quantumvitas/api.py`: Added `_detect_prefix_outdir_injection()` and integrated into `get_step_detail()`
-- `src/quantumvitas/project/snapshot.py`: Added cleaning logic to remove `pseudopot` from `species_overrides` and `prefix`/`outdir` from step parameters
-- `src/quantumvitas/core/engines/qe.py`: Added None checks for `mpi_cores`
-- `src/quantumvitas/core/engines/qe_calculation.py`: Added None checks for `omp_threads`
-- `src/quantumvitas/calculation/structure_steps.py`: Prefix/outdir injection implementation (already existed)
+- `src/qmatsuite/api.py`: Added `_detect_prefix_outdir_injection()` and integrated into `get_step_detail()`
+- `src/qmatsuite/project/snapshot.py`: Added cleaning logic to remove `pseudopot` from `species_overrides` and `prefix`/`outdir` from step parameters
+- `src/qmatsuite/core/engines/qe.py`: Added None checks for `mpi_cores`
+- `src/qmatsuite/core/engines/qe_calculation.py`: Added None checks for `omp_threads`
+- `src/qmatsuite/calculation/structure_steps.py`: Prefix/outdir injection implementation (already existed)
 
 ### Generator Scripts
 - `tools/generate_wannier90_demos.py`: Refactored to use `QEInputParser`

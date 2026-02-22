@@ -28,7 +28,7 @@ SCAN_DIRS = [
 
 # Files to skip
 ALLOWLIST_PATTERNS = [
-    "src/quantumvitas/_vault/*",  # Legacy archive
+    "src/qmatsuite/_vault/*",  # Legacy archive
     "tests/gates/test_step_type_param_mismatch.py",  # This file itself
 ]
 

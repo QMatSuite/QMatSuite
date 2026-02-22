@@ -9,9 +9,9 @@
 ## Progress
 
 ### Phase 0: Scaffolding + Gate Tests
-- [x] Create `src/quantumvitas/provenance/__init__.py`
-- [x] Create `src/quantumvitas/provenance/errors.py`
-- [x] Create `src/quantumvitas/provenance/opctx.py`
+- [x] Create `src/qmatsuite/provenance/__init__.py`
+- [x] Create `src/qmatsuite/provenance/errors.py`
+- [x] Create `src/qmatsuite/provenance/opctx.py`
 - [x] Create `tests/gates/test_provenance_skip_isolation.py`
 - [x] Create `tests/gates/test_no_duplicate_scanners.py`
 - [x] Run tests: 3274 passed, 19 skipped
@@ -100,7 +100,7 @@ Fixed 5 Gaussian test failures caused by missing entry in test_registry_routing.
 driver modules from sys.modules for re-import. Gaussian was missing from this list, so
 its module stayed cached but its registration was cleared.
 
-**Fix**: Added `'quantumvitas.drivers.gaussian'` to `modules_to_remove` in
+**Fix**: Added `'qmatsuite.drivers.gaussian'` to `modules_to_remove` in
 `tests/gates/test_registry_routing.py:170`.
 
 **Tests**: 3301 passed, 19 skipped (all green)
@@ -200,7 +200,7 @@ Beginning Phase F5: Delete legacy history module.
 
 Deleted legacy history module completely:
 
-1. **Deleted `src/quantumvitas/history/`** (entire directory)
+1. **Deleted `src/qmatsuite/history/`** (entire directory)
    - events.py, __init__.py, pins.py, run_revision.py, digests.py, storage.py
 2. **Deleted legacy test files**:
    - tests/unit/test_history_digests.py
@@ -217,8 +217,8 @@ Beginning Phase F6: Final verification and documentation.
 **Verification Checks:**
 - `grep -r ".history" src/` - Only `.history` in method names (svc.history.*), no path refs
 - `grep -r "skip_history" src/` - No references found
-- `grep -r "from quantumvitas.history" src/` - No imports found
-- `ls src/quantumvitas/history` - Module deleted
+- `grep -r "from qmatsuite.history" src/` - No imports found
+- `ls src/qmatsuite/history` - Module deleted
 
 **Final Test Results:**
 - 3237 passed, 19 skipped
@@ -240,20 +240,20 @@ The Provenance/Versioned History system finalization is **COMPLETE**.
 6. **Phase F6**: Final verification and documentation
 
 ### Files Created
-- `src/quantumvitas/provenance/query.py` - Query API for runs/operations
-- `src/quantumvitas/provenance/pins.py` - Pin functionality
+- `src/qmatsuite/provenance/query.py` - Query API for runs/operations
+- `src/qmatsuite/provenance/pins.py` - Pin functionality
 - `tests/gates/test_no_legacy_history.py` - Gate preventing reintroduction
 
 ### Files Modified
-- `src/quantumvitas/calculation/runner.py` - Uses provenance recording
-- `src/quantumvitas/api/service.py` - History class uses provenance
-- `src/quantumvitas/core/yaml_io.py` - Removed skip_history, legacy history code
-- `src/quantumvitas/provenance/__init__.py` - Added new exports
-- `src/quantumvitas/provenance/opctx.py` - Added PIN_CREATE type
+- `src/qmatsuite/calculation/runner.py` - Uses provenance recording
+- `src/qmatsuite/api/service.py` - History class uses provenance
+- `src/qmatsuite/core/yaml_io.py` - Removed skip_history, legacy history code
+- `src/qmatsuite/provenance/__init__.py` - Added new exports
+- `src/qmatsuite/provenance/opctx.py` - Added PIN_CREATE type
 - `tests/fixtures/golden_0873ebf/daemon/get_project_history.json` - Updated contract
 
 ### Files Deleted
-- `src/quantumvitas/history/` (entire directory - 6 files)
+- `src/qmatsuite/history/` (entire directory - 6 files)
 - `tests/unit/test_history_digests.py`
 - `tests/unit/test_history_storage.py`
 

@@ -43,7 +43,7 @@ The codebase previously had **two sources** for step-type mappings (GEN→SPEC):
 
 ### Source 1: Static MATERIALIZATION_MAP
 
-**Location**: `src/quantumvitas/workflow/generalized_steps.py:64-116`
+**Location**: `src/qmatsuite/workflow/generalized_steps.py:64-116`
 
 ```python
 MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
@@ -63,7 +63,7 @@ MATERIALIZATION_MAP: Dict[Tuple[str, str], Optional[str]] = {
 
 ### Source 2: Driver get_materialization_map()
 
-**Location**: Each driver in `src/quantumvitas/drivers/*/driver.py`
+**Location**: Each driver in `src/qmatsuite/drivers/*/driver.py`
 
 Example from VASP driver (`driver.py:136-148`):
 ```python
@@ -83,7 +83,7 @@ def get_materialization_map(self) -> dict[str, str]:
 
 ### Consumer: materialize_step()
 
-**Location**: `src/quantumvitas/workflow/generalized_steps.py:119-167`
+**Location**: `src/qmatsuite/workflow/generalized_steps.py:119-167`
 
 **Flow**:
 ```
@@ -143,7 +143,7 @@ This makes it impossible to directly compare or validate consistency.
 
 ## Third Registry: StepTypeRegistry
 
-**Location**: `src/quantumvitas/workflow/registry.py`
+**Location**: `src/qmatsuite/workflow/registry.py`
 
 Contains `_STEP_TYPES` dict with `StepTypeSpec` definitions. This is a **separate concern** (step metadata, not GEN→SPEC mapping), but introduces a third place where step types are defined.
 
@@ -196,7 +196,7 @@ def materialize_step(
     engine_family: str,
 ) -> Optional[str]:
     """Materialize a generalized step to an engine-specific step type."""
-    import quantumvitas.drivers
+    import qmatsuite.drivers
 
     # Normalize to GEN_ format
     gen_type = generalized_step.upper()
@@ -277,13 +277,13 @@ Keep both sources, add test that validates they match.
 
 | File | Changes |
 |------|---------|
-| `src/quantumvitas/drivers/qe/driver.py` | Expand `get_materialization_map()` |
-| `src/quantumvitas/drivers/vasp/driver.py` | Add NSCF mapping |
-| `src/quantumvitas/drivers/pyscf/driver.py` | Add TD mapping |
-| `src/quantumvitas/drivers/orca/driver.py` | Add HF, TD mappings |
-| `src/quantumvitas/drivers/lammps/driver.py` | Already complete |
-| `src/quantumvitas/drivers/cp2k/driver.py` | Add VC_RELAX, VC_MD mappings |
-| `src/quantumvitas/workflow/generalized_steps.py` | Remove static map, update `materialize_step()` |
+| `src/qmatsuite/drivers/qe/driver.py` | Expand `get_materialization_map()` |
+| `src/qmatsuite/drivers/vasp/driver.py` | Add NSCF mapping |
+| `src/qmatsuite/drivers/pyscf/driver.py` | Add TD mapping |
+| `src/qmatsuite/drivers/orca/driver.py` | Add HF, TD mappings |
+| `src/qmatsuite/drivers/lammps/driver.py` | Already complete |
+| `src/qmatsuite/drivers/cp2k/driver.py` | Add VC_RELAX, VC_MD mappings |
+| `src/qmatsuite/workflow/generalized_steps.py` | Remove static map, update `materialize_step()` |
 | `tests/workflow/test_materialization_ssot.py` | New test file |
 
 ---
@@ -292,35 +292,35 @@ Keep both sources, add test that validates they match.
 
 ```markdown
 ## Step 1: Update QE Driver Materialization Map
-File: src/quantumvitas/drivers/qe/driver.py
+File: src/qmatsuite/drivers/qe/driver.py
 Task: Expand get_materialization_map() to include all QE step types
 
 ## Step 2: Update VASP Driver Materialization Map
-File: src/quantumvitas/drivers/vasp/driver.py
+File: src/qmatsuite/drivers/vasp/driver.py
 Task: Add GEN_NSCF mapping
 
 ## Step 3: Update PySCF Driver Materialization Map
-File: src/quantumvitas/drivers/pyscf/driver.py
+File: src/qmatsuite/drivers/pyscf/driver.py
 Task: Add GEN_TD, GEN_RELAX mappings
 
 ## Step 4: Update ORCA Driver Materialization Map
-File: src/quantumvitas/drivers/orca/driver.py
+File: src/qmatsuite/drivers/orca/driver.py
 Task: Add GEN_HF, GEN_TD, GEN_RELAX mappings
 
 ## Step 5: Update CP2K Driver Materialization Map
-File: src/quantumvitas/drivers/cp2k/driver.py
+File: src/qmatsuite/drivers/cp2k/driver.py
 Task: Add GEN_VC_RELAX, GEN_VC_MD mappings (map to cp2k_relax, cp2k_md)
 
 ## Step 6: Update materialize_step() Function
-File: src/quantumvitas/workflow/generalized_steps.py
+File: src/qmatsuite/workflow/generalized_steps.py
 Task: Remove fallback to static MATERIALIZATION_MAP
 
 ## Step 7: Delete Static MATERIALIZATION_MAP
-File: src/quantumvitas/workflow/generalized_steps.py
+File: src/qmatsuite/workflow/generalized_steps.py
 Task: Remove lines 64-116 (the static dict)
 
 ## Step 8: Update Helper Functions
-File: src/quantumvitas/workflow/generalized_steps.py
+File: src/qmatsuite/workflow/generalized_steps.py
 Task: Update _is_zero_mapping(), get_supported_generalized_steps(),
       get_engine_families_for_step() to query DriverRegistry instead
 

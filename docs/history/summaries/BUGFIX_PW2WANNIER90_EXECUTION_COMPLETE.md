@@ -20,7 +20,7 @@
 
 ### A. 诊断日志增强
 
-#### A1. CalculationRunner.run() 日志 (`src/quantumvitas/calculation/runner.py`)
+#### A1. CalculationRunner.run() 日志 (`src/qmatsuite/calculation/runner.py`)
 
 **添加的日志**：
 - 步骤进入日志：`[CALCULATION_RUNNER] Entering step: id=..., type=..., calculation_failed=...`
@@ -40,7 +40,7 @@
   - Stderr 的最后 500 字符
   - 原始 error 消息
 
-#### A2. Step.run() 异常处理 (`src/quantumvitas/calculation/step.py`)
+#### A2. Step.run() 异常处理 (`src/qmatsuite/calculation/step.py`)
 
 **添加的日志**：
 - 步骤执行开始：`[Step.run] Executing step: id=..., type=..., input_path=...`
@@ -55,7 +55,7 @@
 
 ### B. Errno 21 根因修复
 
-#### B1. _ensure_file_path Helper (`src/quantumvitas/core/engines/qe_calculation.py`)
+#### B1. _ensure_file_path Helper (`src/qmatsuite/core/engines/qe_calculation.py`)
 
 **新增函数**：
 ```python
@@ -161,7 +161,7 @@ with open(stdin_file, 'r') as stdin_handle:
 
 ### D. w90_preproc 成功判断修复
 
-#### D1. evaluate_step_result() 修改 (`src/quantumvitas/calculation/verification.py`)
+#### D1. evaluate_step_result() 修改 (`src/qmatsuite/calculation/verification.py`)
 
 **Wannier90 步骤特殊处理**：
 ```python
@@ -180,7 +180,7 @@ if step_type and str(step_type.value).lower() in wannier90_step_types:
 - 以 `return_code == 0` 为主要成功指标
 - 对于 `w90_preproc`，额外检查 `.nnkp` 文件存在性（在 `run_step` 中）
 
-#### D2. run_step() 中的 .nnkp 检查 (`src/quantumvitas/core/engines/qe_calculation.py`)
+#### D2. run_step() 中的 .nnkp 检查 (`src/qmatsuite/core/engines/qe_calculation.py`)
 
 **w90_preproc 成功验证**：
 ```python
@@ -234,21 +234,21 @@ elif step_type == "w90_run" and return_code == 0:
 ## 修改文件列表
 
 ### 核心修改
-1. `src/quantumvitas/calculation/runner.py`
+1. `src/qmatsuite/calculation/runner.py`
    - 添加步骤执行前后的详细日志
    - 添加异常处理和错误消息增强
 
-2. `src/quantumvitas/calculation/step.py`
+2. `src/qmatsuite/calculation/step.py`
    - 添加异常处理和日志
 
-3. `src/quantumvitas/core/engines/qe_calculation.py`
+3. `src/qmatsuite/core/engines/qe_calculation.py`
    - 添加 `_ensure_file_path` helper
    - 修复输出文件路径处理
    - 修复 stderr 文件写入
    - 添加 w90_preproc .nnkp 检查
    - 增强错误消息（包含 return code 和 stderr）
 
-4. `src/quantumvitas/calculation/verification.py`
+4. `src/qmatsuite/calculation/verification.py`
    - 修改 `evaluate_step_result()` 支持 Wannier90 步骤的 return code 检查
    - 添加 `step_result_return_code` 参数
 

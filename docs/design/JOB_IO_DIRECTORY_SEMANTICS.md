@@ -2,7 +2,7 @@
 
 ## Overview
 
-QuantumVITAS uses a unified `io_dir` field to represent the I/O directory for job execution. This directory is where the runner writes QE input/output files and artifacts.
+QMatSuite uses a unified `io_dir` field to represent the I/O directory for job execution. This directory is where the runner writes QE input/output files and artifacts.
 
 ## Terminology: Product vs Tests
 
@@ -34,13 +34,13 @@ See `docs/TERMINOLOGY_DIRECTORIES.md` for complete terminology reference.
 The runner layer provides a helper function that is the **single source of truth** for computing I/O directory paths:
 
 ```python
-from quantumvitas.calculation.runner import compute_io_dir_from_workflow_model
+from qmatsuite.calculation.runner import compute_io_dir_from_workflow_model
 
 # Compute I/O directory from calculation model
 io_dir = compute_io_dir_from_workflow_model(calculation_dir, working_dir_name)
 ```
 
-**Location**: `src/quantumvitas/calculation/runner.py`
+**Location**: `src/qmatsuite/calculation/runner.py`
 
 **Parameters**:
 - `calculation_dir`: Path to the calculation directory (containing calculation.yaml)
@@ -54,7 +54,7 @@ io_dir = compute_io_dir_from_workflow_model(calculation_dir, working_dir_name)
 
 The daemon server uses `compute_io_dir_from_workflow_model()` to compute `planned_io_dir` when creating jobs:
 
-**Location**: `src/quantumvitas/daemon/server.py`
+**Location**: `src/qmatsuite/daemon/server.py`
 
 - `_handle_run_calculation`: Computes `planned_io_dir` using the helper function
 - `_handle_run_step`: Same approach
@@ -63,7 +63,7 @@ The daemon server uses `compute_io_dir_from_workflow_model()` to compute `planne
 
 ### Job Model
 
-**Location**: `src/quantumvitas/daemon/jobs.py`
+**Location**: `src/qmatsuite/daemon/jobs.py`
 
 - `Job.io_dir`: Stores the I/O directory path (absolute string)
 - `to_dict()`: Returns `io_dir` in job status responses
@@ -75,7 +75,7 @@ The daemon server uses `compute_io_dir_from_workflow_model()` to compute `planne
 
 ### API Layer
 
-**Location**: `src/quantumvitas/api.py`
+**Location**: `src/qmatsuite/api.py`
 
 - `run_calculation`: Returns `io_dir` from `CalculationResult` (runner-provided)
 - `run_step`: Returns `io_dir` (the actual directory used)
@@ -90,7 +90,7 @@ The daemon server uses `compute_io_dir_from_workflow_model()` to compute `planne
 - Shows "I/O Directory" section with path and "Reveal in Finder" button
 - Available immediately when job is created (pending state)
 
-**Types**: `gui/src/types/qv.ts`
+**Types**: `gui/src/types/qms.ts`
 - `JobInfo.io_dir`: Optional field for I/O directory path
 - `JobSummary.io_dir`: Optional field (if `list_jobs` returns it)
 
@@ -130,9 +130,9 @@ During the migration from `work_dir`/`working_dir` to `io_dir`:
 
 ## Related Files
 
-- `src/quantumvitas/calculation/runner.py`: `compute_io_dir_from_workflow_model()` helper
-- `src/quantumvitas/daemon/server.py`: Uses helper to compute `planned_io_dir`
-- `src/quantumvitas/daemon/jobs.py`: Job model with `io_dir` field
-- `src/quantumvitas/api.py`: Returns `io_dir` from runner results
+- `src/qmatsuite/calculation/runner.py`: `compute_io_dir_from_workflow_model()` helper
+- `src/qmatsuite/daemon/server.py`: Uses helper to compute `planned_io_dir`
+- `src/qmatsuite/daemon/jobs.py`: Job model with `io_dir` field
+- `src/qmatsuite/api.py`: Returns `io_dir` from runner results
 - `gui/src/components/panels/JobsPanel.tsx`: Displays `io_dir` in UI
-- `gui/src/types/qv.ts`: Type definitions for `io_dir`
+- `gui/src/types/qms.ts`: Type definitions for `io_dir`

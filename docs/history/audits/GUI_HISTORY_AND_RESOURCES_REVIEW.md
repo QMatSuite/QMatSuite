@@ -11,7 +11,7 @@
 2. [Gap Analysis](#2-gap-analysis)
 3. [Problem 1: History Panel — Provenance Viewer](#3-problem-1-history-panel--provenance-viewer)
 4. [Problem 2: Resources Tab — Engine Knowledge Center](#4-problem-2-resources-tab--engine-knowledge-center)
-5. [Problem 3: CLI `qv history`](#5-problem-3-cli-qv-history)
+5. [Problem 3: CLI `qms history`](#5-problem-3-cli-qms-history)
 6. [UX Vision: What a New User Sees](#6-ux-vision-what-a-new-user-sees)
 7. [Naming and Navigation](#7-naming-and-navigation)
 8. [Implementation Phases](#8-implementation-phases)
@@ -41,7 +41,7 @@ Controls:
 
 The backend flow:
 ```
-HistoryPanel → RPC get_project_history → QVService.History.get_timeline()
+HistoryPanel → RPC get_project_history → QMSService.History.get_timeline()
     → provenance.query.query_runs() → SQLite .provenance/provenance.db
 ```
 
@@ -92,13 +92,13 @@ It's hardcoded to `"qe"`. No UI to switch engines. The sidebar tooltip also says
 
 ### 1.3 CLI
 
-**Status: No `qv history` command exists.**
+**Status: No `qms history` command exists.**
 
-The CLI (`src/quantumvitas/cli/main.py`, ~4800 lines) has no history/provenance commands.
-The only metadata-related command is `qv params <module>` which is QE-specific:
+The CLI (`src/qmatsuite/cli/main.py`, ~4800 lines) has no history/provenance commands.
+The only metadata-related command is `qms params <module>` which is QE-specific:
 
 ```
-qv params pw --section SYSTEM    # lists QE pw module parameters
+qms params pw --section SYSTEM    # lists QE pw module parameters
 ```
 
 No equivalent for VASP, ORCA, etc.
@@ -111,13 +111,13 @@ The provenance system is fully implemented:
 
 | Layer | Location | What it provides |
 |-------|----------|-----------------|
-| Core provenance | `src/quantumvitas/provenance/` (13 files, ~3200 LOC) | OperationContext, SQLite schema v3, CAS, recording, query, pins, snapshots, restore, policy, scanner |
-| Service API | `src/quantumvitas/api/service.py` → `QVService.History` | `get_timeline()`, `get_run_revision()`, `list_runs()`, `pin_analysis()`, `delete()` |
-| Daemon RPC | `src/quantumvitas/daemon/server.py` | 8 endpoints: `get_project_history`, `get_run_revision`, `list_project_runs`, `pin_analysis_to_history`, `can_pin_to_run`, `get_pin_data`, `get_latest_run_for_step`, `delete_project_history` |
-| Query module | `src/quantumvitas/provenance/query.py` | `query_operations()`, `query_runs()`, `get_run_details()`, `get_latest_run_ulid()`, `build_timeline_entry()` |
+| Core provenance | `src/qmatsuite/provenance/` (13 files, ~3200 LOC) | OperationContext, SQLite schema v3, CAS, recording, query, pins, snapshots, restore, policy, scanner |
+| Service API | `src/qmatsuite/api/service.py` → `QMSService.History` | `get_timeline()`, `get_run_revision()`, `list_runs()`, `pin_analysis()`, `delete()` |
+| Daemon RPC | `src/qmatsuite/daemon/server.py` | 8 endpoints: `get_project_history`, `get_run_revision`, `list_project_runs`, `pin_analysis_to_history`, `can_pin_to_run`, `get_pin_data`, `get_latest_run_for_step`, `delete_project_history` |
+| Query module | `src/qmatsuite/provenance/query.py` | `query_operations()`, `query_runs()`, `get_run_details()`, `get_latest_run_ulid()`, `build_timeline_entry()` |
 
 Key: `query_operations()` exists in the provenance layer but is **not exposed** through
-`QVService.History` or any RPC endpoint. This is the main missing link for showing operation
+`QMSService.History` or any RPC endpoint. This is the main missing link for showing operation
 events (edits, preset applications, etc.) in the GUI timeline.
 
 ---
@@ -151,8 +151,8 @@ events (edits, preset applications, etc.) in the GUI timeline.
 
 | Gap | Severity | Notes |
 |-----|----------|-------|
-| **No `qv history` command** | HIGH | Provenance query API is fully built but not CLI-accessible |
-| **`qv params` is QE-only** | MEDIUM | Only QE parameters browsable from CLI |
+| **No `qms history` command** | HIGH | Provenance query API is fully built but not CLI-accessible |
+| **`qms params` is QE-only** | MEDIUM | Only QE parameters browsable from CLI |
 
 ---
 
@@ -183,7 +183,7 @@ Currently only `run_started` and `run_finished` appear. Add:
 | `species_map_update` | `⚛` | "Updated pseudopotential: Si → Si.pbe-n-rrkjus.UPF" |
 
 These are all in the `operations` table already. Need:
-1. Add `query_operations()` call to `QVService.History.get_timeline()`
+1. Add `query_operations()` call to `QMSService.History.get_timeline()`
 2. Merge operation events + run events by timestamp
 3. New `renderOperationEvent()` in HistoryPanel
 
@@ -367,14 +367,14 @@ The existing parameter table (Name, Type, Default, Description) covers the unive
 
 ---
 
-## 5. Problem 3: CLI `qv history`
+## 5. Problem 3: CLI `qms history`
 
 ### 5.1 The Opportunity
 
-The provenance query API (`src/quantumvitas/provenance/query.py`) is complete and CLI-ready:
+The provenance query API (`src/qmatsuite/provenance/query.py`) is complete and CLI-ready:
 
 ```python
-from quantumvitas.provenance.query import (
+from qmatsuite.provenance.query import (
     query_operations,  # All YAML write events
     query_runs,        # All calculation runs
     get_run_details,   # Full run with steps + snapshot
@@ -383,7 +383,7 @@ from quantumvitas.provenance.query import (
 )
 ```
 
-And `QVService.History` provides a higher-level API:
+And `QMSService.History` provides a higher-level API:
 
 ```python
 svc = get_service(project_root)
@@ -399,28 +399,28 @@ These are the **same APIs** the daemon uses for GUI. A CLI command can call them
 
 ```bash
 # Show recent history (runs + operations) as a timeline
-qv history [--limit 20] [--calc CALC_NAME]
+qms history [--limit 20] [--calc CALC_NAME]
 
 # Show details of a specific run
-qv history show <RUN_ULID>
+qms history show <RUN_ULID>
 
 # List all runs (compact table format)
-qv history runs [--limit 20] [--status success|failed]
+qms history runs [--limit 20] [--status success|failed]
 
 # Show provenance storage usage
-qv history storage
+qms history storage
 
 # Delete provenance data
-qv history clear [--confirm] [--tier3-only]
+qms history clear [--confirm] [--tier3-only]
 
 # Future: restore to a checkpoint
-qv history restore <RUN_ULID> [--dry-run]
+qms history restore <RUN_ULID> [--dry-run]
 ```
 
 ### 5.3 Example Output
 
 ```
-$ qv history --limit 5
+$ qms history --limit 5
 
 Project: Si_bulk_study (/path/to/project)
 
@@ -438,7 +438,7 @@ Storage: 12.3 MB (42 snapshots, 15 analyses, 28 artifacts)
 ```
 
 ```
-$ qv history show 01JKXYZ...
+$ qms history show 01JKXYZ...
 
 Run 01JKXYZ...  Status: success
 Calculation: Si_scf
@@ -456,21 +456,21 @@ Artifacts: 12 files (Tier-2, 8.1 MB)
 Pins: bands_plot (PNG + JSON)
 ```
 
-### 5.4 Also: Multi-Engine `qv params`
+### 5.4 Also: Multi-Engine `qms params`
 
-Extend the existing `qv params` command beyond QE:
+Extend the existing `qms params` command beyond QE:
 
 ```bash
 # Current (QE only):
-qv params pw --section SYSTEM
+qms params pw --section SYSTEM
 
 # Extended:
-qv params vasp --category electronic
-qv params orca --category method_dft_hybrid
-qv params lammps --category potential
+qms params vasp --category electronic
+qms params orca --category method_dft_hybrid
+qms params lammps --category potential
 
 # Cross-engine search:
-qv params search cutoff
+qms params search cutoff
 ```
 
 ---
@@ -620,19 +620,19 @@ next to each parameter that opens its Reference entry.
 
 ### Phase 2: Operation Events in History
 
-1. Add `get_operations_timeline()` to `QVService.History` (wraps `query_operations()`)
+1. Add `get_operations_timeline()` to `QMSService.History` (wraps `query_operations()`)
 2. Merge operations + runs into unified timeline, sorted by timestamp
 3. Add `renderOperationEvent()` to HistoryPanel for each OperationType
 4. Add calculation filter dropdown
 5. Add event type filter toggles
 
-### Phase 3: CLI `qv history`
+### Phase 3: CLI `qms history`
 
-1. Add `qv history` command (calls `svc.history.get_timeline()`)
-2. Add `qv history show <RUN_ULID>` (calls `svc.history.get_run_revision()`)
-3. Add `qv history runs` (calls `svc.history.list_runs()`)
-4. Add `qv history storage` (queries `cas_objects` table)
-5. Extend `qv params` to support all engines (not just QE)
+1. Add `qms history` command (calls `svc.history.get_timeline()`)
+2. Add `qms history show <RUN_ULID>` (calls `svc.history.get_run_revision()`)
+3. Add `qms history runs` (calls `svc.history.list_runs()`)
+4. Add `qms history storage` (queries `cas_objects` table)
+5. Extend `qms params` to support all engines (not just QE)
 
 ### Phase 4: Enhanced History Viewer
 
@@ -663,39 +663,39 @@ next to each parameter that opens its Reference entry.
 | `gui/src/components/settings/JournalHistoryPanel.tsx` | — | Debug-only YAML journal viewer (separate concern) |
 | `gui/src/components/layout/Sidebar.tsx` | — | Navigation, needs tooltip updates |
 | `gui/src/App.tsx` | — | Routing, has hardcoded `engineFamily="qe"` |
-| `gui/src/types/qv.ts` | — | Types: `HistoryTimelineEntry`, needs operation event fields |
+| `gui/src/types/qms.ts` | — | Types: `HistoryTimelineEntry`, needs operation event fields |
 | `gui/src/hooks/useEngineParameterMetadata.ts` | 439 | Legacy hook, unused — can be removed |
 
 ### Backend (Python)
 
 | File | Lines | Current State |
 |------|-------|--------------|
-| `src/quantumvitas/provenance/query.py` | 378 | Complete, has `query_operations()` (not exposed in service) |
-| `src/quantumvitas/provenance/recording.py` | 451 | Complete |
-| `src/quantumvitas/provenance/cas.py` | 220 | Complete |
-| `src/quantumvitas/provenance/snapshots.py` | 130 | Complete |
-| `src/quantumvitas/provenance/restore.py` | 158 | Complete (rollback) |
-| `src/quantumvitas/provenance/schema.py` | 289 | SQLite v3 schema |
-| `src/quantumvitas/api/service.py` | — | `QVService.History` class, needs `get_operations_timeline()` |
-| `src/quantumvitas/api/utils.py` | — | `_get_engine_metadata_module()` needs W90, xTB, Yambo |
-| `src/quantumvitas/daemon/server.py` | — | 8 RPC endpoints, may need operations endpoint |
-| `src/quantumvitas/cli/main.py` | ~4800 | Needs `qv history` commands and multi-engine `qv params` |
+| `src/qmatsuite/provenance/query.py` | 378 | Complete, has `query_operations()` (not exposed in service) |
+| `src/qmatsuite/provenance/recording.py` | 451 | Complete |
+| `src/qmatsuite/provenance/cas.py` | 220 | Complete |
+| `src/qmatsuite/provenance/snapshots.py` | 130 | Complete |
+| `src/qmatsuite/provenance/restore.py` | 158 | Complete (rollback) |
+| `src/qmatsuite/provenance/schema.py` | 289 | SQLite v3 schema |
+| `src/qmatsuite/api/service.py` | — | `QMSService.History` class, needs `get_operations_timeline()` |
+| `src/qmatsuite/api/utils.py` | — | `_get_engine_metadata_module()` needs W90, xTB, Yambo |
+| `src/qmatsuite/daemon/server.py` | — | 8 RPC endpoints, may need operations endpoint |
+| `src/qmatsuite/cli/main.py` | ~4800 | Needs `qms history` commands and multi-engine `qms params` |
 
 ### Engine Metadata JSON (11 files)
 
 | File | Tags |
 |------|------|
-| `src/quantumvitas/data/qe_module_parameters.json` | 1,081 |
-| `src/quantumvitas/drivers/vasp/data/vasp_incar_tags.json` | 238 |
-| `src/quantumvitas/drivers/abinit/data/abinit_tags.json` | 249 |
-| `src/quantumvitas/drivers/cp2k/data/cp2k_tags.json` | 215 |
-| `src/quantumvitas/drivers/w90/data/w90_tags.json` | 140 |
-| `src/quantumvitas/drivers/orca/data/orca_keywords.json` | 136 |
-| `src/quantumvitas/drivers/gaussian/data/gaussian_route_keywords.json` | 130 |
-| `src/quantumvitas/drivers/lammps/data/lammps_commands.json` | 114 |
-| `src/quantumvitas/drivers/xtb/data/xtb_tags.json` | 82 |
-| `src/quantumvitas/drivers/yambo/data/yambo_tags.json` | 73 |
-| `src/quantumvitas/drivers/qmcpack/data/qmcpack_tags.json` | 65 |
+| `src/qmatsuite/data/qe_module_parameters.json` | 1,081 |
+| `src/qmatsuite/drivers/vasp/data/vasp_incar_tags.json` | 238 |
+| `src/qmatsuite/drivers/abinit/data/abinit_tags.json` | 249 |
+| `src/qmatsuite/drivers/cp2k/data/cp2k_tags.json` | 215 |
+| `src/qmatsuite/drivers/w90/data/w90_tags.json` | 140 |
+| `src/qmatsuite/drivers/orca/data/orca_keywords.json` | 136 |
+| `src/qmatsuite/drivers/gaussian/data/gaussian_route_keywords.json` | 130 |
+| `src/qmatsuite/drivers/lammps/data/lammps_commands.json` | 114 |
+| `src/qmatsuite/drivers/xtb/data/xtb_tags.json` | 82 |
+| `src/qmatsuite/drivers/yambo/data/yambo_tags.json` | 73 |
+| `src/qmatsuite/drivers/qmcpack/data/qmcpack_tags.json` | 65 |
 
 ---
 

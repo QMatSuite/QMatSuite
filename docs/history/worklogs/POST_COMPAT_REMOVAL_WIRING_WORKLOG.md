@@ -8,7 +8,7 @@
 Original plan called for stripping GUI fields and simplifying TS types. User rejected this — GUI must look identical to before. Approach changed to **enriching backend responses** so the daemon provides all fields the GUI expects.
 
 Key constraints enforced:
-- Daemon must NOT import kernel — only `quantumvitas.api`
+- Daemon must NOT import kernel — only `qmatsuite.api`
 - Minimal new API surface — reuse existing `get_detail()` instead of adding `list_enriched()`
 - ULID-based resolution — slug/filename resolve only at boundaries
 
@@ -40,6 +40,6 @@ Key constraints enforced:
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/daemon/server.py` | `_handle_list_calculations` calls `get_detail` per calc; `_handle_create_demo_project` enriched |
-| `src/quantumvitas/api/service.py` | `get_detail` adds `calc_ulid`, `step_file`, `slug`, `species_map`; `list_demo_projects` adds meta fields |
+| `src/qmatsuite/daemon/server.py` | `_handle_list_calculations` calls `get_detail` per calc; `_handle_create_demo_project` enriched |
+| `src/qmatsuite/api/service.py` | `get_detail` adds `calc_ulid`, `step_file`, `slug`, `species_map`; `list_demo_projects` adds meta fields |
 | `tests/api/test_structure_import_pipeline.py` | NEW — 19 tests, CIF→JSON→QE pipeline with numerical assertions |

@@ -6,7 +6,7 @@ import subprocess
 
 import pytest
 
-from quantumvitas.drivers.xtb.parsers.output import XTBOutputParser
+from qmatsuite.drivers.xtb.parsers.output import XTBOutputParser
 
 
 def _write_water_xyz(path):

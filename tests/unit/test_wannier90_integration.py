@@ -9,9 +9,9 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.resources import get_resources_dir
-from quantumvitas.workflow.registry import StepTypeRegistry
-from quantumvitas.io.wannier90_input import (
+from qmatsuite.core.resources import get_resources_dir
+from qmatsuite.workflow.registry import StepTypeRegistry
+from qmatsuite.io.wannier90_input import (
     Wannier90Input,
     Pw2Wannier90Input,
     generate_kpoints_from_mp_grid,
@@ -254,7 +254,7 @@ class TestEngineExecutableMap:
     
     def test_w90_executables_in_map(self):
         """Test W90 executables are in EXECUTABLE_MAP."""
-        from quantumvitas.core.engines.qe import QuantumEspressoEngine
+        from qmatsuite.core.engines.qe import QuantumEspressoEngine
 
         assert "wannierprep" in QuantumEspressoEngine.EXECUTABLE_MAP
         assert "pw2wannier" in QuantumEspressoEngine.EXECUTABLE_MAP

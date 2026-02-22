@@ -10,9 +10,9 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from quantumvitas.calculation.verification import evaluate_step_result
-from quantumvitas.calculation.types import StepMode, StepStatus
-from quantumvitas.analysis.parsers import parse_scf_output_text, parse_scf_output_path
+from qmatsuite.calculation.verification import evaluate_step_result
+from qmatsuite.calculation.types import StepMode, StepStatus
+from qmatsuite.analysis.parsers import parse_scf_output_text, parse_scf_output_path
 
 
 class TestWannier90StepsDoNotParseEnergy:
@@ -28,7 +28,7 @@ class TestWannier90StepsDoNotParseEnergy:
             return {"total_energy_ry": None, "fermi_energy_ev": None}
         
         monkeypatch.setattr(
-            "quantumvitas.calculation.verification.extract_energy_metrics_from_text",
+            "qmatsuite.calculation.verification.extract_energy_metrics_from_text",
             mock_extract
         )
         

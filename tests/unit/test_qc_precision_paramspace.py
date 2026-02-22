@@ -6,13 +6,13 @@ Verifies that QC precision ParamSpace works correctly with roundtrip tests.
 
 import pytest
 
-from quantumvitas.presets.qc_precision import (
+from qmatsuite.presets.qc_precision import (
     get_qc_precision_paramspace,
     build_qc_precision_paramspace,
 )
-from quantumvitas.presets.paramspace import match_profile, compile_profile_patch
-from quantumvitas.presets.dimensions import PrecisionOption, DIMENSION_QC_PRECISION
-from quantumvitas.presets.spaces_registry import (
+from qmatsuite.presets.paramspace import match_profile, compile_profile_patch
+from qmatsuite.presets.dimensions import PrecisionOption, DIMENSION_QC_PRECISION
+from qmatsuite.presets.spaces_registry import (
     SPACES,
     detect_dimension,
     compile_dimension_patch,

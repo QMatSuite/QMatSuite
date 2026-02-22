@@ -11,12 +11,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.api import get_service
-from quantumvitas.calculation.structure_steps import (
+from qmatsuite.api import get_service
+from qmatsuite.calculation.structure_steps import (
     detect_runtime_control_keys,
     StructureStepSpec,
 )
-from quantumvitas.core.resources import generate_resource_id, meta_from_name
+from qmatsuite.core.resources import generate_resource_id, meta_from_name
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def temp_project_with_step():
         structure_ulid = generate_resource_id()
         structure_file = structures_dir / "si.json"
         structure_file.write_text("""{
-  "__qv_meta__": {
+  "__qms_meta__": {
     "ulid": "01TESTSTRUCTUREID123456789",
     "name": "Si",
     "slug": "si",
@@ -57,7 +57,7 @@ def temp_project_with_step():
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir(parents=True)
         
-        (project_root / "project.qv.yml").write_text(f"""name: Test Project
+        (project_root / "project.qms.yml").write_text(f"""name: Test Project
 structures:
   - ulid: {structure_ulid}
     file: structures/si.json

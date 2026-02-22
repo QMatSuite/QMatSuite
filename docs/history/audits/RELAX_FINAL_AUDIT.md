@@ -39,13 +39,13 @@ All critical invariants are locked and enforced. No blocking issues found.
 
 #### Entrypoint 1: `import_structure()` in `api.py`
 
-**Location**: `src/quantumvitas/api.py:400-422`
+**Location**: `src/qmatsuite/api.py:400-422`
 
 **Code Block**:
 ```python
 # Lines 400-404: Canonicalize then fingerprint
-from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
-from quantumvitas.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
+from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
+from qmatsuite.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
 
 canonicalize_structure_like_in_place(structure)
 fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
@@ -55,7 +55,7 @@ if existing_fingerprint == fingerprint:
     existing_fingerprint_id = struct_meta.get("id")
     if existing_fingerprint_id:
         # Fingerprint match is sufficient for dedup (no secondary check)
-        from quantumvitas.core.resolution import require_structure
+        from qmatsuite.core.resolution import require_structure
         resolved = require_structure(
             project_root, existing_fingerprint_id, config=config, index=index
         )
@@ -72,12 +72,12 @@ if existing_fingerprint == fingerprint:
 
 #### Entrypoint 2: `import_from_qe_directory()` in `api.py`
 
-**Location**: `src/quantumvitas/api.py:5853-5876`
+**Location**: `src/qmatsuite/api.py:5853-5876`
 
 **Code Block**:
 ```python
 # Line 5854: Import fingerprint function (no structures_semantically_equal)
-from quantumvitas.core.structure_fingerprint import structure_fingerprint
+from qmatsuite.core.structure_fingerprint import structure_fingerprint
 fingerprint = structure_fingerprint(structure)
 
 # Lines 5870-5876: Fingerprint-only dedup
@@ -105,7 +105,7 @@ if existing_fingerprint == fingerprint:
 
 #### PBC Canonicalization
 
-**Location**: `src/quantumvitas/core/structure_canonicalize.py:18-35`
+**Location**: `src/qmatsuite/core/structure_canonicalize.py:18-35`
 
 **Code**:
 ```python
@@ -130,7 +130,7 @@ def canonicalize_structure_like_in_place(obj: Union[PMGStructure, PMGMolecule]) 
 
 #### Molecule Canonicalization
 
-**Location**: `src/quantumvitas/core/structure_canonicalize.py:38-57`
+**Location**: `src/qmatsuite/core/structure_canonicalize.py:38-57`
 
 **Code**:
 ```python
@@ -155,7 +155,7 @@ def _canonicalize_molecule_in_place(molecule: PMGMolecule) -> None:
 
 #### PBC Fingerprint
 
-**Location**: `src/quantumvitas/core/structure_fingerprint.py:148-213`
+**Location**: `src/qmatsuite/core/structure_fingerprint.py:148-213`
 
 **Key Code**:
 ```python
@@ -184,7 +184,7 @@ def _fingerprint_pbc_structure(structure: PMGStructure, tol_ang: float) -> str:
 
 #### Molecule Fingerprint
 
-**Location**: `src/quantumvitas/core/structure_fingerprint.py:216-265`
+**Location**: `src/qmatsuite/core/structure_fingerprint.py:216-265`
 
 **Key Code**:
 ```python
@@ -211,7 +211,7 @@ def _fingerprint_molecule(molecule: PMGMolecule, tol_ang: float) -> str:
 
 ### B.3 Fingerprint Quantization Rule
 
-**Location**: `src/quantumvitas/core/structure_fingerprint.py:66-96`
+**Location**: `src/qmatsuite/core/structure_fingerprint.py:66-96`
 
 **Implementation**:
 ```python
@@ -234,7 +234,7 @@ def quantize_array(arr: np.ndarray, tol: float = 1.0) -> np.ndarray:
 
 ### B.4 No `round()` or `np.round()` in Fingerprint Paths
 
-**Command**: `rg "np\\.round\\(|\\bround\\(" src/quantumvitas/core/structure_fingerprint.py`
+**Command**: `rg "np\\.round\\(|\\bround\\(" src/qmatsuite/core/structure_fingerprint.py`
 
 **Result**: 1 match (line 70)
 
@@ -255,7 +255,7 @@ def quantize_array(arr: np.ndarray, tol: float = 1.0) -> np.ndarray:
 
 ### C.1 SSOT Constant Definition
 
-**Location**: `src/quantumvitas/core/structure_fingerprint.py:104`
+**Location**: `src/qmatsuite/core/structure_fingerprint.py:104`
 
 **Code**:
 ```python
@@ -275,14 +275,14 @@ DEFAULT_FINGERPRINT_TOL_ANG = 1e-3  # Default tolerance in Angstrom
 **Grep Results**: `rg "DEFAULT_FINGERPRINT_TOL_ANG" src/`
 
 **Matches**:
-1. `src/quantumvitas/core/structure_fingerprint.py:104` - Definition
-2. `src/quantumvitas/core/structure_fingerprint.py:109` - Default parameter in `structure_like_fingerprint()`
-3. `src/quantumvitas/api.py:399` - Import and usage in `import_structure()` dedup
-4. `src/quantumvitas/api.py:404` - Usage in `import_structure()` dedup
-5. `src/quantumvitas/api.py:427` - Import and usage in `import_structure()` storage
-6. `src/quantumvitas/api.py:435` - Usage in `import_structure()` storage
-7. `src/quantumvitas/execution/executor.py:47` - Import
-8. `src/quantumvitas/execution/executor.py:751` - Usage in `effective_structure_sha` computation
+1. `src/qmatsuite/core/structure_fingerprint.py:104` - Definition
+2. `src/qmatsuite/core/structure_fingerprint.py:109` - Default parameter in `structure_like_fingerprint()`
+3. `src/qmatsuite/api.py:399` - Import and usage in `import_structure()` dedup
+4. `src/qmatsuite/api.py:404` - Usage in `import_structure()` dedup
+5. `src/qmatsuite/api.py:427` - Import and usage in `import_structure()` storage
+6. `src/qmatsuite/api.py:435` - Usage in `import_structure()` storage
+7. `src/qmatsuite/execution/executor.py:47` - Import
+8. `src/qmatsuite/execution/executor.py:751` - Usage in `effective_structure_sha` computation
 
 **Analysis**:
 - ✅ All production fingerprint calls use `DEFAULT_FINGERPRINT_TOL_ANG`
@@ -370,7 +370,7 @@ def test_molecule_tie_case_stable(self):
 
 **Command**:
 ```bash
-python -m pytest tests/ -v --tb=short -n auto --dist=loadfile --cov=src/quantumvitas --cov-report=xml --cov-report=term -m "not requires_orca and not requires_pyscf"
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile --cov=src/qmatsuite --cov-report=xml --cov-report=term -m "not requires_orca and not requires_pyscf"
 ```
 
 **Analysis**:
@@ -438,32 +438,32 @@ markers =
 
 #### Internal/Machine Step Types (Allowed)
 
-1. **`orca_relax`** in `src/quantumvitas/engine/orca_engine.py`:
+1. **`orca_relax`** in `src/qmatsuite/engine/orca_engine.py`:
    - Lines 166, 457, 465, 480, 488, 556, 589, 610, 627
    - **Classification**: Internal machine step type (used in engine execution)
    - **Not public**: Used as `step_type` parameter in engine calls, not exposed as public_type
 
-2. **`pyscf_relax`** in `src/quantumvitas/workflow/registry.py:419-432`:
+2. **`pyscf_relax`** in `src/qmatsuite/workflow/registry.py:419-432`:
    - Machine type: `pyscf_relax`
    - Public type: `relax` (verified in registry)
    - **Classification**: Internal machine step type (public_type is "relax")
 
 #### Legacy Data Files (Not Production Code)
 
-3. **`vc-relax`** in `src/quantumvitas/data/qe_module_parameters.legacy.*.json`:
+3. **`vc-relax`** in `src/qmatsuite/data/qe_module_parameters.legacy.*.json`:
    - Multiple occurrences in legacy JSON parameter definitions
    - **Classification**: Legacy QE parameter documentation (not production code)
    - **Not public**: These are historical QE input parameter descriptions
 
 4. **`opt`** in legacy JSON files and comments:
-   - `src/quantumvitas/data/qe_module_parameters.legacy.*.json`: `first_last_opt`, `tetrahedra_opt`
-   - `src/quantumvitas/engine/qc_engine_base.py:23`: Comment "# Step types that are structure transforms (relax/opt)"
+   - `src/qmatsuite/data/qe_module_parameters.legacy.*.json`: `first_last_opt`, `tetrahedra_opt`
+   - `src/qmatsuite/engine/qc_engine_base.py:23`: Comment "# Step types that are structure transforms (relax/opt)"
    - **Classification**: Legacy parameter names or generic comment
    - **Not public**: Not used as public_type
 
 ### E.2 Registry Verification
 
-**Location**: `src/quantumvitas/workflow/registry.py:192-203, 480-491`
+**Location**: `src/qmatsuite/workflow/registry.py:192-203, 480-491`
 
 **QE Relax**:
 ```python
@@ -530,14 +530,14 @@ All critical invariants are locked and enforced. The system is fully up-to-spec.
 
 ## Evidence Files
 
-- `src/quantumvitas/api.py` - Dedup entrypoints (lines 400-422, 5853-5876)
-- `src/quantumvitas/core/structure_fingerprint.py` - Fingerprint implementation (lines 66-265)
-- `src/quantumvitas/core/structure_canonicalize.py` - Canonicalization implementation (lines 18-57)
+- `src/qmatsuite/api.py` - Dedup entrypoints (lines 400-422, 5853-5876)
+- `src/qmatsuite/core/structure_fingerprint.py` - Fingerprint implementation (lines 66-265)
+- `src/qmatsuite/core/structure_canonicalize.py` - Canonicalization implementation (lines 18-57)
 - `tests/unit/test_structure_fingerprint.py` - Quantization edge case tests (lines 330-400)
 - `.github/workflows/tests.yml` - CI marker filter (line 308)
 - `pytest.ini` - Marker definitions (lines 25-37)
 - `docs/dev/TESTING.md` - Test execution policy documentation
-- `src/quantumvitas/workflow/registry.py` - Step type registry (lines 192-203, 480-491)
+- `src/qmatsuite/workflow/registry.py` - Step type registry (lines 192-203, 480-491)
 
 ---
 

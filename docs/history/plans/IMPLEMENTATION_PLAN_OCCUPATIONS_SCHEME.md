@@ -90,7 +90,7 @@ Replace Material (metal/insulator) preset dimension with new `occupations_scheme
 
 ## Phase 6: Update UI (TypeScript)
 
-### [ ] 6.1 Update types (qv.ts)
+### [ ] 6.1 Update types (qms.ts)
 - Remove `MaterialValue` type
 - Add `OccupationsSchemeValue` type: `'fixed' | 'smearing_gaussian' | 'tetrahedra' | 'Custom'`
 - Update `PresetState` interface

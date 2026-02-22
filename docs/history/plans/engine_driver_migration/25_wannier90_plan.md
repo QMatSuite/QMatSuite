@@ -12,7 +12,7 @@
 
 ## 1. Objective
 
-Extract Wannier90-specific code from kernel files into a self-contained driver bundle at `src/quantumvitas/drivers/w90/`. After this migration:
+Extract Wannier90-specific code from kernel files into a self-contained driver bundle at `src/qmatsuite/drivers/w90/`. After this migration:
 
 1. Wannier90 code lives in `drivers/w90/`
 2. Wannier90 is registered via DriverRegistry
@@ -58,15 +58,15 @@ w90_run      - Main Wannier90 execution (wannier90.x)
 
 ### 3.1 Handler Code
 
-**Source**: `src/quantumvitas/execution/handlers.py`
+**Source**: `src/qmatsuite/execution/handlers.py`
 
 There may not be a dedicated `w90_step_handler`. Check if Wannier90 is handled within QE handler or has separate handling.
 
-**Search**: `rg "w90|wannier" src/quantumvitas/execution/handlers.py`
+**Search**: `rg "w90|wannier" src/qmatsuite/execution/handlers.py`
 
 ### 3.2 Recipe Code
 
-**Source**: `src/quantumvitas/execution/recipes.py`
+**Source**: `src/qmatsuite/execution/recipes.py`
 
 Check for W90Recipe or similar.
 
@@ -78,7 +78,7 @@ The `w90_preproc` step is currently in QE shim (as of PR 2):
 ### 3.4 Additional Logic
 
 **Locations to check**:
-- `src/quantumvitas/workflow/` - W90-specific workflow logic
+- `src/qmatsuite/workflow/` - W90-specific workflow logic
 - Input generators for `.win` files
 
 ---
@@ -86,7 +86,7 @@ The `w90_preproc` step is currently in QE shim (as of PR 2):
 ## 4. Target Structure
 
 ```
-src/quantumvitas/drivers/w90/
+src/qmatsuite/drivers/w90/
 ├── __init__.py          # Registration (15 lines)
 ├── driver.py            # W90Driver class (70 lines)
 ├── handler.py           # w90_run_handler (100 lines)
@@ -103,17 +103,17 @@ src/quantumvitas/drivers/w90/
 ### Step 1: Create Directory Structure
 
 ```bash
-mkdir -p src/quantumvitas/drivers/w90
-touch src/quantumvitas/drivers/w90/__init__.py
-touch src/quantumvitas/drivers/w90/driver.py
-touch src/quantumvitas/drivers/w90/handler.py
-touch src/quantumvitas/drivers/w90/recipe.py
-touch src/quantumvitas/drivers/w90/artifact_resolver.py
+mkdir -p src/qmatsuite/drivers/w90
+touch src/qmatsuite/drivers/w90/__init__.py
+touch src/qmatsuite/drivers/w90/driver.py
+touch src/qmatsuite/drivers/w90/handler.py
+touch src/qmatsuite/drivers/w90/recipe.py
+touch src/qmatsuite/drivers/w90/artifact_resolver.py
 ```
 
 ### Step 2: Create driver.py
 
-**Create file**: `src/quantumvitas/drivers/w90/driver.py`
+**Create file**: `src/qmatsuite/drivers/w90/driver.py`
 
 ```python
 """Wannier90 engine driver.
@@ -129,7 +129,7 @@ only the main Wannier90 execution (w90_run).
 from pathlib import Path
 from typing import Any
 
-from quantumvitas.core.driver_protocol import (
+from qmatsuite.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
     WorkdirPolicy,
@@ -299,7 +299,7 @@ class W90Driver(BaseEngineDriver):
 
 ### Step 3: Create handler.py
 
-**Create file**: `src/quantumvitas/drivers/w90/handler.py`
+**Create file**: `src/qmatsuite/drivers/w90/handler.py`
 
 ```python
 """Wannier90 step handler.
@@ -312,9 +312,9 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from quantumvitas.core.job import Job
-from quantumvitas.core.step_context import StepContext
-from quantumvitas.core.job_result import JobResult
+from qmatsuite.core.job import Job
+from qmatsuite.core.step_context import StepContext
+from qmatsuite.core.job_result import JobResult
 
 from .artifact_resolver import resolve_w90_inputs
 
@@ -379,7 +379,7 @@ def w90_run_handler(job: Job, context: StepContext) -> JobResult:
 
 ### Step 4: Create recipe.py
 
-**Create file**: `src/quantumvitas/drivers/w90/recipe.py`
+**Create file**: `src/qmatsuite/drivers/w90/recipe.py`
 
 ```python
 """Wannier90 recipe for input staging.
@@ -391,7 +391,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from quantumvitas.execution.recipes import BaseRecipe
+from qmatsuite.execution.recipes import BaseRecipe
 
 logger = logging.getLogger(__name__)
 
@@ -490,7 +490,7 @@ class W90Recipe(BaseRecipe):
 
 ### Step 5: Create artifact_resolver.py
 
-**Create file**: `src/quantumvitas/drivers/w90/artifact_resolver.py`
+**Create file**: `src/qmatsuite/drivers/w90/artifact_resolver.py`
 
 ```python
 """Wannier90 artifact resolution.
@@ -503,10 +503,10 @@ import logging
 from pathlib import Path
 from typing import Dict, Optional, TYPE_CHECKING
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 
 if TYPE_CHECKING:
-    from quantumvitas.core.step_context import StepContext
+    from qmatsuite.core.step_context import StepContext
 
 logger = logging.getLogger(__name__)
 
@@ -612,12 +612,12 @@ def _find_artifacts_in_dir(
 
 ### Step 6: Create __init__.py
 
-**Create file**: `src/quantumvitas/drivers/w90/__init__.py`
+**Create file**: `src/qmatsuite/drivers/w90/__init__.py`
 
 ```python
 """Wannier90 driver bundle.
 
-This package provides the Wannier90 engine driver for QuantumVitas.
+This package provides the Wannier90 engine driver for QMatSuite.
 It handles Wannier90 calculations for constructing maximally
 localized Wannier functions from DFT output.
 
@@ -625,7 +625,7 @@ Note: The w90_preproc step is registered with the DFT engine
 (QE, VASP) that executes it, not with this driver.
 """
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import W90Driver
 
 # Register driver at import time
@@ -636,23 +636,23 @@ __all__ = ["W90Driver"]
 
 ### Step 7: Update drivers/__init__.py
 
-**File**: `src/quantumvitas/drivers/__init__.py`
+**File**: `src/qmatsuite/drivers/__init__.py`
 
 **Add** W90 import:
 
 ```python
-from quantumvitas.drivers import qe_shim
-from quantumvitas.drivers import vasp
-from quantumvitas.drivers import orca
-from quantumvitas.drivers import pyscf
-from quantumvitas.drivers import lammps
-from quantumvitas.drivers import cp2k
-from quantumvitas.drivers import w90  # ADD THIS LINE
+from qmatsuite.drivers import qe_shim
+from qmatsuite.drivers import vasp
+from qmatsuite.drivers import orca
+from qmatsuite.drivers import pyscf
+from qmatsuite.drivers import lammps
+from qmatsuite.drivers import cp2k
+from qmatsuite.drivers import w90  # ADD THIS LINE
 ```
 
 ### Step 8: Verify w90_preproc in QE Shim
 
-**File**: `src/quantumvitas/drivers/qe_shim/__init__.py`
+**File**: `src/qmatsuite/drivers/qe_shim/__init__.py`
 
 **Verify** that `w90_preproc` is registered with QE shim (already done in PR 2):
 
@@ -672,9 +672,9 @@ This is correct - w90_preproc runs via QE's pw2wannier90.x interface.
 
 import pytest
 from pathlib import Path
-from quantumvitas.drivers.w90 import W90Driver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.w90 import W90Driver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestW90Driver:
@@ -728,7 +728,7 @@ class TestW90Registration:
 
     def test_w90_registered(self):
         """W90 should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("w90")
         driver = DriverRegistry.get_driver("w90")
@@ -736,13 +736,13 @@ class TestW90Registration:
 
     def test_w90_run_registered(self):
         """w90_run step type should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("w90_run")
 
     def test_w90_preproc_in_qe(self):
         """w90_preproc should be registered with QE."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("w90_preproc")
         engine = DriverRegistry.get_engine_for_step_type("w90_preproc")
@@ -754,7 +754,7 @@ class TestW90Isolation:
 
     def test_w90_driver_exists(self):
         """W90 driver package should exist."""
-        from quantumvitas.drivers.w90 import W90Driver
+        from qmatsuite.drivers.w90 import W90Driver
         assert W90Driver is not None
 
 
@@ -763,7 +763,7 @@ class TestW90ArtifactResolver:
 
     def test_find_artifacts(self, tmp_path):
         """Test finding W90 artifacts in directory."""
-        from quantumvitas.drivers.w90.artifact_resolver import _find_artifacts_in_dir
+        from qmatsuite.drivers.w90.artifact_resolver import _find_artifacts_in_dir
 
         # Create mock artifact files
         (tmp_path / "wannier90.amn").touch()
@@ -782,7 +782,7 @@ class TestW90ArtifactResolver:
 
     def test_missing_artifacts(self, tmp_path):
         """Test partial artifacts found."""
-        from quantumvitas.drivers.w90.artifact_resolver import _find_artifacts_in_dir
+        from qmatsuite.drivers.w90.artifact_resolver import _find_artifacts_in_dir
 
         # Only create one artifact
         (tmp_path / "wannier90.amn").touch()
@@ -801,7 +801,7 @@ class TestW90Recipe:
 
     def test_win_file_generation(self, tmp_path):
         """Test .win file generation."""
-        from quantumvitas.drivers.w90.recipe import W90Recipe
+        from qmatsuite.drivers.w90.recipe import W90Recipe
 
         recipe = W90Recipe()
         config = {

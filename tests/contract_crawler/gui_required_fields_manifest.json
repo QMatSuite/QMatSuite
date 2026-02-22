@@ -10,13 +10,13 @@
     "Nested field access (e.g., parameters[namelist][key]) is simplified",
     "Array iteration patterns (e.g., structures.map(s => s.id)) are represented as array access",
     "Conditional access patterns may not be fully captured",
-    "TypeScript type definitions in gui/src/types/qv.ts provide additional context but are not exhaustively analyzed here"
+    "TypeScript type definitions in gui/src/types/qms.ts provide additional context but are not exhaustively analyzed here"
   ],
   "methods": {
     "get_step_detail": {
       "file": "gui/src/components/panels/StepDetailPanel.tsx",
       "invocation_line": 351,
-      "invocation_snippet": "window.qv.request<StepDetail>('get_step_detail', {...})",
+      "invocation_snippet": "window.qms.request<StepDetail>('get_step_detail', {...})",
       "required_fields": [
         "id",
         "name",
@@ -38,7 +38,7 @@
     "get_calculation_detail": {
       "file": "gui/src/App.tsx",
       "invocation_line": 1290,
-      "invocation_snippet": "qv.call('get_calculation_detail', {...})",
+      "invocation_snippet": "qms.call('get_calculation_detail', {...})",
       "required_fields": [
         "id",
         "steps",
@@ -55,7 +55,7 @@
       }
     },
     "list_structures": {
-      "file": "gui/src/hooks/useQVClient.ts",
+      "file": "gui/src/hooks/useQMSClient.ts",
       "invocation_line": 362,
       "invocation_snippet": "call('list_structures', { project_root: projectRoot })",
       "required_fields": [
@@ -71,7 +71,7 @@
       }
     },
     "list_calculations": {
-      "file": "gui/src/hooks/useQVClient.ts",
+      "file": "gui/src/hooks/useQMSClient.ts",
       "invocation_line": 367,
       "invocation_snippet": "call('list_calculations', { project_root: projectRoot })",
       "required_fields": [
@@ -87,7 +87,7 @@
     "list_journal_entries": {
       "file": "gui/src/components/settings/JournalHistoryPanel.tsx",
       "invocation_line": 39,
-      "invocation_snippet": "qv.call('list_journal_entries', {...})",
+      "invocation_snippet": "qms.call('list_journal_entries', {...})",
       "required_fields": [
         "entries",
         "entries[].calc_id",
@@ -100,15 +100,15 @@
     "get_structure_vis": {
       "file": "gui/src/App.tsx",
       "invocation_line": 725,
-      "invocation_snippet": "qv.call('get_structure_vis', {...})",
+      "invocation_snippet": "qms.call('get_structure_vis', {...})",
       "required_fields": [
         "atoms",
         "bonds",
         "boundary_atoms"
       ],
       "field_access_snippets": {
-        "atoms": "response.data.atoms (type definition in gui/src/types/qv.ts:119)",
-        "bonds": "response.data.bonds (type definition in gui/src/types/qv.ts:120)"
+        "atoms": "response.data.atoms (type definition in gui/src/types/qms.ts:119)",
+        "bonds": "response.data.bonds (type definition in gui/src/types/qms.ts:120)"
       }
     },
     "get_common_cards": {
@@ -119,9 +119,9 @@
         "k_points"
       ],
       "field_access_snippets": {
-        "k_points": "gui/src/types/qv.ts:1164-1188 - TypeScript result type defines k_points with raw, mode, automatic?, points?"
+        "k_points": "gui/src/types/qms.ts:1164-1188 - TypeScript result type defines k_points with raw, mode, automatic?, points?"
       },
-      "evidence": "GUI TypeScript type at gui/src/types/qv.ts:1164-1188 shows result: { k_points?: {...} }"
+      "evidence": "GUI TypeScript type at gui/src/types/qms.ts:1164-1188 shows result: { k_points?: {...} }"
     },
     "get_pseudo_mapping": {
       "file": "gui/src/components/panels/StepDetailPanel.tsx",
@@ -138,7 +138,7 @@
     "create_demo_project": {
       "file": "gui/src/components/dialogs/CreateProjectDialog.tsx",
       "invocation_line": 97,
-      "invocation_snippet": "qv.call('create_demo_project', {...})",
+      "invocation_snippet": "qms.call('create_demo_project', {...})",
       "required_fields": [
         "project_root",
         "project_id",
@@ -153,7 +153,7 @@
     "list_demo_projects": {
       "file": "gui/src/components/panels/DemoGalleryPanel.tsx",
       "invocation_line": 36,
-      "invocation_snippet": "qv.call('list_demo_projects', {})",
+      "invocation_snippet": "qms.call('list_demo_projects', {})",
       "required_fields": [
         "demos",
         "demos[].id",
@@ -164,7 +164,7 @@
       }
     },
     "get_project_summary": {
-      "file": "gui/src/hooks/useQVClient.ts",
+      "file": "gui/src/hooks/useQMSClient.ts",
       "invocation_line": 357,
       "invocation_snippet": "call('get_project_summary', { project_root: projectRoot })",
       "required_fields": [
@@ -178,7 +178,7 @@
     "run_step": {
       "file": "gui/src/components/panels/StepDetailPanel.tsx",
       "invocation_line": 600,
-      "invocation_snippet": "qv.call('run_step', {...})",
+      "invocation_snippet": "qms.call('run_step', {...})",
       "required_fields": [
         "id",
         "status"
@@ -190,7 +190,7 @@
     "list_step_artifacts": {
       "file": "gui/src/components/panels/StepOutputTextViewer.tsx",
       "invocation_line": 54,
-      "invocation_snippet": "qv.call('list_step_artifacts', {...})",
+      "invocation_snippet": "qms.call('list_step_artifacts', {...})",
       "required_fields": [
         "artifacts",
         "artifacts[]"
@@ -202,7 +202,7 @@
     "read_step_artifact_text": {
       "file": "gui/src/components/panels/StepOutputTextViewer.tsx",
       "invocation_line": 101,
-      "invocation_snippet": "qv.call('read_step_artifact_text', {...})",
+      "invocation_snippet": "qms.call('read_step_artifact_text', {...})",
       "required_fields": [
         "content",
         "truncated",
@@ -217,7 +217,7 @@
     "get_band_structure_data": {
       "file": "gui/src/components/panels/CalculationAnalysisPanel.tsx",
       "invocation_line": 197,
-      "invocation_snippet": "qv.call('get_band_structure_data', {...})",
+      "invocation_snippet": "qms.call('get_band_structure_data', {...})",
       "required_fields": [
         "kpoints",
         "bands",
@@ -234,7 +234,7 @@
     "get_dos_data": {
       "file": "gui/src/components/panels/CalculationAnalysisPanel.tsx",
       "invocation_line": 176,
-      "invocation_snippet": "qv.call('get_dos_data', {...})",
+      "invocation_snippet": "qms.call('get_dos_data', {...})",
       "required_fields": [
         "energies",
         "dos"
@@ -246,7 +246,7 @@
     "get_preset_catalog": {
       "file": "gui/src/hooks/usePresetCatalog.ts",
       "invocation_line": 95,
-      "invocation_snippet": "qv.call('get_preset_catalog', {})",
+      "invocation_snippet": "qms.call('get_preset_catalog', {})",
       "required_fields": [
         "dimensions",
         "dimensions[].dimension",
@@ -254,13 +254,13 @@
         "schema_version"
       ],
       "field_access_snippets": {
-        "dimensions": "gui/src/types/qv.ts:1565-1582 - TypeScript result type defines dimensions array",
-        "schema_version": "gui/src/types/qv.ts:1583 - TypeScript result type defines schema_version: number"
+        "dimensions": "gui/src/types/qms.ts:1565-1582 - TypeScript result type defines dimensions array",
+        "schema_version": "gui/src/types/qms.ts:1583 - TypeScript result type defines schema_version: number"
       },
-      "evidence": "GUI TypeScript type at gui/src/types/qv.ts:1563-1584 shows result: { dimensions: Array<...>, schema_version: number }"
+      "evidence": "GUI TypeScript type at gui/src/types/qms.ts:1563-1584 shows result: { dimensions: Array<...>, schema_version: number }"
     },
     "list_engine_ui_parameters": {
-      "file": "gui/src/hooks/useQVClient.ts",
+      "file": "gui/src/hooks/useQMSClient.ts",
       "invocation_line": 382,
       "invocation_snippet": "call('list_engine_ui_parameters', { engine_family, step_type_gen })",
       "required_fields": [
@@ -275,7 +275,7 @@
     "import_structure": {
       "file": "gui/src/components/dialogs/ImportStructureDialog.tsx",
       "invocation_line": 66,
-      "invocation_snippet": "qv.call('import_structure', {...})",
+      "invocation_snippet": "qms.call('import_structure', {...})",
       "required_fields": [
         "structure_id"
       ],
@@ -286,7 +286,7 @@
     "create_calculation": {
       "file": "gui/src/components/dialogs/CreateCalculationDialog.tsx",
       "invocation_line": 96,
-      "invocation_snippet": "qv.call('create_calculation', {...})",
+      "invocation_snippet": "qms.call('create_calculation', {...})",
       "required_fields": [
         "calculation_id",
         "slug"

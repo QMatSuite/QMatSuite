@@ -14,13 +14,13 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.calculation.hash_utils import compute_pseudo_set_sha
+from qmatsuite.calculation.hash_utils import compute_pseudo_set_sha
 
 
 def test_canonical_function_exists():
     """Ensure compute_pseudo_set_sha is the canonical function."""
     # Import the function
-    from quantumvitas.calculation.hash_utils import compute_pseudo_set_sha
+    from qmatsuite.calculation.hash_utils import compute_pseudo_set_sha
     
     # Verify it's a function
     assert callable(compute_pseudo_set_sha)
@@ -37,8 +37,8 @@ def test_no_duplicate_functions():
     import ast
     import os
     
-    # Find all Python files in src/quantumvitas
-    src_dir = Path(__file__).parent.parent.parent / "src" / "quantumvitas"
+    # Find all Python files in src/qmatsuite
+    src_dir = Path(__file__).parent.parent.parent / "src" / "qmatsuite"
     
     function_defs = []
     for py_file in src_dir.rglob("*.py"):

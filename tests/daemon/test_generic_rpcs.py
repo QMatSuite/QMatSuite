@@ -5,8 +5,8 @@ These test the RPC handler logic directly, not through the daemon socket.
 """
 import pytest
 
-from quantumvitas.core.driver_registry import DriverRegistry
-import quantumvitas.drivers
+from qmatsuite.core.driver_registry import DriverRegistry
+import qmatsuite.drivers
 
 
 class TestListEngineFamilies:

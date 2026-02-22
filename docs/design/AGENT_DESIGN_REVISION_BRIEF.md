@@ -47,15 +47,15 @@ Replace the current always-loaded tool catalog with a **fine-grained approach + 
 
 4. `search_parameters` — **ELEVATED IMPORTANCE**. This is now the primary knowledge source for agents working without presets. BM25 search over tag JSONs. When no preset exists, the agent's workflow is: `search_parameters("convergence threshold VASP")` → learn about EDIFF → `set_parameters(calc_ulid, step, {INCAR: {EDIFF: 1e-6}})`.
 
-5. `create_calculation` — **NEW**. Create a calculation directory with engine, workflow template, and structure. Persists immediately to `calculation.yaml`. Returns `calc_ulid`. Maps to `QVService.Calculation.create()` or equivalent.
+5. `create_calculation` — **NEW**. Create a calculation directory with engine, workflow template, and structure. Persists immediately to `calculation.yaml`. Returns `calc_ulid`. Maps to `QMSService.Calculation.create()` or equivalent.
 
-6. `set_parameters` — **NEW**. Set engine-specific parameters on a calculation's step. Persists immediately to the step's YAML. This is the primary configuration tool for no-preset workflows. Maps to `QVService.Calculation.update_step_params()` or equivalent. Input should accept the engine's native parameter namespace (e.g., `{INCAR: {ENCUT: 520, EDIFF: 1e-6}}` for VASP, `{SYSTEM: {ecutwfc: 40}}` for QE).
+6. `set_parameters` — **NEW**. Set engine-specific parameters on a calculation's step. Persists immediately to the step's YAML. This is the primary configuration tool for no-preset workflows. Maps to `QMSService.Calculation.update_step_params()` or equivalent. Input should accept the engine's native parameter namespace (e.g., `{INCAR: {ENCUT: 520, EDIFF: 1e-6}}` for VASP, `{SYSTEM: {ecutwfc: 40}}` for QE).
 
 7. `apply_preset` — **NEW** (extracted from old `submit_calculation`). Compile and apply preset dimensions to a calculation. Persists compiled parameters to YAML. Only available when presets exist for the engine+workflow combination. Maps to the preset compiler pipeline. Returns the compiled parameters so agent can see what was set.
 
 8. `inspect_calculation` — **REPLACES `preview_compilation` for stateful queries**. Read the current state of a configured calculation from YAML. Shows all parameters currently set, their provenance (preset/manual/default), the structure, and the workflow steps. Optionally supports `dry_run: true` flag that materializes input files (calls the writer) and returns the generated input file content WITHOUT executing. Maps to reading `calculation.yaml` + `step.yaml`, with dry_run calling `write_engine_inputs()` to a temp dir.
 
-9. `run_calculation` — **REPLACES `submit_calculation`**. Execute a configured calculation. Only runs — does not configure. Supports `dry: true` flag as alias for `inspect_calculation(dry_run=true)`. Maps to `QVService.Run.run_calculation()`.
+9. `run_calculation` — **REPLACES `submit_calculation`**. Execute a configured calculation. Only runs — does not configure. Supports `dry: true` flag as alias for `inspect_calculation(dry_run=true)`. Maps to `QMSService.Run.run_calculation()`.
 
 10. `get_status` — Check job status. (Keep as-is.)
 
@@ -103,19 +103,19 @@ create_calculation(engine="qe", workflow="bands", ...) → apply_preset(calc_uli
 
 Add a new subsection (in Section 3 or as a standalone principle) that clearly states:
 
-**QMatSuite's API facade (`QVService`) is the ABI. ALL frontends are equal consumers:**
+**QMatSuite's API facade (`QMSService`) is the ABI. ALL frontends are equal consumers:**
 
 ```
 GUI (Electron)  ─┐
 CLI              ─┤
-MCP Server       ─┼── QVService (API facade / ABI) ── Core Kernel
+MCP Server       ─┼── QMSService (API facade / ABI) ── Core Kernel
 Daemon           ─┤
 Jupyter (future) ─┘
 ```
 
 **Rules:**
-- MCP server MUST NOT call any core kernel code directly. Everything goes through `QVService`.
-- If MCP needs a capability that `QVService` doesn't expose, the correct action is to ADD a method to `QVService`, not to hack around it in MCP.
+- MCP server MUST NOT call any core kernel code directly. Everything goes through `QMSService`.
+- If MCP needs a capability that `QMSService` doesn't expose, the correct action is to ADD a method to `QMSService`, not to hack around it in MCP.
 - DTO structures and error types should be designed to serve ALL frontends. If MCP needs richer error diagnostics (e.g., `suggested_fixes`), this should be added to the core `ErrorDTO`, benefiting GUI and CLI too.
 - During MCP development, if the existing API/DTO/error hierarchy is insufficient, **propose core refactors rather than MCP-layer workarounds**. MCP development is expected to drive improvements to the core API.
 
@@ -379,7 +379,7 @@ With the new catalog, there are ~13 always-loaded tools. This is more than the o
 
 4. **Add new sections** for: Provenance Interaction Protocol (Revision 4), Writer Integrity (Revision 5). These can be subsections of existing sections if that flows better.
 
-5. **Re-examine the codebase** for any new tools. The fine-grained model (create_calculation, set_parameters, apply_preset) needs to map to actual QVService methods. If these methods don't exist yet, note what would need to be added to QVService. Remember: MCP should drive core API improvements, not hack around gaps.
+5. **Re-examine the codebase** for any new tools. The fine-grained model (create_calculation, set_parameters, apply_preset) needs to map to actual QMSService methods. If these methods don't exist yet, note what would need to be added to QMSService. Remember: MCP should drive core API improvements, not hack around gaps.
 
 6. **Update all workflow examples** (Section 9) to use the new tool names and show both with-preset and without-preset paths.
 

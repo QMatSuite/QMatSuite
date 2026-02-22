@@ -15,10 +15,10 @@ import time
 import uuid
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.core.paths import tmp_runs_dir
+from qmatsuite.api import QMSService
+from qmatsuite.core.paths import tmp_runs_dir
 
-from quantumvitas.execution.relax_artifacts import (
+from qmatsuite.execution.relax_artifacts import (
     get_generated_structure_path,
     read_generated_structure,
 )
@@ -31,7 +31,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.requires_orca]
 @pytest.fixture(scope="module")
 def orca_available():
     """Verify ORCA is available. This fixture will SKIP if ORCA is not installed."""
-    from quantumvitas.core.engines.orca_resolver import resolve_orca_bin
+    from qmatsuite.core.engines.orca_resolver import resolve_orca_bin
     
     try:
         orca_bin = resolve_orca_bin()
@@ -51,7 +51,7 @@ def orca_project_with_h2(orca_available):
     test_dir = tmp_runs_dir() / unique_id
     test_dir.mkdir(parents=True, exist_ok=True)
     
-    project_root = QVService.init_project(test_dir / "orca_project")
+    project_root = QMSService.init_project(test_dir / "orca_project")
     
     # Create H2 molecule with non-equilibrium bond length
     h2 = Molecule(["H", "H"], [[0, 0, 0], [0.8, 0, 0]])  # 0.8 Å (far from equilibrium ~0.74 Å)
@@ -59,10 +59,10 @@ def orca_project_with_h2(orca_available):
     h2.to(filename=h2_file, fmt="xyz")
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(h2_file, name="H2")
+    struct_result = QMSService(project_root).structure.import_file(h2_file, name="H2")
     
     # Create calculation
-    calc = QVService(project_root).project.init_calculation(
+    calc = QMSService(project_root).project.init_calculation(
         name="h2_relax",
         structure_selector=struct_result.meta.ulid,
     )
@@ -76,10 +76,10 @@ def orca_project_with_h2(orca_available):
     calc_yaml.write_text(yaml.dump(calc_data, default_flow_style=False))
     
     # Create relax step (use GEN type, engine_family will materialize to orca_relax)
-    step = QVService(project_root).calculation.add_step(calc.ulid, "relax", name="relax")
+    step = QMSService(project_root).calculation.add_step(calc.ulid, "relax", name="relax")
 
     # Configure with minimal parameters
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     svc.calculation.update_step_params(
         calc_selector=calc.ulid,
         step_selector=step.ulid,
@@ -111,7 +111,7 @@ class TestORCARelaxReal:
         step_id = orca_project_with_h2["step_ulid"]
         
         # Run relax
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.run.run_step(calc_selector=calc_id, step_selector=step_id)
         
         # Verify success
@@ -134,7 +134,7 @@ class TestORCARelaxReal:
         initial_distance = orca_project_with_h2["initial_h2_distance"]
         
         # Run relax
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.run.run_step(calc_selector=calc_id, step_selector=step_id)
         assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
         
@@ -168,7 +168,7 @@ class TestORCARelaxReal:
         step_id = orca_project_with_h2["step_ulid"]
         
         # Run relax
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.run.run_step(calc_selector=calc_id, step_selector=step_id)
         assert result.status == "completed", f"Step failed: {result.error.message if result.error else None}"
         

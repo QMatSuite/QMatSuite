@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.qmcpack import QMCPACKDriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.qmcpack import QMCPACKDriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
@@ -79,7 +79,7 @@ class TestQMCPACKRegistration:
 
     def test_qmcpack_registered(self):
         """QMCPACK should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("qmcpack")
         driver = DriverRegistry.get_driver("qmcpack")
@@ -87,7 +87,7 @@ class TestQMCPACKRegistration:
 
     def test_qmcpack_step_types_registered(self):
         """QMCPACK step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("qmcpack_vmc")
         assert DriverRegistry.is_step_type_registered("qmcpack_dmc")
@@ -99,14 +99,14 @@ class TestQMCPACKIsolation:
 
     def test_handlers_no_qmcpack_handler(self):
         """handlers.py should not contain qmcpack_step_handler."""
-        handlers_path = Path(__file__).parent.parent.parent.parent / "src" / "quantumvitas" / "execution" / "handlers.py"
+        handlers_path = Path(__file__).parent.parent.parent.parent / "src" / "qmatsuite" / "execution" / "handlers.py"
         source = handlers_path.read_text()
 
         assert "def qmcpack_step_handler" not in source
 
     def test_recipes_no_qmcpack_recipe(self):
         """recipes.py should not contain QMCPACKRecipe."""
-        recipes_path = Path(__file__).parent.parent.parent.parent / "src" / "quantumvitas" / "execution" / "recipes.py"
+        recipes_path = Path(__file__).parent.parent.parent.parent / "src" / "qmatsuite" / "execution" / "recipes.py"
         source = recipes_path.read_text()
 
         assert "class QMCPACKRecipe" not in source
@@ -117,7 +117,7 @@ class TestQMCPACKParser:
 
     def test_parse_scalar_dat(self):
         """Parse a golden scalar.dat file."""
-        from quantumvitas.drivers.qmcpack.parser import parse_scalar_dat
+        from qmatsuite.drivers.qmcpack.parser import parse_scalar_dat
 
         result = parse_scalar_dat(GOLDEN_DIR / "vmc_scalar.dat")
         assert result.num_blocks == 5
@@ -127,7 +127,7 @@ class TestQMCPACKParser:
 
     def test_parse_scalar_dat_properties(self):
         """Test computed properties of scalar data."""
-        from quantumvitas.drivers.qmcpack.parser import parse_scalar_dat
+        from qmatsuite.drivers.qmcpack.parser import parse_scalar_dat
 
         result = parse_scalar_dat(GOLDEN_DIR / "vmc_scalar.dat")
         assert not math.isnan(result.mean_energy)
@@ -138,7 +138,7 @@ class TestQMCPACKParser:
 
     def test_parse_scalar_dat_empty(self, tmp_path):
         """Empty file should raise ValueError."""
-        from quantumvitas.drivers.qmcpack.parser import parse_scalar_dat
+        from qmatsuite.drivers.qmcpack.parser import parse_scalar_dat
 
         empty_file = tmp_path / "empty.dat"
         empty_file.write_text("")
@@ -147,7 +147,7 @@ class TestQMCPACKParser:
 
     def test_parse_scalar_dat_no_header(self, tmp_path):
         """File without # header should raise ValueError."""
-        from quantumvitas.drivers.qmcpack.parser import parse_scalar_dat
+        from qmatsuite.drivers.qmcpack.parser import parse_scalar_dat
 
         bad_file = tmp_path / "bad.dat"
         bad_file.write_text("1.0 2.0 3.0\n")
@@ -156,7 +156,7 @@ class TestQMCPACKParser:
 
     def test_parse_dmc_dat(self):
         """Parse a golden dmc.dat file."""
-        from quantumvitas.drivers.qmcpack.parser import parse_dmc_dat
+        from qmatsuite.drivers.qmcpack.parser import parse_dmc_dat
 
         result = parse_dmc_dat(GOLDEN_DIR / "dmc_dmc.dat")
         assert result.num_steps == 3
@@ -166,7 +166,7 @@ class TestQMCPACKParser:
 
     def test_parse_stdout_success(self):
         """Parse QMCPACK stdout with success message."""
-        from quantumvitas.drivers.qmcpack.parser import parse_qmcpack_stdout
+        from qmatsuite.drivers.qmcpack.parser import parse_qmcpack_stdout
 
         fake_stdout = """
 ====================================================
@@ -186,7 +186,7 @@ QMCPACK execution completed successfully
 
     def test_parse_stdout_failure(self):
         """Parse QMCPACK stdout without success message."""
-        from quantumvitas.drivers.qmcpack.parser import parse_qmcpack_stdout
+        from qmatsuite.drivers.qmcpack.parser import parse_qmcpack_stdout
 
         result = parse_qmcpack_stdout("some error output")
         assert result["success"] is False
@@ -194,7 +194,7 @@ QMCPACK execution completed successfully
 
     def test_parse_qmcpack_run(self, tmp_path):
         """Test full run parsing with scalar.dat files."""
-        from quantumvitas.drivers.qmcpack.parser import parse_qmcpack_run
+        from qmatsuite.drivers.qmcpack.parser import parse_qmcpack_run
         import shutil
 
         # Copy golden scalar.dat and rename to match expected pattern
@@ -216,7 +216,7 @@ class TestQMCPACKWriter:
 
     def _make_test_inputs(self):
         """Create test inputs for writer tests."""
-        from quantumvitas.drivers.qmcpack.writer import (
+        from qmatsuite.drivers.qmcpack.writer import (
             QMCPACKCell, QMCPACKSpecies, QMCPACKWavefunction,
             QMCPACKVMCParams, QMCPACKDMCParams, QMCPACKOptParams,
         )
@@ -254,7 +254,7 @@ class TestQMCPACKWriter:
 
     def test_write_vmc_input(self, tmp_path):
         """Test VMC input XML generation."""
-        from quantumvitas.drivers.qmcpack.writer import write_vmc_input
+        from qmatsuite.drivers.qmcpack.writer import write_vmc_input
 
         cell, species, wf, vmc, _, _ = self._make_test_inputs()
         output = tmp_path / "vmc.xml"
@@ -269,7 +269,7 @@ class TestQMCPACKWriter:
 
     def test_write_dmc_input(self, tmp_path):
         """Test VMC+DMC input XML generation."""
-        from quantumvitas.drivers.qmcpack.writer import write_vmc_dmc_input
+        from qmatsuite.drivers.qmcpack.writer import write_vmc_dmc_input
 
         cell, species, wf, vmc, dmc, _ = self._make_test_inputs()
         output = tmp_path / "dmc.xml"
@@ -282,7 +282,7 @@ class TestQMCPACKWriter:
 
     def test_write_wfopt_input(self, tmp_path):
         """Test wavefunction optimization input XML generation."""
-        from quantumvitas.drivers.qmcpack.writer import write_wfopt_input
+        from qmatsuite.drivers.qmcpack.writer import write_wfopt_input
 
         cell, species, wf, _, _, opt = self._make_test_inputs()
         output = tmp_path / "wfopt.xml"
@@ -295,7 +295,7 @@ class TestQMCPACKWriter:
 
     def test_write_wfopt_with_vmc(self, tmp_path):
         """Test wfopt followed by VMC production."""
-        from quantumvitas.drivers.qmcpack.writer import write_wfopt_input
+        from qmatsuite.drivers.qmcpack.writer import write_wfopt_input
 
         cell, species, wf, vmc, _, opt = self._make_test_inputs()
         output = tmp_path / "opt_vmc.xml"
@@ -308,7 +308,7 @@ class TestQMCPACKWriter:
 
     def test_write_with_jastrow(self, tmp_path):
         """Test writer with Jastrow factors."""
-        from quantumvitas.drivers.qmcpack.writer import (
+        from qmatsuite.drivers.qmcpack.writer import (
             write_vmc_input, QMCPACKCell, QMCPACKSpecies,
             QMCPACKWavefunction, QMCPACKVMCParams,
         )
@@ -339,7 +339,7 @@ class TestQMCPACKRecipe:
 
     def test_materialize_empty_steps(self):
         """Empty steps should produce empty JobGraph."""
-        from quantumvitas.drivers.qmcpack.recipe import QMCPACKRecipe
+        from qmatsuite.drivers.qmcpack.recipe import QMCPACKRecipe
 
         recipe = QMCPACKRecipe()
         graph = recipe.materialize([], Path("/tmp/test"))
@@ -351,7 +351,7 @@ class TestQMCPACKEngineRegistry:
 
     def test_qmcpack_in_default_registry(self):
         """QMCPACK should be in default engine registry."""
-        from quantumvitas.engine.registry import create_default_registry
+        from qmatsuite.engine.registry import create_default_registry
 
         registry = create_default_registry()
         assert registry.has("qmcpack")
@@ -360,7 +360,7 @@ class TestQMCPACKEngineRegistry:
 
     def test_qmcpack_supported_presets(self):
         """Test QMCPACK supported presets."""
-        from quantumvitas.engine.registry import create_default_registry
+        from qmatsuite.engine.registry import create_default_registry
 
         registry = create_default_registry()
         engine = registry.get("qmcpack")
@@ -372,7 +372,7 @@ class TestQMCPACKResolver:
 
     def test_resolver_env_var(self, tmp_path, monkeypatch):
         """Test resolver with QMATS_QMCPACK_BIN environment variable."""
-        from quantumvitas.core.engines.qmcpack_resolver import resolve_qmcpack_bin
+        from qmatsuite.core.engines.qmcpack_resolver import resolve_qmcpack_bin
 
         fake_bin = tmp_path / "qmcpack"
         fake_bin.touch()
@@ -383,7 +383,7 @@ class TestQMCPACKResolver:
 
     def test_resolver_invalid_env_var(self, monkeypatch):
         """Test resolver with invalid QMATS_QMCPACK_BIN."""
-        from quantumvitas.core.engines.qmcpack_resolver import resolve_qmcpack_bin
+        from qmatsuite.core.engines.qmcpack_resolver import resolve_qmcpack_bin
 
         monkeypatch.setenv("QMATS_QMCPACK_BIN", "/nonexistent/qmcpack")
         with pytest.raises(FileNotFoundError, match="QMATS_QMCPACK_BIN"):
@@ -391,17 +391,17 @@ class TestQMCPACKResolver:
 
     def test_resolver_not_found(self, tmp_path, monkeypatch):
         """Test resolver when QMCPACK is not found."""
-        from quantumvitas.core.engines.qmcpack_resolver import resolve_qmcpack_bin
-        import quantumvitas.core.engines.qmcpack_resolver as qr
+        from qmatsuite.core.engines.qmcpack_resolver import resolve_qmcpack_bin
+        import qmatsuite.core.engines.qmcpack_resolver as qr
 
         monkeypatch.delenv("QMATS_QMCPACK_BIN", raising=False)
         monkeypatch.delenv("CONDA_PREFIX", raising=False)
-        monkeypatch.setenv("QMATSUITE_HOME", str(tmp_path / "qv-home"))
+        monkeypatch.setenv("QMATSUITE_HOME", str(tmp_path / "qms-home"))
         # Override PATH to exclude qmcpack
         monkeypatch.setenv("PATH", "/nonexistent")
         # Prevent finding bundled binary via repo root detection
         monkeypatch.setattr(
-            "quantumvitas.core.engines.discovery._find_repo_root",
+            "qmatsuite.core.engines.discovery._find_repo_root",
             lambda: None,
         )
         with pytest.raises(FileNotFoundError, match="QMCPACK not found"):
@@ -413,17 +413,17 @@ class TestQMCPACKGenSteps:
 
     def test_vmc_gen_step(self):
         """vmc should be a valid GEN step."""
-        from quantumvitas.workflow.gen_steps import GenStepRegistry
+        from qmatsuite.workflow.gen_steps import GenStepRegistry
         assert GenStepRegistry.is_valid("vmc")
 
     def test_dmc_gen_step(self):
         """dmc should be a valid GEN step."""
-        from quantumvitas.workflow.gen_steps import GenStepRegistry
+        from qmatsuite.workflow.gen_steps import GenStepRegistry
         assert GenStepRegistry.is_valid("dmc")
 
     def test_wfopt_gen_step(self):
         """wfopt should be a valid GEN step."""
-        from quantumvitas.workflow.gen_steps import GenStepRegistry
+        from qmatsuite.workflow.gen_steps import GenStepRegistry
         assert GenStepRegistry.is_valid("wfopt")
 
 
@@ -432,23 +432,23 @@ class TestQMCPACKStepTypeConvert:
 
     def test_qmcpack_prefix_recognized(self):
         """qmcpack should be a recognized engine prefix."""
-        from quantumvitas.workflow.step_type_convert import ENGINE_PREFIXES
+        from qmatsuite.workflow.step_type_convert import ENGINE_PREFIXES
         assert "qmcpack" in ENGINE_PREFIXES
 
     def test_spec_from_gen(self):
         """Test SPEC creation from prefix + gen."""
-        from quantumvitas.workflow.step_type_convert import spec_from
+        from qmatsuite.workflow.step_type_convert import spec_from
         assert spec_from("qmcpack", "vmc") == "qmcpack_vmc"
         assert spec_from("qmcpack", "dmc") == "qmcpack_dmc"
 
     def test_gen_from_spec(self):
         """Test GEN extraction from SPEC."""
-        from quantumvitas.workflow.step_type_convert import gen_from
+        from qmatsuite.workflow.step_type_convert import gen_from
         assert gen_from("qmcpack_vmc") == "vmc"
         assert gen_from("qmcpack_dmc") == "dmc"
         assert gen_from("qmcpack_wfopt") == "wfopt"
 
     def test_prefix_from_spec(self):
         """Test prefix extraction from SPEC."""
-        from quantumvitas.workflow.step_type_convert import prefix_from
+        from qmatsuite.workflow.step_type_convert import prefix_from
         assert prefix_from("qmcpack_vmc") == "qmcpack"

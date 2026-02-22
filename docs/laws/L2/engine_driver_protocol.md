@@ -586,8 +586,8 @@ class EngineDriver:
         ...  # Forward references avoid imports
 
 # Driver: drivers/vasp/__init__.py
-from quantumvitas.core.driver_protocol import EngineDriver  # OK: driver imports kernel
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import EngineDriver  # OK: driver imports kernel
+from qmatsuite.core.driver_registry import DriverRegistry
 
 class VASPDriver:
     ...

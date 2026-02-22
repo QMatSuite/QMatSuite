@@ -1,6 +1,6 @@
 # Structure I/O and CLI Usage Guide
 
-This document provides detailed examples and usage patterns for QuantumVITAS structure handling and CLI commands.
+This document provides detailed examples and usage patterns for QMatSuite structure handling and CLI commands.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ Reads atomic structures from various file formats using pymatgen.
 
 ```python
 from pathlib import Path
-from quantumvitas.io import read_structure
+from qmatsuite.io import read_structure
 
 # Read a CIF file
 structure = read_structure(Path("si.cif"))
@@ -61,7 +61,7 @@ Writes atomic structures to various file formats.
 **Example 1: Writing to JSON (canonical format)**
 
 ```python
-from quantumvitas.io import write_structure
+from qmatsuite.io import write_structure
 from pymatgen.core import Structure, Lattice
 
 # Create a simple structure
@@ -104,8 +104,8 @@ Generates a minimal QE input file from a pymatgen Structure.
 **Example:**
 
 ```python
-from quantumvitas.io import read_structure, qe_input_from_structure
-from quantumvitas.io import QEInputGenerator
+from qmatsuite.io import read_structure, qe_input_from_structure
+from qmatsuite.io import QEInputGenerator
 
 # Read structure
 structure = read_structure(Path("si.cif"))
@@ -149,8 +149,8 @@ Extracts a pymatgen Structure from a parsed QE input.
 **Example:**
 
 ```python
-from quantumvitas.io import QEInputParser
-from quantumvitas.io.structure_io import structure_from_qe_input
+from qmatsuite.io import QEInputParser
+from qmatsuite.io.structure_io import structure_from_qe_input
 
 # Parse QE input
 qe_input = QEInputParser.parse_file(Path("si.scf.in"))
@@ -163,7 +163,7 @@ structure = structure_from_qe_input(qe_input)
 
 ## CLI Commands
 
-### `qv import-structure`
+### `qms import-structure`
 
 Imports a structure file and registers it in the project.
 
@@ -171,24 +171,24 @@ Imports a structure file and registers it in the project.
 
 ```bash
 # Import from CIF
-qv import-structure si.cif --id si
+qms import-structure si.cif --id si
 
 # Import from POSCAR
-qv import-structure POSCAR --id si_vasp
+qms import-structure POSCAR --id si_vasp
 
 # Import from QE input
-qv import-structure si.scf.in --id si_from_qe
+qms import-structure si.scf.in --id si_from_qe
 
 # Specify output format (default is json)
-qv import-structure si.cif --id si --output-format json
+qms import-structure si.cif --id si --output-format json
 ```
 
 **What it does:**
 1. Reads the structure file using pymatgen
 2. Saves it to `structures/<id>.json` (or specified format)
-3. Registers it in `project.qv.yml`
+3. Registers it in `project.qms.yml`
 
-**Example project.qv.yml after import:**
+**Example project.qms.yml after import:**
 
 ```yaml
 structures:
@@ -205,7 +205,7 @@ Imported structure 'si' -> structures/si.json
 
 ---
 
-### `qv run-structure`
+### `qms run-structure`
 
 Generates a QE input from a stored structure and runs it with parameter overrides.
 
@@ -213,28 +213,28 @@ Generates a QE input from a stored structure and runs it with parameter override
 
 ```bash
 # Run with structure ID from project
-qv run-structure si --ecutwfc=60 --ecutrho=240
+qms run-structure si --ecutwfc=60 --ecutrho=240
 
 # Run with direct file path
-qv run-structure structures/si.json --ecutwfc=60
+qms run-structure structures/si.json --ecutwfc=60
 
 # Specify working directory
-qv run-structure si --workdir temp/si_scf --ecutwfc=60
+qms run-structure si --workdir temp/si_scf --ecutwfc=60
 
 # Custom input filename
-qv run-structure si --input-name si.pw.in --ecutwfc=60
+qms run-structure si --input-name si.pw.in --ecutwfc=60
 ```
 
 **What it does:**
 1. Loads the structure (from project or file path)
 2. Generates a minimal QE input via `qe_input_from_structure`
 3. Applies parameter overrides from CLI
-4. Runs the calculation via `qv run-step`
+4. Runs the calculation via `qms run-step`
 
 **Example with multiple parameters:**
 
 ```bash
-qv run-structure si \
+qms run-structure si \
   --ecutwfc=60 \
   --ecutrho=240 \
   --degauss=0.01 \
@@ -243,7 +243,7 @@ qv run-structure si \
 
 ---
 
-### `qv run step`
+### `qms run step`
 
 Runs a QE step described by a YAML file (structure id/path, calculation type,
 parameter dictionaries). This is useful for sharing single-step recipes or
@@ -268,10 +268,10 @@ parameters:
 **Usage:**
 
 ```bash
-qv run step calculations/si_scf_step.yaml
+qms run step calculations/si_scf_step.yaml
 
 # CLI overrides take precedence over YAML values
-qv run step calculations/si_scf_step.yaml --SYSTEM.ecutwfc=70
+qms run step calculations/si_scf_step.yaml --SYSTEM.ecutwfc=70
 ```
 
 **What it does:**
@@ -282,7 +282,7 @@ qv run step calculations/si_scf_step.yaml --SYSTEM.ecutwfc=70
 
 ---
 
-### `qv run-step`
+### `qms run-step`
 
 Runs a QE input file with optional parameter overrides.
 
@@ -290,41 +290,41 @@ Runs a QE input file with optional parameter overrides.
 
 ```bash
 # Run without overrides
-qv run step si.scf.in
+qms run step si.scf.in
 
 # Run with parameter overrides
-qv run step si.scf.in --ecutwfc=60 --degauss=0.01
+qms run step si.scf.in --ecutwfc=60 --degauss=0.01
 
 # Run with section-prefixed parameters
-qv run step si.scf.in --SYSTEM.ecutwfc=60 --SYSTEM.ecutrho=240
+qms run step si.scf.in --SYSTEM.ecutwfc=60 --SYSTEM.ecutrho=240
 
 # Run with working directory
-qv run step si.scf.in --workdir temp/run_scf
+qms run step si.scf.in --workdir temp/run_scf
 ```
 
 **Example with various parameter types:**
 
 ```bash
 # Integer
-qv run step si.scf.in --ecutwfc=60
+qms run step si.scf.in --ecutwfc=60
 
 # Float
-qv run step si.scf.in --degauss=0.01
+qms run step si.scf.in --degauss=0.01
 
 # Boolean (true)
-qv run step si.scf.in --tprnfor
+qms run step si.scf.in --tprnfor
 
 # Boolean (false)
-qv run step si.scf.in --tprnfor=false
+qms run step si.scf.in --tprnfor=false
 
 # String
-qv run step si.scf.in --prefix='si'
+qms run step si.scf.in --prefix='si'
 
 # List (Python/JSON syntax)
-qv run step si.scf.in --k_points="[6,6,6,0,0,0]"
+qms run step si.scf.in --k_points="[6,6,6,0,0,0]"
 
 # Multiple parameters
-qv run step si.scf.in \
+qms run step si.scf.in \
   --ecutwfc=60 \
   --ecutrho=240 \
   --degauss=0.01 \
@@ -337,11 +337,11 @@ qv run step si.scf.in \
 ## Step & Calculation Import Helpers
 
 To migrate existing QE inputs into the structured calculation layout, leverage
-`quantumvitas.calculation.importers`:
+`qmatsuite.calculation.importers`:
 
 - `build_step_spec_from_qe_input(input_file, destination_dir, ...)`  
   Parses a QE input, stores the extracted structure as JSON, captures
-  namelists/cards, and emits a `*.step.yaml` ready for `qv run step`.
+  namelists/cards, and emits a `*.step.yaml` ready for `qms run step`.
 - `build_calculation_from_qe_inputs(files, calculation_dir, ...)`  
   Processes multiple QE inputs in order, copies the originals under
   `raw/original_inputs/`, writes per-step YAML files, and generates
@@ -363,10 +363,10 @@ If a parameter exists in multiple sections, you must specify the section:
 
 ```bash
 # This will fail if 'prefix' exists in both CONTROL and SYSTEM
-qv run step input.in --prefix='si'
+qms run step input.in --prefix='si'
 
 # This works (explicit section)
-qv run step input.in --CONTROL.prefix='si'
+qms run step input.in --CONTROL.prefix='si'
 ```
 
 **Example: Unknown Parameters**
@@ -375,10 +375,10 @@ If a parameter is not in the metadata, you must provide the section:
 
 ```bash
 # This will fail
-qv run step input.in --custom_param=value
+qms run step input.in --custom_param=value
 
 # This works
-qv run step input.in --CONTROL.custom_param=value
+qms run step input.in --CONTROL.custom_param=value
 ```
 
 ### Parameter Value Coercion
@@ -421,23 +421,23 @@ shorthands:
 
 ```bash
 # Replace the entire K_POINTS card
-qv run step si.scf.in --CARD.K_POINTS.data="[[6,6,6,0,0,0]]"
+qms run step si.scf.in --CARD.K_POINTS.data="[[6,6,6,0,0,0]]"
 
 # Shorthand: option:data syntax (auto-splits on the first colon)
-qv run step si.scf.in --k_points="automatic:6,6,6,0,0,0"
+qms run step si.scf.in --k_points="automatic:6,6,6,0,0,0"
 
 # Update only a single row (e.g., Monkhorst-Pack offsets)
-qv configure step steps/nscf.step.yaml --CARD.K_POINTS.rows.row1=0,0,1
+qms configure step steps/nscf.step.yaml --CARD.K_POINTS.rows.row1=0,0,1
 ```
 
 Cell and atomic-position cards follow the same pattern:
 
 ```bash
-qv run step si.relax.in --CARD.CELL_PARAMETERS.data="[[5.3,0,0],[0,5.3,0],[0,0,5.3]]"
-qv run step si.relax.in --CARD.ATOMIC_POSITIONS.option=angstrom --CARD.ATOMIC_POSITIONS.rows.Si1="0.0 0.0 0.0"
+qms run step si.relax.in --CARD.CELL_PARAMETERS.data="[[5.3,0,0],[0,5.3,0],[0,0,5.3]]"
+qms run step si.relax.in --CARD.ATOMIC_POSITIONS.option=angstrom --CARD.ATOMIC_POSITIONS.rows.Si1="0.0 0.0 0.0"
 ```
 
-Use `--remove` with `qv configure step` to drop card rows/entries.
+Use `--remove` with `qms configure step` to drop card rows/entries.
 
 ### Species Overrides (masses/pseudopotentials)
 
@@ -446,12 +446,12 @@ them declaratively:
 
 ```bash
 # Update mass and pseudopotential filename
-qv run-structure si_bulk \
+qms run-structure si_bulk \
   --SPECIES.Si.mass=28.0855 \
   --SPECIES.Si.pseudopot=Si.pbe-n-rrkjus_psl.1.0.0.UPF
 
 # Remove a mass override from a step spec
-qv configure step steps/scf.step.yaml --remove --SPECIES.Si.mass=0
+qms configure step steps/scf.step.yaml --remove --SPECIES.Si.mass=0
 ```
 
 Species overrides pair naturally with the unified pseudo directory (`temp/pseudo`
@@ -465,10 +465,10 @@ in tests) so QE never downloads to scattered locations.
 
 ```bash
 # Step 1: Import structure from CIF
-qv import-structure si.cif --id si
+qms import-structure si.cif --id si
 
 # Step 2: Run SCF calculation with parameters
-qv run-structure si \
+qms run-structure si \
   --ecutwfc=60 \
   --ecutrho=240 \
   --degauss=0.01 \
@@ -480,7 +480,7 @@ qv run-structure si \
 
 ```bash
 # Run existing input with modified parameters
-qv run step si.scf.in \
+qms run step si.scf.in \
   --ecutwfc=80 \
   --ecutrho=320 \
   --workdir temp/si_scf_high_cutoff
@@ -490,31 +490,31 @@ qv run step si.scf.in \
 
 ```bash
 # Import from VASP POSCAR
-qv import-structure POSCAR --id si_vasp
+qms import-structure POSCAR --id si_vasp
 
 # Import from QE input
-qv import-structure si.scf.in --id si_from_qe
+qms import-structure si.scf.in --id si_from_qe
 
 # Run either one
-qv run-structure si_vasp --ecutwfc=60
-qv run-structure si_from_qe --ecutwfc=60
+qms run-structure si_vasp --ecutwfc=60
+qms run-structure si_from_qe --ecutwfc=60
 ```
 
 ### Example 4: Python API Usage
 
 ```python
 from pathlib import Path
-from quantumvitas.io import (
+from qmatsuite.io import (
     read_structure,
     write_structure,
     qe_input_from_structure,
     QEInputGenerator,
 )
-from quantumvitas.calculation.input_runner import (
+from qmatsuite.calculation.input_runner import (
     run_input_step,
     ParameterOverride,
 )
-from quantumvitas.engine.registry import create_default_registry
+from qmatsuite.engine.registry import create_default_registry
 
 # Read structure
 structure = read_structure(Path("si.cif"))
@@ -526,7 +526,7 @@ write_structure(structure, Path("structures/si.json"), format="json")
 qe_input = qe_input_from_structure(structure)
 
 # Apply parameter overrides programmatically
-from quantumvitas.calculation.input_runner import _apply_parameter_overrides
+from qmatsuite.calculation.input_runner import _apply_parameter_overrides
 overrides = [
     ParameterOverride(name="ecutwfc", value=60, section=None),
     ParameterOverride(name="ecutrho", value=240, section=None),
@@ -609,7 +609,7 @@ Dataclass for parameter overrides.
 **Example:**
 
 ```python
-from quantumvitas.calculation.input_runner import ParameterOverride
+from qmatsuite.calculation.input_runner import ParameterOverride
 
 override = ParameterOverride(name="ecutwfc", value=60, section="SYSTEM")
 ```
@@ -641,7 +641,7 @@ Runs a QE input step with optional parameter overrides.
 If you get an error like "Parameter 'xyz' is not defined", check:
 
 1. The parameter name is correct (case-insensitive)
-2. The module supports the parameter (check `qv params <module>`)
+2. The module supports the parameter (check `qms params <module>`)
 3. You've specified the section if needed: `--SECTION.parameter=value`
 
 ### Structure Import Fails
@@ -665,7 +665,7 @@ If overrides don't seem to work:
 ## Best Practices
 
 1. **Use JSON for project storage**: JSON is the canonical format and preserves all structure metadata
-2. **Register structures in project**: Use `qv import-structure` to register structures in `project.qv.yml`
+2. **Register structures in project**: Use `qms import-structure` to register structures in `project.qms.yml`
 3. **Specify sections for ambiguous parameters**: Use `--SECTION.parameter=value` when needed
 4. **Use working directories**: Specify `--workdir` to keep outputs organized
 5. **Check generated inputs**: Inspect generated `.in` files in the working directory to verify overrides

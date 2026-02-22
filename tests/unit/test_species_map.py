@@ -15,7 +15,7 @@ class TestSpeciesMapMigration:
     
     def test_migrate_empty_returns_none(self):
         """Migration with no species_overrides returns None species_map."""
-        from quantumvitas.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
+        from qmatsuite.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
         
         calc = CalculationModel(
             meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation")
@@ -26,7 +26,7 @@ class TestSpeciesMapMigration:
     
     def test_migrate_single_step(self):
         """Migration from single step's species_overrides works."""
-        from quantumvitas.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
+        from qmatsuite.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
         
         calc = CalculationModel(
             meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation")
@@ -44,7 +44,7 @@ class TestSpeciesMapMigration:
     
     def test_migrate_multiple_steps_consistent(self):
         """Migration from multiple steps with consistent overrides works."""
-        from quantumvitas.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
+        from qmatsuite.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
         
         calc = CalculationModel(
             meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation")
@@ -62,7 +62,7 @@ class TestSpeciesMapMigration:
     
     def test_migrate_conflict_raises(self):
         """Migration with conflicting pseudopot mappings raises ValueError."""
-        from quantumvitas.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
+        from qmatsuite.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
         
         calc = CalculationModel(
             meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation")
@@ -78,7 +78,7 @@ class TestSpeciesMapMigration:
     
     def test_skip_if_species_map_already_set(self):
         """Migration is skipped if species_map is already set."""
-        from quantumvitas.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
+        from qmatsuite.core.models import CalculationModel, ResourceMeta, migrate_species_overrides_to_calc
         
         existing_map = {"Si": {"pseudopot": "existing.UPF"}}
         calc = CalculationModel(
@@ -100,14 +100,14 @@ class TestMergeSpeciesMaps:
     
     def test_merge_empty(self):
         """Merging empty maps returns empty."""
-        from quantumvitas.calculation.folder_import import merge_species_maps
+        from qmatsuite.calculation.folder_import import merge_species_maps
         
         result = merge_species_maps({}, {})
         assert result == {}
     
     def test_merge_new_element(self):
         """Merging new element adds it."""
-        from quantumvitas.calculation.folder_import import merge_species_maps
+        from qmatsuite.calculation.folder_import import merge_species_maps
         
         existing = {"Si": {"pseudopot": "Si.UPF"}}
         new = {"Ge": {"pseudopot": "Ge.UPF"}}
@@ -118,7 +118,7 @@ class TestMergeSpeciesMaps:
     
     def test_merge_consistent(self):
         """Merging consistent mappings succeeds."""
-        from quantumvitas.calculation.folder_import import merge_species_maps
+        from qmatsuite.calculation.folder_import import merge_species_maps
         
         existing = {"Si": {"pseudopot": "Si.UPF", "mass": 28.0}}
         new = {"Si": {"pseudopot": "Si.UPF", "mass": 28.0}}
@@ -128,7 +128,7 @@ class TestMergeSpeciesMaps:
     
     def test_merge_conflict_raises(self):
         """Merging conflicting pseudopot raises ValueError."""
-        from quantumvitas.calculation.folder_import import merge_species_maps
+        from qmatsuite.calculation.folder_import import merge_species_maps
         
         existing = {"Si": {"pseudopot": "Si_v1.UPF"}}
         new = {"Si": {"pseudopot": "Si_v2.UPF"}}
@@ -142,8 +142,8 @@ class TestExtractSpeciesMap:
     
     def test_extract_empty(self):
         """Extracting from input without ATOMIC_SPECIES returns empty dict."""
-        from quantumvitas.calculation.folder_import import extract_species_map_from_qe_input
-        from quantumvitas.io.model import QEInput, QENamelist
+        from qmatsuite.calculation.folder_import import extract_species_map_from_qe_input
+        from qmatsuite.io.model import QEInput, QENamelist
         
         qe_input = QEInput(
             namelists=[QENamelist(name="CONTROL", parameters={})],
@@ -155,8 +155,8 @@ class TestExtractSpeciesMap:
     
     def test_extract_with_atomic_species(self):
         """Extracting from input with ATOMIC_SPECIES returns species_map."""
-        from quantumvitas.calculation.folder_import import extract_species_map_from_qe_input
-        from quantumvitas.io.model import QEInput, QENamelist, QECard, QECardType
+        from qmatsuite.calculation.folder_import import extract_species_map_from_qe_input
+        from qmatsuite.io.model import QEInput, QENamelist, QECard, QECardType
         
         qe_input = QEInput(
             namelists=[QENamelist(name="CONTROL", parameters={})],
@@ -177,8 +177,8 @@ class TestExtractSpeciesMap:
     
     def test_extract_skips_placeholder(self):
         """Extracting skips placeholder pseudo names."""
-        from quantumvitas.calculation.folder_import import extract_species_map_from_qe_input
-        from quantumvitas.io.model import QEInput, QENamelist, QECard, QECardType
+        from qmatsuite.calculation.folder_import import extract_species_map_from_qe_input
+        from qmatsuite.io.model import QEInput, QENamelist, QECard, QECardType
         
         qe_input = QEInput(
             namelists=[QENamelist(name="CONTROL", parameters={})],
@@ -204,7 +204,7 @@ class TestCalculationModelSpeciesMap:
     
     def test_round_trip(self):
         """species_map round-trips through to_dict/from_dict."""
-        from quantumvitas.core.models import CalculationModel, ResourceMeta
+        from qmatsuite.core.models import CalculationModel, ResourceMeta
         
         species_map = {
             "Si": {"pseudopot": "Si.UPF", "mass": 28.0855},
@@ -226,7 +226,7 @@ class TestCalculationModelSpeciesMap:
     
     def test_to_dict_omits_none(self):
         """to_dict omits species_map if None."""
-        from quantumvitas.core.models import CalculationModel, ResourceMeta
+        from qmatsuite.core.models import CalculationModel, ResourceMeta
         
         calc = CalculationModel(
             meta=ResourceMeta(ulid="01TEST", name="test", slug="test", path=".", kind="calculation"),

@@ -1,7 +1,7 @@
 # QE Parameter JSON 使用边界 + 输入系统全链路风险审计报告
 
 **审计日期**: 2025-01-XX  
-**审计范围**: QuantumVITAS/QMatSuite 输入参数系统端到端审计  
+**审计范围**: QMatSuite/QMatSuite 输入参数系统端到端审计  
 **审计目标**: 识别 QE parameters JSON、namelist/card 分组、step/calc/structure YAML 体系的隐患
 
 ---
@@ -56,7 +56,7 @@ step.yml (parameters: {SYSTEM: {...}, ELECTRONS: {...}})
 
 UI (Electron)
     │
-    ├─> QVDaemon._handle_list_qe_parameter_metadata()
+    ├─> QMSDaemon._handle_list_qe_parameter_metadata()
     │   └─> get_module_param_sections(module)  # JSON 查询
     │       └─> 返回 section → [param_names] 映射（用于 UI 展示）
     │
@@ -110,18 +110,18 @@ class ParameterOverride:
 
 | 文件路径 | 函数/类名 | 行号范围 | 用途 | 是否违反"JSON 不是真相" | 建议 |
 |---------|----------|---------|------|----------------------|------|
-| `src/quantumvitas/data/qe_metadata.py` | `get_module_param_sections()` | 378-402 | **A** - 返回 section → [params] 映射 | ⚠️ **可能违反** | 改为 warning-only |
-| `src/quantumvitas/calculation/input_runner.py` | `_apply_parameter_overrides()` | 442-512 | **A** - 验证参数是否属于指定 section | ⚠️ **可能违反** | 改为 warning-only |
-| `src/quantumvitas/daemon/server.py` | `_handle_list_qe_parameter_metadata()` | 1519-1665 | **C** - UI 展示参数列表 | ✅ 合规 | 保留 |
-| `src/quantumvitas/daemon/server.py` | `_handle_list_qe_ui_parameters()` | 1462-1517 | **C** - UI 展示 UI 参数 | ✅ 合规 | 保留 |
-| `src/quantumvitas/presets/variants_registry.py` | `_compile_precision_patch_for_step()` | 297-393 | **B** - 读取 JSON 获取参数类型（用于 precision 计算） | ✅ 合规 | 保留 |
-| `src/quantumvitas/data/qe_metadata.py` | `validate_ui_parameters()` | 547-597 | **B** - 验证 UI 参数是否存在于 JSON | ✅ 合规 | 保留 |
+| `src/qmatsuite/data/qe_metadata.py` | `get_module_param_sections()` | 378-402 | **A** - 返回 section → [params] 映射 | ⚠️ **可能违反** | 改为 warning-only |
+| `src/qmatsuite/calculation/input_runner.py` | `_apply_parameter_overrides()` | 442-512 | **A** - 验证参数是否属于指定 section | ⚠️ **可能违反** | 改为 warning-only |
+| `src/qmatsuite/daemon/server.py` | `_handle_list_qe_parameter_metadata()` | 1519-1665 | **C** - UI 展示参数列表 | ✅ 合规 | 保留 |
+| `src/qmatsuite/daemon/server.py` | `_handle_list_qe_ui_parameters()` | 1462-1517 | **C** - UI 展示 UI 参数 | ✅ 合规 | 保留 |
+| `src/qmatsuite/presets/variants_registry.py` | `_compile_precision_patch_for_step()` | 297-393 | **B** - 读取 JSON 获取参数类型（用于 precision 计算） | ✅ 合规 | 保留 |
+| `src/qmatsuite/data/qe_metadata.py` | `validate_ui_parameters()` | 547-597 | **B** - 验证 UI 参数是否存在于 JSON | ✅ 合规 | 保留 |
 
 ### 详细分析
 
 #### ⚠️ 高风险使用点 1: `_apply_parameter_overrides()`
 
-**位置**: `src/quantumvitas/calculation/input_runner.py:442-512`
+**位置**: `src/qmatsuite/calculation/input_runner.py:442-512`
 
 **行为**:
 ```python
@@ -149,7 +149,7 @@ if available_sections and candidate not in available_sections:
 
 #### ⚠️ 高风险使用点 2: `get_module_param_sections()`
 
-**位置**: `src/quantumvitas/data/qe_metadata.py:378-402`
+**位置**: `src/qmatsuite/data/qe_metadata.py:378-402`
 
 **行为**:
 ```python

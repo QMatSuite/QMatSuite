@@ -12,7 +12,7 @@ Implemented automatic pseudopotential downloading and resolution for demo import
 
 **Changes**:
 - When pseudos are missing, automatically attempts to download them to `repo/pseudo`
-- Uses `QVService.download_pseudo_by_filename()` with `dest_dir=repo_pseudo_dir`
+- Uses `QMSService.download_pseudo_by_filename()` with `dest_dir=repo_pseudo_dir`
 - Updates search directories to include `repo/pseudo` after successful downloads
 - Continues processing even if some downloads fail (reports errors)
 
@@ -24,7 +24,7 @@ Implemented automatic pseudopotential downloading and resolution for demo import
 
 **Result**: Success rate improved from 22/28 (79%) to 24/28 (86%)
 
-### 2. Materialization Enhancement (`src/quantumvitas/project/snapshot.py`)
+### 2. Materialization Enhancement (`src/qmatsuite/project/snapshot.py`)
 
 **Location**: `materialize_project_from_snapshot()` function, around line 688
 
@@ -101,7 +101,7 @@ These would require:
    - Enhanced `create_demo_from_dataset()` to download missing pseudos
    - Added download logic with error handling
 
-2. **src/quantumvitas/project/snapshot.py**
+2. **src/qmatsuite/project/snapshot.py**
    - Enhanced `materialize_project_from_snapshot()` to copy/download pseudos
    - Added repo/pseudo → project/pseudo copy logic
    - Added fallback download logic
@@ -120,11 +120,11 @@ Expected:
 
 ### Test Expansion
 ```python
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 from pathlib import Path
 
 # Expand a demo
-result = QVService.create_demo_project(
+result = QMSService.create_demo_project(
     target_dir=Path("/tmp/test_demo"),
     demo_id="00_Si_scf"
 )
@@ -137,7 +137,7 @@ assert (pseudo_dir / "Si.pbe-n-rrkjus_psl.1.0.0.UPF").exists()
 
 ## Notes
 
-- Downloads use `QVService.download_pseudo_by_filename()` which:
+- Downloads use `QMSService.download_pseudo_by_filename()` which:
   - Deduplicates by SHA256
   - Handles filename conflicts
   - Uses QE official repository URL

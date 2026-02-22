@@ -17,21 +17,21 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc
-from quantumvitas.core.models import load_calculation
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc
+from qmatsuite.core.models import load_calculation
+from qmatsuite.core.pseudo_provenance import compute_sha256_file
+from qmatsuite.core.resources import get_resources_dir
 
 
 def configure_step(project_root, calculation_selector, step_selector, parameters):
     """Helper function to configure step parameters via domain accessor."""
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     svc.calculation.update_step_params(
         calc_selector=calculation_selector,
         step_selector=step_selector,
@@ -46,7 +46,7 @@ def get_lammps_binary_info():
     Returns:
         tuple: (lammps_bin_path, diagnostic_message)
     """
-    from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
+    from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin
     
     diagnostic_parts = []
     
@@ -114,7 +114,7 @@ def lammps_binary():
 def lj_relax_project(tmp_path: Path, lammps_binary):
     """Create a LAMMPS project for LJ relax workflow."""
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=tmp_path / "lj_relax",
         name="LJ Relax Test"
     )
@@ -126,11 +126,11 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
         pytest.skip(f"Structure file not found: {struct_file}")
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="LJ FCC 108")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="LJ FCC 108")
     structure_ulid = struct_result.meta.ulid
     
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="lj_relax",
         structure_selector=structure_ulid,
     )
@@ -146,7 +146,7 @@ def lj_relax_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
+    step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
     step_id = step.meta.ulid
     
     # Configure step with inline LJ potential
@@ -225,7 +225,7 @@ def test_workflow_a_lj_relax(lj_relax_project, lammps_binary):
 def eam_md_project(tmp_path: Path, lammps_binary):
     """Create a LAMMPS project for EAM MD workflow."""
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=tmp_path / "eam_md",
         name="EAM MD Test"
     )
@@ -237,7 +237,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
         pytest.skip(f"Structure file not found: {struct_file}")
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
@@ -252,7 +252,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     potential_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="eam_md",
         structure_selector=structure_ulid,
     )
@@ -276,7 +276,7 @@ def eam_md_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create MD step
-    step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+    step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="md")
     step_id = step.meta.ulid
     
     # Configure step
@@ -354,7 +354,7 @@ def test_workflow_b_eam_md(eam_md_project, lammps_binary):
 def chain_project(tmp_path: Path, lammps_binary):
     """Create a LAMMPS project for chain workflow (relax → MD)."""
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=tmp_path / "chain",
         name="Chain Test"
     )
@@ -366,7 +366,7 @@ def chain_project(tmp_path: Path, lammps_binary):
         pytest.skip(f"Structure file not found: {struct_file}")
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
@@ -381,7 +381,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     potential_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="chain",
         structure_selector=structure_ulid,
     )
@@ -405,7 +405,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
+    relax_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
     relax_step_id = relax_step.meta.ulid
     
     configure_step(
@@ -425,7 +425,7 @@ def chain_project(tmp_path: Path, lammps_binary):
     )
     
     # Create MD step
-    md_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+    md_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="md")
     md_step_id = md_step.meta.ulid
     
     configure_step(
@@ -541,7 +541,7 @@ def test_workflow_c_chain(chain_project, lammps_binary):
 def restart_project(tmp_path: Path, lammps_binary):
     """Create a LAMMPS project for restart workflow (relax → MD → MD restart)."""
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=tmp_path / "restart",
         name="Restart Test"
     )
@@ -553,7 +553,7 @@ def restart_project(tmp_path: Path, lammps_binary):
         pytest.skip(f"Structure file not found: {struct_file}")
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="Cu FCC 32")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
@@ -568,7 +568,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     potential_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="restart",
         structure_selector=structure_ulid,
     )
@@ -592,7 +592,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
+    relax_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
     relax_step_id = relax_step.meta.ulid
     
     configure_step(
@@ -612,7 +612,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     )
     
     # Create first MD step
-    md1_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+    md1_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="md")
     md1_step_id = md1_step.meta.ulid
     
     configure_step(
@@ -634,7 +634,7 @@ def restart_project(tmp_path: Path, lammps_binary):
     )
     
     # Create second MD step (restart from first MD)
-    md2_step = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+    md2_step = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="md")
     md2_step_id = md2_step.meta.ulid
     
     # ========== ULID UNIQUENESS ASSERTIONS (detect Ubuntu CI root cause) ==========

@@ -21,7 +21,7 @@ This document audits every location where QMatSuite's "kernel" (engine-agnostic 
 
 ### 2.1 Engine Family Detection (CRITICAL)
 
-**File**: `src/quantumvitas/core/calc_identity.py`
+**File**: `src/qmatsuite/core/calc_identity.py`
 **Lines**: 78-116
 **Severity**: CRITICAL
 
@@ -70,7 +70,7 @@ def determine_engine_family(machine_type: str) -> str:
 
 ### 2.2 Handler Dispatch Map (HIGH)
 
-**File**: `src/quantumvitas/execution/handlers.py`
+**File**: `src/qmatsuite/execution/handlers.py`
 **Lines**: 1335-1342
 **Severity**: HIGH
 
@@ -100,7 +100,7 @@ def build_handler_map():
 
 ### 2.3 Recipe Selection Map (HIGH)
 
-**File**: `src/quantumvitas/execution/recipes.py`
+**File**: `src/qmatsuite/execution/recipes.py`
 **Lines**: 798-827
 **Severity**: HIGH
 
@@ -131,7 +131,7 @@ def get_recipe_class(engine_family: str) -> type[BaseRecipe]:
 
 ### 2.4 MATERIALIZATION_MAP (HIGH)
 
-**File**: `src/quantumvitas/workflow/generalized_steps.py`
+**File**: `src/qmatsuite/workflow/generalized_steps.py`
 **Lines**: 364-389
 **Severity**: HIGH
 
@@ -169,7 +169,7 @@ MATERIALIZATION_MAP = {
 
 ### 3.1 Step Type Sets in structure_steps.py (HIGH)
 
-**File**: `src/quantumvitas/calculation/structure_steps.py`
+**File**: `src/qmatsuite/calculation/structure_steps.py`
 **Lines**: 758-792
 **Severity**: HIGH
 
@@ -203,7 +203,7 @@ def is_engine_step(step_type: str, engine: str) -> bool:
 
 ### 3.2 Step Type Sets in step_done.py (HIGH)
 
-**File**: `src/quantumvitas/calculation/step_done.py`
+**File**: `src/qmatsuite/calculation/step_done.py`
 **Lines**: 145-175
 **Severity**: HIGH
 
@@ -233,7 +233,7 @@ def determine_done_policy(step) -> DonePolicy:
 
 ### 3.3 Reference Resolver (VASP-Specific in Kernel) (HIGH)
 
-**File**: `src/quantumvitas/execution/reference_resolver.py`
+**File**: `src/qmatsuite/execution/reference_resolver.py`
 **Lines**: all
 **Severity**: HIGH
 
@@ -264,7 +264,7 @@ def find_reference_scf(steps: list, current_idx: int) -> tuple[int, Step]:
 
 ### 4.1 Workdir Cleanup Decisions (MEDIUM)
 
-**File**: `src/quantumvitas/execution/handlers.py`
+**File**: `src/qmatsuite/execution/handlers.py`
 **Lines**: 350-355 (VASP), 519-521 (LAMMPS)
 **Severity**: MEDIUM
 
@@ -291,7 +291,7 @@ working_dir.mkdir(parents=True, exist_ok=True)
 
 ### 4.2 Artifact Pattern Matching (MEDIUM)
 
-**File**: `src/quantumvitas/execution/relax_artifacts.py`
+**File**: `src/qmatsuite/execution/relax_artifacts.py`
 **Lines**: various
 **Severity**: MEDIUM
 
@@ -320,7 +320,7 @@ def find_trajectory_file(workdir: Path, engine: str) -> Path:
 
 ### 4.3 Preflight Check Logic (MEDIUM)
 
-**File**: `src/quantumvitas/execution/vasp_staging.py`
+**File**: `src/qmatsuite/execution/vasp_staging.py`
 **Lines**: 45-65
 **Severity**: MEDIUM
 
@@ -348,7 +348,7 @@ if not chgcar_src.exists():
 
 ### 5.1 Executable Discovery (LOW)
 
-**File**: `src/quantumvitas/core/engines/`
+**File**: `src/qmatsuite/core/engines/`
 **Severity**: LOW
 
 **Current State**:

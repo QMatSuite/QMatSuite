@@ -68,9 +68,9 @@ class MyDriver:
 ### 2.3 Minimal Complete Example
 
 ```python
-# src/quantumvitas/drivers/myengine/driver.py
+# src/qmatsuite/drivers/myengine/driver.py
 
-from quantumvitas.core.driver_protocol import StepTypeSpec
+from qmatsuite.core.driver_protocol import StepTypeSpec
 
 class MyEngineDriver:
     """Smallest valid driver implementation."""
@@ -125,7 +125,7 @@ These methods have **kernel-provided defaults**. Drivers override only what they
 ### 3.2 Default Implementations via BaseEngineDriver
 
 ```python
-# src/quantumvitas/core/driver_protocol.py
+# src/qmatsuite/core/driver_protocol.py
 
 class BaseEngineDriver:
     """Optional base class providing SHOULD/PLUGIN defaults."""
@@ -174,9 +174,9 @@ class BaseEngineDriver:
 ### 3.3 Using BaseEngineDriver
 
 ```python
-# src/quantumvitas/drivers/vasp/driver.py
+# src/qmatsuite/drivers/vasp/driver.py
 
-from quantumvitas.core.driver_protocol import BaseEngineDriver, WorkdirPolicy
+from qmatsuite.core.driver_protocol import BaseEngineDriver, WorkdirPolicy
 
 class VASPDriver(BaseEngineDriver):
     """VASP driver inheriting defaults."""
@@ -306,7 +306,7 @@ def should_skip_step(step, driver):
 ### 6.1 Minimal Structure
 
 ```
-src/quantumvitas/drivers/myengine/
+src/qmatsuite/drivers/myengine/
 ├── __init__.py      # Registration (REQUIRED)
 ├── driver.py        # Driver class (REQUIRED)
 ├── handler.py       # Handler function (REQUIRED)
@@ -316,7 +316,7 @@ src/quantumvitas/drivers/myengine/
 ### 6.2 Full Structure (With Optional Components)
 
 ```
-src/quantumvitas/drivers/vasp/
+src/qmatsuite/drivers/vasp/
 ├── __init__.py      # Registration
 ├── driver.py        # VASPDriver class
 ├── handler.py       # vasp_step_handler
@@ -330,11 +330,11 @@ src/quantumvitas/drivers/vasp/
 ### 6.3 Registration Pattern
 
 ```python
-# src/quantumvitas/drivers/vasp/__init__.py
+# src/qmatsuite/drivers/vasp/__init__.py
 
 """VASP driver bundle."""
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import VASPDriver
 
 # Register at import time
@@ -405,7 +405,7 @@ class VASPRecipe(BaseRecipe):
 
 **New file** (`drivers/vasp/driver.py`):
 ```python
-from quantumvitas.core.driver_protocol import BaseEngineDriver, StepTypeSpec, WorkdirPolicy
+from qmatsuite.core.driver_protocol import BaseEngineDriver, StepTypeSpec, WorkdirPolicy
 
 class VASPDriver(BaseEngineDriver):
     @property

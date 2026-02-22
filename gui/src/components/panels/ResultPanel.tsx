@@ -4,11 +4,11 @@
  * Shows formatted JSON with syntax highlighting and status indicators.
  */
 
-import type { QVResponse } from '../../types/qv';
+import type { QMSResponse } from '../../types/qms';
 import './ResultPanel.css';
 
 interface ResultPanelProps {
-  result: QVResponse | null;
+  result: QMSResponse | null;
 }
 
 export function ResultPanel({ result }: ResultPanelProps) {

@@ -26,7 +26,7 @@ class TestIndexLookup:
     """Test resolve_element_from_index() from vendored PSEUDO_FILE_INDEX.json."""
 
     def test_resolve_si_sssp_precision(self):
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         filename = resolve_element_from_index("sssp", "precision", "1.3.0", "Si")
         assert filename is not None, "Si should be in SSSP precision"
@@ -35,7 +35,7 @@ class TestIndexLookup:
 
     def test_resolve_c_sssp_precision(self):
         """C must return Carbon pseudo, NOT Copper — the core bug fix."""
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         filename = resolve_element_from_index("sssp", "precision", "1.3.0", "C")
         assert filename is not None, "C should be in SSSP precision"
@@ -54,27 +54,27 @@ class TestIndexLookup:
 
     def test_resolve_cu_sssp_precision(self):
         """Cu must return Copper pseudo."""
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         filename = resolve_element_from_index("sssp", "precision", "1.3.0", "Cu")
         assert filename is not None, "Cu should be in SSSP precision"
         assert "Cu" in filename
 
     def test_resolve_nonexistent_element(self):
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         filename = resolve_element_from_index("sssp", "precision", "1.3.0", "Xx")
         assert filename is None
 
     def test_resolve_nonexistent_library(self):
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         filename = resolve_element_from_index("nonexistent", "default", "1.0", "Si")
         assert filename is None
 
     def test_all_common_elements_have_entries(self):
         """SSSP precision should have entries for all common elements."""
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         common_elements = [
             "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne",
@@ -91,7 +91,7 @@ class TestIndexLookup:
 
     def test_deterministic(self):
         """Same call twice must return same result."""
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         r1 = resolve_element_from_index("sssp", "precision", "1.3.0", "Si")
         r2 = resolve_element_from_index("sssp", "precision", "1.3.0", "Si")
@@ -99,7 +99,7 @@ class TestIndexLookup:
 
     def test_c_and_cu_are_different(self):
         """C and Cu must resolve to different filenames."""
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         c_file = resolve_element_from_index("sssp", "precision", "1.3.0", "C")
         cu_file = resolve_element_from_index("sssp", "precision", "1.3.0", "Cu")
@@ -108,7 +108,7 @@ class TestIndexLookup:
         assert c_file != cu_file, f"C and Cu resolved to same file: {c_file}"
 
     def test_resolve_si_sssp_efficiency(self):
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         filename = resolve_element_from_index("sssp", "efficiency", "1.3.0", "Si")
         assert filename is not None
@@ -116,7 +116,7 @@ class TestIndexLookup:
 
     def test_resolve_from_sg15(self):
         """SG15 library should also have elements."""
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         filename = resolve_element_from_index("sg15", "oncv", "2020-02-06", "Si")
         assert filename is not None
@@ -124,7 +124,7 @@ class TestIndexLookup:
 
     def test_resolve_from_gbrv(self):
         """GBRV PBE library should have elements."""
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         filename = resolve_element_from_index("gbrv", "pbe", "1.5", "Si")
         assert filename is not None
@@ -139,7 +139,7 @@ class TestArchiveInstallRelpath:
     """Test archive_install_relpath() path computation."""
 
     def test_sssp_precision_path(self):
-        from quantumvitas.pseudo.registry import ArchiveInfo, archive_install_relpath
+        from qmatsuite.pseudo.registry import ArchiveInfo, archive_install_relpath
 
         info = ArchiveInfo(
             filename="SSSP_1.3.0_PBE_precision.tar.gz",
@@ -153,7 +153,7 @@ class TestArchiveInstallRelpath:
         assert archive_install_relpath(info) == "SSSP/precision/1.3.0"
 
     def test_pseudodojo_path(self):
-        from quantumvitas.pseudo.registry import ArchiveInfo, archive_install_relpath
+        from qmatsuite.pseudo.registry import ArchiveInfo, archive_install_relpath
 
         info = ArchiveInfo(
             filename="nc-sr_pbe_standard.tgz",
@@ -167,7 +167,7 @@ class TestArchiveInstallRelpath:
         assert archive_install_relpath(info) == "PseudoDojo/nc-sr_pbe_standard/0.4"
 
     def test_gbrv_path(self):
-        from quantumvitas.pseudo.registry import ArchiveInfo, archive_install_relpath
+        from qmatsuite.pseudo.registry import ArchiveInfo, archive_install_relpath
 
         info = ArchiveInfo(
             filename="GBRV_pbe_UPF_v1.5.tar.gz",
@@ -181,7 +181,7 @@ class TestArchiveInstallRelpath:
         assert archive_install_relpath(info) == "GBRV/pbe/1.5"
 
     def test_sg15_path(self):
-        from quantumvitas.pseudo.registry import ArchiveInfo, archive_install_relpath
+        from qmatsuite.pseudo.registry import ArchiveInfo, archive_install_relpath
 
         info = ArchiveInfo(
             filename="sg15_oncv.tar.gz",
@@ -196,7 +196,7 @@ class TestArchiveInstallRelpath:
 
     def test_pipeline_uses_archive_install_relpath(self):
         """Verify pipeline.py imports and uses archive_install_relpath."""
-        import quantumvitas.pseudo.pipeline as pipeline_mod
+        import qmatsuite.pseudo.pipeline as pipeline_mod
 
         assert hasattr(pipeline_mod, "archive_install_relpath")
 
@@ -215,13 +215,13 @@ class TestResolutionChain:
 
     def test_resolve_si_from_installed_library(self, tmp_path):
         """With SSSP installed, Si should resolve deterministically."""
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
-        from quantumvitas.core.pseudo_config import (
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.pseudo_config import (
             PseudoConfig,
             PseudoResolutionRequest,
             resolve_project_pseudos,
         )
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         # Ensure SSSP is installed
         install_result = download_and_install(
@@ -251,13 +251,13 @@ class TestResolutionChain:
 
     def test_resolve_c_not_cu(self, tmp_path):
         """C must resolve to Carbon pseudo — the core bug fix test."""
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
-        from quantumvitas.core.pseudo_config import (
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.pseudo_config import (
             PseudoConfig,
             PseudoResolutionRequest,
             resolve_project_pseudos,
         )
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         install_result = download_and_install(
             library="sssp", variant="precision", version="1.3.0"
@@ -293,13 +293,13 @@ class TestResolutionChain:
 
     def test_resolve_5_elements_from_sg15(self, tmp_path):
         """Ag, Ba, Ga, Ti, Zn from SG15 library."""
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
-        from quantumvitas.core.pseudo_config import (
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.pseudo_config import (
             PseudoConfig,
             PseudoResolutionRequest,
             resolve_project_pseudos,
         )
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         install_result = download_and_install(library="sg15")
         assert install_result["success"]
@@ -327,13 +327,13 @@ class TestResolutionChain:
 
     def test_project_pseudo_dir_populated(self, tmp_path):
         """After resolution, files should exist in project/pseudo/."""
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
-        from quantumvitas.core.pseudo_config import (
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.pseudo_config import (
             PseudoConfig,
             PseudoResolutionRequest,
             resolve_project_pseudos,
         )
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         install_result = download_and_install(
             library="sssp", variant="precision", version="1.3.0"
@@ -365,13 +365,13 @@ class TestResolutionChain:
 
     def test_resolution_prefers_project_local(self, tmp_path):
         """If pseudo already in project dir, don't re-copy from library."""
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
-        from quantumvitas.core.pseudo_config import (
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.pseudo_config import (
             PseudoConfig,
             PseudoResolutionRequest,
             resolve_project_pseudos,
         )
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         install_result = download_and_install(
             library="sssp", variant="precision", version="1.3.0"
@@ -415,7 +415,7 @@ class TestBandspwDefaults:
     """Test that diago_full_acc is set in qe_bandspw defaults."""
 
     def test_diago_full_acc_in_bandspw_defaults(self):
-        from quantumvitas.calculation.step_defaults import get_default_step_params
+        from qmatsuite.calculation.step_defaults import get_default_step_params
 
         params = get_default_step_params("qe_bandspw")
         electrons = params["parameters"].get("ELECTRONS", {})
@@ -425,7 +425,7 @@ class TestBandspwDefaults:
 
     def test_diago_full_acc_not_in_scf(self):
         """diago_full_acc should NOT be in regular SCF defaults."""
-        from quantumvitas.calculation.step_defaults import get_default_step_params
+        from qmatsuite.calculation.step_defaults import get_default_step_params
 
         params = get_default_step_params("qe_scf")
         electrons = params["parameters"].get("ELECTRONS", {})
@@ -433,7 +433,7 @@ class TestBandspwDefaults:
 
     def test_diago_full_acc_not_in_bands_postprocess(self):
         """diago_full_acc should NOT be in bands.x post-processing defaults."""
-        from quantumvitas.calculation.step_defaults import get_default_step_params
+        from qmatsuite.calculation.step_defaults import get_default_step_params
 
         params = get_default_step_params("qe_bands")
         electrons = params["parameters"].get("ELECTRONS", {})

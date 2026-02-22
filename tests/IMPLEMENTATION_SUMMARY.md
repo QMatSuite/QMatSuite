@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the implementation of bidirectional QE input file parsing and generation for QuantumVITAS.
+This document summarizes the implementation of bidirectional QE input file parsing and generation for QMatSuite.
 
 ## What Was Implemented
 
@@ -73,7 +73,7 @@ Comprehensive test coverage:
 ### Parse a QE Input File
 
 ```python
-from quantumvitas.io import QEInputParser
+from qmatsuite.io import QEInputParser
 
 # Parse from file
 qe_input = QEInputParser.parse_file("si.scf.in")
@@ -92,7 +92,7 @@ for line in atomic_species.data:
 ### Generate a QE Input File
 
 ```python
-from quantumvitas.io import (
+from qmatsuite.io import (
     QEInput, QENamelist, QECard, QECardType, QEInputGenerator
 )
 
@@ -121,8 +121,8 @@ QEInputGenerator.write_file(qe_input, "output.in")
 ### Modify an Existing Input File
 
 ```python
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 engine = QuantumEspressoEngine(EngineConfig(name="qe"))
 
@@ -154,7 +154,7 @@ All tests pass successfully:
 
 ### New Files
 
-1. `src/quantumvitas/core/engines/qe_input.py` - Parser and generator implementation
+1. `src/qmatsuite/core/engines/qe_input.py` - Parser and generator implementation
 2. `tests/unit/test_qe_input.py` - Unit tests
 3. `tests/integration/test_qe_engine.py` - Integration tests
 4. `tests/run_simple_test.py` - Simple test script (no pytest required)
@@ -163,8 +163,8 @@ All tests pass successfully:
 
 ### Modified Files
 
-1. `src/quantumvitas/core/engines/qe.py` - Integrated parser/generator
-2. `src/quantumvitas/core/engines/__init__.py` - Exported new classes
+1. `src/qmatsuite/core/engines/qe.py` - Integrated parser/generator
+2. `src/qmatsuite/core/engines/__init__.py` - Exported new classes
 3. `requirements.txt` - Added pytest dependencies
 
 ### Example Files

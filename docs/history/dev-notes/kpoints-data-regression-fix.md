@@ -28,21 +28,21 @@ K-path formats (crystal_b, crystal_c, tpiba_b, tpiba_c) cannot use automatic gri
 ```
 
 ### 抛错处
-- **文件**: `src/quantumvitas/calculation/input_runner.py`
+- **文件**: `src/qmatsuite/calculation/input_runner.py`
 - **函数**: `apply_card_overrides_to_qe_input`
 - **行号**: 755-759
 - **错误信息**: `payload keys=['option'], payload={'option': 'crystal_b'}` - **data 字段已丢失**
 
 ### apply_card_overrides_to_qe_input 被调用的位置
 
-**位置1**: `src/quantumvitas/calculation/structure_steps.py:571`
+**位置1**: `src/qmatsuite/calculation/structure_steps.py:571`
 ```python
 apply_card_overrides_to_qe_input(qe_input, spec.cards)
 ```
 - 在 `generate_qe_input_from_spec()` 中调用
 - 传入的是 `spec.cards`（直接从 StructureStepSpec 对象）
 
-**位置2**: `src/quantumvitas/calculation/input_runner.py:375`
+**位置2**: `src/qmatsuite/calculation/input_runner.py:375`
 ```python
 apply_card_overrides_to_qe_input(qe_input, card_overrides)
 ```
@@ -55,7 +55,7 @@ apply_card_overrides_to_qe_input(qe_input, card_overrides)
 
 ### 定位点 A：刚读 step.yaml / spec from_yaml 后
 
-**代码位置**: `src/quantumvitas/calculation/structure_steps.py:694` (materialize_step_spec 中)
+**代码位置**: `src/qmatsuite/calculation/structure_steps.py:694` (materialize_step_spec 中)
 
 **验证结果**: ✅ **A 点有 data**
 - `StructureStepSpec.from_yaml()` 正确加载 cards
@@ -64,7 +64,7 @@ apply_card_overrides_to_qe_input(qe_input, card_overrides)
 
 ### 定位点 B：生成 overrides（或传入 prepare_input_step 前）
 
-**代码位置**: `src/quantumvitas/calculation/structure_steps.py:1112` (materialize_step_spec 中，调用 generate_qe_input_from_spec 前)
+**代码位置**: `src/qmatsuite/calculation/structure_steps.py:1112` (materialize_step_spec 中，调用 generate_qe_input_from_spec 前)
 
 **关键发现**: 
 - `spec_obj.cards` 在 LOCATION B 应该仍然完整
@@ -72,7 +72,7 @@ apply_card_overrides_to_qe_input(qe_input, card_overrides)
 
 ### 定位点 C：进入 apply_card_overrides_to_qe_input(qe_input, overrides) 前一行
 
-**代码位置**: `src/quantumvitas/calculation/structure_steps.py:571` (generate_qe_input_from_spec 中)
+**代码位置**: `src/qmatsuite/calculation/structure_steps.py:571` (generate_qe_input_from_spec 中)
 
 **验证结果**: ❌ **C 点缺 data**
 - 错误日志显示：`payload keys=['option'], payload={'option': 'crystal_b'}`
@@ -80,7 +80,7 @@ apply_card_overrides_to_qe_input(qe_input, card_overrides)
 
 ### data 丢失的具体函数/代码行
 
-**根因定位**: `src/quantumvitas/calculation/calculation.py:666`
+**根因定位**: `src/qmatsuite/calculation/calculation.py:666`
 
 ```python
 # 第 662-666 行
@@ -127,7 +127,7 @@ payload = {'option': 'crystal_b'}  # ❌ data 丢失 [LOCATION C]
 
 **问题**: `spec_preview.cards.update(extracted_cards)` 会完全覆盖，丢失 step.yaml 中的 data
 
-**修复位置**: `src/quantumvitas/calculation/calculation.py:662-666`
+**修复位置**: `src/qmatsuite/calculation/calculation.py:662-666`
 
 **修复方案**:
 在合并 `extracted_cards` 时，对于 K_POINTS 的 k-path 格式（crystal_b/crystal_c/tpiba_b/tpiba_c），如果 step.yaml 中有 data 但 extracted 没有，保留 step.yaml 的完整数据：
@@ -155,7 +155,7 @@ if extracted_cards:
 
 **问题**: 即使修复了合并逻辑，如果将来有其他路径导致 data 丢失，应该 fail-fast
 
-**修复位置**: `src/quantumvitas/calculation/input_runner.py:726` (apply_card_overrides_to_qe_input 函数入口)
+**修复位置**: `src/qmatsuite/calculation/input_runner.py:726` (apply_card_overrides_to_qe_input 函数入口)
 
 **修复方案**:
 在函数入口处添加硬检查：
@@ -236,7 +236,7 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 
 ### 数据丢失的根本原因
 
-**位置**: `src/quantumvitas/calculation/calculation.py:666`
+**位置**: `src/qmatsuite/calculation/calculation.py:666`
 
 **问题**: `spec_preview.cards.update(extracted_cards)` 会完全覆盖 step.yaml 中的 cards
 
@@ -332,7 +332,7 @@ input_file = Path(...)  # 指向已生成的 .in 文件
 ### 需要进一步调查的问题
 
 1. **为什么 existing_input_file 会存在？**
-   - daemon 测试中，steps 是通过 `QVService.init_step()` 创建的
+   - daemon 测试中，steps 是通过 `QMSService.init_step()` 创建的
    - 不应该有 existing_input_file
    - 需要检查 `_build_step()` 中 `existing_input_file` 的来源
    - **发现**: `existing_input_file` 来自 `step_data.get("input")` 或 `step_data.get("file")`（calculation.yaml 中的 step entry）
@@ -349,12 +349,12 @@ input_file = Path(...)  # 指向已生成的 .in 文件
 
 4. **Step.run() 是否传递 card_overrides？**
    - **发现**: `Step.run()` 调用 `run_input_step()` 时**没有传递 `card_overrides`**
-   - **代码**: `src/quantumvitas/calculation/step.py:99-107`
+   - **代码**: `src/qmatsuite/calculation/step.py:99-107`
    - **影响**: 如果使用已存在的 `.in` 文件，不会用 step.yaml 中的 cards 来更新
    - **但**: daemon 测试中，materialization 发生在 `_build_step_from_spec` 阶段，此时应该还没有 `.in` 文件
 
 5. **JobRunner 迁移是否改变了 materialization 时机？**
-   - **发现**: JobRunner handler (`src/quantumvitas/execution/handlers.py:112`) 直接调用 `step.run()`
+   - **发现**: JobRunner handler (`src/qmatsuite/execution/handlers.py:112`) 直接调用 `step.run()`
    - **问题**: 如果 step 的 `input_file` 指向已存在的 `.in` 文件，`step.run()` 会直接使用它，不会重新从 step.yaml 生成
    - **需要验证**: daemon 测试中，第一次运行是否生成了 `.in` 文件，第二次运行时是否使用了已存在的文件
 
@@ -365,8 +365,8 @@ input_file = Path(...)  # 指向已生成的 .in 文件
 **Preset/ParamSpace 未触碰 cards；K_POINTS.data 缺失是 runner/materialize overrides 传播 bug；已通过根修+guard+测试锁定。**
 
 **修复位置**:
-- Fix-1: `src/quantumvitas/calculation/calculation.py:662-678` - 修复合并逻辑，保留 step.yaml 的 data
-- Fix-2: `src/quantumvitas/calculation/input_runner.py:732-743` - 添加 fail-fast guard
+- Fix-1: `src/qmatsuite/calculation/calculation.py:662-678` - 修复合并逻辑，保留 step.yaml 的 data
+- Fix-2: `src/qmatsuite/calculation/input_runner.py:732-743` - 添加 fail-fast guard
 
 **测试验证**:
 - 需要新增 unit test 验证 data 保留
@@ -379,7 +379,7 @@ input_file = Path(...)  # 指向已生成的 .in 文件
 ### 关键代码位置
 
 1. **合并逻辑（问题所在）**
-   - 文件: `src/quantumvitas/calculation/calculation.py`
+   - 文件: `src/qmatsuite/calculation/calculation.py`
    - 行号: 662-666
    - 代码:
      ```python
@@ -391,7 +391,7 @@ input_file = Path(...)  # 指向已生成的 .in 文件
      ```
 
 2. **existing_input_file 来源**
-   - 文件: `src/quantumvitas/calculation/calculation.py`
+   - 文件: `src/qmatsuite/calculation/calculation.py`
    - 行号: 336-357
    - 代码:
      ```python
@@ -401,7 +401,7 @@ input_file = Path(...)  # 指向已生成的 .in 文件
      ```
 
 3. **Step.run() 不传递 card_overrides**
-   - 文件: `src/quantumvitas/calculation/step.py`
+   - 文件: `src/qmatsuite/calculation/step.py`
    - 行号: 99-107
    - 代码:
      ```python
@@ -418,7 +418,7 @@ input_file = Path(...)  # 指向已生成的 .in 文件
      ```
 
 4. **apply_card_overrides_to_qe_input 验证**
-   - 文件: `src/quantumvitas/calculation/input_runner.py`
+   - 文件: `src/qmatsuite/calculation/input_runner.py`
    - 行号: 748-766
    - 代码:
      ```python
@@ -473,18 +473,18 @@ input_file = Path(...)  # 指向已生成的 .in 文件
 
 ### 高优先级（必须修复）
 1. **Fix-1**: 修复 `_build_step_from_spec` 中的合并逻辑
-   - 位置: `src/quantumvitas/calculation/calculation.py:662-666`
+   - 位置: `src/qmatsuite/calculation/calculation.py:662-666`
    - 影响: 所有有 existing_input_file 的场景
    - 修复: 保留 step.yaml 中的 data（对于 k-path 格式）
 
 2. **Fix-2**: 添加 fail-fast guard
-   - 位置: `src/quantumvitas/calculation/input_runner.py:726`
+   - 位置: `src/qmatsuite/calculation/input_runner.py:726`
    - 影响: 所有调用 `apply_card_overrides_to_qe_input` 的路径
    - 修复: 在函数入口处验证，如果缺失 data 立即报错
 
 ### 中优先级（建议修复）
 3. **Fix-3**: Step.run() 传递 card_overrides
-   - 位置: `src/quantumvitas/calculation/step.py:99-107`
+   - 位置: `src/qmatsuite/calculation/step.py:99-107`
    - 影响: 使用已存在 `.in` 文件的场景
    - 修复: 从 step.yaml 读取 cards，作为 `card_overrides` 传递给 `run_input_step()`
    - **注意**: 这需要能够从 step 对象访问 step.yaml，可能需要修改 Step 类的结构

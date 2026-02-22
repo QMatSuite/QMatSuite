@@ -19,8 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.engines.discovery import discover_engine, is_engine_available
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.engines.discovery import discover_engine, is_engine_available
+from qmatsuite.core.resources import get_resources_dir
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -330,7 +330,7 @@ NGsBlkXd= 1                 RL
         )
 
         # ── Parse and verify spectrum ──
-        from quantumvitas.drivers.yambo.parser import parse_spectrum_file
+        from qmatsuite.drivers.yambo.parser import parse_spectrum_file
 
         spec = parse_spectrum_file(eps_files[0])
         assert len(spec.points) >= 50, (
@@ -401,7 +401,7 @@ DysSolver= "n"
         assert len(qp_files) > 0, "No o-*.qp file found"
 
         # ── Parse and verify QP corrections ──
-        from quantumvitas.drivers.yambo.parser import parse_qp_file
+        from qmatsuite.drivers.yambo.parser import parse_qp_file
 
         qp = parse_qp_file(qp_files[0])
         assert len(qp.corrections) > 0, "No QP corrections parsed"
@@ -426,8 +426,8 @@ class TestYamboDriverRegistration:
 
     def test_driver_registry_lookup(self):
         """Verify yambo driver is accessible via DriverRegistry."""
-        import quantumvitas.drivers.yambo  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.yambo  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("yambo")
         assert driver is not None
@@ -442,8 +442,8 @@ class TestYamboDriverRegistration:
 
     def test_step_type_specs(self):
         """Verify all 4 step type specs are registered."""
-        import quantumvitas.drivers.yambo  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.yambo  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         expected = {"yambo_setup", "yambo_gw", "yambo_bse", "yambo_optics"}
         for spec_name in expected:
@@ -453,8 +453,8 @@ class TestYamboDriverRegistration:
 
     def test_step_type_handler_lookup(self):
         """Verify handler is resolvable for each step type."""
-        import quantumvitas.drivers.yambo  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.yambo  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         for spec_name in ["yambo_gw", "yambo_bse", "yambo_optics", "yambo_setup"]:
             handler = DriverRegistry.get_handler(spec_name)
@@ -463,8 +463,8 @@ class TestYamboDriverRegistration:
 
     def test_materialization_map(self):
         """Verify gen → spec materialization."""
-        import quantumvitas.drivers.yambo  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.yambo  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         assert DriverRegistry.materialize_step_type("yambo", "gw") == "yambo_gw"
         assert DriverRegistry.materialize_step_type("yambo", "bse") == "yambo_bse"
@@ -479,17 +479,17 @@ class TestYamboDriverRegistration:
 
     def test_recipe_class(self):
         """Verify recipe class is accessible."""
-        import quantumvitas.drivers.yambo  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.yambo  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         recipe_cls = DriverRegistry.get_recipe_class("yambo")
         assert recipe_cls is not None
 
     def test_workdir_policy(self):
         """Verify ISOLATED workdir policy."""
-        import quantumvitas.drivers.yambo  # noqa: F401
-        from quantumvitas.core.driver_protocol import WorkdirPolicy
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.yambo  # noqa: F401
+        from qmatsuite.core.driver_protocol import WorkdirPolicy
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("yambo")
         assert driver.get_workdir_policy() == WorkdirPolicy.ISOLATED
@@ -511,7 +511,7 @@ class TestYamboParser:
     )
     def test_parse_gw_golden(self):
         """Parse golden GW QP file."""
-        from quantumvitas.drivers.yambo.parser import parse_qp_file
+        from qmatsuite.drivers.yambo.parser import parse_qp_file
 
         qp = parse_qp_file(self._GOLDEN / "gw" / "o-gw_si.qp")
         assert len(qp.corrections) == 40, f"Expected 40 corrections, got {len(qp.corrections)}"
@@ -528,7 +528,7 @@ class TestYamboParser:
     )
     def test_parse_ip_golden(self):
         """Parse golden IP spectrum file."""
-        from quantumvitas.drivers.yambo.parser import parse_spectrum_file
+        from qmatsuite.drivers.yambo.parser import parse_spectrum_file
 
         spec = parse_spectrum_file(self._GOLDEN / "ip" / "o-ip_si.eps_q1_ip")
         assert len(spec.points) == 100
@@ -543,7 +543,7 @@ class TestYamboParser:
     )
     def test_parse_bse_golden(self):
         """Parse golden BSE spectrum file."""
-        from quantumvitas.drivers.yambo.parser import parse_spectrum_file
+        from qmatsuite.drivers.yambo.parser import parse_spectrum_file
 
         spec = parse_spectrum_file(
             self._GOLDEN / "bse" / "o-bse_si.eps_q1_haydock_bse"
@@ -562,7 +562,7 @@ class TestYamboWriter:
 
     def test_write_gw_input(self, tmp_path):
         """Write and verify GW input file."""
-        from quantumvitas.drivers.yambo.writer import GWParams, write_gw_input
+        from qmatsuite.drivers.yambo.writer import GWParams, write_gw_input
 
         params = GWParams(
             polarization_bands=(1, 20),
@@ -582,7 +582,7 @@ class TestYamboWriter:
 
     def test_write_bse_input(self, tmp_path):
         """Write and verify BSE input file."""
-        from quantumvitas.drivers.yambo.writer import BSEParams, write_bse_input
+        from qmatsuite.drivers.yambo.writer import BSEParams, write_bse_input
 
         params = BSEParams(bse_bands=(3, 6), screening_bands=(1, 20))
         out = tmp_path / "bse.in"
@@ -596,7 +596,7 @@ class TestYamboWriter:
 
     def test_write_ip_optics_input(self, tmp_path):
         """Write and verify IP optics input file."""
-        from quantumvitas.drivers.yambo.writer import IPOpticsParams, write_ip_optics_input
+        from qmatsuite.drivers.yambo.writer import IPOpticsParams, write_ip_optics_input
 
         params = IPOpticsParams(bands=(1, 20), energy_steps=100)
         out = tmp_path / "ip.in"

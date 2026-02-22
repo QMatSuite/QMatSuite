@@ -190,8 +190,8 @@ wannier90.x diamond
 
 ## 代码位置
 
-- **命令构建**: `src/quantumvitas/core/engines/qe.py::build_command()`
-- **stdin 判断**: `src/quantumvitas/core/engines/qe.py::uses_stdin()`
-- **执行逻辑**: `src/quantumvitas/core/engines/qe_calculation.py::run_step()`
-- **文件命名**: `src/quantumvitas/calculation/naming.py`
+- **命令构建**: `src/qmatsuite/core/engines/qe.py::build_command()`
+- **stdin 判断**: `src/qmatsuite/core/engines/qe.py::uses_stdin()`
+- **执行逻辑**: `src/qmatsuite/core/engines/qe_calculation.py::run_step()`
+- **文件命名**: `src/qmatsuite/calculation/naming.py`
 

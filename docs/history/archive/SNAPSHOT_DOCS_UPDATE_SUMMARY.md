@@ -63,7 +63,7 @@
 
 ### 3. Code Comments Added
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 
 **Location 1**: `create_demo_project` (lines ~2972-2987)
 - Added comment: "Demo recognition relies on origin.kind and demo_id, NOT on preserving snapshot ULIDs"
@@ -168,7 +168,7 @@ All tests confirm:
 
 1. `AI_understanding.md` - Updated section 23 with Option B semantics
 2. `tests/unit/test_snapshot_id_regeneration.py` - New test file (created)
-3. `src/quantumvitas/api.py` - Added clarifying comments (no behavior changes)
+3. `src/qmatsuite/api.py` - Added clarifying comments (no behavior changes)
 
 **No runtime code paths or behavior were changed** - only documentation, tests, and comments.
 

@@ -22,7 +22,7 @@ This is a **Law H1 violation** (Import Boundary) - CLI should use API, not bypas
 
 | Layer | Should Do | CLI Currently Does |
 |-------|-----------|-------------------|
-| QVService | Capability implementation | (correct) |
+| QMSService | Capability implementation | (correct) |
 | Daemon | JSON-RPC wrapper → API | (correct) |
 | CLI | Typer wrapper → API | **BYPASSES API** |
 
@@ -37,7 +37,7 @@ This is a **Law H1 violation** (Import Boundary) - CLI should use API, not bypas
 | Daemon | `svc.calculation.add_step()` | YES - uses API |
 | CLI | `_write_step_spec()` (private helper) | NO - bypasses API |
 
-**Evidence**: `grep -n "svc\.calculation\.add_step" src/quantumvitas/cli/main.py` returns no matches.
+**Evidence**: `grep -n "svc\.calculation\.add_step" src/qmatsuite/cli/main.py` returns no matches.
 
 **CLI does instead**:
 1. Manually reads `calculation.yaml`
@@ -180,7 +180,7 @@ These operations are already unified at the API level - the issue is CLI bypassi
 | 4 | Delete Calculation | `_handle_delete_calculation` | `delete_calculation_command` | `svc.calculation.delete()` | -0 (already unified) |
 | 5 | Delete Step | `_handle_delete_step` | `delete_step_command` | `svc.calculation.remove_step()` | -0 (already unified) |
 
-**Analysis**: These are already unified at API level. Both daemon and CLI call the same QVService methods. No action needed.
+**Analysis**: These are already unified at API level. Both daemon and CLI call the same QMSService methods. No action needed.
 
 ### 2.2 Medium (Refactor Required) - Batch 42-44
 
@@ -207,8 +207,8 @@ These operations are already unified at the API level - the issue is CLI bypassi
 **Action**: Confirm that list/delete operations truly share same code path.
 
 **Checks**:
-1. Both daemon and CLI import from `quantumvitas.api`
-2. Both call same QVService methods
+1. Both daemon and CLI import from `qmatsuite.api`
+2. Both call same QMSService methods
 3. No duplicate logic outside API layer
 
 **Expected Delta**: 0 (verification only)
@@ -216,12 +216,12 @@ These operations are already unified at the API level - the issue is CLI bypassi
 ### 3.2 Batch 40: Init Project Unification
 
 **Current State**:
-- Daemon: Calls `QVService.init_project(target_dir, name, template)`
+- Daemon: Calls `QMSService.init_project(target_dir, name, template)`
 - CLI: Same, but also supports `--snapshot` mode for template-based creation
 
 **Action**:
 1. If `--snapshot` mode uses separate logic, consider:
-   - Moving snapshot logic into `QVService.init_project(snapshot=...)`
+   - Moving snapshot logic into `QMSService.init_project(snapshot=...)`
    - OR keeping as CLI-only feature (acceptable)
 
 **Decision**: Audit CLI snapshot implementation first.
@@ -264,10 +264,10 @@ After analysis, the REAL unification opportunities are in **utils**, not service
 
 ### 4.2 True Duplicates (Both Daemon and CLI Export)
 
-Looking at the audit, daemon and CLI both import from `quantumvitas.api`, so they already share:
+Looking at the audit, daemon and CLI both import from `qmatsuite.api`, so they already share:
 - All DTOs
 - All error types
-- All QVService methods
+- All QMSService methods
 
 **Finding**: The duplication is NOT in API surface - it's in internal implementation patterns.
 
@@ -281,7 +281,7 @@ The daemon/CLI unification goal was based on assumption of duplicate API entrypo
 After investigation: **There are no true duplicate API entrypoints.**
 
 Both consumers use the SAME API:
-- `QVService.*` methods
+- `QMSService.*` methods
 - `api/utils.*` functions
 - `api/dtos.*` DTOs
 - `api/errors.*` errors
@@ -321,7 +321,7 @@ Both consumers use the SAME API:
 
 ## 7. Conclusion
 
-The daemon/CLI unification campaign revealed that the architecture is ALREADY well-unified at the API layer. Both consumers import from `quantumvitas.api`.
+The daemon/CLI unification campaign revealed that the architecture is ALREADY well-unified at the API layer. Both consumers import from `qmatsuite.api`.
 
 The remaining surface reduction opportunities are:
 1. **CLI-only utils** → move to internal CLI module (-6 potential)

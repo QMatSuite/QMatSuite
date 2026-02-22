@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from quantumvitas.engine.vasp_parser import (
+from qmatsuite.engine.vasp_parser import (
     parse_oszicar,
     parse_outcar,
     parse_vasp_output,

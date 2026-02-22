@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.vasp.io.poscar import write_poscar_text, parse_poscar_text
-from quantumvitas.drivers.vasp.io.kpoints import write_kpoints_text, parse_kpoints_text
+from qmatsuite.drivers.vasp.io.poscar import write_poscar_text, parse_poscar_text
+from qmatsuite.drivers.vasp.io.kpoints import write_kpoints_text, parse_kpoints_text
 
 
 SAMPLES_DIR = Path(__file__).parent.parent.parent / "inputformat" / "samples" / "vasp"
@@ -447,11 +447,11 @@ class TestINCARWriterModule:
 
     def test_incar_writer_module_importable(self):
         """write_incar_text is importable from io.incar."""
-        from quantumvitas.drivers.vasp.io.incar import write_incar_text
+        from qmatsuite.drivers.vasp.io.incar import write_incar_text
         assert callable(write_incar_text)
 
     def test_incar_writer_basic(self):
-        from quantumvitas.drivers.vasp.io.incar import write_incar_text, parse_incar_text
+        from qmatsuite.drivers.vasp.io.incar import write_incar_text, parse_incar_text
         params = {"ENCUT": 300, "ISMEAR": 0, "NSW": 100}
         text = write_incar_text(params)
         recovered = parse_incar_text(text)
@@ -459,13 +459,13 @@ class TestINCARWriterModule:
             assert recovered[key] == params[key]
 
     def test_incar_writer_empty(self):
-        from quantumvitas.drivers.vasp.io.incar import write_incar_text
+        from qmatsuite.drivers.vasp.io.incar import write_incar_text
         assert write_incar_text(None) == ""
         assert write_incar_text({}) == ""
 
     def test_incar_writer_skips_dicts(self):
         """Dict values (e.g., kpoints) are not written to INCAR."""
-        from quantumvitas.drivers.vasp.io.incar import write_incar_text
+        from qmatsuite.drivers.vasp.io.incar import write_incar_text
         params = {"ENCUT": 300, "kpoints": {"mesh": [4, 4, 4]}}
         text = write_incar_text(params)
         assert "kpoints" not in text.lower()
@@ -473,7 +473,7 @@ class TestINCARWriterModule:
 
     def test_incar_writer_list_values(self):
         """List values are written space-separated."""
-        from quantumvitas.drivers.vasp.io.incar import write_incar_text, parse_incar_text
+        from qmatsuite.drivers.vasp.io.incar import write_incar_text, parse_incar_text
         params = {"MAGMOM": [3.0, 3.0, -3.0]}
         text = write_incar_text(params)
         assert "3.0 3.0 -3.0" in text
@@ -482,7 +482,7 @@ class TestINCARWriterModule:
 
     def test_incar_system_with_bang(self):
         """SYSTEM value containing ! is preserved (not treated as comment)."""
-        from quantumvitas.drivers.vasp.io.incar import parse_incar_text
+        from qmatsuite.drivers.vasp.io.incar import parse_incar_text
         text = "SYSTEM = Si bulk ! important\nENCUT = 300\n"
         result = parse_incar_text(text)
         assert result["SYSTEM"] == "Si bulk ! important"
@@ -490,14 +490,14 @@ class TestINCARWriterModule:
 
     def test_incar_system_with_hash(self):
         """SYSTEM value containing # is preserved."""
-        from quantumvitas.drivers.vasp.io.incar import parse_incar_text
+        from qmatsuite.drivers.vasp.io.incar import parse_incar_text
         text = "SYSTEM = run #42\nENCUT = 300\n"
         result = parse_incar_text(text)
         assert result["SYSTEM"] == "run #42"
 
     def test_incar_ldau_arrays(self):
         """LDAUU/LDAUL/LDAUJ array tags with per-species values."""
-        from quantumvitas.drivers.vasp.io.incar import parse_incar_text
+        from qmatsuite.drivers.vasp.io.incar import parse_incar_text
         text = "LDAUL = 2 -1\nLDAUU = 4.0 0.0\nLDAUJ = 0.0 0.0\n"
         result = parse_incar_text(text)
         assert result["LDAUL"] == [2, -1]
@@ -506,7 +506,7 @@ class TestINCARWriterModule:
 
     def test_incar_trailing_semicolon(self):
         """Trailing semicolon does not cause errors."""
-        from quantumvitas.drivers.vasp.io.incar import parse_incar_text
+        from qmatsuite.drivers.vasp.io.incar import parse_incar_text
         text = "ENCUT = 300 ; ISMEAR = 0 ;\n"
         result = parse_incar_text(text)
         assert result["ENCUT"] == 300

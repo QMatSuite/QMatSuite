@@ -2,14 +2,14 @@
 
 from pathlib import Path
 import pytest
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 from .conftest import send_request
 
 
 class TestGetAnalysis:
     """Contract tests for get_analysis RPC."""
 
-    def test_get_analysis_missing_run(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_get_analysis_missing_run(self, demo_project_with_calculation, daemon: QMSDaemon):
         """get_analysis errors on non-existent run."""
         project_root, _, _ = demo_project_with_calculation
         fake_run = "01HZZZZZZZZZZZZZZZZZZZZZZ"
@@ -25,7 +25,7 @@ class TestGetAnalysis:
 class TestGetAnalysisInstancesForStep:
     """Contract tests for get_analysis_instances_for_step RPC."""
 
-    def test_get_analysis_instances_no_run(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_get_analysis_instances_no_run(self, demo_project_with_calculation, daemon: QMSDaemon):
         """get_analysis_instances_for_step returns empty for step without run."""
         project_root, _, calc_ulid = demo_project_with_calculation
         calc = send_request(daemon, "get_calculation_detail", {
@@ -43,7 +43,7 @@ class TestGetAnalysisInstancesForStep:
         # Should return empty list or dict (no error for missing step)
         assert response is not None
 
-    def test_get_analysis_instances_valid_step(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_get_analysis_instances_valid_step(self, demo_project_with_calculation, daemon: QMSDaemon):
         """get_analysis_instances_for_step with valid step returns data."""
         project_root, _, calc_ulid = demo_project_with_calculation
         calc = send_request(daemon, "get_calculation_detail", {

@@ -58,7 +58,7 @@ Closes Gap 3 from `TRAJECTORY_ANALYSIS_DESIGN.md` compliance review.
 - Update VASP parser/test imports
 
 ### B. Shared Gaussian Cube Parser
-- `src/quantumvitas/io/parser/cube_parser.py`
+- `src/qmatsuite/io/parser/cube_parser.py`
 - `parse_cube_file(path) -> dict` with Bohr→Angstrom conversion
 - `parse_xsf_field3d(path) -> dict` lightweight XSF parser (no BlobStore)
 
@@ -94,8 +94,8 @@ Step 12 needs all engine steps done.
 ## File Inventory
 
 ### New Files (~25)
-- `src/quantumvitas/core/analysis/field3d.py`
-- `src/quantumvitas/io/parser/cube_parser.py`
+- `src/qmatsuite/core/analysis/field3d.py`
+- `src/qmatsuite/io/parser/cube_parser.py`
 - 10x `drivers/<engine>/parsers/field3d.py`
 - 10x `tests/drivers/<engine>/test_*_field3d_parser.py`
 - 10x `tests/data/analysis_<engine>_field3d/` fixture dirs

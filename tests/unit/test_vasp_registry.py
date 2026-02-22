@@ -1,8 +1,8 @@
 """Unit tests for VASP step type registry and GEN→SPEC mapping."""
 
 import pytest
-from quantumvitas.workflow.registry import get_registry
-from quantumvitas.workflow.generalized_steps import (
+from qmatsuite.workflow.registry import get_registry
+from qmatsuite.workflow.generalized_steps import (
     materialize_step,
     materialize_workflow,
     materialize_public_step_key,
@@ -140,7 +140,7 @@ class TestVASPResolver:
         
         monkeypatch.setenv("QMATS_VASP_STD_BIN", str(fake_bin))
         
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
         result = resolve_vasp_bin("std")
         assert result == fake_bin
     
@@ -156,10 +156,10 @@ class TestVASPResolver:
         # Clear env var and mock repo root
         monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)
         
-        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        import qmatsuite.core.engines.vasp_resolver as resolver_mod
         monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
         
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
         result = resolve_vasp_bin("std")
         assert result == fake_bin
     
@@ -167,10 +167,10 @@ class TestVASPResolver:
         """Test resolver raises RuntimeError when VASP not found."""
         monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)
         
-        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        import qmatsuite.core.engines.vasp_resolver as resolver_mod
         monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
         
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
         with pytest.raises(RuntimeError, match="VASP.*not found"):
             resolve_vasp_bin("std")
     
@@ -183,20 +183,20 @@ class TestVASPResolver:
         si_dir.mkdir()
         (si_dir / "POTCAR").write_text("FAKE POTCAR")
         
-        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        import qmatsuite.core.engines.vasp_resolver as resolver_mod
         monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
         
-        from quantumvitas.core.engines.vasp_resolver import get_potcar_dir
+        from qmatsuite.core.engines.vasp_resolver import get_potcar_dir
         result = get_potcar_dir("PBE")
         assert result == potcar_dir
         assert (result / "Si" / "POTCAR").exists()
     
     def test_get_potcar_dir_raises_when_not_found(self, monkeypatch, tmp_path):
         """Test get_potcar_dir raises RuntimeError when not found."""
-        import quantumvitas.core.engines.vasp_resolver as resolver_mod
+        import qmatsuite.core.engines.vasp_resolver as resolver_mod
         monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
         
-        from quantumvitas.core.engines.vasp_resolver import get_potcar_dir
+        from qmatsuite.core.engines.vasp_resolver import get_potcar_dir
         with pytest.raises(RuntimeError, match="POTCAR directory not found"):
             get_potcar_dir("PBE")
 

@@ -22,7 +22,7 @@
 
 #### Primary Entry Point: `save_yaml_doc()`
 
-**Location:** `/src/quantumvitas/core/yaml_io.py:141-244`
+**Location:** `/src/qmatsuite/core/yaml_io.py:141-244`
 
 ```python
 def save_yaml_doc(
@@ -49,7 +49,7 @@ def save_yaml_doc(
 
 #### Raw YAML Write
 
-**Location:** `/src/quantumvitas/core/yaml_io.py:89-102`
+**Location:** `/src/qmatsuite/core/yaml_io.py:89-102`
 
 ```python
 def _save_yaml_raw(data: dict, path: Path) -> None:
@@ -70,7 +70,7 @@ def _save_yaml_raw(data: dict, path: Path) -> None:
 
 #### apply_patch() Pattern
 
-**Location:** `/src/quantumvitas/core/yamldoc.py:358-396`
+**Location:** `/src/qmatsuite/core/yamldoc.py:358-396`
 
 ```python
 def apply_patch(self, patch: dict) -> None:
@@ -83,7 +83,7 @@ def apply_patch(self, patch: dict) -> None:
 
 #### Edit Lock
 
-**Location:** `/src/quantumvitas/core/locking.py:111-194`
+**Location:** `/src/qmatsuite/core/locking.py:111-194`
 
 ```python
 @contextlib.contextmanager
@@ -100,7 +100,7 @@ def calc_edit_lock(calc_dir: Path, fail_fast: bool = False):
 
 #### Run Lock
 
-**Location:** `/src/quantumvitas/core/locking.py:53-109`
+**Location:** `/src/qmatsuite/core/locking.py:53-109`
 
 ```python
 @contextlib.contextmanager
@@ -112,14 +112,14 @@ def calc_run_lock(calc_dir: Path, fail_fast: bool = True):
 #### No Existing Project-Level Lock
 
 **Finding:** Only per-calculation locks exist. Need to add:
-- `provenance_lock()` in new file `src/quantumvitas/provenance/locks.py`
+- `provenance_lock()` in new file `src/qmatsuite/provenance/locks.py`
 - Lock file at `.provenance/provenance.lock`
 
 ### 1.3 Existing History/Provenance Infrastructure
 
 #### Project History Module
 
-**Location:** `/src/quantumvitas/history/`
+**Location:** `/src/qmatsuite/history/`
 
 | File | Purpose | Reuse Potential |
 |------|---------|-----------------|
@@ -132,7 +132,7 @@ def calc_run_lock(calc_dir: Path, fail_fast: bool = True):
 
 #### Journal Module
 
-**Location:** `/src/quantumvitas/core/journal.py`
+**Location:** `/src/qmatsuite/core/journal.py`
 
 **Purpose:** Document-level change tracking (before/after snapshots)
 
@@ -142,7 +142,7 @@ def calc_run_lock(calc_dir: Path, fail_fast: bool = True):
 
 #### Current Artifact Tracking
 
-**Location:** `/src/quantumvitas/core/provenance.py`
+**Location:** `/src/qmatsuite/core/provenance.py`
 
 **Purpose:** Current-only artifact provenance (which run/step produced each file)
 
@@ -150,7 +150,7 @@ def calc_run_lock(calc_dir: Path, fail_fast: bool = True):
 
 ### 1.4 Manifest and Skip Logic
 
-**Location:** `/src/quantumvitas/calculation/manifest.py`
+**Location:** `/src/qmatsuite/calculation/manifest.py`
 
 **Key Pattern:**
 ```python
@@ -164,13 +164,13 @@ class ManifestStepEntry:
     done: bool = False
 ```
 
-**Law P3 Enforcement:** This file MUST NOT import from `quantumvitas.provenance`. Skip logic uses only: kind, pseudo_set_sha, structure_sha, step_sha, done flag.
+**Law P3 Enforcement:** This file MUST NOT import from `qmatsuite.provenance`. Skip logic uses only: kind, pseudo_set_sha, structure_sha, step_sha, done flag.
 
 ### 1.5 Preset Handling
 
 #### Preset Apply Flow
 
-**Location:** `/src/quantumvitas/presets/integration.py`
+**Location:** `/src/qmatsuite/presets/integration.py`
 
 ```python
 # Line ~832
@@ -193,7 +193,7 @@ doc.save(step_path)  # ← Currently no opctx
 
 ### 1.6 Runner Integration Points
 
-**Location:** `/src/quantumvitas/calculation/runner.py`
+**Location:** `/src/qmatsuite/calculation/runner.py`
 
 #### Pre-Run Hook (for snapshot creation)
 
@@ -247,7 +247,7 @@ record_run_complete(project_root, run_ulid, status, finished_at)
 
 **Avoidance:**
 1. Gate test: No scanner imports in `drivers/*/handler.py`
-2. Single scanner class in `src/quantumvitas/provenance/scanner.py`
+2. Single scanner class in `src/qmatsuite/provenance/scanner.py`
 3. Runner is the ONLY caller of scanner methods
 
 ### 2.3 Risk: Direct YAML Writes Bypassing Choke Point
@@ -284,7 +284,7 @@ record_run_complete(project_root, run_ulid, status, finished_at)
 ### 3.1 New Files to Create
 
 ```
-src/quantumvitas/provenance/
+src/qmatsuite/provenance/
 ├── __init__.py           # Package exports
 ├── opctx.py              # OperationContext, OperationType, ActorType, ScopeType
 ├── schema.py             # SQLite schema DDL, schema version management
@@ -301,19 +301,19 @@ src/quantumvitas/provenance/
 
 | File | Changes |
 |------|---------|
-| `src/quantumvitas/core/yaml_io.py` | Add opctx parameter, sequential lock pattern, provenance recording |
-| `src/quantumvitas/core/yamldoc.py` | Add opctx to `StepDoc.save()`, `CalcDoc.save()`, `ProjectDoc.save()` |
-| `src/quantumvitas/presets/integration.py` | Create opctx for preset apply, pass to save |
-| `src/quantumvitas/calculation/runner.py` | Add pre-run snapshot, post-step scanning, run recording |
-| `src/quantumvitas/drivers/*/recipe.py` | Add `ARTIFACT_POLICY` constant |
+| `src/qmatsuite/core/yaml_io.py` | Add opctx parameter, sequential lock pattern, provenance recording |
+| `src/qmatsuite/core/yamldoc.py` | Add opctx to `StepDoc.save()`, `CalcDoc.save()`, `ProjectDoc.save()` |
+| `src/qmatsuite/presets/integration.py` | Create opctx for preset apply, pass to save |
+| `src/qmatsuite/calculation/runner.py` | Add pre-run snapshot, post-step scanning, run recording |
+| `src/qmatsuite/drivers/*/recipe.py` | Add `ARTIFACT_POLICY` constant |
 
 ### 3.3 Files to NOT Modify
 
 | File | Reason |
 |------|--------|
-| `src/quantumvitas/core/locking.py` | Keep existing edit.lock/run.lock unchanged |
-| `src/quantumvitas/calculation/manifest.py` | Must not import provenance (Law P3) |
-| `src/quantumvitas/drivers/*/handler.py` | Must not import scanner (Law P9) |
+| `src/qmatsuite/core/locking.py` | Keep existing edit.lock/run.lock unchanged |
+| `src/qmatsuite/calculation/manifest.py` | Must not import provenance (Law P3) |
+| `src/qmatsuite/drivers/*/handler.py` | Must not import scanner (Law P9) |
 | `runner.py` executor logic | Only add hooks, don't change execution flow |
 
 ---
@@ -326,9 +326,9 @@ src/quantumvitas/provenance/
 
 **New Files:**
 ```
-src/quantumvitas/provenance/__init__.py
-src/quantumvitas/provenance/opctx.py
-src/quantumvitas/provenance/errors.py
+src/qmatsuite/provenance/__init__.py
+src/qmatsuite/provenance/opctx.py
+src/qmatsuite/provenance/errors.py
 tests/gates/test_provenance_opctx_required.py
 tests/gates/test_provenance_independence.py
 tests/gates/test_provenance_skip_isolation.py
@@ -363,7 +363,7 @@ def test_handler_no_scanner_import():
 ```
 
 **Acceptance Criteria:**
-- [ ] `src/quantumvitas/provenance/` package exists
+- [ ] `src/qmatsuite/provenance/` package exists
 - [ ] `OperationContext` dataclass is importable
 - [ ] Gate test files exist (may fail or be skipped)
 - [ ] All existing tests still pass
@@ -376,10 +376,10 @@ def test_handler_no_scanner_import():
 
 **New Files:**
 ```
-src/quantumvitas/provenance/schema.py
-src/quantumvitas/provenance/db.py
-src/quantumvitas/provenance/locks.py
-src/quantumvitas/provenance/recording.py
+src/qmatsuite/provenance/schema.py
+src/qmatsuite/provenance/db.py
+src/qmatsuite/provenance/locks.py
+src/qmatsuite/provenance/recording.py
 ```
 
 **Modifications:**
@@ -424,7 +424,7 @@ src/quantumvitas/provenance/recording.py
    ```python
    class StepDoc(YamlDoc):
        def save(self, path: Path, opctx: OperationContext) -> None:
-           from quantumvitas.core.yaml_io import save_yaml_doc
+           from qmatsuite.core.yaml_io import save_yaml_doc
            save_yaml_doc(self, path, opctx)
    ```
 
@@ -486,7 +486,7 @@ def test_step_update_creates_operation(tmp_project):
 
 **New Files:**
 ```
-src/quantumvitas/provenance/snapshots.py
+src/qmatsuite/provenance/snapshots.py
 ```
 
 **Modifications:**
@@ -608,8 +608,8 @@ def test_run_steps_normalized(tmp_project, mock_engine):
 
 **New Files:**
 ```
-src/quantumvitas/provenance/scanner.py
-src/quantumvitas/provenance/policy.py
+src/qmatsuite/provenance/scanner.py
+src/qmatsuite/provenance/policy.py
 ```
 
 **Modifications:**
@@ -731,8 +731,8 @@ def test_blacklist_excludes_outdir(tmp_project, mock_engine):
 
 **New Files:**
 ```
-src/quantumvitas/provenance/cas.py
-src/quantumvitas/provenance/restore.py
+src/qmatsuite/provenance/cas.py
+src/qmatsuite/provenance/restore.py
 ```
 
 **Implementation:**

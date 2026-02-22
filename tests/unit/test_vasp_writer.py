@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 from pymatgen.core import Structure, Lattice
-from quantumvitas.engine.vasp_writer import (
+from qmatsuite.engine.vasp_writer import (
     write_poscar,
     write_incar,
     write_kpoints,
@@ -131,7 +131,7 @@ class TestVASPPOTCARWriter:
             return test_potcar_dir
         
         monkeypatch.setattr(
-            "quantumvitas.engine.vasp_writer.get_potcar_dir",
+            "qmatsuite.engine.vasp_writer.get_potcar_dir",
             mock_get_potcar_dir
         )
         
@@ -161,7 +161,7 @@ class TestVASPPOTCARWriter:
             return test_potcar_dir
         
         monkeypatch.setattr(
-            "quantumvitas.engine.vasp_writer.get_potcar_dir",
+            "qmatsuite.engine.vasp_writer.get_potcar_dir",
             mock_get_potcar_dir
         )
         

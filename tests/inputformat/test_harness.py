@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import pytest
 
-from quantumvitas.inputformat.core import (
+from qmatsuite.inputformat.core import (
     EngineInputSpec,
     InputFileSpec,
 )
-from quantumvitas.inputformat.harness import CoverageReport, run_corpus_harness
+from qmatsuite.inputformat.harness import CoverageReport, run_corpus_harness
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ class TestHarnessWithRealEngine:
 
     def test_vasp_curated_samples(self, tmp_path):
         """Run harness on VASP curated samples directory."""
-        from quantumvitas.drivers.vasp.inputspec import get_vasp_input_spec
+        from qmatsuite.drivers.vasp.inputspec import get_vasp_input_spec
         import shutil
 
         spec = get_vasp_input_spec()

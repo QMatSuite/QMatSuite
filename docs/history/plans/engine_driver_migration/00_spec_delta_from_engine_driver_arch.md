@@ -34,12 +34,12 @@ This document summarizes what is **changed, clarified, or resolved** compared to
 
 | Question | Resolution | Rationale |
 |----------|------------|-----------|
-| **Q2.1 Driver package location** | `src/quantumvitas/drivers/` | Clean separation, signals architectural change |
+| **Q2.1 Driver package location** | `src/qmatsuite/drivers/` | Clean separation, signals architectural change |
 | **Q2.2 Protocol vs ABC** | Protocol with optional BaseDriver class | Flexibility for third-party; base class provides defaults |
 | **Q3.2 Driver loading** | Eager (at import time) | Simple, catches errors early, matches current codebase |
 | **Q2.3 Capability format** | String set `set[str]` | Extensible, no dataclass changes for new capabilities |
 | **Q3.1 Backward compat duration** | 1 minor version with deprecation warnings | Balance between user migration time and code cleanliness |
-| **Q9 Driver namespace** | `quantumvitas.drivers.*` | Confirmed |
+| **Q9 Driver namespace** | `qmatsuite.drivers.*` | Confirmed |
 
 ### Deferred to QE Migration:
 
@@ -69,7 +69,7 @@ This document summarizes what is **changed, clarified, or resolved** compared to
 ### 3.2 From `02_kernel_touchpoints_audit.md`
 
 **Clarification**: The CRITICAL vulnerability is confirmed at:
-- File: `src/quantumvitas/core/calc_identity.py`
+- File: `src/qmatsuite/core/calc_identity.py`
 - Function: `_infer_engine_family_from_machine_types()`
 - Lines: 96-108
 - Exact dangerous code:
@@ -81,8 +81,8 @@ else:
 ```
 
 **Additional touchpoints identified**:
-- `src/quantumvitas/workflow/generalized_steps.py` line 368-379: `startswith("pyscf_")` and `startswith("orca_")` patterns
-- `src/quantumvitas/calculation/calculation.py` lines 339, 455: `.get("engine", "qe")` fallbacks
+- `src/qmatsuite/workflow/generalized_steps.py` line 368-379: `startswith("pyscf_")` and `startswith("orca_")` patterns
+- `src/qmatsuite/calculation/calculation.py` lines 339, 455: `.get("engine", "qe")` fallbacks
 
 ### 3.3 From `03_driver_model_spec.md`
 
@@ -145,36 +145,36 @@ The migration **MUST preserve** these existing semantics:
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/core/driver_protocol.py` | EngineDriver protocol + base class |
-| `src/quantumvitas/core/driver_registry.py` | DriverRegistry singleton |
-| `src/quantumvitas/core/driver_exceptions.py` | Exception classes |
-| `src/quantumvitas/drivers/__init__.py` | Auto-discovery |
-| `src/quantumvitas/drivers/vasp/` | VASP driver bundle |
-| `src/quantumvitas/drivers/orca/` | ORCA driver bundle |
-| `src/quantumvitas/drivers/pyscf/` | PySCF driver bundle |
-| `src/quantumvitas/drivers/lammps/` | LAMMPS driver bundle |
-| `src/quantumvitas/drivers/cp2k/` | CP2K driver bundle |
-| `src/quantumvitas/drivers/w90/` | Wannier90 driver bundle |
+| `src/qmatsuite/core/driver_protocol.py` | EngineDriver protocol + base class |
+| `src/qmatsuite/core/driver_registry.py` | DriverRegistry singleton |
+| `src/qmatsuite/core/driver_exceptions.py` | Exception classes |
+| `src/qmatsuite/drivers/__init__.py` | Auto-discovery |
+| `src/qmatsuite/drivers/vasp/` | VASP driver bundle |
+| `src/qmatsuite/drivers/orca/` | ORCA driver bundle |
+| `src/qmatsuite/drivers/pyscf/` | PySCF driver bundle |
+| `src/qmatsuite/drivers/lammps/` | LAMMPS driver bundle |
+| `src/qmatsuite/drivers/cp2k/` | CP2K driver bundle |
+| `src/qmatsuite/drivers/w90/` | Wannier90 driver bundle |
 
 ### 6.2 Files to Modify (Kernel)
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/core/calc_identity.py` | Remove QE fallback, use registry |
-| `src/quantumvitas/execution/handlers.py` | Remove migrated handlers, add registry dispatch |
-| `src/quantumvitas/execution/recipes.py` | Remove migrated recipes, add registry dispatch |
-| `src/quantumvitas/workflow/generalized_steps.py` | Remove hardcoded MATERIALIZATION_MAP entries for migrated engines |
-| `src/quantumvitas/calculation/structure_steps.py` | Remove hardcoded step type sets |
-| `src/quantumvitas/calculation/step_done.py` | Remove hardcoded step type sets |
-| `src/quantumvitas/calculation/calculation.py` | Remove `.get("engine", "qe")` fallbacks |
+| `src/qmatsuite/core/calc_identity.py` | Remove QE fallback, use registry |
+| `src/qmatsuite/execution/handlers.py` | Remove migrated handlers, add registry dispatch |
+| `src/qmatsuite/execution/recipes.py` | Remove migrated recipes, add registry dispatch |
+| `src/qmatsuite/workflow/generalized_steps.py` | Remove hardcoded MATERIALIZATION_MAP entries for migrated engines |
+| `src/qmatsuite/calculation/structure_steps.py` | Remove hardcoded step type sets |
+| `src/qmatsuite/calculation/step_done.py` | Remove hardcoded step type sets |
+| `src/qmatsuite/calculation/calculation.py` | Remove `.get("engine", "qe")` fallbacks |
 
 ### 6.3 Files NOT Modified (Preserved for QE)
 
 | File | Reason |
 |------|--------|
-| `src/quantumvitas/core/qe/` | QE-specific, not migrating |
-| `src/quantumvitas/io/generator/qe_generator.py` | QE-specific |
-| `src/quantumvitas/io/parser/qe_parser.py` | QE-specific |
+| `src/qmatsuite/core/qe/` | QE-specific, not migrating |
+| `src/qmatsuite/io/generator/qe_generator.py` | QE-specific |
+| `src/qmatsuite/io/parser/qe_parser.py` | QE-specific |
 | QE handler in `handlers.py` | Stays until QE migration |
 | QERecipe in `recipes.py` | Stays until QE migration |
 

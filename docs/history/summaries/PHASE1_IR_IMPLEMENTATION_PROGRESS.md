@@ -13,11 +13,11 @@ Phase 1 IR landing has been fully implemented. The IR layer now mediates between
 ### New Files Created
 
 1. **IR Parameter Registry**:
-   - `src/quantumvitas/ir/__init__.py` - IR module initialization
-   - `src/quantumvitas/ir/parameters.py` - IR parameter registry with 18 parameters
-   - `src/quantumvitas/ir/backends/__init__.py` - IR backend adapters module
-   - `src/quantumvitas/ir/backends/qe/__init__.py` - QE adapter module
-   - `src/quantumvitas/ir/backends/qe/mapping.py` - IR↔QE explicit mapping table and conversion functions
+   - `src/qmatsuite/ir/__init__.py` - IR module initialization
+   - `src/qmatsuite/ir/parameters.py` - IR parameter registry with 18 parameters
+   - `src/qmatsuite/ir/backends/__init__.py` - IR backend adapters module
+   - `src/qmatsuite/ir/backends/qe/__init__.py` - QE adapter module
+   - `src/qmatsuite/ir/backends/qe/mapping.py` - IR↔QE explicit mapping table and conversion functions
 
 2. **Test Files**:
    - `tests/ir/__init__.py` - IR tests module
@@ -29,25 +29,25 @@ Phase 1 IR landing has been fully implemented. The IR layer now mediates between
 ### Modified Files
 
 1. **ParamSpace Core**:
-   - `src/quantumvitas/presets/paramspace.py`:
+   - `src/qmatsuite/presets/paramspace.py`:
      - Added documentation comment to `ParamKey` clarifying that `key` field is conceptually IR key
      - No logic changes - ParamSpace operates on IR keys internally (values unchanged in v0)
 
 2. **Preset Registry (Detection & Compilation)**:
-   - `src/quantumvitas/presets/spaces_registry.py`:
+   - `src/qmatsuite/presets/spaces_registry.py`:
      - `detect_dimension()`: Added QE YAML → IR YAML conversion before `match_profile()` (lines 190-193, 220-221)
      - `compile_dimension_patch()`: Added IR YAML → QE YAML conversion before compilation, IR patch → QE patch conversion after (lines 353-382)
      - Precision detection: Added IR YAML conversion (line 193)
      - Precision compilation: Added IR→QE patch conversion with K_POINTS preservation (lines 313-345)
    
-   - `src/quantumvitas/presets/variants_registry.py`:
+   - `src/qmatsuite/presets/variants_registry.py`:
      - `compile_dimension_patch_for_step()`: Added IR↔QE conversion at boundaries (lines 311-340)
      - `detect_dimension_for_step()`: Added IR YAML conversion (lines 499-501)
      - `_detect_precision_for_step()`: Added IR YAML conversion for precision matching (line 596)
      - `_compile_precision_patch_for_step()`: Added IR→QE patch conversion with K_POINTS preservation (lines 444-457)
 
 3. **IR↔QE Adapter**:
-   - `src/quantumvitas/ir/backends/qe/mapping.py`:
+   - `src/qmatsuite/ir/backends/qe/mapping.py`:
      - `ir_patch_to_qe_patch()`: Added defensive check for dict structure (line 133)
      - All conversion functions handle K_POINTS card correctly
 

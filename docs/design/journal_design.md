@@ -32,7 +32,7 @@ JournalEntry:
 
 ## Where Journal Hooks
 
-**Single Hook Point:** `src/quantumvitas/core/yaml_io.py::save_yaml_doc()`  
+**Single Hook Point:** `src/qmatsuite/core/yaml_io.py::save_yaml_doc()`  
 **Constitution Rule:** See §11.5 - Journal hook 单一入口点
 
 ```python
@@ -74,7 +74,7 @@ All `YamlDoc.save()` methods delegate to `save_yaml_doc()`:
 ### Location
 
 ```
-~/.quantumvitas/journal/journal.jsonl
+~/.qmatsuite/journal/journal.jsonl
 ```
 
 ### Format
@@ -97,7 +97,7 @@ Append-only JSONL (one JSON object per line):
 ### Journal Class
 
 ```python
-from quantumvitas.core.journal import Journal, get_journal
+from qmatsuite.core.journal import Journal, get_journal
 
 # Get global journal
 journal = get_journal()
@@ -122,7 +122,7 @@ journal.enable()   # Resume recording
 ### JournalEntry
 
 ```python
-from quantumvitas.core.journal import JournalEntry
+from qmatsuite.core.journal import JournalEntry
 
 entry = JournalEntry.create(
     target_ulid="01STEP123",
@@ -170,7 +170,7 @@ pytest tests/unit/test_journal.py -v
 ### Testing with Disabled Journal
 
 ```python
-from quantumvitas.core.journal import get_journal, set_journal, Journal
+from qmatsuite.core.journal import get_journal, set_journal, Journal
 
 # In tests, use a temp directory
 test_journal = Journal(journal_dir=tmp_path / "journal")
@@ -273,7 +273,7 @@ No migration needed. Journal is opt-in and doesn't affect existing data.
 ### Disabling Journal
 
 ```python
-from quantumvitas.core.journal import get_journal
+from qmatsuite.core.journal import get_journal
 
 # Disable globally
 get_journal().disable()

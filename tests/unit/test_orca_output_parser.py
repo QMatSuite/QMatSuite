@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from quantumvitas.drivers.orca.parsers.output import (
+from qmatsuite.drivers.orca.parsers.output import (
     ORCADigest,
     ORCAOutputParser,
     parse_orca_output_text,

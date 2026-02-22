@@ -95,7 +95,7 @@ Each k-point block lists bands with projection weights onto each atomic wavefunc
 
 ### Step F2: QE Fatbands Parser
 
-**File:** `src/quantumvitas/drivers/qe/parsers/bands.py` (EDIT existing)
+**File:** `src/qmatsuite/drivers/qe/parsers/bands.py` (EDIT existing)
 
 Add `_parse_projwfc_up(path: Path) -> dict` function:
 - Parse header: atomic wfc definitions (atom index, symbol, orbital label)
@@ -134,7 +134,7 @@ Run ABINIT with `prtdos 3` for Si to generate per-atom l-resolved DOS files.
 
 ### Step F4: ABINIT PDOS Parser
 
-**File:** `src/quantumvitas/drivers/abinit/parsers/dos.py` (EDIT existing)
+**File:** `src/qmatsuite/drivers/abinit/parsers/dos.py` (EDIT existing)
 
 Add `_parse_abinit_pdos_at(path: Path) -> dict` function:
 - Parse `_DOS_AT####` file: skip `#` comments, parse data columns
@@ -288,8 +288,8 @@ F1/F3/F5 can run in parallel. F2/F4 can run in parallel after their fixtures.
 
 | File | Action | Owner |
 |------|--------|-------|
-| `src/quantumvitas/drivers/qe/parsers/bands.py` | EDIT: add `_parse_projwfc_up()` + projections integration | **Opus** |
-| `src/quantumvitas/drivers/abinit/parsers/dos.py` | EDIT: add `_parse_abinit_pdos_at()` + PDOS integration | **Opus** |
+| `src/qmatsuite/drivers/qe/parsers/bands.py` | EDIT: add `_parse_projwfc_up()` + projections integration | **Opus** |
+| `src/qmatsuite/drivers/abinit/parsers/dos.py` | EDIT: add `_parse_abinit_pdos_at()` + PDOS integration | **Opus** |
 | `tests/data/analysis_bands/si_bands.projwfc_up` | CREATE: QE fatbands fixture (from real projwfc.x run) | **Opus** |
 | `tests/data/analysis_abinit_dos/*_DOS_AT*` | CREATE: ABINIT PDOS fixtures (from real ABINIT run) | **Opus** |
 | `tests/drivers/qe/test_qe_bands_provider.py` | EDIT: add fatbands tests | **Cursor Auto** |
@@ -309,10 +309,10 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 # Verify QE fatbands
 python -c "
-import quantumvitas.drivers
-from quantumvitas.parsers.registry import _PARSERS
+import qmatsuite.drivers
+from qmatsuite.parsers.registry import _PARSERS
 from pathlib import Path
-from quantumvitas.core.analysis.evidence import EvidenceBundle
+from qmatsuite.core.analysis.evidence import EvidenceBundle
 p = _PARSERS[('qe','bands')]()
 d = Path('tests/data/analysis_bands')
 print('can_parse:', p.can_parse(d))
@@ -321,8 +321,8 @@ print('has projwfc_up:', bool(list(d.glob('*.projwfc_up'))))
 
 # Verify ABINIT PDOS
 python -c "
-import quantumvitas.drivers
-from quantumvitas.parsers.registry import _PARSERS
+import qmatsuite.drivers
+from qmatsuite.parsers.registry import _PARSERS
 from pathlib import Path
 p = _PARSERS[('abinit','dos')]()
 d = Path('tests/data/analysis_abinit_dos')

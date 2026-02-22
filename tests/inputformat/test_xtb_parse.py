@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.xtb.io.xtb_input import (
+from qmatsuite.drivers.xtb.io.xtb_input import (
     parse_xcontrol_text,
     parse_xyz_text,
     write_xcontrol_text,
     write_xyz_text,
 )
-from quantumvitas.drivers.xtb.inputspec import get_xtb_input_spec
-from quantumvitas.inputformat import parse_engine_inputs, write_engine_inputs
+from qmatsuite.drivers.xtb.inputspec import get_xtb_input_spec
+from qmatsuite.inputformat import parse_engine_inputs, write_engine_inputs
 
 
 SAMPLES_DIR = Path(__file__).parent / "samples" / "xtb"

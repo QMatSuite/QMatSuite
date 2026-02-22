@@ -11,7 +11,7 @@ After detailed code review, here are the key findings:
 
 ### Group C - CLI Structure Issue
 **Status**: Root cause identified - code path appears correct but error suggests missing execution path  
-**Finding**: Current code uses `QVService.run_step()` which should handle structure resolution correctly. The error "name 'structure' is not defined" suggests either:
+**Finding**: Current code uses `QMSService.run_step()` which should handle structure resolution correctly. The error "name 'structure' is not defined" suggests either:
 1. An exception is being raised and caught incorrectly
 2. There's a code path we haven't found yet
 3. The error is coming from a different location
@@ -34,7 +34,7 @@ When `target` (step.yaml path) is provided:
    - Both functions work correctly
 
 2. **Execution** (lines 1600-1608):
-   - Calls `QVService.run_step()` with calculation_selector and step_selector
+   - Calls `QMSService.run_step()` with calculation_selector and step_selector
    - This should handle structure resolution via `calculation.structure_id`
 
 3. **Error Handling** (lines 1632-1633):
@@ -46,17 +46,17 @@ When `target` (step.yaml path) is provided:
 **Key Observation**: The error message is `"Failed to run step: name 'structure' is not defined"`
 
 This suggests:
-- The error originates INSIDE `QVService.run_step()` or its call chain
+- The error originates INSIDE `QMSService.run_step()` or its call chain
 - The error is caught and re-raised with the "Failed to run step:" prefix
 - Somewhere in the execution path, code references `structure` variable directly
 
 **Possible Locations**:
-1. Inside `QVService.run_step()` - but this should use `calculation.structure_id`
+1. Inside `QMSService.run_step()` - but this should use `calculation.structure_id`
 2. Inside `_execute_step_spec()` or `_execute_step_spec_path()` - but these aren't called in the current path
 3. Inside some legacy code path that's still being executed
 
 **Code Path Analysis**:
-- `run_step_command` → `QVService.run_step()` → structure resolution via calculation.structure_id
+- `run_step_command` → `QMSService.run_step()` → structure resolution via calculation.structure_id
 - No direct calls to `_execute_step_spec` in the deprecated path
 - The deprecated path should work correctly based on code structure
 
@@ -69,7 +69,7 @@ The error might be coming from:
 **Recommendation**:
 1. Run the failing test with full traceback to identify exact line number
 2. Check if there are any imports or code paths that might be using old structure resolution
-3. Verify that `QVService.run_step()` doesn't have any conditional paths that might fail
+3. Verify that `QMSService.run_step()` doesn't have any conditional paths that might fail
 
 ---
 
@@ -81,7 +81,7 @@ The error might be coming from:
 # Phase 3C: Materialize step_type using engine_family
 engine_family = getattr(wf_model, 'engine_family', None) if calculation_yaml_path.exists() else None
 if engine_family:
-    from quantumvitas.workflow.generalized_steps import materialize_public_step_key
+    from qmatsuite.workflow.generalized_steps import materialize_public_step_key
     materialized_type = materialize_public_step_key(step_type, engine_family)
     if materialized_type:
         machine_step_type = materialized_type
@@ -203,7 +203,7 @@ The fact that `registry.get(public_type)` returns first match is a design issue,
 1. **Group C**: 
    - Run failing test with `-v -s` to see full traceback
    - Add `print()` statements to trace execution path
-   - Check if error occurs in `QVService.run_step()` or elsewhere
+   - Check if error occurs in `QMSService.run_step()` or elsewhere
 
 2. **Group D**:
    - Add test assertions to verify step.yaml contains correct machine_type

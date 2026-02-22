@@ -31,7 +31,7 @@
 ```bash
 cd <HOME>/QMatSuite
 source .venv/bin/activate
-python -m quantumvitas.daemon.server
+python -m qmatsuite.daemon.server
 ```
 
 2. **启动前端 (另一个终端):**

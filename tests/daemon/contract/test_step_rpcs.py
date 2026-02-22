@@ -2,14 +2,14 @@
 
 from pathlib import Path
 import pytest
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 from .conftest import send_request
 
 
 class TestGetStepDetail:
     """Contract tests for get_step_detail RPC."""
 
-    def test_get_step_detail_happy_path(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_get_step_detail_happy_path(self, demo_project_with_calculation, daemon: QMSDaemon):
         """get_step_detail returns step information."""
         project_root, _, calc_ulid = demo_project_with_calculation
         calc = send_request(daemon, "get_calculation_detail", {
@@ -30,7 +30,7 @@ class TestGetStepDetail:
         assert "step_type_spec" in response
         assert "parameters" in response
 
-    def test_get_step_detail_not_found(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_get_step_detail_not_found(self, demo_project_with_calculation, daemon: QMSDaemon):
         """get_step_detail errors on non-existent step."""
         project_root, _, calc_ulid = demo_project_with_calculation
         fake_step = "01HZZZZZZZZZZZZZZZZZZZZZZ"
@@ -44,7 +44,7 @@ class TestGetStepDetail:
 
         assert "not_found" in str(exc_info.value).lower()
 
-    def test_get_step_detail_workflow(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_get_step_detail_workflow(self, demo_project_with_calculation, daemon: QMSDaemon):
         """get_step_detail after add_step_to_calculation."""
         project_root, _, calc_ulid = demo_project_with_calculation
 
@@ -75,7 +75,7 @@ class TestGetStepDetail:
 class TestUpdateStepParams:
     """Contract tests for update_step_params RPC."""
 
-    def test_update_step_params_happy_path(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_update_step_params_happy_path(self, demo_project_with_calculation, daemon: QMSDaemon):
         """update_step_params modifies step parameters."""
         project_root, _, calc_ulid = demo_project_with_calculation
         calc = send_request(daemon, "get_calculation_detail", {
@@ -96,7 +96,7 @@ class TestUpdateStepParams:
 
         assert response.get("success") is True or "parameters" in response
 
-    def test_update_step_params_missing_step(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_update_step_params_missing_step(self, demo_project_with_calculation, daemon: QMSDaemon):
         """update_step_params errors on non-existent step."""
         project_root, _, calc_ulid = demo_project_with_calculation
         fake_step = "01HZZZZZZZZZZZZZZZZZZZZZZ"
@@ -109,7 +109,7 @@ class TestUpdateStepParams:
                 "parameters": {}
             })
 
-    def test_update_step_params_workflow(self, demo_project_with_calculation, daemon: QVDaemon):
+    def test_update_step_params_workflow(self, demo_project_with_calculation, daemon: QMSDaemon):
         """update_step_params in editing workflow."""
         project_root, _, calc_ulid = demo_project_with_calculation
         calc = send_request(daemon, "get_calculation_detail", {

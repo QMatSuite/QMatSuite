@@ -10,8 +10,8 @@ import pytest
 import yaml
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.core.resources import ResourceMeta, generate_resource_id
+from qmatsuite.api import QMSService
+from qmatsuite.core.resources import ResourceMeta, generate_resource_id
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def minimal_project(tmp_path: Path) -> Path:
     project_root = tmp_path / "project"
     project_root.mkdir()
     
-    # Create project.qv.yml with calculation entry
+    # Create project.qms.yml with calculation entry
     calc_id = generate_resource_id()
     calc_slug = "wf"
     calc_path = f"calculations/{calc_slug}"
@@ -36,7 +36,7 @@ def minimal_project(tmp_path: Path) -> Path:
         ]
     }
     
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config, sort_keys=False))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(project_config, sort_keys=False))
     
     # Create calculation directory and calculation.yaml
     calc_dir = project_root / "calculations" / calc_slug
@@ -67,7 +67,7 @@ def test_require_calculation_ref_absolute_path(minimal_project: Path):
     This matches the contract expected by CLI code which does:
     calc_dir = calculation_resolved.absolute_path.parent
     """
-    from quantumvitas.api import get_service
+    from qmatsuite.api import get_service
     svc = get_service(minimal_project)
 
     # Resolve calculation by slug using domain API

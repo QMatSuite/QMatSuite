@@ -5,9 +5,9 @@
 ### Step 1 - Audit + Scope Lock
 - Confirmed Yambo-only scope and avoided unrelated engine files.
 - Verified canonical Yambo code layout is present:
-  - `src/quantumvitas/drivers/yambo/data/`
-  - `src/quantumvitas/drivers/yambo/io/`
-  - `src/quantumvitas/drivers/yambo/parsers/`
+  - `src/qmatsuite/drivers/yambo/data/`
+  - `src/qmatsuite/drivers/yambo/io/`
+  - `src/qmatsuite/drivers/yambo/parsers/`
 - Gap identified: missing B1 canonical docs and curated sample/test coverage.
 - Baseline pre-B1 Yambo test collection: `15` tests (`tests/integration/test_yambo_execution.py`, collect-only).
 
@@ -42,7 +42,7 @@
 
 ### Step 5 - Parser/Digest Robustness
 - Improved Yambo output digest spectrum file selection to prefer natural q-index ordering (`q1` before `q10`) in:
-  - `src/quantumvitas/drivers/yambo/parsers/output.py`
+  - `src/qmatsuite/drivers/yambo/parsers/output.py`
 
 ### Step 6 - Pending
 - Add Yambo-focused tests (metadata/output/parser-writer/roundtrip).
@@ -53,7 +53,7 @@
 - Command:
   - `source .venv/bin/activate && python -m pytest tests/drivers/yambo/test_yambo_metadata.py tests/drivers/yambo/test_yambo_output.py tests/inputformat/test_yambo_parse.py tests/integration/test_yambo_execution.py -v --tb=short -n 6 --dist=loadfile`
 - First run: `48 passed, 2 failed` (report parsing ambiguity for `Bands` vs `Filled Bands`).
-- Fix applied in `src/quantumvitas/drivers/yambo/parsers/output.py`:
+- Fix applied in `src/qmatsuite/drivers/yambo/parsers/output.py`:
   - guard total-bands regex so it does not match `Filled Bands`.
 - Re-run result: `50 passed`, `0 failed`.
 

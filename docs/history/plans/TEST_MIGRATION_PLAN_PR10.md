@@ -19,15 +19,15 @@
 
 **Top Three Failure Categories:**
 
-1. **Bucket A: Missing QVService Methods** (~200+ tests)
-   - `AttributeError: type object 'QVService' has no attribute 'init_step'` (160 occurrences)
-   - `AttributeError: type object 'QVService' has no attribute 'add_step_to_calculation'` (42 occurrences)
+1. **Bucket A: Missing QMSService Methods** (~200+ tests)
+   - `AttributeError: type object 'QMSService' has no attribute 'init_step'` (160 occurrences)
+   - `AttributeError: type object 'QMSService' has no attribute 'add_step_to_calculation'` (42 occurrences)
    - Many other missing static/instance methods removed during PR10
 
 2. **Bucket B: Missing API Type Exports** (~30 tests)
-   - `ImportError: cannot import name 'QECardType' from 'quantumvitas.api'`
-   - `ImportError: cannot import name 'StructureStepSpec' from 'quantumvitas.api'`
-   - Tests expect kernel types to be re-exported from `quantumvitas.api` (violates PR10)
+   - `ImportError: cannot import name 'QECardType' from 'qmatsuite.api'`
+   - `ImportError: cannot import name 'StructureStepSpec' from 'qmatsuite.api'`
+   - Tests expect kernel types to be re-exported from `qmatsuite.api` (violates PR10)
 
 3. **Bucket C: Path/Assertion Issues** (~20 tests)
    - Path double-append bugs (mostly fixed, 0 remaining)
@@ -38,11 +38,11 @@
 
 **Contract Tests vs Kernel Tests:**
 
-Contract tests verify **external behavior** through public APIs (QVService, daemon endpoints, CLI commands). They assert DTO fields, JSON serialization, and high-level capabilities. These tests must **not** depend on kernel internals (`.meta.id`, internal dataclasses, core imports).
+Contract tests verify **external behavior** through public APIs (QMSService, daemon endpoints, CLI commands). They assert DTO fields, JSON serialization, and high-level capabilities. These tests must **not** depend on kernel internals (`.meta.id`, internal dataclasses, core imports).
 
-Kernel tests verify **internal semantics** (models, algorithms, serialization, invariants). They can directly import `quantumvitas.core`, assert internal object structure, and test implementation details. These tests are **not** affected by PR10 API slimming.
+Kernel tests verify **internal semantics** (models, algorithms, serialization, invariants). They can directly import `qmatsuite.core`, assert internal object structure, and test implementation details. These tests are **not** affected by PR10 API slimming.
 
-**The Problem:** Many tests are "contract tests in name" but "kernel tests in practice" - they call QVService but assert internal object structure (`.meta.id`), or they import kernel types from `quantumvitas.api`. PR10 removed these exports, breaking the tests.
+**The Problem:** Many tests are "contract tests in name" but "kernel tests in practice" - they call QMSService but assert internal object structure (`.meta.id`), or they import kernel types from `qmatsuite.api`. PR10 removed these exports, breaking the tests.
 
 **The Solution:** Separate contract tests (which must migrate to DTO assertions) from kernel tests (which can keep internal assertions). This allows us to fix contract tests without breaking kernel test coverage.
 
@@ -52,17 +52,17 @@ Kernel tests verify **internal semantics** (models, algorithms, serialization, i
 
 | File Path | Classification | Evidence | Current Failure Type | Suggested Action |
 |-----------|---------------|----------|---------------------|------------------|
-| `tests/api/test_*.py` (17 files) | **CONTRACT** | Uses `QVService`, asserts DTOs, no core imports | AttributeError (missing methods), ImportError (missing exports) | MIGRATE_ASSERTIONS: Use compat layer, fix imports |
-| `tests/daemon/test_*.py` (14 files) | **CONTRACT** | Tests daemon endpoints, uses QVService, asserts JSON/DTOs | AttributeError (init_step, add_step_to_calculation) | MIGRATE_ASSERTIONS: Use compat layer for missing methods |
+| `tests/api/test_*.py` (17 files) | **CONTRACT** | Uses `QMSService`, asserts DTOs, no core imports | AttributeError (missing methods), ImportError (missing exports) | MIGRATE_ASSERTIONS: Use compat layer, fix imports |
+| `tests/daemon/test_*.py` (14 files) | **CONTRACT** | Tests daemon endpoints, uses QMSService, asserts JSON/DTOs | AttributeError (init_step, add_step_to_calculation) | MIGRATE_ASSERTIONS: Use compat layer for missing methods |
 | `tests/cli/test_*.py` (9 files) | **CONTRACT** | Tests CLI commands via subprocess, asserts output | AttributeError (cascading), AssertionError (status format) | MIGRATE_ASSERTIONS: Fix status string expectations |
 | `tests/gates/test_*.py` (10 files) | **CONTRACT** | Architectural gate tests, scan source code | Mostly passing | KEEP |
-| `tests/integration/test_*.py` (41 files) | **MIXED** | Mix of contract (QVService) and kernel (core imports, .meta.id) | AttributeError, Path bugs | **SPLIT**: Contract parts → MIGRATE_ASSERTIONS, Kernel parts → MOVE_TO_KERNEL |
-| `tests/unit/test_api_service*.py` | **CONTRACT** | Tests QVService facade, expects old API surface | AttributeError (many missing methods) | MIGRATE_ASSERTIONS: Use compat layer or new API |
-| `tests/unit/test_workflow.py` | **CONTRACT** | Uses QVService.calc_set_steps | AttributeError | MIGRATE_ASSERTIONS: Use compat layer |
-| `tests/unit/test_analysis_artifacts.py` | **CONTRACT** | Uses QVService.get_reference_analysis | AttributeError | MIGRATE_ASSERTIONS: Use compat layer |
+| `tests/integration/test_*.py` (41 files) | **MIXED** | Mix of contract (QMSService) and kernel (core imports, .meta.id) | AttributeError, Path bugs | **SPLIT**: Contract parts → MIGRATE_ASSERTIONS, Kernel parts → MOVE_TO_KERNEL |
+| `tests/unit/test_api_service*.py` | **CONTRACT** | Tests QMSService facade, expects old API surface | AttributeError (many missing methods) | MIGRATE_ASSERTIONS: Use compat layer or new API |
+| `tests/unit/test_workflow.py` | **CONTRACT** | Uses QMSService.calc_set_steps | AttributeError | MIGRATE_ASSERTIONS: Use compat layer |
+| `tests/unit/test_analysis_artifacts.py` | **CONTRACT** | Uses QMSService.get_reference_analysis | AttributeError | MIGRATE_ASSERTIONS: Use compat layer |
 | `tests/core/test_*.py` (9 files) | **KERNEL** | Direct core imports, tests internal models/algorithms | Mostly passing | KEEP (no migration needed) |
-| `tests/unit/test_*.py` (149 files, excluding api_service) | **MIXED** | Varies: some kernel (core imports), some contract (QVService) | Varies | **AUDIT EACH**: Classify by imports and assertions |
-| `tests/integration/orca/test_*.py` (4 files) | **MIXED** | Uses QVService but also core imports | AttributeError, Path bugs | **SPLIT**: Contract → MIGRATE, Kernel → KEEP |
+| `tests/unit/test_*.py` (149 files, excluding api_service) | **MIXED** | Varies: some kernel (core imports), some contract (QMSService) | Varies | **AUDIT EACH**: Classify by imports and assertions |
+| `tests/integration/orca/test_*.py` (4 files) | **MIXED** | Uses QMSService but also core imports | AttributeError, Path bugs | **SPLIT**: Contract → MIGRATE, Kernel → KEEP |
 | `tests/integration/vasp/test_*.py` (5 files) | **MIXED** | Similar to orca tests | AttributeError | **SPLIT** |
 | `tests/drivers/*/test_*.py` (6 files) | **KERNEL** | Tests driver internals, core imports | Mostly passing | KEEP |
 | `tests/ir/test_*.py` (3 files) | **KERNEL** | Tests IR mapping, core imports | Mostly passing | KEEP |
@@ -72,17 +72,17 @@ Kernel tests verify **internal semantics** (models, algorithms, serialization, i
 ### Classification Evidence Patterns
 
 **CONTRACT Indicators:**
-- `from quantumvitas.api import QVService`
-- `QVService.init_step()`, `QVService.run_calculation()`, etc.
-- Tests daemon endpoints (`QVDaemon.handle_request()`)
+- `from qmatsuite.api import QMSService`
+- `QMSService.init_step()`, `QMSService.run_calculation()`, etc.
+- Tests daemon endpoints (`QMSDaemon.handle_request()`)
 - Tests CLI commands (subprocess calls)
 - Asserts DTO fields (`step_id`, `calc_id`, `structure_id`)
 - Asserts JSON serialization
 - Located in `tests/api/`, `tests/daemon/`, `tests/cli/`, `tests/gates/`
 
 **KERNEL Indicators:**
-- `from quantumvitas.core import ...`
-- `from quantumvitas.kernel import ...` (if exists)
+- `from qmatsuite.core import ...`
+- `from qmatsuite.kernel import ...` (if exists)
 - Direct imports of internal models (`CalculationModel`, `StepDoc`, etc.)
 - Asserts `.meta.id`, `.meta.slug` (internal ResourceMeta)
 - `isinstance(obj, CoreClass)`
@@ -92,7 +92,7 @@ Kernel tests verify **internal semantics** (models, algorithms, serialization, i
 **AMBIGUOUS (Requires Manual Review):**
 - `tests/integration/test_*.py` - Mix of contract and kernel patterns
 - `tests/unit/test_*.py` (non-API) - Need to check each file
-- Files that use QVService but also assert `.meta.id`
+- Files that use QMSService but also assert `.meta.id`
 
 ---
 
@@ -131,45 +131,45 @@ Kernel tests verify **internal semantics** (models, algorithms, serialization, i
 - ❌ `assert step.absolute_path.exists()` → Use step_id to query via API if needed
 
 **Kernel Type Imports:**
-- ❌ `from quantumvitas.api import Calculation, Step, QECardType` → Import from source modules or remove
-- ❌ `from quantumvitas.api import StructureStepSpec` → Use DTO or import from `quantumvitas.calculation.structure_steps`
-- ❌ `from quantumvitas.api import ParameterOverride` → Import from `quantumvitas.ir.parameters`
+- ❌ `from qmatsuite.api import Calculation, Step, QECardType` → Import from source modules or remove
+- ❌ `from qmatsuite.api import StructureStepSpec` → Use DTO or import from `qmatsuite.calculation.structure_steps`
+- ❌ `from qmatsuite.api import ParameterOverride` → Import from `qmatsuite.ir.parameters`
 
 **Internal Tools as Capabilities:**
-- ❌ `QVService.slugify()` → Not a public capability
-- ❌ `QVService.is_ulid_like()` → Not a public capability
-- ❌ `QVService.detect_context()` → Use `svc.project.resolve_enclosing_path()` or similar
+- ❌ `QMSService.slugify()` → Not a public capability
+- ❌ `QMSService.is_ulid_like()` → Not a public capability
+- ❌ `QMSService.detect_context()` → Use `svc.project.resolve_enclosing_path()` or similar
 
 **Direct Core/Kernel Access:**
-- ❌ `from quantumvitas.core.models import load_calculation` → Use `svc.calculation.get()` or compat layer
-- ❌ `from quantumvitas.core.resolution import require_calculation` → Use `svc.calculation.require_ref()`
+- ❌ `from qmatsuite.core.models import load_calculation` → Use `svc.calculation.get()` or compat layer
+- ❌ `from qmatsuite.core.resolution import require_calculation` → Use `svc.calculation.require_ref()`
 
 ### Migration Pattern Examples
 
 **Before (Contract Test - WRONG):**
 ```python
-from quantumvitas.api import QVService
-step = QVService.init_step(project_root, "scf", calc_id)
+from qmatsuite.api import QMSService
+step = QMSService.init_step(project_root, "scf", calc_id)
 assert step.meta.id.startswith("01")  # ❌ Internal structure
 ```
 
 **After (Contract Test - CORRECT):**
 ```python
-from quantumvitas.api.compat import init_step  # Or new API
+from qmatsuite.api.compat import init_step  # Or new API
 step_dto = init_step(project_root, "scf", calc_id)
 assert step_dto.step_id.startswith("01")  # ✅ DTO field
 ```
 
 **Before (Contract Test - WRONG):**
 ```python
-from quantumvitas.api import QECardType  # ❌ Kernel type
+from qmatsuite.api import QECardType  # ❌ Kernel type
 assert card.type == QECardType.CONTROL
 ```
 
 **After (Contract Test - CORRECT):**
 ```python
 # Option 1: Import from source
-from quantumvitas.drivers.qe.io.model import QECardType
+from qmatsuite.drivers.qe.io.model import QECardType
 assert card.type == QECardType.CONTROL
 
 # Option 2: Assert via DTO (preferred)
@@ -189,9 +189,9 @@ assert card_dto.type == "CONTROL"  # String representation
 - ✅ `assert calc.steps[0].step_id == "..."` (internal CalculationStepEntry)
 
 **Direct Core/Kernel Imports:**
-- ✅ `from quantumvitas.core.models import CalculationModel, load_calculation`
-- ✅ `from quantumvitas.core.resolution import require_calculation, build_resource_index`
-- ✅ `from quantumvitas.core.resources import ResourceMeta, generate_resource_id`
+- ✅ `from qmatsuite.core.models import CalculationModel, load_calculation`
+- ✅ `from qmatsuite.core.resolution import require_calculation, build_resource_index`
+- ✅ `from qmatsuite.core.resources import ResourceMeta, generate_resource_id`
 
 **Internal Algorithms/Invariants:**
 - ✅ Tests for locking (`calc_edit_lock`, `calc_run_lock`)
@@ -211,7 +211,7 @@ assert card_dto.type == "CONTROL"  # String representation
 
 1. **`tests/integration/test_incremental_run.py`** (partially)
    - **Evidence:** Uses `load_calculation()`, `calc_edit_lock()`, asserts `.meta.id`
-   - **Action:** Split into contract tests (QVService calls) and kernel tests (locking/fingerprinting)
+   - **Action:** Split into contract tests (QMSService calls) and kernel tests (locking/fingerprinting)
 
 2. **`tests/integration/test_step_slug_consistency.py`**
    - **Evidence:** Tests internal slug/ULID resolution, uses `require_step_by_ulid()`
@@ -232,7 +232,7 @@ assert card_dto.type == "CONTROL"  # String representation
 
 ## (5) Bucket Distribution & Top Offenders
 
-### Bucket A: Missing QVService Methods (Top 20 by Frequency)
+### Bucket A: Missing QMSService Methods (Top 20 by Frequency)
 
 | Method Name | Occurrences | Test Files Affected | Suggested Fix |
 |-------------|------------|-------------------|---------------|
@@ -271,21 +271,21 @@ assert card_dto.type == "CONTROL"  # String representation
 
 | Type Name | Occurrences | Test Files | Suggested Fix |
 |-----------|------------|-----------|---------------|
-| `PresetCompilationError` | 6 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.presets.compiler` |
+| `PresetCompilationError` | 6 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.presets.compiler` |
 | `DisplayModeParams` | 6 | `tests/unit/test_api_service_facade.py` | Import from source module or remove (if not needed) |
-| `StructureStepSpec` | 4 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.calculation.structure_steps` |
-| `PrecisionContextError` | 4 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.presets.precision_context` |
-| `EngineConfig` | 4 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.core.engines.base` or remove |
-| `Step` | 2 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.calculation.step` |
-| `QeEngine` | 2 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.drivers.qe.engine.qe_engine` |
-| `QEInputParser` | 2 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.drivers.qe.io.parser` |
-| `QECardType` | 2 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.drivers.qe.io.model` |
-| `ProjectContext` | 2 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.core.project_context` |
-| `ParameterOverride` | 2 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.ir.parameters` |
-| `DOSData` | 2 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.analysis.artifacts` |
-| `CalculationStepEntry` | 2 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.core.models` |
-| `Calculation` | 2 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.calculation.calculation` |
-| `BandAnalysisFiles` | 2 | `tests/unit/test_api_service_facade.py` | Import from `quantumvitas.analysis.artifacts` |
+| `StructureStepSpec` | 4 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.calculation.structure_steps` |
+| `PrecisionContextError` | 4 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.presets.precision_context` |
+| `EngineConfig` | 4 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.core.engines.base` or remove |
+| `Step` | 2 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.calculation.step` |
+| `QeEngine` | 2 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.drivers.qe.engine.qe_engine` |
+| `QEInputParser` | 2 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.drivers.qe.io.parser` |
+| `QECardType` | 2 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.drivers.qe.io.model` |
+| `ProjectContext` | 2 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.core.project_context` |
+| `ParameterOverride` | 2 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.ir.parameters` |
+| `DOSData` | 2 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.analysis.artifacts` |
+| `CalculationStepEntry` | 2 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.core.models` |
+| `Calculation` | 2 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.calculation.calculation` |
+| `BandAnalysisFiles` | 2 | `tests/unit/test_api_service_facade.py` | Import from `qmatsuite.analysis.artifacts` |
 
 **All Bucket B failures are in `tests/unit/test_api_service_facade.py`** - This file tests API re-exports, which violates PR10. It should be updated to test DTOs/behavior instead of type availability.
 
@@ -318,10 +318,10 @@ assert card_dto.type == "CONTROL"  # String representation
 **Target:** Create infrastructure for migration
 
 **Actions:**
-1. ✅ **DONE:** Create `src/quantumvitas/api/compat.py` with `init_step()` and `add_step_to_calculation()`
+1. ✅ **DONE:** Create `src/qmatsuite/api/compat.py` with `init_step()` and `add_step_to_calculation()`
 2. Create gate test: `tests/gates/test_no_daemon_cli_import_api_compat.py`
-   - Scan `src/quantumvitas/daemon/**` and `src/quantumvitas/cli/**`
-   - Fail if `import quantumvitas.api.compat` found
+   - Scan `src/qmatsuite/daemon/**` and `src/qmatsuite/cli/**`
+   - Fail if `import qmatsuite.api.compat` found
    - Allow in comments/docstrings
 3. Add pytest markers: `@pytest.mark.contract` and `@pytest.mark.kernel` (documentation only, no enforcement yet)
 
@@ -339,7 +339,7 @@ python -m pytest tests/gates -v --tb=short -n auto --dist=loadfile
 
 ### Phase 2: Fix Bucket B - Contract Test ImportErrors (Quick Win)
 
-**Target:** Fix all `ImportError: cannot import name '...' from 'quantumvitas.api'` in contract tests
+**Target:** Fix all `ImportError: cannot import name '...' from 'qmatsuite.api'` in contract tests
 
 **Actions:**
 1. Update `tests/unit/test_api_service_facade.py`:
@@ -352,7 +352,7 @@ python -m pytest tests/gates -v --tb=short -n auto --dist=loadfile
 **Specific Changes:**
 - Remove: `test_qe_model_enums_re_exported`, `test_qe_parser_re_exported`, `test_dos_data_re_exported`, etc.
 - Update: Tests that use types → import from source modules
-- Example: `from quantumvitas.api import QECardType` → `from quantumvitas.drivers.qe.io.model import QECardType`
+- Example: `from qmatsuite.api import QECardType` → `from qmatsuite.drivers.qe.io.model import QECardType`
 
 **Verification:**
 ```bash
@@ -392,7 +392,7 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile 2>&1 | grep -E "Im
 
 **Verification:**
 ```bash
-python -m pytest tests/ -v --tb=short -n auto --dist=loadfile 2>&1 | grep -E "AttributeError.*QVService.*has no attribute" | wc -l
+python -m pytest tests/ -v --tb=short -n auto --dist=loadfile 2>&1 | grep -E "AttributeError.*QMSService.*has no attribute" | wc -l
 # Should decrease by ~100
 ```
 
@@ -406,8 +406,8 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile 2>&1 | grep -E "At
 
 **Actions:**
 1. For each file in `tests/daemon/`:
-   - Replace `QVService.init_step()` → `from quantumvitas.api.compat import init_step`
-   - Replace `QVService.add_step_to_calculation()` → `from quantumvitas.api.compat import add_step_to_calculation`
+   - Replace `QMSService.init_step()` → `from qmatsuite.api.compat import init_step`
+   - Replace `QMSService.add_step_to_calculation()` → `from qmatsuite.api.compat import add_step_to_calculation`
    - Replace other missing methods with compat equivalents
    - Update assertions: `.meta.id` → `.step_id` (for StepDTO)
 
@@ -439,7 +439,7 @@ python -m pytest tests/daemon/ -v --tb=short -n auto --dist=loadfile
 
 **Actions:**
 1. `tests/unit/test_api_step_artifacts.py` (9 tests):
-   - Replace `QVService.init_step()` → compat layer
+   - Replace `QMSService.init_step()` → compat layer
    - Update assertions to use DTO fields
 
 2. `tests/unit/test_api_service.py`:
@@ -447,16 +447,16 @@ python -m pytest tests/daemon/ -v --tb=short -n auto --dist=loadfile
    - Update instance method calls to use new API (`svc.calculation.*`, `svc.structure.*`)
 
 3. `tests/unit/test_workflow.py`:
-   - Replace `QVService.calc_set_steps()` → compat layer
+   - Replace `QMSService.calc_set_steps()` → compat layer
 
 4. `tests/unit/test_analysis_artifacts.py`:
-   - Replace `QVService.get_reference_analysis()` → compat layer
+   - Replace `QMSService.get_reference_analysis()` → compat layer
 
 5. `tests/unit/test_api_get_band_structure_data.py`:
-   - Replace `QVService.init_step()` → compat layer
+   - Replace `QMSService.init_step()` → compat layer
 
 6. `tests/unit/test_prefix_outdir_injection.py`:
-   - Replace `QVService._detect_prefix_outdir_injection()` → compat layer
+   - Replace `QMSService._detect_prefix_outdir_injection()` → compat layer
 
 **Impact:** ~50 tests in `tests/unit/`
 
@@ -477,12 +477,12 @@ python -m pytest tests/unit/test_analysis_artifacts.py -v
 
 **Actions:**
 1. For each integration test file:
-   - **Identify contract parts:** QVService calls, daemon endpoints, CLI commands
+   - **Identify contract parts:** QMSService calls, daemon endpoints, CLI commands
    - **Identify kernel parts:** Core imports, `.meta.id` assertions, internal model tests
    - **Split or annotate:** Mark contract parts with `@pytest.mark.contract`, kernel parts with `@pytest.mark.kernel`
 
 2. Update contract parts:
-   - Replace `QVService.init_step()` → compat layer
+   - Replace `QMSService.init_step()` → compat layer
    - Replace `.meta.id` → `.step_id` (for DTOs)
    - Fix imports: kernel types → source modules
 
@@ -643,25 +643,25 @@ pytest
 
 ### ❌ API Surface Expansion
 
-- **DO NOT** add kernel types back to `quantumvitas.api.__init__.__all__`
-- **DO NOT** re-export `QECardType`, `StructureStepSpec`, `ParameterOverride`, etc. from `quantumvitas.api`
+- **DO NOT** add kernel types back to `qmatsuite.api.__init__.__all__`
+- **DO NOT** re-export `QECardType`, `StructureStepSpec`, `ParameterOverride`, etc. from `qmatsuite.api`
 - **DO NOT** expand `api.__all__` beyond PR10 limits (≤30 items, 0 kernel symbols)
 
 **Rationale:** PR10 explicitly removed these to enforce architectural boundaries. Re-adding them defeats the purpose.
 
 ### ❌ Internal Tools as Public Capabilities
 
-- **DO NOT** add `QVService.slugify()` as a public method
-- **DO NOT** add `QVService.is_ulid_like()` as a public method
-- **DO NOT** add `QVService.detect_context()` as a public method (use `svc.project.resolve_enclosing_path()`)
-- **DO NOT** add `QVService.generate_resource_id()` as a public method
+- **DO NOT** add `QMSService.slugify()` as a public method
+- **DO NOT** add `QMSService.is_ulid_like()` as a public method
+- **DO NOT** add `QMSService.detect_context()` as a public method (use `svc.project.resolve_enclosing_path()`)
+- **DO NOT** add `QMSService.generate_resource_id()` as a public method
 
 **Rationale:** These are internal utilities, not user-facing capabilities. Tests can use them via compat layer temporarily, but they should not be in public API.
 
 ### ❌ Daemon/CLI Importing Compat
 
-- **DO NOT** allow `from quantumvitas.api.compat import ...` in `src/quantumvitas/daemon/**`
-- **DO NOT** allow `from quantumvitas.api.compat import ...` in `src/quantumvitas/cli/**`
+- **DO NOT** allow `from qmatsuite.api.compat import ...` in `src/qmatsuite/daemon/**`
+- **DO NOT** allow `from qmatsuite.api.compat import ...` in `src/qmatsuite/cli/**`
 - **DO** create gate test to enforce this
 
 **Rationale:** Compat layer is for test migration only. Production code (daemon/cli) must use the new API.
@@ -677,7 +677,7 @@ pytest
 
 ### ❌ Kernel Imports at Module Level
 
-- **DO NOT** add `from quantumvitas.core import ...` at module top-level in `api/compat.py`
+- **DO NOT** add `from qmatsuite.core import ...` at module top-level in `api/compat.py`
 - **DO** use lazy imports (inside function bodies)
 - **DO** verify gate test `test_import_rules` stays green
 
@@ -738,13 +738,13 @@ pytest
 
 **Integration Tests (Mixed Patterns):**
 - `tests/integration/test_*.py` - 41 files
-  - Some use QVService (contract)
+  - Some use QMSService (contract)
   - Some use core imports (kernel)
   - Need file-by-file review
 
 **Unit Tests (Non-API):**
 - `tests/unit/test_*.py` - 149 files (excluding `test_api_*`)
-  - Need to check each for core imports vs QVService usage
+  - Need to check each for core imports vs QMSService usage
 
 ---
 
@@ -764,8 +764,8 @@ pytest
 **Total:** ~8-12 hours to reach full green
 
 **Key Success Metrics:**
-- ✅ 0 ImportError from `quantumvitas.api`
-- ✅ 0 AttributeError for missing QVService methods (in contract tests)
+- ✅ 0 ImportError from `qmatsuite.api`
+- ✅ 0 AttributeError for missing QMSService methods (in contract tests)
 - ✅ All gate tests passing
 - ✅ Full test suite green (2,590 tests)
 

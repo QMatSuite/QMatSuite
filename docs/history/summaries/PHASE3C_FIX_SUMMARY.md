@@ -10,7 +10,7 @@
 ### ✅ Phase A: Registry Completeness
 - **Status**: COMPLETE
 - **Changes**:
-  - `pyscf_td` StepTypeSpec already registered in `src/quantumvitas/workflow/registry.py` (lines 359-374)
+  - `pyscf_td` StepTypeSpec already registered in `src/qmatsuite/workflow/registry.py` (lines 359-374)
   - MATERIALIZATION_MAP already includes `("pyscf", "TD"): "pyscf_td"` mapping (line 80 in `generalized_steps.py`)
 - **Verification**: Registry contains `pyscf_td` with correct fields:
   - `public_type="td"`
@@ -22,17 +22,17 @@
 ### ✅ Phase B: StepResult Import Regression
 - **Status**: COMPLETE (already fixed in previous session)
 - **Changes**:
-  - `src/quantumvitas/calculation/step.py`: Import from `quantumvitas.engine.base` (line 120)
-  - `src/quantumvitas/calculation/runner.py`: Already correct (from previous session)
-- **Verification**: No imports from `quantumvitas.calculation.results` found in codebase
+  - `src/qmatsuite/calculation/step.py`: Import from `qmatsuite.engine.base` (line 120)
+  - `src/qmatsuite/calculation/runner.py`: Already correct (from previous session)
+- **Verification**: No imports from `qmatsuite.calculation.results` found in codebase
 
 ### ⚠️ Phase C: CLI Deprecated Step.yaml Path
 - **Status**: CODE REVIEWED - No obvious issues found
 - **Analysis**:
-  - `run_step_command` in `src/quantumvitas/cli/main.py` correctly:
+  - `run_step_command` in `src/qmatsuite/cli/main.py` correctly:
     1. Resolves calculation from step path (lines 1530-1579)
     2. Resolves step via `resolve_step_for_cli` (line 1596)
-    3. Calls `QVService.run_step()` which handles structure resolution via `calculation.structure_id` (line 1604)
+    3. Calls `QMSService.run_step()` which handles structure resolution via `calculation.structure_id` (line 1604)
   - Error "name 'structure' is not defined" suggests runtime issue
   - Need to run tests to identify exact failure location
 - **Action Required**: Run failing tests to get full traceback
@@ -40,7 +40,7 @@
 ### ✅ Phase D: PySCF Chain Resolution Materialization
 - **Status**: CODE COMPLETE - Logic verified
 - **Changes**:
-  - Materialization logic in `src/quantumvitas/api.py` `init_step` method (lines 874-888):
+  - Materialization logic in `src/qmatsuite/api.py` `init_step` method (lines 874-888):
     1. Gets `engine_family` from `wf_model` (line 876)
     2. Calls `materialize_public_step_key(step_type, engine_family)` (line 879)
     3. Uses materialized machine type for `create_step_doc` (line 908)

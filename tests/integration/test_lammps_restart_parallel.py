@@ -10,21 +10,21 @@ import pytest
 import shutil
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc
-from quantumvitas.core.models import load_calculation
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc
+from qmatsuite.core.models import load_calculation
+from qmatsuite.core.pseudo_provenance import compute_sha256_file
+from qmatsuite.core.resources import get_resources_dir
 
 
 def configure_step(project_root, calculation_selector, step_selector, parameters):
     """Helper function to configure step parameters via domain accessor."""
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     svc.calculation.update_step_params(
         calc_selector=calculation_selector,
         step_selector=step_selector,
@@ -34,7 +34,7 @@ def configure_step(project_root, calculation_selector, step_selector, parameters
 
 def get_lammps_binary():
     """Check LAMMPS availability."""
-    from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
+    from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin
     try:
         return resolve_lammps_bin()
     except FileNotFoundError:
@@ -55,7 +55,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     project_dir = tmp_path / f"parallel_test_{execution_number}"
     
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=project_dir,
         name=f"Parallel Test {execution_number}"
     )
@@ -73,7 +73,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     struct_file.write_text(json.dumps(structure.as_dict()))
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="Cu FCC")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file
@@ -88,7 +88,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     potential_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="parallel_test",
         structure_selector=structure_ulid,
     )
@@ -112,7 +112,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step_dto = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
+    relax_step_dto = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
     relax_step_id = relax_step_dto.meta.ulid
     
     configure_step(
@@ -132,7 +132,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     )
     
     # Create MD step with restart_from
-    md_step_dto = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+    md_step_dto = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="md")
     md_step_id = md_step_dto.meta.ulid
     
     configure_step(

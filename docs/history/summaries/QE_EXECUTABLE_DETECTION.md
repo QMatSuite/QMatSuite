@@ -34,7 +34,7 @@ This order ensures that:
 The detected QE home is stored in an **internal Python registry**, not `os.environ`. This prevents pollution from external processes and test isolation issues.
 
 ```python
-from quantumvitas.core.engines import get_qe_home, set_qe_home, reset_qe_home
+from qmatsuite.core.engines import get_qe_home, set_qe_home, reset_qe_home
 
 # Get the current QE home (triggers auto-detection on first call)
 qe_home = get_qe_home()
@@ -57,8 +57,8 @@ reset_qe_home()
 ### Basic Usage
 
 ```python
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 from pathlib import Path
 
 # Option 1: Let auto-detection find QE (recommended)
@@ -177,8 +177,8 @@ except FileNotFoundError as e:
 
 ```python
 from pathlib import Path
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 # QE installed at $HOME/src/q-e-qe-7.5
 qe_bin = Path.home() / "src" / "q-e-qe-7.5" / "bin"

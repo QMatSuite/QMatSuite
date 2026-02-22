@@ -8,20 +8,20 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-import quantumvitas.core.analysis.orchestrator as orchestrator_mod
-from quantumvitas.core.analysis.band_structure import BandStructure, HighSymPoint
-from quantumvitas.core.analysis.base import AnalysisObjectMeta
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle
-from quantumvitas.core.analysis.capability import (
+import qmatsuite.core.analysis.orchestrator as orchestrator_mod
+from qmatsuite.core.analysis.band_structure import BandStructure, HighSymPoint
+from qmatsuite.core.analysis.base import AnalysisObjectMeta
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle
+from qmatsuite.core.analysis.capability import (
     AnalysisCapability,
     AnalysisResult,
     MissingReason,
     ResultState,
 )
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
-from quantumvitas.drivers.qe.driver import QEDriver
-from quantumvitas.drivers.qe.parsers.bands import QEBandsProvider  # noqa: F401
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.core.analysis.orchestrator import run_post_run_analysis
+from qmatsuite.drivers.qe.driver import QEDriver
+from qmatsuite.drivers.qe.parsers.bands import QEBandsProvider  # noqa: F401
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]

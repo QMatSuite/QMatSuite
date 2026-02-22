@@ -18,7 +18,7 @@ import subprocess
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.engines.discovery import discover_engine, is_engine_available
+from qmatsuite.core.engines.discovery import discover_engine, is_engine_available
 
 pytestmark = pytest.mark.skipif(
     not is_engine_available("psi4"),
@@ -46,11 +46,11 @@ def _get_runner_env() -> dict:
     """Get environment for the runner subprocess.
 
     Adds the project's src/ to PYTHONPATH so the discovered Python
-    (which may be conda) can import quantumvitas.
+    (which may be conda) can import qmatsuite.
     """
-    import quantumvitas
+    import qmatsuite
     env = os.environ.copy()
-    src_dir = str(Path(quantumvitas.__file__).parent.parent)
+    src_dir = str(Path(qmatsuite.__file__).parent.parent)
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = f"{src_dir}:{existing}" if existing else src_dir
     return env
@@ -66,7 +66,7 @@ def _run_psi4_chain(job_chain: dict, working_dir: Path) -> dict:
     job_chain_file.write_text(json.dumps(job_chain, indent=2))
 
     python = _get_psi4_python()
-    cmd = [python, "-m", "quantumvitas.engines.psi4", str(job_chain_file)]
+    cmd = [python, "-m", "qmatsuite.engines.psi4", str(job_chain_file)]
     result = subprocess.run(
         cmd,
         capture_output=True,
@@ -365,7 +365,7 @@ class TestPsi4SubprocessExecution:
 
     def test_engine_probe(self):
         """Test Psi4Engine.probe() returns available=True."""
-        from quantumvitas.engine.psi4_engine import Psi4Engine
+        from qmatsuite.engine.psi4_engine import Psi4Engine
 
         engine = Psi4Engine()
         probe = engine.probe()

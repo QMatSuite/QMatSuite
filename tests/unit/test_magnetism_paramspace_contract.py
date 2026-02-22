@@ -10,9 +10,9 @@ Per Constitution 10.7:
 
 import pytest
 
-from quantumvitas.presets.dimensions import MagnetismOption, CUSTOM
-from quantumvitas.presets.compiler import compile_magnetism
-from quantumvitas.presets.detector import detect_magnetism
+from qmatsuite.presets.dimensions import MagnetismOption, CUSTOM
+from qmatsuite.presets.compiler import compile_magnetism
+from qmatsuite.presets.detector import detect_magnetism
 
 
 class TestMagnetismRoundtrip:

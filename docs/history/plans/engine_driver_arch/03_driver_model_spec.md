@@ -292,7 +292,7 @@ class StepTypeSpec:
 ### 3.1 Kernel Driver Registry
 
 ```python
-# src/quantumvitas/core/driver_registry.py
+# src/qmatsuite/core/driver_registry.py
 
 from typing import Dict
 from .driver_protocol import EngineDriver
@@ -380,7 +380,7 @@ class DriverRegistry:
 ### 3.2 Driver Auto-Discovery
 
 ```python
-# src/quantumvitas/drivers/__init__.py
+# src/qmatsuite/drivers/__init__.py
 
 """
 Engine driver auto-discovery.
@@ -416,19 +416,19 @@ discover_and_register_drivers()
 ### 4.1 VASP Driver Bundle
 
 ```python
-# src/quantumvitas/drivers/vasp/__init__.py
+# src/qmatsuite/drivers/vasp/__init__.py
 
 from .driver import VASPDriver
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 
 # Register driver at import time
 DriverRegistry.register(VASPDriver())
 ```
 
 ```python
-# src/quantumvitas/drivers/vasp/driver.py
+# src/qmatsuite/drivers/vasp/driver.py
 
-from quantumvitas.core.driver_protocol import (
+from qmatsuite.core.driver_protocol import (
     EngineDriver,
     EngineCapabilities,
     WorkdirPolicy,
@@ -627,9 +627,9 @@ class VASPDriver:
 ### 5.1 Handler Dispatch (Refactored)
 
 ```python
-# src/quantumvitas/execution/handlers.py (refactored)
+# src/qmatsuite/execution/handlers.py (refactored)
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 
 def get_handler_for_step(step: Step):
     """Get handler for step using driver registry."""
@@ -640,9 +640,9 @@ def get_handler_for_step(step: Step):
 ### 5.2 Recipe Selection (Refactored)
 
 ```python
-# src/quantumvitas/execution/recipes.py (refactored)
+# src/qmatsuite/execution/recipes.py (refactored)
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 
 def get_recipe_class(engine_family: str) -> type:
     """Get recipe class using driver registry."""
@@ -653,9 +653,9 @@ def get_recipe_class(engine_family: str) -> type:
 ### 5.3 Engine Detection (Refactored)
 
 ```python
-# src/quantumvitas/core/calc_identity.py (refactored)
+# src/qmatsuite/core/calc_identity.py (refactored)
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 
 def determine_engine_family(machine_type: str) -> str:
     """Determine engine family from step type. No fallbacks."""
@@ -700,7 +700,7 @@ Example: 1.2.3
 ## 7. Directory Structure
 
 ```
-src/quantumvitas/
+src/qmatsuite/
 ├── core/
 │   ├── driver_protocol.py      # EngineDriver Protocol
 │   ├── driver_registry.py      # DriverRegistry class

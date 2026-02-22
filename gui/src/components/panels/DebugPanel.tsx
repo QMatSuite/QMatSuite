@@ -4,8 +4,8 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useQVLogs, useQVClient } from '../../hooks/useQVClient';
-import type { QVResponse } from '../../types/qv';
+import { useQMSLogs, useQMSClient } from '../../hooks/useQMSClient';
+import type { QMSResponse } from '../../types/qms';
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './DebugPanel.css';
 
@@ -22,7 +22,7 @@ const DEFAULT_HEIGHT = 180;
  * Compact log footer panel with resizable height
  */
 export function DebugPanel({ isVisible = true }: DebugPanelProps) {
-  const allLogs = useQVLogs(200);
+  const allLogs = useQMSLogs(200);
   const scrollRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
@@ -128,7 +128,7 @@ export function DebugPanel({ isVisible = true }: DebugPanelProps) {
             onClick={handleCopyLogs}
             disabled={logs.length === 0}
             title="Copy visible logs to clipboard"
-            data-testid="qv-dock-daemon-logs-copy"
+            data-testid="qms-dock-daemon-logs-copy"
           >
             {copyButtonLabel}
           </button>
@@ -164,12 +164,12 @@ export function DebugPanel({ isVisible = true }: DebugPanelProps) {
  * Full debug view for the main content area
  */
 interface DebugViewProps {
-  lastResult: QVResponse | null;
+  lastResult: QMSResponse | null;
 }
 
 export function DebugView({ lastResult }: DebugViewProps) {
-  const qv = useQVClient();
-  const logs = useQVLogs(500);
+  const qms = useQMSClient();
+  const logs = useQMSLogs(500);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pingResult, setPingResult] = useState<string | null>(null);
   const [isPinging, setIsPinging] = useState(false);
@@ -185,7 +185,7 @@ export function DebugView({ lastResult }: DebugViewProps) {
     setIsPinging(true);
     setPingResult(null);
     
-    const response = await qv.ping();
+    const response = await qms.ping();
     
     if (response.ok && response.data) {
       setPingResult(`✓ Daemon v${response.data.version} (connected)`);
@@ -193,7 +193,7 @@ export function DebugView({ lastResult }: DebugViewProps) {
       setPingResult(`✗ ${response.error?.message || 'Connection failed'}`);
     }
     setIsPinging(false);
-  }, [qv]);
+  }, [qms]);
   
   return (
     <div className="debug-view">
@@ -222,20 +222,20 @@ export function DebugView({ lastResult }: DebugViewProps) {
           <div className="debug-tools__info">
             <div className="debug-tools__info-item">
               <span className="info-label">Connected:</span>
-              <span className={`info-value ${qv.state.isConnected ? 'success' : 'error'}`}>
-                {qv.state.isConnected ? 'Yes' : 'No'}
+              <span className={`info-value ${qms.state.isConnected ? 'success' : 'error'}`}>
+                {qms.state.isConnected ? 'Yes' : 'No'}
               </span>
             </div>
-            {qv.state.daemonStatus?.pythonPath && (
+            {qms.state.daemonStatus?.pythonPath && (
               <div className="debug-tools__info-item">
                 <span className="info-label">Python:</span>
-                <code className="info-value">{qv.state.daemonStatus.pythonPath}</code>
+                <code className="info-value">{qms.state.daemonStatus.pythonPath}</code>
               </div>
             )}
-            {qv.state.daemonStatus?.projectRoot && (
+            {qms.state.daemonStatus?.projectRoot && (
               <div className="debug-tools__info-item">
                 <span className="info-label">CWD:</span>
-                <code className="info-value">{qv.state.daemonStatus.projectRoot}</code>
+                <code className="info-value">{qms.state.daemonStatus.projectRoot}</code>
               </div>
             )}
           </div>

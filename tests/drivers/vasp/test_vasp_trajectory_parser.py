@@ -8,10 +8,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.core.analysis.trajectory.model import Trajectory
-from quantumvitas.drivers.vasp.parsers.trajectory import VASPTrajectoryProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.core.analysis.trajectory.model import Trajectory
+from qmatsuite.drivers.vasp.parsers.trajectory import VASPTrajectoryProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_vasp_trajectory"
@@ -113,7 +113,7 @@ def test_sha_deterministic() -> None:
 def test_parse_uses_iterparse() -> None:
     """Verify parse_vasprun_trajectory uses iterparse, not ET.parse()."""
     import inspect
-    from quantumvitas.drivers.vasp.parsers.trajectory import parse_vasprun_trajectory
+    from qmatsuite.drivers.vasp.parsers.trajectory import parse_vasprun_trajectory
     source = inspect.getsource(parse_vasprun_trajectory)
     assert "iterparse" in source, "parse_vasprun_trajectory must use iterparse"
     assert "ET.parse(" not in source, "parse_vasprun_trajectory must not use ET.parse()"
@@ -121,7 +121,7 @@ def test_parse_uses_iterparse() -> None:
 
 def test_size_warn_threshold_exists() -> None:
     """Verify _SIZE_WARN_THRESHOLD constant is defined and reasonable."""
-    from quantumvitas.drivers.vasp.parsers.trajectory import _SIZE_WARN_THRESHOLD
+    from qmatsuite.drivers.vasp.parsers.trajectory import _SIZE_WARN_THRESHOLD
     assert _SIZE_WARN_THRESHOLD == 100 * 1024 * 1024  # 100 MB
 
 

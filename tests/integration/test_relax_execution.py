@@ -13,9 +13,9 @@ import time
 import uuid
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.core.paths import tmp_runs_dir
-from quantumvitas.execution.relax_artifacts import (
+from qmatsuite.api import QMSService
+from qmatsuite.core.paths import tmp_runs_dir
+from qmatsuite.execution.relax_artifacts import (
     get_generated_structure_path,
     read_generated_structure,
 )
@@ -34,9 +34,9 @@ class TestRelaxExecutorIntegration:
         
         This ensures that current.json existence implies success in THIS run.
         """
-        from quantumvitas.execution.executor import JobExecutor
-        from quantumvitas.execution.job_graph import Job
-        from quantumvitas.execution.relax_artifacts import write_generated_structure
+        from qmatsuite.execution.executor import JobExecutor
+        from qmatsuite.execution.job_graph import Job
+        from qmatsuite.execution.relax_artifacts import write_generated_structure
         from unittest.mock import MagicMock
         
         # Create calc directory
@@ -93,9 +93,9 @@ class TestRelaxExecutorIntegration:
         This verifies that _post_process_relax_steps is called and handles
         the output correctly using capability-based relax_artifact_spec.
         """
-        from quantumvitas.execution.executor import JobExecutor, JobResult
-        from quantumvitas.execution.job_graph import Job
-        from quantumvitas.execution.relax_artifacts import RelaxArtifactSpec
+        from qmatsuite.execution.executor import JobExecutor, JobResult
+        from qmatsuite.execution.job_graph import Job
+        from qmatsuite.execution.relax_artifacts import RelaxArtifactSpec
         from unittest.mock import MagicMock
         
         # Create calc directory
@@ -181,16 +181,16 @@ class TestRelaxExecutorIntegration:
         
         # Verify metadata
         data = json.loads(artifact_path.read_text())
-        assert "__qv_meta__" in data
-        assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == "qe_relax"
+        assert "__qms_meta__" in data
+        assert data["__qms_meta__"]["source_step_ulid"] == step_ulid
+        assert data["__qms_meta__"]["provenance"]["method"] == "qe_relax"
     
     def test_executor_post_process_only_on_success(self, tmp_path):
         """
         Test that executor does NOT post-process if job failed.
         """
-        from quantumvitas.execution.executor import JobExecutor, JobResult
-        from quantumvitas.execution.job_graph import Job
+        from qmatsuite.execution.executor import JobExecutor, JobResult
+        from qmatsuite.execution.job_graph import Job
         from unittest.mock import MagicMock
         
         calc_dir = tmp_path / "calc"
@@ -241,9 +241,9 @@ class TestRelaxExecutorIntegration:
         """
         Test that pre-clean only removes current.json for steps in the current job.
         """
-        from quantumvitas.execution.executor import JobExecutor
-        from quantumvitas.execution.job_graph import Job
-        from quantumvitas.execution.relax_artifacts import write_generated_structure
+        from qmatsuite.execution.executor import JobExecutor
+        from qmatsuite.execution.job_graph import Job
+        from qmatsuite.execution.relax_artifacts import write_generated_structure
         from unittest.mock import MagicMock
         
         calc_dir = tmp_path / "calc"

@@ -9,22 +9,22 @@ All Phase 1 items are complete. Tests green: 3234 passed, 21 skipped.
 ## Implementation Checklist
 
 ### Files Modified
-- [x] `src/quantumvitas/workflow/gen_steps.py` — Added "setup", "gw", "bse", "optics" to GEN_STEPS
-- [x] `src/quantumvitas/workflow/step_type_convert.py` — Added "yambo" to ENGINE_PREFIXES
-- [x] `src/quantumvitas/workflow/registry.py` — Added yambo_setup/gw/bse/optics StepTypeSpecs + "yambo_" prefix
-- [x] `src/quantumvitas/drivers/__init__.py` — Added `from quantumvitas.drivers import yambo`
-- [x] `src/quantumvitas/core/engines/discovery.py` — Added yambo EngineProbe (binaries: yambo, p2y, ypp)
+- [x] `src/qmatsuite/workflow/gen_steps.py` — Added "setup", "gw", "bse", "optics" to GEN_STEPS
+- [x] `src/qmatsuite/workflow/step_type_convert.py` — Added "yambo" to ENGINE_PREFIXES
+- [x] `src/qmatsuite/workflow/registry.py` — Added yambo_setup/gw/bse/optics StepTypeSpecs + "yambo_" prefix
+- [x] `src/qmatsuite/drivers/__init__.py` — Added `from qmatsuite.drivers import yambo`
+- [x] `src/qmatsuite/core/engines/discovery.py` — Added yambo EngineProbe (binaries: yambo, p2y, ypp)
 - [x] `tests/unit/test_engine_discovery.py` — Added "yambo" to expected engine set
 - [x] `tests/unit/test_step_type_mapping.py` — Added "yambo_" to valid SPEC prefixes
 
 ### Files Created
-- [x] `src/quantumvitas/drivers/yambo/__init__.py` — `DriverRegistry.register(YamboDriver())`
-- [x] `src/quantumvitas/drivers/yambo/driver.py` — YamboDriver (PREFIX="yambo", 4 step types)
-- [x] `src/quantumvitas/drivers/yambo/handler.py` — yambo_step_handler (setup/gw/bse/optics)
-- [x] `src/quantumvitas/drivers/yambo/recipe.py` — YamboRecipe (ISOLATED workdir, SAVE symlink)
-- [x] `src/quantumvitas/drivers/yambo/writer.py` — GWParams, BSEParams, IPOpticsParams + writers
-- [x] `src/quantumvitas/drivers/yambo/parser.py` — QPResult, SpectrumResult, YamboReportInfo + parsers
-- [x] `src/quantumvitas/drivers/yambo/artifact_resolver.py` — QE save dir + SAVE/ + GW QP DB resolution
+- [x] `src/qmatsuite/drivers/yambo/__init__.py` — `DriverRegistry.register(YamboDriver())`
+- [x] `src/qmatsuite/drivers/yambo/driver.py` — YamboDriver (PREFIX="yambo", 4 step types)
+- [x] `src/qmatsuite/drivers/yambo/handler.py` — yambo_step_handler (setup/gw/bse/optics)
+- [x] `src/qmatsuite/drivers/yambo/recipe.py` — YamboRecipe (ISOLATED workdir, SAVE symlink)
+- [x] `src/qmatsuite/drivers/yambo/writer.py` — GWParams, BSEParams, IPOpticsParams + writers
+- [x] `src/qmatsuite/drivers/yambo/parser.py` — QPResult, SpectrumResult, YamboReportInfo + parsers
+- [x] `src/qmatsuite/drivers/yambo/artifact_resolver.py` — QE save dir + SAVE/ + GW QP DB resolution
 - [x] `tests/integration/test_yambo_execution.py` — Raw execution + driver registration + parser + writer tests
 
 ### Gate Tests
@@ -49,7 +49,7 @@ and TDDFT calculations. It consumes DFT wavefunctions from Quantum ESPRESSO
 ## 2. Driver Bundle Structure
 
 ```
-src/quantumvitas/drivers/yambo/
+src/qmatsuite/drivers/yambo/
 ├── __init__.py              # DriverRegistry.register(YamboDriver())
 ├── driver.py                # YamboDriver class (PREFIX + SUPPORTED_GEN_STEPS)
 ├── handler.py               # yambo_step_handler function
@@ -151,8 +151,8 @@ calc/raw/
 ### Issue 1: Two StepTypeSpec classes — driver protocol vs workflow registry
 
 **Problem**: QMatSuite has two separate `StepTypeSpec` dataclasses:
-- `quantumvitas.core.driver_protocol.StepTypeSpec` — used by engine drivers. Fields: `step_type_spec`, `engine`, `executable`, `description`, `category`, `supports_restart`, `mpi_aware`. **No `step_type_gen` field.**
-- `quantumvitas.workflow.registry.StepTypeSpec` — used by the workflow system. Has `step_type_gen`, `requires_structure`, `produces_charge_density`, etc.
+- `qmatsuite.core.driver_protocol.StepTypeSpec` — used by engine drivers. Fields: `step_type_spec`, `engine`, `executable`, `description`, `category`, `supports_restart`, `mpi_aware`. **No `step_type_gen` field.**
+- `qmatsuite.workflow.registry.StepTypeSpec` — used by the workflow system. Has `step_type_gen`, `requires_structure`, `produces_charge_density`, etc.
 
 The gate test `test_step_type_declared_sets.py` builds GEN_SET and SPEC_SET from the workflow registry (`registry._types`), not from the driver protocol's StepTypeSpec. So registering step types only in the DriverRegistry (via `driver.get_step_type_specs()`) is insufficient — the gate test never sees the GEN types and fails with "undeclared SPEC type" violations.
 
@@ -161,8 +161,8 @@ All existing engines (QE, VASP, xTB, QMCPACK, etc.) have their step types regist
 **Solution**: Added yambo step types to `_STEP_TYPES` in `registry.py` with the workflow registry's StepTypeSpec (including `step_type_gen`). Also added `"yambo_"` to the `ENGINE_PREFIXES` tuple in `normalize_step_type_to_gen()`.
 
 **Lesson**: When adding a new engine, you must register step types in TWO places:
-1. `src/quantumvitas/drivers/<engine>/driver.py` → `get_step_type_specs()` (driver protocol StepTypeSpec)
-2. `src/quantumvitas/workflow/registry.py` → `_STEP_TYPES` dict (workflow registry StepTypeSpec)
+1. `src/qmatsuite/drivers/<engine>/driver.py` → `get_step_type_specs()` (driver protocol StepTypeSpec)
+2. `src/qmatsuite/workflow/registry.py` → `_STEP_TYPES` dict (workflow registry StepTypeSpec)
 
 ### Issue 2: Gate test passes in isolation, fails with all gates
 

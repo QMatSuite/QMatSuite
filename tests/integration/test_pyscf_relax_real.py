@@ -11,10 +11,10 @@ import time
 import uuid
 from pathlib import Path
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 # Removed compat import - use domain API
-from quantumvitas.core.paths import tmp_runs_dir
-from quantumvitas.execution.relax_artifacts import (
+from qmatsuite.core.paths import tmp_runs_dir
+from qmatsuite.execution.relax_artifacts import (
     get_generated_structure_path,
     read_generated_structure,
 )
@@ -60,7 +60,7 @@ def pyscf_project_with_h2():
     test_dir = tmp_runs_dir() / unique_id
     test_dir.mkdir(parents=True, exist_ok=True)
     
-    project_root = QVService.init_project(test_dir / "pyscf_relax_project")
+    project_root = QMSService.init_project(test_dir / "pyscf_relax_project")
     
     # Create H2 molecule (simple case for quick test)
     h2_molecule = Molecule(["H", "H"], [[0, 0, 0], [0.8, 0, 0]])
@@ -69,10 +69,10 @@ def pyscf_project_with_h2():
     structures_dir = project_root / "structures"
     structures_dir.mkdir(parents=True, exist_ok=True)
     
-    from quantumvitas.core.resources import generate_resource_id
+    from qmatsuite.core.resources import generate_resource_id
     structure_ulid = generate_resource_id()
     structure_data = {
-        "__qv_meta__": {
+        "__qms_meta__": {
             "ulid": structure_ulid,
             "name": "H2",
             "slug": "h2",
@@ -98,7 +98,7 @@ def pyscf_calculation_with_relax(pyscf_project_with_h2):
     structure_ulid = pyscf_project_with_h2["structure_ulid"]
     
     # Create calculation with molecule/pyscf settings
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="h2_relax",
         structure_selector=structure_ulid,
     )
@@ -117,7 +117,7 @@ def pyscf_calculation_with_relax(pyscf_project_with_h2):
     calc_yaml.write_text(yaml.dump(calc_data))
     
     # Create relax step
-    relax_step_dto = QVService(project_root).calculation.add_step(
+    relax_step_dto = QMSService(project_root).calculation.add_step(
         calc_ulid,
         step_type_gen="relax",  # GEN type for UI layer
         name="relax",
@@ -125,7 +125,7 @@ def pyscf_calculation_with_relax(pyscf_project_with_h2):
     relax_step_ulid = relax_step_dto.ulid
 
     # Configure relax step with minimal parameters for quick test
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     svc.calculation.update_step_params(
         calc_selector=calc_ulid,
         step_selector=relax_step_ulid,
@@ -165,7 +165,7 @@ class TestPySCFRelaxReal:
         project_root = pyscf_calculation_with_relax["project_root"]
         
         # Run the relax step
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.run.run_step(
             calc_selector=calc_ulid,
             step_selector=relax_step_ulid,
@@ -192,9 +192,9 @@ class TestPySCFRelaxReal:
         
         # Verify metadata
         data = json.loads(artifact_path.read_text())
-        assert "__qv_meta__" in data
-        assert data["__qv_meta__"]["source_step_ulid"] == relax_step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == "pyscf_relax"
+        assert "__qms_meta__" in data
+        assert data["__qms_meta__"]["source_step_ulid"] == relax_step_ulid
+        assert data["__qms_meta__"]["provenance"]["method"] == "pyscf_relax"
     
     def test_pyscf_relax_structure_changes(
         self,
@@ -211,12 +211,12 @@ class TestPySCFRelaxReal:
         project_root = pyscf_calculation_with_relax["project_root"]
         
         # Load initial structure
-        from quantumvitas.io import read_structure
+        from qmatsuite.io import read_structure
         initial_structure = read_structure(pyscf_project_with_h2["structure_path"])
         initial_distance = initial_structure.get_distance(0, 1)
         
         # Run the relax step
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.run.run_step(
             calc_selector=calc_ulid,
             step_selector=relax_step_ulid,

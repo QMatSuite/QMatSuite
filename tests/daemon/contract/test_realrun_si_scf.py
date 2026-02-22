@@ -18,14 +18,14 @@ RPC calls (daemon.handle_request), exactly as the GUI would.
 
 from pathlib import Path
 import pytest
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 from .conftest import send_request
 
 
 class TestRealRunSiSCF:
     """Real QE execution test for Si SCF calculation."""
 
-    def test_si_scf_complete_workflow(self, qe_project_with_si, daemon: QVDaemon, wait_for_job):
+    def test_si_scf_complete_workflow(self, qe_project_with_si, daemon: QMSDaemon, wait_for_job):
         """
         Complete Si SCF workflow from project creation to analysis.
 
@@ -49,7 +49,7 @@ class TestRealRunSiSCF:
         assert calc_ulid is not None, f"No calc ULID in response: {calc_response}"
 
         # --- User action 2: Select pseudopotential for Si ---
-        # The runner auto-stages from bundled src/quantumvitas/resources/pseudo/ at run time.
+        # The runner auto-stages from bundled src/qmatsuite/resources/pseudo/ at run time.
         # The user just picks the filename via the GUI species-map selector.
         send_request(daemon, "update_calculation_species_map", {
             "project_root": str(project_root),
@@ -171,7 +171,7 @@ class TestRealRunSiSCF:
             late_min = min(deltas[-min(3, len(deltas)):])
             assert late_min <= early_max, f"SCF deltas did not tighten toward the end: {deltas}"
 
-    def test_si_scf_preflight_check(self, qe_project_with_si, daemon: QVDaemon):
+    def test_si_scf_preflight_check(self, qe_project_with_si, daemon: QMSDaemon):
         """
         Test that preflight check passes for a properly configured Si SCF calc.
 

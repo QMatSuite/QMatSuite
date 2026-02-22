@@ -61,7 +61,7 @@ This is the conceptual contract for xTB relax:
 ## Files to Create
 
 ```
-src/quantumvitas/drivers/xtb/
+src/qmatsuite/drivers/xtb/
   __init__.py          # Register XTBDriver with DriverRegistry
   driver.py            # XTBDriver class (7-item MUST interface)
   handler.py           # xtb_step_handler function
@@ -74,14 +74,14 @@ src/quantumvitas/drivers/xtb/
 
 ### Mandatory (allowed by constitution)
 
-1. **`src/quantumvitas/drivers/__init__.py`** — Add import line:
+1. **`src/qmatsuite/drivers/__init__.py`** — Add import line:
    ```python
-   from quantumvitas.drivers import xtb
+   from qmatsuite.drivers import xtb
    ```
 
 ### Requires Explicit Approval
 
-2. **`src/quantumvitas/execution/relax_artifacts.py`** — Add xTB relax artifact handler:
+2. **`src/qmatsuite/execution/relax_artifacts.py`** — Add xTB relax artifact handler:
    ```python
    RELAX_ARTIFACT_HANDLERS["xtb_xyz"] = _handle_xtb_xyz
    ```
@@ -92,7 +92,7 @@ src/quantumvitas/drivers/xtb/
    ```python
    def _handle_xtb_xyz(spec, calc_dir, run_context):
        from pymatgen.core import Molecule
-       from quantumvitas.core.public import canonicalize_structure_like_in_place
+       from qmatsuite.core.public import canonicalize_structure_like_in_place
        # Read xtbopt.xyz (standard XYZ format)
        mol = Molecule.from_file(str(spec.artifact_path))
        canonicalize_structure_like_in_place(mol)
@@ -358,14 +358,14 @@ If xTB integrates cleanly as a driver plugin without modifying any kernel routin
 
 ## Implementation Order
 
-1. Create `src/quantumvitas/drivers/xtb/` directory structure
+1. Create `src/qmatsuite/drivers/xtb/` directory structure
 2. Implement `writer.py` (adapted from exploration utility)
 3. Implement `parser.py` (adapted from exploration utility)
 4. Implement `driver.py` (XTBDriver class)
 5. Implement `recipe.py` (XTBRecipe)
 6. Implement `handler.py` (xtb_step_handler)
 7. Implement `__init__.py` (registration)
-8. Add import to `src/quantumvitas/drivers/__init__.py`
+8. Add import to `src/qmatsuite/drivers/__init__.py`
 9. Add `_handle_xtb_xyz` to `relax_artifacts.py`
 10. Add tests (unit + integration)
 11. Run full test suite to verify no regressions

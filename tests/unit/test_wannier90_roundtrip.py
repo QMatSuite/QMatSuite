@@ -11,7 +11,7 @@ import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from quantumvitas.io.wannier90_input import (
+from qmatsuite.io.wannier90_input import (
     Wannier90Input,
     Pw2Wannier90Input,
     generate_kpoints_from_mp_grid,

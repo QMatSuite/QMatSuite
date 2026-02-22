@@ -2,13 +2,13 @@
 
 ## Overview
 
-Bond detection in QuantumVITAS uses a simple, deterministic algorithm based on Euclidean distance and covalent radii. This document explains the algorithm, parameters, and expected behavior.
+Bond detection in QMatSuite uses a simple, deterministic algorithm based on Euclidean distance and covalent radii. This document explains the algorithm, parameters, and expected behavior.
 
 ## Bond Detection Algorithm
 
 ### Single Source of Truth
 
-All bond detection goes through `build_bonds()` in `src/quantumvitas/analysis/structure_viz.py`, which uses a cell-list (neighbor-grid) algorithm by default, with brute-force as the gold standard for validation.
+All bond detection goes through `build_bonds()` in `src/qmatsuite/analysis/structure_viz.py`, which uses a cell-list (neighbor-grid) algorithm by default, with brute-force as the gold standard for validation.
 
 ### Bond Criterion
 
@@ -161,13 +161,13 @@ All tests use exact bond counts, not ranges:
 
 ## Code Locations
 
-- Bond detection: `src/quantumvitas/analysis/structure_viz.py`
+- Bond detection: `src/qmatsuite/analysis/structure_viz.py`
   - `build_bonds()`: Main entry point (line ~514)
   - `build_bonds_bruteforce()`: Gold standard (line ~322)
   - `build_bonds_cell_list()`: Accelerated (line ~391)
   - `detect_bonds()`: Legacy API wrapper (line ~610)
 
-- Canonicalization: `src/quantumvitas/analysis/structure_viz.py`
+- Canonicalization: `src/qmatsuite/analysis/structure_viz.py`
   - `canonicalize_structure_in_place()`: Entry point (line ~145)
   - `canonicalize_frac_coords()`: Core logic (line ~197)
 

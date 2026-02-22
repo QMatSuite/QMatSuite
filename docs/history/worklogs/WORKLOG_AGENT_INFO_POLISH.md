@@ -106,10 +106,10 @@ Added audit-identified items to `docs/plans/DEFERRED_ITEMS.md`:
 | `.mcp.json.example` | NEW — canonical MCP config with instructions field |
 | `.gitignore` | Added `.mcp.json` |
 | `~/qmatsuite-demo/.mcp.json` | Added `instructions` field |
-| `src/quantumvitas/mcp/tools/get_status.py` | Fixed misleading description |
-| `src/quantumvitas/mcp/tools/demo_store.py` | load_demo description + search_demos text index |
-| `src/quantumvitas/mcp/tools/preview_compilation.py` | Fixed context_hint |
-| `src/quantumvitas/mcp/search_index.py` | Added enum field to TagDoc, wired for all engines |
-| `src/quantumvitas/mcp/tools/search_parameters.py` | Added enum to output, description 200→400 |
+| `src/qmatsuite/mcp/tools/get_status.py` | Fixed misleading description |
+| `src/qmatsuite/mcp/tools/demo_store.py` | load_demo description + search_demos text index |
+| `src/qmatsuite/mcp/tools/preview_compilation.py` | Fixed context_hint |
+| `src/qmatsuite/mcp/search_index.py` | Added enum field to TagDoc, wired for all engines |
+| `src/qmatsuite/mcp/tools/search_parameters.py` | Added enum to output, description 200→400 |
 | `docs/plans/DEFERRED_ITEMS.md` | Added audit deferred items |
 | `docs/history/worklogs/WORKLOG_AGENT_INFO_POLISH.md` | This worklog |

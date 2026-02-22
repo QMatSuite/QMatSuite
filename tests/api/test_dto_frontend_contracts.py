@@ -13,10 +13,10 @@ Contracts tested:
 
 import pytest
 
-from quantumvitas.api.types.calculation import CalculationDTO
-from quantumvitas.api.types.common import MetaDTO
-from quantumvitas.api.types.run import RunResultDTO
-from quantumvitas.api.types.structure import StructureDTO
+from qmatsuite.api.types.calculation import CalculationDTO
+from qmatsuite.api.types.common import MetaDTO
+from qmatsuite.api.types.run import RunResultDTO
+from qmatsuite.api.types.structure import StructureDTO
 
 
 class TestStructureDTOContract:

@@ -15,7 +15,7 @@ QE_NAMELIST_KEYS = {"CONTROL", "SYSTEM", "ELECTRONS", "IONS", "CELL", "DOS"}
 
 def _create_step(step_type_gen: str, engine_family: str) -> dict:
     """Create a step via create_step_doc and return its data dict."""
-    from quantumvitas.workflow.step_factory import create_step_doc
+    from qmatsuite.workflow.step_factory import create_step_doc
     step_doc = create_step_doc(step_type_gen, name="test", engine_family=engine_family)
     return step_doc.to_dict()
 
@@ -52,7 +52,7 @@ class TestNoCrossEngineDefaults:
 
     def test_companion_w90_no_qe_namelists(self):
         """Wannier90 step must NOT inherit QE namelist defaults."""
-        from quantumvitas.calculation.step_defaults import get_default_step_params
+        from qmatsuite.calculation.step_defaults import get_default_step_params
         defaults = get_default_step_params("w90_wannierprep")
         params = defaults.get("parameters", {})
         leaked = set(params.keys()) & QE_NAMELIST_KEYS
@@ -60,7 +60,7 @@ class TestNoCrossEngineDefaults:
 
     def test_companion_qmcpack_no_qe_namelists(self):
         """QMCPACK step must NOT inherit QE namelist defaults."""
-        from quantumvitas.calculation.step_defaults import get_default_step_params
+        from qmatsuite.calculation.step_defaults import get_default_step_params
         defaults = get_default_step_params("qmcpack_vmc")
         params = defaults.get("parameters", {})
         leaked = set(params.keys()) & QE_NAMELIST_KEYS

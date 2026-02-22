@@ -35,7 +35,7 @@ C6H6.2_tl.in:  # ❌ 失败的文件
 **错误发生位置：**
 
 ```python
-# src/quantumvitas/calculation/importers.py:138
+# src/qmatsuite/calculation/importers.py:138
 def build_step_spec_from_qe_input(...):
     qe_input = QEInputParser.parse_file(input_path)
     structure = structure_from_qe_input(qe_input)  # ❌ 这里失败
@@ -43,7 +43,7 @@ def build_step_spec_from_qe_input(...):
 ```
 
 ```python
-# src/quantumvitas/io/structure_io.py:221
+# src/qmatsuite/io/structure_io.py:221
 def structure_from_qe_input(qe_input: QEInput) -> PMGStructure:
     # ...
     lattice = _lattice_from_cell_card(cell_card, system)
@@ -51,7 +51,7 @@ def structure_from_qe_input(qe_input: QEInput) -> PMGStructure:
 ```
 
 ```python
-# src/quantumvitas/io/structure_io.py:307
+# src/qmatsuite/io/structure_io.py:307
 def _lattice_from_cell_card(cell_card, system):
     if not cell_card:
         raise ValueError("CELL_PARAMETERS card required when ibrav == 0.")  # ❌ 错误在这里
@@ -151,8 +151,8 @@ for input_file in input_files:
 3. 或者使用前一步的结构
 
 **代码位置：**
-- `src/quantumvitas/calculation/importers.py:138` - 需要条件检查
-- `src/quantumvitas/api.py:4254` - `import_step_from_qe_input` 可能需要特殊处理
+- `src/qmatsuite/calculation/importers.py:138` - 需要条件检查
+- `src/qmatsuite/api.py:4254` - `import_step_from_qe_input` 可能需要特殊处理
 
 ### 方案 2: 改进预处理逻辑
 
@@ -171,7 +171,7 @@ for input_file in input_files:
 ### 错误触发点
 
 ```python
-# src/quantumvitas/io/structure_io.py:307
+# src/qmatsuite/io/structure_io.py:307
 def _lattice_from_cell_card(cell_card, system):
     if not cell_card:
         raise ValueError("CELL_PARAMETERS card required when ibrav == 0.")
@@ -181,7 +181,7 @@ def _lattice_from_cell_card(cell_card, system):
 ### 预处理逻辑
 
 ```python
-# src/quantumvitas/calculation/folder_import.py:175-201
+# src/qmatsuite/calculation/folder_import.py:175-201
 # Inject missing structure cards for ibrav=0 if a reference is available
 cell_card = qe_input.get_card(QECardType.CELL_PARAMETERS)
 if ibrav == 0 and not cell_card and reference_qe_input:
@@ -203,7 +203,7 @@ if ibrav == 0 and not cell_card and reference_qe_input:
 ### 导入流程
 
 ```python
-# src/quantumvitas/api.py:4254
+# src/qmatsuite/api.py:4254
 import_result = build_step_spec_from_qe_input(
     input_file=input_file,
     # ...

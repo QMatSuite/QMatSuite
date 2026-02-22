@@ -11,9 +11,9 @@ import shutil
 from pathlib import Path
 from typing import Dict, Any
 
-from quantumvitas.core.pseudo import ensure_qe_pseudos, PseudoResolutionResult
-from quantumvitas.io.model import QEInput, QENamelist, QECard, QECardType
-from quantumvitas.io.generator.qe_generator import QEInputGenerator
+from qmatsuite.core.pseudo import ensure_qe_pseudos, PseudoResolutionResult
+from qmatsuite.io.model import QEInput, QENamelist, QECard, QECardType
+from qmatsuite.io.generator.qe_generator import QEInputGenerator
 
 
 @pytest.fixture
@@ -56,7 +56,7 @@ def create_qe_input_with_placeholders(output_path: Path):
     system = QENamelist(name="SYSTEM", parameters={"ibrav": 0, "nat": 2, "ntyp": 1})
     
     # ATOMIC_SPECIES with placeholder (like what qe_input_from_structure creates)
-    from quantumvitas.core.pseudo import make_missing_pseudo_placeholder
+    from qmatsuite.core.pseudo import make_missing_pseudo_placeholder
     atomic_species_data = [
         ["Si", 28.0, make_missing_pseudo_placeholder("Si")]  # __MISSING_PSEUDO__Si
     ]
@@ -216,7 +216,7 @@ def test_ensure_qe_pseudos_species_map_placeholder_in_map_raises(temp_project, t
     qe_input_file = temp_project / "temp_input.in"
     create_qe_input_with_placeholders(qe_input_file)
     
-    from quantumvitas.core.pseudo import make_missing_pseudo_placeholder
+    from qmatsuite.core.pseudo import make_missing_pseudo_placeholder
     
     # Species map with placeholder (invalid configuration)
     species_map: Dict[str, Dict[str, Any]] = {
@@ -240,13 +240,13 @@ def test_ensure_qe_pseudos_species_map_placeholder_in_map_raises(temp_project, t
 
 def test_apply_species_overrides_pseudo_basename(temp_project):
     """Test that apply_species_overrides_to_qe_input handles pseudo_basename."""
-    from quantumvitas.calculation.input_runner import apply_species_overrides_to_qe_input
-    from quantumvitas.io.model import QEInput, QENamelist, QECard, QECardType
+    from qmatsuite.calculation.input_runner import apply_species_overrides_to_qe_input
+    from qmatsuite.io.model import QEInput, QENamelist, QECard, QECardType
     
     # Create QE input with placeholder
     control = QENamelist(name="CONTROL", parameters={"calculation": "scf"})
     system = QENamelist(name="SYSTEM", parameters={"ibrav": 0, "nat": 2, "ntyp": 1})
-    from quantumvitas.core.pseudo import make_missing_pseudo_placeholder
+    from qmatsuite.core.pseudo import make_missing_pseudo_placeholder
     atomic_species_data = [["Si", 28.0, make_missing_pseudo_placeholder("Si")]]
     atomic_species_card = QECard(
         card_type=QECardType.ATOMIC_SPECIES,

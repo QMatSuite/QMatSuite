@@ -19,7 +19,7 @@ This is intentional - these are "external dependency health checks".
 import time
 
 import pytest
-from quantumvitas.io.online_search import (
+from qmatsuite.io.online_search import (
     search_optimade,
     fetch_structure_from_optimade,
     OPTIMADE_BASES,

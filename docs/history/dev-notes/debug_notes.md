@@ -12,11 +12,11 @@ QE detection uses a **two-state model**:
 ### Key Functions
 
 - `resolve_qe_bin_dir(settings)`: Main resolver (two-state model)
-  - Location: `src/quantumvitas/core/engines/qe_resolver.py`
+  - Location: `src/qmatsuite/core/engines/qe_resolver.py`
   - Logs: `[QE_INIT]`, `[QE_STATE]`
   
 - `preflight_check()`: Uses `resolve_qe_bin_dir()` to ensure QE is initialized
-  - Location: `src/quantumvitas/api.py`
+  - Location: `src/qmatsuite/api.py`
   - Logs: `[PREFLIGHT]`
   - **Fix**: Now uses two-state resolver instead of legacy `get_qe_home()`
 
@@ -58,7 +58,7 @@ Pseudo options are scanned from:
 ### Key Functions
 
 - `get_pseudo_options_for_elements(project_root, elements)`: Main scanner
-  - Location: `src/quantumvitas/core/pseudo_options.py`
+  - Location: `src/qmatsuite/core/pseudo_options.py`
   - Logs: `[PSEUDO_SCAN]`
   
 - `_scan_pseudo_dir_cached(dir_path, element, ...)`: Cached directory scanner

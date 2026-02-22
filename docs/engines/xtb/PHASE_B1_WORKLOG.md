@@ -40,14 +40,14 @@ Status: COMPLETE
 
 ## 2026-02-07 — Driver implementation (B1)
 - Added xTB metadata catalog and API:
-  - `src/quantumvitas/drivers/xtb/data/xtb_tags.json` (82 tags)
-  - `src/quantumvitas/drivers/xtb/data/xtb_metadata.py`
+  - `src/qmatsuite/drivers/xtb/data/xtb_tags.json` (82 tags)
+  - `src/qmatsuite/drivers/xtb/data/xtb_metadata.py`
 - Added xTB io parser/writer module:
-  - `src/quantumvitas/drivers/xtb/io/xtb_input.py`
-  - `src/quantumvitas/drivers/xtb/inputspec.py` updated to delegate writer+parser hooks
+  - `src/qmatsuite/drivers/xtb/io/xtb_input.py`
+  - `src/qmatsuite/drivers/xtb/inputspec.py` updated to delegate writer+parser hooks
 - Added xTB output digest parser and registry wiring:
-  - `src/quantumvitas/drivers/xtb/parsers/output.py`
-  - `src/quantumvitas/drivers/xtb/__init__.py` imports parsers for registration
+  - `src/qmatsuite/drivers/xtb/parsers/output.py`
+  - `src/qmatsuite/drivers/xtb/__init__.py` imports parsers for registration
 - Extended command builder/parser helpers to cover more runtype/mode flags.
 
 ## 2026-02-07 — Curated inputs (committed)
@@ -127,7 +127,7 @@ Status: COMPLETE
   - Command: `python -m pytest tests/drivers/xtb tests/inputformat/test_xtb_parse.py tests/inputformat/test_xtb_digest.py tests/integration/test_xtb_execution.py -v --tb=short -n 0`
   - Result: `64 passed`
 - Digest/analyzer status:
-  - implemented (`src/quantumvitas/drivers/xtb/parsers/output.py`)
+  - implemented (`src/qmatsuite/drivers/xtb/parsers/output.py`)
   - registered via driver import path
   - validated on synthetic + real-run outputs
 

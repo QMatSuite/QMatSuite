@@ -8,11 +8,11 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from quantumvitas.cli.main import app
-from quantumvitas.core.resources import get_resources_dir, slugify
-from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.qe_calculation import StepResult
+from qmatsuite.cli.main import app
+from qmatsuite.core.resources import get_resources_dir, slugify
+from qmatsuite.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.qe_calculation import StepResult
 from tests.core.qe_step_verification import verify_step_result
 from tests.core.test_data import load_test_cases
 
@@ -86,7 +86,7 @@ def test_cli_show_command_executes_against_references(
     qe_engine: QuantumEspressoEngine,
 ):
     runner = CliRunner()
-    from quantumvitas.core.paths import tmp_runs_dir
+    from qmatsuite.core.paths import tmp_runs_dir
     run_id = f"run_{int(time.time())}_{uuid.uuid4().hex[:8]}"
     base_dir = tmp_runs_dir() / "cli_show_command_exec" / run_id
     base_dir.mkdir(parents=True, exist_ok=False)
@@ -156,7 +156,7 @@ def test_cli_show_command_executes_against_references(
         init_line = next(
             line.strip()
             for line in show_output.stdout.splitlines()
-            if line.strip().startswith("qv init step")
+            if line.strip().startswith("qms init step")
         )
         init_args = shlex.split(init_line)[1:]
         # Now show-command doesn't include --structure, so we add it explicitly
@@ -188,8 +188,8 @@ def test_cli_show_command_executes_against_references(
         calculation_yaml = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())
         last_step = calculation_yaml["steps"][-1]
         # With ID-only model, resolve step file via step_id
-        from quantumvitas.core.resolution import resolve_step, build_resource_index
-        from quantumvitas.core.project_utils import load_project_config
+        from qmatsuite.core.resolution import resolve_step, build_resource_index
+        from qmatsuite.core.project_utils import load_project_config
         config = load_project_config(project_root)
         index = build_resource_index(project_root)
         step_id = last_step.get("step_ulid") or last_step.get("ulid")

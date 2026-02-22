@@ -1,14 +1,14 @@
 """
 Test calculation read capabilities.
 
-Tests for the calculation domain in QVService.
+Tests for the calculation domain in QMSService.
 """
 
 import pytest
 from pathlib import Path
 
-from quantumvitas.api.service import QVService
-from quantumvitas.api.types.calculation import CalculationDTO, StepDTO
+from qmatsuite.api.service import QMSService
+from qmatsuite.api.types.calculation import CalculationDTO, StepDTO
 
 
 def test_calculation_get_returns_dto(tmp_path):
@@ -16,9 +16,9 @@ def test_calculation_get_returns_dto(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     # This will fail because we need proper calculation setup, but tests the structure
     try:
@@ -37,9 +37,9 @@ def test_calculation_list_returns_dtos(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         calcs = svc.calculation.list()
@@ -55,9 +55,9 @@ def test_calculation_get_step_returns_dto(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         step = svc.calculation.get_step("test_calc", "step1")
@@ -76,9 +76,9 @@ def test_calculation_list_steps_returns_dtos(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         steps = svc.calculation.list_steps("test_calc")
@@ -94,9 +94,9 @@ def test_calculation_get_effective_params_returns_dict(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\ncalculations: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\ncalculations: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         params = svc.calculation.get_effective_params("test_calc")

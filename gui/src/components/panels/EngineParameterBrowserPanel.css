@@ -228,7 +228,7 @@
 
 /* Filters */
 /* Reload button */
-.qv-param-reload-button {
+.qms-param-reload-button {
   font-size: 0.85rem;
   padding: 0.4rem 0.75rem;
   background: var(--bg-secondary);
@@ -242,13 +242,13 @@
   gap: 0.4rem;
 }
 
-.qv-param-reload-button:hover:not(:disabled) {
+.qms-param-reload-button:hover:not(:disabled) {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--text-on-primary);
 }
 
-.qv-param-reload-button:disabled {
+.qms-param-reload-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -336,26 +336,26 @@
 }
 
 /* Inline sort controls */
-.qv-row-between {
+.qms-row-between {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
 }
 
-.qv-field-label {
+.qms-field-label {
   margin-bottom: 0.5rem;
 }
 
 /* Inline filter group labels (no bottom margin when inline) */
-.qe-parameter-browser__filter-group .qv-field-label {
+.qe-parameter-browser__filter-group .qms-field-label {
   margin-bottom: 0;
   white-space: nowrap;
   width: auto;
   flex-shrink: 0;
 }
 
-.qv-icon-button {
+.qms-icon-button {
   padding: 0.25rem 0.5rem;
   background: transparent;
   border: 1px solid var(--border-color);
@@ -370,18 +370,18 @@
   justify-content: center;
 }
 
-.qv-icon-button:hover {
+.qms-icon-button:hover {
   background: var(--bg-hover, rgba(0, 0, 0, 0.05));
   border-color: var(--color-primary);
   color: var(--text-primary);
 }
 
-.qv-icon-button:active {
+.qms-icon-button:active {
   background: var(--color-primary-alpha, rgba(59, 130, 246, 0.1));
 }
 
 /* Sort button styling to match parameter table headers */
-.qv-sort-button {
+.qms-sort-button {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -395,17 +395,17 @@
   min-width: auto;
 }
 
-.qv-sort-button:hover {
+.qms-sort-button:hover {
   background: var(--bg-hover, rgba(0, 0, 0, 0.05));
   border-color: var(--color-primary);
 }
 
-.qv-sort-label {
+.qms-sort-label {
   font-size: 0.7rem;
   color: var(--text-secondary);
 }
 
-.qv-sort-icon {
+.qms-sort-icon {
   font-size: 0.75rem;
   line-height: 1;
   color: var(--text-primary);
@@ -413,7 +413,7 @@
 }
 
 /* Sortable table headers */
-.qv-sortable-header {
+.qms-sortable-header {
   cursor: pointer;
   user-select: none;
   transition: background-color 0.2s;
@@ -421,11 +421,11 @@
   padding-right: 1.5rem;
 }
 
-.qv-sortable-header:hover {
+.qms-sortable-header:hover {
   background: var(--bg-hover, rgba(0, 0, 0, 0.05));
 }
 
-.qv-sort-indicator {
+.qms-sort-indicator {
   position: absolute;
   right: 0.5rem;
   top: 50%;
@@ -493,7 +493,7 @@
 }
 
 /* Fixed layout table container - only vertical scrolling, no horizontal scroll */
-.qv-param-table-container {
+.qms-param-table-container {
   width: 100%;
   max-height: 400px;
   overflow-y: auto;
@@ -506,7 +506,7 @@
  * Column resize is done by adjusting two neighboring column widths in percentage space
  * while avoiding horizontal scrolling.
  */
-.qv-param-table {
+.qms-param-table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed; /* IMPORTANT: fixed layout */
@@ -527,7 +527,7 @@
   font-size: 0.875rem;
 }
 
-.qv-param-table thead,
+.qms-param-table thead,
 .qe-parameter-browser__parameters-table thead {
   position: sticky;
   top: 0;
@@ -535,7 +535,7 @@
   z-index: 10;
 }
 
-.qv-param-table th,
+.qms-param-table th,
 .qe-parameter-browser__parameters-table th {
   padding: 0.75rem 1rem;
   text-align: left;
@@ -548,7 +548,7 @@
 }
 
 /* Header content container for sort indicators */
-.qv-param-header-content {
+.qms-param-header-content {
   display: flex;
   align-items: center;
   width: 100%;
@@ -556,7 +556,7 @@
 }
 
 /* Sort indicator in table headers */
-.qv-param-header-content .qv-sort-indicator {
+.qms-param-header-content .qms-sort-indicator {
   margin-left: 0.25rem;
   display: inline;
   font-size: 0.7rem;
@@ -564,7 +564,7 @@
 }
 
 /* Column resizer handle - absolutely positioned at right edge of header */
-.qv-param-col-resizer {
+.qms-param-col-resizer {
   position: absolute;
   top: 0;
   right: 0;
@@ -578,38 +578,38 @@
   -webkit-user-select: none;
 }
 
-.qv-param-col-resizer:hover {
+.qms-param-col-resizer:hover {
   background-color: rgba(0, 0, 0, 0.08);
 }
 
 /* Ensure table headers are positioned relative for absolute resizer positioning */
-.qv-param-table th {
+.qms-param-table th {
   position: relative;
 }
 
 /* Parameter row - compact by default, expands when selected */
-.qv-param-row {
+.qms-param-row {
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.qv-param-row:hover {
+.qms-param-row:hover {
   background: var(--bg-hover, rgba(0, 0, 0, 0.02));
 }
 
 /* Selected row - expanded to show full text */
-.qv-param-row--selected {
-  background-color: var(--qv-row-selected-bg, rgba(0, 128, 255, 0.05));
+.qms-param-row--selected {
+  background-color: var(--qms-row-selected-bg, rgba(0, 128, 255, 0.05));
 }
 
-.qv-param-row--selected:hover {
-  background-color: var(--qv-row-selected-bg, rgba(0, 128, 255, 0.08));
+.qms-param-row--selected:hover {
+  background-color: var(--qms-row-selected-bg, rgba(0, 128, 255, 0.08));
 }
 
 /* Parameter cell - compact (single line with ellipsis) by default
  * Non-selected rows are forced into single-line ellipsis for compact view.
  */
-.qv-param-cell {
+.qms-param-cell {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -622,14 +622,14 @@
 /* Selected row cells - allow wrapping to show full text
  * The selected row removes ellipsis and wraps text to show full content.
  */
-.qv-param-row--selected .qv-param-cell {
+.qms-param-row--selected .qms-param-cell {
   white-space: normal; /* allow wrapping */
   overflow: visible;
   text-overflow: unset;
 }
 
 /* Emphasize selected parameter name */
-.qv-param-row--selected .qv-param-col-name strong {
+.qms-param-row--selected .qms-param-col-name strong {
   font-weight: 700;
   color: var(--color-primary);
 }
@@ -690,13 +690,13 @@
 }
 
 /* In compact mode, enum values should not wrap (ellipsis will handle overflow) */
-.qv-param-cell .qe-parameter-browser__enum-values {
+.qms-param-cell .qe-parameter-browser__enum-values {
   flex-wrap: nowrap;
   overflow: hidden;
 }
 
 /* In selected row, enum values can wrap to show all values */
-.qv-param-row--selected .qv-param-cell .qe-parameter-browser__enum-values {
+.qms-param-row--selected .qms-param-cell .qe-parameter-browser__enum-values {
   flex-wrap: wrap;
   overflow: visible;
 }
@@ -724,11 +724,11 @@
 }
 
 /* Column-specific styles for parameter cells */
-.qv-param-col-name {
+.qms-param-col-name {
   /* Name column - already has strong tag for emphasis */
 }
 
-.qv-param-section-badge {
+.qms-param-section-badge {
   display: inline-block;
   font-size: 0.7em;
   font-weight: 500;
@@ -741,19 +741,19 @@
   font-family: var(--font-mono, monospace);
 }
 
-.qv-param-col-type {
+.qms-param-col-type {
   font-family: var(--font-mono, monospace);
 }
 
-.qv-param-col-default {
+.qms-param-col-default {
   font-family: var(--font-mono, monospace);
 }
 
-.qv-param-col-enum {
+.qms-param-col-enum {
   /* Enum column - uses flex wrap for tags */
 }
 
-.qv-param-col-description {
+.qms-param-col-description {
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -790,7 +790,7 @@
 }
 
 /* Global Search Results Panel */
-.qv-global-search-panel {
+.qms-global-search-panel {
   margin-bottom: 1.5rem;
   padding: 1rem;
   background: var(--bg-card);
@@ -798,7 +798,7 @@
   border-radius: 8px;
 }
 
-.qv-global-search-header {
+.qms-global-search-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -807,14 +807,14 @@
   color: var(--text-primary);
 }
 
-.qv-global-search-hint {
+.qms-global-search-hint {
   font-size: 0.8rem;
   font-weight: 400;
   color: var(--text-secondary);
   font-style: italic;
 }
 
-.qv-global-search-loading {
+.qms-global-search-loading {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -822,14 +822,14 @@
   color: var(--text-secondary);
 }
 
-.qv-global-search-empty {
+.qms-global-search-empty {
   padding: 2rem;
   text-align: center;
   color: var(--text-secondary);
   font-style: italic;
 }
 
-.qv-global-search-table-container {
+.qms-global-search-table-container {
   max-height: 300px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -837,20 +837,20 @@
   border-radius: 4px;
 }
 
-.qv-global-search-table {
+.qms-global-search-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
 
-.qv-global-search-table thead {
+.qms-global-search-table thead {
   position: sticky;
   top: 0;
   background: var(--bg-secondary);
   z-index: 10;
 }
 
-.qv-global-search-table th {
+.qms-global-search-table th {
   padding: 0.5rem 0.75rem;
   text-align: left;
   font-weight: 600;
@@ -861,28 +861,28 @@
   letter-spacing: 0.05em;
 }
 
-.qv-global-search-table td {
+.qms-global-search-table td {
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
 }
 
-.qv-global-search-row {
+.qms-global-search-row {
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.qv-global-search-row:hover {
+.qms-global-search-row:hover {
   background: var(--bg-hover, rgba(0, 0, 0, 0.02));
 }
 
 /* Primary matches (name matches) - normal styling */
-.qv-global-result-primary {
+.qms-global-result-primary {
   /* Default styling - no special class needed */
 }
 
 /* Secondary matches (non-name matches) - greyed out */
-.qv-global-result-secondary {
+.qms-global-result-secondary {
   opacity: 0.7;
 }
 
@@ -949,19 +949,19 @@
   padding: 0;
 }
 
-.qe-search-popover-body .qv-global-search-loading,
-.qe-search-popover-body .qv-global-search-empty,
+.qe-search-popover-body .qms-global-search-loading,
+.qe-search-popover-body .qms-global-search-empty,
 .qe-search-popover-body .qe-parameter-browser__error {
   padding: 1.5rem;
 }
 
-.qe-search-popover-body .qv-global-search-table-container {
+.qe-search-popover-body .qms-global-search-table-container {
   max-height: none;
   border: none;
   border-radius: 0;
 }
 
-.qv-global-result-secondary:hover {
+.qms-global-result-secondary:hover {
   opacity: 0.8;
   font-style: italic;
 }

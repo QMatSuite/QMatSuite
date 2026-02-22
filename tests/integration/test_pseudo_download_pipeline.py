@@ -25,14 +25,14 @@ class TestRegistry:
     """Test PseudoRegistry from vendored manifest (no network)."""
 
     def test_load_manifest(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         assert len(registry._archives) > 0, "Manifest should have archives"
         assert len(registry._by_key) > 0, "Should have keyed entries"
 
     def test_list_libraries(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         libs = registry.list_libraries()
@@ -48,7 +48,7 @@ class TestRegistry:
         assert "scan_tm" in lib_keys
 
     def test_resolve_sssp_precision(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("sssp", variant="precision", version="1.3.0")
@@ -60,7 +60,7 @@ class TestRegistry:
         assert len(info.companions) == 1  # cutoffs JSON
 
     def test_resolve_sssp_efficiency(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("sssp", variant="efficiency", version="1.3.0")
@@ -69,21 +69,21 @@ class TestRegistry:
         assert info.sha256 == "7a85b71fa3d68df1b5ed33c55c7057681fbf10377ae3b3eac9392924d9189f12"
 
     def test_resolve_default_variant(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("sssp")
         assert info.variant == "precision"  # default for sssp
 
     def test_resolve_latest_version(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("sssp", variant="precision", version="latest")
         assert info.version == "1.3.0"
 
     def test_resolve_pseudodojo(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("pseudodojo", variant="nc-sr_pbe_standard")
@@ -92,7 +92,7 @@ class TestRegistry:
         assert "nc-sr" in info.variant
 
     def test_resolve_gbrv(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("gbrv", variant="pbe")
@@ -100,7 +100,7 @@ class TestRegistry:
         assert info.version == "1.5"
 
     def test_resolve_sg15(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("sg15")
@@ -108,7 +108,7 @@ class TestRegistry:
         assert info.variant == "oncv"
 
     def test_resolve_hgh(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("hgh")
@@ -116,42 +116,42 @@ class TestRegistry:
         assert info.variant == "default"
 
     def test_resolve_gipaw(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("gipaw")
         assert info.library_key == "gipaw"
 
     def test_resolve_scan_tm(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("scan_tm")
         assert info.library_key == "scan_tm"
 
     def test_resolve_pslibrary(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("ps-library")
         assert info.library_key == "ps-library"
 
     def test_resolve_unknown_library_raises(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         with pytest.raises(ValueError, match="Unknown library"):
             registry.resolve("nonexistent_library")
 
     def test_resolve_unknown_variant_raises(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         with pytest.raises(ValueError, match="No archive found"):
             registry.resolve("sssp", variant="nonexistent_variant")
 
     def test_list_variants(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         variants = registry.list_variants("sssp")
@@ -159,14 +159,14 @@ class TestRegistry:
         assert "efficiency" in variants
 
     def test_list_variants_pseudodojo(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         variants = registry.list_variants("pseudodojo")
         assert len(variants) > 5  # Many PseudoDojo variants
 
     def test_get_default_variant(self):
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         assert registry.get_default_variant("sssp") == "precision"
@@ -175,7 +175,7 @@ class TestRegistry:
 
     def test_archive_info_companions(self):
         """SSSP archives should have companion cutoffs JSON."""
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("sssp", variant="precision")
@@ -184,7 +184,7 @@ class TestRegistry:
 
     def test_archive_info_no_companions_for_non_sssp(self):
         """Non-SSSP archives should have no companions."""
-        from quantumvitas.pseudo.registry import PseudoRegistry
+        from qmatsuite.pseudo.registry import PseudoRegistry
 
         registry = PseudoRegistry()
         info = registry.resolve("sg15")
@@ -202,7 +202,7 @@ _PIPELINE_TEST_DIR = None
 def _get_test_dir() -> Path:
     global _PIPELINE_TEST_DIR
     if _PIPELINE_TEST_DIR is None:
-        from quantumvitas.core.paths import get_qmatsuite_tmp_root
+        from qmatsuite.core.paths import get_qmatsuite_tmp_root
 
         _PIPELINE_TEST_DIR = get_qmatsuite_tmp_root() / "test_pseudo_pipeline"
         _PIPELINE_TEST_DIR.mkdir(parents=True, exist_ok=True)
@@ -217,7 +217,7 @@ class TestSSPPrecisionDownload:
     """Full pipeline test for SSSP precision (mandatory, ~60MB)."""
 
     def test_download_sssp_precision(self):
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         result = download_and_install(
             library="sssp", variant="precision", version="1.3.0"
@@ -230,7 +230,7 @@ class TestSSPPrecisionDownload:
 
     def test_head_json_exists(self):
         """After download, head.json should exist at install level (not root)."""
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
 
         install_dir = home_pseudo_libraries_dir() / "SSSP" / "precision" / "1.3.0"
         head = install_dir / "head.json"
@@ -242,7 +242,7 @@ class TestSSPPrecisionDownload:
 
     def test_upfs_in_install_dir(self):
         """UPF files should be in the variant/version subdirectory."""
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
 
         upf_dir = home_pseudo_libraries_dir() / "SSSP" / "precision" / "1.3.0"
         assert upf_dir.is_dir()
@@ -251,7 +251,7 @@ class TestSSPPrecisionDownload:
 
     def test_idempotent_rerun(self):
         """Second run should detect already installed and skip."""
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         result = download_and_install(
             library="sssp", variant="precision", version="1.3.0"
@@ -265,8 +265,8 @@ class TestSSPPrecisionDownload:
         Uses a before/after snapshot so concurrent downloads on other
         parallel test workers don't cause false positives.
         """
-        from quantumvitas.core.paths import tmp_downloads_dir
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.core.paths import tmp_downloads_dir
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         dl_dir = tmp_downloads_dir()
 
@@ -309,7 +309,7 @@ class TestRepresentativeLibraries:
         ids=["pseudodojo-5MB", "gbrv-13MB", "sg15-6MB", "scan_tm-1MB"],
     )
     def test_download_library(self, library, variant, version, min_upfs):
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         result = download_and_install(
             library=library, variant=variant, version=version
@@ -321,7 +321,7 @@ class TestRepresentativeLibraries:
 
     def test_download_gipaw(self):
         """GIPAW is a zip, not tar.gz — tests zip extraction path."""
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         result = download_and_install(library="gipaw")
         assert result["success"], f"GIPAW failed: {result.get('errors')}"
@@ -329,7 +329,7 @@ class TestRepresentativeLibraries:
 
     def test_download_hgh(self):
         """HGH is ~30MB tar.gz — tests another tar.gz extraction path."""
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         result = download_and_install(library="hgh")
         assert result["success"], f"HGH failed: {result.get('errors')}"
@@ -345,15 +345,15 @@ class TestResolutionIntegration:
 
     def test_resolution_finds_sssp(self, tmp_path):
         """resolve_project_pseudos should find SSSP UPFs via head.json."""
-        from quantumvitas.core.pseudo_config import (
+        from qmatsuite.core.pseudo_config import (
             PseudoConfig,
             PseudoResolutionRequest,
             resolve_project_pseudos,
         )
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
 
         # Make sure SSSP is installed
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         install_result = download_and_install(
             library="sssp", variant="precision", version="1.3.0"

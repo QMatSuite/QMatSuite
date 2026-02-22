@@ -1,7 +1,7 @@
 """
 Gate test: Daemon _handle_* methods must NOT contain direct YAML/model writes.
 
-All YAML writes and model saves must go through QVService methods.
+All YAML writes and model saves must go through QMSService methods.
 This prevents "second truth" where daemon handlers bypass the API layer.
 """
 
@@ -15,11 +15,11 @@ import pytest
 
 
 def _get_handler_methods():
-    """Get all _handle_* methods from QVDaemon."""
-    from quantumvitas.daemon.server import QVDaemon
+    """Get all _handle_* methods from QMSDaemon."""
+    from qmatsuite.daemon.server import QMSDaemon
 
     methods = []
-    for name, method in inspect.getmembers(QVDaemon, predicate=inspect.isfunction):
+    for name, method in inspect.getmembers(QMSDaemon, predicate=inspect.isfunction):
         if name.startswith("_handle_"):
             methods.append((name, method))
     return methods
@@ -57,6 +57,6 @@ class TestDaemonNoYamlWrite:
                     violations.append(f"{name} calls .{func.attr}() directly")
 
         assert not violations, (
-            f"Daemon handler(s) bypass QVService with direct model saves:\n"
+            f"Daemon handler(s) bypass QMSService with direct model saves:\n"
             + "\n".join(f"  - {v}" for v in violations)
         )

@@ -50,8 +50,8 @@ def create_calculation_project(
             shutil.copy2(source_dir / "reference" / reference_name, dest)
 
     # GUARD: Never use repo_root as project_root (tests must use tmp directories)
-    from quantumvitas.core.pseudo_config import _find_quantumvitas_root
-    repo_root = _find_quantumvitas_root()
+    from qmatsuite.core.pseudo_config import _find_qmatsuite_root
+    repo_root = _find_qmatsuite_root()
     if repo_root and project_root.resolve() == repo_root.resolve():
         raise RuntimeError(
             f"BUG: create_calculation_project called with project_root=repo_root ({project_root}). "
@@ -62,9 +62,9 @@ def create_calculation_project(
     shutil.copytree(pseudo_src, project_pseudo_dir)
 
     # Extract structure from the first input file (SCF step typically has the structure)
-    from quantumvitas.core.resources import generate_resource_id, meta_from_name
-    from quantumvitas.io.parser.qe_parser import QEInputParser
-    from quantumvitas.io.structure_io import structure_from_qe_input, write_structure
+    from qmatsuite.core.resources import generate_resource_id, meta_from_name
+    from qmatsuite.io.parser.qe_parser import QEInputParser
+    from qmatsuite.io.structure_io import structure_from_qe_input, write_structure
     
     structure_ulid = generate_resource_id()
     structures_dir = project_root / "structures"
@@ -90,7 +90,7 @@ def create_calculation_project(
     if not structure_extracted:
         structure_meta = meta_from_name("structure", name="test_structure", path="structures/test_structure.json")
         structure_meta.ulid = structure_ulid
-        from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
+        from qmatsuite.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
         import json
         structure_json = {
             STRUCTURE_META_KEY: structure_meta.to_dict(),
@@ -118,14 +118,14 @@ def create_calculation_project(
         ],
         "settings": {},
     }
-    (project_root / "project.qv.yml").write_text(
+    (project_root / "project.qms.yml").write_text(
         yaml.safe_dump(project_config, sort_keys=False)
     )
 
     # Create step files with proper meta (ID-only model)
-    from quantumvitas.core.resources import generate_resource_id, meta_from_name
-    from quantumvitas.io.parser.qe_parser import QEInputParser
-    from quantumvitas.calculation.importers import _build_step_spec_from_qe_input_data
+    from qmatsuite.core.resources import generate_resource_id, meta_from_name
+    from qmatsuite.io.parser.qe_parser import QEInputParser
+    from qmatsuite.calculation.importers import _build_step_spec_from_qe_input_data
     steps_dir = calculation_dir / "steps"
     steps_dir.mkdir(parents=True, exist_ok=True)
     
@@ -153,8 +153,8 @@ def create_calculation_project(
                 # Extract species_overrides from ATOMIC_SPECIES card (if present)
                 # This ensures pseudopotential filenames from original .in files are preserved
                 # in step.yaml, so generation doesn't create placeholders
-                from quantumvitas.io.model import QECardType
-                from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+                from qmatsuite.io.model import QECardType
+                from qmatsuite.core.pseudo import is_missing_pseudo_placeholder
                 atomic_species_card = qe_input.get_card(QECardType.ATOMIC_SPECIES)
                 if atomic_species_card and atomic_species_card.data:
                     for row in atomic_species_card.data:

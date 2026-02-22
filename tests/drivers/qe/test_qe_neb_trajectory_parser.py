@@ -6,10 +6,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.core.analysis.trajectory import Trajectory
-from quantumvitas.drivers.qe.parsers.neb_trajectory import QENEBTrajectoryProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.core.analysis.trajectory import Trajectory
+from qmatsuite.drivers.qe.parsers.neb_trajectory import QENEBTrajectoryProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_qe_neb_trajectory"

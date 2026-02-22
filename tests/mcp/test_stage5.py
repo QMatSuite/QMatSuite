@@ -9,7 +9,7 @@ scripted scenarios that mimic real agent behavior.
 - Context hint chain (no QE needed)
 - Error handling (no QE needed)
 
-Shared fixtures (qv_project, qe_available, qe_project_with_si) are in conftest.py.
+Shared fixtures (qms_project, qe_available, qe_project_with_si) are in conftest.py.
 """
 
 from __future__ import annotations
@@ -18,15 +18,15 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
 def _setup_si_scf_calc(project_root: Path) -> str:
     """Create a QE SCF calc with species_map and ecutwfc=20.0. Returns calc_ulid."""
-    from quantumvitas.mcp.tools.create_calculation import create_calculation
-    from quantumvitas.mcp.tools.set_parameters import set_parameters
+    from qmatsuite.mcp.tools.create_calculation import create_calculation
+    from qmatsuite.mcp.tools.set_parameters import set_parameters
 
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
 
     result = create_calculation.fn(
         engine="qe", workflow="scf", structure_selector="si",
@@ -62,13 +62,13 @@ class TestScenarioAPresetPath:
     """
 
     def test_scenario_a_full_journey(self, qe_project_with_si):
-        from quantumvitas.mcp.tools.list_workflows import list_workflows
-        from quantumvitas.mcp.tools.get_presets import get_presets
-        from quantumvitas.mcp.tools.preview_compilation import preview_compilation
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.list_workflows import list_workflows
+        from qmatsuite.mcp.tools.get_presets import get_presets
+        from qmatsuite.mcp.tools.preview_compilation import preview_compilation
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
 
-        svc = QVService(qe_project_with_si)
+        svc = QMSService(qe_project_with_si)
 
         # 1. Discovery — list workflows for QE
         wf = list_workflows.fn(engine="qe")
@@ -124,15 +124,15 @@ class TestScenarioBManualPath:
     """
 
     def test_scenario_b_full_journey(self, qe_project_with_si):
-        from quantumvitas.mcp.tools.search_parameters import search_parameters
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
+        from qmatsuite.mcp.tools.search_parameters import search_parameters
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
 
-        svc = QVService(qe_project_with_si)
+        svc = QMSService(qe_project_with_si)
 
         # 1. Search for relevant parameters
         params = search_parameters.fn(query="cutoff energy", engine="qe")
@@ -205,9 +205,9 @@ class TestKnowledgeConsultation:
     @pytest.fixture(autouse=True)
     def _patch_knowledge(self, tmp_path, monkeypatch):
         """Patch the search_knowledge tool to use a temp DB."""
-        from quantumvitas.mcp.knowledge.store import KnowledgeStore
-        from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
-        import quantumvitas.mcp.tools.search_knowledge as mod
+        from qmatsuite.mcp.knowledge.store import KnowledgeStore
+        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
+        import qmatsuite.mcp.tools.search_knowledge as mod
 
         db_path = tmp_path / "knowledge" / "test.db"
         build_builtin_db(output_path=db_path)
@@ -219,7 +219,7 @@ class TestKnowledgeConsultation:
 
     def test_knowledge_before_configuration(self):
         """search_knowledge for metal smearing tips returns actionable results."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         tips = search_knowledge.fn(query="smearing metals")
         assert tips["status"] == "success"
@@ -229,7 +229,7 @@ class TestKnowledgeConsultation:
 
     def test_knowledge_hint_guides_to_parameters(self):
         """Knowledge results hint at using insights for parameter choices."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query="SCF convergence")
         assert result["status"] == "success"
@@ -245,11 +245,11 @@ class TestKnowledgeConsultation:
 class TestContextHintChain:
     """Verify context_hints form a logical chain guiding the agent."""
 
-    def test_discovery_chain(self, qv_project):
+    def test_discovery_chain(self, qms_project):
         """list_engines -> list_workflows -> get_presets hints chain correctly."""
-        from quantumvitas.mcp.tools.list_engines import list_engines
-        from quantumvitas.mcp.tools.list_workflows import list_workflows
-        from quantumvitas.mcp.tools.get_presets import get_presets
+        from qmatsuite.mcp.tools.list_engines import list_engines
+        from qmatsuite.mcp.tools.list_workflows import list_workflows
+        from qmatsuite.mcp.tools.get_presets import get_presets
 
         # list_engines -> should mention list_workflows
         engines = list_engines.fn()
@@ -264,11 +264,11 @@ class TestContextHintChain:
         hint = presets.get("context_hint", "")
         assert "preview_compilation" in hint or "quick_run" in hint
 
-    def test_configuration_chain(self, qv_project):
+    def test_configuration_chain(self, qms_project):
         """create_calculation -> set_parameters -> inspect -> run hints chain."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         # Create
         result = create_calculation.fn(
@@ -306,46 +306,46 @@ class TestContextHintChain:
 class TestErrorHandlingGraceful:
     """Bad inputs produce structured errors, not stack traces."""
 
-    def test_invalid_engine(self, qv_project):
-        from quantumvitas.mcp.tools.list_workflows import list_workflows
+    def test_invalid_engine(self, qms_project):
+        from qmatsuite.mcp.tools.list_workflows import list_workflows
 
         result = list_workflows.fn(engine="nonexistent_engine")
         assert result["status"] == "error"
         assert "error_type" in result
 
-    def test_invalid_calc_ulid_run(self, qv_project):
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
+    def test_invalid_calc_ulid_run(self, qms_project):
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
 
         result = run_calculation.fn(calc_ulid="NONEXISTENT")
         assert result["status"] == "error"
         assert result["error_type"] == "not_found"
 
-    def test_invalid_calc_ulid_results(self, qv_project):
-        from quantumvitas.mcp.tools.get_results_summary import get_results_summary
+    def test_invalid_calc_ulid_results(self, qms_project):
+        from qmatsuite.mcp.tools.get_results_summary import get_results_summary
 
         result = get_results_summary.fn(calc_ulid="NONEXISTENT")
         assert result["status"] == "error"
 
-    def test_invalid_calc_ulid_status(self, qv_project):
-        from quantumvitas.mcp.tools.get_status import get_status
+    def test_invalid_calc_ulid_status(self, qms_project):
+        from qmatsuite.mcp.tools.get_status import get_status
 
         result = get_status.fn(calc_ulid="NONEXISTENT")
         assert result["status"] == "error"
 
-    def test_invalid_calc_ulid_inspect(self, qv_project):
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+    def test_invalid_calc_ulid_inspect(self, qms_project):
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         result = inspect_calculation.fn(calc_ulid="NONEXISTENT")
         assert result["status"] == "error"
 
-    def test_invalid_calc_ulid_set_params(self, qv_project):
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
+    def test_invalid_calc_ulid_set_params(self, qms_project):
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
 
         result = set_parameters.fn(calc_ulid="NONEXISTENT", params={"SYSTEM": {"ecutwfc": 30}})
         assert result["status"] == "error"
 
-    def test_invalid_calc_ulid_apply_preset(self, qv_project):
-        from quantumvitas.mcp.tools.apply_preset import apply_preset
+    def test_invalid_calc_ulid_apply_preset(self, qms_project):
+        from qmatsuite.mcp.tools.apply_preset import apply_preset
 
         result = apply_preset.fn(calc_ulid="NONEXISTENT", presets={"precision": "LOW"})
         assert result["status"] == "error"
@@ -361,9 +361,9 @@ class TestAnalysisAfterRealRun:
 
     def test_list_and_plot_convergence(self, qe_project_with_si):
         """Full journey: create → run → list_analyses → plot_analysis convergence."""
-        from quantumvitas.mcp.tools.list_analyses import list_analyses
-        from quantumvitas.mcp.tools.plot_analysis import plot_analysis
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.list_analyses import list_analyses
+        from qmatsuite.mcp.tools.plot_analysis import plot_analysis
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
 
         calc_ulid = _setup_si_scf_calc(qe_project_with_si)
 

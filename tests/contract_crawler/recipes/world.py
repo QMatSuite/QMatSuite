@@ -15,15 +15,15 @@ from pymatgen.core import Structure, Lattice
 
 # Try to import API - may differ in baseline
 try:
-    from quantumvitas.api import get_service, QVService
+    from qmatsuite.api import get_service, QMSService
 except ImportError:
     try:
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         def get_service(project_root):
-            return QVService(project_root)
+            return QMSService(project_root)
     except ImportError:
         get_service = None
-        QVService = None
+        QMSService = None
 
 
 def build_demo_world(project_root: Path) -> dict[str, Any]:
@@ -43,15 +43,15 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
             calculation_selector: str (can use calc_id or slug)
             step_selector: str (first step_id)
     """
-    if QVService is None:
-        raise RuntimeError("QVService not available")
+    if QMSService is None:
+        raise RuntimeError("QMSService not available")
     
-    # Check if QVService methods are static (baseline) or instance-based (current)
-    # Try to detect by checking if QVService can be instantiated
+    # Check if QMSService methods are static (baseline) or instance-based (current)
+    # Try to detect by checking if QMSService can be instantiated
     is_static_api = True
     try:
         # Try to instantiate - if it fails, it's static API
-        test_svc = QVService(project_root)
+        test_svc = QMSService(project_root)
         is_static_api = False
     except (TypeError, AttributeError):
         # Static API - methods are @staticmethod
@@ -65,14 +65,14 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
     
     try:
         # Import structure using nested service method
-        svc = QVService(project_root) if get_service is None else get_service(project_root)
+        svc = QMSService(project_root) if get_service is None else get_service(project_root)
         struct_dto = svc.structure.import_file(source=struct_file, name="silicon")
         structure_ulid = struct_dto.structure_ulid
     finally:
         struct_file.unlink()
     
     # Create calculation using nested service method
-    svc = QVService(project_root) if get_service is None else get_service(project_root)
+    svc = QMSService(project_root) if get_service is None else get_service(project_root)
     calc_result = svc.project.init_calculation(
         name="demo_calc",
         structure_selector=structure_ulid,
@@ -84,7 +84,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
     # Add multiple steps (at least 2)
     if is_static_api:
         # Baseline: static method returns Dict with calculation info
-        step1_result = QVService.add_step_to_calculation(
+        step1_result = QMSService.add_step_to_calculation(
             project_root,
             calculation_selector=calc_id,
             step_type_gen="scf",  # GEN type for UI layer
@@ -106,7 +106,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         else:
             step1_id = None
         
-        step2_result = QVService.add_step_to_calculation(
+        step2_result = QMSService.add_step_to_calculation(
             project_root,
             calculation_selector=calc_id,
             step_type_gen="nscf",  # GEN type for UI layer
@@ -125,7 +125,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
         else:
             step2_id = None
     else:
-        svc = QVService(project_root) if get_service is None else get_service(project_root)
+        svc = QMSService(project_root) if get_service is None else get_service(project_root)
         step1_dto = svc.calculation.add_step(
             calc_selector=calc_id,
             step_type_gen="scf",  # GEN type for UI layer
@@ -150,7 +150,7 @@ def build_demo_world(project_root: Path) -> dict[str, Any]:
     # Try to get project_id from config
     project_id = None
     try:
-        from quantumvitas.core.project_utils import load_project_config
+        from qmatsuite.core.project_utils import load_project_config
         config = load_project_config(project_root)
         if "project" in config and "id" in config["project"]:
             project_id = config["project"]["ulid"]

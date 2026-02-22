@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useQVClient } from '../../hooks/useQVClient';
+import { useQMSClient } from '../../hooks/useQMSClient';
 import './OnlineImportPanel.css';
 
 export interface OnlineCandidate {
@@ -38,7 +38,7 @@ export function OnlineImportPanel({
   selectedCandidateId,
   onSelectCandidate,
 }: OnlineImportPanelProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<"crystal" | "molecule" | "auto">("auto");
   const [isSearching, setIsSearching] = useState(false);
@@ -55,7 +55,7 @@ export function OnlineImportPanel({
     setError(null);
     
     try {
-      const response = await qv.call('structure_search_online', {
+      const response = await qms.call('structure_search_online', {
         query: query.trim(),
         mode: mode,
         limit: 50,
@@ -86,7 +86,7 @@ export function OnlineImportPanel({
     } finally {
       setIsSearching(false);
     }
-  }, [query, mode, qv, onSelectCandidate]);
+  }, [query, mode, qms, onSelectCandidate]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isSearching) {

@@ -17,7 +17,7 @@ Replaced glob-based pseudo resolution (`f"{element}*.UPF"`) with deterministic i
 
 ## What Changed
 
-### New Functions in `src/quantumvitas/pseudo/registry.py`
+### New Functions in `src/qmatsuite/pseudo/registry.py`
 
 | Function | Purpose |
 |----------|---------|
@@ -38,12 +38,12 @@ For each occurrence in PSEUDO_FILE_INDEX.json:
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/pseudo/registry.py` | Added `archive_install_relpath()`, `resolve_element_from_index()`, `_load_file_index()` |
-| `src/quantumvitas/pseudo/__init__.py` | Exported new functions |
-| `src/quantumvitas/pseudo/pipeline.py` | Use `archive_install_relpath()` for install path |
-| `src/quantumvitas/core/pseudo_config.py` | Rewrote `resolve_project_pseudos()` with deterministic lookup + `_find_file_in_dir()` helper |
-| `src/quantumvitas/calculation/step_defaults.py` | Added `diago_full_acc: True` to qe_bandspw ELECTRONS |
-| `src/quantumvitas/mcp/tools/list_resources.py` | Added element-level availability via index lookup |
+| `src/qmatsuite/pseudo/registry.py` | Added `archive_install_relpath()`, `resolve_element_from_index()`, `_load_file_index()` |
+| `src/qmatsuite/pseudo/__init__.py` | Exported new functions |
+| `src/qmatsuite/pseudo/pipeline.py` | Use `archive_install_relpath()` for install path |
+| `src/qmatsuite/core/pseudo_config.py` | Rewrote `resolve_project_pseudos()` with deterministic lookup + `_find_file_in_dir()` helper |
+| `src/qmatsuite/calculation/step_defaults.py` | Added `diago_full_acc: True` to qe_bandspw ELECTRONS |
+| `src/qmatsuite/mcp/tools/list_resources.py` | Added element-level availability via index lookup |
 
 ### New Files
 

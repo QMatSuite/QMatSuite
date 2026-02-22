@@ -14,9 +14,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.core.models import CalculationModel, load_calculation, save_calculation
-from quantumvitas.core.resources import ResourceMeta, generate_resource_id
-from quantumvitas.calculation.structure_steps import StructureStepSpec
+from qmatsuite.core.models import CalculationModel, load_calculation, save_calculation
+from qmatsuite.core.resources import ResourceMeta, generate_resource_id
+from qmatsuite.calculation.structure_steps import StructureStepSpec
 
 
 class TestCalculationModelStructureReferences:
@@ -77,7 +77,7 @@ class TestCalculationModelStructureReferences:
     
     def test_calculation_model_from_dict_legacy_format(self):
         """Test loading CalculationModel from dict with legacy structure selector raises LegacyProjectError."""
-        from quantumvitas.core.exceptions import LegacyProjectError
+        from qmatsuite.core.exceptions import LegacyProjectError
         
         data = {
             "meta": {
@@ -101,12 +101,12 @@ class TestCalculationModelStructureReferences:
     
     def test_calculation_model_load_legacy_selector_raises_error(self, tmp_path):
         """Test that load_calculation raises LegacyProjectError for legacy structure selector."""
-        from quantumvitas.core.exceptions import LegacyProjectError
+        from qmatsuite.core.exceptions import LegacyProjectError
         
         project_root = tmp_path / "project"
         project_root.mkdir()
         
-        # Create project.qv.yml with structure
+        # Create project.qms.yml with structure
         structure_ulid = generate_resource_id()
         config = {
             "project": {
@@ -128,7 +128,7 @@ class TestCalculationModelStructureReferences:
             ],
             "calculations": [],
         }
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
         
         # Create calculation.yaml with legacy structure selector (no structure_ulid)
         calculation_dir = project_root / "calculations" / "test-calculation"
@@ -260,7 +260,7 @@ class TestBackwardsCompatibility:
     
     def test_calculation_yaml_legacy_structure_selector_raises_error(self, tmp_path):
         """Test that calculation.yaml with legacy structure selector raises LegacyProjectError."""
-        from quantumvitas.core.exceptions import LegacyProjectError
+        from qmatsuite.core.exceptions import LegacyProjectError
         
         calculation_dir = tmp_path / "calculation"
         calculation_dir.mkdir()
@@ -348,9 +348,9 @@ class TestStructureResolution:
     
     def test_resolve_structure_ulid_first(self, tmp_path):
         """Test that _resolve_structure_for_spec prefers structure_ulid."""
-        from quantumvitas.project.model import Project
-        from quantumvitas.core.resources import meta_from_name
-        from quantumvitas.io.structure_io import write_structure
+        from qmatsuite.project.model import Project
+        from qmatsuite.core.resources import meta_from_name
+        from qmatsuite.io.structure_io import write_structure
         from pymatgen.core import Structure
         
         project_root = tmp_path / "project"
@@ -382,7 +382,7 @@ class TestStructureResolution:
             ],
             "calculations": [],
         }
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
         
         # Load project using Project.open() method
         project = Project.open(project_root)
@@ -403,7 +403,7 @@ class TestStructureResolution:
         )
         
         # Resolve structure - should use structure_ulid
-        from quantumvitas.calculation.structure_steps import _resolve_structure_for_spec
+        from qmatsuite.calculation.structure_steps import _resolve_structure_for_spec
         
         resolved = _resolve_structure_for_spec(
             spec,

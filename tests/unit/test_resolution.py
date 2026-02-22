@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from quantumvitas.core.resolution import (
+from qmatsuite.core.resolution import (
     AmbiguousSelectorError,
     SelectorNotFoundError,
     ResolvedResource,
@@ -84,7 +84,7 @@ class TestStructureResolution:
             ],
             "calculations": [],
         }
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
         
         return project_root
     
@@ -156,7 +156,7 @@ class TestCalculationResolution:
                 },
             ],
         }
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
         
         return project_root
     
@@ -218,7 +218,7 @@ class TestStepResolution:
                 },
             ],
         }
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
         
         return project_root
     
@@ -272,7 +272,7 @@ class TestListFunctions:
                 {"name": "Bands Calc", "path": "calculations/bands-calc", "meta": {"slug": "bands-calc"}},
             ],
         }
-        (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+        (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
         
         return project_root
     

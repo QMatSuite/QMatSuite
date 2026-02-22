@@ -2,9 +2,9 @@
 """
 Audit API facade surface to generate inventory and classification.
 
-Analyzes src/quantumvitas/api.py to:
-- Count QVService instance methods
-- Count QVService static methods
+Analyzes src/qmatsuite/api.py to:
+- Count QMSService instance methods
+- Count QMSService static methods
 - List module-level re-exports
 - Classify by category
 """
@@ -21,21 +21,21 @@ def analyze_api_surface(api_file: Path) -> Dict[str, Any]:
     content = api_file.read_text(encoding="utf-8")
     tree = ast.parse(content, filename=str(api_file))
     
-    # Find QVService class
-    qvservice_class = None
+    # Find QMSService class
+    qmsservice_class = None
     for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef) and node.name == "QVService":
-            qvservice_class = node
+        if isinstance(node, ast.ClassDef) and node.name == "QMSService":
+            qmsservice_class = node
             break
     
-    if not qvservice_class:
-        return {"error": "QVService class not found"}
+    if not qmsservice_class:
+        return {"error": "QMSService class not found"}
     
     # Collect methods
     instance_methods = []
     static_methods = []
     
-    for node in qvservice_class.body:
+    for node in qmsservice_class.body:
         if isinstance(node, ast.FunctionDef):
             # Check if staticmethod
             is_static = False
@@ -68,7 +68,7 @@ def analyze_api_surface(api_file: Path) -> Dict[str, Any]:
     re_exports = []
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
-            if node.module and node.module.startswith("quantumvitas."):
+            if node.module and node.module.startswith("qmatsuite."):
                 for alias in node.names:
                     if alias.name != "*":
                         re_exports.append({
@@ -91,7 +91,7 @@ def analyze_api_surface(api_file: Path) -> Dict[str, Any]:
 def main():
     """Main entry point."""
     repo_root = Path(__file__).parent.parent
-    api_file = repo_root / "src" / "quantumvitas" / "api.py"
+    api_file = repo_root / "src" / "qmatsuite" / "api.py"
     
     if not api_file.exists():
         print(f"Error: API file not found: {api_file}", file=sys.stderr)

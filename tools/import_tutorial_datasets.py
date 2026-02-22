@@ -6,10 +6,10 @@ This script:
 1. Scans tests/data/ for folders 0_* through 19_*
 2. For each dataset, finds .in files in execution order
 3. Extracts structure and parameters from inputs
-4. Maps pseudopotentials from project/pseudo or src/quantumvitas/resources/pseudo/
+4. Maps pseudopotentials from project/pseudo or src/qmatsuite/resources/pseudo/
 5. Creates calculation structure using existing QMatSuite APIs
 6. Validates by round-tripping (parse -> export -> compare)
-7. Generates demo snapshots in src/quantumvitas/resources/demo_projects/ with naming 00_* to 19_*
+7. Generates demo snapshots in src/qmatsuite/resources/demo_projects/ with naming 00_* to 19_*
 """
 
 from __future__ import annotations
@@ -28,15 +28,15 @@ import sys
 repo_root = Path(__file__).parent.parent
 sys.path.insert(0, str(repo_root / "src"))
 
-from quantumvitas.io import QEInputParser, QEInputGenerator, read_structure, write_structure
-from quantumvitas.io.model import QECardType, QEInput, QEModule
-from quantumvitas.calculation.importers import build_calculation_from_qe_inputs
-from quantumvitas.project.snapshot import ProjectSnapshot, export_project_to_snapshot
-from quantumvitas.calculation.structure_steps import StructureStepSpec, generate_qe_input_from_spec
-from quantumvitas.core.resources import generate_resource_id, meta_from_name
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
-from quantumvitas.core.pseudo_libinfo import compute_sha_family_file
-from quantumvitas.core.engines.qe_pseudopotentials import download_pseudopotential
+from qmatsuite.io import QEInputParser, QEInputGenerator, read_structure, write_structure
+from qmatsuite.io.model import QECardType, QEInput, QEModule
+from qmatsuite.calculation.importers import build_calculation_from_qe_inputs
+from qmatsuite.project.snapshot import ProjectSnapshot, export_project_to_snapshot
+from qmatsuite.calculation.structure_steps import StructureStepSpec, generate_qe_input_from_spec
+from qmatsuite.core.resources import generate_resource_id, meta_from_name
+from qmatsuite.core.pseudo_provenance import compute_sha256_file
+from qmatsuite.core.pseudo_libinfo import compute_sha_family_file
+from qmatsuite.core.engines.qe_pseudopotentials import download_pseudopotential
 
 
 @dataclass
@@ -73,7 +73,7 @@ class DemoResult:
 
 def get_resources_root(repo_root: Path) -> Path:
     """Return the repository resource SSOT location."""
-    return repo_root / "src" / "quantumvitas" / "resources"
+    return repo_root / "src" / "qmatsuite" / "resources"
 
 
 def compute_pseudo_identity(
@@ -82,11 +82,11 @@ def compute_pseudo_identity(
     auto_download: bool = True,
 ) -> Optional[Tuple[str, str]]:
     """
-    Compute pseudo identity triple (sha256, sha_family) from src/quantumvitas/resources/pseudo/.
+    Compute pseudo identity triple (sha256, sha_family) from src/qmatsuite/resources/pseudo/.
     If file is missing and auto_download=True, attempts to download from QE repository.
     
     Args:
-        resources_root: Resources root directory (src/quantumvitas/resources)
+        resources_root: Resources root directory (src/qmatsuite/resources)
         pseudo_filename: Filename of pseudopotential (e.g., "Si.pbe-n-rrkjus_psl.1.0.0.UPF")
         auto_download: If True and file missing, attempt to download from QE repository
         
@@ -124,11 +124,11 @@ def enhance_species_map_with_pseudo_identities(
     auto_download: bool = True,
 ) -> Tuple[Dict[str, Dict[str, Any]], List[str]]:
     """
-    Enhance species_map with pseudo identity triple from src/quantumvitas/resources/pseudo/.
+    Enhance species_map with pseudo identity triple from src/qmatsuite/resources/pseudo/.
     
     Args:
         species_map: Species mapping dict (element -> {mass, pseudopot, ...})
-        resources_root: Resources root directory (src/quantumvitas/resources)
+        resources_root: Resources root directory (src/qmatsuite/resources)
         
     Returns:
         Tuple of (enhanced_species_map, missing_pseudos_list)
@@ -172,7 +172,7 @@ def find_repo_root() -> Path:
     """Find the repository root directory."""
     current = Path(__file__).parent.parent
     while current != current.parent:
-        if (current / "pyproject.toml").exists() or (current / "project.qv.yml").exists():
+        if (current / "pyproject.toml").exists() or (current / "project.qms.yml").exists():
             return current
         current = current.parent
     return Path(__file__).parent.parent
@@ -259,12 +259,12 @@ def materialize_project_from_input_folder(
     temp_dir: Optional[Path] = None
 ) -> Dict[str, Any]:
     """
-    DEPRECATED: Use quantumvitas.calculation.folder_import.materialize_project_from_qe_input_folder() instead.
+    DEPRECATED: Use qmatsuite.calculation.folder_import.materialize_project_from_qe_input_folder() instead.
     
     This function is kept for backward compatibility but now delegates to the global API.
     """
-    from quantumvitas.calculation.folder_import import materialize_project_from_qe_input_folder
-    from quantumvitas.api import QVService
+    from qmatsuite.calculation.folder_import import materialize_project_from_qe_input_folder
+    from qmatsuite.api import QMSService
     import tempfile
     
     # Use global API to create snapshot
@@ -272,25 +272,25 @@ def materialize_project_from_input_folder(
         folder=input_folder,
         project_name=project_name,
         calculation_name=calculation_name or input_folder.name,
-        service=QVService,
+        service=QMSService,
         temp_dir=temp_dir,
     )
     
     # Materialize snapshot to get project_root for return value
     if temp_dir is None:
-        temp_base = tempfile.mkdtemp(prefix="qv_materialize_")
+        temp_base = tempfile.mkdtemp(prefix="qms_materialize_")
         temp_project_dir = Path(temp_base) / project_name
     else:
         temp_project_dir = Path(temp_dir) / project_name
     
-    from quantumvitas.project.snapshot import materialize_project_from_snapshot
+    from qmatsuite.project.snapshot import materialize_project_from_snapshot
     project_root = materialize_project_from_snapshot(
         snapshot=snapshot,
         target_dir=temp_project_dir,
     )
     
     # Extract information for return value
-    from quantumvitas.core.resolution import build_resource_index
+    from qmatsuite.core.resolution import build_resource_index
     index = build_resource_index(project_root)
     
     # Get structure and calculation selectors
@@ -356,8 +356,8 @@ def _materialize_project_from_input_folder_legacy(
     Raises:
         ValueError: If no input files found or project creation fails
     """
-    from quantumvitas.api import QVService
-    from quantumvitas.core.resolution import build_resource_index
+    from qmatsuite.api import QMSService
+    from qmatsuite.core.resolution import build_resource_index
     import tempfile
     
     input_folder = Path(input_folder).resolve()
@@ -386,7 +386,7 @@ def _materialize_project_from_input_folder_legacy(
     
     # Filter and fix input files
     import tempfile
-    temp_fix_dir = Path(tempfile.mkdtemp(prefix="qv_fix_"))
+    temp_fix_dir = Path(tempfile.mkdtemp(prefix="qms_fix_"))
     valid_input_files = []
     
     try:
@@ -479,20 +479,20 @@ def _materialize_project_from_input_folder_legacy(
     
     # Create temporary project directory
     if temp_dir is None:
-        temp_base = tempfile.mkdtemp(prefix="qv_materialize_")
+        temp_base = tempfile.mkdtemp(prefix="qms_materialize_")
         temp_project_dir = Path(temp_base) / project_name
     else:
         temp_project_dir = Path(temp_dir) / project_name
     
     # Step 1: Initialize empty project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=temp_project_dir,
         name=project_name
     )
     
     # Build initial resource index
     index = build_resource_index(project_root)
-    config = None  # Will be loaded by QVService methods
+    config = None  # Will be loaded by QMSService methods
     
     # Step 2: Import structure from first input file
     # Preprocess first file if needed (fix ibrav=12 cosab/cosbc issue)
@@ -522,7 +522,7 @@ def _materialize_project_from_input_folder_legacy(
     except Exception:
         pass  # If preprocessing fails, use original file
     
-    structure_resolved = QVService(project_root).structure.import_file(
+    structure_resolved = QMSService(project_root).structure.import_file(
         source=first_input,
         name=None,  # Use default name from file
         format="auto",
@@ -536,7 +536,7 @@ def _materialize_project_from_input_folder_legacy(
     if calculation_name is None:
         calculation_name = input_folder.name.replace("_", " ").title()
     
-    calculation_resolved = QVService.init_calculation(
+    calculation_resolved = QMSService.init_calculation(
         project_root=project_root,
         name=calculation_name,
         structure_selector=structure_selector,
@@ -562,7 +562,7 @@ def _materialize_project_from_input_folder_legacy(
             all_pseudos_needed.update(pseudo_names)
             
             # Import step from QE input
-            step_result = QVService.import_step_from_qe_input(
+            step_result = QMSService.import_step_from_qe_input(
                 project_root=project_root,
                 calculation_selector=calculation_selector,
                 input_file=input_file,
@@ -859,7 +859,7 @@ def extract_reference_artifacts_from_outputs(
     scf_outputs = list(reference_out_dir.glob("*scf*.out"))
     if scf_outputs:
         try:
-            from quantumvitas.analysis.parsers import parse_scf_output
+            from qmatsuite.analysis.parsers import parse_scf_output
             scf_result = parse_scf_output(scf_outputs[0])
             if scf_result:
                 scf_data = scf_result.to_dict()
@@ -934,9 +934,9 @@ def validate_roundtrip_regeneration(
     Returns:
         ValidationResult with success status and differences
     """
-    from quantumvitas.core.resolution import require_calculation, require_step, require_structure
-    from quantumvitas.api import QVService
-    from quantumvitas.core.pseudo import is_missing_pseudo_placeholder
+    from qmatsuite.core.resolution import require_calculation, require_step, require_structure
+    from qmatsuite.api import QMSService
+    from qmatsuite.core.pseudo import is_missing_pseudo_placeholder
     
     differences = []
     generated_inputs_dir = output_dir / "generated_inputs" / demo_name
@@ -944,7 +944,7 @@ def validate_roundtrip_regeneration(
     
     try:
         # Get calculation detail
-        calc_detail = QVService.get_calculation_detail(
+        calc_detail = QMSService.get_calculation_detail(
             project_root=project_root,
             calculation_selector=calculation_selector,
             index=index,
@@ -1148,7 +1148,7 @@ def create_demo_from_dataset(
     Args:
         dataset: Dataset information
         output_dir: Directory to create demo in
-        resources_root: Resources root directory (src/quantumvitas/resources)
+        resources_root: Resources root directory (src/qmatsuite/resources)
         pseudo_search_dirs: Directories to search for pseudopotentials
         
     Returns:
@@ -1183,7 +1183,7 @@ def create_demo_from_dataset(
                 error="No input files found"
             )
         
-        # Check pseudopotentials for all inputs - must exist in src/quantumvitas/resources/pseudo/
+        # Check pseudopotentials for all inputs - must exist in src/qmatsuite/resources/pseudo/
         missing_pseudos = []
         all_pseudos_needed = set()
         
@@ -1196,7 +1196,7 @@ def create_demo_from_dataset(
                 # Skip files that can't be parsed
                 continue
         
-        # Check if pseudos exist in src/quantumvitas/resources/pseudo/, try downloading if missing
+        # Check if pseudos exist in src/qmatsuite/resources/pseudo/, try downloading if missing
         resources_pseudo_dir = resources_root / "pseudo"
         missing_pseudos = []
         for pseudo_name in all_pseudos_needed:
@@ -1235,7 +1235,7 @@ def create_demo_from_dataset(
         
         # Filter and fix input files (create temp directory for fixed files)
         import tempfile
-        temp_fix_dir = Path(tempfile.mkdtemp(prefix="qv_fix_"))
+        temp_fix_dir = Path(tempfile.mkdtemp(prefix="qms_fix_"))
         valid_input_files = []
         temp_fixed_files = []
         
@@ -1304,11 +1304,11 @@ def create_demo_from_dataset(
             )
         
         # Use global API to materialize project from input folder
-        from quantumvitas.calculation.folder_import import materialize_project_from_qe_input_folder
-        from quantumvitas.api import QVService
+        from qmatsuite.calculation.folder_import import materialize_project_from_qe_input_folder
+        from qmatsuite.api import QMSService
         import tempfile
         
-        temp_base = tempfile.mkdtemp(prefix="qv_import_")
+        temp_base = tempfile.mkdtemp(prefix="qms_import_")
         
         try:
             # Generate calculation name from dataset
@@ -1320,13 +1320,13 @@ def create_demo_from_dataset(
                 folder=dataset.folder_path,
                 project_name=demo_name,
                 calculation_name=calc_name,
-                service=QVService,
+                service=QMSService,
                 temp_dir=Path(temp_base)
             )
             
             # Materialize snapshot to get project_root for verification
             temp_project_dir = Path(temp_base)
-            from quantumvitas.project.snapshot import materialize_project_from_snapshot
+            from qmatsuite.project.snapshot import materialize_project_from_snapshot
             project_root = materialize_project_from_snapshot(
                 snapshot=snapshot,
                 parent_dir=temp_project_dir,
@@ -1334,7 +1334,7 @@ def create_demo_from_dataset(
             )
             
             # Extract information from snapshot
-            from quantumvitas.core.resolution import build_resource_index
+            from qmatsuite.core.resolution import build_resource_index
             index = build_resource_index(project_root)
             
             # Get structure and calculation selectors
@@ -1357,7 +1357,7 @@ def create_demo_from_dataset(
                 materialized_pseudos.update(snapshot.pseudo["files"])
             
             materialized_input_files = sorted(dataset.folder_path.glob("*.in"))
-            config = None  # Will be loaded by QVService methods if needed
+            config = None  # Will be loaded by QMSService methods if needed
             
             # Snapshot is already created by materialize_project_from_qe_input_folder
             # No need to copy pseudos - they're handled by materialize_project_from_snapshot
@@ -1412,9 +1412,9 @@ def create_demo_from_dataset(
                     # Split into two calculations
                     # Calc A: relax/vc-relax chain (structure = initial)
                     # Calc B: subsequent steps (structure = relaxed, from first post-relax file with structure)
-                    from quantumvitas.io.structure_io import qe_input_has_explicit_structure, structure_from_qe_input, structure_fingerprint
-                    from quantumvitas.io import write_structure
-                    from quantumvitas.core.resources import generate_resource_id, meta_from_name, ensure_relative_path
+                    from qmatsuite.io.structure_io import qe_input_has_explicit_structure, structure_from_qe_input, structure_fingerprint
+                    from qmatsuite.io import write_structure
+                    from qmatsuite.core.resources import generate_resource_id, meta_from_name, ensure_relative_path
                     
                     # Find relaxed structure from first post-relax input file that has structure
                     relaxed_structure_id = None
@@ -1432,7 +1432,7 @@ def create_demo_from_dataset(
                                     # Load initial structure for comparison
                                     initial_struct_data = next((s for s in structures if s["meta"]["id"] == initial_structure_id), None)
                                     if initial_struct_data:
-                                        from quantumvitas.io import read_structure
+                                        from qmatsuite.io import read_structure
                                         import tempfile
                                         temp_struct_file = Path(tempfile.mkdtemp()) / "temp_struct.json"
                                         temp_struct_file.write_text(json.dumps(initial_struct_data["data"]))
@@ -1543,7 +1543,7 @@ def create_demo_from_dataset(
             
             # Verify the demo can be loaded using existing function
             try:
-                from quantumvitas.project.snapshot import ProjectSnapshot
+                from qmatsuite.project.snapshot import ProjectSnapshot
                 loaded_snapshot = ProjectSnapshot.from_dict(yaml.safe_load(demo_file.read_text()))
                 # Verify it has structures and calculations
                 if not loaded_snapshot.structures:
@@ -1710,7 +1710,7 @@ def verify_demo_project(demo_file: Path) -> Dict[str, Any]:
         - step_types: List[List[str]] - Step types per calculation
         - issues: List[str] - List of issues found
     """
-    from quantumvitas.project.snapshot import ProjectSnapshot
+    from qmatsuite.project.snapshot import ProjectSnapshot
     
     result = {
         "can_load": False,

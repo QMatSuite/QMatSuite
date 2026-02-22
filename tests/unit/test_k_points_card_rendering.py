@@ -8,12 +8,12 @@ Tests that K_POINTS cards are correctly rendered to QE input format
 import pytest
 from pathlib import Path
 from pymatgen.core import Lattice, Structure
-from quantumvitas.calculation.structure_steps import (
+from qmatsuite.calculation.structure_steps import (
     StructureStepSpec,
     generate_qe_input_from_spec,
 )
-from quantumvitas.io.parser.qe_parser import QEInputParser
-from quantumvitas.io.generator.qe_generator import QEInputGenerator
+from qmatsuite.io.parser.qe_parser import QEInputParser
+from qmatsuite.io.generator.qe_generator import QEInputGenerator
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def sample_structure():
 
 def test_k_points_card_renders_as_card_not_namelist(sample_structure, tmp_path):
     """Test that K_POINTS in cards section renders as a card, not a namelist."""
-    from quantumvitas.core.models import ResourceMeta
+    from qmatsuite.core.models import ResourceMeta
     # Create a step spec with K_POINTS in cards
     spec = StructureStepSpec(
         meta=ResourceMeta(ulid="test-step",
@@ -64,7 +64,7 @@ def test_k_points_card_renders_as_card_not_namelist(sample_structure, tmp_path):
     )
     
     # Verify K_POINTS is a card, not a namelist parameter
-    from quantumvitas.io.model import QECardType
+    from qmatsuite.io.model import QECardType
     k_points_card = qe_input.get_card(QECardType.K_POINTS)
     assert k_points_card is not None, f"K_POINTS should be present as a card. Cards: {[c.card_type.name for c in qe_input.cards]}"
     assert k_points_card.option == "automatic"
@@ -86,7 +86,7 @@ def test_k_points_card_renders_as_card_not_namelist(sample_structure, tmp_path):
 
 def test_k_points_automatic_format(sample_structure, tmp_path):
     """Test that K_POINTS with automatic option renders correctly."""
-    from quantumvitas.core.models import ResourceMeta
+    from qmatsuite.core.models import ResourceMeta
     spec = StructureStepSpec(
         meta=ResourceMeta(ulid="test-step",
             name="test",
@@ -130,7 +130,7 @@ def test_k_points_automatic_format(sample_structure, tmp_path):
 
 def test_k_points_crystal_format(sample_structure, tmp_path):
     """Test that K_POINTS with crystal_b format renders correctly."""
-    from quantumvitas.core.models import ResourceMeta
+    from qmatsuite.core.models import ResourceMeta
     spec = StructureStepSpec(
         meta=ResourceMeta(ulid="test-step",
             name="test",
@@ -177,7 +177,7 @@ def test_k_points_crystal_format(sample_structure, tmp_path):
 
 def test_no_k_points_in_parameters_rendered(sample_structure, tmp_path):
     """Test that if K_POINTS accidentally appears in parameters, it's not rendered as namelist."""
-    from quantumvitas.core.models import ResourceMeta
+    from qmatsuite.core.models import ResourceMeta
     # Even if someone mistakenly puts k_points in parameters, it should not render as &K_POINTS
     spec = StructureStepSpec(
         meta=ResourceMeta(ulid="test-step",

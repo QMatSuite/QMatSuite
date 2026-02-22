@@ -14,7 +14,7 @@ class TestAPIUtilsOnlineSearchRemoved:
     
     def test_utils_no_online_search_reexports(self):
         """Verify no search_online_structures in api.utils."""
-        from quantumvitas import api
+        from qmatsuite import api
         
         # Check that search_online_structures is not in api.utils
         utils_module = api.utils
@@ -29,7 +29,7 @@ class TestAPIUtilsOnlineSearchRemoved:
     
     def test_utils_no_fetch_structure_reexports(self):
         """Verify no fetch_structure_from_optimade in api.utils."""
-        from quantumvitas import api
+        from qmatsuite import api
         
         utils_module = api.utils
         
@@ -42,20 +42,20 @@ class TestAPIUtilsOnlineSearchRemoved:
             "fetch_structure_from_optimade should not be in api.utils (Law H3)"
     
     def test_online_search_via_service_only(self):
-        """Verify online search is only accessible via QVService.OnlineSearch."""
-        from quantumvitas.api import QVService
+        """Verify online search is only accessible via QMSService.OnlineSearch."""
+        from qmatsuite.api import QMSService
         
         # Verify OnlineSearch class exists
-        assert hasattr(QVService, 'OnlineSearch'), \
-            "QVService.OnlineSearch should exist"
+        assert hasattr(QMSService, 'OnlineSearch'), \
+            "QMSService.OnlineSearch should exist"
         
         # Verify methods exist
-        assert hasattr(QVService.OnlineSearch, 'search_structures'), \
-            "QVService.OnlineSearch.search_structures should exist"
-        assert hasattr(QVService.OnlineSearch, 'fetch_structure'), \
-            "QVService.OnlineSearch.fetch_structure should exist"
-        assert hasattr(QVService.OnlineSearch, 'list_providers'), \
-            "QVService.OnlineSearch.list_providers should exist"
-        assert hasattr(QVService.OnlineSearch, 'update_online_sources'), \
-            "QVService.OnlineSearch.update_online_sources should exist"
+        assert hasattr(QMSService.OnlineSearch, 'search_structures'), \
+            "QMSService.OnlineSearch.search_structures should exist"
+        assert hasattr(QMSService.OnlineSearch, 'fetch_structure'), \
+            "QMSService.OnlineSearch.fetch_structure should exist"
+        assert hasattr(QMSService.OnlineSearch, 'list_providers'), \
+            "QMSService.OnlineSearch.list_providers should exist"
+        assert hasattr(QMSService.OnlineSearch, 'update_online_sources'), \
+            "QMSService.OnlineSearch.update_online_sources should exist"
 

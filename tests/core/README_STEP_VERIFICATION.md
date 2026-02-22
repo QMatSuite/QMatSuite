@@ -123,11 +123,11 @@ def test_scf(self, qe_engine, tmp_path):
 
 ## QE Input Roundtrip (for inspection/debug)
 
-For quick roundtrip parsing outside of the step runner, use the helper in `quantumvitas.io`:
+For quick roundtrip parsing outside of the step runner, use the helper in `qmatsuite.io`:
 
 ```python
 from pathlib import Path
-from quantumvitas.io import QEInputParser
+from qmatsuite.io import QEInputParser
 
 qe_input = QEInputParser.roundtrip_file(
     Path("tests/data/4_Si_DOS/si.1_scf.in"),

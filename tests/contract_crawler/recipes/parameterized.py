@@ -12,15 +12,15 @@ from .world import build_demo_world
 
 # Try to import API
 try:
-    from quantumvitas.api import get_service, QVService
+    from qmatsuite.api import get_service, QMSService
 except ImportError:
     try:
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         def get_service(project_root):
-            return QVService(project_root)
+            return QMSService(project_root)
     except ImportError:
         get_service = None
-        QVService = None
+        QMSService = None
 
 
 class ProjectMethodsRecipe(Recipe):
@@ -53,12 +53,12 @@ class ProjectMethodsRecipe(Recipe):
     
     def setup(self) -> bool:
         """Create minimal project world."""
-        if QVService is None:
+        if QMSService is None:
             return False
         
         self.project_root = self.tmp_path / "demo_project"
         self.project_root.mkdir()
-        QVService.init_project(self.project_root, name="demo_project")
+        QMSService.init_project(self.project_root, name="demo_project")
         
         self.world = build_demo_world(self.project_root)
         return True
@@ -137,12 +137,12 @@ class CalculationMethodsRecipe(Recipe):
     
     def setup(self) -> bool:
         """Create minimal project world."""
-        if QVService is None:
+        if QMSService is None:
             return False
         
         self.project_root = self.tmp_path / "demo_project"
         self.project_root.mkdir()
-        QVService.init_project(self.project_root, name="demo_project")
+        QMSService.init_project(self.project_root, name="demo_project")
         
         self.world = build_demo_world(self.project_root)
         return True
@@ -208,12 +208,12 @@ class StepMethodsRecipe(Recipe):
     
     def setup(self) -> bool:
         """Create minimal project world."""
-        if QVService is None:
+        if QMSService is None:
             return False
         
         self.project_root = self.tmp_path / "demo_project"
         self.project_root.mkdir()
-        QVService.init_project(self.project_root, name="demo_project")
+        QMSService.init_project(self.project_root, name="demo_project")
         
         self.world = build_demo_world(self.project_root)
         
@@ -287,7 +287,7 @@ class ProjectMutationsRecipe(Recipe):
 
     def setup(self) -> bool:
         """Create minimal project world."""
-        if QVService is None:
+        if QMSService is None:
             return False
 
         # For create_* methods, we need a parent directory
@@ -298,7 +298,7 @@ class ProjectMutationsRecipe(Recipe):
         # For structure operations, need existing project with structure
         self.project_root = self.tmp_path / "demo_project"
         self.project_root.mkdir()
-        QVService.init_project(self.project_root, name="demo_project")
+        QMSService.init_project(self.project_root, name="demo_project")
 
         self.world = build_demo_world(self.project_root)
         return True
@@ -381,12 +381,12 @@ class CalculationMutationsRecipe(Recipe):
 
     def setup(self) -> bool:
         """Create minimal project world."""
-        if QVService is None:
+        if QMSService is None:
             return False
 
         self.project_root = self.tmp_path / "demo_project"
         self.project_root.mkdir()
-        QVService.init_project(self.project_root, name="demo_project")
+        QMSService.init_project(self.project_root, name="demo_project")
 
         self.world = build_demo_world(self.project_root)
 
@@ -400,7 +400,7 @@ class CalculationMutationsRecipe(Recipe):
                 struct_file = Path(f.name)
 
             try:
-                svc = QVService(self.project_root)
+                svc = QMSService(self.project_root)
                 struct_dto = svc.structure.import_file(source=struct_file, name="germanium")
                 self.second_structure_ulid = struct_dto.structure_ulid
             finally:
@@ -500,12 +500,12 @@ class StepMutationsRecipe(Recipe):
 
     def setup(self) -> bool:
         """Create minimal project world."""
-        if QVService is None:
+        if QMSService is None:
             return False
 
         self.project_root = self.tmp_path / "demo_project"
         self.project_root.mkdir()
-        QVService.init_project(self.project_root, name="demo_project")
+        QMSService.init_project(self.project_root, name="demo_project")
 
         self.world = build_demo_world(self.project_root)
         return True
@@ -567,12 +567,12 @@ class WorkflowRecipe(Recipe):
 
     def setup(self) -> bool:
         """Create minimal project world."""
-        if QVService is None:
+        if QMSService is None:
             return False
 
         self.project_root = self.tmp_path / "demo_project"
         self.project_root.mkdir()
-        QVService.init_project(self.project_root, name="demo_project")
+        QMSService.init_project(self.project_root, name="demo_project")
 
         self.world = build_demo_world(self.project_root)
         return True

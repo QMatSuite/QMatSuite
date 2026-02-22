@@ -4,16 +4,16 @@ import json
 
 import numpy as np
 
-from quantumvitas.core.analysis.base import SourceFileStat
-from quantumvitas.core.analysis.bundles import (
+from qmatsuite.core.analysis.base import SourceFileStat
+from qmatsuite.core.analysis.bundles import (
     CanonicalPrimitiveBundle,
     DerivedPrimitiveBundle,
     ProvenanceMeta,
     RenderMeta,
 )
-from quantumvitas.core.analysis.primitives import Series1D
-from quantumvitas.core.analysis.transforms.energy_crop import EnergyCrop
-from quantumvitas.core.analysis.transforms.fermi_shift import FermiShift
+from qmatsuite.core.analysis.primitives import Series1D
+from qmatsuite.core.analysis.transforms.energy_crop import EnergyCrop
+from qmatsuite.core.analysis.transforms.fermi_shift import FermiShift
 
 
 def _make_bundle() -> CanonicalPrimitiveBundle:

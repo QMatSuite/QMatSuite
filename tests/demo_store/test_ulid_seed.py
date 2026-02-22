@@ -1,6 +1,6 @@
 """Tests for deterministic ULID generation."""
 
-from quantumvitas.demo_store.ulid_seed import deterministic_ulid
+from qmatsuite.demo_store.ulid_seed import deterministic_ulid
 
 
 class TestDeterministicUlid:

@@ -14,8 +14,8 @@
 
 | Requirement | Evidence | Status |
 |------------|----------|--------|
-| Frontends only import `quantumvitas.api` | `rg -n "^from quantumvitas\.api import" src/quantumvitas/cli`: 8 matches<br>`rg -n "^from quantumvitas\.api import" src/quantumvitas/daemon`: 1 match | ✅ PASS |
-| No direct kernel imports in frontends | `rg -n "^from quantumvitas\.(core|calculation|...)\b" src/quantumvitas/cli`: 0 matches<br>`rg -n "^from quantumvitas\.(core|calculation|...)\b" src/quantumvitas/daemon`: 0 matches | ✅ PASS |
+| Frontends only import `qmatsuite.api` | `rg -n "^from qmatsuite\.api import" src/qmatsuite/cli`: 8 matches<br>`rg -n "^from qmatsuite\.api import" src/qmatsuite/daemon`: 1 match | ✅ PASS |
+| No direct kernel imports in frontends | `rg -n "^from qmatsuite\.(core|calculation|...)\b" src/qmatsuite/cli`: 0 matches<br>`rg -n "^from qmatsuite\.(core|calculation|...)\b" src/qmatsuite/daemon`: 0 matches | ✅ PASS |
 | Gates enforced by default | `tests/gates/test_import_rules.py`: Default mode blocks violations | ✅ PASS |
 | Audit scripts deterministic | `.audit/cli_kernel_deps.json`, `.audit/daemon_kernel_deps.json` exist | ✅ PASS |
 
@@ -35,9 +35,9 @@
 
 2. **Frontends Import Kernel Types from API**:
    ```python
-   # CLI (src/quantumvitas/cli/main.py:25, 56)
-   from quantumvitas.api import ResourceMeta, Calculation, StepMode, StepStatus
-   from quantumvitas.api import StructureStepSpec, Step, EngineConfig, QeEngine
+   # CLI (src/qmatsuite/cli/main.py:25, 56)
+   from qmatsuite.api import ResourceMeta, Calculation, StepMode, StepStatus
+   from qmatsuite.api import StructureStepSpec, Step, EngineConfig, QeEngine
    
    # CLI usage (line 1735, 2798)
    step = Step(meta=spec.meta, input_file=generated_input, ...)
@@ -50,7 +50,7 @@
    - **210 static methods** (many pure pass-throughs)
    - **25 instance methods**
    - **11,887 lines** in single file
-   - Pattern: `from quantumvitas.X import Y as _Y; return _Y(...)`
+   - Pattern: `from qmatsuite.X import Y as _Y; return _Y(...)`
 
 4. **No Capability Abstraction**:
    - Frontends must know which of 5-10 wrappers to call for one logical operation
@@ -93,8 +93,8 @@ python scripts/audit_api_surface.py  # Generated .audit/api_surface.json
 | Name | Kind | Underlying Dependency | Frontend Usage | Should Remain? |
 |------|------|----------------------|----------------|----------------|
 | **`__all__` Exports** | | | | |
-| `QVService` | Class | N/A (API-owned) | CLI, daemon, Jupyter | ✅ YES |
-| `QVServiceError` | Exception | N/A (API-owned) | CLI, daemon | ✅ YES |
+| `QMSService` | Class | N/A (API-owned) | CLI, daemon, Jupyter | ✅ YES |
+| `QMSServiceError` | Exception | N/A (API-owned) | CLI, daemon | ✅ YES |
 | `ResourceNotFoundError` | Re-export exception | `core.resolution` | CLI, daemon | ⚠️ DEPENDS (keep minimal set) |
 | `RegistryOutOfSyncError` | Re-export exception | `core.resolution` | CLI, daemon | ⚠️ DEPENDS (keep minimal set) |
 | `AmbiguousSelectorError` | Re-export exception | `core.resolution` | CLI, daemon | ⚠️ DEPENDS (keep minimal set) |
@@ -197,11 +197,11 @@ python scripts/audit_api_surface.py  # Generated .audit/api_surface.json
 
 | Module | Count | Example Symbols | Rationale for Removal |
 |--------|-------|-----------------|----------------------|
-| `quantumvitas.core.resolution` | 28 | `resolve_calculation`, `build_resource_index`, `ResourceIndex`, `ResolvedResource` | Functions → internal; types → DTOs |
-| `quantumvitas.core.project_utils` | 23 | `load_project_config`, `save_project_config`, `find_structure_entry` | Functions → internal; use via capabilities |
-| `quantumvitas.core.pseudo_config` | 15 | `PseudoConfig`, `load_pseudo_config`, `get_ssl_context` | Types → DTOs; functions → internal |
-| `quantumvitas.analysis.structure_viz` | 9 | `visualize_structure`, `DisplayModeParams`, `build_display_atoms` | Capability endpoint; types → DTOs |
-| `quantumvitas.core.resources` | 7 | `ResourceMeta`, `generate_resource_id`, `slugify` | `ResourceMeta` → DTO; utilities → internal |
+| `qmatsuite.core.resolution` | 28 | `resolve_calculation`, `build_resource_index`, `ResourceIndex`, `ResolvedResource` | Functions → internal; types → DTOs |
+| `qmatsuite.core.project_utils` | 23 | `load_project_config`, `save_project_config`, `find_structure_entry` | Functions → internal; use via capabilities |
+| `qmatsuite.core.pseudo_config` | 15 | `PseudoConfig`, `load_pseudo_config`, `get_ssl_context` | Types → DTOs; functions → internal |
+| `qmatsuite.analysis.structure_viz` | 9 | `visualize_structure`, `DisplayModeParams`, `build_display_atoms` | Capability endpoint; types → DTOs |
+| `qmatsuite.core.resources` | 7 | `ResourceMeta`, `generate_resource_id`, `slugify` | `ResourceMeta` → DTO; utilities → internal |
 
 **Total from top 5**: ~82 re-exports (13% of total, but high-value targets)
 
@@ -719,7 +719,7 @@ class EngineInfo:
 **Strategy**: Keep 5-7 core exceptions; internalize the rest.
 
 **Keep** (minimal set):
-- `QVServiceError` (base, API-owned)
+- `QMSServiceError` (base, API-owned)
 - `ResourceNotFoundError`
 - `AmbiguousSelectorError`
 - `SelectorNotFoundError`
@@ -727,7 +727,7 @@ class EngineInfo:
 - `PresetCompilationError` (if presets are public capability)
 
 **Remove** (internalize):
-- `VolumeParserError` → internal (daemon can catch `QVServiceError`)
+- `VolumeParserError` → internal (daemon can catch `QMSServiceError`)
 - `ContextNotFoundError` → internal (capability returns `None` or raises `ResourceNotFoundError`)
 - `PrecisionContextError` → internal (preset capability handles internally)
 
@@ -747,7 +747,7 @@ class EngineInfo:
 ```python
 # api/__init__.py
 import warnings
-from quantumvitas.core.models import Calculation as _Calculation
+from qmatsuite.core.models import Calculation as _Calculation
 
 def Calculation(*args, **kwargs):
     warnings.warn(
@@ -764,8 +764,8 @@ def Calculation(*args, **kwargs):
 - Update frontends gradually
 
 **Minimal "Keep" List**:
-- `QVService` (class)
-- `QVServiceError` (exception)
+- `QMSService` (class)
+- `QMSServiceError` (exception)
 - 5-7 core exceptions (see above)
 - **Total**: ~8-10 symbols in `__all__`
 
@@ -784,9 +784,9 @@ def Calculation(*args, **kwargs):
 **Current**:
 ```python
 # Frontend must know which 5-10 wrappers to call
-dos_data = QVService.parse_dos_data(dos_file)
-QVService.plot_dos(dos_data, output_path)
-QVService.save_figure(fig, output_path)
+dos_data = QMSService.parse_dos_data(dos_file)
+QMSService.plot_dos(dos_data, output_path)
+QMSService.save_figure(fig, output_path)
 ```
 
 **Proposed**:
@@ -810,10 +810,10 @@ result = svc.analysis.analyze_output(
 
 **Current**:
 ```python
-vis_data = QVService.get_structure_vis_data(structure)
-atoms = QVService.build_display_atoms(structure)
-bonds = QVService.build_bonds(structure)
-result = QVService.visualize_structure_direct(structure, ...)
+vis_data = QMSService.get_structure_vis_data(structure)
+atoms = QMSService.build_display_atoms(structure)
+bonds = QMSService.build_bonds(structure)
+result = QMSService.visualize_structure_direct(structure, ...)
 ```
 
 **Proposed**:
@@ -834,9 +834,9 @@ result = svc.structure.visualize(
 
 **Current**:
 ```python
-slug = QVService.slugify(name)
-id = QVService.generate_resource_id()
-meta = QVService.meta_from_name(name)
+slug = QMSService.slugify(name)
+id = QMSService.generate_resource_id()
+meta = QMSService.meta_from_name(name)
 ```
 
 **Proposed**: Internalize - these are implementation details, not capabilities.
@@ -849,8 +849,8 @@ meta = QVService.meta_from_name(name)
 
 **Current**:
 ```python
-structure = QVService.read_structure(path)
-QVService.write_structure(structure, path)
+structure = QMSService.read_structure(path)
+QMSService.write_structure(structure, path)
 ```
 
 **Proposed**:
@@ -879,7 +879,7 @@ svc.structure.export("si", path, format="cif")
 
 ### Duplication Detection
 
-**Methodology**: Compare CLI (`src/quantumvitas/cli/main.py`) and daemon (`src/quantumvitas/daemon/server.py`) for duplicated logic patterns.
+**Methodology**: Compare CLI (`src/qmatsuite/cli/main.py`) and daemon (`src/qmatsuite/daemon/server.py`) for duplicated logic patterns.
 
 ### Duplicated Logic Patterns
 
@@ -892,7 +892,7 @@ def _resolve_project_root(project: Optional[Path]) -> Path:
         return Path(project).expanduser().resolve()
     else:
         try:
-            return QVService.require_project_root()
+            return QMSService.require_project_root()
         except Exception as exc:
             raise typer.BadParameter(str(exc)) from exc
 ```
@@ -900,10 +900,10 @@ def _resolve_project_root(project: Optional[Path]) -> Path:
 **Daemon** (lines 5282-5288):
 ```python
 project_root = self._require_path(payload, "project_root")
-# Uses QVService internally but has its own validation
+# Uses QMSService internally but has its own validation
 ```
 
-**Recommendation**: ✅ **Already unified** - Both use `QVService.require_project_root()` or `QVService(project_root)`. No action needed.
+**Recommendation**: ✅ **Already unified** - Both use `QMSService.require_project_root()` or `QMSService(project_root)`. No action needed.
 
 ---
 
@@ -923,7 +923,7 @@ calculation_resolved = self._resolve_calculation_with_fallback(project_root, cal
 # Has fallback logic to ensure cache is up-to-date
 ```
 
-**Recommendation**: ⚠️ **Partially unified** - Both use `QVService.resolve_calculation_ref()`, but daemon has extra fallback logic. Consider adding `svc.calculation.resolve_with_fallback()` capability endpoint.
+**Recommendation**: ⚠️ **Partially unified** - Both use `QMSService.resolve_calculation_ref()`, but daemon has extra fallback logic. Consider adding `svc.calculation.resolve_with_fallback()` capability endpoint.
 
 ---
 
@@ -941,7 +941,7 @@ step_ref = svc.resolve_step_ref(calc_selector, step_selector, index=registry)
 self._resolve_step_with_fallback(project_root, calculation, step)
 ```
 
-**Recommendation**: ⚠️ **Partially unified** - Both use `QVService.resolve_step_ref()`, but daemon has fallback. Consider unified `svc.step.resolve()` capability.
+**Recommendation**: ⚠️ **Partially unified** - Both use `QMSService.resolve_step_ref()`, but daemon has fallback. Consider unified `svc.step.resolve()` capability.
 
 ---
 
@@ -949,19 +949,19 @@ self._resolve_step_with_fallback(project_root, calculation, step)
 
 **CLI** (lines 3509-3518):
 ```python
-calc_model = QVService.load_calculation(calc_dir, project_root)
+calc_model = QMSService.load_calculation(calc_dir, project_root)
 calc_model.mode = "strict"
-QVService.save_calculation(calc_model, calc_dir)
+QMSService.save_calculation(calc_model, calc_dir)
 ```
 
 **Daemon** (lines 5299-5301):
 ```python
-wf_model = QVService.load_calculation(calculation_path, project_root=project_root)
+wf_model = QMSService.load_calculation(calculation_path, project_root=project_root)
 calculation_dir = calculation_resolved.absolute_path
-planned_io_dir = QVService.compute_io_dir_from_calculation_model(calculation_dir, wf_model.working_dir)
+planned_io_dir = QMSService.compute_io_dir_from_calculation_model(calculation_dir, wf_model.working_dir)
 ```
 
-**Recommendation**: ⚠️ **Partially unified** - Both use `QVService.load_calculation()`, but this is a re-exported function. Should use `svc.calculation.get()` which returns DTO, not kernel model.
+**Recommendation**: ⚠️ **Partially unified** - Both use `QMSService.load_calculation()`, but this is a re-exported function. Should use `svc.calculation.get()` which returns DTO, not kernel model.
 
 ---
 
@@ -971,9 +971,9 @@ planned_io_dir = QVService.compute_io_dir_from_calculation_model(calculation_dir
 ```python
 def _run_standalone_step(input_file, workdir, engine_name):
     # Step 1: Import .in to YAML
-    import_result = QVService.build_step_spec_from_qe_input(...)
+    import_result = QMSService.build_step_spec_from_qe_input(...)
     # Step 2: Materialize step from YAML
-    svc = QVService(workdir_path)
+    svc = QMSService(workdir_path)
     generated_input, materialized_spec = svc.materialize_step_spec(...)
     # Step 3: Run step
     step = Step(...)  # Constructs kernel Step object
@@ -997,7 +997,7 @@ def _run_standalone_step(input_file, workdir, engine_name):
 | Calculation model loading | CLI, daemon | ⚠️ Partial | Use `svc.calculation.get()` (DTO) instead |
 | Standalone execution | CLI only | ⚠️ Uses kernel types | Use `svc.run.input_file()` capability |
 
-**Key Finding**: Most duplication is already unified via `QVService`, but both CLI and daemon still use re-exported kernel functions (`load_calculation`, `resolve_calculation_ref`) instead of capability endpoints. Migration to capability endpoints will eliminate remaining duplication.
+**Key Finding**: Most duplication is already unified via `QMSService`, but both CLI and daemon still use re-exported kernel functions (`load_calculation`, `resolve_calculation_ref`) instead of capability endpoints. Migration to capability endpoints will eliminate remaining duplication.
 
 ---
 
@@ -1016,7 +1016,7 @@ def _run_standalone_step(input_file, workdir, engine_name):
    - Separate classes: `CalculationService(project_root).get()` (not preferred)
 
 3. **Exception Policy**
-   - One base `QVServiceError` with error codes?
+   - One base `QMSServiceError` with error codes?
    - Typed exceptions (`ResourceNotFoundError`, `ValidationError`)?
    - Current mix is inconsistent.
 
@@ -1074,21 +1074,21 @@ python scripts/audit_api_surface.py > .audit/api_surface.json
 python -c "import ast; ..."  # AST analysis (see report)
 
 # Frontend import verification
-rg -n "^from quantumvitas\.api import" src/quantumvitas/cli
-rg -n "^from quantumvitas\.api import" src/quantumvitas/daemon
-rg -n "^from quantumvitas\.(core|calculation|...)\b" src/quantumvitas/cli
-rg -n "^from quantumvitas\.(core|calculation|...)\b" src/quantumvitas/daemon
+rg -n "^from qmatsuite\.api import" src/qmatsuite/cli
+rg -n "^from qmatsuite\.api import" src/qmatsuite/daemon
+rg -n "^from qmatsuite\.(core|calculation|...)\b" src/qmatsuite/cli
+rg -n "^from qmatsuite\.(core|calculation|...)\b" src/qmatsuite/daemon
 
 # Kernel type usage in frontends
-rg -n "Calculation\(|Step\(|ResourceMeta\(" src/quantumvitas/cli/main.py
-rg -n "Calculation\(|Step\(|ResourceMeta\(" src/quantumvitas/daemon/server.py
+rg -n "Calculation\(|Step\(|ResourceMeta\(" src/qmatsuite/cli/main.py
+rg -n "Calculation\(|Step\(|ResourceMeta\(" src/qmatsuite/daemon/server.py
 
 # Method counts
-rg -n "@staticmethod|@classmethod" src/quantumvitas/api.py | wc -l
-rg -n "^    def " src/quantumvitas/api.py | wc -l
+rg -n "@staticmethod|@classmethod" src/qmatsuite/api.py | wc -l
+rg -n "^    def " src/qmatsuite/api.py | wc -l
 
 # File size
-wc -l src/quantumvitas/api.py
+wc -l src/qmatsuite/api.py
 ```
 
 ### Audit Artifacts

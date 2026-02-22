@@ -19,7 +19,7 @@ to 100% compliance with the kernel-driver separation contract.
 
 ## Fix 1: Remove QE Fallback in `models.py` [CRITICAL]
 
-**File**: `src/quantumvitas/core/models.py`
+**File**: `src/qmatsuite/core/models.py`
 **Function**: `_infer_engine_family_from_steps()`
 **Lines**: 35-95 (entire function)
 
@@ -86,8 +86,8 @@ def _infer_engine_family_from_steps(steps: List["CalculationStepEntry"]) -> Opti
         return None
 
     # Ensure drivers are loaded
-    import quantumvitas.drivers
-    from quantumvitas.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
 
     families = set()
     for step in steps:
@@ -116,7 +116,7 @@ pytest tests/gates/test_no_fallbacks.py::TestNoSilentQEFallback -v
 
 ## Fix 2: Remove QE Fallback in `handlers.py` [CRITICAL]
 
-**File**: `src/quantumvitas/execution/handlers.py`
+**File**: `src/qmatsuite/execution/handlers.py`
 **Function**: `create_handler_map()`
 **Lines**: 208-231
 
@@ -125,7 +125,7 @@ pytest tests/gates/test_no_fallbacks.py::TestNoSilentQEFallback -v
 ```python
 def create_handler_map(...) -> Dict[str, Callable[[Job, "Calculation"], JobResult]]:
     # Ensure drivers are loaded
-    import quantumvitas.drivers
+    import qmatsuite.drivers
 
     def make_handler(base_handler: HandlerFunc):
         ...
@@ -179,7 +179,7 @@ def create_handler_map(
         RuntimeError: If a registered driver fails to provide a handler
     """
     # Ensure drivers are loaded
-    import quantumvitas.drivers
+    import qmatsuite.drivers
 
     def make_handler(base_handler: HandlerFunc):
         """Create a closure that captures engine_registry and context."""
@@ -210,7 +210,7 @@ pytest tests/gates/test_registry_routing.py::TestKernelIntegration -v
 
 ## Fix 3: Remove startswith() Patterns in `generalized_steps.py` [HIGH]
 
-**File**: `src/quantumvitas/workflow/generalized_steps.py`
+**File**: `src/qmatsuite/workflow/generalized_steps.py`
 **Function**: `get_generalized_step_from_engine_specific()`
 **Lines**: 365-420
 
@@ -264,8 +264,8 @@ def get_generalized_step_from_engine_specific(engine_specific_step: str) -> Opti
             return (family, gen_step)
 
     # Use registry to get engine family for this step type
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers  # Ensure loaded
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers  # Ensure loaded
 
     if DriverRegistry.is_step_type_registered(engine_specific_step):
         engine = DriverRegistry.get_engine_for_step_type(engine_specific_step)
@@ -284,7 +284,7 @@ def get_generalized_step_from_engine_specific(engine_specific_step: str) -> Opti
 
 ## Fix 4: Remove W90-QE Coupling in `generalized_steps.py` [HIGH]
 
-**File**: `src/quantumvitas/workflow/generalized_steps.py`
+**File**: `src/qmatsuite/workflow/generalized_steps.py`
 **Lines**: 280-296
 
 ### Current Code (BROKEN)
@@ -324,7 +324,7 @@ def materialize_step_for_engine(public_step_key: str, engine_family: str, regist
 
 ## Fix 5: Use Dynamic Engine List in `calculation.py` [MEDIUM]
 
-**File**: `src/quantumvitas/calculation/calculation.py`
+**File**: `src/qmatsuite/calculation/calculation.py`
 **Lines**: 396, 555 (two identical occurrences)
 
 ### Current Code (SUBOPTIMAL)
@@ -385,13 +385,13 @@ pytest tests/gates/ -v
 pytest tests/ -v
 
 # Static verification
-grep -rn 'families.add("qe")' src/quantumvitas/core/
+grep -rn 'families.add("qe")' src/qmatsuite/core/
 # Expected: Empty (no matches)
 
-grep -rn 'if "qe" not in handler_map' src/quantumvitas/execution/
+grep -rn 'if "qe" not in handler_map' src/qmatsuite/execution/
 # Expected: Empty (no matches)
 
-grep -rn 'startswith("qe_' src/quantumvitas/workflow/generalized_steps.py
+grep -rn 'startswith("qe_' src/qmatsuite/workflow/generalized_steps.py
 # Expected: Empty (no matches)
 ```
 
@@ -413,8 +413,8 @@ grep -rn 'startswith("qe_' src/quantumvitas/workflow/generalized_steps.py
 
 - [ ] All `pytest tests/gates/` tests pass
 - [ ] All `pytest tests/` tests pass
-- [ ] `grep -rn 'families.add("qe")' src/quantumvitas/core/` returns empty
-- [ ] `grep -rn 'qe.*fallback' src/quantumvitas/execution/handlers.py` returns empty
+- [ ] `grep -rn 'families.add("qe")' src/qmatsuite/core/` returns empty
+- [ ] `grep -rn 'qe.*fallback' src/qmatsuite/execution/handlers.py` returns empty
 - [ ] Manual test: Create step with unknown type → Verify UnknownStepTypeError raised
 - [ ] Manual test: Create step with typo (e.g., "qe_scff") → Verify helpful error with suggestion
 

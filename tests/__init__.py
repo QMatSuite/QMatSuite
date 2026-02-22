@@ -1,2 +1,2 @@
-"""Tests for QuantumVITAS."""
+"""Tests for QMatSuite."""
 

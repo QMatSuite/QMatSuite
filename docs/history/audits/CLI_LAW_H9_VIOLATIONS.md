@@ -20,7 +20,7 @@ Per API Constitution:
 
 | Line | Command | File Written | Violation Type |
 |------|---------|--------------|----------------|
-| 750-752 | `init project` | `project.qv.yml` | SSOT write |
+| 750-752 | `init project` | `project.qms.yml` | SSOT write |
 | 936 | `init calculation` | `calculation.yaml` | SSOT write |
 | 1393 | `init step` | `calculation.yaml` | SSOT write |
 | 2569 | `update step` | `*.step.yaml` | SSOT write |
@@ -42,24 +42,24 @@ Per API Constitution:
 
 | CLI Command | Current CLI Code | Required API Function | API Location |
 |-------------|------------------|----------------------|--------------|
-| `qv init project` | Direct YAML write (L750-752) | `QVService.init_project()` | service.py:6742 |
+| `qms init project` | Direct YAML write (L750-752) | `QMSService.init_project()` | service.py:6742 |
 
 ### 3.2 Calculation Operations
 
 | CLI Command | Current CLI Code | Required API Function | API Location |
 |-------------|------------------|----------------------|--------------|
-| `qv init calculation` | Direct YAML write (L936) | `svc.project.init_calculation()` | service.py:5865 |
-| `qv modify calculation --structure` | Direct YAML write (L3508,3592) | `svc.calculation.change_structure()` | service.py:3585 |
-| `qv modify calculation --reorder` | Direct YAML write (L3592) | `svc.calculation.reorder_steps()` | service.py:4371 |
+| `qms init calculation` | Direct YAML write (L936) | `svc.project.init_calculation()` | service.py:5865 |
+| `qms modify calculation --structure` | Direct YAML write (L3508,3592) | `svc.calculation.change_structure()` | service.py:3585 |
+| `qms modify calculation --reorder` | Direct YAML write (L3592) | `svc.calculation.reorder_steps()` | service.py:4371 |
 
 ### 3.3 Step Operations
 
 | CLI Command | Current CLI Code | Required API Function | API Location |
 |-------------|------------------|----------------------|--------------|
-| `qv init step` | `_write_step_spec()` (L1393,5044) | `svc.calculation.add_step()` | service.py:3743 |
-| `qv update step --params` | Direct YAML write (L2569,2577) | `svc.calculation.update_step_params()` | service.py:3074 |
-| `qv delete step` | Direct YAML write (L2968) | `svc.calculation.remove_step()` | service.py:3918 |
-| `qv modify step --name` | Direct YAML write (L3234) | `svc.calculation.update_step_params()` | service.py:3074* |
+| `qms init step` | `_write_step_spec()` (L1393,5044) | `svc.calculation.add_step()` | service.py:3743 |
+| `qms update step --params` | Direct YAML write (L2569,2577) | `svc.calculation.update_step_params()` | service.py:3074 |
+| `qms delete step` | Direct YAML write (L2968) | `svc.calculation.remove_step()` | service.py:3918 |
+| `qms modify step --name` | Direct YAML write (L3234) | `svc.calculation.update_step_params()` | service.py:3074* |
 
 *Note: Step rename may need a dedicated `rename_step()` method or use `update_step_params()` with name in meta.
 
@@ -128,7 +128,7 @@ Test: CLI creates calculation correctly
 - Creates calculation directory
 - Creates calculation.yaml with correct structure
 - Links to specified structure via structure_ulid
-- Adds calculation to project.qv.yml
+- Adds calculation to project.qms.yml
 - Returns calculation ULID
 ```
 
@@ -144,7 +144,7 @@ Test: CLI modifies calculation correctly
 ```
 Test: CLI creates project correctly
 - Creates project directory structure
-- Creates project.qv.yml with correct schema
+- Creates project.qms.yml with correct schema
 - Creates structures/ and calculations/ subdirectories
 - Returns success message
 ```
@@ -188,7 +188,7 @@ calculation_yaml.write_text(yaml.safe_dump(calculation_data, sort_keys=False))
 ### After (Compliant)
 ```python
 # Use API - REQUIRED
-svc = QVService(project_root)
+svc = QMSService(project_root)
 svc.calculation.add_step(calc_selector, step_spec)
 ```
 

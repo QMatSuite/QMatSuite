@@ -124,12 +124,12 @@ files remained after demotion.
 ### Bug 8: Cross-Domain Deep Imports
 
 **Symptom**: `test_no_cross_domain_deep_imports` failed because `structure_steps.py`
-imported directly from `quantumvitas.core.driver_registry` and
-`quantumvitas.core.resources`.
+imported directly from `qmatsuite.core.driver_registry` and
+`qmatsuite.core.resources`.
 
-**Fix**: Changed to use `quantumvitas.core.public` facade:
-- `from quantumvitas.core.public import DriverRegistry`
-- `from quantumvitas.core.public import get_resources_dir`
+**Fix**: Changed to use `qmatsuite.core.public` facade:
+- `from qmatsuite.core.public import DriverRegistry`
+- `from qmatsuite.core.public import get_resources_dir`
 
 ### Bug 9: Golden Contract Count Drift
 
@@ -156,7 +156,7 @@ and produces XML without ion particleset, causing QMCPACK to crash.
 2. Extract structure from `calculation.structure` (a `StructureRef` with
    `absolute_path` pointing to a JSON file)
 3. Handle QMatSuite structure envelope format: unwrap
-   `{"__qv_meta__": ..., "structure": {pymatgen dict}}` before creating
+   `{"__qms_meta__": ..., "structure": {pymatgen dict}}` before creating
    pymatgen Structure/Molecule objects
 4. Build structure dict (`{species, cart_coords}` for molecules,
    `{lattice, species, frac_coords}` for crystals)
@@ -182,19 +182,19 @@ and produces XML without ion particleset, causing QMCPACK to crash.
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/demo_store/translator.py` | Companion engine dispatch + managed key stripping |
-| `src/quantumvitas/calculation/structure_steps.py` | gen_type dispatch + public.py imports |
-| `src/quantumvitas/drivers/yambo/handler.py` | Materializer passthrough for pre-existing input files |
-| `src/quantumvitas/drivers/qe/recipe.py` | W90 companion step engine routing override |
-| `src/quantumvitas/drivers/qe/step_types.py` | Added qe_pw2qmcpack StepTypeSpec |
-| `src/quantumvitas/drivers/qe/driver.py` | Added pw2qmcpack to SUPPORTED_GEN_STEPS |
-| `src/quantumvitas/drivers/qe/engine/qe_engine.py` | Added pw2qmcpack to EXECUTABLE_MAP |
-| `src/quantumvitas/core/public.py` | Added get_resources_dir export |
+| `src/qmatsuite/demo_store/translator.py` | Companion engine dispatch + managed key stripping |
+| `src/qmatsuite/calculation/structure_steps.py` | gen_type dispatch + public.py imports |
+| `src/qmatsuite/drivers/yambo/handler.py` | Materializer passthrough for pre-existing input files |
+| `src/qmatsuite/drivers/qe/recipe.py` | W90 companion step engine routing override |
+| `src/qmatsuite/drivers/qe/step_types.py` | Added qe_pw2qmcpack StepTypeSpec |
+| `src/qmatsuite/drivers/qe/driver.py` | Added pw2qmcpack to SUPPORTED_GEN_STEPS |
+| `src/qmatsuite/drivers/qe/engine/qe_engine.py` | Added pw2qmcpack to EXECUTABLE_MAP |
+| `src/qmatsuite/core/public.py` | Added get_resources_dir export |
 | `tools/demo_store/generate_all.py` | Managed key stripping during generation |
 | `tests/fixtures/golden_0873ebf/daemon/list_demo_projects.json` | Count 53 -> 52 |
 | `tests/inputformat/samples/qe/si_yambo_bse/bse.in` | BSKmod SEX -> HARTREE |
 | `tests/inputformat/samples/corpus_index.yaml` | 6 new entries, 7 demoted |
-| `src/quantumvitas/engine/qmcpack_engine.py` | Roundtrip writer dispatch for preserved XML wavefunctions |
+| `src/qmatsuite/engine/qmcpack_engine.py` | Roundtrip writer dispatch for preserved XML wavefunctions |
 
 ## Final Demo Sweep Results
 

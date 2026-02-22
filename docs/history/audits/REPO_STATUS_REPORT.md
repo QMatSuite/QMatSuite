@@ -12,7 +12,7 @@
 ### Broad Scan (PASS 1)
 **Directories scanned:**
 - Repository root (`<project_root>`)
-- `src/quantumvitas/` (main source tree)
+- `src/qmatsuite/` (main source tree)
 - `docs/` (documentation tree)
 - `tests/` (test suites)
 - `gui/` (GUI frontend)
@@ -39,15 +39,15 @@
 - `rg "manifest\.json|\.provenance|\.history"`
 - `find resources/demo_projects -name "*.yml"`
 - `find tests/gates -name "test_*.py"`
-- `find src/quantumvitas/drivers -mindepth 1 -maxdepth 1 -type d`
+- `find src/qmatsuite/drivers -mindepth 1 -maxdepth 1 -type d`
 
 ### Deep Dives (PASS 2)
 **Files read per section:**
-- SSOT/Provenance: `src/quantumvitas/core/yaml_io.py`, `src/quantumvitas/provenance/`, `src/quantumvitas/calculation/manifest.py`
-- Step Types: `src/quantumvitas/workflow/step_type_convert.py`, `src/quantumvitas/workflow/gen_steps.py`, `src/quantumvitas/core/driver_registry.py`
-- Engines: All `src/quantumvitas/drivers/*/driver.py` files
-- Runner: `src/quantumvitas/calculation/runner.py`, `src/quantumvitas/execution/executor.py`
-- GUI/RPC: `src/quantumvitas/daemon/server.py`, `src/quantumvitas/api/service.py`, `gui/src/types/qv.ts`
+- SSOT/Provenance: `src/qmatsuite/core/yaml_io.py`, `src/qmatsuite/provenance/`, `src/qmatsuite/calculation/manifest.py`
+- Step Types: `src/qmatsuite/workflow/step_type_convert.py`, `src/qmatsuite/workflow/gen_steps.py`, `src/qmatsuite/core/driver_registry.py`
+- Engines: All `src/qmatsuite/drivers/*/driver.py` files
+- Runner: `src/qmatsuite/calculation/runner.py`, `src/qmatsuite/execution/executor.py`
+- GUI/RPC: `src/qmatsuite/daemon/server.py`, `src/qmatsuite/api/service.py`, `gui/src/types/qms.ts`
 - Tests: `tests/gates/` inventory, `tests/unit/`, `tests/integration/`, `tests/cli/`
 - Demos: `resources/demo_projects/`, `tools/demo_generators/`, `tests/gates/test_demo_integrity.py`
 
@@ -81,7 +81,7 @@
   - `date`
   - `find resources/demo_projects -name "*.yml" | wc -l` → 21 demos
   - `find tests/gates -name "test_*.py" | wc -l` → 59 gate tests
-  - `find src/quantumvitas/drivers -mindepth 1 -maxdepth 1 -type d | wc -l` → 16 engine drivers
+  - `find src/qmatsuite/drivers -mindepth 1 -maxdepth 1 -type d | wc -l` → 16 engine drivers
 
 **Evidence pointers:**
 - Repository root: `<project_root>`
@@ -95,10 +95,10 @@
 
 ```
 QMatSuite/
-├── src/quantumvitas/          # Main Python package
-│   ├── api/                   # API facade (QVService, DTOs, utils)
+├── src/qmatsuite/          # Main Python package
+│   ├── api/                   # API facade (QMSService, DTOs, utils)
 │   ├── calculation/           # Calculation/step models, runner, manifest
-│   ├── cli/                   # Typer CLI (qv command)
+│   ├── cli/                   # Typer CLI (qms command)
 │   ├── core/                  # Core domain (models, resolution, SSOT I/O, drivers)
 │   ├── daemon/                # JSON-RPC daemon server
 │   ├── drivers/               # Engine driver bundles (16 engines)
@@ -144,16 +144,16 @@ QMatSuite/
 
 | Directory | Purpose | Evidence |
 |-----------|---------|----------|
-| `src/quantumvitas/core/` | Core domain models, SSOT I/O, driver registry, resolution | `src/quantumvitas/core/models.py`, `yaml_io.py`, `driver_registry.py` |
-| `src/quantumvitas/drivers/` | Engine driver bundles (one per engine) | 16 subdirectories: `qe/`, `vasp/`, `orca/`, `pyscf/`, etc. |
-| `src/quantumvitas/provenance/` | Provenance/history system (SQLite + CAS) | `src/quantumvitas/provenance/db.py`, `cas.py`, `schema.py` |
+| `src/qmatsuite/core/` | Core domain models, SSOT I/O, driver registry, resolution | `src/qmatsuite/core/models.py`, `yaml_io.py`, `driver_registry.py` |
+| `src/qmatsuite/drivers/` | Engine driver bundles (one per engine) | 16 subdirectories: `qe/`, `vasp/`, `orca/`, `pyscf/`, etc. |
+| `src/qmatsuite/provenance/` | Provenance/history system (SQLite + CAS) | `src/qmatsuite/provenance/db.py`, `cas.py`, `schema.py` |
 | `tests/gates/` | Constitutional gate tests enforcing invariants | 59 test files enforcing constitution laws |
 | `resources/demo_projects/` | Demo project snapshots (YAML) | 21 `.yml` files + reference artifacts |
 | `docs/governance/` | Binding governance specifications | 11 governance spec documents |
 
 **Evidence pointers:**
 - Directory structure: `list_dir` outputs
-- Engine count: `find src/quantumvitas/drivers -mindepth 1 -maxdepth 1 -type d | wc -l`
+- Engine count: `find src/qmatsuite/drivers -mindepth 1 -maxdepth 1 -type d | wc -l`
 - Demo count: `find resources/demo_projects -name "*.yml" | wc -l`
 - Gate test count: `find tests/gates -name "test_*.py" | wc -l`
 
@@ -225,7 +225,7 @@ QMatSuite/
 **SSOT Location Pattern:**
 ```
 <project_root>/
-├── project.qv.yml                    # Project manifest (SSOT)
+├── project.qms.yml                    # Project manifest (SSOT)
 ├── structures/
 │   └── <ulid>.json                    # Structure resources (SSOT)
 └── calculations/
@@ -238,8 +238,8 @@ QMatSuite/
 ### SSOT I/O Implementation
 
 **Centralized YAML I/O** (per Constitution §2.4):
-- All YAML reads/writes go through `quantumvitas.core.yaml_io`
-- Uses Doc layer (`quantumvitas.core.yamldoc`) for structured access
+- All YAML reads/writes go through `qmatsuite.core.yaml_io`
+- Uses Doc layer (`qmatsuite.core.yamldoc`) for structured access
 - Direct `yaml.safe_load`/`yaml.safe_dump` usage is **forbidden**
 
 **Key Functions:**
@@ -248,8 +248,8 @@ QMatSuite/
 - `yaml_io.get_project_doc()`, `get_calculation_doc()`, `get_step_doc()`
 
 **Evidence pointers:**
-- `src/quantumvitas/core/yaml_io.py` (centralized I/O)
-- `src/quantumvitas/core/yamldoc.py` (Doc layer)
+- `src/qmatsuite/core/yaml_io.py` (centralized I/O)
+- `src/qmatsuite/core/yamldoc.py` (Doc layer)
 - Constitution §2.1, §2.4
 - Gate: `tests/gates/test_yaml_write_single_entry.py`, `test_yaml_read_single_entry.py`
 
@@ -261,8 +261,8 @@ QMatSuite/
 - Modifying YAML during a run does not affect the current run (only the next run)
 
 **Evidence pointers:**
-- `src/quantumvitas/execution/recipes.py` (materialization)
-- `src/quantumvitas/calculation/runner.py` (execution reads from `raw/`)
+- `src/qmatsuite/execution/recipes.py` (materialization)
+- `src/qmatsuite/calculation/runner.py` (execution reads from `raw/`)
 
 ### Species/Pseudopotential SSOT
 
@@ -277,8 +277,8 @@ QMatSuite/
 3. **project runtime**: `project/pseudo`
 
 **Evidence pointers:**
-- `src/quantumvitas/core/pseudo.py` (pseudo management)
-- `src/quantumvitas/core/pseudo_materialization.py` (staging)
+- `src/qmatsuite/core/pseudo.py` (pseudo management)
+- `src/qmatsuite/core/pseudo_materialization.py` (staging)
 - Constitution §9
 
 ---
@@ -289,12 +289,12 @@ QMatSuite/
 
 **Provenance System** (per `PROVENANCE_VERSIONED_HISTORY_SPEC.md` v1.1):
 - **Status**: PROPOSED spec, **IMPLEMENTED** in codebase
-- **Location**: `src/quantumvitas/provenance/`
+- **Location**: `src/qmatsuite/provenance/`
 - **Storage**: SQLite database (`.provenance/provenance.db`) + Content-Addressed Store (`.provenance/.cas/`)
 
 ### Database Schema
 
-**SQLite Tables** (per `src/quantumvitas/provenance/schema.py`):
+**SQLite Tables** (per `src/qmatsuite/provenance/schema.py`):
 - `operations`: Records all SSOT-writing operations (append-only timeline)
 - `runs`: Records calculation run events
 - `run_steps`: Normalized per-step execution records
@@ -304,19 +304,19 @@ QMatSuite/
 **Schema Version**: `CURRENT_SCHEMA_VERSION = 3`
 
 **Evidence pointers:**
-- `src/quantumvitas/provenance/schema.py` (DDL)
-- `src/quantumvitas/provenance/db.py` (database operations)
+- `src/qmatsuite/provenance/schema.py` (DDL)
+- `src/qmatsuite/provenance/db.py` (database operations)
 
 ### CAS (Content-Addressed Store)
 
-**CAS Implementation** (per `src/quantumvitas/provenance/cas.py`):
+**CAS Implementation** (per `src/qmatsuite/provenance/cas.py`):
 - Objects stored by SHA-256 hash: `.cas/objects/<first2>/<rest>`
 - Immutable objects (never modified after write)
 - Duplicate writes (same hash) are no-ops
 - Storage tiers: Tier-0 (run snapshots), Tier-0.5 (reproducibility assets), Tier-1 (derived outputs), Tier-2 (raw artifacts), Tier-3 (large optional outputs)
 
 **Evidence pointers:**
-- `src/quantumvitas/provenance/cas.py` (CAS implementation)
+- `src/qmatsuite/provenance/cas.py` (CAS implementation)
 - Law P5 (CAS Integrity) in `PROVENANCE_VERSIONED_HISTORY_SPEC.md`
 
 ### OperationContext
@@ -324,10 +324,10 @@ QMatSuite/
 **OperationContext Required** (per Law P2):
 - All YAML writes require `OperationContext` passed through call chain
 - Explicit intent tracking (not inferred)
-- Located in: `src/quantumvitas/provenance/opctx.py`
+- Located in: `src/qmatsuite/provenance/opctx.py`
 
 **Evidence pointers:**
-- `src/quantumvitas/provenance/opctx.py` (OperationContext definitions)
+- `src/qmatsuite/provenance/opctx.py` (OperationContext definitions)
 - Gate: `tests/gates/test_provenance_opctx_required.py`
 
 ### History World Separation
@@ -350,12 +350,12 @@ QMatSuite/
 ### Provenance Integration Points
 
 **Runner Integration**:
-- `src/quantumvitas/calculation/runner.py` calls `update_provenance_after_step()`
+- `src/qmatsuite/calculation/runner.py` calls `update_provenance_after_step()`
 - Run recording: `record_run_start()`, `record_run_complete()`, `record_run_step()`
 
 **Evidence pointers:**
-- `src/quantumvitas/provenance/recording.py` (recording functions)
-- `src/quantumvitas/calculation/runner.py` (runner integration)
+- `src/qmatsuite/provenance/recording.py` (recording functions)
+- `src/qmatsuite/calculation/runner.py` (runner integration)
 
 ---
 
@@ -383,7 +383,7 @@ step_type_spec = f"{engine_prefix}_{step_type_gen}"
 ```
 
 **Implementation**:
-- Canonical functions in `src/quantumvitas/workflow/step_type_convert.py`:
+- Canonical functions in `src/qmatsuite/workflow/step_type_convert.py`:
   - `spec_from(prefix, gen)` → SPEC
   - `gen_from(spec)` → GEN
   - `prefix_from(spec)` → prefix
@@ -394,17 +394,17 @@ step_type_spec = f"{engine_prefix}_{step_type_gen}"
 - Reliable splitting at first underscore
 
 **Evidence pointers:**
-- `src/quantumvitas/workflow/step_type_convert.py` (canonical conversion)
+- `src/qmatsuite/workflow/step_type_convert.py` (canonical conversion)
 - Gate: `tests/gates/test_underscore_ban.py`, `test_no_manual_join_split.py`
 
 ### GEN Step Registry (SSOT)
 
-**GenStepRegistry** (per `src/quantumvitas/workflow/gen_steps.py`):
+**GenStepRegistry** (per `src/qmatsuite/workflow/gen_steps.py`):
 - `GenStepRegistry.GEN_STEPS`: Frozen set of all valid GEN steps
 - Current count: 30+ GEN steps (scf, hf, nscf, relax, bands, bandspw, dos, wannierprep, pw2wannier, wannier, ph, md, minimize, mp2, td, freq, vmc, dmc, wfopt, setup, gw, bse, optics, custom, etc.)
 
 **Evidence pointers:**
-- `src/quantumvitas/workflow/gen_steps.py` (SSOT for GEN steps)
+- `src/qmatsuite/workflow/gen_steps.py` (SSOT for GEN steps)
 - Gate: `tests/gates/test_step_type_constitution.py`
 
 ### Bans (As Enforced)
@@ -461,8 +461,8 @@ step_type_spec = f"{engine_prefix}_{step_type_gen}"
 - GPAW (also has legacy `engine/gpaw_engine.py`, being phased out)
 
 **Evidence pointers:**
-- All `src/quantumvitas/drivers/*/driver.py` files (PREFIX and SUPPORTED_GEN_STEPS declarations)
-- `src/quantumvitas/core/driver_registry.py` (registry implementation)
+- All `src/qmatsuite/drivers/*/driver.py` files (PREFIX and SUPPORTED_GEN_STEPS declarations)
+- `src/qmatsuite/core/driver_registry.py` (registry implementation)
 - `docs/architecture/GUI_ENGINE_FAMILY_DEMO_SPEC.md` (engine classification)
 
 ### Driver Bundle Structure
@@ -480,7 +480,7 @@ drivers/<engine>/
 ```
 
 **Evidence pointers:**
-- `src/quantumvitas/drivers/qe/` (example driver bundle)
+- `src/qmatsuite/drivers/qe/` (example driver bundle)
 - `docs/governance/ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md` §10.1
 
 ### Materialization Rules
@@ -491,7 +491,7 @@ drivers/<engine>/
 - Stored in `DriverRegistry._materialization_maps`
 
 **Evidence pointers:**
-- `src/quantumvitas/core/driver_registry.py` (`_build_materialization_map()`)
+- `src/qmatsuite/core/driver_registry.py` (`_build_materialization_map()`)
 - Individual driver implementations
 
 ### Execution Modes
@@ -506,7 +506,7 @@ drivers/<engine>/
 - **Cleanup**: VASP (clean working directory per step)
 
 **Evidence pointers:**
-- `src/quantumvitas/execution/recipes.py` (recipe implementations)
+- `src/qmatsuite/execution/recipes.py` (recipe implementations)
 - `docs/governance/ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md` §4
 
 ---
@@ -515,7 +515,7 @@ drivers/<engine>/
 
 ### Runner Implementation
 
-**Calculation Runner** (`src/quantumvitas/calculation/runner.py`):
+**Calculation Runner** (`src/qmatsuite/calculation/runner.py`):
 - Orchestrates step execution and verification
 - Integrates with provenance to record run revisions
 - Uses `EngineRegistry` for engine lookup (legacy) and `DriverRegistry` (new)
@@ -526,27 +526,27 @@ drivers/<engine>/
 - `compute_io_dir_from_calculation_model()`: SSOT for I/O directory path
 
 **Evidence pointers:**
-- `src/quantumvitas/calculation/runner.py` (790 lines)
+- `src/qmatsuite/calculation/runner.py` (790 lines)
 
 ### Execution Pipeline
 
-**Executor** (`src/quantumvitas/execution/executor.py`):
+**Executor** (`src/qmatsuite/execution/executor.py`):
 - Engine-agnostic executor
 - Dispatches through `DriverRegistry`
 - Manages job graphs, handlers, recipes
 
-**Handlers** (`src/quantumvitas/execution/handlers.py`):
+**Handlers** (`src/qmatsuite/execution/handlers.py`):
 - Step execution handlers (one per engine)
 - Retrieved via `DriverRegistry.get_handler(step_type_spec)`
 
-**Recipes** (`src/quantumvitas/execution/recipes.py`):
+**Recipes** (`src/qmatsuite/execution/recipes.py`):
 - Materialize step parameters → JobGraph
 - Three archetypes: Directory-state, Strong-chain, Cleanup
 
 **Evidence pointers:**
-- `src/quantumvitas/execution/executor.py`
-- `src/quantumvitas/execution/handlers.py`
-- `src/quantumvitas/execution/recipes.py`
+- `src/qmatsuite/execution/executor.py`
+- `src/qmatsuite/execution/handlers.py`
+- `src/qmatsuite/execution/recipes.py`
 
 ### Locking (As Implemented)
 
@@ -558,13 +558,13 @@ drivers/<engine>/
 - Calling `save_yaml_doc()` while holding `edit.lock` → deadlock (portalocker non-reentrant)
 
 **Evidence pointers:**
-- `src/quantumvitas/core/locking.py` (lock implementation)
+- `src/qmatsuite/core/locking.py` (lock implementation)
 - Constitution §4
 - Gate: `tests/gates/test_lock_ordering.py`
 
 ### Incremental Run Manifest
 
-**Manifest System** (`src/quantumvitas/calculation/manifest.py`):
+**Manifest System** (`src/qmatsuite/calculation/manifest.py`):
 - Runtime bookkeeping (non-SSOT, deletable)
 - Location: `calculations/<calc_ulid>/.run_tmp_info/manifest.json`
 - Schema version: `MANIFEST_SCHEMA_VERSION = 1`
@@ -579,7 +579,7 @@ drivers/<engine>/
 - `run_ulid`, `done`, `started_at`, `done_at`
 
 **Evidence pointers:**
-- `src/quantumvitas/calculation/manifest.py` (manifest implementation)
+- `src/qmatsuite/calculation/manifest.py` (manifest implementation)
 - Constitution §5
 
 ### Input Materialization
@@ -595,8 +595,8 @@ drivers/<engine>/
 - Output filenames: Fixed at `{step_type}.out/.err` (not derived from input filenames)
 
 **Evidence pointers:**
-- `src/quantumvitas/execution/recipes.py` (materialization)
-- `src/quantumvitas/calculation/runner.py` (`compute_io_dir_from_calculation_model()`)
+- `src/qmatsuite/execution/recipes.py` (materialization)
+- `src/qmatsuite/calculation/runner.py` (`compute_io_dir_from_calculation_model()`)
 - Constitution §2.2, §2.3, §16.2
 
 ---
@@ -620,8 +620,8 @@ drivers/<engine>/
 - Variant ordering: later-step / faster-changing dimensions go in inner loop
 
 **Evidence pointers:**
-- `src/quantumvitas/execution/scan_expansion.py` (scan expansion)
-- `src/quantumvitas/calculation/scan_tokens.py` (ScanRef parsing)
+- `src/qmatsuite/execution/scan_expansion.py` (scan expansion)
+- `src/qmatsuite/calculation/scan_tokens.py` (ScanRef parsing)
 - Constitution §10
 
 ### ParamSpace System
@@ -641,8 +641,8 @@ drivers/<engine>/
 - **No guessing**: Missing key parameters → Detector returns `CUSTOM`
 
 **Evidence pointers:**
-- `src/quantumvitas/presets/compiler.py` (compiler)
-- `src/quantumvitas/presets/detector.py` (detector)
+- `src/qmatsuite/presets/compiler.py` (compiler)
+- `src/qmatsuite/presets/detector.py` (detector)
 - `docs/governance/PARAMSPACE_SPEC.md`
 
 ### Preset System
@@ -653,11 +653,11 @@ drivers/<engine>/
 - Forward generation / reverse interpretation of step parameter sets
 
 **Preset Catalog**:
-- Located in: `src/quantumvitas/presets/variants_registry.py`
+- Located in: `src/qmatsuite/presets/variants_registry.py`
 - Presets: precision, space_variant, etc.
 
 **Evidence pointers:**
-- `src/quantumvitas/presets/` (preset system)
+- `src/qmatsuite/presets/` (preset system)
 - Constitution §8
 
 ### Owned Keys vs Engine Keys Boundary
@@ -671,7 +671,7 @@ drivers/<engine>/
 
 **Evidence pointers:**
 - Constitution §12
-- `src/quantumvitas/presets/` (ParamSpace registry)
+- `src/qmatsuite/presets/` (ParamSpace registry)
 
 ---
 
@@ -699,7 +699,7 @@ drivers/<engine>/
 **Evidence pointers:**
 - `gui/src/components/panels/DemoGalleryPanel.tsx`
 - `gui/src/components/panels/StepDetailPanel.tsx`
-- `gui/src/types/qv.ts` (TypeScript types)
+- `gui/src/types/qms.ts` (TypeScript types)
 
 ### Demo Loading
 
@@ -710,17 +710,17 @@ drivers/<engine>/
 
 **Evidence pointers:**
 - `gui/src/components/panels/DemoGalleryPanel.tsx`
-- `src/quantumvitas/api/service.py` (`list_demo_projects()`, `create_demo_project()`)
+- `src/qmatsuite/api/service.py` (`list_demo_projects()`, `create_demo_project()`)
 
 ### Run Triggers
 
 **Run Calculation**:
 - GUI triggers runs via `run_calculation()` RPC endpoint
 - Job status tracked via `get_job_status()` RPC
-- Job manager: `src/quantumvitas/daemon/jobs.py`
+- Job manager: `src/qmatsuite/daemon/jobs.py`
 
 **Evidence pointers:**
-- `src/quantumvitas/daemon/server.py` (RPC endpoints)
+- `src/qmatsuite/daemon/server.py` (RPC endpoints)
 - `gui/src/hooks/useJobs.ts` (job status hooks)
 
 ### Digest Display
@@ -732,20 +732,20 @@ drivers/<engine>/
 
 **Evidence pointers:**
 - `gui/src/components/panels/CalculationAnalysisPanel.tsx`
-- `src/quantumvitas/api/service.py` (analysis endpoints)
+- `src/qmatsuite/api/service.py` (analysis endpoints)
 
 ### Backend Contracts (RPC Endpoints)
 
-**JSON-RPC Daemon** (`src/quantumvitas/daemon/server.py`):
+**JSON-RPC Daemon** (`src/qmatsuite/daemon/server.py`):
 - Reads JSON requests from stdin (one per line)
 - Writes JSON responses to stdout (one per line)
-- Calls `QVService` for all operations (never CLI directly)
+- Calls `QMSService` for all operations (never CLI directly)
 
 **RPC Method Count**: 100+ methods (project, calculation, step, structure, analysis, settings, etc.)
 
 **Evidence pointers:**
-- `src/quantumvitas/daemon/server.py` (6455 lines, RPC handler)
-- `gui/src/hooks/useQVClient.ts` (RPC client wrapper)
+- `src/qmatsuite/daemon/server.py` (6455 lines, RPC handler)
+- `gui/src/hooks/useQMSClient.ts` (RPC client wrapper)
 
 ### GUI Field Usage
 
@@ -755,7 +755,7 @@ drivers/<engine>/
 - Step types: GUI carries both `step_type_gen` and `step_type_spec` in DTOs
 
 **Evidence pointers:**
-- `gui/src/types/qv.ts` (TypeScript DTOs)
+- `gui/src/types/qms.ts` (TypeScript DTOs)
 - Gate: `tests/gates/test_no_legacy_identity_fields.py`
 - Gate: `tests/gates/test_gen_spec_convergence_gate.py` (DTOs must carry both step type fields)
 
@@ -769,8 +769,8 @@ drivers/<engine>/
 
 | Layer | Package | Import Rules |
 |-------|---------|-------------|
-| **Frontend** | `daemon`, `cli`, `gui` | May only import from `quantumvitas.api` |
-| **API Facade** | `quantumvitas.api` | DTOs + Errors + Utils + Service |
+| **Frontend** | `daemon`, `cli`, `gui` | May only import from `qmatsuite.api` |
+| **API Facade** | `qmatsuite.api` | DTOs + Errors + Utils + Service |
 | **Core/Runtime** | All other packages | Frontend MUST NOT import directly |
 
 **Evidence pointers:**
@@ -779,10 +779,10 @@ drivers/<engine>/
 
 ### API Facade
 
-**QVService** (`src/quantumvitas/api/service.py`):
+**QMSService** (`src/qmatsuite/api/service.py`):
 - Single service class with static methods
 - 100+ capability methods (project, calculation, step, structure, analysis, settings)
-- DTOs in `src/quantumvitas/api/types/`
+- DTOs in `src/qmatsuite/api/types/`
 
 **Utils Policy** (per `API_CONSTITUTION.md` H2):
 - Default: NO reexports in utils
@@ -790,32 +790,32 @@ drivers/<engine>/
 - Examples: `is_ulid_like()`, `validate_ulid()`
 
 **Evidence pointers:**
-- `src/quantumvitas/api/service.py` (7258 lines)
-- `src/quantumvitas/api/utils.py` (utils with justifications)
+- `src/qmatsuite/api/service.py` (7258 lines)
+- `src/qmatsuite/api/utils.py` (utils with justifications)
 - Gate: `tests/gates/test_no_service_delegating_utils.py`
 
 ### CLI Implementation
 
-**Typer CLI** (`src/quantumvitas/cli/main.py`):
-- Entry point: `qv` command (via `pyproject.toml` entry_points)
+**Typer CLI** (`src/qmatsuite/cli/main.py`):
+- Entry point: `qms` command (via `pyproject.toml` entry_points)
 - Commands: `init`, `run`, `configure`, `analyze`, `import-structure`, etc.
-- Calls `QVService` (never core/runtime directly)
+- Calls `QMSService` (never core/runtime directly)
 
 **Evidence pointers:**
-- `src/quantumvitas/cli/main.py`
-- `pyproject.toml` (`[project.scripts] qv = "quantumvitas.cli:app"`)
+- `src/qmatsuite/cli/main.py`
+- `pyproject.toml` (`[project.scripts] qms = "qmatsuite.cli:app"`)
 
 ### Daemon Implementation
 
-**JSON-RPC Daemon** (`src/quantumvitas/daemon/server.py`):
+**JSON-RPC Daemon** (`src/qmatsuite/daemon/server.py`):
 - stdio-based JSON-RPC interface for GUI
 - Reads JSON requests from stdin, writes to stdout
-- Calls `QVService` for all operations
+- Calls `QMSService` for all operations
 - Uses `JobManager` for long-running operations
 
 **Evidence pointers:**
-- `src/quantumvitas/daemon/server.py` (6455 lines)
-- `src/quantumvitas/daemon/jobs.py` (JobManager)
+- `src/qmatsuite/daemon/server.py` (6455 lines)
+- `src/qmatsuite/daemon/jobs.py` (JobManager)
 
 ### Kernel Layering
 
@@ -976,7 +976,7 @@ pytest tests/gates/
 - `tools/demo_generators/verified/generate_orca_demos.py`: Verified ORCA demo generator
 
 **Demo Generation Flow**:
-1. Export existing project via `export_project_to_snapshot()` (`src/quantumvitas/project/snapshot.py`)
+1. Export existing project via `export_project_to_snapshot()` (`src/qmatsuite/project/snapshot.py`)
 2. Extract reference artifacts (SCF, DOS, bands JSON files)
 3. Add demo metadata (title, subtitle, tags, recommended_analysis, difficulty)
 4. Write to `resources/demo_projects/<demo_id>.yml`
@@ -984,16 +984,16 @@ pytest tests/gates/
 **Evidence pointers:**
 - `tools/generate_demo_snapshots.py`
 - `docs/DEMO_GENERATION.md`
-- `src/quantumvitas/project/snapshot.py` (`export_project_to_snapshot()`)
+- `src/qmatsuite/project/snapshot.py` (`export_project_to_snapshot()`)
 
 ### Demo Loading (API)
 
 **Demo API Methods**:
-- `QVService.list_demo_projects()`: Lists available demos
-- `QVService.create_demo_project()`: Creates project from demo snapshot
+- `QMSService.list_demo_projects()`: Lists available demos
+- `QMSService.create_demo_project()`: Creates project from demo snapshot
 
 **Evidence pointers:**
-- `src/quantumvitas/api/service.py` (`list_demo_projects()`, `create_demo_project()`)
+- `src/qmatsuite/api/service.py` (`list_demo_projects()`, `create_demo_project()`)
 
 ---
 
@@ -1002,11 +1002,11 @@ pytest tests/gates/
 ### Limitations Found in Docs/Code
 
 **1. Legacy Engine Layer**:
-- `src/quantumvitas/engine/` directory exists (legacy layer)
+- `src/qmatsuite/engine/` directory exists (legacy layer)
 - GPAW has both legacy (`engine/gpaw_engine.py`) and new (`drivers/gpaw/`) implementations
 - Status: Being phased out (per architecture docs)
 
-**Evidence**: `src/quantumvitas/engine/` directory, `docs/architecture/KERNEL_REVIEW_REPORT.md`
+**Evidence**: `src/qmatsuite/engine/` directory, `docs/architecture/KERNEL_REVIEW_REPORT.md`
 
 **2. Provenance System Status**:
 - `PROVENANCE_VERSIONED_HISTORY_SPEC.md` is PROPOSED (v1.1), not FINAL
@@ -1021,7 +1021,7 @@ pytest tests/gates/
 **Evidence**: `docs/governance/KERNEL_DEPENDENCY_SPEC.md` (Status: PROPOSED v3.1), `KERNEL_EXCEPTIONS.md`
 
 **4. QE Parameter Metadata**:
-- QE parameter helper (`qv params`) backed by generated metadata in `src/quantumvitas/data/qe_module_parameters.json`
+- QE parameter helper (`qms params`) backed by generated metadata in `src/qmatsuite/data/qe_module_parameters.json`
 - Regeneration tool (`tools/extract_qe_parameters_v1.py`) is deprecated
 - Note in README: "NOTE: The v1 extractor is deprecated. Use v2 tooling when available."
 
@@ -1077,22 +1077,22 @@ pytest tests/gates/
 - All governance spec files in `docs/governance/`
 
 **Core Implementation**:
-- `src/quantumvitas/core/yaml_io.py` (SSOT I/O)
-- `src/quantumvitas/core/driver_registry.py` (engine registry)
-- `src/quantumvitas/workflow/step_type_convert.py` (step type conversion)
-- `src/quantumvitas/workflow/gen_steps.py` (GEN step registry)
-- `src/quantumvitas/provenance/` (provenance system)
-- `src/quantumvitas/calculation/manifest.py` (manifest system)
-- `src/quantumvitas/calculation/runner.py` (runner)
+- `src/qmatsuite/core/yaml_io.py` (SSOT I/O)
+- `src/qmatsuite/core/driver_registry.py` (engine registry)
+- `src/qmatsuite/workflow/step_type_convert.py` (step type conversion)
+- `src/qmatsuite/workflow/gen_steps.py` (GEN step registry)
+- `src/qmatsuite/provenance/` (provenance system)
+- `src/qmatsuite/calculation/manifest.py` (manifest system)
+- `src/qmatsuite/calculation/runner.py` (runner)
 
 **Engines**:
-- All `src/quantumvitas/drivers/*/driver.py` files (16 engines)
+- All `src/qmatsuite/drivers/*/driver.py` files (16 engines)
 
 **API/Frontend**:
-- `src/quantumvitas/api/service.py` (QVService)
-- `src/quantumvitas/daemon/server.py` (RPC daemon)
-- `src/quantumvitas/cli/main.py` (CLI)
-- `gui/src/types/qv.ts` (TypeScript DTOs)
+- `src/qmatsuite/api/service.py` (QMSService)
+- `src/qmatsuite/daemon/server.py` (RPC daemon)
+- `src/qmatsuite/cli/main.py` (CLI)
+- `gui/src/types/qms.ts` (TypeScript DTOs)
 
 **Tests**:
 - `tests/gates/` (59 gate test files)

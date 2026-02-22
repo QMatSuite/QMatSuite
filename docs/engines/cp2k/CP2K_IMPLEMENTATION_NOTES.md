@@ -20,7 +20,7 @@
 ### 1.2 Discovery Strategy
 
 ```python
-# src/quantumvitas/core/engines/cp2k_resolver.py
+# src/qmatsuite/core/engines/cp2k_resolver.py
 
 import shutil
 import subprocess
@@ -480,7 +480,7 @@ pytestmark = pytest.mark.skipif(
 
 def _cp2k_available() -> bool:
     try:
-        from quantumvitas.core.engines.cp2k_resolver import probe_cp2k
+        from qmatsuite.core.engines.cp2k_resolver import probe_cp2k
         available, _ = probe_cp2k()
         return available
     except Exception:
@@ -492,7 +492,7 @@ class TestCp2kEngine:
 
     def test_probe(self):
         """Test CP2K binary detection."""
-        from quantumvitas.core.engines.cp2k_resolver import probe_cp2k
+        from qmatsuite.core.engines.cp2k_resolver import probe_cp2k
         available, version = probe_cp2k()
         assert available
         assert "CP2K" in version
@@ -610,7 +610,7 @@ def minimal_cp2k_params():
 Files to create for CP2K integration:
 
 ```
-src/quantumvitas/
+src/qmatsuite/
 ├── core/engines/
 │   └── cp2k_resolver.py       # Binary discovery
 ├── engine/

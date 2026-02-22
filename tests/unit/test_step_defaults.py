@@ -2,7 +2,7 @@
 Tests for step parameter defaults behavior.
 
 This module tests two distinct scenarios:
-A. "Create step from scratch" - uses QV's in-code defaults
+A. "Create step from scratch" - uses QMS's in-code defaults
 B. "Import from QE input" - preserves original parameters, no defaults injected
 """
 import shlex
@@ -12,10 +12,10 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from quantumvitas.cli.main import app
-from quantumvitas.io import QEInputParser
-from quantumvitas.calculation.structure_steps import StructureStepSpec, generate_qe_input_from_spec
-from quantumvitas.io import read_structure
+from qmatsuite.cli.main import app
+from qmatsuite.io import QEInputParser
+from qmatsuite.calculation.structure_steps import StructureStepSpec, generate_qe_input_from_spec
+from qmatsuite.io import read_structure
 
 
 def _param_map_from_qe_input(qe_input):
@@ -35,10 +35,10 @@ def _param_map_from_qe_input(qe_input):
 
 
 class TestStepDefaultsFromScratch:
-    """Test Scenario A: Creating steps from scratch uses QV defaults."""
+    """Test Scenario A: Creating steps from scratch uses QMS defaults."""
     
     def test_init_step_scf_uses_defaults(self, tmp_path: Path):
-        """Test that creating a step from scratch includes QV's default parameters."""
+        """Test that creating a step from scratch includes QMS's default parameters."""
         runner = CliRunner()
         project_root = tmp_path / "proj"
         
@@ -100,7 +100,7 @@ class TestStepDefaultsFromScratch:
         assert result.exit_code == 0, result.stdout
         
         # Load the step spec
-        from quantumvitas.core.resources import slugify
+        from qmatsuite.core.resources import slugify
         calculation_slug = slugify("test_wf")
         calculation_dir = project_root / "calculations" / calculation_slug
         step_spec_path = calculation_dir / "steps" / "scf.step.yaml"
@@ -205,7 +205,7 @@ class TestStepDefaultsImportFromInput:
         init_line = next(
             line.strip()
             for line in show_output.stdout.splitlines()
-            if line.strip().startswith("qv init step")
+            if line.strip().startswith("qms init step")
         )
         init_args = shlex.split(init_line)[1:]
         
@@ -224,8 +224,8 @@ class TestStepDefaultsImportFromInput:
         assert init_result.exit_code == 0, init_result.stdout
         
         # Load the step spec
-        from quantumvitas.core.resources import slugify
-        from quantumvitas.core.resolution import require_step
+        from qmatsuite.core.resources import slugify
+        from qmatsuite.core.resolution import require_step
         calculation_slug = slugify(calculation_name)
         calculation_dir = project_root / "calculations" / calculation_slug
         calculation_yaml = yaml.safe_load((calculation_dir / "calculation.yaml").read_text())

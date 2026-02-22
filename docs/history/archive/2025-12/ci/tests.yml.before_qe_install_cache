@@ -167,7 +167,7 @@ jobs:
       run: |
         export QE_HOME=$HOME/src/q-e-qe-7.5
         export PATH="$QE_HOME/bin:$PATH"
-        pytest tests/ -v --cov=src/quantumvitas --cov-report=xml --cov-report=term
+        pytest tests/ -v --cov=src/qmatsuite --cov-report=xml --cov-report=term
         echo "QE_HOME=$HOME/src/q-e-qe-7.5" >> $GITHUB_ENV
       env:
         QE_HOME: ${{ env.QE_HOME }}

@@ -22,7 +22,7 @@ class TestFTS5SanitizationKernel:
 
     def test_sanitize_strips_hyphens(self):
         """Hyphens between words are stripped; words are preserved."""
-        from quantumvitas.mcp.knowledge.store import _sanitize_fts_query
+        from qmatsuite.mcp.knowledge.store import _sanitize_fts_query
 
         result = _sanitize_fts_query("Quantum-ESPRESSO")
         assert "Quantum" in result
@@ -31,7 +31,7 @@ class TestFTS5SanitizationKernel:
 
     def test_sanitize_strips_quotes(self):
         """Double quotes are stripped; quoted words preserved."""
-        from quantumvitas.mcp.knowledge.store import _sanitize_fts_query
+        from qmatsuite.mcp.knowledge.store import _sanitize_fts_query
 
         result = _sanitize_fts_query('"SCF convergence"')
         assert "SCF" in result
@@ -40,7 +40,7 @@ class TestFTS5SanitizationKernel:
 
     def test_sanitize_strips_boolean_ops(self):
         """FTS5 boolean operators (AND, OR, NOT, NEAR) are removed."""
-        from quantumvitas.mcp.knowledge.store import _sanitize_fts_query
+        from qmatsuite.mcp.knowledge.store import _sanitize_fts_query
 
         result = _sanitize_fts_query("NOT convergence OR crash AND error NEAR fix")
         assert "NOT" not in result.split()
@@ -54,14 +54,14 @@ class TestFTS5SanitizationKernel:
 
     def test_sanitize_preserves_alphanumeric(self):
         """Normal alphanumeric tokens with underscores are preserved."""
-        from quantumvitas.mcp.knowledge.store import _sanitize_fts_query
+        from qmatsuite.mcp.knowledge.store import _sanitize_fts_query
 
         result = _sanitize_fts_query("ecutwfc conv_thr mixing_beta")
         assert result == "ecutwfc conv_thr mixing_beta"
 
     def test_sanitize_empty_input(self):
         """Empty or all-special-char input returns empty string."""
-        from quantumvitas.mcp.knowledge.store import _sanitize_fts_query
+        from qmatsuite.mcp.knowledge.store import _sanitize_fts_query
 
         assert _sanitize_fts_query("") == ""
         assert _sanitize_fts_query("---!!!@@@") == ""
@@ -77,14 +77,14 @@ class TestPreflightStepCategories:
 
     def test_pw_x_steps_match_spec_types(self):
         """pw.x gen steps should include scf, nscf, relax, md, bandspw, neb, custom."""
-        from quantumvitas.mcp.tools.inspect_calculation import _PW_X_GEN_STEPS
+        from qmatsuite.mcp.tools.inspect_calculation import _PW_X_GEN_STEPS
 
         expected = {"scf", "nscf", "relax", "md", "bandspw", "neb", "custom"}
         assert _PW_X_GEN_STEPS == expected
 
     def test_non_pw_steps_excluded(self):
         """Post-processing steps should NOT be in _PW_X_GEN_STEPS."""
-        from quantumvitas.mcp.tools.inspect_calculation import _PW_X_GEN_STEPS
+        from qmatsuite.mcp.tools.inspect_calculation import _PW_X_GEN_STEPS
 
         non_pw = {"dos", "bands", "pdos", "ph", "pp", "q2r", "matdyn", "dynmat",
                    "plotband", "hp", "gipaw", "pw2wannier", "pw2qmcpack"}
@@ -101,7 +101,7 @@ class TestQEPreflightRules:
 
     @pytest.fixture
     def checker(self):
-        from quantumvitas.drivers.qe.preflight import QEPreflightChecker
+        from qmatsuite.drivers.qe.preflight import QEPreflightChecker
         return QEPreflightChecker()
 
     def test_checker_on_empty_params_returns_blocking(self, checker):
@@ -161,7 +161,7 @@ class TestPseudoResolution:
     def test_resolve_internal_pseudos_for_si(self):
         """Internal pseudo library should resolve Si."""
         try:
-            from quantumvitas.core.pseudo_config import (
+            from qmatsuite.core.pseudo_config import (
                 PseudoResolutionRequest,
                 load_pseudo_config,
                 resolve_project_pseudos,
@@ -187,7 +187,7 @@ class TestPseudoResolution:
     def test_resolve_missing_element_fails_gracefully(self):
         """Resolution for exotic elements should fail gracefully, not crash."""
         try:
-            from quantumvitas.core.pseudo_config import (
+            from qmatsuite.core.pseudo_config import (
                 PseudoResolutionRequest,
                 load_pseudo_config,
                 resolve_project_pseudos,
@@ -223,7 +223,7 @@ class TestDownloadPseudoConfig:
 
     def test_sssp_library_path_structure(self):
         """PseudoConfig should have store_dir and seed_dir attributes."""
-        from quantumvitas.core.pseudo_config import PseudoConfig
+        from qmatsuite.core.pseudo_config import PseudoConfig
 
         config = PseudoConfig()
         assert hasattr(config, "store_dir")
@@ -232,7 +232,7 @@ class TestDownloadPseudoConfig:
     def test_download_and_install_signature(self):
         """pipeline.download_and_install should accept expected parameters."""
         import inspect
-        from quantumvitas.pseudo.pipeline import download_and_install
+        from qmatsuite.pseudo.pipeline import download_and_install
 
         sig = inspect.signature(download_and_install)
         param_names = list(sig.parameters.keys())

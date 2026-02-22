@@ -1,10 +1,10 @@
 # Demo Project Generation Guide
 
-This document describes how to generate demo project snapshots in QuantumVITAS.
+This document describes how to generate demo project snapshots in QMatSuite.
 
 ## Overview
 
-Demo projects are pre-configured QuantumVITAS projects that serve as examples and tutorials. They are stored as snapshot YAML files in `resources/demo_projects/` and can be materialized by users via the GUI or CLI.
+Demo projects are pre-configured QMatSuite projects that serve as examples and tutorials. They are stored as snapshot YAML files in `resources/demo_projects/` and can be materialized by users via the GUI or CLI.
 
 ## Demo Generation Scripts
 
@@ -89,7 +89,7 @@ python tools/import_tutorial_datasets.py --clean --verify
 
 **Migration Note:** The old `pseudo_sha_token` field is **not supported** and must **never** appear in generated demos.
 
-The `export_project_to_snapshot()` function (in `src/quantumvitas/project/snapshot.py`) automatically:
+The `export_project_to_snapshot()` function (in `src/qmatsuite/project/snapshot.py`) automatically:
 - Computes `pseudo_sha256` and `pseudo_sha_family` from files in `project/pseudo/` or `resources/pseudo/`
 - Ensures the complete triplet is present before exporting
 - Removes any legacy `pseudo_sha_token` fields during materialization

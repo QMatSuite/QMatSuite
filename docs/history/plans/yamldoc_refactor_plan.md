@@ -10,9 +10,9 @@
 
 The Journal system has been fully integrated:
 
-- **Hook Point:** `src/quantumvitas/core/yaml_io.py::save_yaml_doc()`
-- **Journal Module:** `src/quantumvitas/core/journal.py`
-- **Storage:** Append-only JSONL at `~/.quantumvitas/journal/journal.jsonl`
+- **Hook Point:** `src/qmatsuite/core/yaml_io.py::save_yaml_doc()`
+- **Journal Module:** `src/qmatsuite/core/journal.py`
+- **Storage:** Append-only JSONL at `~/.qmatsuite/journal/journal.jsonl`
 - **UI Access:** Settings → Diagnostics → Journal History
 
 All YamlDoc.save() methods delegate to save_yaml_doc(), ensuring the Journal captures all YAML mutations.
@@ -264,7 +264,7 @@ class ProjectDoc(YamlDoc):
 ### IO Module
 
 ```python
-# quantumvitas/core/yaml_io.py
+# qmatsuite/core/yaml_io.py
 
 def load_yaml_doc(path: Path, doc_type: type[YamlDoc] = YamlDoc) -> YamlDoc:
     """Load YAML file as Doc. Business logic should use this, not yaml.safe_load."""
@@ -349,10 +349,10 @@ def save_yaml_doc(doc: YamlDoc, path: Path) -> None:
 ## Migration Checklist
 
 ### Phase 2: Implement Core Doc + IO
-- [ ] Create `quantumvitas/core/yamldoc.py` with `YamlDoc` class
+- [ ] Create `qmatsuite/core/yamldoc.py` with `YamlDoc` class
 - [ ] Implement all path operations with deep copy protection
 - [ ] Implement `apply_patch` with None = delete semantics
-- [ ] Create `quantumvitas/core/yaml_io.py` with load/save helpers
+- [ ] Create `qmatsuite/core/yaml_io.py` with load/save helpers
 - [ ] Add unit tests for:
   - [ ] No reference leakage (mutation of returned values doesn't affect doc)
   - [ ] Leaf-only get (raises on branch access)
@@ -417,12 +417,12 @@ Replace direct `yaml.safe_load` / `yaml.safe_dump` in:
 ## Files Created/Modified
 
 ### New Files
-- `src/quantumvitas/core/yamldoc.py` - Core YamlDoc, StepDoc, CalcDoc, ProjectDoc classes
-- `src/quantumvitas/core/yaml_io.py` - Centralized YAML IO utilities
+- `src/qmatsuite/core/yamldoc.py` - Core YamlDoc, StepDoc, CalcDoc, ProjectDoc classes
+- `src/qmatsuite/core/yaml_io.py` - Centralized YAML IO utilities
 - `tests/unit/test_yamldoc.py` - Comprehensive unit tests (64 tests)
 
 ### Modified Files
-- `src/quantumvitas/presets/integration.py` - Refactored to use StepDoc:
+- `src/qmatsuite/presets/integration.py` - Refactored to use StepDoc:
   - `apply_presets_to_step()` - Now uses StepDoc with access control
   - `_load_step_parameters()` - Uses StepDoc for detection
   - `_load_step_parameters_with_types()` - Uses StepDoc for detection

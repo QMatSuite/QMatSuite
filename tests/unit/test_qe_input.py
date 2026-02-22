@@ -8,7 +8,7 @@ import pytest
 from pathlib import Path
 import tempfile
 
-from quantumvitas.io import (
+from qmatsuite.io import (
     QEInputParser,
     QEInputGenerator,
     QEInput,

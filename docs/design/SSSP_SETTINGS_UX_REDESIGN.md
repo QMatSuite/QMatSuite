@@ -58,9 +58,9 @@ Redesigned the Settings → Pseudopotentials (SSSP) UI/UX to make the normal wor
 ## Files Modified
 
 ### Backend
-- `src/quantumvitas/core/pseudo_config.py`:
+- `src/qmatsuite/core/pseudo_config.py`:
   - Added `import_seed_archives()` function
-- `src/quantumvitas/daemon/server.py`:
+- `src/qmatsuite/daemon/server.py`:
   - Added `_handle_import_seed_archives()` RPC handler
 
 ### Frontend

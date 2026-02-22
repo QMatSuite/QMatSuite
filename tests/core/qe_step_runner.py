@@ -39,9 +39,9 @@ from pathlib import Path
 from typing import Optional, Tuple
 import time
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.qe_calculation import StepResult
-from quantumvitas.calculation.input_runner import (
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.qe_calculation import StepResult
+from qmatsuite.calculation.input_runner import (
     prepare_input_step,
     run_prepared_step,
     detect_project_root,
@@ -60,7 +60,7 @@ def get_default_working_dir(
     Layout: {repo_root}/.tmp/runs/{category}/{test_name}/
     Note: project_root is ignored for test runs; uses repo .tmp/runs/
     """
-    from quantumvitas.core.paths import tmp_runs_dir
+    from qmatsuite.core.paths import tmp_runs_dir
     
     base = tmp_runs_dir()
     if category:
@@ -147,8 +147,8 @@ def run_and_verify_step(
         if project_root is not None:
             project_root = Path(project_root).resolve()
             # Validate project_root is not repo root
-            from quantumvitas.core.pseudo_config import _find_quantumvitas_root
-            repo_root = _find_quantumvitas_root()
+            from qmatsuite.core.pseudo_config import _find_qmatsuite_root
+            repo_root = _find_qmatsuite_root()
             if repo_root and project_root == repo_root.resolve():
                 raise ValueError(
                     f"Project root cannot be the repository root. "
@@ -168,14 +168,14 @@ def run_and_verify_step(
     if project_root is None:
         # Sandbox: stop search at working_dir (tests should create projects within tmp)
         # This prevents search from escaping into repo root
-        from quantumvitas.core.project_utils import find_project_root
-        from quantumvitas.core.pseudo_config import _find_quantumvitas_root
+        from qmatsuite.core.project_utils import find_project_root
+        from qmatsuite.core.pseudo_config import _find_qmatsuite_root
         
         # Use working_dir as stop_at boundary to sandbox the search
         detected = find_project_root(start=working_dir, stop_at=working_dir)
         if detected:
             # Validate it's not repo root (shouldn't happen with stop_at, but be safe)
-            repo_root = _find_quantumvitas_root()
+            repo_root = _find_qmatsuite_root()
             if repo_root and detected.resolve() == repo_root.resolve():
                 # Repo root detected - treat as standalone mode
                 project_root = None
@@ -185,8 +185,8 @@ def run_and_verify_step(
     else:
         project_root = Path(project_root).resolve()
         # Validate project_root is not repo root
-        from quantumvitas.core.pseudo_config import _find_quantumvitas_root
-        repo_root = _find_quantumvitas_root()
+        from qmatsuite.core.pseudo_config import _find_qmatsuite_root
+        repo_root = _find_qmatsuite_root()
         if repo_root and project_root == repo_root.resolve():
             raise ValueError(
                 f"Project root cannot be the repository root. "
@@ -212,7 +212,7 @@ def run_and_verify_step(
     if step_type_spec is None:
         step_type_gen = qe_engine.detect_step_type(prepared.modified_input)
         # Convert GEN to SPEC using pure derivation
-        from quantumvitas.workflow.step_type_convert import spec_from
+        from qmatsuite.workflow.step_type_convert import spec_from
         step_type_spec = spec_from("qe", step_type_gen)
     
     step_result = run_prepared_step(

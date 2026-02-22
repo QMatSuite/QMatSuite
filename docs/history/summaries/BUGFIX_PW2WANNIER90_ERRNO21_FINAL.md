@@ -18,13 +18,13 @@ Error [Errno 21] Is a directory: '.'
 
 ## 完整修复
 
-### 1. `build_command` 中的路径处理 (`src/quantumvitas/core/engines/qe.py`)
+### 1. `build_command` 中的路径处理 (`src/qmatsuite/core/engines/qe.py`)
 
 - 使用新变量 `input_file_resolved` 和 `input_file_rel`，不修改原始参数
 - 添加安全检查，防止 `'.'` 或目录路径
 - 确保正确转换为相对路径
 
-### 2. `run_step` 中的验证和日志 (`src/quantumvitas/core/engines/qe_calculation.py`)
+### 2. `run_step` 中的验证和日志 (`src/qmatsuite/core/engines/qe_calculation.py`)
 
 - 详细的路径验证（检查 `'.'`, `'./'`, `'..'`）
 - 验证文件不是目录
@@ -32,19 +32,19 @@ Error [Errno 21] Is a directory: '.'
 - 列出 working_dir 中的文件用于调试
 - 详细的日志记录（INFO 级别）
 
-### 3. `prepare_input_step` 中的安全检查 (`src/quantumvitas/calculation/input_runner.py`)
+### 3. `prepare_input_step` 中的安全检查 (`src/qmatsuite/calculation/input_runner.py`)
 
 - 对于 Wannier90 步骤，添加完整的安全检查
 - 验证 `input_file` 不是 `'.'` 或目录
 - 验证文件存在
 - 详细的日志记录
 
-### 4. `run_prepared_step` 中的路径转换 (`src/quantumvitas/calculation/input_runner.py`)
+### 4. `run_prepared_step` 中的路径转换 (`src/qmatsuite/calculation/input_runner.py`)
 
 - 确保传递给 `run_step` 的路径是相对路径（相对于 working_dir）
 - 详细的日志记录
 
-### 5. `ensure_qe_pseudos` 中的安全检查 (`src/quantumvitas/core/pseudo.py`)
+### 5. `ensure_qe_pseudos` 中的安全检查 (`src/qmatsuite/core/pseudo.py`)
 
 - 添加安全检查，防止 `'.'` 或目录路径
 - 对于有 `species_map` 的情况，跳过不必要的 QE 输入解析

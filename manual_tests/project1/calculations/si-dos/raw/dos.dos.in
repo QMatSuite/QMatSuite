@@ -1,5 +1,5 @@
 &control
-    pseudo_dir = '<HOME>/quantumVITAS/pseudo'
+    pseudo_dir = '<HOME>/QMatSuite/pseudo'
 /
 
 &dos

@@ -11,7 +11,7 @@ import pytest
 import numpy as np
 from pymatgen.core import Structure, Lattice
 
-from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
+from qmatsuite.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
 
 
 def test_online_project_payload_contract_identical():

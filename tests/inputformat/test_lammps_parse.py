@@ -11,12 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.lammps.inputspec import get_lammps_input_spec
-from quantumvitas.drivers.lammps.io.data import (
+from qmatsuite.drivers.lammps.inputspec import get_lammps_input_spec
+from qmatsuite.drivers.lammps.io.data import (
     parse_lammps_data_text,
     write_lammps_data_text,
 )
-from quantumvitas.drivers.lammps.io.script import (
+from qmatsuite.drivers.lammps.io.script import (
     join_continuation_lines,
     parse_lammps_script_text,
     write_lammps_script_text,
@@ -667,7 +667,7 @@ class TestLAMMPSOrchestrator:
 
     def test_write_parse_script_only(self, tmp_path):
         """Write and parse a script-only case (no data file)."""
-        from quantumvitas.inputformat import parse_engine_inputs, write_engine_inputs
+        from qmatsuite.inputformat import parse_engine_inputs, write_engine_inputs
 
         spec = get_lammps_input_spec()
         params = {
@@ -691,7 +691,7 @@ class TestLAMMPSOrchestrator:
 
     def test_write_parse_with_structure(self, tmp_path):
         """Write and parse with both script and data file."""
-        from quantumvitas.inputformat import parse_engine_inputs, write_engine_inputs
+        from qmatsuite.inputformat import parse_engine_inputs, write_engine_inputs
 
         spec = get_lammps_input_spec()
         params = {
@@ -719,7 +719,7 @@ class TestLAMMPSOrchestrator:
 
     def test_parse_missing_optional_data_file(self, tmp_path):
         """Parsing with missing optional structure.data should not error."""
-        from quantumvitas.inputformat import parse_engine_inputs, write_engine_inputs
+        from qmatsuite.inputformat import parse_engine_inputs, write_engine_inputs
 
         spec = get_lammps_input_spec()
         params = {"units": "lj", "run": 100}
@@ -755,7 +755,7 @@ class TestLAMMPSInputSpec:
         assert "structure.data" in spec.ssot_mapping.structure_in
 
     def test_driver_returns_spec(self):
-        from quantumvitas.drivers.lammps.driver import LAMMPSDriver
+        from qmatsuite.drivers.lammps.driver import LAMMPSDriver
         driver = LAMMPSDriver()
         spec = driver.get_input_spec()
         assert spec is not None

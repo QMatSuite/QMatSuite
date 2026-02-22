@@ -34,7 +34,7 @@
   ```
 
 #### 2. Backend API: `get_calculation_pseudo_mapping()`
-- **Location**: `src/quantumvitas/api.py` lines 4963-5246
+- **Location**: `src/qmatsuite/api.py` lines 4963-5246
 - **Current Logic**:
   - Builds candidates by scanning filesystem:
     1. Internal: `resources/pseudo/*.UPF`
@@ -48,21 +48,21 @@
     - Hardcoded SSSP paths
 
 #### 3. Backend API: `update_calculation_species_map()`
-- **Location**: `src/quantumvitas/api.py` lines 5259-5299
+- **Location**: `src/qmatsuite/api.py` lines 5259-5299
 - **Current Logic**:
   - Accepts `species_map: Dict[str, Dict[str, Any]]`
   - Stores `{pseudopot: filename, mass?: float}` per element
   - No SHA256 support yet
 
 #### 4. RPC Handlers
-- **Location**: `src/quantumvitas/daemon/server.py`
+- **Location**: `src/qmatsuite/daemon/server.py`
 - **Registration**: Lines 209-322 in `_handlers` dict
 - **Current Handlers**:
   - `get_calculation_pseudo_mapping` (line 293) → `_handle_get_calculation_pseudo_mapping` (line 3330)
   - `update_calculation_species_map` (line 294) → `_handle_update_calculation_species_map` (line 3356)
 
 #### 5. Provenance System (Already Exists)
-- **Location**: `src/quantumvitas/core/pseudo_provenance.py`
+- **Location**: `src/qmatsuite/core/pseudo_provenance.py`
 - **Functions**:
   - `resolve_pseudo_provenance(path)` - resolves single file by SHA256/sha_token
   - `_build_occurrences_index(bundle)` - builds sha256 → occurrences mapping
@@ -70,7 +70,7 @@
 - **Not Currently Used**: For selection UI (only used for individual file resolution)
 
 #### 6. Archive Management (New - Already Created)
-- **Location**: `src/quantumvitas/core/pseudo_installs.py`
+- **Location**: `src/qmatsuite/core/pseudo_installs.py`
 - **Functions Available**:
   - `load_manifest_archives()` - loads from vendored manifest
   - `check_archives_status()` - checks install status
@@ -102,7 +102,7 @@
 ### Phase C: Pseudo Options API
 
 **New Backend Method**: `get_pseudo_options_for_elements()`
-- **Location**: `src/quantumvitas/api.py`
+- **Location**: `src/qmatsuite/api.py`
 - **Input**: `project_root, elements: List[str]`
 - **Output**: `Dict[str, List[PseudoOption]]` (element → options)
 

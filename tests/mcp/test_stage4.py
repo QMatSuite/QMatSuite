@@ -13,10 +13,10 @@ import sqlite3
 
 import pytest
 
-from quantumvitas.mcp.knowledge.schema import SCHEMA_DDL, init_db
-from quantumvitas.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
-from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
-from quantumvitas.mcp.knowledge.store import KnowledgeStore
+from qmatsuite.mcp.knowledge.schema import SCHEMA_DDL, init_db
+from qmatsuite.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
+from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
+from qmatsuite.mcp.knowledge.store import KnowledgeStore
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +216,7 @@ class TestMCPTool:
     @pytest.fixture(autouse=True)
     def _patch_store(self, populated_db, monkeypatch):
         """Patch the search_knowledge tool to use our temp DB."""
-        import quantumvitas.mcp.tools.search_knowledge as mod
+        import qmatsuite.mcp.tools.search_knowledge as mod
 
         s = KnowledgeStore(db_path=populated_db)
         monkeypatch.setattr(mod, "_store", s)
@@ -226,7 +226,7 @@ class TestMCPTool:
 
     def test_envelope_structure(self):
         """Tool returns standard MCP envelope with status/data/context_hint."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query="SCF convergence")
         assert result["status"] == "success"
@@ -236,7 +236,7 @@ class TestMCPTool:
 
     def test_filter_passthrough(self):
         """Engine filter is reflected in the response and filters results."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query="convergence", engine="qe")
         assert result["status"] == "success"
@@ -246,7 +246,7 @@ class TestMCPTool:
 
     def test_no_results_hint(self):
         """Empty results produce a helpful context_hint."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query="xyzzy_nonexistent_12345")
         assert result["status"] == "success"
@@ -255,7 +255,7 @@ class TestMCPTool:
 
     def test_content_truncation(self):
         """Content in results is truncated to ~300 chars."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query="SCF")
         for item in result["data"]["results"]:

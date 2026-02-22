@@ -14,7 +14,7 @@ This document summarizes the complete alignment of the pseudo selection implemen
 - **Implementation**: 
   - `CommonCardPseudo.tsx`: Uses `selectedSha256ByElement` state
   - `pseudo_options.py`: Returns `PseudoVariant[]` keyed by sha256
-  - `qv.ts`: `PseudoVariant` interface has `sha256` as primary field
+  - `qms.ts`: `PseudoVariant` interface has `sha256` as primary field
 
 ### ✅ Rule 7.5.1: UI display/selectable options
 - **Constitution**: Options must correspond to filesystem-real UPF files (project/internal/installed-lib only). No disabled entries for not-installed libs.

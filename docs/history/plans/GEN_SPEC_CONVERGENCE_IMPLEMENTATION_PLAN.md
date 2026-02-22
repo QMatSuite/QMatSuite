@@ -50,7 +50,7 @@ The patch script MUST NOT contain hardcoded `SPEC_TO_GEN` mapping. Instead:
 # Import and use the registry SSOT
 import sys
 sys.path.insert(0, "src")
-from quantumvitas.workflow.registry import normalize_step_type_to_public
+from qmatsuite.workflow.registry import normalize_step_type_to_public
 
 step_type_gen = normalize_step_type_to_public(step_type_spec)
 ```
@@ -98,19 +98,19 @@ rg "step_type_gen:" --glob "*.yaml" --glob "*.yml"
 
 ### Decision 5: Canonical QERecipe Location
 
-**Canonical file**: `src/quantumvitas/drivers/qe/recipe.py`
-**Canonical import**: `from quantumvitas.drivers.qe.recipe import QERecipe`
+**Canonical file**: `src/qmatsuite/drivers/qe/recipe.py`
+**Canonical import**: `from qmatsuite.drivers.qe.recipe import QERecipe`
 
 **Re-export only** (in `execution/recipes.py`):
 ```python
-from quantumvitas.drivers.qe.recipe import QERecipe  # Re-export
+from qmatsuite.drivers.qe.recipe import QERecipe  # Re-export
 ```
 
 **Gate pattern**:
 ```bash
 # Must return exactly 1 match (the canonical definition)
-rg "^class QERecipe" src/quantumvitas/
-# Expected: src/quantumvitas/drivers/qe/recipe.py
+rg "^class QERecipe" src/qmatsuite/
+# Expected: src/qmatsuite/drivers/qe/recipe.py
 ```
 
 ### Decision 6: EXECUTABLE_MAP is OUT OF SCOPE
@@ -185,7 +185,7 @@ After migration:
 
 **IMPORT_CHECK**: Verify module imports without error
 ```bash
-python -c "from quantumvitas.MODULE import CLASS; print('OK')"
+python -c "from qmatsuite.MODULE import CLASS; print('OK')"
 ```
 
 **GATE_PATTERNS**: Ripgrep patterns that must return 0 matches (see Gate Patterns Reference)
@@ -254,30 +254,30 @@ git status  # Should be clean or only docs changes
 ### Step 1.1: Verify Canonical Location
 
 ```bash
-rg "^class QERecipe" src/quantumvitas/
+rg "^class QERecipe" src/qmatsuite/
 ```
 
 **Expected output**:
 ```
-src/quantumvitas/drivers/qe/recipe.py:class QERecipe(BaseRecipe):
-src/quantumvitas/execution/recipes.py:class QERecipe(BaseRecipe):  # DUPLICATE - DELETE THIS
+src/qmatsuite/drivers/qe/recipe.py:class QERecipe(BaseRecipe):
+src/qmatsuite/execution/recipes.py:class QERecipe(BaseRecipe):  # DUPLICATE - DELETE THIS
 ```
 
 ### Step 1.2: Delete Duplicate from execution/recipes.py
 
-**File**: `src/quantumvitas/execution/recipes.py`
+**File**: `src/qmatsuite/execution/recipes.py`
 **Action**: DELETE the entire `class QERecipe` block (approximately lines 157-234).
 
 **Keep intact**:
 - All imports at top of file
 - `TopologyError`, `verify_qc_topology`, `Recipe` protocol, `BaseRecipe` class
-- The re-export line: `from quantumvitas.drivers.qe.recipe import QERecipe`
+- The re-export line: `from qmatsuite.drivers.qe.recipe import QERecipe`
 
 ### Step 1.3: Verify Re-export Exists
 
 After deletion, confirm this line exists in `execution/recipes.py`:
 ```python
-from quantumvitas.drivers.qe.recipe import QERecipe
+from qmatsuite.drivers.qe.recipe import QERecipe
 ```
 
 If it doesn't exist, ADD it near other re-exports.
@@ -286,14 +286,14 @@ If it doesn't exist, ADD it near other re-exports.
 
 ```bash
 # Gate: Exactly 1 class definition
-rg "^class QERecipe" src/quantumvitas/
-# EXPECTED: Only src/quantumvitas/drivers/qe/recipe.py
+rg "^class QERecipe" src/qmatsuite/
+# EXPECTED: Only src/qmatsuite/drivers/qe/recipe.py
 
 # Module still importable via both paths
-python -c "from quantumvitas.execution.recipes import QERecipe; print(QERecipe.__module__)"
-# EXPECTED: quantumvitas.drivers.qe.recipe
+python -c "from qmatsuite.execution.recipes import QERecipe; print(QERecipe.__module__)"
+# EXPECTED: qmatsuite.drivers.qe.recipe
 
-python -c "from quantumvitas.drivers.qe.recipe import QERecipe; print('OK')"
+python -c "from qmatsuite.drivers.qe.recipe import QERecipe; print('OK')"
 # EXPECTED: OK
 
 # RUN_TESTS
@@ -308,7 +308,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### Step 2.1: Add Facade Function
 
-**File**: `src/quantumvitas/api/__init__.py`
+**File**: `src/qmatsuite/api/__init__.py`
 **Action**: ADD this function (find suitable location near other exports):
 
 ```python
@@ -324,7 +324,7 @@ def get_step_type_gen(step_type_spec: str) -> str:
     Raises:
         KeyError: If step_type_spec is not in registry
     """
-    from quantumvitas.workflow.registry import normalize_step_type_to_public
+    from qmatsuite.workflow.registry import normalize_step_type_to_public
     return normalize_step_type_to_public(step_type_spec)
 ```
 
@@ -335,11 +335,11 @@ If file has `__all__`, add `"get_step_type_gen"` to it.
 ### Validation
 
 ```bash
-python -c "from quantumvitas.api import get_step_type_gen; print(get_step_type_gen('qe_scf'))"
+python -c "from qmatsuite.api import get_step_type_gen; print(get_step_type_gen('qe_scf'))"
 # EXPECTED: scf
 
 # Gate: Function exists
-rg "def get_step_type_gen" src/quantumvitas/api/
+rg "def get_step_type_gen" src/qmatsuite/api/
 # EXPECTED: 1 match
 
 # RUN_TESTS
@@ -354,7 +354,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### Step 3.1: Update Dataclass Definition
 
-**File**: `src/quantumvitas/workflow/registry.py`
+**File**: `src/qmatsuite/workflow/registry.py`
 **Location**: StepTypeSpec dataclass (around lines 42-56)
 
 **BEFORE**:
@@ -380,7 +380,7 @@ class StepTypeSpec:
 
 ### Step 3.2: Update All StepTypeSpec Instantiations
 
-**File**: `src/quantumvitas/workflow/registry.py`
+**File**: `src/qmatsuite/workflow/registry.py`
 **Location**: `_STEP_TYPES` dict (approximately lines 166-626)
 
 **BEFORE** (each entry):
@@ -406,7 +406,7 @@ Apply to ALL ~66 entries.
 
 ### Step 3.3: Update Registry Internal Methods
 
-**File**: `src/quantumvitas/workflow/registry.py`
+**File**: `src/qmatsuite/workflow/registry.py`
 
 Find and rename these internal references:
 - `spec.machine_type` → `spec.step_type_spec`
@@ -425,17 +425,17 @@ Update internal field access to use new names. Function signature stays the same
 
 ```bash
 python -c "
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 spec = get_registry().get('qe_scf')
 print(f'SPEC={spec.step_type_spec}, GEN={spec.step_type_gen}')
 "
 # EXPECTED: SPEC=qe_scf, GEN=scf
 
 # Gate: No old field names in registry.py
-rg "\.machine_type\b|\.public_type\b" src/quantumvitas/workflow/registry.py
+rg "\.machine_type\b|\.public_type\b" src/qmatsuite/workflow/registry.py
 # EXPECTED: 0 matches
 
-rg "spec\.id\b" src/quantumvitas/workflow/registry.py
+rg "spec\.id\b" src/qmatsuite/workflow/registry.py
 # EXPECTED: 0 matches
 
 # RUN_TESTS
@@ -451,8 +451,8 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 ### Step 4.1: Find All Usages
 
 ```bash
-rg "\.machine_type\b|\.public_type\b" src/quantumvitas/ --files-with-matches
-rg "spec\.id\b" src/quantumvitas/ --files-with-matches | grep -v registry.py
+rg "\.machine_type\b|\.public_type\b" src/qmatsuite/ --files-with-matches
+rg "spec\.id\b" src/qmatsuite/ --files-with-matches | grep -v registry.py
 ```
 
 ### Step 4.2: Rename Each Usage
@@ -471,10 +471,10 @@ For EACH file found:
 
 ```bash
 # Gate: No old field access patterns
-rg "\.machine_type\b|\.public_type\b" src/quantumvitas/
+rg "\.machine_type\b|\.public_type\b" src/qmatsuite/
 # EXPECTED: 0 matches
 
-rg "spec\.id\b" src/quantumvitas/
+rg "spec\.id\b" src/qmatsuite/
 # EXPECTED: 0 matches
 
 # RUN_TESTS
@@ -489,7 +489,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### Step 5.1: Update step_factory.py YAML Output
 
-**File**: `src/quantumvitas/workflow/step_factory.py`
+**File**: `src/qmatsuite/workflow/step_factory.py`
 
 **Line ~68** - Change meta block:
 ```python
@@ -513,7 +513,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### Step 5.2: Update Step Model/Dataclass
 
-**File**: `src/quantumvitas/calculation/step.py`
+**File**: `src/qmatsuite/calculation/step.py`
 
 Find the step_type field (around line 29) and rename:
 ```python
@@ -541,7 +541,7 @@ ulid = data["meta"]["ulid"]  # KeyError if missing
 ### Step 5.4: Update All .step_type Access
 
 ```bash
-rg "\.step_type\b" src/quantumvitas/ --files-with-matches
+rg "\.step_type\b" src/qmatsuite/ --files-with-matches
 ```
 
 For each file, rename `.step_type` → `.step_type_spec`
@@ -552,17 +552,17 @@ For each file, rename `.step_type` → `.step_type_spec`
 
 ```bash
 # IMPORT_CHECK: Verify modules still import
-python -c "from quantumvitas.workflow.step_factory import create_step_yaml; print('OK')"
-python -c "from quantumvitas.calculation.step import Step; print('OK')"
+python -c "from qmatsuite.workflow.step_factory import create_step_yaml; print('OK')"
+python -c "from qmatsuite.calculation.step import Step; print('OK')"
 
 # GATE_PATTERNS: Must return 0 matches
-rg '"step_type":' src/quantumvitas/workflow/step_factory.py
+rg '"step_type":' src/qmatsuite/workflow/step_factory.py
 # EXPECTED: 0 matches
 
-rg '"id":' src/quantumvitas/workflow/step_factory.py | grep -v "ulid"
+rg '"id":' src/qmatsuite/workflow/step_factory.py | grep -v "ulid"
 # EXPECTED: 0 matches (or only unrelated uses)
 
-rg "\.step_type\b" src/quantumvitas/ | grep -v "step_type_spec\|step_type_gen"
+rg "\.step_type\b" src/qmatsuite/ | grep -v "step_type_spec\|step_type_gen"
 # EXPECTED: 0 matches
 ```
 
@@ -583,7 +583,7 @@ rg "\.step_type\b" src/quantumvitas/ | grep -v "step_type_spec\|step_type_gen"
 
 ### Step 6.1: Update CalculationStepEntry Model
 
-**File**: `src/quantumvitas/core/models.py`
+**File**: `src/qmatsuite/core/models.py`
 
 **Line ~81**:
 ```python
@@ -643,8 +643,8 @@ step_ulid = data.get("step_ulid")
 ### Step 6.5: Update All Consumers
 
 ```bash
-rg "entry\.type\b|\.step_type\b" src/quantumvitas/ --files-with-matches
-rg "\.step_id\b" src/quantumvitas/ --files-with-matches
+rg "entry\.type\b|\.step_type\b" src/qmatsuite/ --files-with-matches
+rg "\.step_id\b" src/qmatsuite/ --files-with-matches
 ```
 
 For each file:
@@ -658,19 +658,19 @@ For each file:
 
 ```bash
 # IMPORT_CHECK: Verify module still imports
-python -c "from quantumvitas.core.models import CalculationStepEntry; print('OK')"
+python -c "from qmatsuite.core.models import CalculationStepEntry; print('OK')"
 
 # GATE_PATTERNS: Must return 0 matches
-rg "self\.type\b" src/quantumvitas/core/models.py
+rg "self\.type\b" src/qmatsuite/core/models.py
 # EXPECTED: 0 matches
 
-rg 'd\["type"\]' src/quantumvitas/core/models.py
+rg 'd\["type"\]' src/qmatsuite/core/models.py
 # EXPECTED: 0 matches
 
-rg "\.step_id\b" src/quantumvitas/core/models.py
+rg "\.step_id\b" src/qmatsuite/core/models.py
 # EXPECTED: 0 matches
 
-rg "def step_type\b" src/quantumvitas/core/models.py
+rg "def step_type\b" src/qmatsuite/core/models.py
 # EXPECTED: 0 matches
 ```
 
@@ -684,7 +684,7 @@ rg "def step_type\b" src/quantumvitas/core/models.py
 
 ### Step 7.1: Delete _map_step_type_to_v0 Function
 
-**File**: `src/quantumvitas/daemon/compat.py`
+**File**: `src/qmatsuite/daemon/compat.py`
 **Lines**: ~199-214
 
 DELETE the entire function and its `TYPE_MAP` dict.
@@ -693,14 +693,14 @@ DELETE the entire function and its `TYPE_MAP` dict.
 
 At top of `daemon/compat.py`:
 ```python
-from quantumvitas.api import get_step_type_gen
+from qmatsuite.api import get_step_type_gen
 ```
 
 ### Step 7.3: Replace All Calls (NO FALLBACK PATTERN)
 
 Find all calls:
 ```bash
-rg "_map_step_type_to_v0" src/quantumvitas/daemon/compat.py
+rg "_map_step_type_to_v0" src/qmatsuite/daemon/compat.py
 ```
 
 **Lines ~228, 432, 530, 717, 772, 924** - Replace each:
@@ -732,15 +732,15 @@ Each shaper that outputs step data:
 
 ```bash
 # IMPORT_CHECK: Verify daemon compat still imports
-python -c "from quantumvitas.daemon.compat import shape_response; print('OK')"
-python -c "from quantumvitas.api import get_step_type_gen; print(get_step_type_gen('qe_scf'))"
+python -c "from qmatsuite.daemon.compat import shape_response; print('OK')"
+python -c "from qmatsuite.api import get_step_type_gen; print(get_step_type_gen('qe_scf'))"
 # EXPECTED: scf
 
 # GATE_PATTERNS: Must return 0 matches
-rg "_map_step_type_to_v0" src/quantumvitas/
+rg "_map_step_type_to_v0" src/qmatsuite/
 # EXPECTED: 0 matches
 
-rg "TYPE_MAP\s*=" src/quantumvitas/daemon/
+rg "TYPE_MAP\s*=" src/qmatsuite/daemon/
 # EXPECTED: 0 matches
 ```
 
@@ -755,7 +755,7 @@ rg "TYPE_MAP\s*=" src/quantumvitas/daemon/
 ### Step 8.1: Identify Files with Identity Fields
 
 ```bash
-rg "\bstep_id\b|\bcalc_id\b|\bstructure_id\b|\bproject_id\b|\bjob_id\b|\brun_id\b|\bevent_id\b" src/quantumvitas/ --files-with-matches
+rg "\bstep_id\b|\bcalc_id\b|\bstructure_id\b|\bproject_id\b|\bjob_id\b|\brun_id\b|\bevent_id\b" src/qmatsuite/ --files-with-matches
 ```
 
 ### Step 8.2: Surgical Renames (Resource Identity Only)
@@ -781,8 +781,8 @@ For each file, rename ONLY when the field represents a resource ULID:
 
 ### Step 8.3: Update API Type Definitions
 
-**File**: `src/quantumvitas/api/types/calculation.py`
-**File**: `src/quantumvitas/api/types/run.py`
+**File**: `src/qmatsuite/api/types/calculation.py`
+**File**: `src/qmatsuite/api/types/run.py`
 
 Rename fields in dataclasses/TypedDicts.
 
@@ -792,16 +792,16 @@ Rename fields in dataclasses/TypedDicts.
 
 ```bash
 # IMPORT_CHECK: Verify key modules still import
-python -c "from quantumvitas.core.models import CalculationStepEntry; print('OK')"
-python -c "from quantumvitas.history.storage import HistoryStorage; print('OK')"
-python -c "from quantumvitas.api.types.calculation import StepInfo; print('OK')"
+python -c "from qmatsuite.core.models import CalculationStepEntry; print('OK')"
+python -c "from qmatsuite.history.storage import HistoryStorage; print('OK')"
+python -c "from qmatsuite.api.types.calculation import StepInfo; print('OK')"
 
 # GATE_PATTERNS: Must return 0 matches (resource identity)
-rg "\bstep_id\b" src/quantumvitas/core/models.py
+rg "\bstep_id\b" src/qmatsuite/core/models.py
 # EXPECTED: 0 matches
 
 # ALLOWED: JSON-RPC id should still exist
-rg '"id":' src/quantumvitas/daemon/server.py
+rg '"id":' src/qmatsuite/daemon/server.py
 # EXPECTED: matches (this is protocol-level, allowed)
 ```
 
@@ -821,7 +821,7 @@ rg '"id":' src/quantumvitas/daemon/server.py
 
 ### Step 9.1: Update StepInfo Interface
 
-**File**: `gui/src/types/qv.ts`
+**File**: `gui/src/types/qms.ts`
 **Location**: ~line 194
 
 **BEFORE**:
@@ -932,7 +932,7 @@ from pathlib import Path
 
 # Add src to path for registry import
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from quantumvitas.workflow.registry import normalize_step_type_to_public
+from qmatsuite.workflow.registry import normalize_step_type_to_public
 
 GOLDEN_DIR = Path("tests/fixtures/golden_0873ebf/daemon")
 
@@ -1111,7 +1111,7 @@ import yaml
 
 # Add src to path for registry import
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 
 
 def gen_to_spec(step_type_gen: str, engine: str = "qe") -> str:
@@ -1225,7 +1225,7 @@ import yaml
 
 # Add src to path for registry import
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 
 
 def gen_to_spec(step_type_gen: str, engine: str = "qe") -> str:
@@ -1379,31 +1379,31 @@ class TestBannedStepTypeVocabulary:
     """Step-type vocabulary must use only step_type_spec/step_type_gen."""
 
     def test_no_bare_step_type_in_step_factory(self):
-        count = rg_count(r'"step_type":', "src/quantumvitas/workflow/step_factory.py")
+        count = rg_count(r'"step_type":', "src/qmatsuite/workflow/step_factory.py")
         assert count == 0, "step_factory.py writes bare 'step_type'"
 
     def test_no_bare_type_field_in_models(self):
-        count = rg_count(r'self\.type\b', "src/quantumvitas/core/models.py")
+        count = rg_count(r'self\.type\b', "src/qmatsuite/core/models.py")
         assert count == 0, "models.py has self.type"
 
     def test_no_type_dict_key_in_models(self):
-        count = rg_count(r'd\["type"\]', "src/quantumvitas/core/models.py")
+        count = rg_count(r'd\["type"\]', "src/qmatsuite/core/models.py")
         assert count == 0, "models.py writes d['type']"
 
     def test_no_second_truth_mapping(self):
-        count = rg_count(r"_map_step_type_to_v0", "src/quantumvitas/daemon/")
+        count = rg_count(r"_map_step_type_to_v0", "src/qmatsuite/daemon/")
         assert count == 0, "Hardcoded mapping table exists in daemon"
 
     def test_no_machine_type_in_registry(self):
-        count = rg_count(r"\.machine_type\b", "src/quantumvitas/workflow/registry.py")
+        count = rg_count(r"\.machine_type\b", "src/qmatsuite/workflow/registry.py")
         assert count == 0, "registry.py still uses .machine_type"
 
     def test_no_public_type_in_registry(self):
-        count = rg_count(r"\.public_type\b", "src/quantumvitas/workflow/registry.py")
+        count = rg_count(r"\.public_type\b", "src/qmatsuite/workflow/registry.py")
         assert count == 0, "registry.py still uses .public_type"
 
     def test_no_spec_id_in_registry(self):
-        count = rg_count(r"spec\.id\b", "src/quantumvitas/workflow/registry.py")
+        count = rg_count(r"spec\.id\b", "src/qmatsuite/workflow/registry.py")
         assert count == 0, "registry.py still uses spec.id"
 
 
@@ -1412,7 +1412,7 @@ class TestCanonicalQERecipe:
 
     def test_single_qerecipe_class(self):
         result = subprocess.run(
-            ["rg", "-l", "^class QERecipe", "src/quantumvitas/"],
+            ["rg", "-l", "^class QERecipe", "src/qmatsuite/"],
             capture_output=True, text=True
         )
         files = [f for f in result.stdout.strip().split("\n") if f]
@@ -1424,23 +1424,23 @@ class TestRequiredVocabulary:
     """Required vocabulary must be present."""
 
     def test_step_type_spec_in_factory(self):
-        count = rg_count(r'"step_type_spec":', "src/quantumvitas/workflow/step_factory.py")
+        count = rg_count(r'"step_type_spec":', "src/qmatsuite/workflow/step_factory.py")
         assert count > 0, "step_factory.py missing step_type_spec"
 
     def test_meta_ulid_in_factory(self):
-        count = rg_count(r'"ulid":', "src/quantumvitas/workflow/step_factory.py")
+        count = rg_count(r'"ulid":', "src/qmatsuite/workflow/step_factory.py")
         assert count > 0, "step_factory.py missing meta.ulid"
 
     def test_api_facade_exists(self):
-        count = rg_count(r"def get_step_type_gen", "src/quantumvitas/api/")
+        count = rg_count(r"def get_step_type_gen", "src/qmatsuite/api/")
         assert count > 0, "API missing get_step_type_gen facade"
 
     def test_registry_has_step_type_spec_field(self):
-        count = rg_count(r"step_type_spec:\s*str", "src/quantumvitas/workflow/registry.py")
+        count = rg_count(r"step_type_spec:\s*str", "src/qmatsuite/workflow/registry.py")
         assert count > 0, "StepTypeSpec missing step_type_spec field"
 
     def test_registry_has_step_type_gen_field(self):
-        count = rg_count(r"step_type_gen:\s*str", "src/quantumvitas/workflow/registry.py")
+        count = rg_count(r"step_type_gen:\s*str", "src/qmatsuite/workflow/registry.py")
         assert count > 0, "StepTypeSpec missing step_type_gen field"
 
 
@@ -1460,12 +1460,12 @@ class TestIdentityFieldsRenamed:
     """Resource identity fields must use *_ulid naming."""
 
     def test_no_step_id_in_models(self):
-        count = rg_count(r"\bstep_id\b", "src/quantumvitas/core/models.py")
+        count = rg_count(r"\bstep_id\b", "src/qmatsuite/core/models.py")
         assert count == 0, "models.py still has step_id"
 
     def test_no_meta_id_in_factory(self):
         # Check specifically for "id": in meta context
-        count = rg_count(r'"id":\s*step_id', "src/quantumvitas/workflow/step_factory.py")
+        count = rg_count(r'"id":\s*step_id', "src/qmatsuite/workflow/step_factory.py")
         assert count == 0, "step_factory.py still writes meta.id"
 ```
 
@@ -1512,15 +1512,15 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ```bash
 echo "=== Banned vocabulary gates ==="
-rg '"step_type":' src/quantumvitas/workflow/step_factory.py && echo "FAIL" || echo "PASS"
-rg '_map_step_type_to_v0' src/quantumvitas/ && echo "FAIL" || echo "PASS"
-rg '\.machine_type\b' src/quantumvitas/workflow/registry.py && echo "FAIL" || echo "PASS"
-rg '\.public_type\b' src/quantumvitas/workflow/registry.py && echo "FAIL" || echo "PASS"
-rg 'spec\.id\b' src/quantumvitas/workflow/registry.py && echo "FAIL" || echo "PASS"
+rg '"step_type":' src/qmatsuite/workflow/step_factory.py && echo "FAIL" || echo "PASS"
+rg '_map_step_type_to_v0' src/qmatsuite/ && echo "FAIL" || echo "PASS"
+rg '\.machine_type\b' src/qmatsuite/workflow/registry.py && echo "FAIL" || echo "PASS"
+rg '\.public_type\b' src/qmatsuite/workflow/registry.py && echo "FAIL" || echo "PASS"
+rg 'spec\.id\b' src/qmatsuite/workflow/registry.py && echo "FAIL" || echo "PASS"
 
 echo "=== QERecipe canonical location ==="
-rg -l '^class QERecipe' src/quantumvitas/
-# Should show ONLY: src/quantumvitas/drivers/qe/recipe.py
+rg -l '^class QERecipe' src/qmatsuite/
+# Should show ONLY: src/qmatsuite/drivers/qe/recipe.py
 
 echo "=== YAML SPEC-only ==="
 rg 'step_type_gen:' resources/demo_projects/ && echo "FAIL" || echo "PASS"
@@ -1569,20 +1569,20 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
 | Pattern | Target | Meaning |
 |---------|--------|---------|
-| `rg '"step_type":' src/quantumvitas/workflow/step_factory.py` | step_factory | No bare step_type output |
-| `rg '_map_step_type_to_v0' src/quantumvitas/` | daemon | No second-truth table |
-| `rg '\.machine_type\b' src/quantumvitas/workflow/registry.py` | registry | Old field gone |
-| `rg '\.public_type\b' src/quantumvitas/workflow/registry.py` | registry | Old field gone |
-| `rg 'spec\.id\b' src/quantumvitas/workflow/registry.py` | registry | Old field gone |
+| `rg '"step_type":' src/qmatsuite/workflow/step_factory.py` | step_factory | No bare step_type output |
+| `rg '_map_step_type_to_v0' src/qmatsuite/` | daemon | No second-truth table |
+| `rg '\.machine_type\b' src/qmatsuite/workflow/registry.py` | registry | Old field gone |
+| `rg '\.public_type\b' src/qmatsuite/workflow/registry.py` | registry | Old field gone |
+| `rg 'spec\.id\b' src/qmatsuite/workflow/registry.py` | registry | Old field gone |
 | `rg '"step_type":' tests/fixtures/golden_0873ebf/` | fixtures | Fixtures migrated |
 | `rg 'step_type_gen:' resources/demo_projects/` | demos | GEN not in YAML |
-| `rg '\bstep_id\b' src/quantumvitas/core/models.py` | models | Identity renamed |
+| `rg '\bstep_id\b' src/qmatsuite/core/models.py` | models | Identity renamed |
 
 ### Must Return Exactly 1 Match (Canonical)
 
 | Pattern | Target | Meaning |
 |---------|--------|---------|
-| `rg -l '^class QERecipe' src/quantumvitas/` | QERecipe | Single definition |
+| `rg -l '^class QERecipe' src/qmatsuite/` | QERecipe | Single definition |
 
 ### Allowed Patterns (NOT targeted)
 
@@ -1685,7 +1685,7 @@ Phase 5      Phase 6      Phase 8             │
 | 6 | `core/models.py` | RENAME fields, DELETE property, ADD hard error |
 | 7 | `daemon/compat.py` | DELETE function, UPDATE shapers |
 | 8 | 15+ files | RENAME *_id → *_ulid |
-| 9 | `gui/src/types/qv.ts` | RENAME interface fields |
+| 9 | `gui/src/types/qms.ts` | RENAME interface fields |
 | 9 | `gui/src/components/*.tsx` | UPDATE field access |
 | 10 | `tests/fixtures/golden_*/daemon/*.json` | PATCH fields (via script) |
 | 11 | `resources/demo_projects/*.yml` | MIGRATE fields (via script) |

@@ -14,9 +14,9 @@ from unittest.mock import Mock, patch, MagicMock
 import tempfile
 import shutil
 
-from quantumvitas.core.engines.qe_calculation import QECalculationRunner, StepResult
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe_calculation import QECalculationRunner, StepResult
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 
 class TestOutputPathDirectoryHandling:
@@ -24,7 +24,7 @@ class TestOutputPathDirectoryHandling:
     
     def test_output_path_directory_is_not_opened_as_file(self, tmp_path):
         """Test that _ensure_file_path helper prevents Errno 21 when path is a directory."""
-        from quantumvitas.core.engines.qe_calculation import QECalculationRunner
+        from qmatsuite.core.engines.qe_calculation import QECalculationRunner
         
         # Setup: Create mock QE structure
         mock_qe_home = tmp_path / "qe_home"

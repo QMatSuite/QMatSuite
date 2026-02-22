@@ -32,11 +32,11 @@ import re
 from pathlib import Path
 
 KERNEL_PATHS = [
-    "src/quantumvitas/core/calc_identity.py",
-    "src/quantumvitas/calculation/calculation.py",
-    "src/quantumvitas/workflow/generalized_steps.py",
-    "src/quantumvitas/execution/handlers.py",
-    "src/quantumvitas/execution/recipes.py",
+    "src/qmatsuite/core/calc_identity.py",
+    "src/qmatsuite/calculation/calculation.py",
+    "src/qmatsuite/workflow/generalized_steps.py",
+    "src/qmatsuite/execution/handlers.py",
+    "src/qmatsuite/execution/recipes.py",
 ]
 
 
@@ -45,14 +45,14 @@ class TestNoSilentFallbacks:
 
     def test_no_qe_fallback_in_calc_identity(self):
         """calc_identity.py must not have QE fallback."""
-        source = Path("src/quantumvitas/core/calc_identity.py").read_text()
+        source = Path("src/qmatsuite/core/calc_identity.py").read_text()
         # Check for the specific dangerous pattern
         assert 'families.add("qe")' not in source or "QE fallback" not in source, \
             "Silent QE fallback still exists in calc_identity.py"
 
     def test_no_default_engine_get(self):
         """No .get('engine', 'qe') patterns in calculation loading."""
-        for path in ["src/quantumvitas/calculation/calculation.py"]:
+        for path in ["src/qmatsuite/calculation/calculation.py"]:
             source = Path(path).read_text()
             matches = re.findall(r'\.get\(["\']engine["\'],\s*["\']qe["\']\)', source)
             assert not matches, f"Found .get('engine', 'qe') in {path}"
@@ -82,7 +82,7 @@ class TestNoFallbackRecipeDispatch:
 
     def test_recipe_selection_no_default(self):
         """get_recipe_class must not return QERecipe as default."""
-        source = Path("src/quantumvitas/execution/recipes.py").read_text()
+        source = Path("src/qmatsuite/execution/recipes.py").read_text()
         # Check for .get(..., QERecipe) pattern
         assert "QERecipe)" not in source or "get(" not in source, \
             "Recipe dispatch has QERecipe fallback"
@@ -96,7 +96,7 @@ class TestFallbackRuntimeBehavior:
 
     def test_unknown_type_does_not_route_to_qe(self):
         """Unknown step type must not silently execute as QE."""
-        from quantumvitas.core.calc_identity import _infer_engine_family_from_machine_types
+        from qmatsuite.core.calc_identity import _infer_engine_family_from_machine_types
 
         result = _infer_engine_family_from_machine_types(["totally_unknown_xyz"])
         # After fix: should be None or raise, not "qe"
@@ -104,8 +104,8 @@ class TestFallbackRuntimeBehavior:
 
     def test_typo_step_type_raises(self):
         """Typos must raise, not silently route."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownStepTypeError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownStepTypeError
 
         typos = ["vaps_scf", "orce_scf", "lammp_md", "cp2k_scff"]
         for typo in typos:
@@ -128,20 +128,20 @@ class TestDriverRegistration:
     @pytest.mark.parametrize("engine", ["vasp", "orca", "pyscf", "lammps", "cp2k", "w90"])
     def test_driver_is_registered(self, engine):
         """Each migrated engine must be registered."""
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         assert DriverRegistry.is_known_engine(engine), f"Engine {engine} not registered"
 
     @pytest.mark.parametrize("engine", ["vasp", "orca", "pyscf", "lammps", "cp2k", "w90"])
     def test_driver_has_step_types(self, engine):
         """Each driver must declare at least one step type."""
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         step_types = DriverRegistry.list_step_types(engine)
         assert len(step_types) > 0, f"Engine {engine} has no step types"
 
     @pytest.mark.parametrize("engine", ["vasp", "orca", "pyscf", "lammps", "cp2k", "w90"])
     def test_step_types_have_correct_engine(self, engine):
         """Step types must reference correct engine."""
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         for step_type in DriverRegistry.list_step_types(engine):
             spec = DriverRegistry.get_step_type_spec(step_type)
             assert spec.engine == engine, f"{step_type} has wrong engine"
@@ -152,7 +152,7 @@ class TestDispatchChain:
 
     def test_handler_dispatch_uses_registry(self):
         """Handler dispatch must use registry, not hardcoded map."""
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         for engine in ["vasp", "orca", "pyscf", "lammps", "cp2k"]:
             driver = DriverRegistry.get_driver(engine)
@@ -161,8 +161,8 @@ class TestDispatchChain:
 
     def test_recipe_dispatch_uses_registry(self):
         """Recipe dispatch must use registry."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.execution.recipes import BaseRecipe
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.execution.recipes import BaseRecipe
 
         for engine in ["vasp", "orca", "pyscf", "lammps", "cp2k"]:
             driver = DriverRegistry.get_driver(engine)
@@ -172,7 +172,7 @@ class TestDispatchChain:
 
     def test_materialization_uses_registry(self):
         """GEN→SPEC must use registry."""
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         test_cases = [
             ("vasp", "GEN_SCF", "vasp_scf"),
@@ -200,8 +200,8 @@ class TestUnknownStepTypeErrors:
 
     def test_unknown_step_type_raises_specific_error(self):
         """Unknown step type must raise UnknownStepTypeError."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownStepTypeError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownStepTypeError
 
         with pytest.raises(UnknownStepTypeError) as exc:
             DriverRegistry.get_step_type_spec("nonexistent_step_xyz")
@@ -211,8 +211,8 @@ class TestUnknownStepTypeErrors:
 
     def test_error_message_includes_suggestions(self):
         """Error must include similar type suggestions."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownStepTypeError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownStepTypeError
 
         with pytest.raises(UnknownStepTypeError) as exc:
             DriverRegistry.get_step_type_spec("vasp_scff")  # typo
@@ -223,8 +223,8 @@ class TestUnknownStepTypeErrors:
 
     def test_error_message_lists_known_types(self):
         """Error must list available types."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownStepTypeError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownStepTypeError
 
         with pytest.raises(UnknownStepTypeError) as exc:
             DriverRegistry.get_step_type_spec("xyz")
@@ -237,8 +237,8 @@ class TestUnknownEngineErrors:
 
     def test_unknown_engine_raises_specific_error(self):
         """Unknown engine must raise UnknownEngineError."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownEngineError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownEngineError
 
         with pytest.raises(UnknownEngineError) as exc:
             DriverRegistry.get_driver("nonexistent_engine")
@@ -252,8 +252,8 @@ class TestUnknownMaterializationErrors:
 
     def test_unknown_materialization_raises(self):
         """Unknown (engine, gen_type) must raise."""
-        from quantumvitas.core.driver_registry import DriverRegistry
-        from quantumvitas.core.driver_exceptions import UnknownMaterializationError
+        from qmatsuite.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_exceptions import UnknownMaterializationError
 
         with pytest.raises(UnknownMaterializationError):
             DriverRegistry.materialize("vasp", "GEN_UNKNOWN_XYZ")
@@ -272,9 +272,9 @@ class TestKernelIsolation:
     """Verify engine code does not leak into kernel."""
 
     KERNEL_FILES = [
-        "src/quantumvitas/core/calc_identity.py",
-        "src/quantumvitas/core/driver_registry.py",
-        "src/quantumvitas/core/driver_protocol.py",
+        "src/qmatsuite/core/calc_identity.py",
+        "src/qmatsuite/core/driver_registry.py",
+        "src/qmatsuite/core/driver_protocol.py",
         # handlers.py and recipes.py may have QE code until QE migrates
     ]
 
@@ -297,7 +297,7 @@ class TestKernelIsolation:
 
     def test_no_engine_conditionals_in_core(self):
         """Core files must not have if engine == 'vasp' style checks."""
-        core_files = list(Path("src/quantumvitas/core").glob("*.py"))
+        core_files = list(Path("src/qmatsuite/core").glob("*.py"))
         for path in core_files:
             if path.name in ("driver_registry.py", "driver_protocol.py"):
                 continue  # These are allowed
@@ -465,13 +465,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check no QE fallback
         run: |
-          if grep -rn 'families.add("qe")' src/quantumvitas/core/calc_identity.py | grep -v "^#"; then
+          if grep -rn 'families.add("qe")' src/qmatsuite/core/calc_identity.py | grep -v "^#"; then
             echo "FAIL: Silent QE fallback found"
             exit 1
           fi
       - name: Check no default engine
         run: |
-          if grep -rn '\.get("engine", "qe")' src/quantumvitas/calculation/; then
+          if grep -rn '\.get("engine", "qe")' src/qmatsuite/calculation/; then
             echo "FAIL: Default engine=qe found"
             exit 1
           fi
@@ -487,7 +487,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def reset_driver_registry():
     """Reset registry between tests to avoid cross-test pollution."""
-    from quantumvitas.core.driver_registry import DriverRegistry
+    from qmatsuite.core.driver_registry import DriverRegistry
 
     # Store original state
     original_drivers = DriverRegistry()._drivers.copy()
@@ -506,7 +506,7 @@ def reset_driver_registry():
 @pytest.fixture(scope="session", autouse=True)
 def ensure_drivers_loaded():
     """Ensure all drivers are loaded before any test."""
-    import quantumvitas.drivers  # Triggers auto-discovery
+    import qmatsuite.drivers  # Triggers auto-discovery
 ```
 
 ### 7.3 Test Ordering for xdist
@@ -567,7 +567,7 @@ tests/
 
 ### 9.1 Checklist
 
-- [ ] Driver bundle created in `src/quantumvitas/drivers/<engine>/`
+- [ ] Driver bundle created in `src/qmatsuite/drivers/<engine>/`
 - [ ] Driver registered and passes `test_driver_is_registered`
 - [ ] All step types registered and pass `test_driver_has_step_types`
 - [ ] Handler moved and passes `test_handler_dispatch_uses_registry`

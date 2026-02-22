@@ -15,7 +15,7 @@ The comprehensive API/daemon review identified 8 actionable items remaining afte
 
 The daemon has 3 pairs of duplicate method definitions where the first (simpler) version is shadowed by the second (canonical) version. Plus a duplicate dispatch dict key.
 
-**Files:** `src/quantumvitas/daemon/server.py`
+**Files:** `src/qmatsuite/daemon/server.py`
 
 **Changes:**
 1. Delete first `_handle_detect_workflow` definition (simple stub, shadowed by canonical version)
@@ -29,7 +29,7 @@ The daemon has 3 pairs of duplicate method definitions where the first (simpler)
 `svc.engine` (4 methods) is never called by daemon, CLI, or any other code. Delete it.
 
 **Files:**
-- `src/quantumvitas/api/service.py` — delete Engine inner class and `engine` property
+- `src/qmatsuite/api/service.py` — delete Engine inner class and `engine` property
 - `tests/api/test_engine_capabilities.py` — delete (tests only dead code)
 
 ### M3: Delete QE metadata re-exports from api.utils
@@ -38,8 +38,8 @@ The daemon has 3 pairs of duplicate method definitions where the first (simpler)
 11 QE-specific symbols re-exported from `api.utils`. Remove them, add local imports where needed.
 
 **Files:**
-- `src/quantumvitas/api/utils.py` — remove re-export block, add local imports in `_qe_parameter_metadata()`
-- `src/quantumvitas/cli/main.py` — rewrite `inspect_metadata` to use engine-agnostic path
+- `src/qmatsuite/api/utils.py` — remove re-export block, add local imports in `_qe_parameter_metadata()`
+- `src/qmatsuite/cli/main.py` — rewrite `inspect_metadata` to use engine-agnostic path
 
 ### M4: Move Wannier 3D fixture scanning to API
 **Effort: M | Risk: Low**
@@ -47,17 +47,17 @@ The daemon has 3 pairs of duplicate method definitions where the first (simpler)
 Move filesystem scanning logic from daemon handlers to API `svc.analysis`.
 
 **Files:**
-- `src/quantumvitas/api/service.py` — add `list_3d_fixtures()` and `compile_fixture_volume()` to Analysis
-- `src/quantumvitas/daemon/server.py` — thin out both handlers
+- `src/qmatsuite/api/service.py` — add `list_3d_fixtures()` and `compile_fixture_volume()` to Analysis
+- `src/qmatsuite/daemon/server.py` — thin out both handlers
 
 ### M5: Enrich create_demo_project return value
 **Effort: S | Risk: Low**
 
-Move GUI enrichment from daemon into `QVService.create_demo_project()`.
+Move GUI enrichment from daemon into `QMSService.create_demo_project()`.
 
 **Files:**
-- `src/quantumvitas/api/service.py` — enrich return value
-- `src/quantumvitas/daemon/server.py` — simplify handler
+- `src/qmatsuite/api/service.py` — enrich return value
+- `src/qmatsuite/daemon/server.py` — simplify handler
 
 ### M6: Add detail parameter to svc.calculation.list()
 **Effort: S | Risk: Low**
@@ -65,8 +65,8 @@ Move GUI enrichment from daemon into `QVService.create_demo_project()`.
 Eliminate N+1 `get_detail()` loop in daemon.
 
 **Files:**
-- `src/quantumvitas/api/service.py` — add `detail: bool = False` to `Calculation.list()`
-- `src/quantumvitas/daemon/server.py` — simplify handler
+- `src/qmatsuite/api/service.py` — add `detail: bool = False` to `Calculation.list()`
+- `src/qmatsuite/daemon/server.py` — simplify handler
 
 ### M7: Make resolution helpers internal-only
 **Effort: M | Risk: Low**

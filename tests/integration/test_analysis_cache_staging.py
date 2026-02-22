@@ -7,7 +7,7 @@ import pytest
 from pathlib import Path
 import shutil
 
-from quantumvitas.core.provenance import (
+from qmatsuite.core.provenance import (
     update_provenance_after_step,
     load_provenance,
 )

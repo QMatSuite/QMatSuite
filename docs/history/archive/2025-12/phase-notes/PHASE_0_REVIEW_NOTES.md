@@ -3,28 +3,28 @@
 ## 1. RPC Endpoints
 
 ### `list_qe_parameter_metadata`
-- **Location**: `src/quantumvitas/daemon/server.py` line 715
+- **Location**: `src/qmatsuite/daemon/server.py` line 715
 - **Handler**: `_handle_list_qe_parameter_metadata()`
 - **Operations**: `list_modules`, `list_sections`, `list_parameters`, `search`
 - **Used by**: Resources view (`QEParameterBrowserPanel.tsx`), StepDetailPanel (via `useQEParameterMetadata` hook)
 
 ### `update_step_params`
-- **Location**: `src/quantumvitas/daemon/server.py` line 2145
+- **Location**: `src/qmatsuite/daemon/server.py` line 2145
 - **Handler**: `_handle_update_step_params()`
-- **Service**: `src/quantumvitas/api.py` line 3199, `QVService.update_step_params()`
+- **Service**: `src/qmatsuite/api.py` line 3199, `QMSService.update_step_params()`
 - **Payload**: `{project_root, calculation, step, parameters: Dict[str, Dict[str, Any]], cards?: Dict}`
 - **ISSUE**: Line 3250 has type coercion `value = float(value)` for numeric params - **VIOLATES STRING-ONLY RULE**
 
 ### `get_step_detail`
-- **Location**: `src/quantumvitas/daemon/server.py` line 2099
+- **Location**: `src/qmatsuite/daemon/server.py` line 2099
 - **Handler**: `_handle_get_step_detail()`
-- **Service**: `src/quantumvitas/api.py`, `QVService.get_step_detail()`
+- **Service**: `src/qmatsuite/api.py`, `QMSService.get_step_detail()`
 - **Returns**: `StepDetail` with `parameters`, `cards`, `species_overrides` fields
 
 ## 2. Step YAML Structure
 
 ### File Format
-- **Location**: `src/quantumvitas/calculation/structure_steps.py` line 35
+- **Location**: `src/qmatsuite/calculation/structure_steps.py` line 35
 - **Class**: `StructureStepSpec`
 - **Fields**:
   - `parameters: Dict[str, Dict[str, Any]]` - Namelist parameters (e.g., `{"SYSTEM": {"ecutwfc": 30.0}}`)
@@ -38,11 +38,11 @@
 
 ### Writing to YAML
 - **Method**: `StructureStepSpec.to_dict()` (line 167) → `yaml.safe_dump()`
-- **Location**: `src/quantumvitas/api.py` line 3274: `step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))`
+- **Location**: `src/qmatsuite/api.py` line 3274: `step.absolute_path.write_text(yaml.safe_dump(spec.to_dict(), sort_keys=False))`
 - **Current behavior**: Python types are serialized by PyYAML (numbers stay as numbers, strings as strings)
 
 ### String-Only Violation
-- **Location**: `src/quantumvitas/api.py` line 3247-3252
+- **Location**: `src/qmatsuite/api.py` line 3247-3252
 - **Code**: 
   ```python
   if key in ('ecutwfc', 'ecutrho', 'degauss', 'conv_thr'):
@@ -55,14 +55,14 @@
 ## 3. Card Parameters (K_POINTS, ATOMIC_SPECIES, etc.)
 
 ### Current Storage Format
-- **Location**: `src/quantumvitas/calculation/importers.py` line 491, `_extract_cards()`
+- **Location**: `src/qmatsuite/calculation/importers.py` line 491, `_extract_cards()`
 - **Format**: `cards["K_POINTS"] = {"option": str, "data": list}`
   - Example: `{"option": "automatic", "data": [[4, 4, 4, 0, 0, 0]]}`
-- **Applied to QE input**: `src/quantumvitas/calculation/input_runner.py` line 505, `apply_card_overrides_to_qe_input()`
+- **Applied to QE input**: `src/qmatsuite/calculation/input_runner.py` line 505, `apply_card_overrides_to_qe_input()`
 
 ### K_POINTS Formatting
-- **Parser**: `src/quantumvitas/io/parser/qe_parser.py` line 259, `_parse_k_points()`
-- **Generator**: `src/quantumvitas/io/generator/qe_generator.py` line 46, `generate_card()`
+- **Parser**: `src/qmatsuite/io/parser/qe_parser.py` line 259, `_parse_k_points()`
+- **Generator**: `src/qmatsuite/io/generator/qe_generator.py` line 46, `generate_card()`
 - **Output format**: 
   ```
   K_POINTS {automatic}
@@ -77,29 +77,29 @@
 ## 4. Pseudopotentials
 
 ### Current Storage
-- **Location**: `src/quantumvitas/calculation/structure_steps.py` line 51, `species_overrides: Dict[str, Dict[str, Any]]`
+- **Location**: `src/qmatsuite/calculation/structure_steps.py` line 51, `species_overrides: Dict[str, Dict[str, Any]]`
 - **Format**: `{"Si": {"mass": 28.085, "pseudopot": "Si.pbe-n-rrkjus_psl.1.0.0.UPF"}}`
-- **Applied**: `src/quantumvitas/calculation/input_runner.py` line 461, `apply_species_overrides_to_qe_input()`
+- **Applied**: `src/qmatsuite/calculation/input_runner.py` line 461, `apply_species_overrides_to_qe_input()`
 
 ### ATOMIC_SPECIES Card
-- **Location**: `src/quantumvitas/io/structure_io.py` line 155-169
+- **Location**: `src/qmatsuite/io/structure_io.py` line 155-169
 - **Format**: List of `[symbol, mass, pseudo_file]` rows
 - **Storage**: Part of `cards["ATOMIC_SPECIES"]` or `species_overrides`
 
 ## 5. Key Files and Functions
 
 ### Backend (Python)
-- `src/quantumvitas/api.py`:
-  - `QVService.update_step_params()` (line 3199) - **NEEDS FIX: Remove float coercion**
-  - `QVService.get_step_detail()` - Returns StepDetail from YAML
-- `src/quantumvitas/calculation/structure_steps.py`:
+- `src/qmatsuite/api.py`:
+  - `QMSService.update_step_params()` (line 3199) - **NEEDS FIX: Remove float coercion**
+  - `QMSService.get_step_detail()` - Returns StepDetail from YAML
+- `src/qmatsuite/calculation/structure_steps.py`:
   - `StructureStepSpec.from_yaml()` (line 147) - Loads step.yaml
   - `StructureStepSpec.to_dict()` (line 167) - Serializes to YAML
-- `src/quantumvitas/calculation/importers.py`:
+- `src/qmatsuite/calculation/importers.py`:
   - `_extract_cards()` (line 491) - Extracts cards from QEInput
-- `src/quantumvitas/io/generator/qe_generator.py`:
+- `src/qmatsuite/io/generator/qe_generator.py`:
   - `generate_card()` (line 46) - Formats card to QE input string
-- `src/quantumvitas/io/parser/qe_parser.py`:
+- `src/qmatsuite/io/parser/qe_parser.py`:
   - `_parse_k_points()` (line 259) - Parses K_POINTS from QE input
 
 ### Frontend (TypeScript/React)

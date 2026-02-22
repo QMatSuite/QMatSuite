@@ -16,10 +16,10 @@ Remove all silent fallback behavior where unknown step types route to QE or any 
 
 | File | Change | Risk |
 |------|--------|------|
-| `src/quantumvitas/core/calc_identity.py` | Remove QE fallback in `_infer_engine_family_from_machine_types()` | HIGH |
-| `src/quantumvitas/calculation/calculation.py` | Remove `.get("engine", "qe")` defaults | MEDIUM |
-| `src/quantumvitas/execution/recipes.py` | Remove `QERecipe` fallback in `get_recipe_class()` | MEDIUM |
-| `src/quantumvitas/core/driver_exceptions.py` | CREATE: Exception classes | LOW |
+| `src/qmatsuite/core/calc_identity.py` | Remove QE fallback in `_infer_engine_family_from_machine_types()` | HIGH |
+| `src/qmatsuite/calculation/calculation.py` | Remove `.get("engine", "qe")` defaults | MEDIUM |
+| `src/qmatsuite/execution/recipes.py` | Remove `QERecipe` fallback in `get_recipe_class()` | MEDIUM |
+| `src/qmatsuite/core/driver_exceptions.py` | CREATE: Exception classes | LOW |
 | `tests/gates/test_no_fallbacks.py` | CREATE: Gate 0 tests | LOW |
 
 ---
@@ -28,7 +28,7 @@ Remove all silent fallback behavior where unknown step types route to QE or any 
 
 ### Step 1: Create Exception Classes (Test First)
 
-**Create file**: `src/quantumvitas/core/driver_exceptions.py`
+**Create file**: `src/qmatsuite/core/driver_exceptions.py`
 
 ```python
 """Exception classes for driver/routing errors."""
@@ -143,7 +143,7 @@ class TestNoSilentQEFallback:
 
     def test_no_qe_fallback_pattern(self):
         """The specific QE fallback pattern must not exist."""
-        source = Path("src/quantumvitas/core/calc_identity.py").read_text()
+        source = Path("src/qmatsuite/core/calc_identity.py").read_text()
 
         # This exact pattern is the dangerous fallback
         # It should NOT be in the code after the fix
@@ -157,7 +157,7 @@ class TestNoSilentQEFallback:
 
     def test_unknown_type_returns_none_not_qe(self):
         """Unknown type should return None, not 'qe'."""
-        from quantumvitas.core.calc_identity import _infer_engine_family_from_machine_types
+        from qmatsuite.core.calc_identity import _infer_engine_family_from_machine_types
 
         result = _infer_engine_family_from_machine_types(["totally_unknown_xyz_123"])
 
@@ -173,7 +173,7 @@ class TestNoDefaultEngineInCalculation:
 
     def test_no_default_engine_qe_pattern(self):
         """No .get('engine', 'qe') in calculation loading."""
-        source = Path("src/quantumvitas/calculation/calculation.py").read_text()
+        source = Path("src/qmatsuite/calculation/calculation.py").read_text()
 
         pattern = r'\.get\(["\']engine["\'],\s*["\']qe["\']\)'
         matches = re.findall(pattern, source)
@@ -189,7 +189,7 @@ class TestNoRecipeFallback:
 
     def test_no_qerecipe_default(self):
         """get_recipe_class should not default to QERecipe."""
-        source = Path("src/quantumvitas/execution/recipes.py").read_text()
+        source = Path("src/qmatsuite/execution/recipes.py").read_text()
 
         # Pattern: .get(..., QERecipe) or default=QERecipe
         patterns = [
@@ -210,7 +210,7 @@ class TestNoRecipeFallback:
 
 ### Step 3: Fix calc_identity.py
 
-**File**: `src/quantumvitas/core/calc_identity.py`
+**File**: `src/qmatsuite/core/calc_identity.py`
 
 **Function**: `_infer_engine_family_from_machine_types()` (lines 78-115)
 
@@ -265,9 +265,9 @@ class TestNoRecipeFallback:
 
 ### Step 4: Fix calculation.py
 
-**File**: `src/quantumvitas/calculation/calculation.py`
+**File**: `src/qmatsuite/calculation/calculation.py`
 
-**Find via ripgrep**: `rg '\.get\("engine", "qe"\)' src/quantumvitas/calculation/`
+**Find via ripgrep**: `rg '\.get\("engine", "qe"\)' src/qmatsuite/calculation/`
 
 **Line 339** (approximate - verify with ripgrep):
 ```python
@@ -280,7 +280,7 @@ if engine_name is None:
     # Engine must be specified or inferred from step type
     step_type = step_data.get("type") or step_data.get("step_type")
     if step_type:
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
         spec = registry.get(step_type)
         if spec:
@@ -301,9 +301,9 @@ if engine_name is None:
 
 ### Step 5: Fix recipes.py
 
-**File**: `src/quantumvitas/execution/recipes.py`
+**File**: `src/qmatsuite/execution/recipes.py`
 
-**Find via ripgrep**: `rg 'QERecipe' src/quantumvitas/execution/recipes.py`
+**Find via ripgrep**: `rg 'QERecipe' src/qmatsuite/execution/recipes.py`
 
 **Function `get_recipe_class()`** (around line 798-827):
 ```python
@@ -327,7 +327,7 @@ def get_recipe_class(engine_family: str) -> type[BaseRecipe]:
         "cp2k": CP2KRecipe,
     }
     if engine_family not in recipe_map:
-        from quantumvitas.core.driver_exceptions import UnknownEngineError
+        from qmatsuite.core.driver_exceptions import UnknownEngineError
         raise UnknownEngineError(engine_family, list(recipe_map.keys()))
     return recipe_map[engine_family]
 ```

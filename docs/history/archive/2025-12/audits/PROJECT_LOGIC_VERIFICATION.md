@@ -28,7 +28,7 @@
 - `tests/core/qe_step_runner.py::set_pseudo_dir_to_temp`: 
   - 设置为 `project_root/pseudo` ✅
   
-- `src/quantumvitas/core/engines/qe_pseudopotentials.py::ensure_pseudopotentials`: 
+- `src/qmatsuite/core/engines/qe_pseudopotentials.py::ensure_pseudopotentials`: 
   - 先检查 `pseudo_dir` (project_root/pseudo) ✅
   - 再检查 test_suite_dir (fallback) ✅
   - 最后下载 ✅
@@ -38,24 +38,24 @@
 
 **验证结果**:
 ```
-✅ pseudo_dir = <HOME>/Code/quantumVITAS/pseudo
+✅ pseudo_dir = <HOME>/Code/QMatSuite/pseudo
 ```
 
 ### 3. 所有 step 逻辑在 src 里面
 **实现状态**: ✅ 完全符合
 
 **实现位置**:
-- `src/quantumvitas/core/engines/qe_calculation.py`: 
+- `src/qmatsuite/core/engines/qe_calculation.py`: 
   - `QECalculationRunner.run_step()`: 执行单个步骤 ✅
   - `QECalculationRunner.run_calculation()`: 执行计算 ✅
   
-- `src/quantumvitas/core/engines/qe.py`: 
+- `src/qmatsuite/core/engines/qe.py`: 
   - `detect_step_type()`: 检测步骤类型 ✅
   - `run_step()`: 执行步骤（调用 calculation_runner）✅
 
 **文件列表**:
-- ✅ `src/quantumvitas/core/engines/qe_calculation.py`
-- ✅ `src/quantumvitas/core/engines/qe.py`
+- ✅ `src/qmatsuite/core/engines/qe_calculation.py`
+- ✅ `src/qmatsuite/core/engines/qe.py`
 
 ### 4. test 逻辑中心化在 tests/core 里面
 **实现状态**: ✅ 完全符合
@@ -91,7 +91,7 @@
 
 **验证结果**:
 ```
-✅ outdir = <HOME>/Code/quantumVITAS/temp/outdir
+✅ outdir = <HOME>/Code/QMatSuite/temp/outdir
 ```
 
 ### 6. 顺序看 jobconfig
@@ -130,7 +130,7 @@ inputs_args = ('si.0_scf.in', '1'), ('si.1_nscf.in', '1'), ('si.2_bands.in', '1'
 ### 文件组织
 
 ```
-src/quantumvitas/core/engines/
+src/qmatsuite/core/engines/
 ├── qe_calculation.py          # Step 执行逻辑 (run_step, run_calculation)
 ├── qe.py                   # QE 引擎 (detect_step_type, run_step)
 └── qe_pseudopotentials.py  # 伪势管理 (ensure_pseudopotentials)
@@ -151,7 +151,7 @@ tests/integration/
 ```
 1. 从 jobconfig 读取工作流顺序
 2. 对每个步骤：
-   a. 运行步骤 (src/quantumvitas/core/engines/qe_calculation.py::run_step)
+   a. 运行步骤 (src/qmatsuite/core/engines/qe_calculation.py::run_step)
    b. 验证步骤 (tests/core/qe_step_verification.py::verify_step_result)
    c. 如果失败：停止工作流
    d. 如果成功：继续下一个步骤

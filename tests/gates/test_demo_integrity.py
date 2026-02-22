@@ -8,7 +8,7 @@ Every demo snapshot must have:
 import yaml
 from pathlib import Path
 import pytest
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 DEMO_DIR = get_resources_dir() / "demo_projects"
 
@@ -27,8 +27,8 @@ def _get_prefix(step_type_spec: str) -> str:
 
 def test_all_demos_have_engine_family():
     """Every demo calculation must have explicit engine_family."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     violations = []
     for yml_path in sorted(DEMO_DIR.glob("*.yml")):
@@ -43,8 +43,8 @@ def test_all_demos_have_engine_family():
 
 def test_demo_step_type_spec_matches_engine_family():
     """Every step's step_type_spec prefix must match engine_family or its companion engines."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     violations = []
     for yml_path in sorted(DEMO_DIR.glob("*.yml")):

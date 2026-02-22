@@ -91,8 +91,8 @@ rg 'f"{.*}_{.*}".*step|prefix.*_.*gen' src/ --type py -l
 ### Step A.2: Consolidate to SSOT
 
 **Allowed locations**:
-- `src/quantumvitas/workflow/step_type_convert.py`: `spec_from`, `gen_from`, `prefix_from`, `is_spec`, `is_gen`
-- `src/quantumvitas/execution/step_type_unpack.py`: `unpack_step_type_safe`
+- `src/qmatsuite/workflow/step_type_convert.py`: `spec_from`, `gen_from`, `prefix_from`, `is_spec`, `is_gen`
+- `src/qmatsuite/execution/step_type_unpack.py`: `unpack_step_type_safe`
 
 **Action**: Delete all duplicates. Update all callsites to import from SSOT.
 
@@ -118,11 +118,11 @@ rg "def unpack_step_type" src/ --type py -l
 
 ## Phase B: Remove API Reexports of Conversion
 
-**What changes**: Delete conversion function reexports from `quantumvitas.api.utils`
+**What changes**: Delete conversion function reexports from `qmatsuite.api.utils`
 
 ### Step B.1: Delete Reexports
 
-**Remove from `src/quantumvitas/api/utils.py`**:
+**Remove from `src/qmatsuite/api/utils.py`**:
 - `is_step_type_spec()` function
 - `step_type_gen_from_spec()` function
 - `step_type_spec_from_gen()` function
@@ -132,7 +132,7 @@ rg "def unpack_step_type" src/ --type py -l
 
 Find and fix all callers:
 ```bash
-rg "from quantumvitas.api.utils import.*step_type" src/quantumvitas/daemon/ src/quantumvitas/cli/ --type py
+rg "from qmatsuite.api.utils import.*step_type" src/qmatsuite/daemon/ src/qmatsuite/cli/ --type py
 rg "api\.utils\.(is_step_type|step_type_gen_from|step_type_spec_from)" src/ --type py
 ```
 
@@ -140,10 +140,10 @@ rg "api\.utils\.(is_step_type|step_type_gen_from|step_type_spec_from)" src/ --ty
 
 **Verification**:
 ```bash
-rg "step_type_gen_from_spec|step_type_spec_from_gen|is_step_type_spec" src/quantumvitas/api/utils.py
+rg "step_type_gen_from_spec|step_type_spec_from_gen|is_step_type_spec" src/qmatsuite/api/utils.py
 # Expected: (no output)
 
-rg "from quantumvitas.api.utils import.*step_type" src/quantumvitas/daemon/ --type py
+rg "from qmatsuite.api.utils import.*step_type" src/qmatsuite/daemon/ --type py
 # Expected: (no output)
 ```
 
@@ -156,7 +156,7 @@ rg "from quantumvitas.api.utils import.*step_type" src/quantumvitas/daemon/ --ty
 ### Step C.1: Audit Compat
 
 ```bash
-rg "(gen_from|spec_from|prefix_from|is_spec|step_type.*split)" src/quantumvitas/daemon/compat.py
+rg "(gen_from|spec_from|prefix_from|is_spec|step_type.*split)" src/qmatsuite/daemon/compat.py
 ```
 
 ### Step C.2: Replace With DTO Field Reads
@@ -174,7 +174,7 @@ step["name"] = step.get("step_type_gen", "")
 
 **Verification**:
 ```bash
-rg "(gen_from|spec_from|prefix_from|step_type_convert)" src/quantumvitas/daemon/ --type py
+rg "(gen_from|spec_from|prefix_from|step_type_convert)" src/qmatsuite/daemon/ --type py
 # Expected: (no output)
 ```
 
@@ -292,7 +292,7 @@ Create these files:
 
 **Satisfies**: §8 (Layering Rule)
 
-**Scans**: `src/quantumvitas/presets/`, `src/quantumvitas/workflow/templates.py` for SPEC strings (strings containing `_` that look like step types: `qe_`, `vasp_`, `w90_`, etc.)
+**Scans**: `src/qmatsuite/presets/`, `src/qmatsuite/workflow/templates.py` for SPEC strings (strings containing `_` that look like step types: `qe_`, `vasp_`, `w90_`, etc.)
 
 **Verification**:
 ```bash
@@ -342,7 +342,7 @@ After Phase 2, ALL of these must be 0:
 
 ### Step 2.1: Update GenStepRegistry.GEN_STEPS
 
-**What changes**: `src/quantumvitas/workflow/gen_steps.py`
+**What changes**: `src/qmatsuite/workflow/gen_steps.py`
 
 Ensure these GEN names exist (pure derivation compatible):
 - `scf`, `nscf`, `relax`, `md`, `bandpw`, `bands`, `dos`, `ph`, `wannierprep`, `pw2wannier`, `wannier`, etc.
@@ -351,13 +351,13 @@ Ensure these GEN names exist (pure derivation compatible):
 
 **Verification**:
 ```bash
-python -c "from quantumvitas.workflow.gen_steps import GenStepRegistry; s=GenStepRegistry.GEN_STEPS; print('md' in s, 'bandpw' in s, 'vcmd' not in s, 'vc-md' not in s)"
+python -c "from qmatsuite.workflow.gen_steps import GenStepRegistry; s=GenStepRegistry.GEN_STEPS; print('md' in s, 'bandpw' in s, 'vcmd' not in s, 'vc-md' not in s)"
 # Expected: True True True True
 ```
 
 ### Step 2.2: Delete _apply_special_case_overrides
 
-**What changes**: `src/quantumvitas/core/driver_registry.py`
+**What changes**: `src/qmatsuite/core/driver_registry.py`
 
 **Action**: Delete the entire `_apply_special_case_overrides` method and its call site.
 
@@ -369,7 +369,7 @@ rg "_apply_special_case_overrides" src/ --type py -l
 
 ### Step 2.3: Refactor _build_materialization_map
 
-**What changes**: `src/quantumvitas/core/driver_registry.py`
+**What changes**: `src/qmatsuite/core/driver_registry.py`
 
 **From**:
 ```python
@@ -385,13 +385,13 @@ mat_map[gen_step] = f"{prefix}_{gen_step}"
 
 **Verification**:
 ```bash
-rg 'GEN_\{|GEN_[A-Z]' src/quantumvitas/core/driver_registry.py
+rg 'GEN_\{|GEN_[A-Z]' src/qmatsuite/core/driver_registry.py
 # Expected: (no output)
 ```
 
 ### Step 2.4: Delete GeneralizedStep enum
 
-**What changes**: `src/quantumvitas/workflow/generalized_steps.py`
+**What changes**: `src/qmatsuite/workflow/generalized_steps.py`
 
 **Action**: Delete the `GeneralizedStep` class. Update all imports to use `GenStepRegistry.GEN_STEPS`.
 
@@ -403,13 +403,13 @@ rg "GeneralizedStep" src/ tests/ tools/ --type py -l
 
 ### Step 2.5: Update all driver files
 
-**What changes**: All 7 driver files in `src/quantumvitas/drivers/*/driver.py`
+**What changes**: All 7 driver files in `src/qmatsuite/drivers/*/driver.py`
 
 **Action**: Ensure `get_materialization_map()` returns purely derived mappings: `{gen: f"{PREFIX}_{gen}" for gen in SUPPORTED_GEN_STEPS}`. No exceptions.
 
 **Verification**:
 ```bash
-rg "GEN_[A-Z]" src/quantumvitas/drivers/ --type py -l
+rg "GEN_[A-Z]" src/qmatsuite/drivers/ --type py -l
 # Expected: (no output)
 ```
 
@@ -456,7 +456,7 @@ Fix any failures FIRST. The preset layer must use GEN only.
 
 Process by file, verify each:
 ```bash
-rg "step_type[^_]" src/quantumvitas/api/service.py --type py -c
+rg "step_type[^_]" src/qmatsuite/api/service.py --type py -c
 # After fixing: Expected 0
 ```
 

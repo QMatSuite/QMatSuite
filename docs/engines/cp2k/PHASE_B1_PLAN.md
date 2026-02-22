@@ -19,7 +19,7 @@ Bring CP2K driver to full B1 Playbook compliance:
 
 ### Committed (new)
 ```
-src/quantumvitas/drivers/cp2k/
+src/qmatsuite/drivers/cp2k/
   data/
     __init__.py
     cp2k_tags.json          (150+ tags, schema_version 1)

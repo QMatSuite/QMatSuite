@@ -20,7 +20,7 @@ This document provides a comprehensive inventory of the current codebase impleme
 
 ## 2. Module Inventory
 
-### 2.1 Preset System (`src/quantumvitas/presets/`)
+### 2.1 Preset System (`src/qmatsuite/presets/`)
 
 | File | Purpose | Constitution Alignment | Status |
 |------|---------|----------------------|--------|
@@ -39,7 +39,7 @@ This document provides a comprehensive inventory of the current codebase impleme
 
 **Assessment**: The preset system is well-implemented and aligned with the constitution.
 
-### 2.2 Workflow System (`src/quantumvitas/workflow/`)
+### 2.2 Workflow System (`src/qmatsuite/workflow/`)
 
 | File | Purpose | Constitution Alignment | Status |
 |------|---------|----------------------|--------|
@@ -49,7 +49,7 @@ This document provides a comprehensive inventory of the current codebase impleme
 
 **Assessment**: Workflow system correctly implements runtime-only interpretation. Templates are not persisted.
 
-### 2.3 Pseudo Management (`src/quantumvitas/core/pseudo*.py`)
+### 2.3 Pseudo Management (`src/qmatsuite/core/pseudo*.py`)
 
 | File | Purpose | Constitution Alignment | Status |
 |------|---------|----------------------|--------|
@@ -64,7 +64,7 @@ This document provides a comprehensive inventory of the current codebase impleme
 
 **Assessment**: Pseudo system implements the identity triple (filename, sha256, sha_family) correctly.
 
-### 2.4 Engine Management (`src/quantumvitas/core/engines/`, `src/quantumvitas/engine/`)
+### 2.4 Engine Management (`src/qmatsuite/core/engines/`, `src/qmatsuite/engine/`)
 
 | File | Purpose | Constitution Alignment | Status |
 |------|---------|----------------------|--------|
@@ -75,7 +75,7 @@ This document provides a comprehensive inventory of the current codebase impleme
 
 **Assessment**: Two-state engine model is implemented. No PATH fallback. Wannier90/PySCF engines not yet implemented.
 
-### 2.5 Project Export (`src/quantumvitas/project/snapshot.py`)
+### 2.5 Project Export (`src/qmatsuite/project/snapshot.py`)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -260,7 +260,7 @@ Per Constitution §9.4.3:
 
 ### 7.1 Role Inference (Minimal Breakage)
 
-1. **Add new file**: `src/quantumvitas/workflow/role_inference.py`
+1. **Add new file**: `src/qmatsuite/workflow/role_inference.py`
    - Pure function: `infer_step_roles(step_graph) -> Dict[str, StepRole]`
    - Uses topology only (no step.yml reading)
 
@@ -278,7 +278,7 @@ Per Constitution §9.4.3:
 
 ### 7.2 Export Bundle Enhancement (Minimal Breakage)
 
-1. **Add new file**: `src/quantumvitas/project/bundle.py`
+1. **Add new file**: `src/qmatsuite/project/bundle.py`
    - Separate from snapshot.py to avoid breaking changes
    - Implements `create_bundle(project_root, level, output_path)`
 
@@ -320,9 +320,9 @@ Per Constitution §9.4.3:
    ),
    ```
 
-2. **Add engine adapter**: `src/quantumvitas/engine/wannier90_engine.py`
+2. **Add engine adapter**: `src/qmatsuite/engine/wannier90_engine.py`
 
-3. **Add input generator**: `src/quantumvitas/io/generator/wannier90_generator.py`
+3. **Add input generator**: `src/qmatsuite/io/generator/wannier90_generator.py`
 
 ---
 

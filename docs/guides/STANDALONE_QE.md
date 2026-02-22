@@ -18,7 +18,7 @@ The original input is preserved as `<stem>.raw.in`, and the generated normalized
 ## CLI Usage
 
 ```bash
-qv run step --standalone --input <file> [--workdir PATH] [--engine qe]
+qms run step --standalone --input <file> [--workdir PATH] [--engine qe]
 ```
 
 **Flags:**
@@ -47,7 +47,7 @@ workdir/
 
 ## Implementation
 
-- Module: `src/quantumvitas/calculation/standalone.py`
+- Module: `src/qmatsuite/calculation/standalone.py`
 - Function: `run_standalone_step(ctx: StandaloneStepContext)`
 - Always uses `QEInputParser` and `QEInputGenerator` - no pass-through mode
 
@@ -59,4 +59,4 @@ Standalone execution is conceptually separate from the DAG:
 - Does NOT require calculation or structure resources
 - Operates purely on QE input files in a specified working directory
 
-For project-based execution, use `qv run step` without `--standalone` to execute steps within a calculation context.
+For project-based execution, use `qms run step` without `--standalone` to execute steps within a calculation context.

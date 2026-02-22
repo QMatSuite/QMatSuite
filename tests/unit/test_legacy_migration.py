@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.exceptions import LegacyProjectError
-from quantumvitas.core.models import load_calculation, load_project
-from quantumvitas.legacy.migrate import migrate_legacy_project
+from qmatsuite.core.exceptions import LegacyProjectError
+from qmatsuite.core.models import load_calculation, load_project
+from qmatsuite.legacy.migrate import migrate_legacy_project
 
 
 def test_migrate_legacy_project_minimal(tmp_path):
@@ -26,7 +26,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
     structures_dir.mkdir()
     
     # Create a minimal structure file with ULID
-    from quantumvitas.core.resources import generate_resource_id
+    from qmatsuite.core.resources import generate_resource_id
     structure_ulid = generate_resource_id()
     structure_file = structures_dir / "si.json"
     structure_data = {
@@ -89,7 +89,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
     }
     step_file.write_text(yaml.safe_dump(step_data, sort_keys=False))
     
-    # Create legacy project.qv.yml
+    # Create legacy project.qms.yml
     project_config = {
         "project": {
             "name": "Legacy Project",
@@ -118,7 +118,7 @@ def test_migrate_legacy_project_minimal(tmp_path):
             },
         ],
     }
-    config_file = project_root / "project.qv.yml"
+    config_file = project_root / "project.qms.yml"
     config_file.write_text(yaml.safe_dump(project_config, sort_keys=False))
     
     # Before migration: loading should raise LegacyProjectError

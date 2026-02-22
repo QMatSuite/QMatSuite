@@ -34,7 +34,7 @@
 
 ### Decision 5: Python Engines as Micromamba-Managed
 - Verified §3.8 already correctly documents Python engine management
-- Fixed `pip install quantumvitas[all]` to not include PySCF
+- Fixed `pip install qmatsuite[all]` to not include PySCF
 
 ### Decision 6: Engine Detection
 - Verified §3.4 engine detection table already has correct binary names

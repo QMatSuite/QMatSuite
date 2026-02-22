@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.gaussian.inputspec import (
+from qmatsuite.drivers.gaussian.inputspec import (
     _parse_gaussian_text,
     _parse_route_keywords,
     _write_gaussian_text,

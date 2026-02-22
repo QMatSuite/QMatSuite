@@ -26,10 +26,10 @@
   - `docs/laws/L2/engine_registry_and_dispatch.md`
   - `docs/laws/L2/engine_driver_protocol.md`
 - Current engine implementation inspected:
-  - `src/quantumvitas/core/engines/qe_resolver.py` (compat re-export)
-  - `src/quantumvitas/drivers/qe/engine/qe_resolver.py` (actual resolver)
-  - `src/quantumvitas/core/engines/discovery.py`
-  - `src/quantumvitas/core/engines/vasp_resolver.py`
+  - `src/qmatsuite/core/engines/qe_resolver.py` (compat re-export)
+  - `src/qmatsuite/drivers/qe/engine/qe_resolver.py` (actual resolver)
+  - `src/qmatsuite/core/engines/discovery.py`
+  - `src/qmatsuite/core/engines/vasp_resolver.py`
   - MCP list tool and handler/engine callsites for all 15 engines
 - Step 1 worklog context read:
   - `docs/history/worklogs/DISTRIBUTION_STEP1_FOUNDATION_2026-02-22_WORKLOG.md`
@@ -40,15 +40,15 @@
 
 Decision:
 - Kernel implementation modules:
-  - `src/quantumvitas/core/engines/engine_meta.py`
-  - `src/quantumvitas/core/engines/engine_registry.py`
+  - `src/qmatsuite/core/engines/engine_meta.py`
+  - `src/qmatsuite/core/engines/engine_registry.py`
 - API-facing thin wrapper module:
-  - `src/quantumvitas/api/engines.py`
+  - `src/qmatsuite/api/engines.py`
 
 Why:
 - Per L1/L2 laws, engine installation state, discovery, and filesystem persistence are kernel concerns.
 - Daemon/CLI/MCP should consume API functions, not kernel internals.
-- Existing runtime `quantumvitas.engine.registry.EngineRegistry` (engine object registry) is separate from distribution install registry; using `core/engines/engine_registry.py` avoids namespace collision.
+- Existing runtime `qmatsuite.engine.registry.EngineRegistry` (engine object registry) is separate from distribution install registry; using `core/engines/engine_registry.py` avoids namespace collision.
 
 ### 2) Kernel/API split
 
@@ -123,7 +123,7 @@ Planned callsite updates:
 ### Task 1: ENGINE_META implementation
 
 Created:
-- `src/quantumvitas/core/engines/engine_meta.py`
+- `src/qmatsuite/core/engines/engine_meta.py`
 
 What was implemented:
 - Added `ENGINE_META` for all 15 engines with:
@@ -149,7 +149,7 @@ Binary-name verification basis used while building metadata:
 ### Task 2: engines.json registry implementation
 
 Created:
-- `src/quantumvitas/core/engines/engine_registry.py`
+- `src/qmatsuite/core/engines/engine_registry.py`
 
 Implemented features:
 - `EngineRegistry` class with:
@@ -181,7 +181,7 @@ Important engineering adjustment made during implementation:
 ### Task 3: Discovery integration
 
 Modified:
-- `src/quantumvitas/core/engines/discovery.py`
+- `src/qmatsuite/core/engines/discovery.py`
 
 Changes:
 - Replaced hardcoded probe SSOT with probe generation from `ENGINE_META` + compatibility maps.
@@ -191,7 +191,7 @@ Changes:
 ### Task 4: QE resolver migration to registry-first with fallback
 
 Modified:
-- `src/quantumvitas/drivers/qe/engine/qe_resolver.py`
+- `src/qmatsuite/drivers/qe/engine/qe_resolver.py`
 
 Changes:
 - Added `_resolve_qe_bin_dir_from_registry()`.
@@ -203,19 +203,19 @@ Changes:
 ### Task 5: Integration touchpoints for other engines
 
 Modified resolver/handler callsites to use active registry install first, then existing behavior fallback:
-- `src/quantumvitas/core/engines/vasp_resolver.py`
-- `src/quantumvitas/core/engines/lammps_resolver.py`
-- `src/quantumvitas/core/engines/cp2k_resolver.py`
-- `src/quantumvitas/core/engines/orca_resolver.py`
-- `src/quantumvitas/core/engines/qmcpack_resolver.py`
-- `src/quantumvitas/drivers/siesta/handler.py`
-- `src/quantumvitas/drivers/abinit/handler.py`
-- `src/quantumvitas/drivers/yambo/handler.py`
-- `src/quantumvitas/drivers/xtb/writer.py`
-- `src/quantumvitas/drivers/xtb/recipe.py`
-- `src/quantumvitas/engine/pyscf_engine.py`
-- `src/quantumvitas/engine/gpaw_engine.py`
-- `src/quantumvitas/drivers/gpaw/handler.py`
+- `src/qmatsuite/core/engines/vasp_resolver.py`
+- `src/qmatsuite/core/engines/lammps_resolver.py`
+- `src/qmatsuite/core/engines/cp2k_resolver.py`
+- `src/qmatsuite/core/engines/orca_resolver.py`
+- `src/qmatsuite/core/engines/qmcpack_resolver.py`
+- `src/qmatsuite/drivers/siesta/handler.py`
+- `src/qmatsuite/drivers/abinit/handler.py`
+- `src/qmatsuite/drivers/yambo/handler.py`
+- `src/qmatsuite/drivers/xtb/writer.py`
+- `src/qmatsuite/drivers/xtb/recipe.py`
+- `src/qmatsuite/engine/pyscf_engine.py`
+- `src/qmatsuite/engine/gpaw_engine.py`
+- `src/qmatsuite/drivers/gpaw/handler.py`
 
 Notes:
 - Python engines now support registry-driven python executable selection (PySCF/GPAW explicitly; Psi4 already discovery-driven and registry-aware via discovery tier).
@@ -223,10 +223,10 @@ Notes:
 ### Task 6: MCP list_engines accuracy fix
 
 Created:
-- `src/quantumvitas/api/engines.py` (API-layer surface)
+- `src/qmatsuite/api/engines.py` (API-layer surface)
 
 Modified:
-- `src/quantumvitas/mcp/tools/list_engines.py`
+- `src/qmatsuite/mcp/tools/list_engines.py`
 
 Changes:
 - MCP tool now consumes API engine installation status map.
@@ -281,7 +281,7 @@ Issue encountered and resolved:
 
 ### Command executed (with log capture)
 
-- `source .venv/bin/activate && set -o pipefail && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile 2>&1 | tee /tmp/qv_step2_full_pytest_2026-02-22.log`
+- `source .venv/bin/activate && set -o pipefail && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile 2>&1 | tee /tmp/qms_step2_full_pytest_2026-02-22.log`
 
 ### Result
 
@@ -299,19 +299,19 @@ Issue encountered and resolved:
 
 3. `tests/gates/test_no_deep_domain_import.py::test_no_cross_domain_deep_imports`
 - Root cause: new deep imports in engine domain:
-  - `engine/gpaw_engine.py` imported `quantumvitas.core.engines.engine_registry`
-  - `engine/pyscf_engine.py` imported `quantumvitas.core.engines.engine_registry`
+  - `engine/gpaw_engine.py` imported `qmatsuite.core.engines.engine_registry`
+  - `engine/pyscf_engine.py` imported `qmatsuite.core.engines.engine_registry`
 - Fix:
-  - exported `resolve_active_python` via `quantumvitas.core.public`
-  - switched engine imports to `from quantumvitas.core.public import resolve_active_python`
+  - exported `resolve_active_python` via `qmatsuite.core.public`
+  - switched engine imports to `from qmatsuite.core.public import resolve_active_python`
 
 ### Files changed in this fix pass
 
 - `tests/unit/test_engine_registry_distribution.py`
 - `tests/gates/test_engine_no_ssot_import.py`
-- `src/quantumvitas/core/public.py`
-- `src/quantumvitas/engine/gpaw_engine.py`
-- `src/quantumvitas/engine/pyscf_engine.py`
+- `src/qmatsuite/core/public.py`
+- `src/qmatsuite/engine/gpaw_engine.py`
+- `src/qmatsuite/engine/pyscf_engine.py`
 
 ### Next action
 
@@ -332,7 +332,7 @@ Interpretation:
 ## Full pytest rerun after fixes (authoritative)
 
 Command:
-- `source .venv/bin/activate && set -o pipefail && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile 2>&1 | tee /tmp/qv_step2_full_pytest_2026-02-22-rerun.log`
+- `source .venv/bin/activate && set -o pipefail && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile 2>&1 | tee /tmp/qms_step2_full_pytest_2026-02-22-rerun.log`
 
 Result:
 - `6466 passed, 4 skipped, 979 warnings in 389.15s (0:06:29)`

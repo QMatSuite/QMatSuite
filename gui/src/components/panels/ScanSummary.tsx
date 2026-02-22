@@ -5,7 +5,7 @@
  */
 
 import { useMemo } from 'react';
-import type { CalculationDetailResult } from '../../types/qv';
+import type { CalculationDetailResult } from '../../types/qms';
 import { countScanCombinations } from '../../utils/scanUtils';
 import './ScanSummary.css';
 

@@ -142,7 +142,7 @@ drivers/<engine>/
 - Engine-specific conditionals (e.g., `if engine == "vasp":`)
 - Engine-specific file paths or patterns
 
-**Testable assertion**: `grep -r "vasp\|orca\|lammps" src/quantumvitas/core/` returns zero matches (excluding registry/protocol files).
+**Testable assertion**: `grep -r "vasp\|orca\|lammps" src/qmatsuite/core/` returns zero matches (excluding registry/protocol files).
 
 ---
 

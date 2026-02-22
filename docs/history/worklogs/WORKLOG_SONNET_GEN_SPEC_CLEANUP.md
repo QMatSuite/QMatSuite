@@ -43,14 +43,14 @@
 
 ### Files Reverted
 
-1. **src/quantumvitas/core/resolution.py**
+1. **src/qmatsuite/core/resolution.py**
    - **REVERTED**: Dual-read logic `meta_dict.get("ulid") or meta_dict.get("id")`
    - **NOW**: Canonical `meta_dict.get("ulid")` ONLY for calculations (line 567)
    - **NOW**: Canonical `meta_dict.get("ulid")` ONLY for steps (line 599)
    - **NOW**: Canonical `meta_dict.get("ulid")` ONLY for structures (line 635)
    - **Law**: Non-Negotiable Law #1 (NO FALLBACKS)
 
-2. **src/quantumvitas/daemon/compat.py**
+2. **src/qmatsuite/daemon/compat.py**
    - **REVERTED**: `list_structures` ulid field injection
    - **REVERTED**: `list_calculations` ulid field injection
    - **REVERTED**: `create_demo_project` project_ulid field injection
@@ -69,7 +69,7 @@
 `ResourceMeta.to_dict()` was serializing as `"id": self.id` instead of `"ulid": self.ulid`.
 This caused ALL resource files (calculations, steps, structures) to be written with legacy `id` field.
 
-### Fix: src/quantumvitas/core/resources.py
+### Fix: src/qmatsuite/core/resources.py
 
 **Line 197**: Field rename
 ```python
@@ -150,43 +150,43 @@ return ResourceMeta(ulid=generate_resource_id(), ...)
 ### Source Code Fixes - meta.id → meta.ulid (COMPLETED)
 
 **Status**: All non-test, non-_vault source code fixed for meta.id
-**Command**: `rg "meta\.id\b" src/quantumvitas --type py | grep -v "_vault" | grep -v "test_" | wc -l`
+**Command**: `rg "meta\.id\b" src/qmatsuite --type py | grep -v "_vault" | grep -v "test_" | wc -l`
 **Result**: 0 occurrences ✅
 
 #### Files Fixed (Batch Sed):
-1. ✅ **src/quantumvitas/drivers/vasp/staging.py** - 17 occurrences
-2. ✅ **src/quantumvitas/execution/vasp_staging.py** - 17 occurrences
-3. ✅ **src/quantumvitas/api/service.py** - 51 occurrences
-4. ✅ **src/quantumvitas/cli/main.py** - 19 occurrences
-5. ✅ **src/quantumvitas/frontends/cli/app.py** - 14 occurrences
-6. ✅ **src/quantumvitas/daemon/server.py** - 12 occurrences
-7. ✅ **src/quantumvitas/core/resolution.py** - 9 occurrences
-8. ✅ **src/quantumvitas/calculation/structure_steps.py** - 9 occurrences
-9. ✅ **src/quantumvitas/calculation/calculation.py** - Manual fixes for ResourceMeta(id=...) patterns
-10. ✅ **src/quantumvitas/execution/executor.py**
-11. ✅ **src/quantumvitas/core/models.py**
-12. ✅ **src/quantumvitas/calculation/runner.py**
-13. ✅ **src/quantumvitas/calculation/step.py**
+1. ✅ **src/qmatsuite/drivers/vasp/staging.py** - 17 occurrences
+2. ✅ **src/qmatsuite/execution/vasp_staging.py** - 17 occurrences
+3. ✅ **src/qmatsuite/api/service.py** - 51 occurrences
+4. ✅ **src/qmatsuite/cli/main.py** - 19 occurrences
+5. ✅ **src/qmatsuite/frontends/cli/app.py** - 14 occurrences
+6. ✅ **src/qmatsuite/daemon/server.py** - 12 occurrences
+7. ✅ **src/qmatsuite/core/resolution.py** - 9 occurrences
+8. ✅ **src/qmatsuite/calculation/structure_steps.py** - 9 occurrences
+9. ✅ **src/qmatsuite/calculation/calculation.py** - Manual fixes for ResourceMeta(id=...) patterns
+10. ✅ **src/qmatsuite/execution/executor.py**
+11. ✅ **src/qmatsuite/core/models.py**
+12. ✅ **src/qmatsuite/calculation/runner.py**
+13. ✅ **src/qmatsuite/calculation/step.py**
 14. ✅ Plus 29 other files in drivers/, engine/, api/, core/, project/, etc.
 
 ### ResourceMeta Constructor Fixes - id= → ulid= (COMPLETED)
 
 **Files Fixed**:
-1. ✅ **src/quantumvitas/project/snapshot.py** - 6 ResourceMeta(id=...) patterns
-2. ✅ **src/quantumvitas/project/model.py** - 2 patterns
-3. ✅ **src/quantumvitas/frontends/cli/app.py** - 1 pattern
-4. ✅ **src/quantumvitas/api/service.py** - 3 patterns
-5. ✅ **src/quantumvitas/core/models.py** - 4 patterns
-6. ✅ **src/quantumvitas/core/resolution.py** - 3 patterns
-7. ✅ **src/quantumvitas/calculation/calculation.py** - 2 patterns (manual fix)
+1. ✅ **src/qmatsuite/project/snapshot.py** - 6 ResourceMeta(id=...) patterns
+2. ✅ **src/qmatsuite/project/model.py** - 2 patterns
+3. ✅ **src/qmatsuite/frontends/cli/app.py** - 1 pattern
+4. ✅ **src/qmatsuite/api/service.py** - 3 patterns
+5. ✅ **src/qmatsuite/core/models.py** - 4 patterns
+6. ✅ **src/qmatsuite/core/resolution.py** - 3 patterns
+7. ✅ **src/qmatsuite/calculation/calculation.py** - 2 patterns (manual fix)
 
 ### Dict Access Fixes - meta_dict.get("id") → meta_dict.get("ulid") (COMPLETED)
 
 **Files Fixed**:
-1. ✅ **src/quantumvitas/project/model.py**
-2. ✅ **src/quantumvitas/cli/main.py**
-3. ✅ **src/quantumvitas/core/resolution.py**
-4. ✅ **src/quantumvitas/core/models.py**
+1. ✅ **src/qmatsuite/project/model.py**
+2. ✅ **src/qmatsuite/cli/main.py**
+3. ✅ **src/qmatsuite/core/resolution.py**
+4. ✅ **src/qmatsuite/core/models.py**
 
 ### Remaining Work
 
@@ -251,9 +251,9 @@ return ResourceMeta(ulid=generate_resource_id(), ...)
 
 ## Files Modified (Phase 1-2)
 
-1. `src/quantumvitas/core/resolution.py` - Reverted compat, canonical ulid only
-2. `src/quantumvitas/daemon/compat.py` - Reverted all shapers
-3. `src/quantumvitas/core/resources.py` - **CORE FIX**: ResourceMeta.id → ResourceMeta.ulid
+1. `src/qmatsuite/core/resolution.py` - Reverted compat, canonical ulid only
+2. `src/qmatsuite/daemon/compat.py` - Reverted all shapers
+3. `src/qmatsuite/core/resources.py` - **CORE FIX**: ResourceMeta.id → ResourceMeta.ulid
 
 **Total**: 3 files modified in Phase 1-2
 
@@ -280,22 +280,22 @@ python /scratchpad/audit_legacy_fields_v2.py
 # Result: 3,753 total, 1,064 FORBIDDEN (down from 20,995!)
 
 # Source code fixes - meta.id → meta.ulid
-for file in src/quantumvitas/drivers/vasp/staging.py src/quantumvitas/execution/vasp_staging.py ...; do
+for file in src/qmatsuite/drivers/vasp/staging.py src/qmatsuite/execution/vasp_staging.py ...; do
   sed -i '' 's/meta\.id/meta.ulid/g' "$file"
 done
 
 # ResourceMeta constructor fixes - id= → ulid=
-for file in src/quantumvitas/project/snapshot.py ...; do
+for file in src/qmatsuite/project/snapshot.py ...; do
   sed -i '' -E 's/ResourceMeta\(([^)]*)id=/ResourceMeta(\1ulid=/g' "$file"
 done
 
 # Dict access fixes
-for file in src/quantumvitas/project/model.py ...; do
+for file in src/qmatsuite/project/model.py ...; do
   sed -i '' 's/meta_dict\.get("id")/meta_dict.get("ulid")/g' "$file"
 done
 
 # Verification
-rg "meta\.id\b" src/quantumvitas --type py | grep -v "_vault" | grep -v "test_" | wc -l
+rg "meta\.id\b" src/qmatsuite --type py | grep -v "_vault" | grep -v "test_" | wc -l
 # Result: 0 ✅
 
 # Test (tracking error evolution)
@@ -367,17 +367,17 @@ Created `/scratchpad/batch_fix_canonical.py` - automated fixes for:
 **Fixed 29 files** (source code + resources):
 - `resources/calculation_templates/si-bands/steps/*.step.yaml` (4 files)
 - `resources/calculation_templates/si-dos/steps/*.step.yaml` (3 files)
-- `src/quantumvitas/analysis/*.py` (2 files)
-- `src/quantumvitas/api/service.py`
-- `src/quantumvitas/calculation/*.py` (5 files)
-- `src/quantumvitas/cli/main.py`
-- `src/quantumvitas/core/*.py` (5 files)
-- `src/quantumvitas/daemon/server.py`
-- `src/quantumvitas/drivers/qe/engine/qe_engine.py`
-- `src/quantumvitas/engine/*.py` (2 files)
-- `src/quantumvitas/engines/pyscf/__main__.py`
-- `src/quantumvitas/execution/relax_artifacts.py`
-- `src/quantumvitas/legacy/migrate.py`
+- `src/qmatsuite/analysis/*.py` (2 files)
+- `src/qmatsuite/api/service.py`
+- `src/qmatsuite/calculation/*.py` (5 files)
+- `src/qmatsuite/cli/main.py`
+- `src/qmatsuite/core/*.py` (5 files)
+- `src/qmatsuite/daemon/server.py`
+- `src/qmatsuite/drivers/qe/engine/qe_engine.py`
+- `src/qmatsuite/engine/*.py` (2 files)
+- `src/qmatsuite/engines/pyscf/__main__.py`
+- `src/qmatsuite/execution/relax_artifacts.py`
+- `src/qmatsuite/legacy/migrate.py`
 
 ### Current Audit Status
 
@@ -390,12 +390,12 @@ Created `/scratchpad/batch_fix_canonical.py` - automated fixes for:
 
 ### Remaining Source File Issues
 
-1. `src/quantumvitas/api/_mapping/dto_mapping.py:523` - `"step_type":` (API compat - may be ALLOWED)
-2. `src/quantumvitas/api/service.py:3390` - `"id":` (API response - may be ALLOWED)
-3. `src/quantumvitas/core/project_utils.py:221,287` - `"id":` in fallback entry
-4. `src/quantumvitas/daemon/server.py:1932,3203` - `"id":` in response
-5. `src/quantumvitas/history/storage.py:473` - `meta.get("id")`
-6. `src/quantumvitas/legacy/migrate.py:147` - `meta["id"]` (migration script)
+1. `src/qmatsuite/api/_mapping/dto_mapping.py:523` - `"step_type":` (API compat - may be ALLOWED)
+2. `src/qmatsuite/api/service.py:3390` - `"id":` (API response - may be ALLOWED)
+3. `src/qmatsuite/core/project_utils.py:221,287` - `"id":` in fallback entry
+4. `src/qmatsuite/daemon/server.py:1932,3203` - `"id":` in response
+5. `src/qmatsuite/history/storage.py:473` - `meta.get("id")`
+6. `src/qmatsuite/legacy/migrate.py:147` - `meta["id"]` (migration script)
 
 ---
 
@@ -459,7 +459,7 @@ GATE RESULT: PASSED
 
 ### Files Modified (Total)
 
-**Source files**: 50+ files in src/quantumvitas/
+**Source files**: 50+ files in src/qmatsuite/
 **Test files**: 100+ files in tests/
 **YAML resources**: 7 files in resources/calculation_templates/
 
@@ -479,8 +479,8 @@ GATE RESULT: PASSED
 **Main Failure Categories**:
 
 1. **API Parameter Names** (~100 failures):
-   - Tests calling `QVService.add_step(step_type_spec=...)` but API uses `step_type=`
-   - Tests calling `QVService.init_step(step_type_spec=...)` but API uses `step_type=`
+   - Tests calling `QMSService.add_step(step_type_spec=...)` but API uses `step_type=`
+   - Tests calling `QMSService.init_step(step_type_spec=...)` but API uses `step_type=`
    - **Status**: Partially fixed - some files still have incorrect parameter names
 
 2. **Legacy Demo/Fixture Data** (~50 failures):
@@ -501,7 +501,7 @@ GATE RESULT: PASSED
 ### Design Decision: API vs Internal Parameter Names
 
 **Current State**:
-- API methods (`QVService.add_step`, `QVService.init_step`) use `step_type=` as parameter name
+- API methods (`QMSService.add_step`, `QMSService.init_step`) use `step_type=` as parameter name
 - This is intentional - the API accepts both public/gen and machine/spec formats
 - Internal data models use `step_type_spec`/`step_type_gen` fields
 
@@ -533,7 +533,7 @@ GATE RESULT: PASSED
 
 ### Summary of Changes
 
-**Source Code** (src/quantumvitas/):
+**Source Code** (src/qmatsuite/):
 - All `"id":` dict keys → `"ulid":`
 - All `.get("id")` → `.get("ulid")`
 - All `meta.id` → `meta.ulid`
@@ -601,18 +601,18 @@ Fixed test files using wrong field names for CalculationStepEntry:
 ### Fixes to StepResult Constructor Calls
 
 Fixed pyscf_engine.py using `step_type_spec=` when StepResult class uses `step_type:`:
-- `src/quantumvitas/engine/pyscf_engine.py` - reverted `step_type_spec=` → `step_type=`
+- `src/qmatsuite/engine/pyscf_engine.py` - reverted `step_type_spec=` → `step_type=`
 
 ### Fixes to LAMMPS Engine
 
 Fixed incorrect `hasattr(step.meta, "id")` checks:
-- `src/quantumvitas/engine/lammps_engine.py` - changed to `hasattr(step.meta, "ulid")`
-- `src/quantumvitas/engine/lammps_writer.py` - same fix
+- `src/qmatsuite/engine/lammps_engine.py` - changed to `hasattr(step.meta, "ulid")`
+- `src/qmatsuite/engine/lammps_writer.py` - same fix
 
 ### Fixes to CLI Frontend
 
 Fixed `.id` attribute access:
-- `src/quantumvitas/frontends/cli/app.py` - `metadata.id` → `metadata.ulid`, `wf.id` → `wf.ulid`
+- `src/qmatsuite/frontends/cli/app.py` - `metadata.id` → `metadata.ulid`, `wf.id` → `wf.ulid`
 
 ### Test Results (Post Phase 6)
 
@@ -648,7 +648,7 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 
 ### Fixes Applied
 
-#### 1. Wannier90 Kpoints (`src/quantumvitas/calculation/wannier90_kpoints.py`)
+#### 1. Wannier90 Kpoints (`src/qmatsuite/calculation/wannier90_kpoints.py`)
 **Line 138**: Changed from reading legacy `type` field to `step_type_gen`
 ```python
 # BEFORE
@@ -694,7 +694,7 @@ return CalculationResult(
     ...
 ```
 
-#### 4. pw2wannier90 Post-Processing (`src/quantumvitas/calculation/structure_steps.py`)
+#### 4. pw2wannier90 Post-Processing (`src/qmatsuite/calculation/structure_steps.py`)
 **Line 268-271**: Added `pw2wannier90` to post-processing step types
 ```python
 # BEFORE
@@ -711,7 +711,7 @@ POST_PROCESSING_STEP_TYPES = {
 }
 ```
 
-#### 5. WANNIER90 Step Type Normalization (`src/quantumvitas/calculation/structure_steps.py`)
+#### 5. WANNIER90 Step Type Normalization (`src/qmatsuite/calculation/structure_steps.py`)
 **Lines 781-784, 835, 843, 1005**: Fixed step type comparisons to use GEN type
 ```python
 # BEFORE
@@ -747,8 +747,8 @@ if step_type_gen in WANNIER90_STEP_TYPES:
 
 ### Files Modified in Phase 7
 
-1. `src/quantumvitas/calculation/wannier90_kpoints.py` - step_type_gen reading
-2. `src/quantumvitas/calculation/structure_steps.py` - pw2wannier90 post-processing, step_type normalization
+1. `src/qmatsuite/calculation/wannier90_kpoints.py` - step_type_gen reading
+2. `src/qmatsuite/calculation/structure_steps.py` - pw2wannier90 post-processing, step_type normalization
 3. `tests/daemon/test_gui_job_and_step_flows.py` - calculation.ulid, calculation_ulid
 4. `tests/integration/test_incremental_run.py` - calculation.ulid, calculation_ulid, run_ulid
 

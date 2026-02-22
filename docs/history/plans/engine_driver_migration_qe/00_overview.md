@@ -6,19 +6,19 @@
 
 ## Summary
 
-This document outlines the comprehensive plan to migrate Quantum ESPRESSO (QE) from its current "shim" implementation to a proper DriverBundle under `src/quantumvitas/drivers/qe/`. QE is the **final and most complex** engine migration due to its historical coupling across the kernel.
+This document outlines the comprehensive plan to migrate Quantum ESPRESSO (QE) from its current "shim" implementation to a proper DriverBundle under `src/qmatsuite/drivers/qe/`. QE is the **final and most complex** engine migration due to its historical coupling across the kernel.
 
 ## Current State
 
 QE currently exists as:
-1. **qe_shim** - A minimal driver shim at `src/quantumvitas/drivers/qe_shim/__init__.py` that wraps legacy code
+1. **qe_shim** - A minimal driver shim at `src/qmatsuite/drivers/qe_shim/__init__.py` that wraps legacy code
 2. **Scattered QE code** - 54+ files containing QE-specific logic across the codebase
-3. **Legacy implementations** - Full QE engine code in `src/quantumvitas/core/engines/qe*.py` (9 files, ~3000+ lines)
+3. **Legacy implementations** - Full QE engine code in `src/qmatsuite/core/engines/qe*.py` (9 files, ~3000+ lines)
 
 ## End State
 
 After migration:
-1. **All QE code** under `src/quantumvitas/drivers/qe/` (DriverBundle)
+1. **All QE code** under `src/qmatsuite/drivers/qe/` (DriverBundle)
 2. **Kernel contains NO QE special-casing** (engine-agnostic)
 3. **DriverRegistry-based dispatch** for all QE operations
 4. **QE shim deleted** (replaced by proper driver bundle)

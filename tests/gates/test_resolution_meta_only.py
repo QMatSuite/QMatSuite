@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "quantumvitas"
+SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "qmatsuite"
 RESOLUTION_FILE = SRC_ROOT / "core" / "resolution.py"
 
 # ---- Check 1: No full-doc loaders in index building / resolution scanning ----

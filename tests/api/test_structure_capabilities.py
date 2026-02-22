@@ -1,14 +1,14 @@
 """
 Test structure capabilities.
 
-Tests for the structure domain in QVService.
+Tests for the structure domain in QMSService.
 """
 
 import pytest
 from pathlib import Path
 
-from quantumvitas.api.service import QVService
-from quantumvitas.api.types.structure import StructureDTO
+from qmatsuite.api.service import QMSService
+from qmatsuite.api.types.structure import StructureDTO
 
 
 def test_structure_dto_no_positions(tmp_path):
@@ -16,7 +16,7 @@ def test_structure_dto_no_positions(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\nstructures: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\nstructures: []\n")
     
     # Create structure file
     structures_dir = project_root / "structures"
@@ -24,7 +24,7 @@ def test_structure_dto_no_positions(tmp_path):
     
     # Create a minimal structure JSON file
     structure_data = {
-        "__qv_meta__": {
+        "__qms_meta__": {
             "ulid": "01HX7YPVK8DQNZPMJ4GHAB5678",
             "name": "test_structure",
             "slug": "test-structure",
@@ -52,9 +52,9 @@ def test_structure_dto_no_positions(tmp_path):
     # Update project config
     import yaml
     config = {"name": "test", "structures": [{"structure_ulid": "01HX7YPVK8DQNZPMJ4GHAB5678"}]}
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(config))
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     # This will fail because we need proper resource index, but tests the structure
     try:
@@ -76,9 +76,9 @@ def test_structure_list_returns_dtos(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\nstructures: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\nstructures: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         structures = svc.structure.list()
@@ -94,9 +94,9 @@ def test_structure_get_atoms_returns_full_data(tmp_path):
     # Create minimal project structure
     project_root = tmp_path / "test_project"
     project_root.mkdir()
-    (project_root / "project.qv.yml").write_text("name: test\nstructures: []\n")
+    (project_root / "project.qms.yml").write_text("name: test\nstructures: []\n")
     
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     
     try:
         atoms = svc.structure.get_atoms("test-structure")

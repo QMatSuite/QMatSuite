@@ -8,18 +8,18 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc
-from quantumvitas.core.models import load_calculation
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc
+from qmatsuite.core.models import load_calculation
 
 
 # Check CP2K availability via centralized discovery
-from quantumvitas.core.engines.discovery import is_engine_available
+from qmatsuite.core.engines.discovery import is_engine_available
 CP2K_AVAILABLE = is_engine_available("cp2k")
 
 
@@ -33,7 +33,7 @@ def cp2k_silicon_project(tmp_path: Path):
         pytest.skip("CP2K not installed")
     
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=tmp_path / "cp2k_silicon",
         name="CP2K Silicon Test"
     )
@@ -51,11 +51,11 @@ def cp2k_silicon_project(tmp_path: Path):
     struct_file.write_text(json.dumps(structure.as_dict()))
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="Si Cubic")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="Si Cubic")
     structure_ulid = struct_result.meta.ulid
     
     # Create calculation
-    calc_resolved = QVService(project_root).project.init_calculation(
+    calc_resolved = QMSService(project_root).project.init_calculation(
         name="cp2k_test",
         structure_selector=structure_ulid,
     )
@@ -83,11 +83,11 @@ def test_cp2k_scf_silicon(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create SCF step
-    step_dto = QVService(project_root).calculation.add_step(calc_id, step_type_gen="scf")
+    step_dto = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="scf")
     step_id = step_dto.meta.ulid
 
     # Configure step parameters
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     svc.calculation.update_step_params(
         calc_selector=calc_id,
         step_selector=step_id,
@@ -139,11 +139,11 @@ def test_cp2k_relax_silicon_with_cell(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create relax step
-    step_dto = QVService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
+    step_dto = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="relax")
     step_id = step_dto.meta.ulid
 
     # Configure step parameters
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     svc.calculation.update_step_params(
         calc_selector=calc_id,
         step_selector=step_id,
@@ -220,11 +220,11 @@ def test_cp2k_md_incremental_skip_disabled(cp2k_silicon_project):
     calc_id = cp2k_silicon_project["calc_id"]
     
     # Create MD step
-    step_dto = QVService(project_root).calculation.add_step(calc_id, step_type_gen="md")
+    step_dto = QMSService(project_root).calculation.add_step(calc_id, step_type_gen="md")
     step_id = step_dto.meta.ulid
 
     # Configure step parameters
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     svc.calculation.update_step_params(
         calc_selector=calc_id,
         step_selector=step_id,
@@ -250,7 +250,7 @@ def test_cp2k_md_incremental_skip_disabled(cp2k_silicon_project):
     calculation = Calculation.from_yaml(calc_dir, project)
     
     # Verify MD step has supports_incremental_skip=False
-    from quantumvitas.workflow.registry import get_registry
+    from qmatsuite.workflow.registry import get_registry
     registry = get_registry()
     # Use get_for_engine per constitution: registry.get() takes GEN only
     md_spec = registry.get_for_engine("md", "cp2k")

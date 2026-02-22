@@ -2,7 +2,7 @@
     calculation = 'scf'
     outdir = './outdir'
     prefix = 'graphene'
-    pseudo_dir = '<HOME>/quantumVITAS/pseudo'
+    pseudo_dir = '<HOME>/QMatSuite/pseudo'
     restart_mode = 'from_scratch'
 /
 

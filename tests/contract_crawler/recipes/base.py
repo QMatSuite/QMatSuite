@@ -6,7 +6,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
 
 
 @dataclass
@@ -30,7 +30,7 @@ class Recipe(ABC):
     def __init__(self, tmp_path: Path):
         self.tmp_path = tmp_path
         self.project_root: Path | None = None
-        self.daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+        self.daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
 
     @abstractmethod
     def setup(self) -> bool:

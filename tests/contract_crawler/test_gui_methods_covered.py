@@ -5,7 +5,7 @@ This test validates that all GUI-used methods are either:
 - Covered by recipes, OR
 - Present in EXEMPT_METHODS with a non-empty reason
 
-Implemented as a "soft gate" that can be skipped unless QV_ENFORCE_GUI_RPC_COVERAGE=1.
+Implemented as a "soft gate" that can be skipped unless QMS_ENFORCE_GUI_RPC_COVERAGE=1.
 """
 
 import os
@@ -19,7 +19,7 @@ from tests.contract_crawler.recipes import get_recipe_for_method
 
 
 GUI_METHODS_FILE = Path(__file__).parent.parent.parent / "gui" / "tests" / "e2e" / "tools" / "gui_rpc_methods.json"
-ENFORCE_ENV_VAR = "QV_ENFORCE_GUI_RPC_COVERAGE"
+ENFORCE_ENV_VAR = "QMS_ENFORCE_GUI_RPC_COVERAGE"
 
 
 @pytest.mark.skipif(
@@ -30,7 +30,7 @@ def test_gui_methods_covered():
     """
     All GUI-used RPC methods must be covered or exempt.
 
-    This is a soft gate - it will be skipped unless QV_ENFORCE_GUI_RPC_COVERAGE=1.
+    This is a soft gate - it will be skipped unless QMS_ENFORCE_GUI_RPC_COVERAGE=1.
     When enforced, it fails with a clear message listing missing methods.
     """
     # Load GUI methods

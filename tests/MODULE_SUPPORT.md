@@ -2,7 +2,7 @@
 
 ## Overview
 
-QuantumVITAS now supports multiple Quantum ESPRESSO modules, each with their own input format. The parser automatically detects the module type from the namelist names in the input file.
+QMatSuite now supports multiple Quantum ESPRESSO modules, each with their own input format. The parser automatically detects the module type from the namelist names in the input file.
 
 ## Supported Modules
 
@@ -40,7 +40,7 @@ QuantumVITAS now supports multiple Quantum ESPRESSO modules, each with their own
 The parser automatically detects the module type by examining namelist names:
 
 ```python
-from quantumvitas.io import QEInputParser, QEModule
+from qmatsuite.io import QEInputParser, QEModule
 
 qe_input = QEInputParser.parse_file("input.in")
 print(qe_input.module)  # QEModule.PH, QEModule.GIPAW, etc.
@@ -60,7 +60,7 @@ print(qe_input.module)  # QEModule.PH, QEModule.GIPAW, etc.
 ### Parse ph.x Input
 
 ```python
-from quantumvitas.io import QEInputParser
+from qmatsuite.io import QEInputParser
 
 qe_input = QEInputParser.parse_file("si.2_ph.in")
 assert qe_input.module == QEModule.PH
@@ -73,8 +73,8 @@ print(f"Outdir: {inputph.get('outdir')}")
 ### Generate gipaw.x Input
 
 ```python
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 engine = QuantumEspressoEngine(EngineConfig(name="qe"))
 
@@ -99,8 +99,8 @@ input_file = engine.generate_input(
 ### Detect Module from File
 
 ```python
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 engine = QuantumEspressoEngine(EngineConfig(name="qe"))
 module = engine.detect_module_from_input(Path("input.in"))

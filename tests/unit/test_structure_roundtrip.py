@@ -25,25 +25,25 @@ except ImportError:
     except ImportError:
         PymatgenTest = None
 
-from quantumvitas.io import (
+from qmatsuite.io import (
     QEInputGenerator,
     QEInputParser,
     QECardType,
     read_structure,
     write_structure,
 )
-from quantumvitas.io.structure_io import (
+from qmatsuite.io.structure_io import (
     qe_input_from_structure,
     structure_from_qe_input,
 )
-from quantumvitas.core.resources import meta_from_name
-from quantumvitas.calculation.structure_steps import (
+from qmatsuite.core.resources import meta_from_name
+from qmatsuite.calculation.structure_steps import (
     generate_qe_input_from_structure,
     generate_qe_input_from_spec,
     overrides_from_step_spec,
     StructureStepSpec,
 )
-from quantumvitas.calculation.input_runner import ParameterOverride
+from qmatsuite.calculation.input_runner import ParameterOverride
 
 
 # Module-level fixtures for use across test classes

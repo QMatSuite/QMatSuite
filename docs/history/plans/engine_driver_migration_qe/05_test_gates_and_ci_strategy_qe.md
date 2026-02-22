@@ -57,26 +57,26 @@
 
 def test_io_imports():
     """Old import paths must still work."""
-    from quantumvitas.io import QEModule, QEInput
-    from quantumvitas.io import QEInputParser, QEInputGenerator
+    from qmatsuite.io import QEModule, QEInput
+    from qmatsuite.io import QEInputParser, QEInputGenerator
     assert QEModule is not None
     assert QEInput is not None
 
 def test_core_engines_imports():
     """Legacy engine imports must work."""
-    from quantumvitas.core.engines import QuantumEspressoEngine
+    from qmatsuite.core.engines import QuantumEspressoEngine
     assert QuantumEspressoEngine is not None
 
 def test_execution_imports():
     """Legacy execution imports must work."""
-    from quantumvitas.execution.recipes import QERecipe
-    from quantumvitas.execution.handlers import qe_step_handler
+    from qmatsuite.execution.recipes import QERecipe
+    from qmatsuite.execution.handlers import qe_step_handler
     assert QERecipe is not None
     assert qe_step_handler is not None
 
 def test_ir_imports():
     """IR backend imports must work."""
-    from quantumvitas.ir.backends.qe.mapping import ir_to_qe_param
+    from qmatsuite.ir.backends.qe.mapping import ir_to_qe_param
     assert ir_to_qe_param is not None
 ```
 
@@ -216,7 +216,7 @@ pytest tests/compat/ -v
 pytest tests/ -v
 
 # VERIFY NO DEAD IMPORTS
-python -c "import quantumvitas; print('OK')"
+python -c "import qmatsuite; print('OK')"
 
 # EXPECTED: All pass
 ```
@@ -235,13 +235,13 @@ name: QE Migration Tests
 on:
   pull_request:
     paths:
-      - 'src/quantumvitas/drivers/qe/**'
-      - 'src/quantumvitas/drivers/qe_shim/**'
-      - 'src/quantumvitas/core/engines/qe*.py'
-      - 'src/quantumvitas/execution/**'
-      - 'src/quantumvitas/io/**'
-      - 'src/quantumvitas/ir/backends/qe/**'
-      - 'src/quantumvitas/parsers/qe/**'
+      - 'src/qmatsuite/drivers/qe/**'
+      - 'src/qmatsuite/drivers/qe_shim/**'
+      - 'src/qmatsuite/core/engines/qe*.py'
+      - 'src/qmatsuite/execution/**'
+      - 'src/qmatsuite/io/**'
+      - 'src/qmatsuite/ir/backends/qe/**'
+      - 'src/qmatsuite/parsers/qe/**'
 
 jobs:
   unit-tests:
@@ -349,7 +349,7 @@ K_POINTS automatic
 @pytest.fixture
 def qe_driver():
     """Get QE driver instance."""
-    from quantumvitas.drivers.qe import QEDriver
+    from qmatsuite.drivers.qe import QEDriver
     return QEDriver()
 
 
@@ -408,7 +408,7 @@ git log --oneline -20
 git revert <commit-hash>
 
 # Or revert to known good state
-git checkout <good-commit> -- src/quantumvitas/drivers/qe/
+git checkout <good-commit> -- src/qmatsuite/drivers/qe/
 
 # Run full test suite to verify
 pytest tests/ -v
@@ -434,14 +434,14 @@ pytest tests/ -v
 
 ```bash
 # Verify no QE defaults in kernel
-grep -r '"qe"' src/quantumvitas/calculation/ src/quantumvitas/core/ \
+grep -r '"qe"' src/qmatsuite/calculation/ src/qmatsuite/core/ \
   --include="*.py" | grep -v "test_" | grep -v "__pycache__"
 # Expected: Empty or only in comments
 
 # Verify driver registration
 python -c "
-from quantumvitas.core.driver_registry import DriverRegistry
-import quantumvitas.drivers
+from qmatsuite.core.driver_registry import DriverRegistry
+import qmatsuite.drivers
 d = DriverRegistry.get_driver('qe')
 print(f'Driver: {d.__class__.__name__}')
 print(f'Step types: {len(d.get_step_type_specs())}')
@@ -450,9 +450,9 @@ print(f'Step types: {len(d.get_step_type_specs())}')
 
 # Verify backward compat imports
 python -c "
-from quantumvitas.io import QEModule, QEInput
-from quantumvitas.core.engines import QuantumEspressoEngine
-from quantumvitas.execution.recipes import QERecipe
+from qmatsuite.io import QEModule, QEInput
+from qmatsuite.core.engines import QuantumEspressoEngine
+from qmatsuite.execution.recipes import QERecipe
 print('All backward compat imports work')
 "
 # Expected: Prints success message

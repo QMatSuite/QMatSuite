@@ -21,9 +21,9 @@ def test_save_yaml_doc_accepts_opctx(tmp_path):
     During migration phase, opctx is optional. This test verifies
     the parameter exists and works when provided.
     """
-    from quantumvitas.core.yamldoc import YamlDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.provenance import (
+    from qmatsuite.core.yamldoc import YamlDoc
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.provenance import (
         OperationContext,
         OperationType,
         ActorType,
@@ -58,8 +58,8 @@ def test_save_yaml_doc_without_opctx_still_works(tmp_path):
 
     Once all callers are updated, this behavior will change to require opctx.
     """
-    from quantumvitas.core.yamldoc import YamlDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yamldoc import YamlDoc
+    from qmatsuite.core.yaml_io import save_yaml_doc
 
     doc = YamlDoc({"key": "value"})
     yaml_path = tmp_path / "test.yaml"
@@ -72,8 +72,8 @@ def test_save_yaml_doc_without_opctx_still_works(tmp_path):
 
 def test_step_doc_save_accepts_opctx(tmp_path):
     """StepDoc.save() accepts opctx parameter."""
-    from quantumvitas.core.yamldoc import StepDoc
-    from quantumvitas.provenance import (
+    from qmatsuite.core.yamldoc import StepDoc
+    from qmatsuite.provenance import (
         OperationContext,
         OperationType,
         ActorType,
@@ -100,8 +100,8 @@ def test_step_doc_save_accepts_opctx(tmp_path):
 
 def test_calc_doc_save_accepts_opctx(tmp_path):
     """CalcDoc.save() accepts opctx parameter."""
-    from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.provenance import (
+    from qmatsuite.core.yamldoc import CalcDoc
+    from qmatsuite.provenance import (
         OperationContext,
         OperationType,
         ActorType,
@@ -128,8 +128,8 @@ def test_calc_doc_save_accepts_opctx(tmp_path):
 
 def test_project_doc_save_accepts_opctx(tmp_path):
     """ProjectDoc.save() accepts opctx parameter."""
-    from quantumvitas.core.yamldoc import ProjectDoc
-    from quantumvitas.provenance import (
+    from qmatsuite.core.yamldoc import ProjectDoc
+    from qmatsuite.provenance import (
         OperationContext,
         OperationType,
         ActorType,
@@ -142,7 +142,7 @@ def test_project_doc_save_accepts_opctx(tmp_path):
             "name": "test_project",
         }
     })
-    yaml_path = tmp_path / "project.qv.yml"
+    yaml_path = tmp_path / "project.qms.yml"
 
     opctx = OperationContext(
         op=OperationType.PROJECT_UPDATE,

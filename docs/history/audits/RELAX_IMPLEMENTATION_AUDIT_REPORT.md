@@ -91,7 +91,7 @@
 **证据**:
 - `relax_artifacts.py:24-35`: `get_generated_structure_path()` 返回正确路径 ✓
 - `relax_artifacts.py:62`: `write_generated_structure()` 写入到正确路径 ✓
-- Schema: `relax_artifacts.py:66-77` 包含 `__qv_meta__` 和 provenance ✓
+- Schema: `relax_artifacts.py:66-77` 包含 `__qms_meta__` 和 provenance ✓
 
 **风险**: 无
 
@@ -141,7 +141,7 @@
       # For molecules, use a simple hash of the structure dict
       import hashlib
       structure_dict = structure.as_dict()
-      structure_dict.pop("__qv_meta__", None)
+      structure_dict.pop("__qms_meta__", None)
       structure_str = json.dumps(structure_dict, sort_keys=True)
       fingerprint = hashlib.sha256(structure_str.encode('utf-8')).hexdigest()
   else:
@@ -210,7 +210,7 @@
 - `api.py:4709`: 检查 `is_structure_transform` flag ✓
 - `api.py:4720-4726`: 检查 current.json 存在 ✓
 - `api.py:4747-4752`: 调用 `import_structure()` 创建新资源 ✓
-- `api.py:4730`: 移除 `__qv_meta__` 后导入（不保留 artifact metadata）✓
+- `api.py:4730`: 移除 `__qms_meta__` 后导入（不保留 artifact metadata）✓
 
 **风险**: 
 - `promote_relax_structure()` 调用 `import_structure()` 时 `index=None` (`api.py:4751`)，会重建 index。这可能影响性能，但不违反契约。
@@ -369,7 +369,7 @@ if isinstance(structure, Molecule):
     # For molecules, use a simple hash of the structure dict
     import hashlib
     structure_dict = structure.as_dict()
-    structure_dict.pop("__qv_meta__", None)
+    structure_dict.pop("__qms_meta__", None)
     structure_str = json.dumps(structure_dict, sort_keys=True)
     fingerprint = hashlib.sha256(structure_str.encode('utf-8')).hexdigest()
 else:
@@ -426,8 +426,8 @@ else:
 - **结论**: PASS
 
 ❌ **current.json schema 是否真复用 project/structure schema？**
-- `relax_artifacts.py:66-77`: 使用 `structure.as_dict()`，包含 `__qv_meta__`
-- `relax_artifacts.py:107`: `read_generated_structure()` 移除 `__qv_meta__` 后使用 `Structure.from_dict()` 或 `Molecule.from_dict()`
+- `relax_artifacts.py:66-77`: 使用 `structure.as_dict()`，包含 `__qms_meta__`
+- `relax_artifacts.py:107`: `read_generated_structure()` 移除 `__qms_meta__` 后使用 `Structure.from_dict()` 或 `Molecule.from_dict()`
 - **结论**: PASS (pymatgen 可读)
 
 ❌ **ORCA parser 是否可能误取中间坐标块而不是最终？**
@@ -686,17 +686,17 @@ else:
 ## 附录：检查的文件清单
 
 ### 核心实现文件
-- `src/quantumvitas/workflow/registry.py` (828 lines)
-- `src/quantumvitas/execution/recipes.py` (486 lines)
-- `src/quantumvitas/execution/relax_artifacts.py` (156 lines)
-- `src/quantumvitas/execution/executor.py` (818 lines)
-- `src/quantumvitas/execution/handlers.py` (566 lines)
-- `src/quantumvitas/execution/pyscf_relax_handler.py` (77 lines)
-- `src/quantumvitas/execution/orca_relax_parser.py` (224 lines)
-- `src/quantumvitas/engine/orca_engine.py` (641 lines)
-- `src/quantumvitas/engine/qc_engine_base.py` (197 lines)
-- `src/quantumvitas/api.py` (8214 lines, 部分读取)
-- `src/quantumvitas/calculation/geometry.py` (620 lines, 部分读取)
+- `src/qmatsuite/workflow/registry.py` (828 lines)
+- `src/qmatsuite/execution/recipes.py` (486 lines)
+- `src/qmatsuite/execution/relax_artifacts.py` (156 lines)
+- `src/qmatsuite/execution/executor.py` (818 lines)
+- `src/qmatsuite/execution/handlers.py` (566 lines)
+- `src/qmatsuite/execution/pyscf_relax_handler.py` (77 lines)
+- `src/qmatsuite/execution/orca_relax_parser.py` (224 lines)
+- `src/qmatsuite/engine/orca_engine.py` (641 lines)
+- `src/qmatsuite/engine/qc_engine_base.py` (197 lines)
+- `src/qmatsuite/api.py` (8214 lines, 部分读取)
+- `src/qmatsuite/calculation/geometry.py` (620 lines, 部分读取)
 
 ### 规范文档
 - `docs/specs/RELAX_SPEC.md` (356 lines)

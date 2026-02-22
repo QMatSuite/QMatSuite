@@ -7,10 +7,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.dos import DOS
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.gpaw.parsers.dos import GPAWDOSProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.dos import DOS
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.gpaw.parsers.dos import GPAWDOSProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_gpaw_dos"

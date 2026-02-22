@@ -228,11 +228,11 @@ Note: The existing QE and VASP driver code both declare `gen_step_sequence=["ban
 | **Analysis Pipeline Playbook** | `docs/laws/L2/ANALYSIS_PIPELINE_PLAYBOOK.md` | Implementation guide | Recipe A (extend engine), Recipe B (add object type), triangle pattern, domain-aware data flow |
 | **Analysis Pipeline Review** | `docs/history/audits/ANALYSIS_PIPELINE_REVIEW.md` | Review (2026-02-10) | Spec compliance matrix (13/14 PASS), engine×analysis capability matrix |
 | **Step Type GEN/SPEC Constitution** | `docs/laws/L1/STEP_TYPE_GEN_SPEC_CONSTITUTION.md` | Final v1.1 | GEN/SPEC derivation rule, GenStepRegistry as SSOT |
-| **Driver capabilities** | `src/quantumvitas/drivers/*/driver.py` | Code (SSOT) | `ANALYSIS_CAPABILITIES` list per engine — the ONLY source for what analysis an engine can produce |
+| **Driver capabilities** | `src/qmatsuite/drivers/*/driver.py` | Code (SSOT) | `ANALYSIS_CAPABILITIES` list per engine — the ONLY source for what analysis an engine can produce |
 
 ### 2.1 Current Code vs This Design
 
-The current orchestrator (`src/quantumvitas/core/analysis/orchestrator.py`) and matching function (`src/quantumvitas/core/analysis/capability.py`) have the following spec violations:
+The current orchestrator (`src/qmatsuite/core/analysis/orchestrator.py`) and matching function (`src/qmatsuite/core/analysis/capability.py`) have the following spec violations:
 
 1. **First-match-per-type semantics:** `find_contiguous_match()` returns the first sliding-window hit. One result per `object_type`, longest wins globally. Violates §5.4.2 (multiple matches required) and §5.9 (`enumerate_all_matches()`).
 2. **No matching domains:** The code does not distinguish Domain A / Domain B / Domain C (§5.3). All calls use the same undifferentiated step list.
@@ -535,8 +535,8 @@ Replace the hardcoded `ENGINE_ANALYSIS_TYPES` dict in `generate_ref_packs_realru
 ```python
 def _get_engine_analysis_types(engine: str) -> list[str]:
     """Derive probe list from driver's ANALYSIS_CAPABILITIES."""
-    import quantumvitas.drivers
-    from quantumvitas.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
     driver = DriverRegistry.get_driver(engine)
     capabilities = getattr(driver, "ANALYSIS_CAPABILITIES", []) or []
     # Unique object_types in declaration order

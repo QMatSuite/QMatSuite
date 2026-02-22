@@ -16,19 +16,19 @@ from typing import Any
 
 import pytest
 
-from quantumvitas.api import QVService
-from quantumvitas.core.resources import get_resources_dir
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
+from qmatsuite.api import QMSService
+from qmatsuite.core.resources import get_resources_dir
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
 
 
-def send_request(daemon: QVDaemon, request_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+def send_request(daemon: QMSDaemon, request_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     """
     Send an RPC request to the daemon and return the response data.
 
     Raises RuntimeError if the request fails.
 
     Args:
-        daemon: QVDaemon instance
+        daemon: QMSDaemon instance
         request_type: RPC command name
         payload: Request payload
 
@@ -53,9 +53,9 @@ def send_request(daemon: QVDaemon, request_type: str, payload: dict[str, Any]) -
 
 
 @pytest.fixture
-def daemon() -> QVDaemon:
+def daemon() -> QMSDaemon:
     """Create a clean daemon instance for testing."""
-    return QVDaemon()
+    return QMSDaemon()
 
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def temp_project(tmp_path: Path) -> Path:
     """
     project_dir = tmp_path / "test_project"
     project_dir.mkdir()
-    QVService.init_project(project_dir, name="test_project")
+    QMSService.init_project(project_dir, name="test_project")
     return project_dir
 
 
@@ -84,9 +84,9 @@ def demo_project_with_structure(tmp_path: Path) -> tuple[Path, str]:
     """
     project_dir = tmp_path / "test_project_with_structure"
     project_dir.mkdir()
-    QVService.init_project(project_dir, name="test_project_with_structure")
+    QMSService.init_project(project_dir, name="test_project_with_structure")
 
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
 
     # Try to import from test data, otherwise create minimal structure
     test_data = Path(__file__).parent.parent.parent / "data" / "calculation_bands"
@@ -125,9 +125,9 @@ def demo_project_with_calculation(tmp_path: Path) -> tuple[Path, str, str]:
     """
     project_dir = tmp_path / "test_project_with_calculation"
     project_dir.mkdir()
-    QVService.init_project(project_dir, name="test_project_with_calculation")
+    QMSService.init_project(project_dir, name="test_project_with_calculation")
 
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
 
     # Import structure
     test_data = Path(__file__).parent.parent.parent / "data" / "calculation_bands"
@@ -196,7 +196,7 @@ def demo_project_with_run(tmp_path: Path) -> tuple[Path, str, str, str | None]:
     shutil.copytree(demo_pack_path, project_dir)
 
     # Get calculation and step ULIDs from the demo
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
     index = svc.project.build_resource_index()
 
     if not index.calculations:
@@ -214,7 +214,7 @@ def demo_project_with_run(tmp_path: Path) -> tuple[Path, str, str, str | None]:
     # Try to get run ULID from history (may not exist)
     run_ulid = None
     try:
-        from quantumvitas.provenance.query import get_latest_run_for_step
+        from qmatsuite.provenance.query import get_latest_run_for_step
 
         run = get_latest_run_for_step(project_dir, step_ulid)
         if run:
@@ -236,7 +236,7 @@ def qe_available() -> bool:
 
     Fails the test if QE is not detected.
     """
-    from quantumvitas.api.utils import get_qe_engine_status
+    from qmatsuite.api.utils import get_qe_engine_status
 
     status = get_qe_engine_status()
     if not status.get("detection", {}).get("found"):
@@ -259,7 +259,7 @@ def wait_for_job():
         Poll job status until complete, failed, or timeout.
 
         Args:
-            daemon: QVDaemon instance
+            daemon: QMSDaemon instance
             project_root: Project root path
             job_id: Job ID to monitor
             timeout: Timeout in seconds
@@ -317,10 +317,10 @@ def qe_project_with_si(tmp_path: Path, qe_available) -> tuple[Path, str]:
     # Create project
     project_dir = tmp_path / "si_test"
     project_dir.mkdir()
-    QVService.init_project(project_dir, name="Si Test")
+    QMSService.init_project(project_dir, name="Si Test")
 
     # Create service instance
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
 
     # Import Si structure from dedicated smoke-test structure asset
     si_cif = Path(__file__).parent.parent.parent / "data" / "structures" / "si_diamond.cif"
@@ -336,7 +336,7 @@ def qe_project_with_si(tmp_path: Path, qe_available) -> tuple[Path, str]:
     structure_ulid = structure_resolved.meta.ulid
 
     # NOTE: Pseudopotentials are NOT manually copied here.
-    # The runner auto-stages from bundled src/quantumvitas/resources/pseudo/ during run.
+    # The runner auto-stages from bundled src/qmatsuite/resources/pseudo/ during run.
     # The test must set species_map via RPC (update_calculation_species_map)
     # to tell the runner which pseudo file to use — just like a real user would.
 
@@ -353,9 +353,9 @@ def qe_project_with_al(tmp_path: Path, qe_available) -> tuple[Path, str]:
     """
     project_dir = tmp_path / "al_test"
     project_dir.mkdir()
-    QVService.init_project(project_dir, name="Al Test")
+    QMSService.init_project(project_dir, name="Al Test")
 
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
 
     al_cif = Path(__file__).parent.parent.parent / "data" / "structures" / "al_fcc.cif"
     if not al_cif.exists():

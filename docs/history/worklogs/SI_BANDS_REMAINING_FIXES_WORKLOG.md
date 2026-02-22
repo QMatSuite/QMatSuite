@@ -14,7 +14,7 @@ Create `docs/history/worklogs/SI_BANDS_REMAINING_FIXES_WORKLOG.md` and update it
 
 ## C1: `set_parameters` Cannot Set QE Cards
 
-**File**: `src/quantumvitas/mcp/tools/set_parameters.py`
+**File**: `src/qmatsuite/mcp/tools/set_parameters.py`
 
 **Root cause**: Line 53 hardcodes `params={"parameters": params}`, preventing cards.
 
@@ -70,12 +70,12 @@ svc.calculation.update_step_params(
 
 ## C3: `generate_kpath` MCP Tool
 
-**New file**: `src/quantumvitas/mcp/tools/generate_kpath.py`
+**New file**: `src/qmatsuite/mcp/tools/generate_kpath.py`
 
 **Existing code to reuse**:
 - `analysis/kpath.py:145-248` — `generate_kpath()` function
 - `analysis/kpath.py:63-110` — `KPathResult.to_qe_kpoints_crystal_b()` returns `{"option": "crystal_b", "data": [...]}`
-- `api/service.py:8375-8398` — `QVService.generate_kpath()` wrapper
+- `api/service.py:8375-8398` — `QMSService.generate_kpath()` wrapper
 - `core/resolution.require_structure()` + `io/structure_io.read_structure()` — resolve selector to pymatgen Structure
 
 **Implementation**:
@@ -88,13 +88,13 @@ def generate_kpath(
 ) -> dict:
     svc = get_service()
     # Resolve structure selector → pymatgen Structure
-    from quantumvitas.core.resolution import require_structure
-    from quantumvitas.io.structure_io import read_structure
+    from qmatsuite.core.resolution import require_structure
+    from qmatsuite.io.structure_io import read_structure
     struct_resolved = require_structure(svc.project_root, structure_selector)
     pmg_structure = read_structure(struct_resolved.absolute_path)
 
     # Generate k-path
-    kpath_result = QVService.generate_kpath(pmg_structure, points_per_segment, path_type)
+    kpath_result = QMSService.generate_kpath(pmg_structure, points_per_segment, path_type)
     kpoints_card = kpath_result.to_qe_kpoints_crystal_b()
 
     return make_response({
@@ -111,7 +111,7 @@ def generate_kpath(
     }, context_hint="Use set_parameters(..., params={'K_POINTS': data['kpoints_card']}) to apply.")
 ```
 
-**Registration**: Add `import quantumvitas.mcp.tools.generate_kpath` in `server.py` at Stage 2A.
+**Registration**: Add `import qmatsuite.mcp.tools.generate_kpath` in `server.py` at Stage 2A.
 
 **Tool count**: Update from 29 → 30 in `test_stage11.py:316` and expected_names set.
 
@@ -126,7 +126,7 @@ def generate_kpath(
 
 ## C2: Runtime-Managed `filband` Injection
 
-**File**: `src/quantumvitas/calculation/structure_steps.py`
+**File**: `src/qmatsuite/calculation/structure_steps.py`
 
 **Root cause**: `_inject_calculation_prefix_outdir()` (line 353) only injects `prefix` and `outdir`. `filband` is not managed, so QE defaults to `bands.out`, producing `bands.out.gnu` — not matching evidence glob `*.bands.dat.gnu`.
 
@@ -171,8 +171,8 @@ evidence_files=["*.bands.dat.gnu", "*.bands.out.gnu", "*.gnu"],
 ## M2: Dry-Run Materializer Card Handling
 
 **Files**:
-- `src/quantumvitas/mcp/tools/inspect_calculation.py` — `_merge_cards_into_params()` (line 303)
-- `src/quantumvitas/drivers/qe/inputspec.py` — `_write_qe_text_direct()` (line 88)
+- `src/qmatsuite/mcp/tools/inspect_calculation.py` — `_merge_cards_into_params()` (line 303)
+- `src/qmatsuite/drivers/qe/inputspec.py` — `_write_qe_text_direct()` (line 88)
 
 **Root cause**: Two-part problem:
 1. `_merge_cards_into_params()` converts ALL K_POINTS to mesh+shift, losing the option
@@ -249,7 +249,7 @@ if kpoints:
 
 ## C4: `nbnd` Knowledge Base Entry
 
-**File**: `src/quantumvitas/mcp/knowledge/builtin_entries.py`
+**File**: `src/qmatsuite/mcp/knowledge/builtin_entries.py`
 
 **Fix**: Append to `BUILTIN_ENTRIES` list:
 ```python
@@ -308,18 +308,18 @@ Note: The builtin DB must be rebuilt after adding entries. Delete `~/.qmatsuite/
 ## Files Summary
 
 ### New Files
-- `src/quantumvitas/mcp/tools/generate_kpath.py` — C3
+- `src/qmatsuite/mcp/tools/generate_kpath.py` — C3
 - `tests/mcp/test_bands_workflow.py` — all tests for C1/C2/C3/M2/C4
 - `docs/history/worklogs/SI_BANDS_REMAINING_FIXES_WORKLOG.md` — mandatory worklog
 
 ### Modified Files
-- `src/quantumvitas/mcp/tools/set_parameters.py` — C1: cards auto-routing
-- `src/quantumvitas/calculation/structure_steps.py` — C2: filband injection
-- `src/quantumvitas/drivers/qe/driver.py` — C2: widen evidence glob
-- `src/quantumvitas/drivers/qe/inputspec.py` — M2: K_POINTS format handling
-- `src/quantumvitas/mcp/tools/inspect_calculation.py` — M2: card merge fix
-- `src/quantumvitas/mcp/knowledge/builtin_entries.py` — C4: nbnd entry
-- `src/quantumvitas/mcp/server.py` — register generate_kpath
+- `src/qmatsuite/mcp/tools/set_parameters.py` — C1: cards auto-routing
+- `src/qmatsuite/calculation/structure_steps.py` — C2: filband injection
+- `src/qmatsuite/drivers/qe/driver.py` — C2: widen evidence glob
+- `src/qmatsuite/drivers/qe/inputspec.py` — M2: K_POINTS format handling
+- `src/qmatsuite/mcp/tools/inspect_calculation.py` — M2: card merge fix
+- `src/qmatsuite/mcp/knowledge/builtin_entries.py` — C4: nbnd entry
+- `src/qmatsuite/mcp/server.py` — register generate_kpath
 - `tests/mcp/test_stage11.py` — tool count 29→30
 
 ---
@@ -359,7 +359,7 @@ Note: The builtin DB must be rebuilt after adding entries. Delete `~/.qmatsuite/
 - 5 new tests: routing, mixed, explicit namespace, backward compat
 
 ### Phase 3: C3 — generate_kpath MCP tool — DONE
-- New file: `src/quantumvitas/mcp/tools/generate_kpath.py`
+- New file: `src/qmatsuite/mcp/tools/generate_kpath.py`
 - Wraps existing `analysis/kpath.py:generate_kpath()` + `KPathResult.to_qe_kpoints_crystal_b()`
 - Returns lattice_type, spacegroup, path_string, kpoints_card (crystal_b format), labels, coords
 - Registered in server.py at Stage 2A

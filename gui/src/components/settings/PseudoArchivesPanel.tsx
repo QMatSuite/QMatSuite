@@ -6,8 +6,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useQVClient } from '../../hooks/useQVClient';
-import type { ArchiveStatus } from '../../types/qv';
+import { useQMSClient } from '../../hooks/useQMSClient';
+import type { ArchiveStatus } from '../../types/qms';
 import './PseudoArchivesPanel.css';
 
 interface GroupedArchives {
@@ -15,7 +15,7 @@ interface GroupedArchives {
 }
 
 export function PseudoArchivesPanel() {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   const [groupedArchives, setGroupedArchives] = useState<GroupedArchives>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,13 +28,13 @@ export function PseudoArchivesPanel() {
   }, []);
 
   const loadArchives = useCallback(async () => {
-    if (!qv) return;
+    if (!qms) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await qv.listPseudoArchivesStatus();
+      const response = await qms.listPseudoArchivesStatus();
       if (response.ok && response.data) {
         const archivesList = response.data.archives || [];
         
@@ -56,16 +56,16 @@ export function PseudoArchivesPanel() {
     } finally {
       setIsLoading(false);
     }
-  }, [qv]);
+  }, [qms]);
 
   const handleInstall = useCallback(async (assetName: string) => {
-    if (!qv || installing.has(assetName)) return;
+    if (!qms || installing.has(assetName)) return;
     
     setInstalling(prev => new Set(prev).add(assetName));
     setActionResult(null);
     
     try {
-      const response = await qv.installPseudoArchive(assetName);
+      const response = await qms.installPseudoArchive(assetName);
       if (response.ok && response.data) {
         const result = response.data;
         if (result.success) {
@@ -104,7 +104,7 @@ export function PseudoArchivesPanel() {
       });
       setTimeout(() => setActionResult(null), 5000);
     }
-  }, [qv, installing, loadArchives]);
+  }, [qms, installing, loadArchives]);
 
   const formatSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;

@@ -19,7 +19,7 @@
 
 ## Scope
 - In scope:
-  - `src/quantumvitas/drivers/siesta/`
+  - `src/qmatsuite/drivers/siesta/`
   - `tests/inputformat/` and `tests/drivers/siesta/`
   - `docs/engines/siesta/`
   - `.tmp/engine_research/siesta/`
@@ -33,12 +33,12 @@
 - Audit existing `.tmp` corpus and canonicalize evidence layout via copy/promote (no deletions).
 
 2. Parser/writer implementation (universal design aligned)
-- Implement FDF I/O module in `src/quantumvitas/drivers/siesta/io/fdf.py`.
-- Wire `src/quantumvitas/drivers/siesta/inputspec.py` to `custom_parser` + `custom_writer`.
+- Implement FDF I/O module in `src/qmatsuite/drivers/siesta/io/fdf.py`.
+- Wire `src/qmatsuite/drivers/siesta/inputspec.py` to `custom_parser` + `custom_writer`.
 - Keep compatibility wrappers for existing driver handler use.
 
 3. Minimal output digest
-- Add `src/quantumvitas/drivers/siesta/parsers/output.py` with `SiestaDigest` and `@register_parser("siesta", "scf_digest")`.
+- Add `src/qmatsuite/drivers/siesta/parsers/output.py` with `SiestaDigest` and `@register_parser("siesta", "scf_digest")`.
 - Ensure parser is imported for registration.
 
 4. Curated examples

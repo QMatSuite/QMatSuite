@@ -2,7 +2,7 @@
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.artifact_scanning import (
+from qmatsuite.core.artifact_scanning import (
     scan_directory,
     scan_raw_directory,
     scan_raw_directory_for_provenance,

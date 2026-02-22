@@ -20,18 +20,18 @@ This document summarizes the implementation of the tutorial dataset importer tha
 2. **Pseudopotential Mapping**
    - Extracts pseudopotential filenames from `ATOMIC_SPECIES` cards
    - Searches in dataset folder, `tests/data/`, and `pseudo/` directory
-   - Automatically downloads missing pseudos to `repo/pseudo/` using `QVService.download_pseudo_by_filename()`
+   - Automatically downloads missing pseudos to `repo/pseudo/` using `QMSService.download_pseudo_by_filename()`
    - Reports failures if download also fails (404 errors)
    - During demo expansion, pseudos are copied from `repo/pseudo/` to `project/pseudo/`
 
 3. **Project Structure Creation**
-   - Uses QVService API (matching manual workflow):
-     - `QVService.init_project()` - Creates empty project
-     - `QVService.import_structure()` - Imports structure from first `.in` file
-     - `QVService.init_calculation()` - Creates calculation with structure
-     - `QVService.import_step_from_qe_input()` - Imports each step sequentially
+   - Uses QMSService API (matching manual workflow):
+     - `QMSService.init_project()` - Creates empty project
+     - `QMSService.import_structure()` - Imports structure from first `.in` file
+     - `QMSService.init_calculation()` - Creates calculation with structure
+     - `QMSService.import_step_from_qe_input()` - Imports each step sequentially
    - Creates complete project structure with:
-     - `project.qv.yml` (project config)
+     - `project.qms.yml` (project config)
      - `calculations/main/calculation.yaml` (calculation config)
      - `calculations/main/steps/*.step.yaml` (step specs)
      - `structures/*.json` (structure files)
@@ -98,7 +98,7 @@ This document summarizes the implementation of the tutorial dataset importer tha
 - `sort_input_files_by_execution_order()`: Sorts `.in` files by numeric prefix
 - `materialize_project_from_input_folder()`: **Core function** - Materializes a project from a folder of `.in` files
   - Handles structure preprocessing (injects missing CELL_PARAMETERS, fixes ibrav issues)
-  - Uses QVService API to create project, import structure, create calculation, import steps
+  - Uses QMSService API to create project, import structure, create calculation, import steps
   - Rebuilds resource index after each major step
 - `extract_pseudopotential_names()`: Extracts pseudo filenames from ATOMIC_SPECIES
 - `find_pseudopotential_file()`: Searches for pseudo files in search directories
@@ -124,7 +124,7 @@ The script will:
 ```
 demos/qe_tutorials/
 ├── 0_Si_scf/
-│   ├── demo.qv.yml          # Project snapshot
+│   ├── demo.qms.yml          # Project snapshot
 │   ├── demo.json            # Demo manifest
 │   ├── reference_inputs/    # Original .in files
 │   └── reference_outputs/   # Original .out files (if available)
@@ -184,7 +184,7 @@ Potential improvements:
 
 ## Notes
 
-- The script uses QVService API (`init_project`, `import_structure`, `init_calculation`, `import_step_from_qe_input`)
+- The script uses QMSService API (`init_project`, `import_structure`, `init_calculation`, `import_step_from_qe_input`)
 - **Structure separation**: Geometry parameters are stored in structure section, not in steps
 - **Species overrides**: ATOMIC_SPECIES information is extracted to `species_overrides`, not stored as a card
 - Pseudopotentials are automatically downloaded if missing, then copied to demo snapshots

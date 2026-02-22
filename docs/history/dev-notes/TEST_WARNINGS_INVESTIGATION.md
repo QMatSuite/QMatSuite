@@ -5,7 +5,7 @@
 Current test output: `4397 passed, 18 skipped, 1 xfailed, 1 xpassed, ~906 warnings`
 
 All ~906 warnings originate from **third-party libraries** or **pytest internals**.
-Production code (`src/quantumvitas/`) has no resource leaks.
+Production code (`src/qmatsuite/`) has no resource leaks.
 
 ---
 
@@ -23,9 +23,9 @@ ResourceWarning: unclosed database in <sqlite3.Connection object at 0x...>
 `query.py`, `pins.py`, `restore.py` uses the correct `try/finally/conn.close()` pattern.
 
 **Evidence**:
-- `PYTHONTRACEMALLOC=40` shows **zero** `quantumvitas` frames in allocation tracebacks —
+- `PYTHONTRACEMALLOC=40` shows **zero** `qmatsuite` frames in allocation tracebacks —
   only `_pytest/runner.py`, `pluggy/_callers.py`, `ast.py`.
-- Running the identical QVService workflow (init_project, import_structure,
+- Running the identical QMSService workflow (init_project, import_structure,
   init_calculation, save_yaml_doc, add_step) **outside pytest** with
   `-Werror::ResourceWarning` produces **zero warnings**.
 - Turning warnings into errors (`-W error::ResourceWarning`) causes **zero test failures**,
@@ -82,13 +82,13 @@ from pathlib import Path
 warnings.simplefilter('error', ResourceWarning)
 tmp = Path(tempfile.mkdtemp())
 try:
-    from quantumvitas.api import QVService
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.core.yamldoc import CalcDoc
-    from quantumvitas.core.models import load_calculation
-    project_root = QVService.init_project(target_dir=tmp/'proj', name='Test')
+    from qmatsuite.api import QMSService
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yamldoc import CalcDoc
+    from qmatsuite.core.models import load_calculation
+    project_root = QMSService.init_project(target_dir=tmp/'proj', name='Test')
     gc.collect()
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     from pymatgen.core import Structure, Lattice
     lattice = Lattice([[3.37,3.37,0.0],[0.0,3.37,3.37],[3.37,0.0,3.37]])
     structure = Structure(lattice, ['C','C'], [[0.0,0.0,0.0],[0.25,0.25,0.25]])

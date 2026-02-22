@@ -25,11 +25,11 @@
 **目标**: 将 `qe_vc_relax` 合并到 `qe_relax`
 
 **文件修改**:
-1. `src/quantumvitas/workflow/registry.py`
+1. `src/qmatsuite/workflow/registry.py`
    - 删除 `"qe_vc_relax": StepTypeSpec(...)` 条目
    - 更新 `"qe_relax"` 的 description: "Structure relaxation (positions and optionally cell)"
 
-2. `src/quantumvitas/engine/qc_engine_base.py`
+2. `src/qmatsuite/engine/qc_engine_base.py`
    - 修改 `RELAX_STEP_TYPES = {"relax"}` (删除 vc-relax, opt, geomopt)
 
 3. `tests/unit/test_step_type_mapping.py`
@@ -40,7 +40,7 @@
 ```bash
 pytest tests/unit/test_step_type_mapping.py -v
 # 确认: 无 vc-relax 测试失败
-grep "vc-relax" src/quantumvitas/workflow/registry.py
+grep "vc-relax" src/qmatsuite/workflow/registry.py
 # 确认: 无输出
 ```
 
@@ -51,7 +51,7 @@ grep "vc-relax" src/quantumvitas/workflow/registry.py
 **目标**: 添加 `orca_relax` 和 `pyscf_relax`
 
 **文件修改**:
-1. `src/quantumvitas/workflow/registry.py`
+1. `src/qmatsuite/workflow/registry.py`
    - 添加:
      ```python
      "orca_relax": StepTypeSpec(
@@ -80,7 +80,7 @@ grep "vc-relax" src/quantumvitas/workflow/registry.py
      ),
      ```
 
-2. `src/quantumvitas/engine/orca_engine.py`
+2. `src/qmatsuite/engine/orca_engine.py`
    - 在 `supported_step_types()` 添加 `"orca_relax"`
 
 **验收**:
@@ -96,7 +96,7 @@ pytest tests/unit/test_step_type_mapping.py -v
 **目标**: 向后兼容 `vc-relax`, `opt`, `geomopt`
 
 **文件修改**:
-1. `src/quantumvitas/workflow/registry.py`
+1. `src/qmatsuite/workflow/registry.py`
    - 添加:
      ```python
      STEP_TYPE_ALIASES = {
@@ -133,10 +133,10 @@ pytest tests/unit/test_registry_compat.py -v
 **目标**: 解析 QE relax 输出，写入 `current.json`
 
 **文件修改**:
-1. `src/quantumvitas/execution/handlers.py`
+1. `src/qmatsuite/execution/handlers.py`
    - 添加 `handle_qe_relax_output()` 函数 (见 E2E Plan §4.3.1)
 
-2. `src/quantumvitas/execution/executor.py`
+2. `src/qmatsuite/execution/executor.py`
    - 在 job 成功后调用 `_post_process_job()`
    - 检测 relax step，调用 handler
 
@@ -153,7 +153,7 @@ pytest tests/unit/execution/test_relax_artifacts.py -v
 **目标**: Job 开始前清理覆盖的 relax steps 的 `current.json`
 
 **文件修改**:
-1. `src/quantumvitas/execution/executor.py`
+1. `src/qmatsuite/execution/executor.py`
    - 在 job 开始前:
      ```python
      for step_ulid in job.step_ids:
@@ -174,7 +174,7 @@ pytest tests/unit/execution/test_relax_artifacts.py -v
 **目标**: 依赖 effective structure 时检查 `current.json` 存在
 
 **文件修改**:
-1. `src/quantumvitas/execution/executor.py`
+1. `src/qmatsuite/execution/executor.py`
    - 在需要 effective structure 时:
      ```python
      if needs_effective_structure and previous_relax_ulid:
@@ -205,9 +205,9 @@ pytest tests/unit/test_manifest_effective_structure.py -v
 **目标**: 解析 ORCA `basename.xyz` 输出
 
 **文件新增**:
-1. `src/quantumvitas/execution/orca_relax_parser.py` (见 E2E Plan §5.3.1)
+1. `src/qmatsuite/execution/orca_relax_parser.py` (见 E2E Plan §5.3.1)
 
-2. `src/quantumvitas/engines/orca/input_compiler.py`
+2. `src/qmatsuite/engines/orca/input_compiler.py`
    - 在 `compile()` 中检测 relax step，添加 `Opt` 关键词
 
 **验收**:
@@ -222,10 +222,10 @@ pytest tests/unit/execution/test_orca_relax_parser.py -v
 **目标**: 在 PySCF runner 中处理 relax step
 
 **文件修改**:
-1. `src/quantumvitas/engines/pyscf/runner.py`
+1. `src/qmatsuite/engines/pyscf/runner.py`
    - 添加 `run_pyscf_relax()` 函数 (见 E2E Plan §6.3.1)
 
-2. `src/quantumvitas/execution/pyscf_relax_handler.py` (新增)
+2. `src/qmatsuite/execution/pyscf_relax_handler.py` (新增)
    - `handle_pyscf_relax_output()` (见 E2E Plan §6.3.2)
 
 **验收**:
@@ -307,10 +307,10 @@ pytest tests/integration/test_relax_promote_e2e.py -v
 
 3. **Grep 验证**
    ```bash
-   grep "RELAX_STEP_TYPES" src/quantumvitas/engine/qc_engine_base.py
+   grep "RELAX_STEP_TYPES" src/qmatsuite/engine/qc_engine_base.py
    # 应只包含 "relax"
    
-   grep -c "vc-relax" src/quantumvitas/workflow/registry.py
+   grep -c "vc-relax" src/qmatsuite/workflow/registry.py
    # 应为 0 (从 PR-1 开始)
    ```
 
@@ -336,15 +336,15 @@ pytest tests/integration/test_relax_promote_e2e.py -v
 
 | 功能 | 文件路径 |
 |------|----------|
-| Registry | `src/quantumvitas/workflow/registry.py` |
-| Relax Artifacts | `src/quantumvitas/execution/relax_artifacts.py` |
-| QC Topology | `src/quantumvitas/execution/recipes.py` |
-| QE Geometry Parser | `src/quantumvitas/calculation/geometry.py` |
-| Executor | `src/quantumvitas/execution/executor.py` |
-| ORCA Engine | `src/quantumvitas/engine/orca_engine.py` |
-| PySCF Engine | `src/quantumvitas/engine/pyscf_engine.py` |
-| Promote API | `src/quantumvitas/api.py` |
-| Exceptions | `src/quantumvitas/core/exceptions.py` |
+| Registry | `src/qmatsuite/workflow/registry.py` |
+| Relax Artifacts | `src/qmatsuite/execution/relax_artifacts.py` |
+| QC Topology | `src/qmatsuite/execution/recipes.py` |
+| QE Geometry Parser | `src/qmatsuite/calculation/geometry.py` |
+| Executor | `src/qmatsuite/execution/executor.py` |
+| ORCA Engine | `src/qmatsuite/engine/orca_engine.py` |
+| PySCF Engine | `src/qmatsuite/engine/pyscf_engine.py` |
+| Promote API | `src/qmatsuite/api.py` |
+| Exceptions | `src/qmatsuite/core/exceptions.py` |
 
 ---
 

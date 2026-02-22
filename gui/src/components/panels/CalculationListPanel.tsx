@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, type RefObject } from 'react';
-import type { CalculationInfo, DetectWorkflowForCalculationResult, StepPaletteResult } from '../../types/qv';
+import type { CalculationInfo, DetectWorkflowForCalculationResult, StepPaletteResult } from '../../types/qms';
 import './CalculationListPanel.css';
 
 interface CalculationListPanelProps {
@@ -36,7 +36,7 @@ export function CalculationListPanel({
   // Internal collapsed state (persisted in localStorage, can be overridden by prop)
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(() => {
     try {
-      return localStorage.getItem('qv-calculations-panel-collapsed') === 'true';
+      return localStorage.getItem('qms-calculations-panel-collapsed') === 'true';
     } catch {
       return false;
     }
@@ -47,7 +47,7 @@ export function CalculationListPanel({
   // Persist collapsed state
   useEffect(() => {
     if (externalIsCollapsed === undefined) {
-      localStorage.setItem('qv-calculations-panel-collapsed', String(internalIsCollapsed));
+      localStorage.setItem('qms-calculations-panel-collapsed', String(internalIsCollapsed));
     }
   }, [internalIsCollapsed, externalIsCollapsed]);
   
@@ -143,7 +143,7 @@ export function CalculationListPanel({
   
   if (calculations.length === 0) {
     return (
-      <div className="calculation-list-panel calculation-list-panel--empty" data-testid="qv-calculations-view">
+      <div className="calculation-list-panel calculation-list-panel--empty" data-testid="qms-calculations-view">
         <div className="panel-placeholder">
           <span className="panel-icon">📊</span>
           <h3>No Calculations Found</h3>
@@ -156,7 +156,7 @@ export function CalculationListPanel({
   // Collapsed rail view
   if (isCollapsed) {
     return (
-      <div className={`calculation-list-panel calculation-list-panel--collapsed`} data-testid="qv-calculations-view">
+      <div className={`calculation-list-panel calculation-list-panel--collapsed`} data-testid="qms-calculations-view">
         {/* Icon at top */}
         <div className="calculation-list-panel__rail-icon">
           <span className="panel-icon">📊</span>
@@ -199,7 +199,7 @@ export function CalculationListPanel({
   
   // Expanded view
   return (
-    <div className="calculation-list-panel" data-testid="qv-calculations-view">
+    <div className="calculation-list-panel" data-testid="qms-calculations-view">
       <div className="panel-header">
         <h2 className="panel-title">
           <span className="panel-icon">📊</span>
@@ -208,7 +208,7 @@ export function CalculationListPanel({
         <div className="panel-header__actions">
           {onRefreshProjectRegistry && (
             <button
-              className="qv-icon-button qv-icon-button--ghost"
+              className="qms-icon-button qms-icon-button--ghost"
               onClick={handleRefresh}
               disabled={isRefreshing}
               aria-label="Refresh"
@@ -217,16 +217,16 @@ export function CalculationListPanel({
               {isRefreshing ? '⟳' : '🔄'}
             </button>
           )}
-          <span className="panel-count" data-testid="qv-calculations-count">{calculations.length} total</span>
+          <span className="panel-count" data-testid="qms-calculations-count">{calculations.length} total</span>
         </div>
       </div>
       
-      <div className="calculation-list" data-testid="qv-calculations-list">
+      <div className="calculation-list" data-testid="qms-calculations-list">
         {calculations.map((calculation) => (
           <div
             key={calculation.calc_ulid}
             className={`calculation-item ${selectedId === calculation.calc_ulid ? 'calculation-item--selected' : ''}`}
-            data-testid="qv-calculation-row"
+            data-testid="qms-calculation-row"
             data-calculation-slug={calculation.slug}
           >
             <button
@@ -321,9 +321,9 @@ export function CalculationListPanel({
 // Calculation Detail View
 // =============================================================================
 
-import type { StructureInfo, CalculationDetailResult, StepPresetFootprint } from '../../types/qv';
+import type { StructureInfo, CalculationDetailResult, StepPresetFootprint } from '../../types/qms';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
-import { useQVClient } from '../../hooks/useQVClient';
+import { useQMSClient } from '../../hooks/useQMSClient';
 import { CommonCardPseudo } from '../common_cards/CommonCardPseudo';
 import { PresetSection } from '../presets/PresetSection';
 import { usePresets } from '../../hooks/usePresets';
@@ -491,7 +491,7 @@ export function CalculationDetailPanel({
   const [isDeletingStep, setIsDeletingStep] = useState(false);
 
   // Pseudopotential mapping state (calculation-level)
-  const qv = useQVClient();
+  const qms = useQMSClient();
 
   // Step palette for dynamic step type dropdown (fetched via RPC)
   const [stepPalette, setStepPalette] = useState<StepPaletteResult | null>(null);
@@ -499,7 +499,7 @@ export function CalculationDetailPanel({
   // Fetch step palette based on engine family from calculation detail
   useEffect(() => {
     const engineFamily = calculationDetail?.engine_family ?? null;
-    qv.listStepPalette(engineFamily)
+    qms.listStepPalette(engineFamily)
       .then(response => {
         if (response.ok && response.data) {
           setStepPalette(response.data);
@@ -508,7 +508,7 @@ export function CalculationDetailPanel({
       .catch(() => {
         // Silently fail - step palette is non-critical
       });
-  }, [calculationDetail?.engine_family, qv]);
+  }, [calculationDetail?.engine_family, qms]);
   
   // Local structures state (fallback if not provided via props)
   const [localStructures, setLocalStructures] = useState<StructureInfo[] | null>(null);
@@ -521,7 +521,7 @@ export function CalculationDetailPanel({
   useEffect(() => {
     if (!structures && projectRoot && calculation) {
       setIsLoadingStructures(true);
-      qv.listStructures(projectRoot)
+      qms.listStructures(projectRoot)
         .then(response => {
           if (response.ok && response.data) {
             setLocalStructures(response.data.structures);
@@ -529,7 +529,7 @@ export function CalculationDetailPanel({
         })
         .finally(() => setIsLoadingStructures(false));
     }
-  }, [structures, projectRoot, calculation, qv]);
+  }, [structures, projectRoot, calculation, qms]);
   
   const [pseudoMapping, setPseudoMapping] = useState<{
     species: string[];
@@ -574,7 +574,7 @@ export function CalculationDetailPanel({
       return;
     }
     
-    qv.call('detect_workflow_for_calculation', {
+    qms.call('detect_workflow_for_calculation', {
       project_root: projectRoot,
       calculation_ulid: calculation.calc_ulid,
     })
@@ -588,7 +588,7 @@ export function CalculationDetailPanel({
       .catch(() => {
         setWorkflowDetection(null);
       });
-  }, [calculation?.calc_ulid, projectRoot, qv]);
+  }, [calculation?.calc_ulid, projectRoot, qms]);
   
   // Load step details for scan summary (lazy, only when calculation is viewed in overview mode)
   useEffect(() => {
@@ -604,13 +604,13 @@ export function CalculationDetailPanel({
       
       for (const step of steps) {
         try {
-          const response = await qv.call('get_step_detail', {
+          const response = await qms.call('get_step_detail', {
             project_root: projectRoot,
             calculation: calculationForSteps.slug,
             step: step.ulid,
           });
           if (response.ok && response.data) {
-            const stepDetail = response.data as import('../../types/qv').StepDetail;
+            const stepDetail = response.data as import('../../types/qms').StepDetail;
             detailsMap.set(step.ulid, {
               parameter_scan: stepDetail.parameter_scan,
             });
@@ -625,11 +625,11 @@ export function CalculationDetailPanel({
     };
     
     loadStepDetails();
-  }, [calculationForSteps?.calc_ulid, projectRoot, isFocusMode, qv]);
+  }, [calculationForSteps?.calc_ulid, projectRoot, isFocusMode, qms]);
   
   // Handle deleting a step
   const handleDeleteStep = useCallback(async (stepId: string, stepType: string) => {
-    if (!window.qv || !calculationForSteps || isDeletingStep) return;
+    if (!window.qms || !calculationForSteps || isDeletingStep) return;
     
     // Show confirmation dialog
     const confirmed = window.confirm(
@@ -648,7 +648,7 @@ export function CalculationDetailPanel({
         throw new Error('Project root is required');
       }
       
-      const response = await window.qv.request('delete_step', {
+      const response = await window.qms.request('delete_step', {
         project_root: normalizedProjectRoot,
         calculation: calculationForSteps.slug,
         step: stepId, // ULID from calculation.yaml
@@ -686,7 +686,7 @@ export function CalculationDetailPanel({
   
   // Handle adding a new step
   const handleAddStep = useCallback(async () => {
-    if (!window.qv || !calculationForSteps || !newStepType) return;
+    if (!window.qms || !calculationForSteps || !newStepType) return;
     
     setIsAddingStep(true);
     setError(null);
@@ -694,7 +694,7 @@ export function CalculationDetailPanel({
     try {
       const stepName = newStepName.trim() || newStepType;
       
-      const response = await window.qv.request<CalculationDetailResult>('add_step_to_calculation', {
+      const response = await window.qms.request<CalculationDetailResult>('add_step_to_calculation', {
         project_root: projectRoot,
         calculation: calculationForSteps.slug,
         step_type_gen: newStepType,  // Constitution v1.1: use step_type_gen
@@ -724,10 +724,10 @@ export function CalculationDetailPanel({
   
   // Handle importing QE input as step
   const handleImportStep = useCallback(async () => {
-    if (!window.qv || !calculationForSteps) return;
+    if (!window.qms || !calculationForSteps) return;
     
-    // Use window.qv.openFile to pick file
-    const inputFile = await window.qv.openFile({
+    // Use window.qms.openFile to pick file
+    const inputFile = await window.qms.openFile({
       title: 'Import QE Input File',
       filters: [
         { name: 'QE Input Files', extensions: ['in'] },
@@ -743,7 +743,7 @@ export function CalculationDetailPanel({
     setError(null);
     
     try {
-      const response = await window.qv.request<CalculationDetailResult>('import_step_from_qe_input', {
+      const response = await window.qms.request<CalculationDetailResult>('import_step_from_qe_input', {
         project_root: projectRoot,
         calculation: calculationForSteps.slug,
         input_file: inputFile,
@@ -849,14 +849,14 @@ export function CalculationDetailPanel({
   
   // Save reorder
   const handleSaveReorder = useCallback(async () => {
-    if (!window.qv || !calculationForSteps) return;
+    if (!window.qms || !calculationForSteps) return;
     
     setIsSaving(true);
     setError(null);
     
     try {
       // new_order must be array of step ULIDs (from step.ulid) in the desired order
-      const response = await window.qv.request<CalculationDetailResult>('reorder_calculation_steps', {
+      const response = await window.qms.request<CalculationDetailResult>('reorder_calculation_steps', {
         project_root: projectRoot,
         calculation: calculationForSteps.slug, // calculation selector: slug
         new_order: stepOrder, // array of step ULIDs (from step.ulid)
@@ -885,13 +885,13 @@ export function CalculationDetailPanel({
   
   // Handle structure change
   const handleStructureChange = useCallback(async (newStructure: string) => {
-    if (!window.qv || !calculationForSteps) return;
+    if (!window.qms || !calculationForSteps) return;
     
     setIsSaving(true);
     setError(null);
     
     try {
-      const response = await window.qv.request<CalculationDetailResult>('change_calculation_structure', {
+      const response = await window.qms.request<CalculationDetailResult>('change_calculation_structure', {
         project_root: projectRoot,
         calculation: calculationForSteps.slug,
         new_structure: newStructure,
@@ -918,7 +918,7 @@ export function CalculationDetailPanel({
     }
     
     setIsLoadingPseudoMapping(true);
-    qv.getCalculationPseudoMapping(projectRoot, calculationForSteps.slug)
+    qms.getCalculationPseudoMapping(projectRoot, calculationForSteps.slug)
       .then(response => {
         if (response.ok && response.data) {
           setPseudoMapping(response.data);
@@ -933,7 +933,7 @@ export function CalculationDetailPanel({
       .finally(() => {
         setIsLoadingPseudoMapping(false);
       });
-  }, [calculationForSteps?.slug, projectRoot, qv]);
+  }, [calculationForSteps?.slug, projectRoot, qms]);
   
   // CRITICAL: Use calculationDetail.steps if available (canonical from calculation.yaml),
   // otherwise fall back to calculationSummary.steps (may have wrong order, but better than nothing)
@@ -959,7 +959,7 @@ export function CalculationDetailPanel({
     // Show loading state if we have summary but detail is still loading
     if (calculationSummary && !calculationDetail) {
       return (
-        <div className="calculation-detail-panel" data-testid="qv-calculation-detail">
+        <div className="calculation-detail-panel" data-testid="qms-calculation-detail">
           <div className="panel-header">
             <h2 className="panel-title">Loading calculation details...</h2>
           </div>
@@ -997,42 +997,42 @@ export function CalculationDetailPanel({
   });
 
   return (
-    <div className="calculation-detail-panel" data-testid="qv-calculation-detail">
+    <div className="calculation-detail-panel" data-testid="qms-calculation-detail">
       <div className="panel-header">
-        <div className="qv-calc-header-title-group">
+        <div className="qms-calc-header-title-group">
           {/* Breadcrumb: All Calculations → Selected Calculation */}
-          <div className="qv-calc-breadcrumb" style={{ fontSize: '0.85em', color: '#888', marginBottom: '4px' }}>
+          <div className="qms-calc-breadcrumb" style={{ fontSize: '0.85em', color: '#888', marginBottom: '4px' }}>
             All Calculations → {calculation.name}
           </div>
           <h2 className="panel-title">
             <span className="panel-icon">📊</span>
             {calculation.name}
           </h2>
-          <div className="qv-calc-header-subtitle">
+          <div className="qms-calc-header-subtitle">
             Calculation: <code style={{ fontSize: '0.85em', marginLeft: '0.25em' }}>{calculation.calc_ulid}</code>
           </div>
         </div>
         <div className="panel-header-actions">
           {onRunCalculation && (
-            <div className="qv-button-group" style={{ display: 'flex', gap: '4px' }}>
+            <div className="qms-button-group" style={{ display: 'flex', gap: '4px' }}>
               <div style={{ position: 'relative', display: 'inline-block' }}>
             <button 
-              className="qv-button qv-button--primary qv-button--large"
+              className="qms-button qms-button--primary qms-button--large"
                   onClick={() => onRunCalculation(calculation, 'incremental')}
               disabled={isReordering || isSaving}
                   title="Run calculation (incremental: skip completed steps)"
-              data-testid="qv-btn-run-calculation"
+              data-testid="qms-btn-run-calculation"
                   style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, marginRight: 0 }}
             >
-              <span className="qv-button-icon-left">▶️</span>
+              <span className="qms-button-icon-left">▶️</span>
               <span>Run Calculation</span>
             </button>
                 <button 
-                  className="qv-button qv-button--primary qv-button--large"
+                  className="qms-button qms-button--primary qms-button--large"
                   onClick={(e) => {
                     e.stopPropagation();
                     // Toggle dropdown - simple implementation
-                    const existing = document.querySelector('.qv-run-mode-dropdown') as HTMLElement;
+                    const existing = document.querySelector('.qms-run-mode-dropdown') as HTMLElement;
                     if (existing) {
                       document.body.removeChild(existing);
                       return;
@@ -1041,7 +1041,7 @@ export function CalculationDetailPanel({
                     // Show dropdown menu
                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                     const menu = document.createElement('div');
-                    menu.className = 'qv-run-mode-dropdown';
+                    menu.className = 'qms-run-mode-dropdown';
                     menu.style.position = 'fixed';
                     menu.style.top = `${rect.bottom + 4}px`;
                     menu.style.left = `${rect.left}px`;
@@ -1261,7 +1261,7 @@ export function CalculationDetailPanel({
                       className="meta-form__edit-btn"
                       onClick={() => setIsEditingPseudos(true)}
                       title="Edit pseudopotential mappings"
-                      data-testid="qv-btn-edit-pseudos"
+                      data-testid="qms-btn-edit-pseudos"
                     >
                       ✏️ Edit
                     </button>
@@ -1295,7 +1295,7 @@ export function CalculationDetailPanel({
                       className="section-action-btn section-action-btn--add"
                       onClick={handleShowAddStep}
                       title="Add a new step to this calculation"
-                      data-testid="qv-add-step-btn"
+                      data-testid="qms-add-step-btn"
                     >
                       ➕ Add Step
                     </button>
@@ -1304,7 +1304,7 @@ export function CalculationDetailPanel({
                       onClick={handleImportStep}
                       disabled={isImportingStep}
                       title="Import QE input file as step (preserves original parameters)"
-                      data-testid="qv-import-step-btn"
+                      data-testid="qms-import-step-btn"
                     >
                       {isImportingStep ? 'Importing...' : '📥 Import QE Input'}
                     </button>
@@ -1341,7 +1341,7 @@ export function CalculationDetailPanel({
           
           {/* Add Step Form - positioned right after the Add Step button for better UX */}
           {showAddStep && (
-            <div className="add-step-form" data-testid="qv-add-step-form">
+            <div className="add-step-form" data-testid="qms-add-step-form">
               <div className="add-step-header">
                 <h4>Add New Step</h4>
                 <button 
@@ -1358,7 +1358,7 @@ export function CalculationDetailPanel({
                     value={newStepType}
                     onChange={(e) => setNewStepType(e.target.value)}
                     autoFocus
-                    data-testid="qv-add-step-type-select"
+                    data-testid="qms-add-step-type-select"
                   >
                     <option value="">-- Select Type --</option>
                     {stepPalette?.base_steps.map((step) => (
@@ -1398,7 +1398,7 @@ export function CalculationDetailPanel({
                     className="add-step-btn add-step-btn--confirm"
                     onClick={handleAddStep}
                     disabled={!newStepType || isAddingStep}
-                    data-testid="qv-confirm-add-step"
+                    data-testid="qms-confirm-add-step"
                   >
                     {isAddingStep ? 'Adding...' : 'Add Step'}
                   </button>
@@ -1407,7 +1407,7 @@ export function CalculationDetailPanel({
             </div>
           )}
           
-          <div className="steps-list" data-testid="qv-steps-list">
+          <div className="steps-list" data-testid="qms-steps-list">
             {displaySteps.map((step, idx) => (
               <div 
                 key={step.ulid} 
@@ -1424,7 +1424,7 @@ export function CalculationDetailPanel({
                 onDragOver={isReordering ? (e) => handleDragOver(e, idx) : undefined}
                 onDragLeave={isReordering ? handleDragLeave : undefined}
                 onDrop={isReordering ? (e) => handleDrop(e, idx) : undefined}
-                data-testid={`qv-step-row-${step.ulid}`}
+                data-testid={`qms-step-row-${step.ulid}`}
                 data-step-id={step.ulid}
               >
                 {isReordering && (
@@ -1473,7 +1473,7 @@ export function CalculationDetailPanel({
                     }
                   }}
                   disabled={isReordering}
-                  data-testid={`qv-step-button-${step.ulid}`}
+                  data-testid={`qms-step-button-${step.ulid}`}
                 >
                   <span className="step-number">{idx + 1}</span>
                   <div className="step-info">
@@ -1495,7 +1495,7 @@ export function CalculationDetailPanel({
                     }}
                     disabled={isDeletingStep}
                     title={`Delete step "${step.step_type_gen}"`}
-                    data-testid={`qv-delete-step-${step.ulid}`}
+                    data-testid={`qms-delete-step-${step.ulid}`}
                   >
                     🗑️
                   </button>
@@ -1515,7 +1515,7 @@ export function CalculationDetailPanel({
                   </code>
                   <button 
                     className="file-location__reveal-btn"
-                    onClick={() => window.qv?.revealPath?.(calculation.absolute_path)}
+                    onClick={() => window.qms?.revealPath?.(calculation.absolute_path)}
                     title="Reveal in Finder"
                   >
                     📂 Reveal
@@ -1568,7 +1568,7 @@ export function CalculationDetailPanel({
                     speciesMap[element] = entry;
                   }
                   
-                  const response = await qv.updateCalculationSpeciesMap(
+                  const response = await qms.updateCalculationSpeciesMap(
                     projectRoot,
                     calculationForSteps.slug,
                     speciesMap
@@ -1576,7 +1576,7 @@ export function CalculationDetailPanel({
                   
                   if (response.ok && response.data) {
                     // Refresh pseudo mapping
-                    const mappingResponse = await qv.getCalculationPseudoMapping(
+                    const mappingResponse = await qms.getCalculationPseudoMapping(
                       projectRoot,
                       calculationForSteps.slug
                     );
@@ -1606,7 +1606,7 @@ export function CalculationDetailPanel({
                     return;
                   }
                   
-                  const response = await qv.importPseudoFiles(projectRoot, filePaths);
+                  const response = await qms.importPseudoFiles(projectRoot, filePaths);
                   if (response.ok && response.data) {
                     if (response.data.errors && response.data.errors.length > 0) {
                       setError(response.data.errors.join(', '));
@@ -1617,7 +1617,7 @@ export function CalculationDetailPanel({
                 }}
                 onRefresh={async () => {
                   if (!projectRoot || !calculationForSteps) return;
-                  const mappingResponse = await qv.getCalculationPseudoMapping(
+                  const mappingResponse = await qms.getCalculationPseudoMapping(
                     projectRoot,
                     calculationForSteps.slug
                   );
@@ -1629,7 +1629,7 @@ export function CalculationDetailPanel({
                   if (!projectRoot) {
                     return { candidates: [], errors: ['No project root'] };
                   }
-                  const response = await qv.searchLegacyPseudos(element, projectRoot);
+                  const response = await qms.searchLegacyPseudos(element, projectRoot);
                   if (response.ok && response.data) {
                     return response.data;
                   }
@@ -1639,7 +1639,7 @@ export function CalculationDetailPanel({
                   if (!projectRoot) {
                     return { filename: '', renamed: false, skipped: false, errors: ['No project root'] };
                   }
-                  const response = await qv.downloadPseudoByFilename(projectRoot, filename);
+                  const response = await qms.downloadPseudoByFilename(projectRoot, filename);
                   if (response.ok && response.data) {
                     return response.data;
                   }
@@ -1649,7 +1649,7 @@ export function CalculationDetailPanel({
                   if (!projectRoot) {
                     return { filename: '', renamed: false, skipped: false, errors: ['No project root'] };
                   }
-                  const response = await qv.downloadPseudoCandidate(projectRoot, candidate);
+                  const response = await qms.downloadPseudoCandidate(projectRoot, candidate);
                   if (response.ok && response.data) {
                     return response.data;
                   }

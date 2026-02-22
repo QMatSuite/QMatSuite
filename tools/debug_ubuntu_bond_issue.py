@@ -3,7 +3,7 @@
 
 import numpy as np
 from pymatgen.core import Lattice, Structure
-from quantumvitas.analysis.structure_viz import (
+from qmatsuite.analysis.structure_viz import (
     canonicalize_structure_in_place,
     make_supercell,
     detect_bonds,

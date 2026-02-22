@@ -7,10 +7,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.band_structure import BandStructure
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.siesta.parsers.bands import SiestaBandsProvider
+from qmatsuite.core.analysis.band_structure import BandStructure
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.siesta.parsers.bands import SiestaBandsProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_siesta_bands"

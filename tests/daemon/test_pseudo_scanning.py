@@ -9,7 +9,7 @@ Tests verify:
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.pseudo_options import get_pseudo_options_for_elements
+from qmatsuite.core.pseudo_options import get_pseudo_options_for_elements
 
 
 @pytest.mark.unit
@@ -82,7 +82,7 @@ class TestPseudoScanning:
     def test_scan_logs_directory_paths(self, tmp_path, caplog):
         """Pseudo scanning logs directory paths being scanned."""
         import logging
-        logging.getLogger("quantumvitas.core.pseudo_options").setLevel(logging.INFO)
+        logging.getLogger("qmatsuite.core.pseudo_options").setLevel(logging.INFO)
         
         # Create project with pseudo directory
         project_root = tmp_path / "project"

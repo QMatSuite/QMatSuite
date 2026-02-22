@@ -12,15 +12,15 @@ from .world import build_demo_world
 
 # Try to import API
 try:
-    from quantumvitas.api import get_service, QVService
+    from qmatsuite.api import get_service, QMSService
 except ImportError:
     try:
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         def get_service(project_root):
-            return QVService(project_root)
+            return QMSService(project_root)
     except ImportError:
         get_service = None
-        QVService = None
+        QMSService = None
 
 
 class NetworkMethodsRecipe(Recipe):
@@ -60,7 +60,7 @@ class NetworkMethodsRecipe(Recipe):
         except Exception:
             pass  # If recording fails, continue anyway
 
-        if QVService is None:
+        if QMSService is None:
             return False
 
         # Methods that need a project
@@ -72,7 +72,7 @@ class NetworkMethodsRecipe(Recipe):
         if self.method_name in methods_needing_project:
             self.project_root = self.tmp_path / "demo_project"
             self.project_root.mkdir()
-            QVService.init_project(self.project_root, name="demo_project")
+            QMSService.init_project(self.project_root, name="demo_project")
 
         return True
     

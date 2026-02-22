@@ -9,12 +9,12 @@ import sqlite3
 
 import pytest
 
-from quantumvitas.provenance.db import (
+from qmatsuite.provenance.db import (
     ensure_provenance_initialized,
     get_provenance_dir,
     open_provenance_db,
 )
-from quantumvitas.provenance.schema import CURRENT_SCHEMA_VERSION, migrate_schema
+from qmatsuite.provenance.schema import CURRENT_SCHEMA_VERSION, migrate_schema
 
 
 def test_ensure_initialized_fresh(tmp_path):

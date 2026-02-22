@@ -6,7 +6,7 @@ Integration tests were failing because step ULIDs were changing between fixture 
 
 ## Root Cause Analysis
 
-The issue was in `src/quantumvitas/calculation/calculation.py`, in the `_build_step` function:
+The issue was in `src/qmatsuite/calculation/calculation.py`, in the `_build_step` function:
 
 1. `_build_step` calls `require_step()` which resolves the step file and returns `step_resolved` with `step_resolved.meta.id` containing the ULID from step.yaml.
 
@@ -28,7 +28,7 @@ The fix:
 
 ## Files Changed
 
-- `src/quantumvitas/calculation/calculation.py`:
+- `src/qmatsuite/calculation/calculation.py`:
   - Modified `_build_step()` to use `step_resolved.meta` instead of `_build_step_meta(step_data)`.
   - Added assertion to enforce ULID consistency.
 

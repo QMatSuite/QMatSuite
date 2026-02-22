@@ -1,7 +1,7 @@
 """Pytest configuration and fixtures for quick tests.
 
 Quick tests are fast, focused tests that run in CI.
-Imports assume `quantumvitas` is importable (e.g. via `pip install -e .`
+Imports assume `qmatsuite` is importable (e.g. via `pip install -e .`
 or `PYTHONPATH=src`).
 """
 
@@ -12,7 +12,7 @@ import traceback
 
 import pytest
 
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 
 def pytest_ignore_collect(collection_path, config):
@@ -126,7 +126,7 @@ def trap_repo_pseudo_creation():
                     stack = ''.join(traceback.format_stack())
                     raise RuntimeError(
                         f"BUG: {operation_name} attempted to create directory under repo_root at {target_path} (resolved: {resolved}).\n"
-                        f"Tests should only write to tmp directories. Allowed: .tmp/, .qmatsuite/, .pytest_cache/, htmlcov/, .venv/, src/quantumvitas/resources/pseudo/\n"
+                        f"Tests should only write to tmp directories. Allowed: .tmp/, .qmatsuite/, .pytest_cache/, htmlcov/, .venv/, src/qmatsuite/resources/pseudo/\n"
                         f"Stack trace:\n{stack}"
                     )
         except (ValueError, OSError):
@@ -200,7 +200,7 @@ def sample_input_file(project_root_path: Path):
         return local_test_file
 
     # Fallback: use tutorial examples if already downloaded (do not auto-download)
-    from quantumvitas.core.paths import tmp_downloads_dir
+    from qmatsuite.core.paths import tmp_downloads_dir
     tutorial_dir = tmp_downloads_dir() / "qe_tutorial_examples"
     if tutorial_dir.exists() and (tutorial_dir / ".git").exists():
         example_file = tutorial_dir / "0_Si_scf" / "si.scf.in"
@@ -241,7 +241,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list) -> None:
 def cleanup_temp_outdir(project_root_path: Path):
     """Automatically clean up .tmp/runs/outdir after each test."""
     import shutil
-    from quantumvitas.core.paths import tmp_runs_dir
+    from qmatsuite.core.paths import tmp_runs_dir
 
     temp_outdir = tmp_runs_dir() / "outdir"
 
@@ -267,14 +267,14 @@ def reset_qe_registry():
     This prevents test pollution where a unit test's fake QE installation
     persists into CLI tests that need the real QE.
     """
-    from quantumvitas.core.engines import reset_qe_home
+    from qmatsuite.core.engines import reset_qe_home
     
     reset_qe_home()
     
     # Diagnostic: check if QE resolution would use legacy paths
     # (Only warn, don't fail - this is informational)
     try:
-        from quantumvitas.core.engines.qe_diagnostics import diagnose_qe_resolution
+        from qmatsuite.core.engines.qe_diagnostics import diagnose_qe_resolution
         report = diagnose_qe_resolution(check_legacy=True)
         if report.resolution_reason.startswith("legacy_"):
             import warnings

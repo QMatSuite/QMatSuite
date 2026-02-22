@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from quantumvitas.provenance.db import get_db_path
+from qmatsuite.provenance.db import get_db_path
 
 from ._analysis_pipeline_test_utils import setup_qe_bands_run
 

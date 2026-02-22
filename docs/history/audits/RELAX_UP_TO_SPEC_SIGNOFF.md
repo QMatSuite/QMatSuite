@@ -30,10 +30,10 @@
 **Status**: ✅ PASS
 
 **Evidence**:
-- `src/quantumvitas/workflow/registry.py:202` defines `qe_relax` with `public_type="relax"`
-- `src/quantumvitas/workflow/registry.py:429` defines `qe_vc_relax` with `public_type="relax"`
-- `src/quantumvitas/workflow/registry.py:490` defines `orca_relax` with `public_type="relax"`
-- `src/quantumvitas/engine/qc_engine_base.py:25`: `RELAX_STEP_TYPES = {"relax"}` (single entry)
+- `src/qmatsuite/workflow/registry.py:202` defines `qe_relax` with `public_type="relax"`
+- `src/qmatsuite/workflow/registry.py:429` defines `qe_vc_relax` with `public_type="relax"`
+- `src/qmatsuite/workflow/registry.py:490` defines `orca_relax` with `public_type="relax"`
+- `src/qmatsuite/engine/qc_engine_base.py:25`: `RELAX_STEP_TYPES = {"relax"}` (single entry)
 
 No UI/CLI drift: all registry entries with `is_structure_transform=True` have `public_type="relax"`.
 
@@ -44,9 +44,9 @@ No UI/CLI drift: all registry entries with `is_structure_transform=True` have `p
 **Status**: ✅ PASS
 
 **Evidence**:
-- `src/quantumvitas/workflow/registry.py:202-207`: `qe_relax` has `is_structure_transform=True` (produces structure)
+- `src/qmatsuite/workflow/registry.py:202-207`: `qe_relax` has `is_structure_transform=True` (produces structure)
 - Registry does NOT set `produces_charge_density=True` for any relax step
-- `src/quantumvitas/execution/recipes.py:67-68`: Relax steps are validated as standalone in topology
+- `src/qmatsuite/execution/recipes.py:67-68`: Relax steps are validated as standalone in topology
 
 ---
 
@@ -55,7 +55,7 @@ No UI/CLI drift: all registry entries with `is_structure_transform=True` have `p
 **Status**: ✅ PASS
 
 **Evidence**:
-- `src/quantumvitas/execution/relax_artifacts.py:24-35`:
+- `src/qmatsuite/execution/relax_artifacts.py:24-35`:
   ```python
   def get_generated_structure_path(calc_dir: Path, step_ulid: str) -> Path:
       return calc_dir / "generated_structures" / f"step_{step_ulid}" / "current.json"
@@ -70,7 +70,7 @@ No UI/CLI drift: all registry entries with `is_structure_transform=True` have `p
 **Status**: ✅ PASS
 
 **Evidence**:
-- `src/quantumvitas/execution/relax_artifacts.py:101-125`: `cleanup_generated_structure()` function
+- `src/qmatsuite/execution/relax_artifacts.py:101-125`: `cleanup_generated_structure()` function
 - Called in job execution path to clean up before re-run
 - Only cleans artifacts for steps in the current job
 
@@ -81,14 +81,14 @@ No UI/CLI drift: all registry entries with `is_structure_transform=True` have `p
 **Status**: ✅ PASS
 
 **Evidence**:
-- `src/quantumvitas/core/exceptions.py:35`: `class MissingArtifactError(Exception)`
-- `src/quantumvitas/execution/executor.py:730`:
+- `src/qmatsuite/core/exceptions.py:35`: `class MissingArtifactError(Exception)`
+- `src/qmatsuite/execution/executor.py:730`:
   ```python
   raise MissingArtifactError(
       "generated_structures/step_{step.meta.id}/current.json is missing..."
   )
   ```
-- `src/quantumvitas/api.py:4724-4728`: Similar check in `promote_relax_structure`
+- `src/qmatsuite/api.py:4724-4728`: Similar check in `promote_relax_structure`
 
 Error is raised at **consumption time** (when downstream step or promote needs the structure), not at write time.
 
@@ -124,7 +124,7 @@ Error is raised at **consumption time** (when downstream step or promote needs t
 **Status**: ✅ PASS
 
 **Evidence**:
-- `src/quantumvitas/core/structure_fingerprint.py:109-124`:
+- `src/qmatsuite/core/structure_fingerprint.py:109-124`:
   ```python
   def quantize_scalar(x: float, tol: float) -> int:
       eps = 1e-12  # Dimensionless, ensures ties round up
@@ -141,7 +141,7 @@ Error is raised at **consumption time** (when downstream step or promote needs t
 **Status**: ✅ PASS
 
 **Evidence**:
-- `src/quantumvitas/core/structure_fingerprint.py:147`: `DEFAULT_FINGERPRINT_TOL_ANG = 1e-3`
+- `src/qmatsuite/core/structure_fingerprint.py:147`: `DEFAULT_FINGERPRINT_TOL_ANG = 1e-3`
 - All production call sites import and use this constant:
   - `api.py:399,404,441,449`
   - `executor.py:47,751`
@@ -154,7 +154,7 @@ Error is raised at **consumption time** (when downstream step or promote needs t
 **Status**: ✅ PASS
 
 **Evidence**:
-- `src/quantumvitas/execution/recipes.py:38-68`: `verify_qc_topology()` function
+- `src/qmatsuite/execution/recipes.py:38-68`: `verify_qc_topology()` function
 - Rule at line 67-68: `if step_public_type in RELAX_STEP_TYPES: continue` (relax is standalone)
 - Rule at line 87: backward scan checks `if ancestor_public_type in RELAX_STEP_TYPES:` (cannot cross relax)
 - Called before job graph materialization (lines 278, 388)

@@ -5,8 +5,8 @@ Phase 3C: Tests for linear dependency model with nearest-provider rule.
 """
 
 import pytest
-from quantumvitas.engines.pyscf.chain import resolve_dependency_chain
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.engines.pyscf.chain import resolve_dependency_chain
+from qmatsuite.workflow.registry import get_registry
 
 
 class TestDependencyChainResolution:

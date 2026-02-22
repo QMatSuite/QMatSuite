@@ -5,7 +5,7 @@ namelist/block for engines that need structural nesting.
 
 import pytest
 
-from quantumvitas.mcp.search_index import get_search_index, reset_search_index, TagDoc
+from qmatsuite.mcp.search_index import get_search_index, reset_search_index, TagDoc
 
 
 @pytest.fixture(autouse=True)
@@ -102,7 +102,7 @@ class TestSearchParametersToolSection:
 
     def test_search_results_include_section_for_qe(self):
         """QE results should have section field set to the namelist."""
-        from quantumvitas.mcp.search_index import get_search_index
+        from qmatsuite.mcp.search_index import get_search_index
 
         index = get_search_index()
         hits = index.search("ecutwfc", engine="qe", max_results=1)
@@ -113,7 +113,7 @@ class TestSearchParametersToolSection:
 
     def test_search_results_omit_empty_section(self):
         """LAMMPS commands have empty section — should be omitted from response."""
-        from quantumvitas.mcp.search_index import get_search_index
+        from qmatsuite.mcp.search_index import get_search_index
 
         index = get_search_index()
         hits = index.search("units", engine="lammps", max_results=1)

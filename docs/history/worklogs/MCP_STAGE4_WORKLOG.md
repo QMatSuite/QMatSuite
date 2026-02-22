@@ -11,12 +11,12 @@ expertise from the first session.
 
 | Tool | File | Purpose |
 |------|------|---------|
-| `search_knowledge` | `src/quantumvitas/mcp/tools/search_knowledge.py` | FTS5 search over curated DFT knowledge |
+| `search_knowledge` | `src/qmatsuite/mcp/tools/search_knowledge.py` | FTS5 search over curated DFT knowledge |
 
 ## Key Design Decisions
 
 1. **DB location**: Lazy-generated at `<qmatsuite_home>/knowledge/builtin.db` via `core/paths.py:get_qmatsuite_home_root()`.
-2. **Package scoping**: All knowledge code under `src/quantumvitas/mcp/knowledge/` (MCP-scoped, not kernel).
+2. **Package scoping**: All knowledge code under `src/qmatsuite/mcp/knowledge/` (MCP-scoped, not kernel).
 3. **Deterministic ULIDs**: SHA256-based with salt `"qmatsuite-knowledge-builtin-v1"` — same entry list always produces identical IDs.
 4. **FTS5 + triggers**: Virtual table `insights_fts` kept in sync with `insights` via INSERT/UPDATE/DELETE triggers.
 5. **Ranking**: `confidence_weight × abs(bm25_rank)`, with grade as tiebreaker (principles above findings).
@@ -38,17 +38,17 @@ Coverage: multi-engine (wildcard `*` + QE-specific), multi-workflow (scf, relax,
 
 ## Files Created (7)
 
-- `src/quantumvitas/mcp/knowledge/__init__.py`
-- `src/quantumvitas/mcp/knowledge/schema.py` — `SCHEMA_DDL` + `init_db()`
-- `src/quantumvitas/mcp/knowledge/store.py` — `KnowledgeStore` (search, get_by_id, count)
-- `src/quantumvitas/mcp/knowledge/builtin_entries.py` — 20 curated entries
-- `src/quantumvitas/mcp/knowledge/build_builtin.py` — idempotent builder
-- `src/quantumvitas/mcp/tools/search_knowledge.py` — MCP tool
+- `src/qmatsuite/mcp/knowledge/__init__.py`
+- `src/qmatsuite/mcp/knowledge/schema.py` — `SCHEMA_DDL` + `init_db()`
+- `src/qmatsuite/mcp/knowledge/store.py` — `KnowledgeStore` (search, get_by_id, count)
+- `src/qmatsuite/mcp/knowledge/builtin_entries.py` — 20 curated entries
+- `src/qmatsuite/mcp/knowledge/build_builtin.py` — idempotent builder
+- `src/qmatsuite/mcp/tools/search_knowledge.py` — MCP tool
 - `tests/mcp/test_stage4.py` — 20 tests
 
 ## Files Modified (1)
 
-- `src/quantumvitas/mcp/server.py` — Stage 4 import for `search_knowledge`
+- `src/qmatsuite/mcp/server.py` — Stage 4 import for `search_knowledge`
 
 ## Schema
 

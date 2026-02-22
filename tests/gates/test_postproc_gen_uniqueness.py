@@ -9,8 +9,8 @@ import pytest
 
 def test_postproc_gen_steps_unique_across_postproc_engines():
     """No postprocessing gen step appears in more than one postproc engine."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     postproc_engines = []
     for engine_family in DriverRegistry.get_all_engines():
@@ -32,8 +32,8 @@ def test_postproc_gen_steps_unique_across_postproc_engines():
 
 def test_postproc_gen_steps_not_in_base_engines():
     """No postprocessing gen step appears in any base engine's SUPPORTED_GEN_STEPS."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     postproc_gen_steps = set()
     base_gen_steps = {}  # gen_step -> [engine_families]

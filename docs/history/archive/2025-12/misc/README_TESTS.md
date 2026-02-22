@@ -2,7 +2,7 @@
 
 ## Test Structure
 
-QuantumVITAS uses a two-tier testing structure:
+QMatSuite uses a two-tier testing structure:
 
 ### 1. Quick Tests (`tests/`)
 - **Purpose**: Fast, focused tests for core functionality
@@ -32,7 +32,7 @@ QuantumVITAS uses a two-tier testing structure:
 pytest tests/ -m quick
 
 # Run with coverage
-pytest tests/ --cov=src/quantumvitas --cov-report=html
+pytest tests/ --cov=src/qmatsuite --cov-report=html
 
 # Run individual slices
 pytest -m unit
@@ -148,7 +148,7 @@ results against those references when you invoke:
 
 - `pytest -m qe_core` (engine-level calculations)
 - `pytest -m qe_cli` (Typer CLI calculations)
-- `qv run-calculation <wf> --strict`
+- `qms run-calculation <wf> --strict`
 
 When regenerating reference data, run the calculation once locally, copy the
 resulting `.out` files into `reference/`, and commit them alongside the calculation

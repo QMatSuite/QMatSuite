@@ -22,7 +22,7 @@
 ### 2.1 Engine Family Definition
 
 ```python
-# In src/quantumvitas/engine/lammps_engine.py
+# In src/qmatsuite/engine/lammps_engine.py
 
 class LammpsEngine(Engine):
     """LAMMPS classical molecular dynamics engine."""
@@ -42,7 +42,7 @@ class LammpsEngine(Engine):
 ### 2.2 Registry Integration
 
 ```python
-# In src/quantumvitas/engine/registry.py
+# In src/qmatsuite/engine/registry.py
 
 def create_default_registry(...) -> EngineRegistry:
     ...
@@ -67,7 +67,7 @@ def create_default_registry(...) -> EngineRegistry:
 ### 3.2 Workflow Registry Entry
 
 ```python
-# In src/quantumvitas/workflow/registry.py
+# In src/qmatsuite/workflow/registry.py
 
 StepTypeSpec(
     name="lammps_minimize",

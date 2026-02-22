@@ -11,10 +11,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.api import QVService, get_service
-from quantumvitas.core.models import load_calculation, load_structure_model
-from quantumvitas.core.resolution import build_resource_index
-from quantumvitas.calculation.structure_steps import StructureStepSpec
+from qmatsuite.api import QMSService, get_service
+from qmatsuite.core.models import load_calculation, load_structure_model
+from qmatsuite.core.resolution import build_resource_index
+from qmatsuite.calculation.structure_steps import StructureStepSpec
 
 
 class TestResourceRenameSafety:
@@ -23,12 +23,12 @@ class TestResourceRenameSafety:
     def test_calculation_rename_preserves_structure_reference(self, tmp_path: Path):
         """Test that renaming a calculation preserves structure_ulid reference."""
         project_root = tmp_path / "test_project"
-        QVService.init_project(project_root, name="Test Project")
+        QMSService.init_project(project_root, name="Test Project")
 
         # Create structure
-        from quantumvitas.io.structure_io import write_structure
+        from qmatsuite.io.structure_io import write_structure
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
 
         struct = Structure(Lattice.cubic(5.0), ['Si'], [[0, 0, 0]])
         struct_file = project_root / "structures" / "si.json"
@@ -42,13 +42,13 @@ class TestResourceRenameSafety:
         write_structure(struct, struct_file, metadata=struct_meta)
 
         # Register structure
-        from quantumvitas.core.project_utils import load_project_config, save_project_config
+        from qmatsuite.core.project_utils import load_project_config, save_project_config
         config = load_project_config(project_root)
         config['structures'].append({"ulid": struct_meta["ulid"]})
         save_project_config(project_root, config)
 
         # Create calculation with structure
-        calculation = QVService(project_root).project.init_calculation("Test Calculation", structure_selector="Si", engine_family="qe")
+        calculation = QMSService(project_root).project.init_calculation("Test Calculation", structure_selector="Si", engine_family="qe")
         original_calculation_id = calculation.meta.ulid
         original_structure_ulid = struct_meta["ulid"]
 
@@ -62,7 +62,7 @@ class TestResourceRenameSafety:
         svc.calculation.update_meta(calculation.meta.slug, new_name="Renamed Calculation")
 
         # Reload calculation (may have moved if slug changed)
-        from quantumvitas.core.resolution import resolve_calculation
+        from qmatsuite.core.resolution import resolve_calculation
         try:
             renamed_calculation = resolve_calculation(project_root, "Renamed Calculation")
         except Exception:
@@ -76,19 +76,19 @@ class TestResourceRenameSafety:
         assert renamed_calculation_data["meta"]["ulid"] == original_calculation_id  # ID unchanged
 
         # Verify structure reference still resolves
-        from quantumvitas.core.resolution import resolve_structure
+        from qmatsuite.core.resolution import resolve_structure
         resolved_structure = resolve_structure(project_root, original_structure_ulid)
         assert resolved_structure.meta.ulid == original_structure_ulid
 
     def test_structure_rename_preserves_calculation_reference(self, tmp_path: Path):
         """Test that renaming a structure preserves calculation structure_ulid reference."""
         project_root = tmp_path / "test_project"
-        QVService.init_project(project_root, name="Test Project")
+        QMSService.init_project(project_root, name="Test Project")
 
         # Create structure
-        from quantumvitas.io.structure_io import write_structure
+        from qmatsuite.io.structure_io import write_structure
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
 
         struct = Structure(Lattice.cubic(5.0), ['Si'], [[0, 0, 0]])
         struct_file = project_root / "structures" / "si.json"
@@ -102,13 +102,13 @@ class TestResourceRenameSafety:
         write_structure(struct, struct_file, metadata=struct_meta)
 
         # Register structure
-        from quantumvitas.core.project_utils import load_project_config, save_project_config
+        from qmatsuite.core.project_utils import load_project_config, save_project_config
         config = load_project_config(project_root)
         config['structures'].append({"ulid": struct_meta["ulid"]})
         save_project_config(project_root, config)
 
         # Create calculation with structure
-        calculation = QVService(project_root).project.init_calculation("Test Calculation", structure_selector="Si", engine_family="qe")
+        calculation = QMSService(project_root).project.init_calculation("Test Calculation", structure_selector="Si", engine_family="qe")
         original_structure_ulid = struct_meta["ulid"]
 
         # Verify calculation has structure_ulid
@@ -127,7 +127,7 @@ class TestResourceRenameSafety:
         assert calculation_data["structure_ulid"] == original_structure_ulid
 
         # Verify structure reference still resolves
-        from quantumvitas.core.resolution import resolve_structure, build_resource_index
+        from qmatsuite.core.resolution import resolve_structure, build_resource_index
         index = build_resource_index(project_root)
         resolved_structure = resolve_structure(project_root, original_structure_ulid, index=index)
         assert resolved_structure.meta.ulid == original_structure_ulid
@@ -135,12 +135,12 @@ class TestResourceRenameSafety:
     def test_step_rename_preserves_calculation_reference(self, tmp_path: Path):
         """Test that renaming a step preserves parent_calculation_id reference."""
         project_root = tmp_path / "test_project"
-        QVService.init_project(project_root, name="Test Project")
+        QMSService.init_project(project_root, name="Test Project")
 
         # Create structure and calculation
-        from quantumvitas.io.structure_io import write_structure
+        from qmatsuite.io.structure_io import write_structure
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.core.resources import generate_resource_id
+        from qmatsuite.core.resources import generate_resource_id
 
         struct = Structure(Lattice.cubic(5.0), ['Si'], [[0, 0, 0]])
         struct_file = project_root / "structures" / "si.json"
@@ -153,12 +153,12 @@ class TestResourceRenameSafety:
         }
         write_structure(struct, struct_file, metadata=struct_meta)
 
-        from quantumvitas.core.project_utils import load_project_config, save_project_config
+        from qmatsuite.core.project_utils import load_project_config, save_project_config
         config = load_project_config(project_root)
         config['structures'].append({"ulid": struct_meta["ulid"]})
         save_project_config(project_root, config)
 
-        calculation = QVService(project_root).project.init_calculation("Test Calculation", structure_selector="Si", engine_family="qe")
+        calculation = QMSService(project_root).project.init_calculation("Test Calculation", structure_selector="Si", engine_family="qe")
         original_calculation_id = calculation.meta.ulid
 
         # Create step using domain API
@@ -175,7 +175,7 @@ class TestResourceRenameSafety:
 
         # Reload step (calculation directory may have moved if slug changed)
         # Resolve by ID since name index may not be updated yet
-        from quantumvitas.core.resolution import resolve_calculation
+        from qmatsuite.core.resolution import resolve_calculation
         renamed_calculation = resolve_calculation(project_root, original_calculation_id)
         # Step file path is relative to calculation directory
         step_file = project_root / renamed_calculation.meta.path / "steps" / "scf.step.yaml"
@@ -199,10 +199,10 @@ class TestResourceIndexAfterRename:
     def test_resource_index_reflects_calculation_rename(self, tmp_path: Path):
         """Test that ResourceIndex reflects calculation rename."""
         project_root = tmp_path / "test_project"
-        QVService.init_project(project_root, name="Test Project")
+        QMSService.init_project(project_root, name="Test Project")
 
         # Create calculation
-        calculation = QVService(project_root).project.init_calculation("Original Name", engine_family="qe")
+        calculation = QMSService(project_root).project.init_calculation("Original Name", engine_family="qe")
         original_id = calculation.meta.ulid
 
         # Build index
@@ -228,7 +228,7 @@ class TestResourceIndexAfterRename:
         assert "new-name" in index.by_slug or "original-name" in index.by_slug  # Either old or new slug
 
         # Verify resolution still works by ID
-        from quantumvitas.core.resolution import resolve_calculation
+        from qmatsuite.core.resolution import resolve_calculation
         resolved = resolve_calculation(project_root, original_id, index=index)
         assert resolved.meta.ulid == original_id
 
@@ -239,13 +239,13 @@ class TestResourceRenameEdgeCases:
     def test_rename_structure_slug_conflict_is_rejected(self, tmp_path: Path):
         """Test that renaming a structure to a slug that conflicts with another structure is rejected."""
         project_root = tmp_path / "test_project"
-        QVService.init_project(project_root, name="Test Project")
+        QMSService.init_project(project_root, name="Test Project")
 
         # Create two structures
-        from quantumvitas.io.structure_io import write_structure
+        from qmatsuite.io.structure_io import write_structure
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.core.resources import generate_resource_id
-        from quantumvitas.core.project_utils import load_project_config, save_project_config
+        from qmatsuite.core.resources import generate_resource_id
+        from qmatsuite.core.project_utils import load_project_config, save_project_config
 
         # Structure A
         struct_a = Structure(Lattice.cubic(5.0), ['Si'], [[0, 0, 0]])
@@ -278,8 +278,8 @@ class TestResourceRenameEdgeCases:
         save_project_config(project_root, config)
 
         # Try to rename A to have the same slug as B - should fail
-        from quantumvitas.core.project_utils import ProjectConfigError
-        from quantumvitas.api.errors import APIError
+        from qmatsuite.core.project_utils import ProjectConfigError
+        from qmatsuite.api.errors import APIError
         svc = get_service(project_root)
         with pytest.raises((ProjectConfigError, APIError), match="conflicts with an existing structure|Unexpected error"):
             svc.structure.update_meta("Si A", new_slug="si-b")
@@ -296,13 +296,13 @@ class TestResourceRenameEdgeCases:
     def test_rename_calculation_across_directories_updates_all_references(self, tmp_path: Path):
         """Test that moving a calculation to a different directory and renaming updates all references."""
         project_root = tmp_path / "test_project"
-        QVService.init_project(project_root, name="Test Project")
+        QMSService.init_project(project_root, name="Test Project")
 
         # Create structure
-        from quantumvitas.io.structure_io import write_structure
+        from qmatsuite.io.structure_io import write_structure
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.core.resources import generate_resource_id
-        from quantumvitas.core.project_utils import load_project_config, save_project_config
+        from qmatsuite.core.resources import generate_resource_id
+        from qmatsuite.core.project_utils import load_project_config, save_project_config
 
         struct = Structure(Lattice.cubic(5.0), ['Si'], [[0, 0, 0]])
         struct_file = project_root / "structures" / "si.json"
@@ -320,7 +320,7 @@ class TestResourceRenameEdgeCases:
         save_project_config(project_root, config)
 
         # Create calculation in calculations/ directory
-        calculation = QVService(project_root).project.init_calculation("Original Calculation", structure_selector="Si", engine_family="qe")
+        calculation = QMSService(project_root).project.init_calculation("Original Calculation", structure_selector="Si", engine_family="qe")
         original_calculation_id = calculation.meta.ulid
         original_path = calculation.meta.path
 
@@ -360,7 +360,7 @@ class TestResourceRenameEdgeCases:
 
         # If calculation.yaml doesn't exist at new_path, try to find it by resolving via registry
         if not calculation_yaml.exists():
-            from quantumvitas.core.resolution import build_resource_index, resolve_calculation
+            from qmatsuite.core.resolution import build_resource_index, resolve_calculation
             index = build_resource_index(project_root)
             try:
                 calculation_resolved = resolve_calculation(project_root, original_calculation_id, index=index)
@@ -380,10 +380,10 @@ class TestResourceRenameEdgeCases:
     def test_multiple_consecutive_renames_keep_selector_stable(self, tmp_path: Path):
         """Test that multiple consecutive renames keep the stable ID/ULID selector working."""
         project_root = tmp_path / "test_project"
-        QVService.init_project(project_root, name="Test Project")
+        QMSService.init_project(project_root, name="Test Project")
 
         # Create calculation
-        calculation = QVService(project_root).project.init_calculation("Calculation A", engine_family="qe")
+        calculation = QMSService(project_root).project.init_calculation("Calculation A", engine_family="qe")
         original_calculation_id = calculation.meta.ulid
 
         svc = get_service(project_root)
@@ -392,7 +392,7 @@ class TestResourceRenameEdgeCases:
         svc.calculation.update_meta(calculation.meta.slug, new_name="Calculation B")
 
         # Rename B → C (resolve by ID to get current slug)
-        from quantumvitas.core.resolution import build_resource_index, resolve_calculation
+        from qmatsuite.core.resolution import build_resource_index, resolve_calculation
         index = build_resource_index(project_root)
         calculation_b = resolve_calculation(project_root, original_calculation_id, index=index)
         svc.calculation.update_meta(calculation_b.meta.slug, new_name="Calculation C")
@@ -404,7 +404,7 @@ class TestResourceRenameEdgeCases:
             "Calculation ID should remain stable through multiple renames"
 
         # Verify name is updated (check calculation.yaml)
-        from quantumvitas.core.models import load_calculation
+        from qmatsuite.core.models import load_calculation
         calculation_model = load_calculation(calculation_c.absolute_path, project_root)
         calculation_name = calculation_model.meta.name
 

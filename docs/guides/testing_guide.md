@@ -7,7 +7,7 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 | Area / Subsystem | Key Test Locations | Notes |
 |------------------|-------------------|-------|
 | **Core models & DAG** | `tests/unit/test_models.py`, `tests/unit/test_project_and_cli.py`, `tests/unit/test_calculation_dag_constitution.py` | Project/calculation/step schemas, ULID validation, DAG structure |
-| **CLI commands** | `tests/cli/` | `qv init`, `qv run`, `qv configure`, `qv analyze`, error handling |
+| **CLI commands** | `tests/cli/` | `qms init`, `qms run`, `qms configure`, `qms analyze`, error handling |
 | **Daemon / RPC** | `tests/daemon/` | JSON-RPC endpoints for GUI, job management, step operations |
 | **QE calculations** | `tests/integration/test_si_*.py`, `tests/cli/test_si_*_workflow_*.py` | Full calculation execution (requires QE installation) |
 | **Analysis & plotting** | `tests/unit/test_analysis_*.py` | SCF/DOS/bands output parsing, plotting, artifacts |
@@ -15,38 +15,38 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 | **Resource resolution** | `tests/unit/test_resolution.py` | Selector resolution (ULID, slug, path, name) |
 | **Legacy migration** | `tests/unit/test_legacy_migration.py` | Legacy project format detection and migration |
 | **QE engine** | `tests/integration/test_qe_engine.py`, `tests/integration/test_qe_executable_*.py` | QE input generation, executable detection (requires QE) |
-| **API service** | `tests/unit/test_api_service*.py` | `QVService` API methods for project/calculation/step operations |
+| **API service** | `tests/unit/test_api_service*.py` | `QMSService` API methods for project/calculation/step operations |
 
 ### What to Run When You Change Things
 
-- **Core project/calculation/step models** (`quantumvitas.core.models`, `quantumvitas.project.model`)
+- **Core project/calculation/step models** (`qmatsuite.core.models`, `qmatsuite.project.model`)
   - `pytest tests/unit/test_models.py tests/unit/test_project_and_cli.py tests/unit/test_calculation_dag_constitution.py`
 
-- **CLI behavior** (`quantumvitas.cli.main`)
+- **CLI behavior** (`qmatsuite.cli.main`)
   - `pytest tests/cli/` (some tests require QE installation)
 
-- **Daemon / RPC / backend** (`quantumvitas.daemon.server`, `quantumvitas.api.QVService`)
-  - `pytest tests/daemon/ tests/unit/test_daemon.py tests/unit/test_qvservice_gui.py`
+- **Daemon / RPC / backend** (`qmatsuite.daemon.server`, `qmatsuite.api.QMSService`)
+  - `pytest tests/daemon/ tests/unit/test_daemon.py tests/unit/test_qmsservice_gui.py`
 
 - **QE calculations** (calculation execution, QE integration)
   - `pytest tests/integration/test_si_*.py` (requires QE installation)
   - `pytest tests/cli/test_si_*_workflow_*.py` (requires QE installation)
 
-- **Analysis / parsing / plotting** (`quantumvitas.analysis.*`)
+- **Analysis / parsing / plotting** (`qmatsuite.analysis.*`)
   - `pytest tests/unit/test_analysis_*.py`
 
-- **Structure I/O** (`quantumvitas.io.structure_io`)
+- **Structure I/O** (`qmatsuite.io.structure_io`)
   - `pytest tests/unit/test_structure_*.py tests/examples/test_structure_io_examples.py`
 
-- **Resource resolution** (`quantumvitas.core.resolution`)
+- **Resource resolution** (`qmatsuite.core.resolution`)
   - `pytest tests/unit/test_resolution.py`
 
-- **Legacy migration** (`quantumvitas.legacy.migrate`)
+- **Legacy migration** (`qmatsuite.legacy.migrate`)
   - `pytest tests/unit/test_legacy_migration.py`
 
 ### QE-backed Integration Tests
 
-**QE-backed integration tests** are test modules that actually run Quantum ESPRESSO executables (pw.x, bands.x, dos.x, etc.) via the `qv` CLI. These tests are slower than unit tests because they execute full QE calculations, but they provide end-to-end validation of the entire system.
+**QE-backed integration tests** are test modules that actually run Quantum ESPRESSO executables (pw.x, bands.x, dos.x, etc.) via the `qms` CLI. These tests are slower than unit tests because they execute full QE calculations, but they provide end-to-end validation of the entire system.
 
 #### QE-backed vs Pure Unit Tests
 
@@ -58,7 +58,7 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 - Run in CI without QE installation
 
 **QE-backed integration tests** (slower, require QE):
-- Execute complete calculations via `qv run calculation ...` or `CalculationRunner.run()`
+- Execute complete calculations via `qms run calculation ...` or `CalculationRunner.run()`
 - Spawn QE executables (pw.x, bands.x, dos.x, ph.x, etc.)
 - Require QE installation and pseudopotentials
 - Located in `tests/cli/` (CLI execution) or `tests/integration/` (CalculationRunner/engine execution)
@@ -67,8 +67,8 @@ QMatSuite uses a pytest-based test suite with 412 tests organized by subsystem. 
 #### The "One QE-running Test Per File" Convention
 
 Each QE-backed test module must have exactly **one** QE-running test function that:
-- Runs the full calculation (`qv run calculation ...`)
-- Performs all post-processing checks (`qv analyze ...`)
+- Runs the full calculation (`qms run calculation ...`)
+- Performs all post-processing checks (`qms analyze ...`)
 - Verifies outputs and plots
 
 All other tests in the same module must be pure unit tests (no QE execution). This convention ensures:
@@ -120,7 +120,7 @@ When adding a new QE-backed calculation test:
 2. Put all QE-running logic into a **single** integration test function (e.g., `test_run_calculation_and_analyze`)
 3. Any other checks should either be:
    - Folded into that single function, OR
-   - Split into pure unit tests (no `qv run calculation` calls)
+   - Split into pure unit tests (no `qms run calculation` calls)
 
 This ensures compliance with the "one QE-running test per file" convention.
 
@@ -158,7 +158,7 @@ shutil.copy2(generated_input, sandbox_input)
 # Materialize pseudos to sandbox_dir/pseudo
 sandbox_pseudo_dir = sandbox_dir / "pseudo"
 sandbox_pseudo_dir.mkdir(parents=True, exist_ok=True)
-from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+from qmatsuite.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
 result = ensure_qe_pseudos(
     qe_input_file=sandbox_input,
     project_pseudo_dir=sandbox_pseudo_dir,  # Materialize to sandbox

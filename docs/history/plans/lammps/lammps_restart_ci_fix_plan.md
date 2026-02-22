@@ -20,7 +20,7 @@ Ensure LAMMPS handler verifies expected output artifacts exist before declaring 
 
 ### Files to Modify
 
-#### 1. `src/quantumvitas/execution/handlers.py`
+#### 1. `src/qmatsuite/execution/handlers.py`
 
 **Location**: `lammps_step_handler()` function, after line 532
 
@@ -83,7 +83,7 @@ step_result_data = {
 - For `relax` steps, `final.data` is required for downstream `restart_from`
 - For `md` steps, `restart.bin` is optional (depends on LAMMPS config) but warn if missing
 
-### 2. `src/quantumvitas/calculation/step_done.py`
+### 2. `src/qmatsuite/calculation/step_done.py`
 
 **Add LAMMPS step type handling** to `is_step_done()` function.
 
@@ -163,7 +163,7 @@ Make `restart_from` an explicit edge in JobGraph so future parallelization won't
 
 ### Files to Modify
 
-#### 1. `src/quantumvitas/execution/recipes.py`
+#### 1. `src/qmatsuite/execution/recipes.py`
 
 **Location**: `LAMMPSRecipe.materialize()` function, modify dependency logic
 
@@ -197,8 +197,8 @@ if len(jobs) > 0:
 step_params = step.parameters if hasattr(step, "parameters") else {}
 if not step_params:
     # Try to load from step spec
-    from quantumvitas.calculation.structure_steps import StructureStepSpec
-    from quantumvitas.core.resolution import require_step
+    from qmatsuite.calculation.structure_steps import StructureStepSpec
+    from qmatsuite.core.resolution import require_step
     try:
         step_ulid = step.meta.id
         # Get step file path
@@ -244,20 +244,20 @@ import pytest
 import shutil
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc
-from quantumvitas.core.models import load_calculation
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc
+from qmatsuite.core.models import load_calculation
+from qmatsuite.core.pseudo_provenance import compute_sha256_file
 
 
 def get_lammps_binary():
     """Check LAMMPS availability."""
-    from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
+    from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin
     try:
         return resolve_lammps_bin()
     except FileNotFoundError:
@@ -278,7 +278,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     project_dir = tmp_path / f"parallel_test_{execution_number}"
     
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=project_dir,
         name=f"Parallel Test {execution_number}"
     )
@@ -296,7 +296,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     struct_file.write_text(json.dumps(structure.as_dict()))
     
     # Import structure
-    struct_result = QVService.import_structure(project_root, struct_file, name="Cu FCC")
+    struct_result = QMSService.import_structure(project_root, struct_file, name="Cu FCC")
     structure_id = struct_result.meta.id
     
     # Copy potential file
@@ -312,7 +312,7 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     potential_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService.init_calculation(
+    calc_result = QMSService.init_calculation(
         project_root=project_root,
         name="parallel_test",
         structure_selector=structure_id,
@@ -337,14 +337,14 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step
-    relax_step = QVService.init_step(
+    relax_step = QMSService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="relax",
     )
     relax_step_id = relax_step.meta.id
     
-    QVService.configure_step(
+    QMSService.configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=relax_step_id,
@@ -361,14 +361,14 @@ def test_restart_chain_parallel_safe(tmp_path: Path, execution_number: int):
     )
     
     # Create MD step with restart_from
-    md_step = QVService.init_step(
+    md_step = QMSService.init_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_type="md",
     )
     md_step_id = md_step.meta.id
     
-    QVService.configure_step(
+    QMSService.configure_step(
         project_root=project_root,
         calculation_selector=calc_id,
         step_selector=md_step_id,

@@ -86,14 +86,14 @@ No schema changes. The existing FTS5 `tags` column naturally supports searching 
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/mcp/error_enrichment.py` | Error classification + knowledge-backed suggested_fixes |
+| `src/qmatsuite/mcp/error_enrichment.py` | Error classification + knowledge-backed suggested_fixes |
 | `tests/mcp/test_stage6.py` | 9 tests (7 unit + 2 real QE) |
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/mcp/tools/run_calculation.py` | Rewritten: added `_try_parse_digest()`, post-completion convergence check, error enrichment on both failure and completed-but-not-converged paths |
+| `src/qmatsuite/mcp/tools/run_calculation.py` | Rewritten: added `_try_parse_digest()`, post-completion convergence check, error enrichment on both failure and completed-but-not-converged paths |
 
 ## MCP Tool Count
 

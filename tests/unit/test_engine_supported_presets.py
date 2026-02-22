@@ -7,10 +7,10 @@ This is the SSOT for engine capability declaration.
 
 import pytest
 
-from quantumvitas.engine.qe_engine import QeEngine
-from quantumvitas.engine.pyscf_engine import PySCFEngine
-from quantumvitas.engine.orca_engine import ORCAEngine
-from quantumvitas.engine.base import Engine, EngineConfig
+from qmatsuite.engine.qe_engine import QeEngine
+from qmatsuite.engine.pyscf_engine import PySCFEngine
+from qmatsuite.engine.orca_engine import ORCAEngine
+from qmatsuite.engine.base import Engine, EngineConfig
 
 
 def test_qe_engine_supported_presets():

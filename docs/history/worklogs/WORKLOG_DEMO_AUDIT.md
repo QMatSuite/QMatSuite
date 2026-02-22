@@ -19,7 +19,7 @@ Post-implementation audit of Wave 1 (01c96cb5) and Wave 2 (49237c81) demo store 
 ### FIX 1: Trajectory _summarize_bundle returns None for energy
 - Root cause: `_summarize_bundle` reads `arrays.energy` but trajectory bundles store energy in `series` list
 - Fix: Added series fallback in `_summarize_bundle` for trajectory type
-- File: `src/quantumvitas/mcp/tools/demo_store.py` lines 88-101
+- File: `src/qmatsuite/mcp/tools/demo_store.py` lines 88-101
 - Test strengthened: `test_get_demo_results_trajectory_summary` now asserts energy is not None
 
 ### FIX 2: subtitle + difficulty for all 52 demo case.yaml files
@@ -28,6 +28,6 @@ Post-implementation audit of Wave 1 (01c96cb5) and Wave 2 (49237c81) demo store 
 - Difficulty criteria: runtime thresholds, physics complexity, engine complexity
 
 ## Files Modified
-- `src/quantumvitas/mcp/tools/demo_store.py` - trajectory energy series fallback
+- `src/qmatsuite/mcp/tools/demo_store.py` - trajectory energy series fallback
 - `tests/mcp/test_demo_store_mcp.py` - trajectory energy assertions
 - 52x `tests/inputformat/samples/<engine>/<case>/case.yaml` - subtitle + difficulty

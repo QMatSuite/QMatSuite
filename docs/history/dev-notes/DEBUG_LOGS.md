@@ -131,7 +131,7 @@ This shows that UI is passing slug "bands" instead of ULID. This may cause slug 
 ## Technical Details
 
 - Debug flag is stored in `.qmatsuite/config/settings.json` as `debug_resolution: true/false`
-- Flag is checked via `quantumvitas.core.debug.is_resolution_debug_enabled()`
+- Flag is checked via `qmatsuite.core.debug.is_resolution_debug_enabled()`
 - Logs are gated at call sites (not by changing global logger level)
 - Warnings about correctness issues are **not** gated (always visible)
 

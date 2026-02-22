@@ -6,7 +6,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useJobs, useJobDetail } from '../../hooks/useJobs';
-import type { CalculationInfo, CalculationDetailResult } from '../../types/qv';
+import type { CalculationInfo, CalculationDetailResult } from '../../types/qms';
 import './CalculationRunPanel.css';
 
 // Reuse StatusBadge from JobsPanel
@@ -27,7 +27,7 @@ function StatusBadge({ status, size = 'medium' }: StatusBadgeProps) {
   return (
     <span 
       className={`status-badge status-badge--${status} status-badge--${size}`}
-      data-testid="qv-job-status"
+      data-testid="qms-job-status"
     >
       <span className="status-badge__icon">{icon}</span>
       <span className="status-badge__label">{status}</span>
@@ -258,7 +258,7 @@ function CalculationJobDetail({ jobId, onClose }: CalculationJobDetailProps) {
               <code title={job.io_dir}>{job.io_dir}</code>
               <button
                 className="calculation-job-detail__reveal"
-                onClick={() => window.qv?.revealPath?.(job.io_dir!)}
+                onClick={() => window.qms?.revealPath?.(job.io_dir!)}
                 title={`Reveal: ${job.io_dir}`}
               >
                 📂 Reveal

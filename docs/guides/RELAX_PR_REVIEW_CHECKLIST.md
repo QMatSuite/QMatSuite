@@ -19,7 +19,7 @@ Cursor Auto 每完成一个 PR，必须对照本清单逐项自检。
   - 不应存在 `"vc-relax"`, `"opt"`, `"geomopt"` 作为独立 public type
 
 - [ ] **CHECK-1.2**: `RELAX_STEP_TYPES` 只包含 `"relax"`
-  - 检查 `src/quantumvitas/engine/qc_engine_base.py`
+  - 检查 `src/qmatsuite/engine/qc_engine_base.py`
   - `RELAX_STEP_TYPES = {"relax"}`
 
 - [ ] **CHECK-1.3**: VC-relax 通过 option 控制
@@ -31,7 +31,7 @@ Cursor Auto 每完成一个 PR，必须对照本清单逐项自检。
 ## 2. QC Topology 严格验证
 
 - [ ] **CHECK-2.1**: `verify_qc_topology()` 在 ORCA/PySCF Recipe 中调用
-  - 检查 `src/quantumvitas/execution/recipes.py`
+  - 检查 `src/qmatsuite/execution/recipes.py`
   - `ORCARecipe.materialize()` 开头调用
   - `PySCFRecipe.materialize()` 开头调用
 
@@ -47,7 +47,7 @@ Cursor Auto 每完成一个 PR，必须对照本清单逐项自检。
 ## 3. Scoped Cleanup
 
 - [ ] **CHECK-3.1**: Job 开始前清理覆盖的 relax steps
-  - 检查 `src/quantumvitas/execution/executor.py`
+  - 检查 `src/qmatsuite/execution/executor.py`
   - 在 job 执行前调用 `clean_generated_structure()` for each relax step in job
 
 - [ ] **CHECK-3.2**: 不全清
@@ -59,7 +59,7 @@ Cursor Auto 每完成一个 PR，必须对照本清单逐项自检。
 ## 4. Missing Artifact Hard Error
 
 - [ ] **CHECK-4.1**: `MissingArtifactError` 定义存在
-  - 检查 `src/quantumvitas/core/exceptions.py`
+  - 检查 `src/qmatsuite/core/exceptions.py`
 
 - [ ] **CHECK-4.2**: 需要 effective structure 时检查 `current.json` 存在
   - 若依赖 relax step 的结构，必须检查 `get_generated_structure_path().exists()`
@@ -74,7 +74,7 @@ Cursor Auto 每完成一个 PR，必须对照本清单逐项自检。
 ## 5. Canonicalize 入口唯一
 
 - [ ] **CHECK-5.1**: QE parser 使用 `canonicalize_structure_in_place()`
-  - 检查 `src/quantumvitas/calculation/geometry.py`
+  - 检查 `src/qmatsuite/calculation/geometry.py`
   - `structure_from_qe_geometry_snapshot()` 内部调用
 
 - [ ] **CHECK-5.2**: ORCA parser 使用相同入口
@@ -137,7 +137,7 @@ Cursor Auto 每完成一个 PR，必须对照本清单逐项自检。
 ## 9. 文件格式
 
 - [ ] **CHECK-9.1**: `current.json` 格式正确
-  - 包含 `__qv_meta__` 字段
+  - 包含 `__qms_meta__` 字段
   - 包含 `source_step_ulid`, `provenance`
   - pymatgen 可读取
 
@@ -165,19 +165,19 @@ Cursor Auto 每完成一个 PR，必须对照本清单逐项自检。
 
 ```bash
 # 检查 GEN step 唯一性
-grep -n "RELAX_STEP_TYPES" src/quantumvitas/engine/qc_engine_base.py
+grep -n "RELAX_STEP_TYPES" src/qmatsuite/engine/qc_engine_base.py
 
 # 检查 canonicalize 调用
 grep -rn "canonicalize_structure_in_place" src/
 
 # 检查 produces_charge_density
-grep -n "produces_charge_density" src/quantumvitas/workflow/registry.py
+grep -n "produces_charge_density" src/qmatsuite/workflow/registry.py
 
 # 检查 is_structure_transform
-grep -n "is_structure_transform" src/quantumvitas/workflow/registry.py
+grep -n "is_structure_transform" src/qmatsuite/workflow/registry.py
 
 # 检查 verify_qc_topology 调用
-grep -n "verify_qc_topology" src/quantumvitas/execution/recipes.py
+grep -n "verify_qc_topology" src/qmatsuite/execution/recipes.py
 ```
 
 ---

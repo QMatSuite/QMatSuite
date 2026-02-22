@@ -36,28 +36,28 @@ This spec extends and refines rules from the repo-root `CONSTITUTION.md`. The fo
 
 | Package | Role |
 |---------|------|
-| `quantumvitas.core` | SSOT (YamlDoc, yaml_io, locking), resolution, models, pseudo management |
-| `quantumvitas.calculation` | Calculation/step domain model, runner, manifest, hashing |
-| `quantumvitas.execution` | Job graph, executor, recipes, handlers, scan expansion |
-| `quantumvitas.engine` | Pluggable engine drivers (QE, PySCF, ORCA, VASP, LAMMPS, CP2K) |
-| `quantumvitas.workflow` | Step type registry, step factory, step type conversion |
-| `quantumvitas.analysis` | Post-run analysis, artifact parsing, primitives |
-| `quantumvitas.io` | File format I/O (CIF, XYZ, POSCAR, etc.) |
-| `quantumvitas.presets` | Preset catalog, preset application |
-| `quantumvitas.parsers` | Output file parsers |
-| `quantumvitas.history` | Project history, run revisions, events |
-| `quantumvitas.project` | Project model, storage, snapshots |
-| `quantumvitas.data` | Static data (basis sets, pseudo library info) |
-| `quantumvitas.drivers` | Recipe/handler implementations (QE, PySCF, ORCA) |
-| `quantumvitas.ir` | Intermediate representation |
-| `quantumvitas.viz` | Visualization helpers |
-| `quantumvitas.legacy` | Migration code (scheduled for deletion; see EXC-003) |
+| `qmatsuite.core` | SSOT (YamlDoc, yaml_io, locking), resolution, models, pseudo management |
+| `qmatsuite.calculation` | Calculation/step domain model, runner, manifest, hashing |
+| `qmatsuite.execution` | Job graph, executor, recipes, handlers, scan expansion |
+| `qmatsuite.engine` | Pluggable engine drivers (QE, PySCF, ORCA, VASP, LAMMPS, CP2K) |
+| `qmatsuite.workflow` | Step type registry, step factory, step type conversion |
+| `qmatsuite.analysis` | Post-run analysis, artifact parsing, primitives |
+| `qmatsuite.io` | File format I/O (CIF, XYZ, POSCAR, etc.) |
+| `qmatsuite.presets` | Preset catalog, preset application |
+| `qmatsuite.parsers` | Output file parsers |
+| `qmatsuite.history` | Project history, run revisions, events |
+| `qmatsuite.project` | Project model, storage, snapshots |
+| `qmatsuite.data` | Static data (basis sets, pseudo library info) |
+| `qmatsuite.drivers` | Recipe/handler implementations (QE, PySCF, ORCA) |
+| `qmatsuite.ir` | Intermediate representation |
+| `qmatsuite.viz` | Visualization helpers |
+| `qmatsuite.legacy` | Migration code (scheduled for deletion; see EXC-003) |
 
 ### 1.2 What is "API Facade"
 
 | Package | Role |
 |---------|------|
-| `quantumvitas.api` | Public entry points, DTOs, errors, utils |
+| `qmatsuite.api` | Public entry points, DTOs, errors, utils |
 
 - API MUST NOT expose kernel types directly (use DTOs).
 - API MUST map kernel exceptions to API exceptions.
@@ -67,9 +67,9 @@ This spec extends and refines rules from the repo-root `CONSTITUTION.md`. The fo
 
 | Package | Role |
 |---------|------|
-| `quantumvitas.cli` | Command-line interface (Typer) |
-| `quantumvitas.daemon` | JSON-RPC daemon (GUI backend) |
-| `quantumvitas.frontends.*` | Future frontends (Jupyter, agent adapters) |
+| `qmatsuite.cli` | Command-line interface (Typer) |
+| `qmatsuite.daemon` | JSON-RPC daemon (GUI backend) |
+| `qmatsuite.frontends.*` | Future frontends (Jupyter, agent adapters) |
 
 ---
 
@@ -79,7 +79,7 @@ The kernel SHALL be organized into **7 domains**. Each domain has a clear respon
 
 ### 2.1 Domain: `ssot` (Single Source of Truth)
 
-**Current location**: `quantumvitas.core.yamldoc`, `quantumvitas.core.yaml_io`, `quantumvitas.core.locking`, `quantumvitas.core.journal`
+**Current location**: `qmatsuite.core.yamldoc`, `qmatsuite.core.yaml_io`, `qmatsuite.core.locking`, `qmatsuite.core.journal`
 
 **Responsibilities**:
 - YAML document abstraction with mutation containment (`YamlDoc`, `StepDoc`, `CalcDoc`, `ProjectDoc`)
@@ -88,7 +88,7 @@ The kernel SHALL be organized into **7 domains**. Each domain has a clear respon
 - Journal integration at save boundary (`core/journal.py`)
 - Snapshot management for diff/undo
 
-**Public Surface** (`quantumvitas/core/public.py` — ssot section):
+**Public Surface** (`qmatsuite/core/public.py` — ssot section):
 - `load_yaml_doc()`, `save_yaml_doc()`
 - `load_step_doc()`, `load_calc_doc()`, `load_project_doc()`
 - `YamlDoc`, `StepDoc`, `CalcDoc`, `ProjectDoc`
@@ -103,11 +103,11 @@ The kernel SHALL be organized into **7 domains**. Each domain has a clear respon
 
 ### 2.2 Domain: `resources` (Resource Resolution & Indexing)
 
-**Current location**: `quantumvitas.core.resolution`, `quantumvitas.core.resources`, `quantumvitas.core.selectors`, `quantumvitas.core.models`
+**Current location**: `qmatsuite.core.resolution`, `qmatsuite.core.resources`, `qmatsuite.core.selectors`, `qmatsuite.core.models`
 
 **Responsibilities**:
 - **ULID-first resource indexing** (Constitution S2.1): build in-memory index keyed by ULID
-- Project root discovery (look for `project.qv.yml` marker per S2.3)
+- Project root discovery (look for `project.qms.yml` marker per S2.3)
 - Selector resolution (ULID > slug > name > path, per `resolution.py` resolve order)
 - Ambiguity detection and error handling
 
@@ -128,17 +128,17 @@ Resources/resolution MUST be **read-only**: never write SSOT.
 def load_yaml_meta_subtree(path: Path) -> dict:
     """Load a YAML file and return ONLY the 'meta' subtree.
 
-    Returns the dict under the 'meta' key (or '__qv_meta__' for
+    Returns the dict under the 'meta' key (or '__qms_meta__' for
     legacy structure files). All other top-level keys are discarded.
     Uses _load_yaml_raw() internally — never raw yaml.safe_load.
     """
     data = _load_yaml_raw(path)
-    return data.get("meta") or data.get("__qv_meta__") or {}
+    return data.get("meta") or data.get("__qms_meta__") or {}
 ```
 
 Resources domain MUST use `load_yaml_meta_subtree()` for all YAML reads during index building and resolution. This makes the meta-only boundary enforceable: a gate test can verify that `resolution.py` calls only `load_yaml_meta_subtree()`, never `_load_yaml_raw()` or `load_yaml_doc()` (which return full documents).
 
-**Public Surface** (`quantumvitas/core/public.py` — resources section):
+**Public Surface** (`qmatsuite/core/public.py` — resources section):
 - `require_calculation()`, `require_step()`, `require_structure()`
 - `list_calculations()`, `list_structures()`
 - `build_resource_index()`, `ResourceIndex`
@@ -148,18 +148,18 @@ Resources domain MUST use `load_yaml_meta_subtree()` for all YAML reads during i
 - MUST NOT interpret step parameters or calculation semantics
 - MUST NOT know about execution or engine specifics
 
-**Constitution alignment**: Implements S2.1 (ULID-only reference), S2.2 (index/cache from project root scan), S2.3 (project root marker = `project.qv.yml`), S2.4 (rename/move does not change identity).
+**Constitution alignment**: Implements S2.1 (ULID-only reference), S2.2 (index/cache from project root scan), S2.3 (project root marker = `project.qms.yml`), S2.4 (rename/move does not change identity).
 
 ### 2.3 Domain: `models` (Domain Models)
 
-**Current location**: `quantumvitas.calculation.calculation`, `quantumvitas.calculation.step`, `quantumvitas.project`
+**Current location**: `qmatsuite.calculation.calculation`, `qmatsuite.calculation.step`, `qmatsuite.project`
 
 **Responsibilities**:
 - In-memory domain models (Calculation, Step, Project)
 - Loading models from YAML (using SSOT domain)
 - Model validation and integrity checks
 
-**Public Surface** (`quantumvitas/calculation/public.py`):
+**Public Surface** (`qmatsuite/calculation/public.py`):
 - `Calculation`, `Step`, model loading methods
 - Read-only model attributes
 
@@ -170,7 +170,7 @@ Resources domain MUST use `load_yaml_meta_subtree()` for all YAML reads during i
 
 ### 2.4 Domain: `runtime` (Execution Orchestration)
 
-**Current location**: `quantumvitas.calculation.runner`, `quantumvitas.execution.*`, `quantumvitas.calculation.manifest`
+**Current location**: `qmatsuite.calculation.runner`, `qmatsuite.execution.*`, `qmatsuite.calculation.manifest`
 
 **Responsibilities**:
 - Job graph construction from calculation topology (`execution/job_graph.py`)
@@ -181,7 +181,7 @@ Resources domain MUST use `load_yaml_meta_subtree()` for all YAML reads during i
 - **Materialization**: reading step definitions from SSOT and producing `EngineInput` for engines (see Law K6)
 - Side-effect coordination (outdir, raw, pseudo staging)
 
-**Public Surface** (`quantumvitas/execution/public.py`):
+**Public Surface** (`qmatsuite/execution/public.py`):
 - `CalculationRunner`
 - `JobExecutor`, `JobGraph`, `SelectionMode`
 - `get_recipe_for_engine()`
@@ -193,7 +193,7 @@ Resources domain MUST use `load_yaml_meta_subtree()` for all YAML reads during i
 
 ### 2.5 Domain: `engines` (Pluggable Engine Drivers)
 
-**Current location**: `quantumvitas.engine.*`
+**Current location**: `qmatsuite.engine.*`
 
 **Responsibilities**:
 - Engine implementations (QE, PySCF, ORCA, VASP, LAMMPS, CP2K)
@@ -209,12 +209,12 @@ Resources domain MUST use `load_yaml_meta_subtree()` for all YAML reads during i
 
 *(Current code violates this: `pyscf_engine.py` lines 368, 498 and `orca_engine.py` lines 514, 529 both call `yaml.safe_load` on step.yaml. See Review Report for full list.)*
 
-**Public Surface** (`quantumvitas/engine/public.py`):
+**Public Surface** (`qmatsuite/engine/public.py`):
 - `EngineRegistry`, `create_default_registry()`
 - `Engine` protocol (abstract interface)
 
 **Forbidden Responsibilities**:
-- MUST NOT read SSOT YAML files (step.yaml, calculation.yaml, project.qv.yml)
+- MUST NOT read SSOT YAML files (step.yaml, calculation.yaml, project.qms.yml)
 - MUST NOT import from SSOT domain
 - MUST NOT know about calculation topology or manifest
 - MUST NOT manage run tracking or history
@@ -223,7 +223,7 @@ Resources domain MUST use `load_yaml_meta_subtree()` for all YAML reads during i
 
 ### 2.6 Domain: `workflow` (Step Type Semantics)
 
-**Current location**: `quantumvitas.workflow.*`
+**Current location**: `qmatsuite.workflow.*`
 
 **Responsibilities**:
 - Step type registry (`StepTypeRegistry` in `workflow/registry.py`)
@@ -232,7 +232,7 @@ Resources domain MUST use `load_yaml_meta_subtree()` for all YAML reads during i
 - Step factory (creating new step YAML files)
 - Preset dimension mapping (via engine capability queries)
 
-**Public Surface** (`quantumvitas/workflow/public.py`):
+**Public Surface** (`qmatsuite/workflow/public.py`):
 - `get_registry()`, `StepTypeRegistry`, `StepTypeSpec`
 - `spec_from()`, `gen_from()`, `prefix_from()`
 - `generate_subchain_basename()`
@@ -246,7 +246,7 @@ Resources domain MUST use `load_yaml_meta_subtree()` for all YAML reads during i
 
 ### 2.7 Domain: `analysis` (Post-Run Analysis)
 
-**Current location**: `quantumvitas.analysis.*`, `quantumvitas.parsers.*`
+**Current location**: `qmatsuite.analysis.*`, `qmatsuite.parsers.*`
 
 **Responsibilities**:
 - Artifact parsing (SCF, DOS, bands, etc.)
@@ -254,7 +254,7 @@ Resources domain MUST use `load_yaml_meta_subtree()` for all YAML reads during i
 - Artifact caching and storage
 - Trajectory I/O and analysis
 
-**Public Surface** (`quantumvitas/analysis/public.py`):
+**Public Surface** (`qmatsuite/analysis/public.py`):
 - `read_artifact()`, `artifact_exists()`, `AnalysisType`
 - Analysis primitive functions
 
@@ -374,16 +374,16 @@ Lazy imports inside function bodies do not create module-load cycles but SHOULD 
 
 Each kernel package SHALL have at most one `public.py` file that defines the package's public surface for cross-domain consumers.
 
-> **Terminology note**: `kernel/<domain>/public.py` is a **kernel-internal** cross-domain import entrypoint. Its sole purpose is dependency DAG hygiene — ensuring that cross-domain imports are explicit, auditable, and go through a single file per package. It is **NOT** the facade API (`quantumvitas.api`), is **NOT** an externally stable contract, and is **NOT** visible to frontends (daemon, CLI, GUI). Frontends import only from `quantumvitas.api` per API Constitution H1. Renaming, restructuring, or removing exports in `public.py` does not require frontend migration — only kernel-internal consumers are affected.
+> **Terminology note**: `kernel/<domain>/public.py` is a **kernel-internal** cross-domain import entrypoint. Its sole purpose is dependency DAG hygiene — ensuring that cross-domain imports are explicit, auditable, and go through a single file per package. It is **NOT** the facade API (`qmatsuite.api`), is **NOT** an externally stable contract, and is **NOT** visible to frontends (daemon, CLI, GUI). Frontends import only from `qmatsuite.api` per API Constitution H1. Renaming, restructuring, or removing exports in `public.py` does not require frontend migration — only kernel-internal consumers are affected.
 
 ```python
 # ALLOWED (once public.py exists):
-from quantumvitas.core.public import load_yaml_doc, save_yaml_doc
-from quantumvitas.engine.public import EngineRegistry
+from qmatsuite.core.public import load_yaml_doc, save_yaml_doc
+from qmatsuite.engine.public import EngineRegistry
 
 # FORBIDDEN (deep import):
-from quantumvitas.core.yamldoc import YamlDoc         # Direct class import
-from quantumvitas.execution.executor import JobExecutor # Deep internal import
+from qmatsuite.core.yamldoc import YamlDoc         # Direct class import
+from qmatsuite.execution.executor import JobExecutor # Deep internal import
 ```
 
 **Phased enforcement**:
@@ -397,24 +397,24 @@ from quantumvitas.execution.executor import JobExecutor # Deep internal import
 
 ### LAW K0: Kernel MUST NOT Import API Facade
 
-No kernel package SHALL import from `quantumvitas.api`.
+No kernel package SHALL import from `qmatsuite.api`.
 
 **Current violations** (must be fixed):
 
 | File | Import | Remedy |
 |------|--------|--------|
-| `engine/pyscf_engine.py:385,515,544` | `from quantumvitas.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
-| `workflow/registry.py:930` | `from quantumvitas.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
-| `workflow/templates.py:516` | `from quantumvitas.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
-| `presets/integration.py:314,379` | `from quantumvitas.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
-| `drivers/qe/handler.py:168` | `from quantumvitas.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
-| `calculation/folder_import.py:15` | `from quantumvitas.api import QVService` | Refactor to use kernel-level functions |
+| `engine/pyscf_engine.py:385,515,544` | `from qmatsuite.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
+| `workflow/registry.py:930` | `from qmatsuite.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
+| `workflow/templates.py:516` | `from qmatsuite.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
+| `presets/integration.py:314,379` | `from qmatsuite.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
+| `drivers/qe/handler.py:168` | `from qmatsuite.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
+| `calculation/folder_import.py:15` | `from qmatsuite.api import QMSService` | Refactor to use kernel-level functions |
 
 **Gate**: `tests/gates/test_kernel_no_api_import.py`
 
 ### LAW K3: YAML Writes Through Single Entry Point
 
-All writes to SSOT YAML files (project.qv.yml, calculation.yaml, *.step.yaml) MUST go through `save_yaml_doc()` in `quantumvitas.core.yaml_io`.
+All writes to SSOT YAML files (project.qms.yml, calculation.yaml, *.step.yaml) MUST go through `save_yaml_doc()` in `qmatsuite.core.yaml_io`.
 
 **Actual single entry point** (verified in code):
 - Function: `save_yaml_doc()` at `core/yaml_io.py:117`
@@ -422,7 +422,7 @@ All writes to SSOT YAML files (project.qv.yml, calculation.yaml, *.step.yaml) MU
 - Journal hook: `save_yaml_doc()` records changes to Journal at `core/yaml_io.py:177-206`
 - History hook: `save_yaml_doc()` records edit events at `core/yaml_io.py:209-219`
 
-No `yaml.safe_dump()` calls SHALL exist outside `quantumvitas.core.yaml_io`, except for writes to whitelisted non-SSOT export zones (see `KERNEL_EXCEPTIONS.md` EXC-004).
+No `yaml.safe_dump()` calls SHALL exist outside `qmatsuite.core.yaml_io`, except for writes to whitelisted non-SSOT export zones (see `KERNEL_EXCEPTIONS.md` EXC-004).
 
 **Gate**: `tests/gates/test_yaml_write_single_entry.py`
 
@@ -443,7 +443,7 @@ Engines are pluggable drivers:
 
 ### LAW K5: No Runtime Keys in SSOT YAML
 
-SSOT files (calculation.yaml, step.yaml, project.qv.yml) MUST NOT contain runtime-injected keys (run status, timestamps, last_run_ulid, etc.). Runtime state lives in:
+SSOT files (calculation.yaml, step.yaml, project.qms.yml) MUST NOT contain runtime-injected keys (run status, timestamps, last_run_ulid, etc.). Runtime state lives in:
 
 | Data | Location | Format |
 |------|----------|--------|
@@ -455,7 +455,7 @@ SSOT files (calculation.yaml, step.yaml, project.qv.yml) MUST NOT contain runtim
 
 ### LAW K6: Engine Input Contract (EngineInput Port)
 
-**Absolute prohibition**: Engines MUST NOT import from the SSOT domain. Engines MUST NOT read `step.yaml`, `calculation.yaml`, or `project.qv.yml`. Engines MUST NOT call `yaml.safe_load`, `_load_yaml_raw`, `load_yaml_doc`, or any YAML loader on SSOT file paths.
+**Absolute prohibition**: Engines MUST NOT import from the SSOT domain. Engines MUST NOT read `step.yaml`, `calculation.yaml`, or `project.qms.yml`. Engines MUST NOT call `yaml.safe_load`, `_load_yaml_raw`, `load_yaml_doc`, or any YAML loader on SSOT file paths.
 
 **Step-type safety** (per `step_type_gen_spec_constitution.md` §3.1): Engines/backends MUST NOT implement manual spec/gen conversions. Specifically forbidden in engine code:
 - `spec.split("_", 1)` or any manual underscore parsing
@@ -620,7 +620,7 @@ class Engine(Protocol):
 ```
 
 **Adding a new engine**:
-1. Create `quantumvitas.engine.{name}_engine.py` implementing `Engine` protocol
+1. Create `qmatsuite.engine.{name}_engine.py` implementing `Engine` protocol
 2. Register in `create_default_registry()` (`engine/registry.py`)
 3. Add step types to `workflow/registry.py` `_STEP_TYPES` dict
 4. Add recipe to `execution/recipes.py` `get_recipe_for_engine()`
@@ -655,8 +655,8 @@ class ArtifactParser(Protocol):
 
 | Gate ID | Name | Checks | Priority |
 |---------|------|--------|----------|
-| G-K0 | Kernel No API Import | kernel MUST NOT import `quantumvitas.api` | P0 |
-| G-K1 | Kernel No Frontend Import | kernel MUST NOT import `quantumvitas.cli/daemon` | P0 |
+| G-K0 | Kernel No API Import | kernel MUST NOT import `qmatsuite.api` | P0 |
+| G-K1 | Kernel No Frontend Import | kernel MUST NOT import `qmatsuite.cli/daemon` | P0 |
 | G-K2 | Frontend No Kernel Import | frontends MUST NOT import kernel directly | P0 (exists) |
 | G-K3 | YAML Write Single Entry | `yaml.safe_dump` only in `yaml_io.py` (+ EXC-004 whitelist) | P0 |
 | G-K6 | Engine No SSOT Import | engine/ MUST NOT import `core.yaml_io`/`core.yamldoc`/`core.locking`/`core.journal`; engine/ MUST NOT contain `yaml.safe_load` | P1 |

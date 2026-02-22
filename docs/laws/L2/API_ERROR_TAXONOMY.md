@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-This document defines the stable error codes for `quantumvitas.api`. All API errors MUST use codes from this registry.
+This document defines the stable error codes for `qmatsuite.api`. All API errors MUST use codes from this registry.
 
 ---
 

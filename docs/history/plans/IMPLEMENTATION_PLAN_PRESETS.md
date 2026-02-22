@@ -41,7 +41,7 @@ This document tracks the implementation of the preset detection and compilation 
 ### Phase 1: Detector B Core Logic ✅
 
 - [x] **1.1** Create preset/detector module structure
-  - Files: `src/quantumvitas/presets/__init__.py`, `dimensions.py`, `detector.py`
+  - Files: `src/qmatsuite/presets/__init__.py`, `dimensions.py`, `detector.py`
   - Completed: 2025-12-30
 
 - [x] **1.2** Define preset dimension enums
@@ -76,7 +76,7 @@ This document tracks the implementation of the preset detection and compilation 
 ### Phase 2: Compiler Implementation ✅
 
 - [x] **2.1** Create compiler module
-  - File: `src/quantumvitas/presets/compiler.py`
+  - File: `src/qmatsuite/presets/compiler.py`
   - Pure functions mapping options → canonical parameters
   - Completed: 2025-12-30
 
@@ -215,10 +215,10 @@ Steps like `dos`, `bands`, `projwfc` don't have a SYSTEM namelist. Detection sho
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/presets/__init__.py` | Public API exports |
-| `src/quantumvitas/presets/dimensions.py` | Enum definitions (SpinOption, SOCOption, MaterialOption, CUSTOM) |
-| `src/quantumvitas/presets/detector.py` | Detector B implementation (tolerant, implicit defaults) |
-| `src/quantumvitas/presets/compiler.py` | Compiler implementation (strict, canonical encoding) |
+| `src/qmatsuite/presets/__init__.py` | Public API exports |
+| `src/qmatsuite/presets/dimensions.py` | Enum definitions (SpinOption, SOCOption, MaterialOption, CUSTOM) |
+| `src/qmatsuite/presets/detector.py` | Detector B implementation (tolerant, implicit defaults) |
+| `src/qmatsuite/presets/compiler.py` | Compiler implementation (strict, canonical encoding) |
 | `tests/unit/test_detector_b.py` | 70 comprehensive tests |
 | `docs/IMPLEMENTATION_PLAN_PRESETS.md` | This plan document |
 

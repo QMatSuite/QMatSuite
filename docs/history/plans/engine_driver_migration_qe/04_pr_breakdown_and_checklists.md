@@ -17,17 +17,17 @@
 ### Implementation Checklist
 
 #### Step 1.1: Create directory structure
-- [ ] Create `src/quantumvitas/drivers/qe/`
-- [ ] Create `src/quantumvitas/drivers/qe/__init__.py` (empty for now)
-- [ ] Create `src/quantumvitas/drivers/qe/driver.py` (stub)
-- [ ] Create `src/quantumvitas/drivers/qe/step_types.py` (empty list)
+- [ ] Create `src/qmatsuite/drivers/qe/`
+- [ ] Create `src/qmatsuite/drivers/qe/__init__.py` (empty for now)
+- [ ] Create `src/qmatsuite/drivers/qe/driver.py` (stub)
+- [ ] Create `src/qmatsuite/drivers/qe/step_types.py` (empty list)
 
 #### Step 1.2: Create minimal driver
 ```python
-# File: src/quantumvitas/drivers/qe/driver.py
+# File: src/qmatsuite/drivers/qe/driver.py
 """QE Driver (stub for migration)."""
 
-from quantumvitas.core.driver_protocol import BaseEngineDriver, StepTypeSpec, WorkdirPolicy
+from qmatsuite.core.driver_protocol import BaseEngineDriver, StepTypeSpec, WorkdirPolicy
 
 
 class QEDriver(BaseEngineDriver):
@@ -47,19 +47,19 @@ class QEDriver(BaseEngineDriver):
 
     def get_step_type_specs(self) -> list[StepTypeSpec]:
         # Delegate to shim for now
-        from quantumvitas.drivers.qe_shim import QELegacyDriver
+        from qmatsuite.drivers.qe_shim import QELegacyDriver
         return QELegacyDriver().get_step_type_specs()
 
     def get_handler(self):
-        from quantumvitas.drivers.qe_shim import QELegacyDriver
+        from qmatsuite.drivers.qe_shim import QELegacyDriver
         return QELegacyDriver().get_handler()
 
     def get_recipe_class(self):
-        from quantumvitas.drivers.qe_shim import QELegacyDriver
+        from qmatsuite.drivers.qe_shim import QELegacyDriver
         return QELegacyDriver().get_recipe_class()
 
     def get_materialization_map(self) -> dict[str, str]:
-        from quantumvitas.drivers.qe_shim import QELegacyDriver
+        from qmatsuite.drivers.qe_shim import QELegacyDriver
         return QELegacyDriver().get_materialization_map()
 
     def get_workdir_policy(self) -> WorkdirPolicy:
@@ -68,7 +68,7 @@ class QEDriver(BaseEngineDriver):
 
 #### Step 1.3: Update `__init__.py` to NOT register yet
 ```python
-# File: src/quantumvitas/drivers/qe/__init__.py
+# File: src/qmatsuite/drivers/qe/__init__.py
 """QE Driver Bundle (migration in progress)."""
 
 from .driver import QEDriver
@@ -81,12 +81,12 @@ __all__ = ["QEDriver"]
 
 ### Validation
 - [ ] Directory structure exists
-- [ ] `from quantumvitas.drivers.qe import QEDriver` works
+- [ ] `from qmatsuite.drivers.qe import QEDriver` works
 - [ ] All existing tests pass: `pytest tests/`
 
 ### Rollback
 ```bash
-rm -rf src/quantumvitas/drivers/qe/
+rm -rf src/qmatsuite/drivers/qe/
 ```
 
 ---
@@ -108,10 +108,10 @@ rm -rf src/quantumvitas/drivers/qe/
 - [ ] Ensure all specs use `StepTypeSpec` from `driver_protocol`
 
 ```python
-# File: src/quantumvitas/drivers/qe/step_types.py
+# File: src/qmatsuite/drivers/qe/step_types.py
 """QE step type specifications."""
 
-from quantumvitas.core.driver_protocol import StepTypeSpec
+from qmatsuite.core.driver_protocol import StepTypeSpec
 
 
 QE_STEP_TYPE_SPECS: list[StepTypeSpec] = [
@@ -138,12 +138,12 @@ def get_step_type_specs(self) -> list[StepTypeSpec]:
 # In drivers/qe_shim/__init__.py
 def get_step_type_specs(self) -> list[StepTypeSpec]:
     # Delegate to new driver
-    from quantumvitas.drivers.qe.step_types import QE_STEP_TYPE_SPECS
+    from qmatsuite.drivers.qe.step_types import QE_STEP_TYPE_SPECS
     return QE_STEP_TYPE_SPECS
 ```
 
 ### Validation
-- [ ] `from quantumvitas.drivers.qe.step_types import QE_STEP_TYPE_SPECS` works
+- [ ] `from qmatsuite.drivers.qe.step_types import QE_STEP_TYPE_SPECS` works
 - [ ] `len(QE_STEP_TYPE_SPECS) >= 20`
 - [ ] All step types have required fields (id, engine, executable)
 - [ ] All existing tests pass: `pytest tests/`
@@ -151,9 +151,9 @@ def get_step_type_specs(self) -> list[StepTypeSpec]:
 
 ### Rollback
 ```bash
-git checkout HEAD~1 -- src/quantumvitas/drivers/qe/step_types.py
-git checkout HEAD~1 -- src/quantumvitas/drivers/qe/driver.py
-git checkout HEAD~1 -- src/quantumvitas/drivers/qe_shim/__init__.py
+git checkout HEAD~1 -- src/qmatsuite/drivers/qe/step_types.py
+git checkout HEAD~1 -- src/qmatsuite/drivers/qe/driver.py
+git checkout HEAD~1 -- src/qmatsuite/drivers/qe_shim/__init__.py
 ```
 
 ---
@@ -175,7 +175,7 @@ git checkout HEAD~1 -- src/quantumvitas/drivers/qe_shim/__init__.py
 - [ ] Ensure all dependencies are available
 
 ```python
-# File: src/quantumvitas/drivers/qe/recipe.py
+# File: src/qmatsuite/drivers/qe/recipe.py
 """QE Recipe: Directory-state, step-run model."""
 
 from __future__ import annotations
@@ -183,11 +183,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional
 
-from quantumvitas.execution.job_graph import Job, JobGraph
-from quantumvitas.execution.recipes import BaseRecipe
+from qmatsuite.execution.job_graph import Job, JobGraph
+from qmatsuite.execution.recipes import BaseRecipe
 
 if TYPE_CHECKING:
-    from quantumvitas.calculation.step import Step
+    from qmatsuite.calculation.step import Step
 
 
 class QERecipe(BaseRecipe):
@@ -214,22 +214,22 @@ def get_recipe_class(self):
 # Backward-compatibility re-export
 def __getattr__(name: str):
     if name == "QERecipe":
-        from quantumvitas.drivers.qe.recipe import QERecipe
+        from qmatsuite.drivers.qe.recipe import QERecipe
         return QERecipe
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 ```
 
 ### Validation
-- [ ] `from quantumvitas.drivers.qe.recipe import QERecipe` works
-- [ ] `from quantumvitas.execution.recipes import QERecipe` still works (backward compat)
+- [ ] `from qmatsuite.drivers.qe.recipe import QERecipe` works
+- [ ] `from qmatsuite.execution.recipes import QERecipe` still works (backward compat)
 - [ ] All existing tests pass: `pytest tests/`
 - [ ] Specific test: `pytest tests/unit/execution/test_recipes.py -v`
 
 ### Rollback
 ```bash
-rm src/quantumvitas/drivers/qe/recipe.py
-git checkout HEAD~1 -- src/quantumvitas/drivers/qe/driver.py
-git checkout HEAD~1 -- src/quantumvitas/execution/recipes.py
+rm src/qmatsuite/drivers/qe/recipe.py
+git checkout HEAD~1 -- src/qmatsuite/drivers/qe/driver.py
+git checkout HEAD~1 -- src/qmatsuite/execution/recipes.py
 ```
 
 ---
@@ -252,7 +252,7 @@ git checkout HEAD~1 -- src/quantumvitas/execution/recipes.py
 - [ ] Copy related imports
 
 ```python
-# File: src/quantumvitas/drivers/qe/handler.py
+# File: src/qmatsuite/drivers/qe/handler.py
 """QE step handler."""
 
 from __future__ import annotations
@@ -260,12 +260,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from quantumvitas.execution.job_graph import Job
-from quantumvitas.execution.executor import JobResult
+from qmatsuite.execution.job_graph import Job
+from qmatsuite.execution.executor import JobResult
 
 if TYPE_CHECKING:
-    from quantumvitas.calculation.calculation import Calculation
-    from quantumvitas.engine.registry import EngineRegistry
+    from qmatsuite.calculation.calculation import Calculation
+    from qmatsuite.engine.registry import EngineRegistry
 
 
 def qe_step_handler(
@@ -290,22 +290,22 @@ def get_handler(self):
 ```python
 # In execution/handlers.py - update import and fallback
 def qe_step_handler(...):
-    """DEPRECATED: Use quantumvitas.drivers.qe.handler.qe_step_handler"""
-    from quantumvitas.drivers.qe.handler import qe_step_handler as _qe_handler
+    """DEPRECATED: Use qmatsuite.drivers.qe.handler.qe_step_handler"""
+    from qmatsuite.drivers.qe.handler import qe_step_handler as _qe_handler
     return _qe_handler(...)
 ```
 
 ### Validation
-- [ ] `from quantumvitas.drivers.qe.handler import qe_step_handler` works
+- [ ] `from qmatsuite.drivers.qe.handler import qe_step_handler` works
 - [ ] QE calculation runs successfully
 - [ ] All existing tests pass: `pytest tests/`
 - [ ] Specific test: `pytest tests/unit/execution/test_handlers.py -v`
 
 ### Rollback
 ```bash
-rm src/quantumvitas/drivers/qe/handler.py
-git checkout HEAD~1 -- src/quantumvitas/drivers/qe/driver.py
-git checkout HEAD~1 -- src/quantumvitas/execution/handlers.py
+rm src/qmatsuite/drivers/qe/handler.py
+git checkout HEAD~1 -- src/qmatsuite/drivers/qe/driver.py
+git checkout HEAD~1 -- src/qmatsuite/execution/handlers.py
 ```
 
 ---
@@ -322,8 +322,8 @@ git checkout HEAD~1 -- src/quantumvitas/execution/handlers.py
 ### Implementation Checklist
 
 #### Step 5.1: Create engine/ subdirectory
-- [ ] Create `src/quantumvitas/drivers/qe/engine/`
-- [ ] Create `src/quantumvitas/drivers/qe/engine/__init__.py`
+- [ ] Create `src/qmatsuite/drivers/qe/engine/`
+- [ ] Create `src/qmatsuite/drivers/qe/engine/__init__.py`
 
 #### Step 5.2: Move engine files
 - [ ] Move `core/engines/qe.py` → `drivers/qe/engine/qe_engine.py`
@@ -340,7 +340,7 @@ For each moved file, update relative imports:
 # Example: In qe_engine.py, change:
 from .qe_installation import QEInstallation
 # To:
-from quantumvitas.drivers.qe.engine.qe_installation import QEInstallation
+from qmatsuite.drivers.qe.engine.qe_installation import QEInstallation
 ```
 
 #### Step 5.4: Add re-exports in core/engines/
@@ -348,24 +348,24 @@ from quantumvitas.drivers.qe.engine.qe_installation import QEInstallation
 # In core/engines/__init__.py - add backward compat exports
 def __getattr__(name: str):
     if name in ("QuantumEspressoEngine", "QEInstallation", ...):
-        from quantumvitas.drivers.qe.engine import ...
+        from qmatsuite.drivers.qe.engine import ...
         return ...
     raise AttributeError(...)
 ```
 
 ### Validation
 - [ ] All moved files import correctly
-- [ ] `from quantumvitas.drivers.qe.engine import QuantumEspressoEngine` works
-- [ ] `from quantumvitas.core.engines import QuantumEspressoEngine` still works
+- [ ] `from qmatsuite.drivers.qe.engine import QuantumEspressoEngine` works
+- [ ] `from qmatsuite.core.engines import QuantumEspressoEngine` still works
 - [ ] All existing tests pass: `pytest tests/`
 - [ ] QE execution works end-to-end
 
 ### Rollback
 ```bash
 # Move files back
-mv src/quantumvitas/drivers/qe/engine/qe_engine.py src/quantumvitas/core/engines/qe.py
+mv src/qmatsuite/drivers/qe/engine/qe_engine.py src/qmatsuite/core/engines/qe.py
 # ... repeat for each file
-rm -rf src/quantumvitas/drivers/qe/engine/
+rm -rf src/qmatsuite/drivers/qe/engine/
 ```
 
 ---
@@ -382,8 +382,8 @@ rm -rf src/quantumvitas/drivers/qe/engine/
 ### Implementation Checklist
 
 #### Step 6.1: Create io/ subdirectory
-- [ ] Create `src/quantumvitas/drivers/qe/io/`
-- [ ] Create `src/quantumvitas/drivers/qe/io/__init__.py`
+- [ ] Create `src/qmatsuite/drivers/qe/io/`
+- [ ] Create `src/qmatsuite/drivers/qe/io/__init__.py`
 
 #### Step 6.2: Move I/O files
 - [ ] Move `io/model.py` → `drivers/qe/io/model.py`
@@ -395,12 +395,12 @@ rm -rf src/quantumvitas/drivers/qe/engine/
 ```python
 # In io/__init__.py
 # Backward compatibility re-exports
-from quantumvitas.drivers.qe.io.model import (
+from qmatsuite.drivers.qe.io.model import (
     QEModule, QECardType, QENamelist, QECard, QEInput
 )
-from quantumvitas.drivers.qe.io.parser import QEInputParser
-from quantumvitas.drivers.qe.io.generator import QEInputGenerator
-from quantumvitas.drivers.qe.io.structure_io import structure_from_qe_input
+from qmatsuite.drivers.qe.io.parser import QEInputParser
+from qmatsuite.drivers.qe.io.generator import QEInputGenerator
+from qmatsuite.drivers.qe.io.structure_io import structure_from_qe_input
 
 __all__ = [
     "QEModule", "QECardType", "QENamelist", "QECard", "QEInput",
@@ -411,16 +411,16 @@ __all__ = [
 ```
 
 ### Validation
-- [ ] `from quantumvitas.io import QEModule, QEInput` works (backward compat)
-- [ ] `from quantumvitas.drivers.qe.io import QEModule, QEInput` works
+- [ ] `from qmatsuite.io import QEModule, QEInput` works (backward compat)
+- [ ] `from qmatsuite.drivers.qe.io import QEModule, QEInput` works
 - [ ] All existing tests pass: `pytest tests/`
 - [ ] Specific test: `pytest tests/unit/io/test_qe_*.py -v`
 
 ### Rollback
 ```bash
 # Restore original io/ files from git
-git checkout HEAD~1 -- src/quantumvitas/io/
-rm -rf src/quantumvitas/drivers/qe/io/
+git checkout HEAD~1 -- src/qmatsuite/io/
+rm -rf src/qmatsuite/drivers/qe/io/
 ```
 
 ---
@@ -437,8 +437,8 @@ rm -rf src/quantumvitas/drivers/qe/io/
 ### Implementation Checklist
 
 #### Step 7.1: Create ir/ subdirectory
-- [ ] Create `src/quantumvitas/drivers/qe/ir/`
-- [ ] Create `src/quantumvitas/drivers/qe/ir/__init__.py`
+- [ ] Create `src/qmatsuite/drivers/qe/ir/`
+- [ ] Create `src/qmatsuite/drivers/qe/ir/__init__.py`
 
 #### Step 7.2: Move IR files
 - [ ] Move `ir/backends/qe/mapping.py` → `drivers/qe/ir/mapping.py`
@@ -447,7 +447,7 @@ rm -rf src/quantumvitas/drivers/qe/io/
 #### Step 7.3: Update imports
 ```python
 # In ir/backends/qe/__init__.py - redirect to new location
-from quantumvitas.drivers.qe.ir.mapping import (
+from qmatsuite.drivers.qe.ir.mapping import (
     ir_to_qe_param,
     qe_to_ir_param,
     ir_patch_to_qe_patch,
@@ -457,15 +457,15 @@ from quantumvitas.drivers.qe.ir.mapping import (
 ```
 
 ### Validation
-- [ ] `from quantumvitas.ir.backends.qe import ir_to_qe_param` works
-- [ ] `from quantumvitas.drivers.qe.ir import ir_to_qe_param` works
+- [ ] `from qmatsuite.ir.backends.qe import ir_to_qe_param` works
+- [ ] `from qmatsuite.drivers.qe.ir import ir_to_qe_param` works
 - [ ] IR compilation produces correct QE input
 - [ ] All existing tests pass: `pytest tests/`
 
 ### Rollback
 ```bash
-git checkout HEAD~1 -- src/quantumvitas/ir/backends/qe/
-rm -rf src/quantumvitas/drivers/qe/ir/
+git checkout HEAD~1 -- src/qmatsuite/ir/backends/qe/
+rm -rf src/qmatsuite/drivers/qe/ir/
 ```
 
 ---
@@ -478,8 +478,8 @@ rm -rf src/quantumvitas/drivers/qe/ir/
 ### Implementation Checklist
 
 #### Step 8.1: Create parsers/ and data/ subdirectories
-- [ ] Create `src/quantumvitas/drivers/qe/parsers/`
-- [ ] Create `src/quantumvitas/drivers/qe/data/`
+- [ ] Create `src/qmatsuite/drivers/qe/parsers/`
+- [ ] Create `src/qmatsuite/drivers/qe/data/`
 
 #### Step 8.2: Move files
 - [ ] Move `parsers/qe/trajectory.py` → `drivers/qe/parsers/trajectory.py`
@@ -489,7 +489,7 @@ rm -rf src/quantumvitas/drivers/qe/ir/
 ```python
 # In drivers/qe/parsers/trajectory.py
 # Ensure @register_parser decorator still works
-from quantumvitas.parsers.registry import register_parser
+from qmatsuite.parsers.registry import register_parser
 
 @register_parser("qe", "trajectory")
 class QETrajectoryParser:
@@ -513,7 +513,7 @@ class QETrajectoryParser:
 #### Step 9.1: Update drivers/qe/__init__.py to register
 ```python
 # In drivers/qe/__init__.py
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import QEDriver
 
 # Register on import
@@ -530,7 +530,7 @@ DriverRegistry.register(QEDriver())
 #### Step 9.3: Update drivers/__init__.py
 ```python
 # Ensure qe is imported INSTEAD OF qe_shim
-from quantumvitas.drivers import qe  # NOT qe_shim
+from qmatsuite.drivers import qe  # NOT qe_shim
 ```
 
 ### Validation
@@ -589,9 +589,9 @@ if engine == "w90" or step_type in ("w90_run", "w90_preproc"):
 
 ### Rollback
 ```bash
-git checkout HEAD~1 -- src/quantumvitas/calculation/step.py
-git checkout HEAD~1 -- src/quantumvitas/calculation/runner.py
-git checkout HEAD~1 -- src/quantumvitas/core/calc_identity.py
+git checkout HEAD~1 -- src/qmatsuite/calculation/step.py
+git checkout HEAD~1 -- src/qmatsuite/calculation/runner.py
+git checkout HEAD~1 -- src/qmatsuite/core/calc_identity.py
 ```
 
 ---
@@ -604,7 +604,7 @@ git checkout HEAD~1 -- src/quantumvitas/core/calc_identity.py
 ### Implementation Checklist
 
 #### Step 11.1: Delete qe_shim
-- [ ] Remove `src/quantumvitas/drivers/qe_shim/` directory
+- [ ] Remove `src/qmatsuite/drivers/qe_shim/` directory
 
 #### Step 11.2: Delete legacy engine files (if re-exports work)
 - [ ] Optionally remove files from `core/engines/` that are re-exports only

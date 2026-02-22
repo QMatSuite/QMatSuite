@@ -16,8 +16,8 @@
 **Format**: Lowercase string (e.g., `"magnetism"`, `"precision"`, `"occupations_scheme"`, `"qc_precision"`).
 
 **Location**: Dimension names are defined in:
-- `src/quantumvitas/presets/dimensions.py` (dimension constants)
-- `src/quantumvitas/presets/variants_registry.py:ParamSpaceVariant.dimension` (variant binding)
+- `src/qmatsuite/presets/dimensions.py` (dimension constants)
+- `src/qmatsuite/presets/variants_registry.py:ParamSpaceVariant.dimension` (variant binding)
 
 **SSOT**: Dimension names MUST match between:
 - `ParamSpaceVariant.dimension`
@@ -25,8 +25,8 @@
 - `ENUM_TO_PROFILE` / `PROFILE_TO_ENUM` keys
 
 **Evidence**:
-- Dimension constants: `src/quantumvitas/presets/dimensions.py:DIMENSION_*` (lines 21-24)
-- Variant binding: `src/quantumvitas/presets/variants_registry.py:OCCUPATIONS_SCHEME_VARIANT` (line 45)
+- Dimension constants: `src/qmatsuite/presets/dimensions.py:DIMENSION_*` (lines 21-24)
+- Variant binding: `src/qmatsuite/presets/variants_registry.py:OCCUPATIONS_SCHEME_VARIANT` (line 45)
 
 ### 1.2 Variant
 
@@ -44,13 +44,13 @@ class ParamSpaceVariant:
     applies_to_step_types: frozenset[str]  # Gen step types, e.g., {"scf", "relax"}
 ```
 
-**Location**: `src/quantumvitas/presets/space_variant.py` (lines 16-51)
+**Location**: `src/qmatsuite/presets/space_variant.py` (lines 16-51)
 
 **Mutual Exclusivity**: For a given `(gen_step, dimension)` pair, at most ONE variant may apply. This is enforced at import time by `_build_indexes()`.
 
 **Evidence**:
-- Variant definition: `src/quantumvitas/presets/space_variant.py:ParamSpaceVariant` (lines 16-51)
-- Overlap enforcement: `src/quantumvitas/presets/variants_registry.py:_build_indexes()` (lines 129-166)
+- Variant definition: `src/qmatsuite/presets/space_variant.py:ParamSpaceVariant` (lines 16-51)
+- Overlap enforcement: `src/qmatsuite/presets/variants_registry.py:_build_indexes()` (lines 129-166)
 - Error on overlap: Lines 152-158 raise `ValueError` if overlap detected
 
 ### 1.3 Profile
@@ -65,8 +65,8 @@ class ParamSpaceVariant:
 - `Cell.WILDCARD()`: Key is ignored during matching
 
 **Evidence**:
-- Profile storage: `src/quantumvitas/presets/paramspace.py:ParamSpace.profiles` (line 306)
-- Cell types: `src/quantumvitas/presets/paramspace.py:Cell` (lines 33-56)
+- Profile storage: `src/qmatsuite/presets/paramspace.py:ParamSpace.profiles` (line 306)
+- Cell types: `src/qmatsuite/presets/paramspace.py:Cell` (lines 33-56)
 
 ### 1.4 ParamKey
 
@@ -80,7 +80,7 @@ class ParamSpaceVariant:
 - `default`: Default value if key absent (optional)
 
 **Evidence**:
-- ParamKey: `src/quantumvitas/presets/paramspace.py:ParamKey` (lines 59-121)
+- ParamKey: `src/qmatsuite/presets/paramspace.py:ParamKey` (lines 59-121)
 
 ### 1.5 Owned Key
 
@@ -94,9 +94,9 @@ class ParamSpaceVariant:
 - Context: `ParamSpaceContext` sets the current ParamSpace during operations
 
 **Evidence**:
-- Ownership registry: `src/quantumvitas/presets/paramspace.py:_KEY_OWNERSHIP` (line 164)
-- Registration: `src/quantumvitas/presets/paramspace.py:register_paramspace()` (lines 168-205)
-- Access check: `src/quantumvitas/presets/paramspace.py:check_key_access()` (lines 207-254)
+- Ownership registry: `src/qmatsuite/presets/paramspace.py:_KEY_OWNERSHIP` (line 164)
+- Registration: `src/qmatsuite/presets/paramspace.py:register_paramspace()` (lines 168-205)
+- Access check: `src/qmatsuite/presets/paramspace.py:check_key_access()` (lines 207-254)
 
 ### 1.6 Oracle
 
@@ -115,8 +115,8 @@ class ParamSpaceVariant:
 - `degauss_applicability() -> bool`: Returns `True` if `occupations == "smearing"`
 
 **Evidence**:
-- Oracle class: `src/quantumvitas/presets/oracle.py:Oracle` (lines 18-60)
-- Usage in precision: `src/quantumvitas/presets/paramspace.py:precision_apply_invariants()` (lines 962-979)
+- Oracle class: `src/qmatsuite/presets/oracle.py:Oracle` (lines 18-60)
+- Usage in precision: `src/qmatsuite/presets/paramspace.py:precision_apply_invariants()` (lines 962-979)
 
 ### 1.7 Gen/Public Step Type vs Spec/Machine Step Type
 
@@ -133,9 +133,9 @@ class ParamSpaceVariant:
 **Mapping**: `StepTypeRegistry` provides bidirectional mapping.
 
 **Evidence**:
-- Registry: `src/quantumvitas/workflow/registry.py:StepTypeRegistry`
-- Mapping: `src/quantumvitas/workflow/registry.py:normalize_step_type_to_public()`
-- Variant lookup: `src/quantumvitas/presets/variants_registry.py:get_variant()` (lines 304-327)
+- Registry: `src/qmatsuite/workflow/registry.py:StepTypeRegistry`
+- Mapping: `src/qmatsuite/workflow/registry.py:normalize_step_type_to_public()`
+- Variant lookup: `src/qmatsuite/presets/variants_registry.py:get_variant()` (lines 304-327)
 
 ---
 
@@ -150,7 +150,7 @@ class ParamSpaceVariant:
 **MUST**: Apply→Detect roundtrip MUST be idempotent: if preset P is applied and then detected, detection MUST return P (or equivalent profile).
 
 **Evidence**:
-- Match logic: `src/quantumvitas/presets/paramspace.py:match_profile()` (lines 461-534)
+- Match logic: `src/qmatsuite/presets/paramspace.py:match_profile()` (lines 461-534)
 - Roundtrip tests: `tests/unit/test_paramspace_contract.py`
 
 ### 2.2 Key Ownership + Enforcement Rule
@@ -164,7 +164,7 @@ class ParamSpaceVariant:
 **MUST NOT**: ParamSpace A read/write keys owned by ParamSpace B except via Oracle.
 
 **Evidence**:
-- Ownership check: `src/quantumvitas/presets/paramspace.py:check_key_access()` (lines 207-254)
+- Ownership check: `src/qmatsuite/presets/paramspace.py:check_key_access()` (lines 207-254)
 - Tests: `tests/unit/test_key_access_enforcement.py`
 
 ### 2.3 Compile Order / Oracle Contract
@@ -180,8 +180,8 @@ class ParamSpaceVariant:
 **MUST NOT**: Oracle make decisions about presets or values; it only answers "is X applicable?".
 
 **Evidence**:
-- Phase ordering: `src/quantumvitas/presets/integration.py:apply_presets_to_step()` (lines 517-591)
-- Oracle creation: `src/quantumvitas/presets/integration.py` (line 722)
+- Phase ordering: `src/qmatsuite/presets/integration.py:apply_presets_to_step()` (lines 517-591)
+- Oracle creation: `src/qmatsuite/presets/integration.py` (line 722)
 - Tests: `tests/unit/test_paramspace_invariants.py`
 
 ### 2.4 Step Applicability Declaration Contract
@@ -195,8 +195,8 @@ class ParamSpaceVariant:
 **MUST**: Variant registry builds index at import time; overlap causes immediate failure.
 
 **Evidence**:
-- Variant declaration: `src/quantumvitas/presets/variants_registry.py:VARIANTS` (lines 114-122)
-- Machine→public mapping: `src/quantumvitas/presets/variants_registry.py:get_variant()` (lines 304-327)
+- Variant declaration: `src/qmatsuite/presets/variants_registry.py:VARIANTS` (lines 114-122)
+- Machine→public mapping: `src/qmatsuite/presets/variants_registry.py:get_variant()` (lines 304-327)
 
 ### 2.5 Capability Contract (Engine.supported_presets)
 
@@ -210,7 +210,7 @@ class ParamSpaceVariant:
 **MUST NOT**: Any code bypass the capability resolver by directly checking `supported_presets` or `applies_to_step_types`.
 
 **Evidence**:
-- Capability resolver: `src/quantumvitas/presets/capability.py`
+- Capability resolver: `src/qmatsuite/presets/capability.py`
 - Guard tests: `tests/unit/test_no_capability_bypass.py`
 
 ### 2.6 No Bypass Rules
@@ -233,7 +233,7 @@ class ParamSpaceVariant:
 
 ### 3.1 Checklist for Adding a New Dimension
 
-1. **Define dimension constant** in `src/quantumvitas/presets/dimensions.py`:
+1. **Define dimension constant** in `src/qmatsuite/presets/dimensions.py`:
    ```python
    DIMENSION_NEW = "new_dimension"
    ```
@@ -300,40 +300,40 @@ class ParamSpaceVariant:
 
 | Contract Point | File | Symbol/Line |
 |----------------|------|-------------|
-| ParamSpace definition | `src/quantumvitas/presets/paramspace.py` | `ParamSpace` (line 281-372) |
-| ParamKey definition | `src/quantumvitas/presets/paramspace.py` | `ParamKey` (lines 59-121) |
-| Key ownership registry | `src/quantumvitas/presets/paramspace.py` | `_KEY_OWNERSHIP` (line 164) |
-| Key registration | `src/quantumvitas/presets/paramspace.py` | `register_paramspace()` (lines 168-205) |
-| Key access enforcement | `src/quantumvitas/presets/paramspace.py` | `check_key_access()` (lines 207-254) |
-| Match logic | `src/quantumvitas/presets/paramspace.py` | `match_profile()` (lines 461-534) |
-| Compile logic | `src/quantumvitas/presets/paramspace.py` | `compile_profile_patch()` (lines 541-609) |
+| ParamSpace definition | `src/qmatsuite/presets/paramspace.py` | `ParamSpace` (line 281-372) |
+| ParamKey definition | `src/qmatsuite/presets/paramspace.py` | `ParamKey` (lines 59-121) |
+| Key ownership registry | `src/qmatsuite/presets/paramspace.py` | `_KEY_OWNERSHIP` (line 164) |
+| Key registration | `src/qmatsuite/presets/paramspace.py` | `register_paramspace()` (lines 168-205) |
+| Key access enforcement | `src/qmatsuite/presets/paramspace.py` | `check_key_access()` (lines 207-254) |
+| Match logic | `src/qmatsuite/presets/paramspace.py` | `match_profile()` (lines 461-534) |
+| Compile logic | `src/qmatsuite/presets/paramspace.py` | `compile_profile_patch()` (lines 541-609) |
 
 ### Variants Registry
 
 | Contract Point | File | Symbol/Line |
 |----------------|------|-------------|
-| Variant definition | `src/quantumvitas/presets/space_variant.py` | `ParamSpaceVariant` (lines 16-51) |
-| All variants | `src/quantumvitas/presets/variants_registry.py` | `VARIANTS` (lines 114-122) |
-| Index building | `src/quantumvitas/presets/variants_registry.py` | `_build_indexes()` (lines 129-166) |
-| Overlap detection | `src/quantumvitas/presets/variants_registry.py` | Lines 152-158 |
-| Variant lookup | `src/quantumvitas/presets/variants_registry.py` | `get_variant()` (lines 304-327) |
+| Variant definition | `src/qmatsuite/presets/space_variant.py` | `ParamSpaceVariant` (lines 16-51) |
+| All variants | `src/qmatsuite/presets/variants_registry.py` | `VARIANTS` (lines 114-122) |
+| Index building | `src/qmatsuite/presets/variants_registry.py` | `_build_indexes()` (lines 129-166) |
+| Overlap detection | `src/qmatsuite/presets/variants_registry.py` | Lines 152-158 |
+| Variant lookup | `src/qmatsuite/presets/variants_registry.py` | `get_variant()` (lines 304-327) |
 
 ### Oracle and Compile Order
 
 | Contract Point | File | Symbol/Line |
 |----------------|------|-------------|
-| Oracle class | `src/quantumvitas/presets/oracle.py` | `Oracle` (lines 18-60) |
-| degauss_applicability | `src/quantumvitas/presets/oracle.py` | Line 36-58 |
-| Two-phase compilation | `src/quantumvitas/presets/integration.py` | `apply_presets_to_step()` (lines 517-591) |
-| Invariant enforcement | `src/quantumvitas/presets/integration.py` | Lines 727-729 |
+| Oracle class | `src/qmatsuite/presets/oracle.py` | `Oracle` (lines 18-60) |
+| degauss_applicability | `src/qmatsuite/presets/oracle.py` | Line 36-58 |
+| Two-phase compilation | `src/qmatsuite/presets/integration.py` | `apply_presets_to_step()` (lines 517-591) |
+| Invariant enforcement | `src/qmatsuite/presets/integration.py` | Lines 727-729 |
 
 ### Capability Resolver
 
 | Contract Point | File | Symbol/Line |
 |----------------|------|-------------|
-| Capability resolver | `src/quantumvitas/presets/capability.py` | All functions |
-| list_presets_for_engine | `src/quantumvitas/presets/capability.py` | Lines 39-77 |
-| require_preset_capability | `src/quantumvitas/presets/capability.py` | Lines 139-159 |
+| Capability resolver | `src/qmatsuite/presets/capability.py` | All functions |
+| list_presets_for_engine | `src/qmatsuite/presets/capability.py` | Lines 39-77 |
+| require_preset_capability | `src/qmatsuite/presets/capability.py` | Lines 139-159 |
 
 ### Existing Tests
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.yambo.data.yambo_metadata import (
+from qmatsuite.drivers.yambo.data.yambo_metadata import (
     get_metadata_file_info,
     get_tag_default,
     get_tag_info,
@@ -25,7 +25,7 @@ REQUIRED_FIELDS = {"name", "type", "category", "description", "status"}
 
 @pytest.fixture(scope="module")
 def raw_catalog() -> dict:
-    data_path = resources.files("quantumvitas.drivers.yambo.data").joinpath(
+    data_path = resources.files("qmatsuite.drivers.yambo.data").joinpath(
         "yambo_tags.json"
     )
     with resources.as_file(data_path) as path:

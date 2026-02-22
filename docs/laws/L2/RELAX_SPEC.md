@@ -72,7 +72,7 @@ project_root/
 
 ```json
 {
-  "__qv_meta__": {
+  "__qms_meta__": {
     "type": "generated_structure",
     "source_step_ulid": "<step_ulid>",
     "source_run_id": "<run_id>",
@@ -268,7 +268,7 @@ def promote_relax_structure(
         ResolvedResource for the newly created structure
         
     Raises:
-        QVServiceError: If step not found, not a relax step, or no current.json
+        QMSServiceError: If step not found, not a relax step, or no current.json
     """
 ```
 

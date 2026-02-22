@@ -72,7 +72,7 @@ class TestWannier90Roundtrip:
     
     def test_parse_diamond_win(self):
         """Test parsing diamond.win from example05."""
-        from quantumvitas.io.wannier90_input import Wannier90Input
+        from qmatsuite.io.wannier90_input import Wannier90Input
         
         win_path = EXAMPLE05_DIR / "diamond.win"
         assert win_path.exists(), f"Test data not found: {win_path}"
@@ -90,7 +90,7 @@ class TestWannier90Roundtrip:
     
     def test_parse_copper_win(self):
         """Test parsing copper.win from example06."""
-        from quantumvitas.io.wannier90_input import Wannier90Input
+        from qmatsuite.io.wannier90_input import Wannier90Input
         
         win_path = EXAMPLE06_DIR / "copper.win"
         assert win_path.exists()
@@ -106,7 +106,7 @@ class TestWannier90Roundtrip:
     
     def test_parse_silicon_win(self):
         """Test parsing Si.win from example16."""
-        from quantumvitas.io.wannier90_input import Wannier90Input
+        from qmatsuite.io.wannier90_input import Wannier90Input
         
         win_path = EXAMPLE16_DIR / "Si.win"
         assert win_path.exists()
@@ -121,7 +121,7 @@ class TestWannier90Roundtrip:
     
     def test_roundtrip_diamond_win(self, tmp_path):
         """Test roundtrip: parse diamond.win, regenerate, compare."""
-        from quantumvitas.io.wannier90_input import Wannier90Input
+        from qmatsuite.io.wannier90_input import Wannier90Input
         
         # Parse original
         original_path = EXAMPLE05_DIR / "diamond.win"
@@ -143,7 +143,7 @@ class TestWannier90Roundtrip:
     
     def test_roundtrip_copper_win(self, tmp_path):
         """Test roundtrip for copper.win (with disentanglement)."""
-        from quantumvitas.io.wannier90_input import Wannier90Input
+        from qmatsuite.io.wannier90_input import Wannier90Input
         
         original_path = EXAMPLE06_DIR / "copper.win"
         win = Wannier90Input.from_file(original_path)
@@ -160,7 +160,7 @@ class TestWannier90Roundtrip:
     
     def test_parse_pw2wan(self):
         """Test parsing .pw2wan files."""
-        from quantumvitas.io.wannier90_input import Pw2Wannier90Input
+        from qmatsuite.io.wannier90_input import Pw2Wannier90Input
         
         pw2wan_path = EXAMPLE05_DIR / "diamond.pw2wan"
         pw2wan = Pw2Wannier90Input.from_file(pw2wan_path)
@@ -172,7 +172,7 @@ class TestWannier90Roundtrip:
     
     def test_roundtrip_pw2wan(self, tmp_path):
         """Test roundtrip for .pw2wan files."""
-        from quantumvitas.io.wannier90_input import Pw2Wannier90Input
+        from qmatsuite.io.wannier90_input import Pw2Wannier90Input
         
         original_path = EXAMPLE05_DIR / "diamond.pw2wan"
         pw2wan = Pw2Wannier90Input.from_file(original_path)
@@ -321,7 +321,7 @@ class Wannier90WorkflowRunner:
         # Check for success (look for output files)
         seedname = input_file.stem.replace(".pw2wan", "")
         # Get seedname from pw2wan file
-        from quantumvitas.io.wannier90_input import Pw2Wannier90Input
+        from qmatsuite.io.wannier90_input import Pw2Wannier90Input
         pw2wan = Pw2Wannier90Input.from_file(input_file)
         seedname = pw2wan.seedname
         
@@ -599,7 +599,7 @@ class TestQEInputRoundtrip:
     
     def test_parse_scf_input(self):
         """Test parsing SCF input files."""
-        from quantumvitas.io import QEInputParser
+        from qmatsuite.io import QEInputParser
         
         scf_path = EXAMPLE05_DIR / "diamond.scf"
         qe_input = QEInputParser.parse_file(scf_path)
@@ -615,8 +615,8 @@ class TestQEInputRoundtrip:
     
     def test_parse_nscf_input(self):
         """Test parsing NSCF input files with explicit k-points."""
-        from quantumvitas.io import QEInputParser
-        from quantumvitas.io.model import QECardType
+        from qmatsuite.io import QEInputParser
+        from qmatsuite.io.model import QECardType
         
         nscf_path = EXAMPLE05_DIR / "diamond.nscf"
         qe_input = QEInputParser.parse_file(nscf_path)

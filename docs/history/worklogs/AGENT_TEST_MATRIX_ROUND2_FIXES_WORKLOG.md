@@ -88,9 +88,9 @@ TBD after Round 3 run
 ## Files Modified
 
 ### Source fixes
-- `src/quantumvitas/analysis/parsers.py` — Part 1 (magnetization extraction)
-- `src/quantumvitas/mcp/tools/get_results_summary.py` — Part 2a (xTB aliases in _build_summary)
-- `src/quantumvitas/api/service.py` — Part 2b (xTB promote_structure)
+- `src/qmatsuite/analysis/parsers.py` — Part 1 (magnetization extraction)
+- `src/qmatsuite/mcp/tools/get_results_summary.py` — Part 2a (xTB aliases in _build_summary)
+- `src/qmatsuite/api/service.py` — Part 2b (xTB promote_structure)
 
 ### Test matrix
 - `tools/agent_test_matrix.sh` — Part 3 (expand to 1+16)

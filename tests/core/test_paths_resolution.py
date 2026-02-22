@@ -1,4 +1,4 @@
-"""Tests for path resolution modes in quantumvitas.core.paths."""
+"""Tests for path resolution modes in qmatsuite.core.paths."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-import quantumvitas.core.paths as paths
+import qmatsuite.core.paths as paths
 
 
 def _reset_repo_cache(monkeypatch: pytest.MonkeyPatch) -> None:

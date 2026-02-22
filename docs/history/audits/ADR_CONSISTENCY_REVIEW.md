@@ -1,7 +1,7 @@
 # ADR 一致性审查报告
 
 **审查日期**: 2025-01-XX  
-**审查范围**: QMatSuite / QuantumVITAS v2 代码库  
+**审查范围**: QMatSuite / QMatSuite v2 代码库  
 **审查目标**: 验证代码实现是否符合 ADR 宪法/决策记录
 
 ---
@@ -24,13 +24,13 @@
 #### ✅ 已实现部分
 
 1. **ULID 引用机制**：
-   - `src/quantumvitas/core/resolution.py` 实现了完整的 ULID 解析
+   - `src/qmatsuite/core/resolution.py` 实现了完整的 ULID 解析
    - `ResourceIndex` 类支持 ULID/slug/name/path 多策略解析
-   - `project.qv.yml` 使用 ID-only 模型（见 `docs/SCHEMA.md`）
+   - `project.qms.yml` 使用 ID-only 模型（见 `docs/SCHEMA.md`）
 
 2. **项目根查找**：
-   - `require_project_root()` 在 `src/quantumvitas/core/project_utils.py` 实现
-   - 向上遍历查找 `project.qv.yml` marker
+   - `require_project_root()` 在 `src/qmatsuite/core/project_utils.py` 实现
+   - 向上遍历查找 `project.qms.yml` marker
 
 3. **资源扫描**：
    - `build_resource_index()` 扫描所有资源文件
@@ -40,13 +40,13 @@
 
 1. **无持久化缓存**（Blocker）
    - **现象**：`build_resource_index()` 每次全量扫描文件系统
-   - **位置**：`src/quantumvitas/core/resolution.py:368-523`
+   - **位置**：`src/qmatsuite/core/resolution.py:368-523`
    - **影响**：大型项目（100+ 计算/结构）每次操作都扫描，性能差
    - **违反**：ADR-001 要求"必须有 cache（并且缓存失效策略要明确）"
 
 2. **无缓存失效机制**（Important）
    - **现象**：Daemon 有内存缓存（`DaemonState._caches`），但无基于 mtime/hash 的持久化缓存失效
-   - **位置**：`src/quantumvitas/daemon/server.py:82-156`
+   - **位置**：`src/qmatsuite/daemon/server.py:82-156`
    - **影响**：文件修改后缓存可能过期，需要手动重建
    - **违反**：ADR-001 要求"缓存失效策略要明确"
 
@@ -58,7 +58,7 @@
 
 4. **路径引用残留**（Nice）
    - **现象**：`resolve_id()` 仍支持 path 解析（策略 4）
-   - **位置**：`src/quantumvitas/core/resolution.py:312-318`
+   - **位置**：`src/qmatsuite/core/resolution.py:312-318`
    - **影响**：虽然向后兼容，但可能被误用
    - **建议**：保留但标记为 legacy，优先使用 ULID
 
@@ -69,8 +69,8 @@
 **目标**：添加基于 SQLite/JSON 的持久化缓存，支持 mtime/hash 失效
 
 **改动文件**：
-- `src/quantumvitas/core/resolution.py` - 添加 `ResourceIndexCache` 类
-- `src/quantumvitas/core/cache.py` (新建) - 缓存管理逻辑
+- `src/qmatsuite/core/resolution.py` - 添加 `ResourceIndexCache` 类
+- `src/qmatsuite/core/cache.py` (新建) - 缓存管理逻辑
 - `tests/unit/test_resource_index_cache.py` (新建) - 缓存测试
 
 **实现方式**：
@@ -78,7 +78,7 @@
 # 伪代码示例
 class ResourceIndexCache:
     def __init__(self, cache_dir: Path):
-        self.cache_file = cache_dir / ".qv_index_cache.json"
+        self.cache_file = cache_dir / ".qms_index_cache.json"
         self.mtime_map: Dict[Path, float] = {}
     
     def is_valid(self, project_root: Path) -> bool:
@@ -109,7 +109,7 @@ class ResourceIndexCache:
 **目标**：在 `build_resource_index()` 中添加校验逻辑
 
 **改动文件**：
-- `src/quantumvitas/core/resolution.py` - 添加 `validate_resource_index()` 函数
+- `src/qmatsuite/core/resolution.py` - 添加 `validate_resource_index()` 函数
 - `tests/unit/test_resource_index_validation.py` (新建)
 
 **验收**：
@@ -144,14 +144,14 @@ class ResourceIndexCache:
    - **现象**：`CANONICALIZATION_DESIGN.md` 描述与代码实现可能不一致
    - **位置**：
      - 文档：`docs/CANONICALIZATION_DESIGN.md:57-95` 描述"整数 snapping + modulo + boundary snapping"
-     - 代码：`src/quantumvitas/analysis/structure_viz.py:256-291` 使用 `wrap_fractional_coords_shifted()`
+     - 代码：`src/qmatsuite/analysis/structure_viz.py:256-291` 使用 `wrap_fractional_coords_shifted()`
    - **影响**：文档与实现不同步，可能导致误解
    - **建议**：检查代码实现，更新文档或代码使其一致
 
 2. **BOUNDARY_FRAC_TOL 值不一致**（Nice）
    - **现象**：
      - 文档：`BOND_DETECTION_NOTES.md:72` 说 `BOUNDARY_FRAC_TOL = 1e-8`
-     - 代码：`src/quantumvitas/analysis/structure_viz.py:160` 为 `BOUNDARY_FRAC_TOL = 1e-6`
+     - 代码：`src/qmatsuite/analysis/structure_viz.py:160` 为 `BOUNDARY_FRAC_TOL = 1e-6`
    - **影响**：文档与代码不一致
    - **建议**：统一为 1e-8（文档值更保守）
 
@@ -167,7 +167,7 @@ class ResourceIndexCache:
 **目标**：确保文档描述与代码实现一致
 
 **改动文件**：
-- `src/quantumvitas/analysis/structure_viz.py` - 检查并统一 `BOUNDARY_FRAC_TOL` 值
+- `src/qmatsuite/analysis/structure_viz.py` - 检查并统一 `BOUNDARY_FRAC_TOL` 值
 - `docs/CANONICALIZATION_DESIGN.md` - 更新算法描述以匹配实现
 - `docs/BOND_DETECTION_NOTES.md` - 统一 `BOUNDARY_FRAC_TOL` 值
 
@@ -196,7 +196,7 @@ class ResourceIndexCache:
 
 1. **QE 输入解析**：
    - `structure_from_qe_input()` 支持 ibrav 和 CELL_PARAMETERS
-   - 位置：`src/quantumvitas/io/structure_io.py:324-372`
+   - 位置：`src/qmatsuite/io/structure_io.py:324-372`
 
 2. **JSON 存储**：
    - Structure JSON 使用 pymatgen 标准格式
@@ -210,8 +210,8 @@ class ResourceIndexCache:
      - JSON 存储：使用 lattice matrix + frac coords（正确）
      - 但无明确文档说明"JSON 只存 lattice + frac，不存 ibrav"
    - **位置**：
-     - `src/quantumvitas/io/structure_io.py:324-372` - QE 解析
-     - `src/quantumvitas/io/structure_io.py:70-110` - JSON 写入
+     - `src/qmatsuite/io/structure_io.py:324-372` - QE 解析
+     - `src/qmatsuite/io/structure_io.py:70-110` - JSON 写入
    - **影响**：可能有人误以为 JSON 也存 ibrav
    - **违反**：ADR-002 要求"JSON 只存 cell parameters（绝对单位）+ frac 坐标"
 
@@ -232,7 +232,7 @@ class ResourceIndexCache:
 
 **改动文件**：
 - `docs/SCHEMA.md` - 添加 Structure JSON Schema 章节
-- `src/quantumvitas/io/structure_io.py` - 添加 schema 验证注释
+- `src/qmatsuite/io/structure_io.py` - 添加 schema 验证注释
 - `docs/QE_SCHEMA_STORAGE.md` (新建) - 详细说明 QE → JSON 转换规则
 
 **Schema 文档示例**：
@@ -262,23 +262,23 @@ class ResourceIndexCache:
 #### ✅ 已实现部分
 
 1. **SHA256 实现**：
-   - `compute_sha256_file()` 在 `src/quantumvitas/core/pseudo_provenance.py:56-67`
+   - `compute_sha256_file()` 在 `src/qmatsuite/core/pseudo_provenance.py:56-67`
    - 用于去重存储
 
 2. **SHATOKEN 实现**：
-   - `compute_sha_token_file()` 在 `src/quantumvitas/core/pseudo_libinfo.py:95-110`
+   - `compute_sha_token_file()` 在 `src/qmatsuite/core/pseudo_libinfo.py:95-110`
    - 算法：whitespace 规范化（split + join）→ SHA256
    - 用于"物理相同"判定
 
 3. **Provenance 匹配**：
    - `resolve_pseudo_provenance()` 支持 sha256 和 sha_token 匹配
-   - 位置：`src/quantumvitas/core/pseudo_provenance.py:253-344`
+   - 位置：`src/qmatsuite/core/pseudo_provenance.py:253-344`
 
 #### ⚠️ 潜在问题
 
 1. **SHATOKEN 算法风险未评估**（Important）
    - **现象**：当前算法（whitespace 规范化）可能无法处理所有"物理相同"情况
-   - **位置**：`src/quantumvitas/core/pseudo_libinfo.py:71-92`
+   - **位置**：`src/qmatsuite/core/pseudo_libinfo.py:71-92`
    - **风险**：
      - 注释差异（如 `# comment`）会导致 sha_token 不同
      - 字段顺序差异（如 XML 属性顺序）会导致 sha_token 不同
@@ -291,7 +291,7 @@ class ResourceIndexCache:
 
 3. **Alias → SHA 映射不完整**（Nice）
    - **现象**：`PseudoOccurrenceRef` 有 `basename`，但无全局 alias 映射
-   - **位置**：`src/quantumvitas/core/pseudo_provenance.py:26-40`
+   - **位置**：`src/qmatsuite/core/pseudo_provenance.py:26-40`
    - **建议**：如果需要，可以添加 alias 索引
 
 4. **Manifest 驱动下载未检查**（Nice）
@@ -307,7 +307,7 @@ class ResourceIndexCache:
 **改动文件**：
 - `docs/adr/ADR-004.md` (新建) - SHA256 身份设计
 - `docs/adr/ADR-005.md` (新建) - SHATOKEN 语义等价设计
-- `src/quantumvitas/core/pseudo_libinfo.py` - 添加算法边界注释
+- `src/qmatsuite/core/pseudo_libinfo.py` - 添加算法边界注释
 
 **ADR-005 内容示例**：
 ```markdown
@@ -352,7 +352,7 @@ Accepted
 
 1. **Windows 支持**：
    - 代码中有 Windows 路径处理（`.exe` 扩展名）
-   - 位置：`src/quantumvitas/core/engines/qe.py:154`, `tests/unit/test_qe_executable_detection.py`
+   - 位置：`src/qmatsuite/core/engines/qe.py:154`, `tests/unit/test_qe_executable_detection.py`
 
 #### ❌ 问题与缺失
 
@@ -424,22 +424,22 @@ Windows 上构建 QE 需要选择 toolchain。
 ### PR1: 资源索引持久化缓存
 - **目标**：实现基于 JSON 的持久化缓存，支持 mtime 失效
 - **改动文件**：
-  - `src/quantumvitas/core/cache.py` (新建)
-  - `src/quantumvitas/core/resolution.py` - 集成缓存
+  - `src/qmatsuite/core/cache.py` (新建)
+  - `src/qmatsuite/core/resolution.py` - 集成缓存
   - `tests/unit/test_resource_index_cache.py` (新建)
 - **验收**：`pytest tests/unit/test_resource_index_cache.py -v`
 
 ### PR2: 资源索引一致性校验
 - **目标**：添加重复 ULID、悬挂引用检测
 - **改动文件**：
-  - `src/quantumvitas/core/resolution.py` - 添加 `validate_resource_index()`
+  - `src/qmatsuite/core/resolution.py` - 添加 `validate_resource_index()`
   - `tests/unit/test_resource_index_validation.py` (新建)
 - **验收**：`pytest tests/unit/test_resource_index_validation.py -v`
 
 ### PR3: 统一 Canonicalization 文档与实现
 - **目标**：确保文档与代码一致
 - **改动文件**：
-  - `src/quantumvitas/analysis/structure_viz.py` - 统一 `BOUNDARY_FRAC_TOL = 1e-8`
+  - `src/qmatsuite/analysis/structure_viz.py` - 统一 `BOUNDARY_FRAC_TOL = 1e-8`
   - `docs/CANONICALIZATION_DESIGN.md` - 更新算法描述
   - `docs/BOND_DETECTION_NOTES.md` - 统一值
 - **验收**：`pytest tests/unit/test_canonicalization_contract.py -v`
@@ -505,7 +505,7 @@ pytest tests/unit/test_structure_viz.py::test_si_supercell_bond_count_stability 
 pytest tests/integration/test_cross_platform_bonds.py -v
 
 # PR5: Schema（手动验证）
-python -c "from quantumvitas.io import read_structure, write_structure; ..."
+python -c "from qmatsuite.io import read_structure, write_structure; ..."
 
 # PR6: 文档（手动审查）
 # 检查 docs/adr/ADR-*.md 是否存在且内容完整

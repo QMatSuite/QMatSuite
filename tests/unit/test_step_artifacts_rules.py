@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 
-from quantumvitas.calculation.step_artifacts import (
+from qmatsuite.calculation.step_artifacts import (
     get_step_artifacts,
     get_default_artifact,
     _get_wannier90_seedname,

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.analysis.capability import (
+from qmatsuite.core.analysis.capability import (
     AnalysisCapability,
     AnalysisResult,
     CapabilityMatch,
@@ -14,8 +14,8 @@ from quantumvitas.core.analysis.capability import (
     enumerate_all_matches,
     find_contiguous_match,
 )
-from quantumvitas.core.driver_protocol import BaseEngineDriver
-from quantumvitas.drivers.qe.driver import QEDriver
+from qmatsuite.core.driver_protocol import BaseEngineDriver
+from qmatsuite.drivers.qe.driver import QEDriver
 
 
 def _ordered_steps() -> list[tuple[str, str, Path]]:

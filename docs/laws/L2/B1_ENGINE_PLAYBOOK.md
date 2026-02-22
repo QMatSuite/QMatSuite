@@ -13,7 +13,7 @@ This document is the standardized operating procedure for bringing any QMatSuite
 
 **"B1 complete" means**: an engineer or agent unfamiliar with the engine could run any supported workflow type using only the driver's I/O stack, validate the outputs programmatically, and trust the parameter metadata catalog for input validation. No black boxes.
 
-**Scope**: This playbook covers the driver-level work only. It does NOT cover kernel integration, runner changes, or public API surface — those are separate phases. All B1 work touches only `src/quantumvitas/drivers/<engine>/` and `tests/`.
+**Scope**: This playbook covers the driver-level work only. It does NOT cover kernel integration, runner changes, or public API surface — those are separate phases. All B1 work touches only `src/qmatsuite/drivers/<engine>/` and `tests/`.
 
 ---
 
@@ -29,7 +29,7 @@ These rules are non-negotiable. Violating any of them is a blocking defect.
 | P2 | **Worklog is continuous.** A worklog at `docs/engines/<engine>/PHASE_B1_WORKLOG.md` MUST be created at the start and updated after EVERY step completes — not retroactively at the end. Each entry: step name, what was done, test count, pass/fail. |
 | P3 | **Tests stay green.** Run the full suite after every step: `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`. Zero failures at every checkpoint. Record the count in the worklog. |
 | P4 | **No kernel modifications.** B1 work MUST NOT modify `runner.py`, `executor.py`, `driver_registry.py`, `driver_protocol.py`, or any file outside `drivers/<engine>/`, `tests/`, and `docs/`. The sole exception is `parsers/registry.py` (for `@register_parser`). |
-| P5 | **Leaf-package imports only.** New modules in `data/`, `io/`, `parsers/`, `engine/` MUST use stdlib only (no kernel imports). `parsers/*.py` may import from `quantumvitas.parsers.registry`. Nothing else. |
+| P5 | **Leaf-package imports only.** New modules in `data/`, `io/`, `parsers/`, `engine/` MUST use stdlib only (no kernel imports). `parsers/*.py` may import from `qmatsuite.parsers.registry`. Nothing else. |
 
 ### 1.2 Repository Layout Rules
 
@@ -49,8 +49,8 @@ docs/engines/<engine>/
   PHASE_B1_WORKLOG.md         # Continuous worklog (REQUIRED)
   SOURCES.md                  # All research sources with URLs + dates (REQUIRED)
 
-# Committed (src/quantumvitas/drivers/<engine>/)
-src/quantumvitas/drivers/<engine>/
+# Committed (src/qmatsuite/drivers/<engine>/)
+src/qmatsuite/drivers/<engine>/
   data/
     __init__.py
     <engine>_tags.json          # Parameter metadata catalog
@@ -194,8 +194,8 @@ Adapt the schema to the engine's input format. VASP uses flat INCAR tags. ORCA u
 
 - [ ] Create `drivers/<engine>/data/<engine>_metadata.py`
 - [ ] Implement: `safe_load_metadata()`, `get_tag_info()`, `list_tags()`, `list_categories()`, `validate_params()`
-- [ ] Module-level cache (`_METADATA_CACHE`) with optional hot-reload via `QV_<ENGINE>_METADATA_HOT_RELOAD=1`
-- [ ] Use `importlib.resources` anchored at `quantumvitas.drivers.<engine>.data`
+- [ ] Module-level cache (`_METADATA_CACHE`) with optional hot-reload via `QMS_<ENGINE>_METADATA_HOT_RELOAD=1`
+- [ ] Use `importlib.resources` anchored at `qmatsuite.drivers.<engine>.data`
 - [ ] Write tests: load, lookup, case-insensitive lookup, category filter, validation, reload, debug info
 - [ ] Run full test suite, record count in worklog
 
@@ -431,7 +431,7 @@ def verify_reference(digest, ref: dict, tolerances: dict | None = None) -> dict:
 - [ ] Verify test count: baseline + new tests (record both in worklog)
 - [ ] Verify zero failures
 - [ ] Verify no kernel imports in leaf modules (`data/`, `io/`, `engine/`)
-- [ ] Verify `inputformat/` package is untouched: `git diff HEAD -- src/quantumvitas/inputformat/`
+- [ ] Verify `inputformat/` package is untouched: `git diff HEAD -- src/qmatsuite/inputformat/`
 - [ ] Verify all docs are in `docs/engines/<engine>/` (not in `.claude/` or other hidden dirs)
 - [ ] Verify all research artifacts are in `.tmp/engine_research/<engine>/`
 - [ ] Update worklog with final status: COMPLETE
@@ -532,7 +532,7 @@ QE is the most mature engine. When in doubt about how something should work, che
 
 | Concern | QE Reference |
 |---------|-------------|
-| Metadata catalog | `src/quantumvitas/data/qe_module_parameters.json` (~13K lines) |
+| Metadata catalog | `src/qmatsuite/data/qe_module_parameters.json` (~13K lines) |
 | Metadata access | `drivers/qe/data/qe_metadata.py` (~600 lines, cached, hot-reload) |
 | I/O modules | `drivers/qe/io/` (parser.py, generator.py, model.py, structure_io.py) |
 | Output parser | `drivers/qe/parsers/trajectory.py` (440 lines, @register_parser) |

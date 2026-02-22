@@ -12,7 +12,7 @@ from typing import List, Tuple
 
 import pytest
 
-from quantumvitas.core.paths import get_repo_root
+from qmatsuite.core.paths import get_repo_root
 
 
 def test_repo_temp_must_not_exist():

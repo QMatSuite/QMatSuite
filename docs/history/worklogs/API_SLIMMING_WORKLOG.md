@@ -111,7 +111,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### Batch 3: Delete unused static method
 - **Time**: 2026-02-02
-- **Action**: Deleted `QVService.extract_calculation_selector_from_entry` (0 callers, just wrapped utils)
+- **Action**: Deleted `QMSService.extract_calculation_selector_from_entry` (0 callers, just wrapped utils)
 - **Deleted**: 1 static method
 - **Delta**: 240 → 239 entrypoints, static 38 → 37
 - **Tests**: 3018 passed, 18 skipped
@@ -122,9 +122,9 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 - **Time**: 2026-02-02
 - **Action**: Migrated `daemon/compat.py` from static methods to nested service methods
 - **Changes**:
-  - `QVService.get_project_summary(path)` → `QVService(path).project.get_summary()`
-  - `QVService.list_structures_data(path)` → `QVService(path).structure.list()` (DTO)
-  - `QVService.list_calculations_data(path)` → `QVService(path).calculation.list()` (DTO)
+  - `QMSService.get_project_summary(path)` → `QMSService(path).project.get_summary()`
+  - `QMSService.list_structures_data(path)` → `QMSService(path).structure.list()` (DTO)
+  - `QMSService.list_calculations_data(path)` → `QMSService(path).calculation.list()` (DTO)
 - **Delta**: No entrypoint change (call site migration only)
 - **Tests**: 3018 passed, 18 skipped
 - **Notes**: Prepares for static method deletion once test usages are migrated
@@ -139,7 +139,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
   - `tests/integration/test_relax_promote_e2e.py`: 2 usages migrated (lines 183, 210)
 - **Remaining callers**:
   - `test_gui_calculation_detail.py:288`: Needs `structure` name field (DTO has ulid only)
-  - `test_qvservice_gui.py`: 6 usages - tests OF the static methods (delete with methods)
+  - `test_qmsservice_gui.py`: 6 usages - tests OF the static methods (delete with methods)
 - **Delta**: No entrypoint change (call site migration only)
 - **Tests**: 3018 passed, 18 skipped
 
@@ -262,7 +262,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### Batch 17: Migrate init_calculation test callers
 - **Time**: 2026-02-02
-- **Action**: Migrated all test callers of `QVService.init_calculation()` to use nested method `QVService(project_root).project.init_calculation()`
+- **Action**: Migrated all test callers of `QMSService.init_calculation()` to use nested method `QMSService(project_root).project.init_calculation()`
 - **Files Changed**: 27 test files migrated (73 usages in tests)
   - `tests/integration/test_pyscf_phase3c.py` (3 usages)
   - `tests/integration/orca/test_orca_project_level.py` (1 usage)
@@ -310,9 +310,9 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 - **Pattern Applied**:
   ```python
   # Before
-  QVService.init_calculation(project_root=path, name="name", structure_selector=ulid)
+  QMSService.init_calculation(project_root=path, name="name", structure_selector=ulid)
   # After
-  QVService(path).project.init_calculation(name="name", structure_selector=ulid)
+  QMSService(path).project.init_calculation(name="name", structure_selector=ulid)
   ```
 
 ---
@@ -343,7 +343,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### Batch 19: Delete import_structure static method
 - **Time**: 2026-02-02
-- **Action**: Migrated all callers from `QVService.import_structure()` to `QVService(project_root).structure.import_file()` and deleted the static method
+- **Action**: Migrated all callers from `QMSService.import_structure()` to `QMSService(project_root).structure.import_file()` and deleted the static method
 - **Deleted**: 1 static method (TEMP SHIM)
 - **Delta**: 227 → 226 entrypoints, static 25 → 24
 - **Tests**: 3012 passed, 18 skipped
@@ -352,14 +352,14 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
   - `tests/unit/test_api_get_band_structure_data.py` (1 usage)
   - `tests/unit/test_api_parameter_scan_persistence.py` (4 usages)
   - `tests/unit/test_api_step_artifacts.py` (1 usage)
-  - `tests/unit/test_qvservice_gui.py` (5 usages)
+  - `tests/unit/test_qmsservice_gui.py` (5 usages)
   - `tests/cli/test_calculation_structure_kind_engine_family.py` (1 usage)
   - `tests/contract_crawler/recipes/parameterized.py` (1 usage)
   - `tests/unit/test_structure_fingerprint.py` (5 usages)
   - `tools/run_lammps_long_smoke.py` (1 usage)
   - `tools/import_tutorial_datasets.py` (1 usage)
-  - `src/quantumvitas/api/service.py:promote_relax_structure` internal call (1 usage)
-  - `src/quantumvitas/daemon/server.py:_handle_promote_relax_structure` (return type adjustment)
+  - `src/qmatsuite/api/service.py:promote_relax_structure` internal call (1 usage)
+  - `src/qmatsuite/daemon/server.py:_handle_promote_relax_structure` (return type adjustment)
 - **Notes**:
   - Added `dedup_by_fingerprint` parameter to nested `import_file` method for full migration
   - Return type changed: `ResolvedResource` → `StructureDTO`
@@ -371,7 +371,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### Batch 20: Delete init_step static method
 - **Time**: 2026-02-02
-- **Action**: Migrated all callers from `QVService.init_step()` to `QVService(project_root).calculation.add_step()` and deleted the static method
+- **Action**: Migrated all callers from `QMSService.init_step()` to `QMSService(project_root).calculation.add_step()` and deleted the static method
 - **Deleted**: 1 static method (TEMP SHIM)
 - **Delta**: 226 → 225 entrypoints, static 24 → 23
 - **Tests**: 3012 passed, 18 skipped
@@ -837,7 +837,7 @@ USAGE COVERAGE:
 | `find_path_context_from_pwd` | daemon: 4 | Returns PathContext object |
 
 **Semantic Equivalence Analysis**:
-- All three wrap the same core function `quantumvitas.core.context.find_path_context_from_pwd`
+- All three wrap the same core function `qmatsuite.core.context.find_path_context_from_pwd`
 - `find_project_root` = `find_path_context_from_pwd(...).project_root` with None fallback
 - `find_path_context_ref` = dict adapter over `find_path_context_from_pwd` result
 
@@ -915,7 +915,7 @@ USAGE COVERAGE:
 **Semantic Equivalence Analysis**:
 - `load_project_config(project_root)` ≡ `svc.project.get_config()`
 - `build_resource_index(project_root)` ≡ `svc.project.build_resource_index()`
-- Daemon already creates `QVService(project_root)` before calling these
+- Daemon already creates `QMSService(project_root)` before calling these
 
 **Canonical Entrypoint**: Service methods (`svc.project.get_config()`, `svc.project.build_resource_index()`)
 
@@ -1578,7 +1578,7 @@ The API already has correct functions. CLI refactoring is a code quality issue, 
 > **All filesystem mutations MUST go through kernel via API calls.**
 
 **YAML SSOT Files** (only modifiable by YamlDoc classes in `core/yamldoc.py`):
-- `project.qv.yml` → `ProjectDoc`
+- `project.qms.yml` → `ProjectDoc`
 - `calculation.yaml` → `CalcDoc`
 - `*.step.yaml` → `StepDoc`
 
@@ -1586,7 +1586,7 @@ The API already has correct functions. CLI refactoring is a code quality issue, 
 
 | Line | Command | File Written | API Function to Use |
 |------|---------|--------------|---------------------|
-| 750-752 | `init project` | `project.qv.yml` | `QVService.init_project()` |
+| 750-752 | `init project` | `project.qms.yml` | `QMSService.init_project()` |
 | 936 | `init calculation` | `calculation.yaml` | `svc.project.init_calculation()` |
 | 1393 | `init step` | `calculation.yaml` | `svc.calculation.add_step()` |
 | 2569, 2577 | `update step` | `*.step.yaml`, `calculation.yaml` | `svc.calculation.update_step_params()` |
@@ -1622,7 +1622,7 @@ The API already has correct functions. CLI refactoring is a code quality issue, 
 
 | Command | Before (Violation) | After (API Call) |
 |---------|-------------------|------------------|
-| `init project` | Direct YAML write | `QVService.init_project()` |
+| `init project` | Direct YAML write | `QMSService.init_project()` |
 | `init calculation` | Direct YAML write | `svc.project.init_calculation()` |
 | `init step` | `_write_step_spec()` | `svc.calculation.add_step_from_spec()` |
 | `delete step` | Direct calc.yaml write | `svc.calculation.remove_step()` |
@@ -1652,8 +1652,8 @@ The API already has correct functions. CLI refactoring is a code quality issue, 
 - Not a regression from Law H9 work
 
 **Files Modified**:
-- `src/quantumvitas/cli/main.py` - CLI commands migrated to API
-- `src/quantumvitas/api/service.py` - New API methods added
+- `src/qmatsuite/cli/main.py` - CLI commands migrated to API
+- `src/qmatsuite/api/service.py` - New API methods added
 - `tests/gates/test_frontend_no_yaml_write.py` - Gate test created
 - `tests/cli/test_cli_h9_premigration.py` - Pre-migration tests
 
@@ -1684,9 +1684,9 @@ The API already has correct functions. CLI refactoring is a code quality issue, 
    - `tests/integration/test_relax_structure_save.py` - 1 fixture
 
 2. **Example Project Data Updated** (now use `meta` format):
-   - `tests/data/project_examples/project1/project.qv.yml`
-   - `tests/data/project_examples/project2_bands/project.qv.yml`
-   - `tests/data/golden_project/silicon-band-structure-2/project.qv.yml`
+   - `tests/data/project_examples/project1/project.qms.yml`
+   - `tests/data/project_examples/project2_bands/project.qms.yml`
+   - `tests/data/golden_project/silicon-band-structure-2/project.qms.yml`
 
 3. **CLI Bug Fixed**:
    - `configure_calculation_command` was missing `import yaml` at function scope
@@ -1696,7 +1696,7 @@ The API already has correct functions. CLI refactoring is a code quality issue, 
    - `test_cli_rename_calculation` - Uses `configure calculation --name` instead of deprecated `rename calculation`
    - Assertions updated to use `entry["meta"]["name"]`, `entry["meta"]["slug"]`, `entry["meta"]["path"]`
 
-**API Entry Format** (canonical for project.qv.yml):
+**API Entry Format** (canonical for project.qms.yml):
 ```yaml
 calculations:
 - meta:
@@ -1731,7 +1731,7 @@ structures:
 
 | Gate | Test File | Checks |
 |------|-----------|--------|
-| Gate B | `tests/gates/test_no_service_delegating_utils.py` | No `get_service()`/`QVService()` in utils functions |
+| Gate B | `tests/gates/test_no_service_delegating_utils.py` | No `get_service()`/`QMSService()` in utils functions |
 | Gate C | `tests/gates/test_no_stub_service_methods.py` | No stub/placeholder nested service methods |
 
 **2. Constitution Updated (v2.0 -> v2.1)**:

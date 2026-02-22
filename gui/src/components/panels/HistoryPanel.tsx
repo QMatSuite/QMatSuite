@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { HistoryTimelineEntry } from '../../types/qv';
+import type { HistoryTimelineEntry } from '../../types/qms';
 import { RunDetailDrawer } from './RunDetailDrawer';
 import './HistoryPanel.css';
 
@@ -35,14 +35,14 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
   const [selectedRunUlid, setSelectedRunUlid] = useState<string | null>(null);
 
   const fetchHistory = useCallback(async () => {
-    if (!projectRoot || !window.qv) return;
+    if (!projectRoot || !window.qms) return;
     
     setLoading(true);
     setError(null);
     
     try {
       const limitValue = limit === 'all' ? undefined : parseInt(limit, 10);
-      const response = await window.qv.request<{
+      const response = await window.qms.request<{
         timeline: HistoryTimelineEntry[];
         latest_run_ulid: string | null;
         total: number;
@@ -66,12 +66,12 @@ export function HistoryPanel({ projectRoot }: HistoryPanelProps) {
   
   // Handle delete history
   const handleDeleteHistory = useCallback(async () => {
-    if (!projectRoot || !window.qv) return;
+    if (!projectRoot || !window.qms) return;
     
     setIsDeleting(true);
     
     try {
-      const response = await window.qv.request<{
+      const response = await window.qms.request<{
         success: boolean;
         error?: string;
         deleted_path?: string;

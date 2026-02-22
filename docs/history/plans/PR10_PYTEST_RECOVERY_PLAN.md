@@ -9,7 +9,7 @@ This document outlines the recovery strategy for PR10 pytest failures after the 
 
 ## 1. Official Domain Accessor API (Target Capability List)
 
-The public API facade is `QVService(project_root)` with four domain accessors:
+The public API facade is `QMSService(project_root)` with four domain accessors:
 
 ### svc.structure.*
 | Method | Description |
@@ -108,15 +108,15 @@ The public API facade is `QVService(project_root)` with four domain accessors:
 
 ## 3. Failure Buckets (from baseline run)
 
-### Bucket A: Old Static Methods on QVService (70+ failures)
+### Bucket A: Old Static Methods on QMSService (70+ failures)
 Tests expecting removed static methods:
-- `QVService.save_figure`, `generate_qe_input_from_structure`, `materialize_step_spec`
-- `QVService.find_calculation_raw_dir`, `find_calculation_results_dir`
-- `QVService.init_step`, `add_step_to_calculation`, `calc_set_steps`
-- `QVService.create_demo_project`, `configure_project`, `configure_calculation`
-- `QVService.list_structures`, `get_structure`, `delete_structure`
-- `QVService.list_calculations`, `get_calculation`, `delete_calculation`
-- `QVService.analyze_band`, `analyze_dos`, `get_scf_convergence_data`
+- `QMSService.save_figure`, `generate_qe_input_from_structure`, `materialize_step_spec`
+- `QMSService.find_calculation_raw_dir`, `find_calculation_results_dir`
+- `QMSService.init_step`, `add_step_to_calculation`, `calc_set_steps`
+- `QMSService.create_demo_project`, `configure_project`, `configure_calculation`
+- `QMSService.list_structures`, `get_structure`, `delete_structure`
+- `QMSService.list_calculations`, `get_calculation`, `delete_calculation`
+- `QMSService.analyze_band`, `analyze_dos`, `get_scf_convergence_data`
 
 **Action:** Rewrite to use domain accessors or delete if testing deprecated surface.
 
@@ -137,15 +137,15 @@ Tests expecting imports that are no longer re-exported:
 **Action:** Fix semantic bugs in API or update test expectations.
 
 ### Bucket D: Daemon Handler Errors (20+ failures)
-Daemon calling missing QVService methods:
+Daemon calling missing QMSService methods:
 - `get_structure_vis_data`, `update_step_params`, `can_delete_calculation`
 - `preflight_check`, `get_common_cards`
 
 **Action:** Update daemon handlers to use domain accessor API.
 
 ### Bucket E: CLI Integration Failures (10+ failures)
-- `qv init step` failing due to missing methods
-- `qv analyze band/dos` failing due to missing methods
+- `qms init step` failing due to missing methods
+- `qms analyze band/dos` failing due to missing methods
 - Status output format changes
 
 **Action:** Update CLI to use domain accessor API.
@@ -199,7 +199,7 @@ Mechanical migrations via task packages:
 - **Changes:**
   - Removed structure_id/parent_calculation_id from step_factory.py
   - Removed structure/structure_id/parent_calculation_id from CLI init_step_command
-- **Files touched:** src/quantumvitas/workflow/step_factory.py, src/quantumvitas/cli/main.py
+- **Files touched:** src/qmatsuite/workflow/step_factory.py, src/qmatsuite/cli/main.py
 - **Tests run:** `pytest tests/cli/test_graphene_calculation_setup.py -v`
 - **Result:** 2 passed (graphene tests now pass)
 - **Next:** Create Task Package #1 for Cursor Auto
@@ -231,10 +231,10 @@ Mechanical migrations via task packages:
 - **Goal:** Fix configure_step migration and test assertions
 - **Changes:**
   1. Fixed `update_step_params` in service.py to actually update step YAML (was broken)
-  2. Migrated 4 `QVService.configure_step()` calls to `svc.calculation.update_step_params()`
+  2. Migrated 4 `QMSService.configure_step()` calls to `svc.calculation.update_step_params()`
   3. Cursor Auto fixed test assertions in test_api_service_steps.py
 - **Files touched:**
-  - src/quantumvitas/api/service.py (update_step_params fix)
+  - src/qmatsuite/api/service.py (update_step_params fix)
   - tests/daemon/test_si_bands_calculation_daemon.py (4 migrations)
   - tests/unit/test_api_service_steps.py (assertion fixes by Cursor Auto)
 - **Result:** 133 failed, 5 errors, 2340 passed
@@ -247,11 +247,11 @@ Mechanical migrations via task packages:
 ## 6. Task Package #1: Migrate test fixture setup (init_step calls)
 
 ### Objective
-Migrate test fixtures that use `QVService.init_step()` or `QVService.add_step_to_calculation()` to use the new domain accessor API: `svc.calculation.add_step()`.
+Migrate test fixtures that use `QMSService.init_step()` or `QMSService.add_step_to_calculation()` to use the new domain accessor API: `svc.calculation.add_step()`.
 
 **IMPORTANT SCOPE LIMITATION:** This package ONLY fixes the test setup/fixture code. After this migration:
 - The test fixtures will successfully create steps
-- Some tests may still fail if they call other missing methods (e.g., `QVService.list_step_artifacts`)
+- Some tests may still fail if they call other missing methods (e.g., `QMSService.list_step_artifacts`)
 - Those failures will be addressed in later packages
 
 ### Target Files (8 files found)
@@ -270,10 +270,10 @@ tests/unit/test_api_service_steps.py
 
 **Allowed:**
 - Edit only `@pytest.fixture` functions and test setup code (before assertions)
-- Replace `QVService.init_step(...)` with `svc.calculation.add_step(...)`
-- Replace `QVService.add_step_to_calculation(...)` with `svc.calculation.add_step(...)`
-- Create a `QVService(project_root)` instance and store in fixture return value
-- Import `QVService` from `quantumvitas.api`
+- Replace `QMSService.init_step(...)` with `svc.calculation.add_step(...)`
+- Replace `QMSService.add_step_to_calculation(...)` with `svc.calculation.add_step(...)`
+- Create a `QMSService(project_root)` instance and store in fixture return value
+- Import `QMSService` from `qmatsuite.api`
 
 **NOT Allowed:**
 - Do NOT modify any source code in `src/`
@@ -286,7 +286,7 @@ tests/unit/test_api_service_steps.py
 
 **1. Find all init_step calls:**
 ```bash
-rg "QVService\.init_step" tests/ -n
+rg "QMSService\.init_step" tests/ -n
 ```
 
 **2. For each call in a fixture or setup:**
@@ -295,10 +295,10 @@ rg "QVService\.init_step" tests/ -n
 ```python
 @pytest.fixture
 def project_with_step(tmp_path):
-    project_dir = QVService.init_project(tmp_path / "test_project")
-    QVService.import_structure(project_dir, source, name="Silicon")
-    QVService.init_calculation(project_dir, calc_slug, structure_selector="silicon")
-    QVService.init_step(project_dir, calc_slug, "scf", name="scf")  # <-- MIGRATE THIS
+    project_dir = QMSService.init_project(tmp_path / "test_project")
+    QMSService.import_structure(project_dir, source, name="Silicon")
+    QMSService.init_calculation(project_dir, calc_slug, structure_selector="silicon")
+    QMSService.init_step(project_dir, calc_slug, "scf", name="scf")  # <-- MIGRATE THIS
     return project_dir, calc_slug, step_id, calc_dir
 ```
 
@@ -306,12 +306,12 @@ def project_with_step(tmp_path):
 ```python
 @pytest.fixture
 def project_with_step(tmp_path):
-    project_dir = QVService.init_project(tmp_path / "test_project")
-    QVService.import_structure(project_dir, source, name="Silicon")
-    QVService.init_calculation(project_dir, calc_slug, structure_selector="silicon")
+    project_dir = QMSService.init_project(tmp_path / "test_project")
+    QMSService.import_structure(project_dir, source, name="Silicon")
+    QMSService.init_calculation(project_dir, calc_slug, structure_selector="silicon")
 
     # Use domain accessor API for step creation
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
     svc.calculation.add_step(
         calc_selector=calc_slug,
         step_type="scf",
@@ -324,7 +324,7 @@ def project_with_step(tmp_path):
 **Parameter mapping:**
 | Old Parameter | New Parameter |
 |---------------|---------------|
-| `project_root` | Create `QVService(project_root)` instance |
+| `project_root` | Create `QMSService(project_root)` instance |
 | `calculation_selector` | `calc_selector` |
 | `step_type` | `step_type` (unchanged) |
 | `name` | `step_name` |
@@ -335,12 +335,12 @@ def project_with_step(tmp_path):
 **Before:**
 ```python
 step_spec = {"step_type": "scf", "meta": {"name": "scf"}, "parameters": {...}}
-QVService.add_step_to_calculation(project_root, calc_sel, step_spec)
+QMSService.add_step_to_calculation(project_root, calc_sel, step_spec)
 ```
 
 **After:**
 ```python
-svc = QVService(project_root)
+svc = QMSService(project_root)
 svc.calculation.add_step(
     calc_selector=calc_sel,
     step_type=step_spec.get("step_type"),
@@ -363,7 +363,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### Expected Outcome
 - Error count should decrease from 40 errors
-- Tests that previously errored with `QVService has no attribute 'init_step'` should either:
+- Tests that previously errored with `QMSService has no attribute 'init_step'` should either:
   - Pass (if no other missing methods in the test)
   - Fail with a DIFFERENT error (if the test body calls other missing methods)
 
@@ -385,7 +385,7 @@ DO NOT guess. Return evidence and wait.
 ## 7. Task Package #2: Migrate configure_step and Fix Test Assertions
 
 ### Objective
-1. Migrate `QVService.configure_step()` calls to `svc.calculation.update_step_params()`
+1. Migrate `QMSService.configure_step()` calls to `svc.calculation.update_step_params()`
 2. Fix test assertions that expect dict when `add_step()` returns `StepDTO`
 
 ### Target Files
@@ -399,7 +399,7 @@ tests/unit/test_api_service_steps.py              (assertion fixes needed)
 **Allowed:**
 - Edit test fixture setup code
 - Edit test assertion code (to match new API return types)
-- Replace `QVService.configure_step(...)` with `svc.calculation.update_step_params(...)`
+- Replace `QMSService.configure_step(...)` with `svc.calculation.update_step_params(...)`
 - Replace assertions like `result["steps"]` with proper DTO field access
 
 **NOT Allowed:**
@@ -411,7 +411,7 @@ tests/unit/test_api_service_steps.py              (assertion fixes needed)
 
 **Before:**
 ```python
-QVService.configure_step(
+QMSService.configure_step(
     project_root=project_dir,
     calculation_selector="bands_daemon",
     step_selector="scf",
@@ -606,8 +606,8 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 Migrate CLI analyze commands from calling non-existent static methods to using the domain accessor API.
 
 The CLI currently calls:
-- `QVService.analyze_band(...)` (static method - doesn't exist)
-- `QVService.analyze_dos(...)` (static method - doesn't exist)
+- `QMSService.analyze_band(...)` (static method - doesn't exist)
+- `QMSService.analyze_dos(...)` (static method - doesn't exist)
 
 These need to become:
 - `svc.analysis.analyze_band(...)` (instance method on domain accessor)
@@ -615,18 +615,18 @@ These need to become:
 
 ### Target File
 ```
-src/quantumvitas/cli/main.py
+src/qmatsuite/cli/main.py
 ```
 
 ### Lines to Fix
-- Line 4572: `QVService.analyze_band(...)` → `svc.analysis.analyze_band(...)`
-- Line 4659: `QVService.analyze_dos(...)` → `svc.analysis.analyze_dos(...)`
+- Line 4572: `QMSService.analyze_band(...)` → `svc.analysis.analyze_band(...)`
+- Line 4659: `QMSService.analyze_dos(...)` → `svc.analysis.analyze_dos(...)`
 
 ### Allowed / Not Allowed
 
 **Allowed:**
 - Edit the CLI command functions `analyze_band_command` and `analyze_dos_command`
-- Create a `QVService(project_root)` instance before calling analysis methods
+- Create a `QMSService(project_root)` instance before calling analysis methods
 - Remove `project_root=` parameter from the method call (instance method uses self._service.project_root)
 
 **NOT Allowed:**
@@ -640,9 +640,9 @@ src/quantumvitas/cli/main.py
 
 **Before:**
 ```python
-    # Call QVService (will raise NotFoundError if calculation not found)
+    # Call QMSService (will raise NotFoundError if calculation not found)
     try:
-        result = QVService.analyze_band(
+        result = QMSService.analyze_band(
             project_root=project_root,
             bands_file=input_file,
             calculation_selector=calculation_selector,
@@ -659,9 +659,9 @@ src/quantumvitas/cli/main.py
 
 **After:**
 ```python
-    # Call QVService (will raise NotFoundError if calculation not found)
+    # Call QMSService (will raise NotFoundError if calculation not found)
     try:
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.analysis.analyze_band(
             bands_file=input_file,
             calculation_selector=calculation_selector,
@@ -677,17 +677,17 @@ src/quantumvitas/cli/main.py
 ```
 
 **Key changes:**
-1. Add `svc = QVService(project_root)` line before the call
-2. Change `QVService.analyze_band(` to `svc.analysis.analyze_band(`
+1. Add `svc = QMSService(project_root)` line before the call
+2. Change `QMSService.analyze_band(` to `svc.analysis.analyze_band(`
 3. Remove `project_root=project_root,` parameter (instance method uses internal project_root)
 
 **2. For analyze_dos_command (around line 4659):**
 
 **Before:**
 ```python
-    # Call QVService
+    # Call QMSService
     try:
-        result = QVService.analyze_dos(
+        result = QMSService.analyze_dos(
             project_root=project_root,
             dos_file=input_file,
             fermi_energy=fermi,
@@ -702,9 +702,9 @@ src/quantumvitas/cli/main.py
 
 **After:**
 ```python
-    # Call QVService
+    # Call QMSService
     try:
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         result = svc.analysis.analyze_dos(
             dos_file=input_file,
             fermi_energy=fermi,
@@ -718,8 +718,8 @@ src/quantumvitas/cli/main.py
 ```
 
 **Key changes:**
-1. Add `svc = QVService(project_root)` line before the call
-2. Change `QVService.analyze_dos(` to `svc.analysis.analyze_dos(`
+1. Add `svc = QMSService(project_root)` line before the call
+2. Change `QMSService.analyze_dos(` to `svc.analysis.analyze_dos(`
 3. Remove `project_root=project_root,` parameter
 
 ### Verification Commands
@@ -764,13 +764,13 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 ## 10. Task Package #5: Fix Daemon Handlers to Use Domain Accessor API
 
 ### Objective
-Migrate daemon handlers from calling non-existent static methods on `QVService` to using the domain accessor API via `get_service(project_root)`.
+Migrate daemon handlers from calling non-existent static methods on `QMSService` to using the domain accessor API via `get_service(project_root)`.
 
-The daemon already imports `get_service` (line 31) but still calls static methods like `QVService.update_step_params(...)` which don't exist. These should become `svc.calculation.update_step_params(...)`.
+The daemon already imports `get_service` (line 31) but still calls static methods like `QMSService.update_step_params(...)` which don't exist. These should become `svc.calculation.update_step_params(...)`.
 
 ### Target File
 ```
-src/quantumvitas/daemon/server.py
+src/qmatsuite/daemon/server.py
 ```
 
 ### Allowed / Not Allowed
@@ -792,7 +792,7 @@ src/quantumvitas/daemon/server.py
 
 **Before:**
 ```python
-result = QVService.update_step_params(
+result = QMSService.update_step_params(
     project_root=project_root,
     calculation_ulid=calculation_ulid,
     step_selector=step,
@@ -820,7 +820,7 @@ result = svc.calculation.update_step_params(
 
 **Before:**
 ```python
-result = QVService.add_step_to_calculation(
+result = QMSService.add_step_to_calculation(
     project_root=project_root,
     calculation_selector=calculation,
     step_spec=step_spec,
@@ -846,7 +846,7 @@ result = {"step_id": step_dto.step_id, "step_type": step_dto.step_type, "status"
 
 **Before:**
 ```python
-QVService.delete_step_from_calculation(
+QMSService.delete_step_from_calculation(
     project_root=project_root,
     calculation_selector=calculation,
     step_selector=step,
@@ -868,7 +868,7 @@ svc.calculation.remove_step(
 
 **Before:**
 ```python
-return QVService.get_structure_vis_data(
+return QMSService.get_structure_vis_data(
     project_root=project_root,
     selector=selector,
     supercell=supercell,
@@ -892,7 +892,7 @@ return svc.structure.get_vis_data(
 
 **Before:**
 ```python
-return QVService.get_band_structure_data(
+return QMSService.get_band_structure_data(
     project_root=project_root,
     calculation_selector=calculation,
     step_selector=step,
@@ -914,7 +914,7 @@ return svc.analysis.get_band_structure_data(
 
 **Before:**
 ```python
-return QVService.get_scf_convergence_data(
+return QMSService.get_scf_convergence_data(
     project_root=project_root,
     calculation_selector=calculation,
     step_selector=step,
@@ -936,9 +936,9 @@ return svc.analysis.get_scf_convergence_data(
 
 **Before:**
 ```python
-calculation_ulid = QVService.validate_ulid(calculation_ulid, kind="calculation")
+calculation_ulid = QMSService.validate_ulid(calculation_ulid, kind="calculation")
 # ...
-return QVService.get_calculation_detail(
+return QMSService.get_calculation_detail(
     project_root=project_root,
     calculation_ulid=calculation_ulid,
     index=cache.index,
@@ -967,17 +967,17 @@ return {
 
 **Before:**
 ```python
-debug_enabled = QVService.is_resolution_debug_enabled()
+debug_enabled = QMSService.is_resolution_debug_enabled()
 # ...
-calculation_ulid = QVService.validate_ulid(calculation_ulid, kind="calculation")
+calculation_ulid = QMSService.validate_ulid(calculation_ulid, kind="calculation")
 # ...
-return QVService.get_step_detail(...)
+return QMSService.get_step_detail(...)
 ```
 
 **After:**
 ```python
 # Replace is_resolution_debug_enabled
-settings = QVService.get_settings()
+settings = QMSService.get_settings()
 debug_enabled = settings.get("debug_resolution", False)
 
 # Replace validate_ulid
@@ -999,7 +999,7 @@ return {
 
 **Before:**
 ```python
-if QVService.is_path_like(structure_selector):
+if QMSService.is_path_like(structure_selector):
     raise InvalidArgumentError(...)
 ```
 
@@ -1023,9 +1023,9 @@ These helper calls appear multiple times and need consistent replacement:
 
 | Old Call | Replacement |
 |----------|-------------|
-| `QVService.validate_ulid(x, kind="calculation")` | `if not is_ulid_like(x): raise InvalidArgumentError(...)` |
-| `QVService.is_resolution_debug_enabled()` | `QVService.get_settings().get("debug_resolution", False)` |
-| `QVService.is_path_like(s)` | Inline: `"/" in s or "\\" in s or s.startswith(".")` |
+| `QMSService.validate_ulid(x, kind="calculation")` | `if not is_ulid_like(x): raise InvalidArgumentError(...)` |
+| `QMSService.is_resolution_debug_enabled()` | `QMSService.get_settings().get("debug_resolution", False)` |
+| `QMSService.is_path_like(s)` | Inline: `"/" in s or "\\" in s or s.startswith(".")` |
 
 ### Verification Commands
 
@@ -1041,7 +1041,7 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
 
 ### Expected Outcome
-- Daemon tests that failed with "QVService has no attribute X" should progress
+- Daemon tests that failed with "QMSService has no attribute X" should progress
 - Target: 15+ fewer failures/errors
 
 ### Report Format (Mandatory)
@@ -1071,14 +1071,14 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 ## 11. Task Package #6: Migrate Unit Tests to Domain Accessor API
 
 ### Objective
-Migrate unit test files that call old static methods on `QVService` to use the domain accessor API pattern: `svc = QVService(project_root); svc.domain.method(...)`.
+Migrate unit test files that call old static methods on `QMSService` to use the domain accessor API pattern: `svc = QMSService(project_root); svc.domain.method(...)`.
 
 This package covers 6 test files with ~50 total test failures.
 
 ### Target Files (6 files, ~50 failures)
 ```
 tests/unit/test_api_service.py           (~15 failures)
-tests/unit/test_qvservice_gui.py         (~4 failures)
+tests/unit/test_qmsservice_gui.py         (~4 failures)
 tests/unit/test_api_get_band_structure_data.py (~4 failures)
 tests/unit/test_analysis_artifacts.py    (~6 failures)
 tests/unit/test_api_step_artifacts.py    (~10 failures)
@@ -1089,7 +1089,7 @@ tests/unit/test_resource_rename_safety.py (~7 failures)
 
 **Allowed:**
 - Edit test files to use domain accessor API
-- Create `svc = QVService(project_root)` instances in tests
+- Create `svc = QMSService(project_root)` instances in tests
 - Replace static method calls with instance method calls
 - Skip tests for methods that don't exist in domain API yet (use `@pytest.mark.skip(reason="PR10: Method not in domain API")`)
 - Delete tests that test deprecated re-exports
@@ -1103,24 +1103,24 @@ tests/unit/test_resource_rename_safety.py (~7 failures)
 
 | Old Static Method | New Domain Accessor Method | Notes |
 |-------------------|---------------------------|-------|
-| `QVService.list_structures(proj)` | `svc.structure.list()` | Returns list[StructureDTO] |
-| `QVService.get_structure(proj, sel)` | `svc.structure.get(sel)` | Returns StructureDTO |
-| `QVService.delete_structure(proj, sel)` | Skip | Not in domain API yet |
-| `QVService.configure_structure(proj, sel, ...)` | Skip | Not in domain API yet |
-| `QVService.list_calculations(proj)` | `svc.calculation.list()` | Returns list[CalculationDTO] |
-| `QVService.get_calculation(proj, sel)` | `svc.calculation.get(sel)` | Returns CalculationDTO |
-| `QVService.delete_calculation(proj, sel)` | `svc.calculation.delete(sel)` | Returns None |
-| `QVService.configure_calculation(proj, sel, ...)` | `svc.calculation.update_meta(sel, ...)` | Check available kwargs |
-| `QVService.list_steps(proj, calc)` | `svc.calculation.list_steps(calc)` | Returns list[StepDTO] |
-| `QVService.delete_step(proj, calc, step)` | `svc.calculation.remove_step(calc, step)` | Returns None |
-| `QVService.get_structure_vis_data(proj, sel, ...)` | `svc.structure.get_vis_data(sel, ...)` | Returns dict |
-| `QVService.get_band_structure_data(proj, calc, step)` | `svc.analysis.get_band_structure_data(calc, step)` | Returns dict |
-| `QVService.get_scf_convergence_data(proj, calc, step)` | `svc.analysis.get_scf_convergence_data(calc, step)` | Returns dict |
-| `QVService.get_reference_analysis(proj, ...)` | Skip | Not in domain API yet |
-| `QVService.configure_project(proj, ...)` | Skip | Not in domain API yet |
-| `QVService.create_demo_project(proj, ...)` | Skip | Not in domain API yet |
-| `QVService.list_step_artifacts(proj, calc, step)` | Skip | Not in domain API yet |
-| `QVService.read_step_artifact_text(proj, calc, step, name)` | Skip | Not in domain API yet |
+| `QMSService.list_structures(proj)` | `svc.structure.list()` | Returns list[StructureDTO] |
+| `QMSService.get_structure(proj, sel)` | `svc.structure.get(sel)` | Returns StructureDTO |
+| `QMSService.delete_structure(proj, sel)` | Skip | Not in domain API yet |
+| `QMSService.configure_structure(proj, sel, ...)` | Skip | Not in domain API yet |
+| `QMSService.list_calculations(proj)` | `svc.calculation.list()` | Returns list[CalculationDTO] |
+| `QMSService.get_calculation(proj, sel)` | `svc.calculation.get(sel)` | Returns CalculationDTO |
+| `QMSService.delete_calculation(proj, sel)` | `svc.calculation.delete(sel)` | Returns None |
+| `QMSService.configure_calculation(proj, sel, ...)` | `svc.calculation.update_meta(sel, ...)` | Check available kwargs |
+| `QMSService.list_steps(proj, calc)` | `svc.calculation.list_steps(calc)` | Returns list[StepDTO] |
+| `QMSService.delete_step(proj, calc, step)` | `svc.calculation.remove_step(calc, step)` | Returns None |
+| `QMSService.get_structure_vis_data(proj, sel, ...)` | `svc.structure.get_vis_data(sel, ...)` | Returns dict |
+| `QMSService.get_band_structure_data(proj, calc, step)` | `svc.analysis.get_band_structure_data(calc, step)` | Returns dict |
+| `QMSService.get_scf_convergence_data(proj, calc, step)` | `svc.analysis.get_scf_convergence_data(calc, step)` | Returns dict |
+| `QMSService.get_reference_analysis(proj, ...)` | Skip | Not in domain API yet |
+| `QMSService.configure_project(proj, ...)` | Skip | Not in domain API yet |
+| `QMSService.create_demo_project(proj, ...)` | Skip | Not in domain API yet |
+| `QMSService.list_step_artifacts(proj, calc, step)` | Skip | Not in domain API yet |
+| `QMSService.read_step_artifact_text(proj, calc, step, name)` | Skip | Not in domain API yet |
 
 ### File-by-File Migration Guide
 
@@ -1148,10 +1148,10 @@ tests/unit/test_resource_rename_safety.py (~7 failures)
 ```python
 def test_list_structures(self, project_with_struct_source):
     project_dir, source_file = project_with_struct_source
-    QVService.import_structure(project_dir, source_file, name="Silicon")
-    QVService.import_structure(project_dir, source_file, name="Graphene")
+    QMSService.import_structure(project_dir, source_file, name="Silicon")
+    QMSService.import_structure(project_dir, source_file, name="Graphene")
 
-    results = QVService.list_structures(project_dir)
+    results = QMSService.list_structures(project_dir)
 
     assert len(results) == 2
     names = [s["name"] for s in results]
@@ -1163,10 +1163,10 @@ def test_list_structures(self, project_with_struct_source):
 ```python
 def test_list_structures(self, project_with_struct_source):
     project_dir, source_file = project_with_struct_source
-    QVService.import_structure(project_dir, source_file, name="Silicon")
-    QVService.import_structure(project_dir, source_file, name="Graphene")
+    QMSService.import_structure(project_dir, source_file, name="Silicon")
+    QMSService.import_structure(project_dir, source_file, name="Graphene")
 
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
     results = svc.structure.list()
 
     assert len(results) == 2
@@ -1181,9 +1181,9 @@ def test_list_structures(self, project_with_struct_source):
 ```python
 def test_get_calculation(self, project_with_calculation):
     project = project_with_calculation
-    QVService.init_calculation(project, "My Calculation")
+    QMSService.init_calculation(project, "My Calculation")
 
-    result = QVService.get_calculation(project, "my-calculation")
+    result = QMSService.get_calculation(project, "my-calculation")
 
     assert result["name"] == "My Calculation"
 ```
@@ -1192,9 +1192,9 @@ def test_get_calculation(self, project_with_calculation):
 ```python
 def test_get_calculation(self, project_with_calculation):
     project = project_with_calculation
-    QVService.init_calculation(project, "My Calculation")
+    QMSService.init_calculation(project, "My Calculation")
 
-    svc = QVService(project)
+    svc = QMSService(project)
     result = svc.calculation.get("my-calculation")
 
     assert result.meta.name == "My Calculation"  # CalculationDTO uses .meta.name
@@ -1206,9 +1206,9 @@ def test_get_calculation(self, project_with_calculation):
 ```python
 def test_configure_project(self, tmp_path):
     project_dir = tmp_path / "proj"
-    QVService.init_project(project_dir, name="Original")
+    QMSService.init_project(project_dir, name="Original")
 
-    QVService.configure_project(project_dir, new_name="Renamed")
+    QMSService.configure_project(project_dir, new_name="Renamed")
     ...
 ```
 
@@ -1219,17 +1219,17 @@ def test_configure_project(self, tmp_path):
     ...
 ```
 
-#### File 2: tests/unit/test_qvservice_gui.py
+#### File 2: tests/unit/test_qmsservice_gui.py
 
 **Failing tests (4):**
-All call `QVService.get_structure_vis_data(...)` → Migrate to `svc.structure.get_vis_data(...)`
+All call `QMSService.get_structure_vis_data(...)` → Migrate to `svc.structure.get_vis_data(...)`
 
 **Before:**
 ```python
 def test_returns_visualization_data(self, project_with_structure):
     project_dir, _ = project_with_structure
 
-    result = QVService.get_structure_vis_data(project_dir, "silicon")
+    result = QMSService.get_structure_vis_data(project_dir, "silicon")
 
     assert "atoms" in result
     assert "bonds" in result
@@ -1240,7 +1240,7 @@ def test_returns_visualization_data(self, project_with_structure):
 def test_returns_visualization_data(self, project_with_structure):
     project_dir, _ = project_with_structure
 
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
     result = svc.structure.get_vis_data("silicon")
 
     assert "atoms" in result
@@ -1250,12 +1250,12 @@ def test_returns_visualization_data(self, project_with_structure):
 #### File 3: tests/unit/test_api_get_band_structure_data.py
 
 **Failing tests (4):**
-All call `QVService.get_band_structure_data(...)` → Migrate to `svc.analysis.get_band_structure_data(...)`
+All call `QMSService.get_band_structure_data(...)` → Migrate to `svc.analysis.get_band_structure_data(...)`
 
 **Before:**
 ```python
 def test_get_band_structure_data_success(...):
-    result = QVService.get_band_structure_data(
+    result = QMSService.get_band_structure_data(
         project_root=project_root,
         calculation_selector=calc_selector,
         step_selector=step_selector,
@@ -1265,7 +1265,7 @@ def test_get_band_structure_data_success(...):
 **After:**
 ```python
 def test_get_band_structure_data_success(...):
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     result = svc.analysis.get_band_structure_data(
         calculation_selector=calc_selector,
         step_selector=step_selector,
@@ -1282,7 +1282,7 @@ def test_get_band_structure_data_success(...):
 #### File 5: tests/unit/test_api_step_artifacts.py
 
 **Failing tests (10):**
-All call `QVService.list_step_artifacts(...)` or `QVService.read_step_artifact_text(...)` → Skip all (not in domain API)
+All call `QMSService.list_step_artifacts(...)` or `QMSService.read_step_artifact_text(...)` → Skip all (not in domain API)
 
 **Add skip marker to entire test classes:**
 ```python
@@ -1298,7 +1298,7 @@ class TestReadStepArtifactText:
 #### File 6: tests/unit/test_resource_rename_safety.py
 
 **Failing tests (7):**
-All call `QVService.configure_calculation(...)` or `QVService.configure_structure(...)` → Skip all (not in domain API)
+All call `QMSService.configure_calculation(...)` or `QMSService.configure_structure(...)` → Skip all (not in domain API)
 
 **Add skip marker to entire file or classes:**
 ```python
@@ -1339,7 +1339,7 @@ source .venv/bin/activate
 
 # Test each file individually:
 python -m pytest tests/unit/test_api_service.py -v --tb=short
-python -m pytest tests/unit/test_qvservice_gui.py -v --tb=short
+python -m pytest tests/unit/test_qmsservice_gui.py -v --tb=short
 python -m pytest tests/unit/test_api_get_band_structure_data.py -v --tb=short
 python -m pytest tests/unit/test_analysis_artifacts.py -v --tb=short
 python -m pytest tests/unit/test_api_step_artifacts.py -v --tb=short
@@ -1383,7 +1383,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 ### Objective
 This package has three parts:
 1. **Delete tests** for internal/deprecated methods (not part of public API)
-2. **Fix source bug** in workflow/templates.py that calls missing `QVService.calc_set_steps`
+2. **Fix source bug** in workflow/templates.py that calls missing `QMSService.calc_set_steps`
 3. **Fix test assertions** that are still failing from Package #6 migrations
 
 ### Part A: Delete Tests for Internal Methods (DO NOT migrate - DELETE)
@@ -1392,7 +1392,7 @@ These tests test internal implementation details that should NOT be part of the 
 
 #### File 1: tests/unit/test_prefix_outdir_injection.py - DELETE ENTIRE FILE
 
-**Reason:** Tests `QVService._detect_prefix_outdir_injection()` which is an internal method (note the `_` prefix). This is implementation detail, not public API.
+**Reason:** Tests `QMSService._detect_prefix_outdir_injection()` which is an internal method (note the `_` prefix). This is implementation detail, not public API.
 
 **Action:** Delete the entire file.
 
@@ -1402,7 +1402,7 @@ rm tests/unit/test_prefix_outdir_injection.py
 
 #### File 2: tests/unit/test_preflight_pseudo_seeding.py - DELETE ENTIRE FILE
 
-**Reason:** Tests `QVService._preflight_check_and_seed_pseudos()` which is an internal method. Preflight seeding is kernel-level functionality, not public API.
+**Reason:** Tests `QMSService._preflight_check_and_seed_pseudos()` which is an internal method. Preflight seeding is kernel-level functionality, not public API.
 
 **Action:** Delete the entire file.
 
@@ -1412,7 +1412,7 @@ rm tests/unit/test_preflight_pseudo_seeding.py
 
 #### File 3: tests/unit/test_calculation_ulid_contracts.py - DELETE 2 TESTS
 
-**Reason:** Two tests use `QVService.calc_set_steps()` which is a deprecated internal workflow method.
+**Reason:** Two tests use `QMSService.calc_set_steps()` which is a deprecated internal workflow method.
 
 **Tests to DELETE:**
 - `test_calc_set_steps_preserves_step_type`
@@ -1424,17 +1424,17 @@ rm tests/unit/test_preflight_pseudo_seeding.py
 
 ### Part B: Fix Source Bug in workflow/templates.py
 
-The workflow service calls `QVService.calc_set_steps()` which doesn't exist in the new API. Fix by importing from legacy.
+The workflow service calls `QMSService.calc_set_steps()` which doesn't exist in the new API. Fix by importing from legacy.
 
-**File:** `src/quantumvitas/workflow/templates.py`
+**File:** `src/qmatsuite/workflow/templates.py`
 
 **Line ~535 and ~549:**
 
 **Before:**
 ```python
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         # ... later ...
-        QVService.calc_set_steps(
+        QMSService.calc_set_steps(
             project_root=project_root,
             calculation_ulid=parent_calculation_id,
             ordered_step_ulids=created_step_ulids,
@@ -1444,7 +1444,7 @@ The workflow service calls `QVService.calc_set_steps()` which doesn't exist in t
 
 **After:**
 ```python
-        from quantumvitas._api_legacy import QVService as LegacyService
+        from qmatsuite._api_legacy import QMSService as LegacyService
         # ... later ...
         LegacyService.calc_set_steps(
             project_root=project_root,
@@ -1470,10 +1470,10 @@ def test_list_structures(self, project_with_struct_source):
     project_dir, source_file = project_with_struct_source
 
     # Import structures
-    QVService.import_structure(project_dir, source_file, name="Silicon")
-    QVService.import_structure(project_dir, source_file, name="Graphene")
+    QMSService.import_structure(project_dir, source_file, name="Silicon")
+    QMSService.import_structure(project_dir, source_file, name="Graphene")
 
-    svc = QVService(project_dir)
+    svc = QMSService(project_dir)
     results = svc.structure.list()
 
     # Debug: print what we got
@@ -1503,7 +1503,7 @@ The calculation is not being found. May need to use the correct selector (ULID f
 ```python
 def test_delete_calculation(self, project_with_calculation):
     project = project_with_calculation
-    calc_result = QVService.init_calculation(project, "To Delete")
+    calc_result = QMSService.init_calculation(project, "To Delete")
 
     # calc_result might be a dict or Path - check what it returns
     # Get the ULID from the result
@@ -1516,7 +1516,7 @@ def test_delete_calculation(self, project_with_calculation):
         data = yaml.safe_load(calc_yaml.read_text())
         calculation_ulid = data.get("meta", {}).get("id")
 
-    svc = QVService(project)
+    svc = QMSService(project)
     svc.calculation.delete(calculation_ulid)
 
     # Verify deletion
@@ -1528,17 +1528,17 @@ def test_delete_calculation(self, project_with_calculation):
 
 **File:** `tests/daemon/test_online_candidate_handler.py`
 
-The test imports `DisplayModeParams` from `quantumvitas.api` but it's not exported.
+The test imports `DisplayModeParams` from `qmatsuite.api` but it's not exported.
 
 **Option 1:** Import from the correct module
 ```python
 # Before:
-from quantumvitas.api import DisplayModeParams
+from qmatsuite.api import DisplayModeParams
 
 # After (find correct module):
-from quantumvitas.core.models import DisplayModeParams
+from qmatsuite.core.models import DisplayModeParams
 # OR
-from quantumvitas.calculation.display_mode import DisplayModeParams
+from qmatsuite.calculation.display_mode import DisplayModeParams
 ```
 
 **Option 2:** Skip the tests if DisplayModeParams is internal
@@ -1632,15 +1632,15 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ### Part A: Fix Remaining Daemon Handlers
 
-**File:** `src/quantumvitas/daemon/server.py`
+**File:** `src/qmatsuite/daemon/server.py`
 
-These handlers still call non-existent static methods on `QVService`:
+These handlers still call non-existent static methods on `QMSService`:
 
 #### Fix 1: `_handle_delete_calculation` (line ~2963)
 
 **Before:**
 ```python
-QVService.delete_calculation(
+QMSService.delete_calculation(
     project_root=project_root,
     calculation_selector=calculation_ulid,
     ...
@@ -1655,51 +1655,51 @@ svc.calculation.delete(calculation_ulid)
 
 #### Fix 2: `_handle_get_common_cards` (line ~3191)
 
-Uses `QVService.get_common_cards(...)` - use legacy API:
+Uses `QMSService.get_common_cards(...)` - use legacy API:
 
 **After:**
 ```python
-from quantumvitas._api_legacy import QVService as LegacyService
+from qmatsuite._api_legacy import QMSService as LegacyService
 return LegacyService.get_common_cards(...)
 ```
 
 #### Fix 3: `_handle_change_calculation_structure` (line ~4265)
 
-Uses `QVService.change_calculation_structure(...)` - use legacy API:
+Uses `QMSService.change_calculation_structure(...)` - use legacy API:
 
 **After:**
 ```python
-from quantumvitas._api_legacy import QVService as LegacyService
+from qmatsuite._api_legacy import QMSService as LegacyService
 result = LegacyService.change_calculation_structure(...)
 ```
 
 #### Fix 4: `_handle_preflight_check` (line ~4560)
 
-Uses `QVService.preflight_check(...)` - use legacy API:
+Uses `QMSService.preflight_check(...)` - use legacy API:
 
 **After:**
 ```python
-from quantumvitas._api_legacy import QVService as LegacyService
+from qmatsuite._api_legacy import QMSService as LegacyService
 return LegacyService.preflight_check(...)
 ```
 
 #### Fix 5: `_handle_get_calculation_detail` (line ~4497)
 
-Uses `QVService.get_calculation_detail(...)` - use legacy API:
+Uses `QMSService.get_calculation_detail(...)` - use legacy API:
 
 **After:**
 ```python
-from quantumvitas._api_legacy import QVService as LegacyService
+from qmatsuite._api_legacy import QMSService as LegacyService
 calc_detail = LegacyService.get_calculation_detail(...)
 ```
 
 #### Fix 6: `create_online_structure_cache` calls (lines ~2110, 2177, 2526)
 
-Uses `QVService.create_online_structure_cache(...)` - use legacy API:
+Uses `QMSService.create_online_structure_cache(...)` - use legacy API:
 
 **After:**
 ```python
-from quantumvitas._api_legacy import QVService as LegacyService
+from qmatsuite._api_legacy import QMSService as LegacyService
 cache = LegacyService.create_online_structure_cache(cache_dir)
 ```
 
@@ -1707,11 +1707,11 @@ cache = LegacyService.create_online_structure_cache(cache_dir)
 
 #### File 1: tests/unit/test_api_get_band_structure_data.py
 
-Still calling `QVService.get_band_structure_data(project_root=..., ...)` - migrate to domain API.
+Still calling `QMSService.get_band_structure_data(project_root=..., ...)` - migrate to domain API.
 
 **Before (line ~155):**
 ```python
-result = QVService.get_band_structure_data(
+result = QMSService.get_band_structure_data(
     project_root=project_root,
     calculation_selector=calc_slug,
     step_selector=step_ulid,
@@ -1720,7 +1720,7 @@ result = QVService.get_band_structure_data(
 
 **After:**
 ```python
-svc = QVService(project_root)
+svc = QMSService(project_root)
 result = svc.analysis.get_band_structure_data(
     calculation_selector=calc_slug,
     step_selector=step_ulid,
@@ -1731,11 +1731,11 @@ Apply same pattern to ALL tests in this file (4 tests).
 
 #### File 2: tests/daemon/test_si_bands_calculation_daemon.py
 
-The test `test_analyze_bands_and_generate_plot` calls `QVService.analyze_band(...)` directly.
+The test `test_analyze_bands_and_generate_plot` calls `QMSService.analyze_band(...)` directly.
 
 **Before (line ~458):**
 ```python
-result = QVService.analyze_band(
+result = QMSService.analyze_band(
     project_root=project_root,
     ...
 )
@@ -1743,7 +1743,7 @@ result = QVService.analyze_band(
 
 **After:**
 ```python
-svc = QVService(project_root)
+svc = QMSService(project_root)
 result = svc.analysis.analyze_band(
     bands_file=...,
     ...
@@ -1785,7 +1785,7 @@ These test useful functionality but the methods aren't in domain API yet. **SKIP
 
 #### File: tests/unit/test_project_and_cli.py
 
-**For `QVService.run_step` tests:**
+**For `QMSService.run_step` tests:**
 - `test_cli_run_stepfile_generates_input` - Skip (run_step static doesn't exist)
 - `test_cli_run_step_accepts_step_yaml` - Skip (run_step static doesn't exist)
 
@@ -1922,7 +1922,7 @@ rm tests/unit/test_pseudo_contracts.py
 
 **Reason:** Tests `get_reference_analysis` which provides reference data for demo projects - internal tooling, not public API.
 
-**Keep:** `TestIntegrationWithQVService` - may need fixing but tests valid analysis functionality.
+**Keep:** `TestIntegrationWithQMSService` - may need fixing but tests valid analysis functionality.
 
 #### File: tests/unit/test_api_service.py
 
@@ -1938,8 +1938,8 @@ rm tests/unit/test_pseudo_contracts.py
 #### File: tests/unit/test_project_and_cli.py
 
 **DELETE these 2 skipped tests:**
-- `test_cli_run_stepfile_generates_input` - tests old static `QVService.run_step`
-- `test_cli_run_step_accepts_step_yaml` - tests old static `QVService.run_step`
+- `test_cli_run_stepfile_generates_input` - tests old static `QMSService.run_step`
+- `test_cli_run_step_accepts_step_yaml` - tests old static `QMSService.run_step`
 
 **Keep all other tests** - they test valid CLI functionality.
 
@@ -2083,7 +2083,7 @@ svc.analysis.get_scf_convergence_data(calc, step)
 - `delete_calculation` → `svc.calculation.delete()` (already done?)
 
 #### 3. tests/unit/test_project_and_cli.py
-- `QVService.run_step(...)` → `svc.run.run_step(calc, step)`
+- `QMSService.run_step(...)` → `svc.run.run_step(calc, step)`
 
 #### 4. tests/unit/test_api_service_steps.py
 - `configure_step(params=...)` → `svc.calculation.update_step_params(calc, step, params)`
@@ -2122,12 +2122,12 @@ result = svc.calculation.require_ref(selector)
 
 **Before:**
 ```python
-result = QVService.run_step(project_root=..., calc_selector=..., step_selector=...)
+result = QMSService.run_step(project_root=..., calc_selector=..., step_selector=...)
 ```
 
 **After:**
 ```python
-svc = QVService(project_root)
+svc = QMSService(project_root)
 result = svc.run.run_step(calc_selector=..., step_selector=...)
 ```
 
@@ -2135,12 +2135,12 @@ result = svc.run.run_step(calc_selector=..., step_selector=...)
 
 **Before:**
 ```python
-QVService.configure_step(project_root=..., calc=..., step=..., parameters=...)
+QMSService.configure_step(project_root=..., calc=..., step=..., parameters=...)
 ```
 
 **After:**
 ```python
-svc = QVService(project_root)
+svc = QMSService(project_root)
 svc.calculation.update_step_params(calc_selector=calc, step_selector=step, params=parameters)
 ```
 

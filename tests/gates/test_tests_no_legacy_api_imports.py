@@ -2,15 +2,15 @@
 Gate test: Tests must not import legacy API symbols or kernel modules.
 
 This test ensures test code uses the slim API facade:
-- from quantumvitas.api import get_service, QVService (allowed)
-- from quantumvitas.api.errors import ... (allowed)
-- from quantumvitas.api.types import ... (allowed)
-- from quantumvitas.api.utils import ... (allowed)
+- from qmatsuite.api import get_service, QMSService (allowed)
+- from qmatsuite.api.errors import ... (allowed)
+- from qmatsuite.api.types import ... (allowed)
+- from qmatsuite.api.utils import ... (allowed)
 
 Forbidden patterns:
-- "from quantumvitas.api import *" (wildcard imports)
+- "from qmatsuite.api import *" (wildcard imports)
 - Direct imports of kernel types: ResourceMeta, Project, ResolvedResource, ResolvedRef
-- Direct imports of kernel modules: quantumvitas.core.*, quantumvitas.project.*
+- Direct imports of kernel modules: qmatsuite.core.*, qmatsuite.project.*
   (unless test is explicitly in tests/unit/test_core* or tests/unit/test_project*)
 - "svc.resolve_*" usage (prefer domain methods)
 """
@@ -63,9 +63,9 @@ def test_tests_no_legacy_api_imports():
     - tests/unit/test_api_service_facade.py
     
     Forbidden patterns:
-    - "from quantumvitas.api import *" (wildcard)
+    - "from qmatsuite.api import *" (wildcard)
     - Direct kernel type imports: ResourceMeta, Project, ResolvedResource, ResolvedRef
-    - Direct kernel module imports: quantumvitas.core.*, quantumvitas.project.*
+    - Direct kernel module imports: qmatsuite.core.*, qmatsuite.project.*
     - "svc.resolve_*" usage in test code
     """
     violations = []
@@ -85,16 +85,16 @@ def test_tests_no_legacy_api_imports():
             
             # Check for forbidden patterns
             for line_num, line in enumerate(lines, start=1):
-                # Check for wildcard import from quantumvitas.api
-                if re.search(r'from\s+quantumvitas\.api\s+import\s+\*', line):
-                    violations.append((py_file, line_num, line, "wildcard import from quantumvitas.api"))
+                # Check for wildcard import from qmatsuite.api
+                if re.search(r'from\s+qmatsuite\.api\s+import\s+\*', line):
+                    violations.append((py_file, line_num, line, "wildcard import from qmatsuite.api"))
                 
                 # Check for direct kernel type imports (common legacy re-exports)
                 kernel_types = ["ResourceMeta", "Project", "ResolvedResource", "ResolvedRef"]
                 for ktype in kernel_types:
-                    # Pattern: from quantumvitas.api import ... ResourceMeta ...
-                    if re.search(rf'from\s+quantumvitas\.api\s+import.*\b{ktype}\b', line):
-                        violations.append((py_file, line_num, line, f"import {ktype} from quantumvitas.api (kernel type)"))
+                    # Pattern: from qmatsuite.api import ... ResourceMeta ...
+                    if re.search(rf'from\s+qmatsuite\.api\s+import.*\b{ktype}\b', line):
+                        violations.append((py_file, line_num, line, f"import {ktype} from qmatsuite.api (kernel type)"))
                 
                 # Check for direct kernel module imports
                 # Allow imports for verification (comparing re-exported types) if they're only used for 'is' checks
@@ -130,17 +130,17 @@ def test_tests_no_legacy_api_imports():
                 )
                 
                 if not is_verification_only and not is_wrapper_test:
-                    # Pattern: from quantumvitas.core import ... or import quantumvitas.core
-                    if re.search(r'from\s+quantumvitas\.core\s+import', line):
-                        violations.append((py_file, line_num, line, "import from quantumvitas.core (kernel module)"))
-                    if re.search(r'import\s+quantumvitas\.core', line):
-                        violations.append((py_file, line_num, line, "import quantumvitas.core (kernel module)"))
+                    # Pattern: from qmatsuite.core import ... or import qmatsuite.core
+                    if re.search(r'from\s+qmatsuite\.core\s+import', line):
+                        violations.append((py_file, line_num, line, "import from qmatsuite.core (kernel module)"))
+                    if re.search(r'import\s+qmatsuite\.core', line):
+                        violations.append((py_file, line_num, line, "import qmatsuite.core (kernel module)"))
                     
-                    # Pattern: from quantumvitas.project import ... or import quantumvitas.project
-                    if re.search(r'from\s+quantumvitas\.project\s+import', line):
-                        violations.append((py_file, line_num, line, "import from quantumvitas.project (kernel module)"))
-                    if re.search(r'import\s+quantumvitas\.project', line):
-                        violations.append((py_file, line_num, line, "import quantumvitas.project (kernel module)"))
+                    # Pattern: from qmatsuite.project import ... or import qmatsuite.project
+                    if re.search(r'from\s+qmatsuite\.project\s+import', line):
+                        violations.append((py_file, line_num, line, "import from qmatsuite.project (kernel module)"))
+                    if re.search(r'import\s+qmatsuite\.project', line):
+                        violations.append((py_file, line_num, line, "import qmatsuite.project (kernel module)"))
                 
                 # Check for svc.resolve_* usage (prefer domain methods)
                 if re.search(r'\bsvc\.resolve_\w+', line):
@@ -177,17 +177,17 @@ def test_tests_no_legacy_api_imports():
             "  - tests/unit/test_api_service_facade.py",
             "",
             "Forbidden patterns:",
-            "  - 'from quantumvitas.api import *' (wildcard imports)",
+            "  - 'from qmatsuite.api import *' (wildcard imports)",
             "  - Direct kernel type imports: ResourceMeta, Project, ResolvedResource, ResolvedRef",
-            "  - Direct kernel module imports: quantumvitas.core.*, quantumvitas.project.*",
+            "  - Direct kernel module imports: qmatsuite.core.*, qmatsuite.project.*",
             "    (unless test is in kernel test file: test_core*, test_project*, etc.)",
             "  - svc.resolve_* usage (use domain methods: svc.calculation.require_ref, etc.)",
             "",
             "Use instead:",
-            "  - from quantumvitas.api import get_service, QVService",
-            "  - from quantumvitas.api.errors import APIError, NotFoundError, ...",
-            "  - from quantumvitas.api.types import CalculationDTO, StructureDTO, ...",
-            "  - from quantumvitas.api.utils import slugify, meta_from_name, ...",
+            "  - from qmatsuite.api import get_service, QMSService",
+            "  - from qmatsuite.api.errors import APIError, NotFoundError, ...",
+            "  - from qmatsuite.api.types import CalculationDTO, StructureDTO, ...",
+            "  - from qmatsuite.api.utils import slugify, meta_from_name, ...",
             "  - svc.calculation.require_ref(), svc.structure.require_ref(), etc.",
             "",
             "Violations:",

@@ -3,15 +3,15 @@
 Tests that the QEPreflightChecker catches common parameter mistakes and
 that dry_run mode materializes input files without executing.
 
-Shared fixtures (qv_project, etc.) are in conftest.py.
+Shared fixtures (qms_project, etc.) are in conftest.py.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from quantumvitas.core.driver_protocol import PreflightIssue
-from quantumvitas.drivers.qe.preflight import QEPreflightChecker
+from qmatsuite.core.driver_protocol import PreflightIssue
+from qmatsuite.drivers.qe.preflight import QEPreflightChecker
 
 
 # ===========================================================================
@@ -238,10 +238,10 @@ class TestQEPreflightChecker:
 class TestDryRunMaterialization:
     """Test dry_run=True on inspect_calculation."""
 
-    def _create_qe_scf(self, qv_project):
+    def _create_qe_scf(self, qms_project):
         """Helper: create a QE SCF calculation and set ecutwfc."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
 
         result = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -256,11 +256,11 @@ class TestDryRunMaterialization:
         assert sp["status"] == "success", f"set_parameters failed: {sp}"
         return calc_ulid
 
-    def test_dry_run_produces_input_files(self, qv_project):
+    def test_dry_run_produces_input_files(self, qms_project):
         """dry_run=True returns input_files array."""
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
-        calc_ulid = self._create_qe_scf(qv_project)
+        calc_ulid = self._create_qe_scf(qms_project)
         result = inspect_calculation.fn(calc_ulid=calc_ulid, step=0, dry_run=True)
         assert result["status"] == "success", f"inspect failed: {result}"
         data = result["data"]
@@ -270,11 +270,11 @@ class TestDryRunMaterialization:
             assert "filename" in f
             assert "content" in f
 
-    def test_dry_run_qe_scf_content(self, qv_project):
+    def test_dry_run_qe_scf_content(self, qms_project):
         """Dry run of QE SCF contains expected QE input markers."""
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
-        calc_ulid = self._create_qe_scf(qv_project)
+        calc_ulid = self._create_qe_scf(qms_project)
         result = inspect_calculation.fn(calc_ulid=calc_ulid, step=0, dry_run=True)
         assert result["status"] == "success"
         files = result["data"].get("input_files", [])
@@ -286,11 +286,11 @@ class TestDryRunMaterialization:
             f"QE-specific content not found in dry_run files: {[f['filename'] for f in files]}"
         )
 
-    def test_dry_run_false_no_input_files(self, qv_project):
+    def test_dry_run_false_no_input_files(self, qms_project):
         """dry_run=False (default) → no input_files in response."""
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
-        calc_ulid = self._create_qe_scf(qv_project)
+        calc_ulid = self._create_qe_scf(qms_project)
         result = inspect_calculation.fn(calc_ulid=calc_ulid, step=0, dry_run=False)
         assert result["status"] == "success"
         assert "input_files" not in result["data"]
@@ -304,15 +304,15 @@ class TestDryRunMaterialization:
 class TestPreflightIntegration:
     """Test that preflight issues surface through inspect + preview tools."""
 
-    def test_inspect_includes_preflight_issues(self, qv_project):
+    def test_inspect_includes_preflight_issues(self, qms_project):
         """Freshly-created calc → no false-positive MISSING_KPOINTS.
 
         P3 Fix 2+7: inspect now merges step cards into preflight params, so
         the K_POINTS card (set by default in create_calculation) is visible
         to the preflight checker.  MISSING_KPOINTS should NOT appear.
         """
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         result = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -328,9 +328,9 @@ class TestPreflightIntegration:
         kp_issues = [i for i in issues if i["code"] == "MISSING_KPOINTS"]
         assert not kp_issues, f"False positive MISSING_KPOINTS: {kp_issues}"
 
-    def test_preview_includes_preflight(self, qv_project):
+    def test_preview_includes_preflight(self, qms_project):
         """preview_compilation with empty presets → preflight_issues for compiled params."""
-        from quantumvitas.mcp.tools.preview_compilation import preview_compilation
+        from qmatsuite.mcp.tools.preview_compilation import preview_compilation
 
         result = preview_compilation.fn(
             engine="qe", workflow="scf", presets={},
@@ -347,11 +347,11 @@ class TestPreflightIntegration:
                 assert "severity" in issue
                 assert "message" in issue
 
-    def test_inspect_good_params_clean(self, qv_project):
+    def test_inspect_good_params_clean(self, qms_project):
         """Well-configured calculation → no preflight_issues or empty list."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.set_parameters import set_parameters
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.set_parameters import set_parameters
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         result = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",

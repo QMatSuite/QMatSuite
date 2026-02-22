@@ -10,7 +10,7 @@
 
 ### 1.1 Where calc pseudo metadata is stored
 
-**File**: `src/quantumvitas/core/models.py` (lines 147-152)
+**File**: `src/qmatsuite/core/models.py` (lines 147-152)
 
 **Location**: `CalculationModel.species_map` field
 
@@ -23,7 +23,7 @@
 
 ### 1.2 Fields: Optional vs Expected
 
-**File**: `src/quantumvitas/core/models.py` (lines 147-152, 186-188, 253-254)
+**File**: `src/qmatsuite/core/models.py` (lines 147-152, 186-188, 253-254)
 
 **All fields are optional** in the schema (no validation enforces presence)
 
@@ -52,7 +52,7 @@ onUpdate(
 )
 ```
 
-**Backend handler**: `src/quantumvitas/api.py` (lines 5272-5331)
+**Backend handler**: `src/qmatsuite/api.py` (lines 5272-5331)
 
 **Function**: `update_calculation_species_map()`
 
@@ -65,7 +65,7 @@ onUpdate(
 
 ### 1.4 What is written after Step0 refresh
 
-**File**: `src/quantumvitas/core/pseudo_runtime.py` (lines 672-738)
+**File**: `src/qmatsuite/core/pseudo_runtime.py` (lines 672-738)
 
 **Function**: `refresh_calc_pseudo_records_after_step0()`
 
@@ -147,7 +147,7 @@ calc_entry["pseudo_sha_family"] = actual_sha_family
 
 ### 3.1 Exact Step0 behavior if selection is project/internal/lib
 
-**File**: `src/quantumvitas/core/pseudo_runtime.py` (lines 349-532)
+**File**: `src/qmatsuite/core/pseudo_runtime.py` (lines 349-532)
 
 **Function**: `prepare_project_pseudos_for_run()`
 
@@ -189,7 +189,7 @@ calc_entry["pseudo_sha_family"] = actual_sha_family
 
 ### 3.3 What happens if file referenced in calc is missing from project/pseudo at refresh time
 
-**File**: `src/quantumvitas/core/pseudo_runtime.py` (lines 715-733)
+**File**: `src/qmatsuite/core/pseudo_runtime.py` (lines 715-733)
 
 **Behavior**:
 - Checks `if actual_file.exists()` (line 717)
@@ -237,7 +237,7 @@ calc_entry["pseudo_sha_family"] = actual_sha_family
 
 ### 4.4 What happens on Run (Step0 + refresh)
 
-**File**: `src/quantumvitas/core/pseudo_runtime.py` (lines 614-669, 672-738)
+**File**: `src/qmatsuite/core/pseudo_runtime.py` (lines 614-669, 672-738)
 
 **Step0 conversion** (`species_map_to_selections`, lines 614-669):
 - Reads: `sha_family = entry.get("pseudo_sha_family")` (line 638)
@@ -294,7 +294,7 @@ calc_entry["pseudo_sha_family"] = actual_sha_family
 
 **To implement automatic migration on calc load**:
 
-1. **File**: `src/quantumvitas/core/models.py`
+1. **File**: `src/qmatsuite/core/models.py`
    - **Function**: `CalculationModel.from_dict()` (lines 192-264)
    - **Change**: After loading `species_map` (line 254), iterate through entries and if `pseudo_sha_family` missing but `pseudo_basename` present, compute from file
    - **Challenge**: Need project_root to resolve file path, need to handle missing files gracefully
@@ -304,12 +304,12 @@ calc_entry["pseudo_sha_family"] = actual_sha_family
    - **Change**: After matching variant, if `entry.pseudo_sha_family` missing, compute from matched variant's `sha_family` and write back
    - **Challenge**: Would require calling `onUpdate()` during restore (violates "restore does NOT write" rule)
 
-3. **File**: `src/quantumvitas/core/pseudo_runtime.py`
+3. **File**: `src/qmatsuite/core/pseudo_runtime.py`
    - **Function**: `species_map_to_selections()` (lines 614-669)
    - **Change**: If `pseudo_sha_family` missing but file exists, compute from file before creating `PseudoSelection`
    - **Challenge**: Need to resolve file path (project/internal/lib), may not be available at this stage
 
-4. **File**: `src/quantumvitas/core/pseudo_runtime.py`
+4. **File**: `src/qmatsuite/core/pseudo_runtime.py`
    - **Function**: `refresh_calc_pseudo_records_after_step0()` (lines 672-738)
    - **Change**: Already computes `sha_family` from file (line 719), but only if file exists
    - **Enhancement**: Could compute from other sources (internal/lib) if project file missing
@@ -328,7 +328,7 @@ calc_entry["pseudo_sha_family"] = actual_sha_family
 ## 6. Evidence Summary
 
 ### 6.1 Schema Definition
-- **File**: `src/quantumvitas/core/models.py`
+- **File**: `src/qmatsuite/core/models.py`
 - **Lines**: 147-152 (schema comment), 186-188 (to_dict), 253-254 (from_dict)
 - **Finding**: Schema supports `pseudo_sha_family`, all fields optional
 
@@ -343,7 +343,7 @@ calc_entry["pseudo_sha_family"] = actual_sha_family
 - **Finding**: Writes `pseudo_sha_family` together with `pseudo_sha256` and `pseudo_basename`
 
 ### 6.4 Step0 Refresh
-- **File**: `src/quantumvitas/core/pseudo_runtime.py`
+- **File**: `src/qmatsuite/core/pseudo_runtime.py`
 - **Lines**: 672-738 (`refresh_calc_pseudo_records_after_step0`)
 - **Finding**: Computes `sha_family` from file and writes to calc.yml (if file exists)
 
@@ -352,7 +352,7 @@ calc_entry["pseudo_sha_family"] = actual_sha_family
 - **Finding**: Only found in documentation files, no code references
 
 ### 6.6 Missing File Handling
-- **File**: `src/quantumvitas/core/pseudo_runtime.py`
+- **File**: `src/qmatsuite/core/pseudo_runtime.py`
 - **Lines**: 726-733
 - **Finding**: If file missing, keeps stored triplet unchanged (no mutation, no `sha_family` computation)
 

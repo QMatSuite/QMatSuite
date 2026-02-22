@@ -150,7 +150,7 @@ assert result.calc_ulid == ...
 assert result.step_ulids == ...
 ```
 
-### 4.2 tests/unit/test_qvservice_gui.py
+### 4.2 tests/unit/test_qmsservice_gui.py
 Update assertions to use canonical field names.
 
 ### 4.3 tests/unit/test_daemon.py
@@ -165,14 +165,14 @@ Update expected schema fields.
 
 **Root Cause Analysis:**
 
-In `src/quantumvitas/workflow/templates.py`:
+In `src/qmatsuite/workflow/templates.py`:
 - Line 230: `step_entry_type = step_entry.get("step_type") or step_entry.get("type")` - looks for bare `step_type`
 - Line 251: `calculation_ulid = calc_doc.get(["meta", "id"], default=None)` - should be `["meta", "ulid"]`
 - Line 264: `step_type = step_doc.get(["step_type_spec"], default=None)` - correct
 
 **Code fixes needed first:**
 
-### 5.0 src/quantumvitas/workflow/templates.py
+### 5.0 src/qmatsuite/workflow/templates.py
 ```python
 # Line 230 - FIND:
 step_entry_type = step_entry.get("step_type") or step_entry.get("type")
@@ -203,7 +203,7 @@ Same as above.
 - tests/unit/execution/test_job_graph.py
 - tests/unit/execution/test_qc_topology.py
 
-**Pattern:** Job class may have old field names. Check `src/quantumvitas/execution/job_graph.py` for canonical field names and update tests.
+**Pattern:** Job class may have old field names. Check `src/qmatsuite/execution/job_graph.py` for canonical field names and update tests.
 
 ---
 

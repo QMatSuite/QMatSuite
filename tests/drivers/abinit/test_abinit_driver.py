@@ -15,35 +15,35 @@ class TestABINITDriverRegistration:
     """Verify ABINIT driver is registered and accessible."""
 
     def test_driver_in_registry(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         driver = DriverRegistry.get_driver("abinit")
         assert driver is not None
 
     def test_engine_family(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         driver = DriverRegistry.get_driver("abinit")
         assert driver.engine_family == "abinit"
 
     def test_prefix(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         driver = DriverRegistry.get_driver("abinit")
         assert driver.PREFIX == "abinit"
 
     def test_supported_gen_steps(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         driver = DriverRegistry.get_driver("abinit")
         gen_steps = driver.SUPPORTED_GEN_STEPS
         assert "scf" in gen_steps
         assert "relax" in gen_steps
 
     def test_get_handler(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         driver = DriverRegistry.get_driver("abinit")
         handler = driver.get_handler()
         assert handler is not None
 
     def test_get_recipe_class(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         driver = DriverRegistry.get_driver("abinit")
         recipe_cls = driver.get_recipe_class()
         assert recipe_cls is not None
@@ -55,41 +55,41 @@ class TestABINITDriverIsolation:
     def test_io_module_no_kernel(self):
         """abinit_input.py should only use stdlib."""
         import importlib
-        mod = importlib.import_module("quantumvitas.drivers.abinit.io.abinit_input")
+        mod = importlib.import_module("qmatsuite.drivers.abinit.io.abinit_input")
         # Check it doesn't import kernel modules
         source = open(mod.__file__, "r").read()
-        assert "quantumvitas.kernel" not in source
-        assert "quantumvitas.runner" not in source
-        assert "quantumvitas.daemon" not in source
+        assert "qmatsuite.kernel" not in source
+        assert "qmatsuite.runner" not in source
+        assert "qmatsuite.daemon" not in source
 
     def test_parsers_output_no_kernel(self):
         """output.py should only import registry."""
         import importlib
-        mod = importlib.import_module("quantumvitas.drivers.abinit.parsers.output")
+        mod = importlib.import_module("qmatsuite.drivers.abinit.parsers.output")
         source = open(mod.__file__, "r").read()
-        assert "quantumvitas.kernel" not in source
-        assert "quantumvitas.runner" not in source
+        assert "qmatsuite.kernel" not in source
+        assert "qmatsuite.runner" not in source
 
     def test_metadata_no_kernel(self):
         """abinit_metadata.py should only use stdlib."""
         import importlib
-        mod = importlib.import_module("quantumvitas.drivers.abinit.data.abinit_metadata")
+        mod = importlib.import_module("qmatsuite.drivers.abinit.data.abinit_metadata")
         source = open(mod.__file__, "r").read()
-        assert "quantumvitas.kernel" not in source
-        assert "quantumvitas.runner" not in source
+        assert "qmatsuite.kernel" not in source
+        assert "qmatsuite.runner" not in source
 
 
 class TestABINITInputSpec:
     """Verify inputspec wiring."""
 
     def test_get_input_spec_returns_spec(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         driver = DriverRegistry.get_driver("abinit")
         spec = driver.get_input_spec()
         assert spec is not None
 
     def test_input_spec_has_abi_file(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         driver = DriverRegistry.get_driver("abinit")
         spec = driver.get_input_spec()
         # ABINIT uses a single .abi combined file
@@ -103,7 +103,7 @@ class TestABINITIOModule:
     """Test the extracted io/abinit_input.py parse/write functions."""
 
     def test_parse_basic_input(self):
-        from quantumvitas.drivers.abinit.io.abinit_input import parse_abinit_text
+        from qmatsuite.drivers.abinit.io.abinit_input import parse_abinit_text
         text = """\
 # Test input
 ecut 10
@@ -133,7 +133,7 @@ toldfe 1.0d-8
         assert result["structure"]["lattice"] is not None
 
     def test_write_roundtrip(self):
-        from quantumvitas.drivers.abinit.io.abinit_input import (
+        from qmatsuite.drivers.abinit.io.abinit_input import (
             parse_abinit_text, write_abinit_text,
         )
         text = """\
@@ -164,7 +164,7 @@ toldfe 1.0d-8
         assert reparsed["structure"]["species"] == ["Si", "Si"]
 
     def test_star_expansion(self):
-        from quantumvitas.drivers.abinit.io.abinit_input import parse_abinit_text
+        from qmatsuite.drivers.abinit.io.abinit_input import parse_abinit_text
         text = "acell 3*10.26\nrprim\n1.0 0.0 0.0\n0.0 1.0 0.0\n0.0 0.0 1.0\n"
         result = parse_abinit_text(text)
         # acell 3*10.26 expands to [10.26, 10.26, 10.26] Bohr
@@ -176,13 +176,13 @@ toldfe 1.0d-8
         assert result["structure"]["lattice"][1][1] == pytest.approx(expected_a, rel=1e-6)
 
     def test_fortran_d_notation(self):
-        from quantumvitas.drivers.abinit.io.abinit_input import parse_abinit_text
+        from qmatsuite.drivers.abinit.io.abinit_input import parse_abinit_text
         text = "toldfe 1.0d-8\nnstep 30\n"
         result = parse_abinit_text(text)
         assert result["params"]["toldfe"] == pytest.approx(1e-8)
 
     def test_comment_stripping(self):
-        from quantumvitas.drivers.abinit.io.abinit_input import parse_abinit_text
+        from qmatsuite.drivers.abinit.io.abinit_input import parse_abinit_text
         text = "ecut 10 # this is a comment\nnstep 30 ! another comment\n"
         result = parse_abinit_text(text)
         assert result["params"]["ecut"] == 10
@@ -206,7 +206,7 @@ class TestABINITCorpusParse:
 
     def test_parse_no_crash(self, case_dir):
         """Each curated .abi file parses without error."""
-        from quantumvitas.drivers.abinit.io.abinit_input import parse_abinit_text
+        from qmatsuite.drivers.abinit.io.abinit_input import parse_abinit_text
         abi_files = list(case_dir.glob("*.abi"))
         assert len(abi_files) >= 1, f"No .abi file in {case_dir}"
         for abi_file in abi_files:
@@ -217,7 +217,7 @@ class TestABINITCorpusParse:
 
     def test_roundtrip_no_crash(self, case_dir):
         """Each curated case roundtrips (parse -> write -> parse) without error."""
-        from quantumvitas.drivers.abinit.io.abinit_input import (
+        from qmatsuite.drivers.abinit.io.abinit_input import (
             parse_abinit_text, write_abinit_text,
         )
         abi_files = list(case_dir.glob("*.abi"))

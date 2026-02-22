@@ -6,12 +6,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.gaussian.parsers.convergence import (
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.gaussian.parsers.convergence import (
     GaussianConvergenceProvider,
     parse_gaussian_convergence,
 )
-from quantumvitas.parsers.registry import get_parser
+from qmatsuite.parsers.registry import get_parser
 
 
 # Minimal Gaussian SCF output snippet

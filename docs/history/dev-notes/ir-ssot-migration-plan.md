@@ -11,7 +11,7 @@
 
 **搜索命令**:
 ```bash
-rg -n "qe_yaml_to_ir_yaml|ir_patch_to_qe_patch" -S src/quantumvitas/presets
+rg -n "qe_yaml_to_ir_yaml|ir_patch_to_qe_patch" -S src/qmatsuite/presets
 ```
 
 **发现的Shim路径**:
@@ -19,10 +19,10 @@ rg -n "qe_yaml_to_ir_yaml|ir_patch_to_qe_patch" -S src/quantumvitas/presets
 #### 1. variants_registry.py
 
 **compile_dimension_patch_for_step()** (行260-346):
-- **位置**: `src/quantumvitas/presets/variants_registry.py:328-340`
+- **位置**: `src/qmatsuite/presets/variants_registry.py:328-340`
 - **Shim代码**:
   ```python
-  from quantumvitas.ir.backends.qe.mapping import qe_yaml_to_ir_yaml, ir_patch_to_qe_patch
+  from qmatsuite.ir.backends.qe.mapping import qe_yaml_to_ir_yaml, ir_patch_to_qe_patch
   ir_yaml = qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")
   # ... ParamSpace操作 ...
   patch = ir_patch_to_qe_patch(ir_patch)
@@ -30,28 +30,28 @@ rg -n "qe_yaml_to_ir_yaml|ir_patch_to_qe_patch" -S src/quantumvitas/presets
 - **往返**: QE YAML → IR YAML → ParamSpace → IR patch → QE patch
 
 **detect_dimension_for_step()** (行499-529):
-- **位置**: `src/quantumvitas/presets/variants_registry.py:536-539`
+- **位置**: `src/qmatsuite/presets/variants_registry.py:536-539`
 - **Shim代码**:
   ```python
-  from quantumvitas.ir.backends.qe.mapping import qe_yaml_to_ir_yaml
+  from qmatsuite.ir.backends.qe.mapping import qe_yaml_to_ir_yaml
   ir_yaml = qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")
   ```
 - **往返**: QE YAML → IR YAML → ParamSpace match
 
 **_compile_precision_patch_for_step()** (行366-496):
-- **位置**: `src/quantumvitas/presets/variants_registry.py:481-484`
+- **位置**: `src/qmatsuite/presets/variants_registry.py:481-484`
 - **Shim代码**:
   ```python
-  from quantumvitas.ir.backends.qe.mapping import ir_patch_to_qe_patch
+  from qmatsuite.ir.backends.qe.mapping import ir_patch_to_qe_patch
   patch = ir_patch_to_qe_patch(patch)
   ```
 - **往返**: IR patch → QE patch
 
 **_detect_precision_for_step()** (行556-648):
-- **位置**: `src/quantumvitas/presets/variants_registry.py:630-631`
+- **位置**: `src/qmatsuite/presets/variants_registry.py:630-631`
 - **Shim代码**:
   ```python
-  from quantumvitas.ir.backends.qe.mapping import qe_yaml_to_ir_yaml
+  from qmatsuite.ir.backends.qe.mapping import qe_yaml_to_ir_yaml
   ir_yaml = qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")
   ```
 - **往返**: QE YAML → IR YAML
@@ -59,22 +59,22 @@ rg -n "qe_yaml_to_ir_yaml|ir_patch_to_qe_patch" -S src/quantumvitas/presets
 #### 2. spaces_registry.py
 
 **detect_dimension()** (行143-231):
-- **位置**: `src/quantumvitas/presets/spaces_registry.py:190-193, 220-221`
+- **位置**: `src/qmatsuite/presets/spaces_registry.py:190-193, 220-221`
 - **Shim代码**: `qe_yaml_to_ir_yaml(step_yaml, qe_module="pw")`
 
 **compile_dimension_patch()** (行238-385):
-- **位置**: `src/quantumvitas/presets/spaces_registry.py:315-337, 354-362`
+- **位置**: `src/qmatsuite/presets/spaces_registry.py:315-337, 354-362`
 - **Shim代码**: `qe_yaml_to_ir_yaml()` → `ir_patch_to_qe_patch()`
 
 ### ParamSpace被调用的唯一入口函数
 
 **编译入口**:
-- **文件**: `src/quantumvitas/presets/variants_registry.py`
+- **文件**: `src/qmatsuite/presets/variants_registry.py`
 - **函数**: `compile_dimension_patch_for_step()`
 - **调用链**: `apply_presets_to_step()` → `compile_dimension_patch_for_step()` → `compile_profile_patch()`
 
 **检测入口**:
-- **文件**: `src/quantumvitas/presets/variants_registry.py`
+- **文件**: `src/qmatsuite/presets/variants_registry.py`
 - **函数**: `detect_dimension_for_step()`
 - **调用链**: `detect_all_presets()` → `detect_dimension_for_step()` → `match_profile()`
 

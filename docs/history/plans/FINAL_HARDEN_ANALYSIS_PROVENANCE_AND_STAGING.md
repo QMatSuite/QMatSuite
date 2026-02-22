@@ -12,26 +12,26 @@
 
 | Requirement | Status | Evidence |
 |-------------|--------|----------|
-| Cache location: `calc/.analysis/` (hidden) | ✅ Aligned | `src/quantumvitas/core/analysis/cache.py:18` — `ANALYSIS_CACHE_DIR = ".analysis"` |
-| Provenance file: `calc/.runtime/provenance.json` | ✅ Aligned | `src/quantumvitas/core/provenance.py:25-27` — `RUNTIME_DIR = ".runtime"`, `PROVENANCE_FILE = "provenance.json"` |
-| Stale detection: only source_files stat (size+mtime) | ✅ Aligned | `src/quantumvitas/core/analysis/cache.py:35-65` — `is_cache_stale()` only uses `stat.st_size` and `stat.st_mtime` |
-| No sha256 in v1 for stale detection | ✅ Aligned | `src/quantumvitas/core/analysis/base.py:17` — `SourceFileStat` only has `size_bytes` and `mtime`, no `sha256` field |
-| Parsers do not wrap positions | ✅ Aligned | `src/quantumvitas/core/analysis/trajectory/utils.py:13-42` — `wrap_positions()` is a separate utility, not called by parsers |
-| Visual primitives are data+meta only (no style) | ✅ Aligned | `src/quantumvitas/core/analysis/primitives.py` — `Series1D`, `GeometryFrame`, `Marker` have no style fields |
-| Provenance is current-only, for UI explanation | ✅ Aligned | `src/quantumvitas/core/provenance.py:1-6` docstring explicitly states this |
-| Provenance NOT used for stale detection | ✅ Aligned | `src/quantumvitas/core/analysis/cache.py:43` — comment explicitly states this |
-| Parser info in meta for debug | ✅ Aligned | `src/quantumvitas/core/analysis/base.py:78-80` — `parser_name` and `parser_version` fields |
+| Cache location: `calc/.analysis/` (hidden) | ✅ Aligned | `src/qmatsuite/core/analysis/cache.py:18` — `ANALYSIS_CACHE_DIR = ".analysis"` |
+| Provenance file: `calc/.runtime/provenance.json` | ✅ Aligned | `src/qmatsuite/core/provenance.py:25-27` — `RUNTIME_DIR = ".runtime"`, `PROVENANCE_FILE = "provenance.json"` |
+| Stale detection: only source_files stat (size+mtime) | ✅ Aligned | `src/qmatsuite/core/analysis/cache.py:35-65` — `is_cache_stale()` only uses `stat.st_size` and `stat.st_mtime` |
+| No sha256 in v1 for stale detection | ✅ Aligned | `src/qmatsuite/core/analysis/base.py:17` — `SourceFileStat` only has `size_bytes` and `mtime`, no `sha256` field |
+| Parsers do not wrap positions | ✅ Aligned | `src/qmatsuite/core/analysis/trajectory/utils.py:13-42` — `wrap_positions()` is a separate utility, not called by parsers |
+| Visual primitives are data+meta only (no style) | ✅ Aligned | `src/qmatsuite/core/analysis/primitives.py` — `Series1D`, `GeometryFrame`, `Marker` have no style fields |
+| Provenance is current-only, for UI explanation | ✅ Aligned | `src/qmatsuite/core/provenance.py:1-6` docstring explicitly states this |
+| Provenance NOT used for stale detection | ✅ Aligned | `src/qmatsuite/core/analysis/cache.py:43` — comment explicitly states this |
+| Parser info in meta for debug | ✅ Aligned | `src/qmatsuite/core/analysis/base.py:78-80` — `parser_name` and `parser_version` fields |
 
 ### Deviations / Risks ⚠️
 
 | Issue | Severity | Evidence | Impact |
 |-------|----------|----------|--------|
-| **CHGCAR in VASP ignore patterns** | 🔴 Critical | `src/quantumvitas/core/artifact_scanning.py:56-62` — VASP ignore includes `CHGCAR`, `CHG`, `WAVECAR` | Provenance fails to track staged CHGCAR; **root cause of failing test** |
-| Provenance uses same ignore patterns as analysis | 🔴 Critical | `src/quantumvitas/core/provenance.py:173` calls `scan_raw_directory(calc_dir, engine, ...)` | Provenance misses files that are legitimately final artifacts but ignored for analysis performance |
-| `_last_scan` not persisted, only reconstructed from files | 🟡 Medium | `src/quantumvitas/core/provenance.py:74-86` — reconstructs `_last_scan` from `provenance.files` | After restart, if new files are added, they may be detected as "added" but attribution is correct |
-| mtime uses `float` (st_mtime), not `int` (mtime_ns) | 🟡 Low | `src/quantumvitas/core/artifact_scanning.py:27`, `src/quantumvitas/core/analysis/base.py:22` | Float precision may cause spurious mismatches on some filesystems; not critical for provenance |
-| Path normalization uses native Path, not POSIX always | 🟡 Low | `src/quantumvitas/core/artifact_scanning.py:133` — `str(file_path.relative_to(base_dir))` | On Windows, paths may use backslashes; potential cross-platform issue |
-| QE parser handles alat/crystal/bohr but lacks unit tests | 🟡 Low | `src/quantumvitas/parsers/qe/trajectory.py:166-183` — parsing logic present but no unit tests | Risk of regression in unit conversions |
+| **CHGCAR in VASP ignore patterns** | 🔴 Critical | `src/qmatsuite/core/artifact_scanning.py:56-62` — VASP ignore includes `CHGCAR`, `CHG`, `WAVECAR` | Provenance fails to track staged CHGCAR; **root cause of failing test** |
+| Provenance uses same ignore patterns as analysis | 🔴 Critical | `src/qmatsuite/core/provenance.py:173` calls `scan_raw_directory(calc_dir, engine, ...)` | Provenance misses files that are legitimately final artifacts but ignored for analysis performance |
+| `_last_scan` not persisted, only reconstructed from files | 🟡 Medium | `src/qmatsuite/core/provenance.py:74-86` — reconstructs `_last_scan` from `provenance.files` | After restart, if new files are added, they may be detected as "added" but attribution is correct |
+| mtime uses `float` (st_mtime), not `int` (mtime_ns) | 🟡 Low | `src/qmatsuite/core/artifact_scanning.py:27`, `src/qmatsuite/core/analysis/base.py:22` | Float precision may cause spurious mismatches on some filesystems; not critical for provenance |
+| Path normalization uses native Path, not POSIX always | 🟡 Low | `src/qmatsuite/core/artifact_scanning.py:133` — `str(file_path.relative_to(base_dir))` | On Windows, paths may use backslashes; potential cross-platform issue |
+| QE parser handles alat/crystal/bohr but lacks unit tests | 🟡 Low | `src/qmatsuite/parsers/qe/trajectory.py:166-183` — parsing logic present but no unit tests | Risk of regression in unit conversions |
 
 ---
 
@@ -39,7 +39,7 @@
 
 ### The Bug
 
-**File**: `src/quantumvitas/core/artifact_scanning.py`  
+**File**: `src/qmatsuite/core/artifact_scanning.py`  
 **Lines**: 56-62
 
 ```python
@@ -62,11 +62,11 @@ ENGINE_IGNORE_PATTERNS: Dict[str, List[str]] = {
    - Creates `step1/OUTCAR` and `step1/CHGCAR`
    - Calls `update_provenance_after_step(..., engine="vasp")`
 
-2. **Provenance update flow** (`src/quantumvitas/core/provenance.py:147-203`):
+2. **Provenance update flow** (`src/qmatsuite/core/provenance.py:147-203`):
    - Calls `scan_raw_directory(calc_dir, engine, ...)` (line 173)
    - This applies engine-specific ignore patterns
 
-3. **Scanning excludes CHGCAR** (`src/quantumvitas/core/artifact_scanning.py:176`):
+3. **Scanning excludes CHGCAR** (`src/qmatsuite/core/artifact_scanning.py:176`):
    - `patterns = get_engine_ignore_patterns(engine)` returns `["WAVECAR", "CHGCAR", ...]`
    - `should_ignore("raw/step1/CHGCAR", patterns)` returns `True` (line 99 matches basename)
 
@@ -112,7 +112,7 @@ The current implementation conflates these two purposes into a single ignore lis
 
 #### Change 1: Add `scan_raw_directory_for_provenance()` (No Ignore Patterns)
 
-**File**: `src/quantumvitas/core/artifact_scanning.py`
+**File**: `src/qmatsuite/core/artifact_scanning.py`
 
 **Add new function** after `scan_raw_directory()`:
 
@@ -146,13 +146,13 @@ def scan_raw_directory_for_provenance(
 
 #### Change 2: Update `update_provenance_after_step()` to Use New Scanner
 
-**File**: `src/quantumvitas/core/provenance.py`
+**File**: `src/qmatsuite/core/provenance.py`
 
 **Modify** the import and function call:
 
 ```python
 # Change import
-from quantumvitas.core.artifact_scanning import (
+from qmatsuite.core.artifact_scanning import (
     FileStat,
     scan_raw_directory_for_provenance,  # Changed
     diff_scans,
@@ -192,13 +192,13 @@ def update_provenance_after_step(
 
 ### B) Hook Ordering
 
-**Current behavior** (`src/quantumvitas/calculation/runner.py:612-623`):
+**Current behavior** (`src/qmatsuite/calculation/runner.py:612-623`):
 - Provenance update occurs AFTER manifest update
 - Comment says "after staging is complete, if any"
 
 **Risk**: If staging happens in a separate post-job hook, provenance may run before staging.
 
-**Verification needed**: Check if VASP staging (`src/quantumvitas/execution/vasp_staging.py`) is called before provenance update.
+**Verification needed**: Check if VASP staging (`src/qmatsuite/execution/vasp_staging.py`) is called before provenance update.
 
 ### C) Ignore Patterns & Normalization
 
@@ -230,7 +230,7 @@ def update_provenance_after_step(
 
 #### Task 1: Fix artifact_scanning.py
 
-**File**: `src/quantumvitas/core/artifact_scanning.py`
+**File**: `src/qmatsuite/core/artifact_scanning.py`
 
 **Action**: Add `scan_raw_directory_for_provenance()` function after line 181.
 
@@ -274,12 +274,12 @@ relative = file_path.relative_to(base_dir).as_posix()
 
 #### Task 2: Update provenance.py
 
-**File**: `src/quantumvitas/core/provenance.py`
+**File**: `src/qmatsuite/core/provenance.py`
 
 **Action 1**: Change import at line 17-21:
 
 ```python
-from quantumvitas.core.artifact_scanning import (
+from qmatsuite.core.artifact_scanning import (
     FileStat,
     scan_raw_directory_for_provenance,
     diff_scans,
@@ -410,7 +410,7 @@ The existing test is correct; it will pass after the fix. No changes needed.
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.artifact_scanning import (
+from qmatsuite.core.artifact_scanning import (
     scan_directory,
     scan_raw_directory,
     scan_raw_directory_for_provenance,
@@ -496,7 +496,7 @@ import pytest
 import tempfile
 from pathlib import Path
 
-from quantumvitas.parsers.qe.trajectory import QETrajectoryParser
+from qmatsuite.parsers.qe.trajectory import QETrajectoryParser
 
 
 class TestQEUnitConversions:
@@ -504,7 +504,7 @@ class TestQEUnitConversions:
     
     def test_ry_to_ev_conversion(self):
         """Energy in Ry is converted to eV."""
-        from quantumvitas.parsers.qe.trajectory import RY_TO_EV
+        from qmatsuite.parsers.qe.trajectory import RY_TO_EV
         
         # 1 Ry = 13.605693... eV
         assert abs(RY_TO_EV - 13.605693122994) < 1e-6
@@ -556,8 +556,8 @@ End final coordinates
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `src/quantumvitas/core/artifact_scanning.py` | Modify | Add `scan_raw_directory_for_provenance()`, fix path normalization |
-| `src/quantumvitas/core/provenance.py` | Modify | Use new provenance scanner |
+| `src/qmatsuite/core/artifact_scanning.py` | Modify | Add `scan_raw_directory_for_provenance()`, fix path normalization |
+| `src/qmatsuite/core/provenance.py` | Modify | Use new provenance scanner |
 | `tests/unit/test_provenance.py` | **Modify** | Remove/update `test_ignores_outdir`, add CHGCAR tracking tests, restart consistency test |
 | `tests/unit/test_artifact_scanning.py` | Create | Path normalization tests, ignore pattern tests |
 | `tests/unit/test_qe_trajectory_parser.py` | Create | Unit conversion tests |

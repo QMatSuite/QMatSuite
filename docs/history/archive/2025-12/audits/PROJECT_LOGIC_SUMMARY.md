@@ -11,7 +11,7 @@
 ### 2. 所有 pseudo 指向一个文件夹，先检查有没有，没有再下载
 **实现位置**:
 - `tests/core/qe_step_runner.py::set_pseudo_dir_to_temp`: 设置为 `project_root/pseudo` ✅
-- `src/quantumvitas/core/engines/qe_pseudopotentials.py::ensure_pseudopotentials`: 
+- `src/qmatsuite/core/engines/qe_pseudopotentials.py::ensure_pseudopotentials`: 
   - 先检查 `pseudo_dir` (project_root/pseudo)
   - 再检查 test_suite_dir (fallback)
   - 最后下载 ✅
@@ -19,10 +19,10 @@
 
 ### 3. 所有 step 逻辑在 src 里面
 **实现位置**:
-- `src/quantumvitas/core/engines/qe_calculation.py`: 
+- `src/qmatsuite/core/engines/qe_calculation.py`: 
   - `QECalculationRunner.run_step()`: 执行单个步骤 ✅
   - `QECalculationRunner.run_calculation()`: 执行计算 ✅
-- `src/quantumvitas/core/engines/qe.py`: 
+- `src/qmatsuite/core/engines/qe.py`: 
   - `detect_step_type()`: 检测步骤类型 ✅
   - `run_step()`: 执行步骤（调用 calculation_runner）✅
 
@@ -43,7 +43,7 @@
 **实现位置**:
 - `tests/core/qe_step_runner.py::set_outdir_to_temp`: 设置为 `temp/outdir` ✅
 - `extended-tests/utils/qe_module_base.py::run_module_test`: 也使用 `set_outdir_to_temp` ✅
-- `src/quantumvitas/core/engines/qe_calculation.py::run_step`: 使用统一的 outdir ✅
+- `src/qmatsuite/core/engines/qe_calculation.py::run_step`: 使用统一的 outdir ✅
 
 ### 6. 顺序看 jobconfig
 **实现位置**:
@@ -55,9 +55,9 @@
 ## 📋 文件组织
 
 ### src/ (Step 逻辑)
-- `src/quantumvitas/core/engines/qe_calculation.py`: Step 执行逻辑
-- `src/quantumvitas/core/engines/qe.py`: QE 引擎，调用 calculation runner
-- `src/quantumvitas/core/engines/qe_pseudopotentials.py`: 伪势管理
+- `src/qmatsuite/core/engines/qe_calculation.py`: Step 执行逻辑
+- `src/qmatsuite/core/engines/qe.py`: QE 引擎，调用 calculation runner
+- `src/qmatsuite/core/engines/qe_pseudopotentials.py`: 伪势管理
 
 ### tests/core/ (Test 逻辑)
 - `tests/core/qe_step_runner.py`: 统一的步骤运行和验证接口
@@ -73,7 +73,7 @@
 
 ```
 for each step in jobconfig:
-    1. run step (src/quantumvitas/core/engines/qe_calculation.py)
+    1. run step (src/qmatsuite/core/engines/qe_calculation.py)
     2. verify step (tests/core/qe_step_verification.py)
     3. if failed: stop calculation
     4. continue to next step

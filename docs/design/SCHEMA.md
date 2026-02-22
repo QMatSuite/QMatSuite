@@ -1,6 +1,6 @@
-# QuantumVITAS Schema: DAG + ID-only Model
+# QMatSuite Schema: DAG + ID-only Model
 
-This document describes the current schema for QuantumVITAS projects, calculations, steps, and structures. The schema follows a **DAG (Directed Acyclic Graph) + ID-only** model where all cross-resource references use ULIDs (Universally Unique Lexicographically Sortable Identifiers).
+This document describes the current schema for QMatSuite projects, calculations, steps, and structures. The schema follows a **DAG (Directed Acyclic Graph) + ID-only** model where all cross-resource references use ULIDs (Universally Unique Lexicographically Sortable Identifiers).
 
 ## Core Principles
 
@@ -10,7 +10,7 @@ This document describes the current schema for QuantumVITAS projects, calculatio
 
 ## Schema Structure
 
-### 1. project.qv.yml
+### 1. project.qms.yml
 
 The project registry file lists all calculations and structures by ID only:
 
@@ -110,7 +110,7 @@ Structure files contain full structure data with embedded metadata:
 
 ```json
 {
-  "__qv_meta__": {
+  "__qms_meta__": {
     "id": "01SABC123...",
     "name": "Si bulk",
     "slug": "si-bulk",
@@ -153,7 +153,7 @@ The codebase supports loading legacy formats:
 
 - **Legacy calculation.yaml**: May have `structure` selector instead of `structure_id` - resolved on load
 - **Legacy step YAML**: May have `structure_id` or `parent_workflow_id` - accepted on load but not written
-- **Legacy project.qv.yml**: May have full meta in entries - normalized to ID-only on load
+- **Legacy project.qms.yml**: May have full meta in entries - normalized to ID-only on load
 
 All legacy formats are normalized to the ID-only model when loaded, ensuring consistency.
 

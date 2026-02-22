@@ -10,7 +10,7 @@
 ### Problem
 
 `load_demo_as_calculation()` records NO provenance events. All three SSOT writes
-(step YAML, calculation.yaml, project.qv.yml) pass no `OperationContext` to
+(step YAML, calculation.yaml, project.qms.yml) pass no `OperationContext` to
 `save_yaml_doc()`. Additionally, unlike `create_demo_project()` which sets a
 project-level `demo_source` in settings (S11), `load_demo_as_calculation()` has
 no equivalent metadata — so `get_reference_analysis()` cannot find ref packs
@@ -20,10 +20,10 @@ for demo-loaded calculations in non-demo projects.
 
 Add a `demo_origin` field to `CalculationModel` for per-calculation demo tracking:
 
-1. **`src/quantumvitas/core/models.py`** — Add `demo_origin: dict | None = None`
+1. **`src/qmatsuite/core/models.py`** — Add `demo_origin: dict | None = None`
    to `CalculationModel`, include in `to_dict()` / `from_dict()` serialization.
 
-2. **`src/quantumvitas/api/service.py`** — In `load_demo_as_calculation()`, set
+2. **`src/qmatsuite/api/service.py`** — In `load_demo_as_calculation()`, set
    `calc_model.demo_origin` before `save_calculation()`:
    ```python
    calc_model.demo_origin = {
@@ -33,7 +33,7 @@ Add a `demo_origin` field to `CalculationModel` for per-calculation demo trackin
    }
    ```
 
-3. **`src/quantumvitas/api/service.py`** — In `get_reference_analysis()`, also
+3. **`src/qmatsuite/api/service.py`** — In `get_reference_analysis()`, also
    check `calculation.demo_origin.demo_id` (not just project-level
    `settings.demo_source`).
 
@@ -104,8 +104,8 @@ Added `TestDemoOrigin` class with 4 tests:
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/core/models.py` | Added `demo_origin` field + serialization |
-| `src/quantumvitas/api/service.py` | Set `demo_origin` in `load_demo_as_calculation()`, added fallback in `get_reference_analysis()` |
+| `src/qmatsuite/core/models.py` | Added `demo_origin` field + serialization |
+| `src/qmatsuite/api/service.py` | Set `demo_origin` in `load_demo_as_calculation()`, added fallback in `get_reference_analysis()` |
 | `tests/mcp/test_stage10.py` | Added `TestDemoOrigin` class (4 tests) |
 
 ## Test Results

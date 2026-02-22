@@ -1,7 +1,7 @@
 """Tests for QMCPACK XML input parser, writer, and roundtrip.
 
 Tests the custom_parser and custom_writer in
-src/quantumvitas/drivers/qmcpack/inputspec.py.
+src/qmatsuite/drivers/qmcpack/inputspec.py.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.qmcpack.inputspec import (
+from qmatsuite.drivers.qmcpack.inputspec import (
     _extract_resource_refs,
     _parse_pos_array,
     _parse_qmcpack_text,
@@ -575,7 +575,7 @@ class TestOrchestratorIntegration:
         assert fspec.custom_writer is not None
 
     def test_orchestrator_parse(self, tmp_path):
-        from quantumvitas.inputformat.parser import parse_engine_inputs
+        from qmatsuite.inputformat.parser import parse_engine_inputs
 
         spec = get_qmcpack_input_spec()
         xml_text = _read_sample("he_vmc_sto")
@@ -587,7 +587,7 @@ class TestOrchestratorIntegration:
         assert result.structure["species"] == ["He"]
 
     def test_orchestrator_write(self, tmp_path):
-        from quantumvitas.inputformat.writer import write_engine_inputs
+        from qmatsuite.inputformat.writer import write_engine_inputs
 
         spec = get_qmcpack_input_spec()
         params = {
@@ -607,8 +607,8 @@ class TestOrchestratorIntegration:
         assert "Test" in content
 
     def test_orchestrator_roundtrip(self, tmp_path):
-        from quantumvitas.inputformat.parser import parse_engine_inputs
-        from quantumvitas.inputformat.writer import write_engine_inputs
+        from qmatsuite.inputformat.parser import parse_engine_inputs
+        from qmatsuite.inputformat.writer import write_engine_inputs
 
         spec = get_qmcpack_input_spec()
         # Parse sample
@@ -760,7 +760,7 @@ class TestParseLihQeWorkflow:
 
 class TestQMCPACKMetadata:
     def test_load_metadata(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import (
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import (
             safe_load_metadata,
         )
         data = safe_load_metadata()
@@ -769,56 +769,56 @@ class TestQMCPACKMetadata:
         assert len(data["tags"]) >= 50
 
     def test_get_tag_info(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import get_tag_info
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import get_tag_info
         info = get_tag_info("vmc_blocks")
         assert info is not None
         assert info["category"] == "vmc"
 
     def test_get_tag_info_case_insensitive(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import get_tag_info
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import get_tag_info
         info = get_tag_info("VMC_BLOCKS")
         assert info is not None
 
     def test_get_tag_info_unknown(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import get_tag_info
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import get_tag_info
         assert get_tag_info("nonexistent_tag_xyz") is None
 
     def test_list_tags(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import list_tags
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import list_tags
         tags = list_tags()
         assert len(tags) >= 50
         assert "vmc_blocks" in tags
 
     def test_list_tags_by_category(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import list_tags
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import list_tags
         vmc_tags = list_tags(category="vmc")
         assert len(vmc_tags) >= 3
         assert "vmc_blocks" in vmc_tags
 
     def test_list_categories(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import list_categories
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import list_categories
         cats = list_categories()
         assert "qmc" in cats
         assert "cell" in cats
         assert "wavefunction" in cats
 
     def test_validate_params_known(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import validate_params
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import validate_params
         unknown = validate_params({"blocks": "100", "steps": "50"})
         assert unknown == []
 
     def test_validate_params_unknown(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import validate_params
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import validate_params
         unknown = validate_params({"blocks": "100", "bogus_param_xyz": "1"})
         assert "bogus_param_xyz" in unknown
 
     def test_validate_params_skips_private(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import validate_params
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import validate_params
         unknown = validate_params({"_internal": "x", "blocks": "100"})
         assert unknown == []
 
     def test_get_metadata_file_info(self):
-        from quantumvitas.drivers.qmcpack.data.qmcpack_metadata import (
+        from qmatsuite.drivers.qmcpack.data.qmcpack_metadata import (
             get_metadata_file_info,
         )
         info = get_metadata_file_info()

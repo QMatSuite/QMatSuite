@@ -99,7 +99,7 @@ in code, tests, and docs.
 
 | Rule | Status | Evidence | Notes |
 |------|--------|----------|-------|
-| Translator verifies spec matches engine+gen | **PASS** | `src/quantumvitas/demo_store/corpus.py::validate_case_yaml` (line 85). Called from translator pipeline (translator.py:378). Gate: `test_demo_integrity.py` verifies spec prefix matches engine_family. | |
+| Translator verifies spec matches engine+gen | **PASS** | `src/qmatsuite/demo_store/corpus.py::validate_case_yaml` (line 85). Called from translator pipeline (translator.py:378). Gate: `test_demo_integrity.py` verifies spec prefix matches engine_family. | |
 
 ### S2.3 Directory Naming
 
@@ -145,8 +145,8 @@ in code, tests, and docs.
 |------|--------|----------|-------|
 | T1: Single writer | **PASS** | `tools/demo_store/generate_all.py` (line 10: "SINGLE WRITER for resources/demo_projects/ (Rule T1)"). No other script writes to this directory. | |
 | T2: Idempotent output | **PASS** | ULID determinism (see T3), `_yaml_dump()` with consistent settings (generate_all.py:68-76), SHA-256 manifest checksums verify byte-identity. Gate: `test_demo_generated.py::test_manifest_checksums_match`. | |
-| T3: Deterministic snapshot ULIDs | **PASS** | `src/quantumvitas/demo_store/ulid_seed.py:21-52`. Algorithm: `sha256("qmatsuite-demo-store-v1:" + demo_slug + ":" + component)` → Crockford Base32 ULID. | |
-| T3a: Materialization uses fresh ULIDs | **PASS** | `src/quantumvitas/project/snapshot.py:572-606`. Uses `generate_resource_id()` for project, structures, calculations, steps. | |
+| T3: Deterministic snapshot ULIDs | **PASS** | `src/qmatsuite/demo_store/ulid_seed.py:21-52`. Algorithm: `sha256("qmatsuite-demo-store-v1:" + demo_slug + ":" + component)` → Crockford Base32 ULID. | |
+| T3a: Materialization uses fresh ULIDs | **PASS** | `src/qmatsuite/project/snapshot.py:572-606`. Uses `generate_resource_id()` for project, structures, calculations, steps. | |
 | T4: Stable YAML serialization | **PASS** | `generate_all.py:68-76`: `sort_keys=False` (explicit field ordering in translator.py:516-538), `allow_unicode=True`, `width=120`. No floating-point jitter sources. | |
 | T5: Redistributable asset hashing | **PASS** | `translator.py:162-216`: SHA-256 of pseudo files, `pseudo_sha_family` via `compute_sha_family_file()`. QE demos have `pseudo_sha256` and `pseudo_sha_family` in species_map. | |
 | T6: Proprietary asset handling | **PASS** | VASP demos: `asset_policy: proprietary` in `meta`, `asset_requirements` propagated, no hash/staging attempted. Translator succeeds without VASP POTCARs. | |
@@ -184,7 +184,7 @@ in code, tests, and docs.
 
 | Rule | Status | Evidence | Notes |
 |------|--------|----------|-------|
-| SHOULD: Record demo origin in provenance | **PASS** | `create_demo_project()` writes `demo_source` to `project.qv.yml` settings (service.py:7267-7293). Fields: `demo_id`, `generator_digest`, `engine`, `materialized_at`. Uses filesystem, no SQLite/CAS dependency per S11 constraint C1. | |
+| SHOULD: Record demo origin in provenance | **PASS** | `create_demo_project()` writes `demo_source` to `project.qms.yml` settings (service.py:7267-7293). Fields: `demo_id`, `generator_digest`, `engine`, `materialized_at`. Uses filesystem, no SQLite/CAS dependency per S11 constraint C1. | |
 
 ---
 
@@ -196,7 +196,7 @@ in code, tests, and docs.
 | UL2: Cross-reference remapping | **PASS** | `snapshot.py:684-700`: `structure_ulid` remapped via `id_mapping` dict. | |
 | UL3: Materialized ULIDs immutable | **PASS** | Architectural invariant — no code path rewrites on-disk ULIDs after initial write. | |
 | UL4: Re-snapshot preserves on-disk ULIDs | **PASS** | Export/snapshot code reads SSOT files and preserves ULIDs. | |
-| RT1: Content-equivalence after roundtrip | **PASS** | `src/quantumvitas/demo_store/roundtrip.py:117-139`: `verify_roundtrip_equivalence()` with canonicalization (strips ULIDs, paths, managed keys, gallery meta). | |
+| RT1: Content-equivalence after roundtrip | **PASS** | `src/qmatsuite/demo_store/roundtrip.py:117-139`: `verify_roundtrip_equivalence()` with canonicalization (strips ULIDs, paths, managed keys, gallery meta). | |
 | RT2: Roundtrip verification function exists | **PASS** | `roundtrip.py::verify_roundtrip_equivalence()`. Returns `RoundtripReport` with `equivalent: bool` + `differences: list[str]`. | |
 | RT3: Integrity suite includes roundtrip | **PARTIAL** | `tests/integrity/backend/test_demo_lifecycle.py` has `test_materialize()` but no explicit roundtrip-equivalence check (no re-snapshot + compare). | Gap G5 |
 
@@ -272,11 +272,11 @@ in code, tests, and docs.
 
 | Rule | Status | Evidence | Notes |
 |------|--------|----------|-------|
-| S11.2: Schema in project.qv.yml | **PASS** | `service.py:7287-7292`: `demo_source = {demo_id, generator_digest, engine, materialized_at}`. | |
+| S11.2: Schema in project.qms.yml | **PASS** | `service.py:7287-7292`: `demo_source = {demo_id, generator_digest, engine, materialized_at}`. | |
 | S11.3: Written by `create_demo_project()` | **PASS** | `service.py:7267-7298`: reads manifest, injects `demo_source` into `project_config["project"]["settings"]`, saves. | |
 | S11.3: Read by `get_reference_analysis()` | **PASS** | `service.py:1145-1164`: reads `settings.demo_source.demo_id`, calls `load_ref_pack()`. | |
-| S11.3: No SQLite/CAS dependency (C1) | **PASS** | `src/quantumvitas/demo_store/ref_packs.py` imports only `json`, `Path`, `typing`. Zero provenance/sqlite/cas imports. `get_reference_analysis()` uses `load_project_config()` (filesystem YAML) + `load_ref_pack()` (filesystem JSON). | |
-| S11.4: GUI wiring | **PASS** | `gui/src/components/panels/CalculationAnalysisPanel.tsx`: RPC call to `get_reference_analysis`, state for `referenceData`/`showReference`, toggle checkbox in header. `gui/src/types/qv.ts`: `get_reference_analysis` in `QVCommandMap`. Daemon: `server.py::_handle_get_reference_analysis` (line 4639). | |
+| S11.3: No SQLite/CAS dependency (C1) | **PASS** | `src/qmatsuite/demo_store/ref_packs.py` imports only `json`, `Path`, `typing`. Zero provenance/sqlite/cas imports. `get_reference_analysis()` uses `load_project_config()` (filesystem YAML) + `load_ref_pack()` (filesystem JSON). | |
+| S11.4: GUI wiring | **PASS** | `gui/src/components/panels/CalculationAnalysisPanel.tsx`: RPC call to `get_reference_analysis`, state for `referenceData`/`showReference`, toggle checkbox in header. `gui/src/types/qms.ts`: `get_reference_analysis` in `QMSCommandMap`. Daemon: `server.py::_handle_get_reference_analysis` (line 4639). | |
 
 ---
 

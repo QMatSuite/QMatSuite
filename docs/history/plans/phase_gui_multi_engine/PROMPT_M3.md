@@ -12,8 +12,8 @@ M0 (ENGINE_ROLE + COMPANION_ENGINES on all drivers), M1 (demos fixed), and M2 (n
 
 ### Modify
 
-1. `src/quantumvitas/workflow/generalized_steps.py` — Rewrite `materialize_public_step_key`, update `materialize_workflow`
-2. `src/quantumvitas/core/driver_registry.py` — Add `resolve_companion_step()` classmethod
+1. `src/qmatsuite/workflow/generalized_steps.py` — Rewrite `materialize_public_step_key`, update `materialize_workflow`
+2. `src/qmatsuite/core/driver_registry.py` — Add `resolve_companion_step()` classmethod
 
 ### Create
 
@@ -22,17 +22,17 @@ M0 (ENGINE_ROLE + COMPANION_ENGINES on all drivers), M1 (demos fixed), and M2 (n
 
 ## Do NOT Touch
 
-- `src/quantumvitas/drivers/` (already done in M0)
-- `src/quantumvitas/daemon/server.py` (that's M4)
+- `src/qmatsuite/drivers/` (already done in M0)
+- `src/qmatsuite/daemon/server.py` (that's M4)
 - GUI files
-- `src/quantumvitas/core/driver_protocol.py` (already done in M0)
-- `src/quantumvitas/workflow/registry.py` (StepTypeRegistry stays as-is; we stop USING it for cross-engine resolution)
+- `src/qmatsuite/core/driver_protocol.py` (already done in M0)
+- `src/qmatsuite/workflow/registry.py` (StepTypeRegistry stays as-is; we stop USING it for cross-engine resolution)
 
 ## Exact Instructions
 
 ### Step 1: Add `resolve_companion_step()` to DriverRegistry
 
-In `src/quantumvitas/core/driver_registry.py`, add a new classmethod after `materialize_step_type()` (after line ~328):
+In `src/qmatsuite/core/driver_registry.py`, add a new classmethod after `materialize_step_type()` (after line ~328):
 
 ```python
 @classmethod
@@ -52,7 +52,7 @@ def resolve_companion_step(cls, engine_family: str, gen_step: str) -> str | None
     instance = cls.get_instance()
 
     if engine_family not in instance._drivers:
-        from quantumvitas.core.driver_exceptions import UnknownEngineError
+        from qmatsuite.core.driver_exceptions import UnknownEngineError
         raise UnknownEngineError(engine_family, list(instance._drivers.keys()))
 
     gen_lower = gen_step.lower()
@@ -128,7 +128,7 @@ If `engine_family` is None, `materialize_workflow` will fail at `DriverRegistry.
 In `generalized_steps.py`, remove or guard the import:
 ```python
 # DELETE this import (was used by old materialize_public_step_key):
-# from quantumvitas.workflow.registry import get_registry
+# from qmatsuite.workflow.registry import get_registry
 ```
 
 Only remove if no other function in the file uses it. If `dematerialize_step` or other functions still use `StepTypeRegistry`, keep the import but remove it from `materialize_public_step_key` specifically.
@@ -149,7 +149,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).parent.parent.parent
-GENERALIZED_STEPS_PATH = REPO_ROOT / "src" / "quantumvitas" / "workflow" / "generalized_steps.py"
+GENERALIZED_STEPS_PATH = REPO_ROOT / "src" / "qmatsuite" / "workflow" / "generalized_steps.py"
 
 
 def test_no_step_type_registry_in_materialize():
@@ -179,8 +179,8 @@ def test_no_step_type_registry_in_materialize():
 
 def test_companion_routing_for_qe():
     """QE companion steps resolve through DriverRegistry, not first-match."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     # w90 is a companion of QE
     result = DriverRegistry.resolve_companion_step("qe", "wannierprep")
@@ -200,8 +200,8 @@ def test_companion_routing_for_qe():
 
 def test_no_companion_routing_for_vasp():
     """VASP has no companions. Companion steps should return None."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     result = DriverRegistry.resolve_companion_step("vasp", "wannierprep")
     assert result is None, f"Expected None for VASP+wannierprep, got '{result}'"
@@ -212,8 +212,8 @@ def test_no_companion_routing_for_vasp():
 
 def test_base_steps_still_resolve():
     """Base engine steps still resolve normally through companion routing."""
-    from quantumvitas.core.driver_registry import DriverRegistry
-    import quantumvitas.drivers
+    from qmatsuite.core.driver_registry import DriverRegistry
+    import qmatsuite.drivers
 
     assert DriverRegistry.resolve_companion_step("qe", "scf") == "qe_scf"
     assert DriverRegistry.resolve_companion_step("vasp", "scf") == "vasp_scf"
@@ -233,7 +233,7 @@ use the companion allowlist correctly.
 """
 import pytest
 
-from quantumvitas.workflow.generalized_steps import (
+from qmatsuite.workflow.generalized_steps import (
     materialize_public_step_key,
     materialize_workflow,
     get_supported_generalized_steps,
@@ -322,7 +322,7 @@ source .venv/bin/activate && python -m pytest tests/gates/test_companion_routing
 python -m pytest tests/workflow/test_companion_materialize.py -v
 
 # 3. Verify StepTypeRegistry is not used in materialize_public_step_key
-grep -n "get_registry\|registry.get" src/quantumvitas/workflow/generalized_steps.py
+grep -n "get_registry\|registry.get" src/qmatsuite/workflow/generalized_steps.py
 # Expected: Only appears in functions OTHER than materialize_public_step_key (if at all)
 
 # 4. Full test suite
@@ -333,7 +333,7 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 
 - Do NOT modify any driver files (M0 already added ENGINE_ROLE + COMPANION_ENGINES)
 - Do NOT modify `materialize_workflow()` unless absolutely necessary
-- Do NOT delete StepTypeRegistry or `src/quantumvitas/workflow/registry.py`
+- Do NOT delete StepTypeRegistry or `src/qmatsuite/workflow/registry.py`
 - Do NOT import driver modules directly in generalized_steps.py (use DriverRegistry only)
 - Do NOT add new class attributes to drivers
 - Do NOT modify daemon/server.py (that's M4)
@@ -344,6 +344,6 @@ python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 
 1. **Breaking existing QE workflows**: The most common path (`materialize_public_step_key("scf", "qe")`) must still return `"qe_scf"`. If `resolve_companion_step` tries companions BEFORE the base engine, base steps may break.
 2. **Forgetting to remove StepTypeRegistry usage**: If the old `registry.get(public_step_key)` call remains, cross-engine first-match is still active and the gate test will fail.
-3. **Importing driver modules in generalized_steps.py**: Use `DriverRegistry.resolve_companion_step()`, NOT `from quantumvitas.drivers.qe.driver import ...`.
+3. **Importing driver modules in generalized_steps.py**: Use `DriverRegistry.resolve_companion_step()`, NOT `from qmatsuite.drivers.qe.driver import ...`.
 4. **Non-deterministic companion ordering**: Use `sorted(companions)` when iterating to ensure deterministic results across test runs.
 5. **Breaking `dematerialize_step`**: This function uses `StepTypeRegistry` for reverse lookup. Do NOT change it — it still needs `StepTypeRegistry` for spec→gen resolution.

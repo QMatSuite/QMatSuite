@@ -112,7 +112,7 @@
 
 ### 2026-02-06: Stage 4 Complete
 
-**Enhanced Parser** (`src/quantumvitas/drivers/orca/inputspec.py`):
+**Enhanced Parser** (`src/qmatsuite/drivers/orca/inputspec.py`):
 - Multi-line `%pal` block support (nprocs correctly extracted)
 - Boolean value parsing (`true`/`false` → Python `True`/`False`)
 - Smart keyword line parsing with functional/basis detection
@@ -148,7 +148,7 @@
 
 ### 2026-02-06: Stage 5 Complete
 
-**Created Output Parser** (`src/quantumvitas/drivers/orca/parsers/output.py`):
+**Created Output Parser** (`src/qmatsuite/drivers/orca/parsers/output.py`):
 
 **ORCADigest Dataclass**:
 - `success: bool` - True if `****ORCA TERMINATED NORMALLY****`
@@ -278,7 +278,7 @@
 **Remediation Completed**:
 
 **Phase 1-2: Production Metadata**
-- Created `src/quantumvitas/drivers/orca/data/` directory
+- Created `src/qmatsuite/drivers/orca/data/` directory
 - Created `orca_keywords.json` with 120+ keywords across 24 categories
   - Schema version 1, production-ready format
   - Keywords: calculation types, methods (HF, DFT, MP, CC, multireference), basis sets, RI, dispersion, convergence, etc.
@@ -352,7 +352,7 @@
 - `CURATED_INDEX.md` - Curated sample documentation
 - `SOURCES.md` - Documentation sources
 
-### Production Code (in `src/quantumvitas/drivers/orca/`)
+### Production Code (in `src/qmatsuite/drivers/orca/`)
 - `data/orca_keywords.json` - Production keyword catalog (120+ keywords)
 - `data/orca_metadata.py` - Metadata access layer
 - `inputspec.py` - Enhanced parser/writer

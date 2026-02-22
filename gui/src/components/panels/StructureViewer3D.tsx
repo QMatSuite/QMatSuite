@@ -8,7 +8,7 @@ import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
-import type { StructureVisData, AtomVisData, BondVisData } from '../../types/qv';
+import type { StructureVisData, AtomVisData, BondVisData } from '../../types/qms';
 import './StructureViewer3D.css';
 
 // =============================================================================

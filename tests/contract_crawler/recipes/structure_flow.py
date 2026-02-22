@@ -9,18 +9,18 @@ from pymatgen.core import Structure, Lattice
 
 # Try to import API - may differ in baseline
 try:
-    from quantumvitas.api import get_service, QVService
+    from qmatsuite.api import get_service, QMSService
 except ImportError:
     # Fallback for baseline compatibility
     try:
-        from quantumvitas.api import QVService
-        # In baseline, QVService might be used directly
+        from qmatsuite.api import QMSService
+        # In baseline, QMSService might be used directly
         def get_service(project_root):
-            return QVService(project_root)
+            return QMSService(project_root)
     except ImportError:
         # If all else fails, we'll handle in setup
         get_service = None
-        QVService = None
+        QMSService = None
 
 from .base import Recipe
 
@@ -38,18 +38,18 @@ class GetStepDetailRecipe(Recipe):
 
     def setup(self) -> bool:
         """Create project with structure, calculation, and step."""
-        if QVService is None:
+        if QMSService is None:
             return False  # API not available in this baseline
         
         # Create project
         self.project_root = self.tmp_path / "test_project"
         self.project_root.mkdir()
-        QVService.init_project(self.project_root, name="test_project")
+        QMSService.init_project(self.project_root, name="test_project")
 
-        # Check if QVService methods are static (baseline) or instance-based (current)
+        # Check if QMSService methods are static (baseline) or instance-based (current)
         is_static_api = True
         try:
-            test_svc = QVService(self.project_root)
+            test_svc = QMSService(self.project_root)
             is_static_api = False
         except (TypeError, AttributeError):
             is_static_api = True
@@ -62,14 +62,14 @@ class GetStepDetailRecipe(Recipe):
 
         try:
             # Import structure using nested service method
-            svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
+            svc = QMSService(self.project_root) if get_service is None else get_service(self.project_root)
             struct_dto = svc.structure.import_file(source=struct_file, name="silicon")
             structure_ulid = struct_dto.structure_ulid
         finally:
             struct_file.unlink()
 
         # Create calculation using nested service method
-        svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
+        svc = QMSService(self.project_root) if get_service is None else get_service(self.project_root)
         calc_result = svc.project.init_calculation(
             name="test_calc",
             structure_selector=structure_ulid,
@@ -79,7 +79,7 @@ class GetStepDetailRecipe(Recipe):
 
         # Add SCF step
         if is_static_api:
-            step_result = QVService.add_step_to_calculation(
+            step_result = QMSService.add_step_to_calculation(
                 self.project_root,
                 calculation_selector=self.calc_id,
                 step_type_gen="scf",  # GEN type for UI layer
@@ -99,7 +99,7 @@ class GetStepDetailRecipe(Recipe):
             else:
                 self.step_ulid = step_result.step_ulid  # Canonical attribute only
         else:
-            svc = QVService(self.project_root) if get_service is None else get_service(self.project_root)
+            svc = QMSService(self.project_root) if get_service is None else get_service(self.project_root)
             step_dto = svc.calculation.add_step(
                 calc_selector=self.calc_id,
                 step_type_gen="scf",  # GEN type for UI layer

@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 from pymatgen.core import Lattice, Structure
 
-from quantumvitas.io import read_structure
-from quantumvitas.analysis.structure_viz import (
+from qmatsuite.io import read_structure
+from qmatsuite.analysis.structure_viz import (
     detect_bonds,
     generate_boundary_atoms,
     get_element_color,
@@ -254,7 +254,7 @@ def si_diamond_structure():
 
 def test_boundary_repeat_adds_image_atoms_for_primitive_si(si_diamond_structure):
     """Test that boundary repeat generates image atoms outside the main cell."""
-    from quantumvitas.analysis.structure_viz import (
+    from qmatsuite.analysis.structure_viz import (
         make_supercell,
         generate_boundary_atoms,
         canonicalize_structure_in_place,
@@ -318,7 +318,7 @@ def test_primitive_si_with_repeat_boundary_shows_extra_atoms_and_bonds(si_diamon
     Chemically, each Si atom in diamond has 4 neighbors. In the infinite network,
     we should see bonds connecting the base atoms to their periodic images.
     """
-    from quantumvitas.analysis.structure_viz import (
+    from qmatsuite.analysis.structure_viz import (
         make_supercell,
         generate_boundary_atoms,
         detect_bonds,
@@ -373,7 +373,7 @@ def test_primitive_si_with_repeat_boundary_shows_extra_atoms_and_bonds(si_diamon
     
     # Compute bonds on all atoms (base + images)
     # Use legacy build_bonds_cartesian for unit tests (direct cartesian arrays)
-    from quantumvitas.analysis.structure_viz import build_bonds_cartesian
+    from qmatsuite.analysis.structure_viz import build_bonds_cartesian
     bonds_with_repeat = build_bonds_cartesian(
         all_atoms_cart, all_species, radii_map,
         max_factor=1.2, tolerance=0.3, max_cutoff=3.5
@@ -425,7 +425,7 @@ def test_si_supercell_bond_count_stability(si_diamond_structure):
     The test uses repeat_boundary=True to include cross-boundary neighbors in the point cloud,
     making the system translation-invariant for small shifts that don't flip boundary-detection branches.
     """
-    from quantumvitas.analysis.structure_viz import (
+    from qmatsuite.analysis.structure_viz import (
         build_display_atoms,
         build_bonds,
         DisplayModeParams,
@@ -654,7 +654,7 @@ class TestCellListBondDetection:
     
     def test_cell_list_vs_bruteforce_si_with_boundary(self, si_diamond_structure):
         """Test cell-list matches brute-force on Si with boundary atoms."""
-        from quantumvitas.analysis.structure_viz import generate_boundary_atoms
+        from qmatsuite.analysis.structure_viz import generate_boundary_atoms
         
         # CRITICAL: Canonicalize exactly once at the entry point
         structure_canon = si_diamond_structure.copy()
@@ -795,7 +795,7 @@ class TestCellListBondDetection:
         
         # Default should use cell-list
         # Use legacy build_bonds_cartesian for unit tests
-        from quantumvitas.analysis.structure_viz import build_bonds_cartesian
+        from qmatsuite.analysis.structure_viz import build_bonds_cartesian
         bonds_default = build_bonds_cartesian(
             atoms_cart, species, radii_map,
             max_factor=1.2, tolerance=0.3, max_cutoff=3.5
@@ -819,7 +819,7 @@ class TestCellListBondDetection:
         
         # Force brute-force
         # Use legacy build_bonds_cartesian for unit tests
-        from quantumvitas.analysis.structure_viz import build_bonds_cartesian
+        from qmatsuite.analysis.structure_viz import build_bonds_cartesian
         bonds_forced = build_bonds_cartesian(
             atoms_cart, species, radii_map,
             max_factor=1.2, tolerance=0.3, max_cutoff=3.5,
@@ -1052,7 +1052,7 @@ class TestVisualizationResult:
 
     def test_result_to_dict(self, tmp_path):
         """Test that result can be converted to dict."""
-        from quantumvitas.analysis.structure_viz import StructureVisualizationResult
+        from qmatsuite.analysis.structure_viz import StructureVisualizationResult
         
         result = StructureVisualizationResult(
             output_path=tmp_path / "test.png",
@@ -1084,7 +1084,7 @@ class TestCanonicalizationNoDouble:
         import matplotlib.pyplot as plt
         
         # Count calls to canonicalize_structure_in_place
-        with mock.patch('quantumvitas.analysis.structure_viz.canonicalize_structure_in_place') as mock_canon:
+        with mock.patch('qmatsuite.analysis.structure_viz.canonicalize_structure_in_place') as mock_canon:
             mock_canon.side_effect = canonicalize_structure_in_place  # Call real function
             
             # Call visualize_structure
@@ -1109,7 +1109,7 @@ class TestCanonicalizationNoDouble:
         canonicalize_structure_in_place(structure_canon, wrap_tol=WRAP_TOL)
         
         # Count calls when passing pre-canonicalized structure
-        with mock.patch('quantumvitas.analysis.structure_viz.canonicalize_structure_in_place') as mock_canon:
+        with mock.patch('qmatsuite.analysis.structure_viz.canonicalize_structure_in_place') as mock_canon:
             mock_canon.side_effect = canonicalize_structure_in_place  # Call real function
             
             # Call plot_structure_3d with pre-canonicalized structure

@@ -51,8 +51,8 @@
 
 | 文件 | 修改内容 |
 |------|----------|
-| `src/quantumvitas/execution/handlers.py` | 添加 `handle_qe_relax_output()` |
-| `src/quantumvitas/execution/executor.py` | 在 job 完成后调用 relax handler |
+| `src/qmatsuite/execution/handlers.py` | 添加 `handle_qe_relax_output()` |
+| `src/qmatsuite/execution/executor.py` | 在 job 完成后调用 relax handler |
 | `tests/integration/test_qe_relax_real.py` | 新增真实测试 |
 
 ### 4.3 关键实现
@@ -60,7 +60,7 @@
 **4.3.1 Relax Output Handler**
 
 ```python
-# src/quantumvitas/execution/handlers.py
+# src/qmatsuite/execution/handlers.py
 
 def handle_qe_relax_output(
     step_ulid: str,
@@ -89,11 +89,11 @@ def handle_qe_relax_output(
     Raises:
         ValueError: If output parsing fails
     """
-    from quantumvitas.calculation.geometry import (
+    from qmatsuite.calculation.geometry import (
         read_final_geometry_from_output_text,
         structure_from_qe_geometry_snapshot,
     )
-    from quantumvitas.execution.relax_artifacts import write_generated_structure
+    from qmatsuite.execution.relax_artifacts import write_generated_structure
     
     # 1. Read output
     output_text = output_path.read_text()
@@ -121,14 +121,14 @@ def handle_qe_relax_output(
 **4.3.2 Executor 集成**
 
 ```python
-# src/quantumvitas/execution/executor.py
+# src/qmatsuite/execution/executor.py
 
 # 在 job 执行成功后添加:
 
 def _post_process_job(self, job: Job, calc_dir: Path, ...):
     """Post-process completed job, handle relax output if applicable."""
-    from quantumvitas.workflow.registry import get_registry
-    from quantumvitas.execution.relax_artifacts import is_relax_step_type
+    from qmatsuite.workflow.registry import get_registry
+    from qmatsuite.execution.relax_artifacts import is_relax_step_type
     
     registry = get_registry()
     
@@ -171,12 +171,12 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.execution.relax_artifacts import (
+from qmatsuite.api import QMSService
+from qmatsuite.execution.relax_artifacts import (
     get_generated_structure_path,
     read_generated_structure,
 )
-from quantumvitas.core.structure_fingerprint import structure_fingerprint
+from qmatsuite.core.structure_fingerprint import structure_fingerprint
 
 # Skip if QE not available
 pytestmark = pytest.mark.qe
@@ -185,7 +185,7 @@ pytestmark = pytest.mark.qe
 @pytest.fixture
 def si_project(tmp_path: Path):
     """Create a project with Si structure for relax testing."""
-    project_root = QVService.init_project(tmp_path / "project")
+    project_root = QMSService.init_project(tmp_path / "project")
     
     # Import Si structure (2 atoms, small cell)
     si_json = {
@@ -206,7 +206,7 @@ def si_project(tmp_path: Path):
     source = tmp_path / "si.json"
     source.write_text(json.dumps(si_json))
     
-    struct_result = QVService.import_structure(project_root, source, name="Si")
+    struct_result = QMSService.import_structure(project_root, source, name="Si")
     
     return project_root, struct_result.meta.id
 
@@ -219,13 +219,13 @@ class TestQERelaxReal:
         project_root, structure_ulid = si_project
         
         # Create calculation with relax step
-        calc_result = QVService.init_calculation(
+        calc_result = QMSService.init_calculation(
             project_root, "relax_test",
             structure_selector=structure_ulid
         )
         calc_ulid = calc_result.id
         
-        step_result = QVService.init_step(
+        step_result = QMSService.init_step(
             project_root, calc_ulid,
             step_type="qe_relax",
             name="relax"
@@ -233,7 +233,7 @@ class TestQERelaxReal:
         step_ulid = step_result.id
         
         # Configure for fast execution
-        QVService.update_step_params(
+        QMSService.update_step_params(
             project_root, calc_ulid, step_ulid,
             param_patch={
                 "SYSTEM": {"ecutwfc": 20},  # Low cutoff for speed
@@ -246,7 +246,7 @@ class TestQERelaxReal:
         )
         
         # Run calculation
-        result = QVService.run_calculation(project_root, calc_ulid)
+        result = QMSService.run_calculation(project_root, calc_ulid)
         
         # Verify success
         assert result.success, f"Run failed: {result.error}"
@@ -260,9 +260,9 @@ class TestQERelaxReal:
         data = json.loads(artifact_path.read_text())
         
         # Check metadata
-        assert "__qv_meta__" in data
-        assert data["__qv_meta__"]["type"] == "generated_structure"
-        assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
+        assert "__qms_meta__" in data
+        assert data["__qms_meta__"]["type"] == "generated_structure"
+        assert data["__qms_meta__"]["source_step_ulid"] == step_ulid
         
         # Check structure
         assert "lattice" in data
@@ -283,13 +283,13 @@ class TestQERelaxReal:
         project_root, structure_ulid = si_project
         
         # Create calculation with vc-relax step
-        calc_result = QVService.init_calculation(
+        calc_result = QMSService.init_calculation(
             project_root, "vc_relax_test",
             structure_selector=structure_ulid
         )
         calc_ulid = calc_result.id
         
-        step_result = QVService.init_step(
+        step_result = QMSService.init_step(
             project_root, calc_ulid,
             step_type="qe_relax",  # Unified type
             name="vc_relax"
@@ -297,7 +297,7 @@ class TestQERelaxReal:
         step_ulid = step_result.id
         
         # Configure for vc-relax
-        QVService.update_step_params(
+        QMSService.update_step_params(
             project_root, calc_ulid, step_ulid,
             param_patch={
                 "CONTROL": {"calculation": "vc-relax"},
@@ -308,7 +308,7 @@ class TestQERelaxReal:
         )
         
         # Run
-        result = QVService.run_calculation(project_root, calc_ulid)
+        result = QMSService.run_calculation(project_root, calc_ulid)
         assert result.success
         
         # Verify cell might have changed
@@ -354,9 +354,9 @@ pytest tests/integration/test_qe_relax_real.py -v -m qe
 
 | 文件 | 修改内容 |
 |------|----------|
-| `src/quantumvitas/execution/orca_relax_parser.py` | 新增 ORCA xyz 解析器 |
-| `src/quantumvitas/engine/orca_engine.py` | 添加 relax 后处理 |
-| `src/quantumvitas/engines/orca/input_compiler.py` | 支持 Opt 关键词 |
+| `src/qmatsuite/execution/orca_relax_parser.py` | 新增 ORCA xyz 解析器 |
+| `src/qmatsuite/engine/orca_engine.py` | 添加 relax 后处理 |
+| `src/qmatsuite/engines/orca/input_compiler.py` | 支持 Opt 关键词 |
 | `tests/integration/test_orca_relax_real.py` | 新增真实测试 |
 
 ### 5.3 关键实现
@@ -364,7 +364,7 @@ pytest tests/integration/test_qe_relax_real.py -v -m qe
 **5.3.1 ORCA XYZ Parser**
 
 ```python
-# src/quantumvitas/execution/orca_relax_parser.py
+# src/qmatsuite/execution/orca_relax_parser.py
 
 """Parse ORCA geometry optimization output."""
 
@@ -385,7 +385,7 @@ def parse_orca_optimized_xyz(xyz_path: Path) -> "Molecule":
         pymatgen Molecule with canonicalized coordinates
     """
     from pymatgen.core import Molecule
-    from quantumvitas.analysis.structure_viz import canonicalize_structure_in_place
+    from qmatsuite.analysis.structure_viz import canonicalize_structure_in_place
     
     # pymatgen can read xyz files directly
     mol = Molecule.from_file(xyz_path)
@@ -423,7 +423,7 @@ def handle_orca_relax_output(
     Returns:
         Path to written current.json
     """
-    from quantumvitas.execution.relax_artifacts import write_generated_structure
+    from qmatsuite.execution.relax_artifacts import write_generated_structure
     
     # Find optimized xyz file
     xyz_path = working_dir / f"{chain_key}.xyz"
@@ -451,7 +451,7 @@ def handle_orca_relax_output(
 **5.3.2 Input Compiler 支持 Opt**
 
 ```python
-# src/quantumvitas/engines/orca/input_compiler.py
+# src/qmatsuite/engines/orca/input_compiler.py
 
 # 在 compile() 方法中添加:
 
@@ -492,8 +492,8 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.execution.relax_artifacts import get_generated_structure_path
+from qmatsuite.api import QMSService
+from qmatsuite.execution.relax_artifacts import get_generated_structure_path
 
 pytestmark = pytest.mark.orca
 
@@ -501,7 +501,7 @@ pytestmark = pytest.mark.orca
 @pytest.fixture
 def h2_project(tmp_path: Path):
     """Create a project with H2 molecule for relax testing."""
-    project_root = QVService.init_project(tmp_path / "project")
+    project_root = QMSService.init_project(tmp_path / "project")
     
     # H2 molecule (smallest test case)
     h2_json = {
@@ -517,7 +517,7 @@ def h2_project(tmp_path: Path):
     source = tmp_path / "h2.json"
     source.write_text(json.dumps(h2_json))
     
-    struct_result = QVService.import_structure(project_root, source, name="H2")
+    struct_result = QMSService.import_structure(project_root, source, name="H2")
     
     return project_root, struct_result.meta.id
 
@@ -530,14 +530,14 @@ class TestORCARelaxReal:
         project_root, structure_ulid = h2_project
         
         # Create calculation with relax step
-        calc_result = QVService.init_calculation(
+        calc_result = QMSService.init_calculation(
             project_root, "orca_relax_test",
             structure_selector=structure_ulid
         )
         calc_ulid = calc_result.id
         
         # Create relax step (ORCA)
-        step_result = QVService.init_step(
+        step_result = QMSService.init_step(
             project_root, calc_ulid,
             step_type="orca_relax",
             name="opt"
@@ -545,7 +545,7 @@ class TestORCARelaxReal:
         step_ulid = step_result.id
         
         # Configure for fast execution
-        QVService.update_step_params(
+        QMSService.update_step_params(
             project_root, calc_ulid, step_ulid,
             param_patch={
                 "method": "HF",
@@ -555,7 +555,7 @@ class TestORCARelaxReal:
         )
         
         # Run
-        result = QVService.run_calculation(project_root, calc_ulid)
+        result = QMSService.run_calculation(project_root, calc_ulid)
         assert result.success, f"Run failed: {result.error}"
         
         # Verify current.json
@@ -575,7 +575,7 @@ class TestORCARelaxReal:
         # ... run relax ...
         
         # Check final bond length is closer to equilibrium
-        from quantumvitas.execution.relax_artifacts import read_generated_structure
+        from qmatsuite.execution.relax_artifacts import read_generated_structure
         calc_dir = ...
         mol = read_generated_structure(calc_dir, step_ulid)
         
@@ -604,8 +604,8 @@ pytest tests/integration/test_orca_relax_real.py -v -m orca
 
 | 文件 | 修改内容 |
 |------|----------|
-| `src/quantumvitas/engines/pyscf/runner.py` | 添加 relax step 处理 |
-| `src/quantumvitas/execution/pyscf_relax_handler.py` | 新增 PySCF relax handler |
+| `src/qmatsuite/engines/pyscf/runner.py` | 添加 relax step 处理 |
+| `src/qmatsuite/execution/pyscf_relax_handler.py` | 新增 PySCF relax handler |
 | `tests/integration/test_pyscf_relax_real.py` | 新增真实测试 |
 
 ### 6.3 关键实现
@@ -613,7 +613,7 @@ pytest tests/integration/test_orca_relax_real.py -v -m orca
 **6.3.1 PySCF Runner Relax 支持**
 
 ```python
-# src/quantumvitas/engines/pyscf/runner.py
+# src/qmatsuite/engines/pyscf/runner.py
 
 def run_pyscf_relax(step_spec: dict, mol: "gto.Mole") -> dict:
     """
@@ -677,7 +677,7 @@ def run_pyscf_relax(step_spec: dict, mol: "gto.Mole") -> dict:
 **6.3.2 Relax Handler**
 
 ```python
-# src/quantumvitas/execution/pyscf_relax_handler.py
+# src/qmatsuite/execution/pyscf_relax_handler.py
 
 def handle_pyscf_relax_output(
     step_ulid: str,
@@ -692,7 +692,7 @@ def handle_pyscf_relax_output(
     Handle PySCF relax output: convert results to current.json.
     """
     from pymatgen.core import Molecule
-    from quantumvitas.execution.relax_artifacts import write_generated_structure
+    from qmatsuite.execution.relax_artifacts import write_generated_structure
     
     atoms = results["optimized_atoms"]
     
@@ -732,8 +732,8 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.execution.relax_artifacts import get_generated_structure_path
+from qmatsuite.api import QMSService
+from qmatsuite.execution.relax_artifacts import get_generated_structure_path
 
 # Check if PySCF geomopt is available
 try:
@@ -752,7 +752,7 @@ pytestmark = pytest.mark.skipif(not HAS_GEOMOPT, reason="PySCF geomopt not avail
 @pytest.fixture
 def h2_project(tmp_path: Path):
     """Create a project with H2 molecule."""
-    project_root = QVService.init_project(tmp_path / "project")
+    project_root = QMSService.init_project(tmp_path / "project")
     
     h2_json = {
         "@module": "pymatgen.core.structure",
@@ -767,7 +767,7 @@ def h2_project(tmp_path: Path):
     source = tmp_path / "h2.json"
     source.write_text(json.dumps(h2_json))
     
-    struct_result = QVService.import_structure(project_root, source, name="H2")
+    struct_result = QMSService.import_structure(project_root, source, name="H2")
     
     return project_root, struct_result.meta.id
 
@@ -780,14 +780,14 @@ class TestPySCFRelaxReal:
         project_root, structure_ulid = h2_project
         
         # Create calculation
-        calc_result = QVService.init_calculation(
+        calc_result = QMSService.init_calculation(
             project_root, "pyscf_relax_test",
             structure_selector=structure_ulid
         )
         calc_ulid = calc_result.id
         
         # Create relax step
-        step_result = QVService.init_step(
+        step_result = QMSService.init_step(
             project_root, calc_ulid,
             step_type="pyscf_relax",
             name="geomopt"
@@ -795,7 +795,7 @@ class TestPySCFRelaxReal:
         step_ulid = step_result.id
         
         # Configure
-        QVService.update_step_params(
+        QMSService.update_step_params(
             project_root, calc_ulid, step_ulid,
             param_patch={
                 "method": "rhf",
@@ -805,7 +805,7 @@ class TestPySCFRelaxReal:
         )
         
         # Run
-        result = QVService.run_calculation(project_root, calc_ulid)
+        result = QMSService.run_calculation(project_root, calc_ulid)
         assert result.success, f"Run failed: {result.error}"
         
         # Verify current.json
@@ -852,7 +852,7 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
 class TestRelaxPromoteE2E:
@@ -869,7 +869,7 @@ class TestRelaxPromoteE2E:
         5. Create new calc using promoted structure
         6. Verify new calc references correct structure
         """
-        project_root = QVService.init_project(tmp_path / "project")
+        project_root = QMSService.init_project(tmp_path / "project")
         
         # 1. Import initial structure
         si_json = {
@@ -883,30 +883,30 @@ class TestRelaxPromoteE2E:
         }
         source = tmp_path / "si.json"
         source.write_text(json.dumps(si_json))
-        initial_struct = QVService.import_structure(project_root, source, name="Si_initial")
+        initial_struct = QMSService.import_structure(project_root, source, name="Si_initial")
         
         # 2. Create relax calculation
-        calc1 = QVService.init_calculation(
+        calc1 = QMSService.init_calculation(
             project_root, "relax_calc",
             structure_selector=initial_struct.meta.id
         )
-        relax_step = QVService.init_step(
+        relax_step = QMSService.init_step(
             project_root, calc1.id,
             step_type="qe_relax", name="relax"
         )
         
         # Configure low precision for speed
-        QVService.update_step_params(
+        QMSService.update_step_params(
             project_root, calc1.id, relax_step.id,
             param_patch={"SYSTEM": {"ecutwfc": 20}}
         )
         
         # 3. Run relax
-        result = QVService.run_calculation(project_root, calc1.id)
+        result = QMSService.run_calculation(project_root, calc1.id)
         assert result.success
         
         # 4. Promote
-        promoted = QVService.promote_relax_structure(
+        promoted = QMSService.promote_relax_structure(
             project_root,
             calculation_selector=calc1.id,
             step_selector=relax_step.id,
@@ -918,27 +918,27 @@ class TestRelaxPromoteE2E:
         assert promoted.meta.name == "Si_relaxed"
         
         # 5. Create new calculation using promoted structure
-        calc2 = QVService.init_calculation(
+        calc2 = QMSService.init_calculation(
             project_root, "scf_on_relaxed",
             structure_selector=promoted.meta.id
         )
-        scf_step = QVService.init_step(
+        scf_step = QMSService.init_step(
             project_root, calc2.id,
             step_type="qe_scf", name="scf"
         )
         
         # 6. Verify calc2 references promoted structure
-        calc2_doc = QVService.get_calculation_detail(project_root, calc2.id)
+        calc2_doc = QMSService.get_calculation_detail(project_root, calc2.id)
         assert calc2_doc["structure_id"] == promoted.meta.id
 
     def test_promote_requires_relax_step(self, tmp_path):
         """Promote should fail for non-relax steps."""
-        project_root = QVService.init_project(tmp_path / "project")
+        project_root = QMSService.init_project(tmp_path / "project")
         
         # ... setup with SCF step instead of relax ...
         
         with pytest.raises(Exception) as exc_info:
-            QVService.promote_relax_structure(
+            QMSService.promote_relax_structure(
                 project_root,
                 calculation_selector="...",
                 step_selector="...",  # SCF step

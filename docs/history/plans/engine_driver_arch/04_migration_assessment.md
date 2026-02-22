@@ -157,8 +157,8 @@ If critical issues discovered:
 #### Step 1: Create Driver Package
 
 ```
-mkdir -p src/quantumvitas/drivers/vasp/
-touch src/quantumvitas/drivers/vasp/__init__.py
+mkdir -p src/qmatsuite/drivers/vasp/
+touch src/qmatsuite/drivers/vasp/__init__.py
 ```
 
 #### Step 2: Implement VASPDriver
@@ -169,7 +169,7 @@ Implement all protocol methods, initially delegating to existing code:
 class VASPDriver:
     def get_handler(self):
         # Initially import from existing location
-        from quantumvitas.execution.handlers import vasp_step_handler
+        from qmatsuite.execution.handlers import vasp_step_handler
         return vasp_step_handler
 ```
 
@@ -178,7 +178,7 @@ class VASPDriver:
 ```python
 # drivers/vasp/__init__.py
 from .driver import VASPDriver
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 DriverRegistry.register(VASPDriver())
 ```
 

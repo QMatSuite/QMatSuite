@@ -477,7 +477,7 @@ The following information is recorded as metadata/provenance but does NOT enter 
 ### 10.1 Parser Registry Entry
 
 ```python
-# In src/quantumvitas/parsers/registry.py
+# In src/qmatsuite/parsers/registry.py
 
 PARSER_REGISTRY = {
     ...

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.w90.parsers.output import (
+from qmatsuite.drivers.w90.parsers.output import (
     W90Digest,
     W90OutputParser,
     parse_wout_text,
@@ -264,7 +264,7 @@ class TestOutputParserClass:
         assert "No .wout" in d.error_message
 
     def test_parser_registration(self):
-        from quantumvitas.parsers.registry import get_parser
+        from qmatsuite.parsers.registry import get_parser
         parser_cls = get_parser("w90", "scf_digest")
         assert parser_cls is not None
         assert parser_cls is W90OutputParser

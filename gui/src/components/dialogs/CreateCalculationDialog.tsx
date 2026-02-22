@@ -4,8 +4,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Modal } from './Modal';
-import { useQVClient } from '../../hooks/useQVClient';
-import type { StructureInfo, CalculationTemplateInfo, WorkflowTemplate, EngineFamilyInfo } from '../../types/qv';
+import { useQMSClient } from '../../hooks/useQMSClient';
+import type { StructureInfo, CalculationTemplateInfo, WorkflowTemplate, EngineFamilyInfo } from '../../types/qms';
 
 interface CreateCalculationDialogProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export function CreateCalculationDialog({
   onClose, 
   onSuccess,
 }: CreateCalculationDialogProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   
   const [calculationName, setCalculationName] = useState('');
   const [selectedStructure, setSelectedStructure] = useState('');
@@ -52,7 +52,7 @@ export function CreateCalculationDialog({
       }
       // Fetch engine families
       if (engineFamilies.length === 0) {
-        qv.listEngineFamilies().then((res) => {
+        qms.listEngineFamilies().then((res) => {
           if (res.ok && res.data) {
             // Filter to base engines only (postprocessing engines can't be selected as engine_family)
             const baseEngines = res.data.engines.filter(e => e.engine_role === 'base');
@@ -65,30 +65,30 @@ export function CreateCalculationDialog({
   
   const loadStructures = useCallback(async () => {
     setIsLoadingStructures(true);
-    const response = await qv.listStructures(projectRoot);
+    const response = await qms.listStructures(projectRoot);
     setIsLoadingStructures(false);
     
     if (response.ok && response.data) {
       setLocalStructures(response.data.structures);
     }
-  }, [qv, projectRoot]);
+  }, [qms, projectRoot]);
   
   const loadTemplates = useCallback(async () => {
     setIsLoadingTemplates(true);
-    const response = await qv.call('list_calculation_templates', {});
+    const response = await qms.call('list_calculation_templates', {});
     setIsLoadingTemplates(false);
     
     if (response.ok && response.data) {
       setTemplates(response.data.templates);
     }
-  }, [qv]);
+  }, [qms]);
   
   const loadWorkflows = useCallback(async () => {
-    const response = await qv.call('list_workflow_templates', {});
+    const response = await qms.call('list_workflow_templates', {});
     if (response.ok && response.data) {
       setWorkflows(response.data.templates);
     }
-  }, [qv]);
+  }, [qms]);
   
   const handleCreate = useCallback(async () => {
     if (!calculationName.trim()) {
@@ -105,7 +105,7 @@ export function CreateCalculationDialog({
     setError(null);
     
     // Create the calculation first (without workflow template)
-    const response = await qv.call('create_calculation', {
+    const response = await qms.call('create_calculation', {
       project_root: projectRoot,
       name: calculationName,
       structure: selectedStructure || undefined,
@@ -130,7 +130,7 @@ export function CreateCalculationDialog({
       // Construct calculation path from slug (calculations/{slug})
       const calculationPath = `${projectRoot}/calculations/${calculationSlug}`;
       
-      const wfResponse = await qv.call('instantiate_workflow', {
+      const wfResponse = await qms.call('instantiate_workflow', {
         workflow_id: selectedWorkflow,
         calculation_path: calculationPath,
         structure_id: structureId,
@@ -150,7 +150,7 @@ export function CreateCalculationDialog({
     setIsCreating(false);
     onSuccess(calculationId);
     handleClose();
-  }, [qv, projectRoot, calculationName, selectedStructure, selectedTemplate, selectedWorkflow, selectedEngine, structures, onSuccess]);
+  }, [qms, projectRoot, calculationName, selectedStructure, selectedTemplate, selectedWorkflow, selectedEngine, structures, onSuccess]);
   
   const handleClose = useCallback(() => {
     setCalculationName('');
@@ -194,21 +194,21 @@ export function CreateCalculationDialog({
       size="medium"
       footer={
         <>
-          <button className="btn btn--secondary" onClick={handleClose} data-testid="qv-btn-cancel-create-calc">
+          <button className="btn btn--secondary" onClick={handleClose} data-testid="qms-btn-cancel-create-calc">
             Cancel
           </button>
           <button
             className={`btn btn--primary ${isCreating ? 'btn--loading' : ''}`}
             onClick={handleCreate}
             disabled={isCreating || !calculationName.trim()}
-            data-testid="qv-btn-confirm-create-calc"
+            data-testid="qms-btn-confirm-create-calc"
           >
             Create Calculation
           </button>
         </>
       }
     >
-      <div className="modal-form" data-testid="qv-create-calc-dialog">
+      <div className="modal-form" data-testid="qms-create-calc-dialog">
         <div className="form-group">
           <label className="form-label form-label--required">
             Calculation Name
@@ -219,7 +219,7 @@ export function CreateCalculationDialog({
             value={calculationName}
             onChange={(e) => setCalculationName(e.target.value)}
             placeholder="si-dos"
-            data-testid="qv-create-calc-name"
+            data-testid="qms-create-calc-name"
           />
         </div>
         
@@ -231,7 +231,7 @@ export function CreateCalculationDialog({
             className="form-select"
             value={selectedStructure}
             onChange={(e) => setSelectedStructure(e.target.value)}
-            data-testid="qv-create-calc-structure"
+            data-testid="qms-create-calc-structure"
           >
             <option value="">— None —</option>
             {isLoadingStructures ? (
@@ -256,7 +256,7 @@ export function CreateCalculationDialog({
             className="form-select"
             value={selectedEngine}
             onChange={(e) => setSelectedEngine(e.target.value)}
-            data-testid="qv-create-calc-engine"
+            data-testid="qms-create-calc-engine"
           >
             <option value="">Decide later</option>
             {engineFamilies.map((eng) => (

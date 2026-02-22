@@ -2,7 +2,7 @@
  * E2E: Step defaults and import button verification.
  *
  * Loads si_bands_demo ONCE and verifies:
- * A. From-scratch step creation uses QV defaults (CONTROL, ELECTRONS, conv_thr)
+ * A. From-scratch step creation uses QMS defaults (CONTROL, ELECTRONS, conv_thr)
  * B. Import QE input button exists with correct tooltip
  *
  * Does NOT run any calculations.
@@ -39,40 +39,40 @@ test.describe('E2E: Step Defaults & Import', () => {
       projectName: 'e2e-step-defaults',
       parentDir: projectDir,
     });
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-home-project')).toBeVisible({ timeout: 10000 });
 
     // Navigate to Calculations and select
     await navigateToView(appPage, 'calculations');
-    await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-calculations-view')).toBeVisible({ timeout: 10000 });
 
-    const calculationRows = appPage.getByTestId('qv-calculation-row');
+    const calculationRows = appPage.getByTestId('qms-calculation-row');
     await expect(calculationRows).toHaveCount(1);
     await calculationRows.first().click();
-    await expect(appPage.getByTestId('qv-calculation-detail')).toBeVisible({ timeout: 10000 });
-    await expect(appPage.getByTestId('qv-calc-overview-tab')).toBeVisible();
+    await expect(appPage.getByTestId('qms-calculation-detail')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-calc-overview-tab')).toBeVisible();
 
     // =============================================
     // PART A: Verify import button exists
     // =============================================
-    const importBtn = appPage.getByTestId('qv-import-step-btn');
+    const importBtn = appPage.getByTestId('qms-import-step-btn');
     await expect(importBtn).toBeVisible();
     await expect(importBtn).toHaveAttribute('title', 'Import QE input file as step (preserves original parameters)');
 
     // =============================================
     // PART B: Add from-scratch SCF step and verify defaults
     // =============================================
-    await appPage.getByTestId('qv-add-step-btn').click();
-    await expect(appPage.getByTestId('qv-add-step-form')).toBeVisible({ timeout: 5000 });
+    await appPage.getByTestId('qms-add-step-btn').click();
+    await expect(appPage.getByTestId('qms-add-step-form')).toBeVisible({ timeout: 5000 });
 
     const stepTypeSelect = appPage.locator('.add-step-form select').first();
     await stepTypeSelect.selectOption('scf');
-    await appPage.getByTestId('qv-confirm-add-step').click();
+    await appPage.getByTestId('qms-confirm-add-step').click();
 
     // Wait for step to be added
-    await expect(appPage.getByTestId('qv-steps-list')).toBeVisible({ timeout: 10000 });
-    await expect(appPage.getByTestId('qv-add-step-form')).not.toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-steps-list')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-add-step-form')).not.toBeVisible({ timeout: 10000 });
 
-    const stepRows = appPage.locator('[data-testid^="qv-step-row-"]');
+    const stepRows = appPage.locator('[data-testid^="qms-step-row-"]');
     await expect(stepRows.first()).toBeVisible({ timeout: 10000 });
 
     // Find the new scf step
@@ -86,13 +86,13 @@ test.describe('E2E: Step Defaults & Import', () => {
     await stepButton.click({ timeout: 5000 });
 
     // Verify Step Focus mode
-    await expect(appPage.getByTestId('qv-calc-overview-tab-focus')).toBeVisible({ timeout: 10000 });
-    const stepDetailPanel = appPage.getByTestId('qv-step-detail');
+    await expect(appPage.getByTestId('qms-calc-overview-tab-focus')).toBeVisible({ timeout: 10000 });
+    const stepDetailPanel = appPage.getByTestId('qms-step-detail');
     await expect(stepDetailPanel).toBeVisible({ timeout: 10000 });
     await expect(stepDetailPanel.locator('.step-type-badge')).toContainText('scf');
 
     // Read step file and verify defaults
-    const stepFilePath = stepDetailPanel.getByTestId('qv-step-file-path');
+    const stepFilePath = stepDetailPanel.getByTestId('qms-step-file-path');
     await expect(stepFilePath).toBeVisible({ timeout: 5000 });
     const filePathText = await stepFilePath.textContent();
     expect(filePathText).toBeTruthy();

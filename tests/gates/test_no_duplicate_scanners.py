@@ -22,7 +22,7 @@ def test_handler_no_scanner_import():
     Artifact scanning is Runner's responsibility. Handlers dispatch
     to engines but do not track what files were created/modified.
     """
-    drivers_dir = Path(__file__).parents[2] / "src" / "quantumvitas" / "drivers"
+    drivers_dir = Path(__file__).parents[2] / "src" / "qmatsuite" / "drivers"
 
     if not drivers_dir.exists():
         pytest.skip(f"Drivers directory not found at {drivers_dir}")
@@ -63,7 +63,7 @@ def test_engine_no_scanner_import():
     Engine code generates input files and runs executables.
     It should not track artifacts - that's Runner's job.
     """
-    drivers_dir = Path(__file__).parents[2] / "src" / "quantumvitas" / "drivers"
+    drivers_dir = Path(__file__).parents[2] / "src" / "qmatsuite" / "drivers"
 
     if not drivers_dir.exists():
         pytest.skip(f"Drivers directory not found at {drivers_dir}")
@@ -114,7 +114,7 @@ def test_no_duplicate_scanner_implementations():
 
     Checks that no other file defines a class that looks like an artifact scanner.
     """
-    src_dir = Path(__file__).parents[2] / "src" / "quantumvitas"
+    src_dir = Path(__file__).parents[2] / "src" / "qmatsuite"
 
     if not src_dir.exists():
         pytest.skip(f"Source directory not found at {src_dir}")

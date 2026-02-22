@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 
-from quantumvitas.demo_store.authoring_ops import (
+from qmatsuite.demo_store.authoring_ops import (
     AddStep,
     CreateCalculation,
     ImportStructure,
@@ -13,7 +13,7 @@ from quantumvitas.demo_store.authoring_ops import (
     SetField,
     UnsetField,
 )
-from quantumvitas.demo_store.replay import (
+from qmatsuite.demo_store.replay import (
     _pointer_to_nested_dict,
     _parse_target,
     replay_ops,
@@ -71,7 +71,7 @@ class TestReplayOps:
         ops = [InitProject(name="test-project")]
         root = replay_ops(ops, tmp_path)
         assert root.exists()
-        assert (root / "project.qv.yml").exists()
+        assert (root / "project.qms.yml").exists()
 
     def test_full_qe_scf_replay(self, tmp_path):
         """Replay a minimal QE SCF project end-to-end."""
@@ -133,7 +133,7 @@ class TestReplayOps:
         root = replay_ops(ops, tmp_path)
 
         # Verify project was created
-        assert (root / "project.qv.yml").exists()
+        assert (root / "project.qms.yml").exists()
 
         # Verify structure
         structures_dir = root / "structures"

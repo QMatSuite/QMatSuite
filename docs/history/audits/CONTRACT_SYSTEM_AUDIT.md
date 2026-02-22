@@ -43,7 +43,7 @@ The golden contract system provides a baseline comparison mechanism to detect AP
 2. **`worktree_runner.py`** (executed inside worktree)
    - **Runtime assertions** (lines 32-66):
      - Verifies `git HEAD == 0873ebf`
-     - Verifies `quantumvitas.__file__` is under worktree path
+     - Verifies `qmatsuite.__file__` is under worktree path
      - Prints verification to stderr
    - Imports crawler/recipes from copied modules
    - Runs `crawl_all_methods()` for auto-crawler methods
@@ -61,8 +61,8 @@ The golden contract system provides a baseline comparison mechanism to detect AP
   )
   
   # Line 60-63: Module path check
-  assert str(qv_module_path).startswith(str(worktree_src)), (
-      f"ERROR: quantumvitas loaded from {qv_module_path}, expected under {worktree_src}. "
+  assert str(qms_module_path).startswith(str(worktree_src)), (
+      f"ERROR: qmatsuite loaded from {qms_module_path}, expected under {worktree_src}. "
       f"Editable install leakage detected. Set PYTHONPATH correctly."
   )
   ```
@@ -122,7 +122,7 @@ The golden contract system provides a baseline comparison mechanism to detect AP
 
 ### A.5) Daemon Compat Shaping Layer
 
-**Location**: `src/quantumvitas/daemon/compat.py`
+**Location**: `src/qmatsuite/daemon/compat.py`
 
 **Components**:
 1. **Payload Adapters** (11 methods): Transform v0 payloads → HEAD format
@@ -172,8 +172,8 @@ EXEMPT_METHODS: dict[str, str] = {
    assert git_head.startswith(BASELINE_COMMIT), (
        f"ERROR: Worktree git HEAD is {git_head}, expected {BASELINE_COMMIT}..."
    )
-   assert str(qv_module_path).startswith(str(worktree_src)), (
-       f"ERROR: quantumvitas loaded from {qv_module_path}, expected under {worktree_src}..."
+   assert str(qms_module_path).startswith(str(worktree_src)), (
+       f"ERROR: qmatsuite loaded from {qms_module_path}, expected under {worktree_src}..."
    )
    ```
 
@@ -291,9 +291,9 @@ steps: [{"step_id": "XYZ789", "step_type": "scf", "step_name": "SCF"}]
 
 **1. `_shape_create_demo_project`** (`compat.py` lines 709-758)
 - **I/O Operations**:
-  - Reads project files via `QVService.get_project_summary(project_path)` (line 726)
-  - Reads structures via `QVService.list_structures_data(project_path)` (line 735)
-  - Reads calculations via `QVService.list_calculations_data(project_path)` (line 744)
+  - Reads project files via `QMSService.get_project_summary(project_path)` (line 726)
+  - Reads structures via `QMSService.list_structures_data(project_path)` (line 735)
+  - Reads calculations via `QMSService.list_calculations_data(project_path)` (line 744)
 - **Risk**: **MEDIUM** - Introduces nondeterminism if project state changes between calls
 - **Side Effects**: None (read-only)
 
@@ -364,20 +364,20 @@ grep -r "response\.data\.\(id|name|step_type|structure|steps|status|slug|path|ki
 **GUI Code Location**: `gui/src/` directory (present in this repository)
 - TypeScript/React components in `gui/src/components/`
 - Hooks in `gui/src/hooks/`
-- Type definitions in `gui/src/types/qv.ts`
+- Type definitions in `gui/src/types/qms.ts`
 - Electron IPC layer in `gui/electron/`
 
 **Manifest Generated**: `gui_required_fields_manifest.json` (see Appendix C.5)
 
 ### C.2) RPC Call Patterns
 
-**GUI RPC Client**: `gui/src/hooks/useQVClient.ts`
-- Uses `window.qv.request(type, payload)` (line 248)
+**GUI RPC Client**: `gui/src/hooks/useQMSClient.ts`
+- Uses `window.qms.request(type, payload)` (line 248)
 - Response format: `{ok: boolean, data: T, error?: {...}}`
 - GUI accesses `response.data` for all field access
 
 **IPC Layer**: `gui/electron/preload.ts` → `gui/electron/main.ts`
-- `ipcRenderer.invoke('qv-request', request)` → `ipcMain.handle('qv-request')`
+- `ipcRenderer.invoke('qms-request', request)` → `ipcMain.handle('qms-request')`
 - Transparent pass-through to daemon
 
 ### C.3) GUI Field Access Patterns
@@ -443,7 +443,7 @@ response.data.metadata.origin_cart
 **Top GUI-Used Methods with Field Access Evidence**:
 
 1. **`get_step_detail`** (`gui/src/components/panels/StepDetailPanel.tsx:351`)
-   - **Invocation**: `window.qv.request<StepDetail>('get_step_detail', {...})`
+   - **Invocation**: `window.qms.request<StepDetail>('get_step_detail', {...})`
    - **Required fields**:
      - `id` (line 363): `response.data.id`
      - `name` (line 364): `response.data.name`
@@ -453,25 +453,25 @@ response.data.metadata.origin_cart
      - `structure` (line 1368): `stepDetail.structure`
 
 2. **`get_calculation_detail`** (`gui/src/App.tsx:1290`)
-   - **Invocation**: `qv.call('get_calculation_detail', {...})`
+   - **Invocation**: `qms.call('get_calculation_detail', {...})`
    - **Required fields**:
      - `steps` (lines 112, 925): `calculationDetail?.steps`
      - `steps[].id` (lines 1439, 1440): `step.id` (ULID from calculation.yaml)
      - `structure_id` (line 1625): `selectedCalculation?.structure_id`
 
-3. **`list_structures`** (`gui/src/hooks/useQVClient.ts:362`)
+3. **`list_structures`** (`gui/src/hooks/useQMSClient.ts:362`)
    - **Invocation**: `call('list_structures', { project_root: projectRoot })`
    - **Required fields**:
      - `structures` (lines 473, 510, 1227, 1991): `response.data.structures`
      - `structures[].id` (line 1228): Used for structure lookup
 
-4. **`list_calculations`** (`gui/src/hooks/useQVClient.ts:367`)
+4. **`list_calculations`** (`gui/src/hooks/useQMSClient.ts:367`)
    - **Invocation**: `call('list_calculations', { project_root: projectRoot })`
    - **Required fields**:
      - `calculations` (lines 499, 2019): `response.data.calculations`
 
 5. **`list_journal_entries`** (`gui/src/components/settings/JournalHistoryPanel.tsx:39`)
-   - **Invocation**: `qv.call('list_journal_entries', {...})`
+   - **Invocation**: `qms.call('list_journal_entries', {...})`
    - **Required fields**:
      - `entries` (line 40): `response.data.entries`
      - `entries[].calc_id`, `entries[].step_id` (inferred from usage)
@@ -742,8 +742,8 @@ response.data.metadata.origin_cart
 - `tests/contract_crawler/test_schema_preservation.py` - Schema preservation tests
 - `tests/contract_crawler/test_coverage.py` - Coverage enforcement (EXEMPT_METHODS at lines 14-23)
 - `tests/contract_crawler/introspection.py` - Method enumeration (`get_all_rpc_methods()`)
-- `src/quantumvitas/daemon/compat.py` - Compat shaping layer
-- `gui/src/hooks/useQVClient.ts` - GUI RPC client
+- `src/qmatsuite/daemon/compat.py` - Compat shaping layer
+- `gui/src/hooks/useQMSClient.ts` - GUI RPC client
 - `gui/src/components/panels/StepDetailPanel.tsx` - GUI step detail panel (high field usage)
 - `gui_required_fields_manifest.json` - GUI field usage manifest (this audit)
 

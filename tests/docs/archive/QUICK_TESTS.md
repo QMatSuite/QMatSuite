@@ -18,7 +18,7 @@ tests/
 pytest tests/ -m quick
 
 # Run with coverage
-pytest tests/ --cov=src/quantumvitas --cov-report=html
+pytest tests/ --cov=src/qmatsuite --cov-report=html
 
 # Run specific category
 pytest tests/unit/

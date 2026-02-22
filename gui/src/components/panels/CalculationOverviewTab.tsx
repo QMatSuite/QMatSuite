@@ -14,8 +14,8 @@ import { CalculationDetailPanel } from './CalculationListPanel';
 import { StepDetailPanel } from './StepDetailPanel';
 import { ResizablePane, type ResizablePaneRef } from '../layout/ResizablePane';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
-import type { CalculationInfo, CalculationDetailResult, StructureInfo, StepPaletteResult } from '../../types/qv';
-import { useQVClient } from '../../hooks/useQVClient';
+import type { CalculationInfo, CalculationDetailResult, StructureInfo, StepPaletteResult } from '../../types/qms';
+import { useQMSClient } from '../../hooks/useQMSClient';
 import './CalculationOverviewTab.css';
 
 interface CalculationOverviewTabProps {
@@ -149,8 +149,8 @@ export function CalculationOverviewTab({
   // Overview mode: show full calculation overview (no StepDetailPanel)
   if (!stepFocused || !selectedStepId) {
     return (
-      <div className="calculation-overview-tab calculation-overview-tab--overview" data-testid="qv-calc-overview-tab">
-        <div className="calculation-overview-tab__overview-full calculation-overview-tab__scroll-container" data-testid="qv-calc-overview-panel">
+      <div className="calculation-overview-tab calculation-overview-tab--overview" data-testid="qms-calc-overview-tab">
+        <div className="calculation-overview-tab__overview-full calculation-overview-tab__scroll-container" data-testid="qms-calc-overview-panel">
           <CalculationDetailPanel
             calculationSummary={calculationSummary}
             calculationDetail={calculationDetail}
@@ -177,7 +177,7 @@ export function CalculationOverviewTab({
     <div 
       className="calculation-overview-tab calculation-overview-tab--focus"
       onClick={handleBackgroundClick}
-      data-testid="qv-calc-overview-tab-focus"
+      data-testid="qms-calc-overview-tab-focus"
     >
       {/* Two-column layout: step list + step detail */}
       <div className="calculation-overview-tab__focus-content">
@@ -188,7 +188,7 @@ export function CalculationOverviewTab({
             defaultWidth={240}
             minWidth={200}
             maxWidth={400}
-            storageKey="qv-step-focus-list-width"
+            storageKey="qms-step-focus-list-width"
             className="calculation-overview-tab__focus-list"
             collapsedWidth={240}
           >
@@ -275,7 +275,7 @@ function CompactStepList({
   onImportStep,
   onReorder: _onReorder,
 }: CompactStepListProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   const [showAddStep, setShowAddStep] = useState(false);
   const [newStepType, setNewStepType] = useState('');
   const [newStepName, setNewStepName] = useState('');
@@ -288,7 +288,7 @@ function CompactStepList({
   // Fetch step palette based on calculation's engine family
   useEffect(() => {
     const engineFamily = (calculation && 'engine_family' in calculation) ? (calculation as CalculationDetailResult).engine_family : null;
-    qv.listStepPalette(engineFamily ?? null)
+    qms.listStepPalette(engineFamily ?? null)
       .then(response => {
         if (response.ok && response.data) {
           setStepPalette(response.data);
@@ -297,10 +297,10 @@ function CompactStepList({
       .catch(() => {
         // Silently fail - step palette is non-critical
       });
-  }, [qv, calculation]);
+  }, [qms, calculation]);
 
   const handleAddStep = useCallback(async () => {
-    if (!window.qv || !calculation || !newStepType) return;
+    if (!window.qms || !calculation || !newStepType) return;
     
     setIsAddingStep(true);
     try {
@@ -309,7 +309,7 @@ function CompactStepList({
         throw new Error('Project root is required');
       }
 
-      const response = await window.qv.request('add_step_to_calculation', {
+      const response = await window.qms.request('add_step_to_calculation', {
         project_root: normalizedProjectRoot,
         calculation: calculation.slug,
         step_type_gen: newStepType,
@@ -332,11 +332,11 @@ function CompactStepList({
   }, [calculation, projectRoot, newStepType, newStepName, onAddStep]);
 
   const handleImportStep = useCallback(async () => {
-    if (!window.qv || !calculation || isImportingStep) return;
+    if (!window.qms || !calculation || isImportingStep) return;
     
     setIsImportingStep(true);
     try {
-      const inputFile = await window.qv.openFile({
+      const inputFile = await window.qms.openFile({
         title: 'Import QE Input File',
         filters: [
           { name: 'QE Input Files', extensions: ['in'] },
@@ -354,7 +354,7 @@ function CompactStepList({
         throw new Error('Project root is required');
       }
 
-      const response = await window.qv.request('import_step', {
+      const response = await window.qms.request('import_step', {
         project_root: normalizedProjectRoot,
         calculation: calculation.slug,
         input_file: inputFile,
@@ -382,7 +382,7 @@ function CompactStepList({
   }
 
   return (
-    <div className="compact-step-list" data-testid="qv-compact-step-list">
+    <div className="compact-step-list" data-testid="qms-compact-step-list">
       {/* Back to overview button */}
       <div className="compact-step-list__back">
         <button
@@ -392,7 +392,7 @@ function CompactStepList({
             onExitFocus();
           }}
           title="Back to overview"
-          data-testid="qv-btn-back-to-overview"
+          data-testid="qms-btn-back-to-overview"
         >
           ← Back to overview
         </button>
@@ -408,7 +408,7 @@ function CompactStepList({
               onRunCalculation(calculation, 'incremental');
             }}
             title="Run all steps in this calculation"
-            data-testid="qv-btn-run-calculation-focus"
+            data-testid="qms-btn-run-calculation-focus"
           >
             Run Calculation
           </button>
@@ -540,7 +540,7 @@ function CompactStepList({
         {calculation.absolute_path && (
           <button
             className="compact-step-list__reveal-btn"
-            onClick={() => window.qv?.revealPath?.(calculation.absolute_path!)}
+            onClick={() => window.qms?.revealPath?.(calculation.absolute_path!)}
             title="Reveal calculation folder in Finder/Explorer"
           >
             📂

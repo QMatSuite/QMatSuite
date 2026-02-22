@@ -6,10 +6,10 @@ import shutil
 from pathlib import Path
 import yaml
 
-from quantumvitas.presets.integration import apply_presets_to_step
-from quantumvitas.presets.precision import PrecisionAdvisor, PrecisionOption
-from quantumvitas.presets.compiler import compile_precision_from_advice
-from quantumvitas.presets.receivers import get_precision_receiver_spec
+from qmatsuite.presets.integration import apply_presets_to_step
+from qmatsuite.presets.precision import PrecisionAdvisor, PrecisionOption
+from qmatsuite.presets.compiler import compile_precision_from_advice
+from qmatsuite.presets.receivers import get_precision_receiver_spec
 
 # 创建临时目录
 temp_dir = tempfile.mkdtemp()
@@ -21,8 +21,8 @@ try:
     steps_dir = calc_dir / "steps"
     steps_dir.mkdir()
     
-    # 创建 project.qv.yml
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump({
+    # 创建 project.qms.yml
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump({
         "name": "Test Project",
         "version": "1.0",
     }))

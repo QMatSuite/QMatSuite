@@ -8,23 +8,23 @@
 
 ### PR1: StepDoc/YAML Schema — ScanRef + parameter_scan + Validations
 - **Files Added**:
-  - `src/quantumvitas/calculation/scan_validation.py`
+  - `src/qmatsuite/calculation/scan_validation.py`
   - `tests/unit/test_scan_validation.py`
 - **Files Modified**:
-  - `src/quantumvitas/workflow/step_factory.py`
+  - `src/qmatsuite/workflow/step_factory.py`
 - **Tests**: 20 tests, all passing
 - **Spec Sections**: 1.1-1.6
 
 ### PR2: Variant Expansion + variant_key Computation
 - **Files Added**:
-  - `src/quantumvitas/execution/scan_expansion.py`
+  - `src/qmatsuite/execution/scan_expansion.py`
   - `tests/unit/test_scan_expansion.py`
 - **Tests**: 15 tests, all passing
 - **Spec Sections**: 3.1-3.3, 4.1-4.2
 
 ### PR3: Effective Fingerprint Integration
 - **Files Modified**:
-  - `src/quantumvitas/calculation/hash_utils.py`
+  - `src/qmatsuite/calculation/hash_utils.py`
 - **Files Added**:
   - `tests/unit/test_hash_utils.py`
 - **Tests**: 7 tests, all passing
@@ -32,20 +32,20 @@
 
 ### PR4: PostJobActions + ArchiveToSlot
 - **Files Added**:
-  - `src/quantumvitas/execution/post_job.py`
+  - `src/qmatsuite/execution/post_job.py`
   - `tests/unit/test_post_job.py`
 - **Tests**: 12 tests, all passing
 - **Spec Sections**: 6.1-6.3
 
 ### PR5: Scan Orchestration in Runner
 - **Files Modified**:
-  - `src/quantumvitas/execution/executor.py`
+  - `src/qmatsuite/execution/executor.py`
 - **Tests**: All existing tests passing, integration with PR2/PR4 verified
 - **Spec Sections**: 7.1-7.2
 
 ### PR6: Preset Inference Robustness
 - **Files Modified**:
-  - `src/quantumvitas/presets/paramspace.py`
+  - `src/qmatsuite/presets/paramspace.py`
 - **Files Added**:
   - `tests/unit/test_preset_scan_ref.py`
 - **Tests**: 2 tests, all passing

@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useQVClient, useQVLogs } from '../../hooks/useQVClient';
+import { useQMSClient, useQMSLogs } from '../../hooks/useQMSClient';
 import { LibrariesPanel } from './LibrariesPanel';
 import { PseudoArchivesPanel } from '../settings/PseudoArchivesPanel';
 import { JournalHistoryPanel } from '../settings/JournalHistoryPanel';
@@ -21,16 +21,16 @@ import type {
   EngineStatusEntry,
   EngineInstallation,
   InstallableEngineEntry,
-} from '../../types/qv';
+} from '../../types/qms';
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
 
 // Online Structures Settings Section Component
 interface OnlineStructuresSettingsSectionProps {
-  qv: ReturnType<typeof useQVClient>;
+  qms: ReturnType<typeof useQMSClient>;
 }
 
-function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSectionProps) {
+function OnlineStructuresSettingsSection({ qms }: OnlineStructuresSettingsSectionProps) {
   const [providers, setProviders] = useState<Array<{
     provider_key: string;
     name: string;
@@ -50,11 +50,11 @@ function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSection
   // Load providers on mount
   useEffect(() => {
     const loadProviders = async () => {
-      if (!qv) return;
+      if (!qms) return;
       setIsLoading(true);
       setError(null);
       try {
-        const response = await qv.call('structure_list_providers', {});
+        const response = await qms.call('structure_list_providers', {});
         if (response.ok && response.data) {
           setProviders(response.data.optimade_providers || []);
           setPubchemEnabled(response.data.pubchem_enabled ?? true);
@@ -70,10 +70,10 @@ function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSection
       }
     };
     loadProviders();
-  }, [qv]);
+  }, [qms]);
   
   const handleToggleProvider = useCallback(async (providerId: string, enabled: boolean) => {
-    if (!qv || isSaving) return;
+    if (!qms || isSaving) return;
     
     setIsSaving(true);
     setError(null);
@@ -84,7 +84,7 @@ function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSection
         p.provider_key === providerId ? { ...p, enabled } : p
       );
       
-      const response = await qv.call('structure_update_online_sources', {
+      const response = await qms.call('structure_update_online_sources', {
         patch: {
           optimade_providers: updatedProviders,
         },
@@ -103,16 +103,16 @@ function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSection
     } finally {
       setIsSaving(false);
     }
-  }, [qv, providers, isSaving]);
+  }, [qms, providers, isSaving]);
   
   const handleTogglePubChem = useCallback(async (enabled: boolean) => {
-    if (!qv || isSaving) return;
+    if (!qms || isSaving) return;
     
     setIsSaving(true);
     setError(null);
     
     try {
-      const response = await qv.call('structure_update_online_sources', {
+      const response = await qms.call('structure_update_online_sources', {
         patch: {
           pubchem_enabled: enabled,
         },
@@ -128,16 +128,16 @@ function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSection
     } finally {
       setIsSaving(false);
     }
-  }, [qv, isSaving]);
+  }, [qms, isSaving]);
   
   const handleToggleMaterialsProject = useCallback(async (enabled: boolean) => {
-    if (!qv || isSaving) return;
+    if (!qms || isSaving) return;
     
     setIsSaving(true);
     setError(null);
     
     try {
-      const response = await qv.call('structure_update_online_sources', {
+      const response = await qms.call('structure_update_online_sources', {
         patch: {
           materials_project: {
             enabled: enabled,
@@ -156,16 +156,16 @@ function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSection
     } finally {
       setIsSaving(false);
     }
-  }, [qv, isSaving]);
+  }, [qms, isSaving]);
   
   const handleSaveMpApiKey = useCallback(async () => {
-    if (!qv || isSaving || !mpApiKey.trim()) return;
+    if (!qms || isSaving || !mpApiKey.trim()) return;
     
     setIsSaving(true);
     setError(null);
     
     try {
-      const response = await qv.call('structure_update_online_sources', {
+      const response = await qms.call('structure_update_online_sources', {
         patch: {
           materials_project: {
             enabled: materialsProjectEnabled,
@@ -186,7 +186,7 @@ function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSection
     } finally {
       setIsSaving(false);
     }
-  }, [qv, mpApiKey, materialsProjectEnabled, isSaving]);
+  }, [qms, mpApiKey, materialsProjectEnabled, isSaving]);
   
   return (
     <div className="settings-section">
@@ -334,7 +334,7 @@ function OnlineStructuresSettingsSection({ qv }: OnlineStructuresSettingsSection
 }
 
 interface EngineManagementSectionProps {
-  qv: ReturnType<typeof useQVClient>;
+  qms: ReturnType<typeof useQMSClient>;
   engineDisplayNames: Record<string, string>;
 }
 
@@ -364,7 +364,7 @@ function isInstallationUninstallable(installation: EngineInstallation | null | u
   return source === 'micromamba' || source === 'github_release';
 }
 
-function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSectionProps) {
+function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSectionProps) {
   const [engineRows, setEngineRows] = useState<EngineStatusEntry[]>([]);
   const [installableRows, setInstallableRows] = useState<InstallableEngineEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -375,14 +375,14 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
   const [rowNotices, setRowNotices] = useState<Record<string, { tone: 'ok' | 'error'; text: string }>>({});
 
   const refreshEngineData = useCallback(async () => {
-    if (!qv?.state.isConnected) return;
+    if (!qms?.state.isConnected) return;
 
     setIsLoading(true);
     setError(null);
     try {
       const [listResp, installableResp] = await Promise.all([
-        qv.listEngines(false),
-        qv.listInstallableEngines(),
+        qms.listEngines(false),
+        qms.listInstallableEngines(),
       ]);
 
       if (!listResp.ok) {
@@ -399,15 +399,15 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
     } finally {
       setIsLoading(false);
     }
-  }, [qv]);
+  }, [qms]);
 
   useEffect(() => {
-    if (!qv?.state.isConnected) return;
+    if (!qms?.state.isConnected) return;
     refreshEngineData();
-  }, [qv, qv?.state.isConnected, refreshEngineData]);
+  }, [qms, qms?.state.isConnected, refreshEngineData]);
 
   useEffect(() => {
-    if (!qv?.state.isConnected || Object.keys(pendingJobs).length === 0) return;
+    if (!qms?.state.isConnected || Object.keys(pendingJobs).length === 0) return;
 
     let cancelled = false;
 
@@ -422,7 +422,7 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
       const notices: Record<string, { tone: 'ok' | 'error'; text: string }> = {};
 
       for (const [engine, jobMeta] of entries) {
-        const statusResp = await qv.call('get_job_status', { job_id: jobMeta.jobId });
+        const statusResp = await qms.call('get_job_status', { job_id: jobMeta.jobId });
         if (!statusResp.ok || !statusResp.data) {
           notices[engine] = {
             tone: 'error',
@@ -466,7 +466,7 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
       cancelled = true;
       clearInterval(timer);
     };
-  }, [pendingJobs, qv, refreshEngineData]);
+  }, [pendingJobs, qms, refreshEngineData]);
 
   const installableMap = new Map(installableRows.map((row) => [row.engine, row]));
   const rowMap = new Map(engineRows.map((row) => [row.engine, row]));
@@ -474,7 +474,7 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
 
   const handleInstall = useCallback(async (engine: string) => {
     setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Starting install...' } }));
-    const response = await qv.installEngine(engine, { async: true, source: 'auto' });
+    const response = await qms.installEngine(engine, { async: true, source: 'auto' });
     if (!response.ok) {
       setRowNotices((prev) => ({
         ...prev,
@@ -494,12 +494,12 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
 
     setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Install completed' } }));
     await refreshEngineData();
-  }, [qv, refreshEngineData]);
+  }, [qms, refreshEngineData]);
 
   const handleUninstall = useCallback(async (engine: string, installationId: string) => {
     if (!window.confirm(`Uninstall ${engine} (${installationId})?`)) return;
     setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Starting uninstall...' } }));
-    const response = await qv.uninstallEngine(engine, { installationId, async: true });
+    const response = await qms.uninstallEngine(engine, { installationId, async: true });
     if (!response.ok) {
       setRowNotices((prev) => ({
         ...prev,
@@ -519,10 +519,10 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
 
     setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Uninstall completed' } }));
     await refreshEngineData();
-  }, [qv, refreshEngineData]);
+  }, [qms, refreshEngineData]);
 
   const handleVerify = useCallback(async (engine: string) => {
-    const response = await qv.verifyEngine(engine);
+    const response = await qms.verifyEngine(engine);
     if (!response.ok) {
       setRowNotices((prev) => ({
         ...prev,
@@ -537,10 +537,10 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
         text: response.data?.message || (response.data?.ok ? 'OK' : 'Verification failed'),
       },
     }));
-  }, [qv]);
+  }, [qms]);
 
   const handleSetActive = useCallback(async (engine: string, installationId: string) => {
-    const response = await qv.setActiveEngineInstallation(engine, installationId);
+    const response = await qms.setActiveEngineInstallation(engine, installationId);
     if (!response.ok || !response.data?.active) {
       setRowNotices((prev) => ({
         ...prev,
@@ -553,10 +553,10 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
       [engine]: { tone: 'ok', text: `Active installation set to ${installationId}` },
     }));
     await refreshEngineData();
-  }, [qv, refreshEngineData]);
+  }, [qms, refreshEngineData]);
 
   const handleConfigurePath = useCallback(async (engine: string) => {
-    if (!window.qv?.openDirectory) {
+    if (!window.qms?.openDirectory) {
       setRowNotices((prev) => ({
         ...prev,
         [engine]: { tone: 'error', text: 'Path picker is unavailable in this environment' },
@@ -564,10 +564,10 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
       return;
     }
 
-    const selectedPath = await window.qv.openDirectory();
+    const selectedPath = await window.qms.openDirectory();
     if (!selectedPath) return;
 
-    const response = await qv.registerEnginePath(engine, selectedPath, { source: 'user_path' });
+    const response = await qms.registerEnginePath(engine, selectedPath, { source: 'user_path' });
     if (!response.ok) {
       setRowNotices((prev) => ({
         ...prev,
@@ -580,10 +580,10 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
       [engine]: { tone: 'ok', text: `Registered path: ${selectedPath}` },
     }));
     await refreshEngineData();
-  }, [qv, refreshEngineData]);
+  }, [qms, refreshEngineData]);
 
   return (
-    <div className="settings-section" data-testid="qv-engine-manager-section">
+    <div className="settings-section" data-testid="qms-engine-manager-section">
       <div className="settings-section__header">
         <h3 className="settings-section__title">
           <span className="settings-icon">🧩</span>
@@ -593,7 +593,7 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
           className="settings-btn settings-btn--sm"
           onClick={() => void refreshEngineData()}
           disabled={isLoading}
-          data-testid="qv-engine-manager-refresh"
+          data-testid="qms-engine-manager-refresh"
         >
           {isLoading ? 'Refreshing...' : 'Refresh'}
         </button>
@@ -633,7 +633,7 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
                 <div
                   key={engine}
                   className="engine-manager-row"
-                  data-testid={`qv-engine-row-${engine}`}
+                  data-testid={`qms-engine-row-${engine}`}
                 >
                   <div className="engine-manager-row__main">
                     <div className="engine-manager-row__title">{displayName}</div>
@@ -643,14 +643,14 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
                       {manualOnly && <span>Manual path engine</span>}
                     </div>
                     {pending && (
-                      <div className="engine-manager-row__progress" data-testid={`qv-engine-progress-${engine}`}>
+                      <div className="engine-manager-row__progress" data-testid={`qms-engine-progress-${engine}`}>
                         {pending.message}
                       </div>
                     )}
                     {notice && (
                       <div
                         className={`engine-manager-row__notice engine-manager-row__notice--${notice.tone}`}
-                        data-testid={`qv-engine-notice-${engine}`}
+                        data-testid={`qms-engine-notice-${engine}`}
                       >
                         {notice.text}
                       </div>
@@ -664,7 +664,7 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
                         value={activeInstallId}
                         onChange={(e) => void handleSetActive(engine, e.target.value)}
                         disabled={!!pending}
-                        data-testid={`qv-engine-active-select-${engine}`}
+                        data-testid={`qms-engine-active-select-${engine}`}
                       >
                         {installations.map((inst) => (
                           <option key={inst.id} value={inst.id}>
@@ -679,7 +679,7 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
                         className="settings-btn"
                         onClick={() => void handleInstall(engine)}
                         disabled={!!pending}
-                        data-testid={`qv-engine-install-${engine}`}
+                        data-testid={`qms-engine-install-${engine}`}
                       >
                         {pending?.action === 'install' ? 'Installing...' : 'Install'}
                       </button>
@@ -689,7 +689,7 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
                       className="settings-btn"
                       onClick={() => void handleConfigurePath(engine)}
                       disabled={!!pending}
-                      data-testid={`qv-engine-configure-path-${engine}`}
+                      data-testid={`qms-engine-configure-path-${engine}`}
                     >
                       Configure Path
                     </button>
@@ -699,7 +699,7 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
                         className="settings-btn settings-btn--sm"
                         onClick={() => void handleVerify(engine)}
                         disabled={!!pending}
-                        data-testid={`qv-engine-verify-${engine}`}
+                        data-testid={`qms-engine-verify-${engine}`}
                       >
                         Verify
                       </button>
@@ -710,7 +710,7 @@ function EngineManagementSection({ qv, engineDisplayNames }: EngineManagementSec
                         className="settings-btn settings-btn--danger"
                         onClick={() => void handleUninstall(engine, active.id)}
                         disabled={!!pending}
-                        data-testid={`qv-engine-uninstall-${engine}`}
+                        data-testid={`qms-engine-uninstall-${engine}`}
                       >
                         {pending?.action === 'uninstall' ? 'Uninstalling...' : 'Uninstall'}
                       </button>
@@ -738,7 +738,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   const [envInfo, setEnvInfo] = useState<EnvironmentInfo | null>(null);
   const [qeInfo, setQeInfo] = useState<QEDetectionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -767,14 +767,14 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   const [debugResolutionError, setDebugResolutionError] = useState<string | null>(null);
   const [showPollingLogs, setShowPollingLogs] = useState(false);
   const [copyButtonLabel, setCopyButtonLabel] = useState('Copy');
-  const logs = useQVLogs(200);
+  const logs = useQMSLogs(200);
   const logsScrollRef = useRef<HTMLDivElement>(null);
   
   // Fetch debug resolution flag on mount
   useEffect(() => {
     const fetchDebugResolution = async () => {
       try {
-        const response = await qv.call('get_debug_resolution', {});
+        const response = await qms.call('get_debug_resolution', {});
         if (response.ok && response.data) {
           setDebugResolution(response.data.enabled);
         }
@@ -782,16 +782,16 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
         // Ignore errors on initial load
       }
     };
-    if (qv && qv.state.isConnected) {
+    if (qms && qms.state.isConnected) {
       fetchDebugResolution();
     }
-  }, [qv, qv?.state.isConnected]);
+  }, [qms, qms?.state.isConnected]);
   
   // Fetch QE engine info on mount
   const fetchQEEngineInfo = useCallback(async () => {
-    if (!qv) return;
+    if (!qms) return;
     try {
-      const response = await qv.call('list_qe_engines', {});
+      const response = await qms.call('list_qe_engines', {});
       if (response.ok && response.data) {
         setQeEngineInfo({
           current_mode: response.data.current_mode || 'internal',
@@ -804,14 +804,14 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
       console.error('[Settings] Failed to fetch QE engine info', e);
       setQeError(e instanceof Error ? e.message : 'Failed to fetch QE engine info');
     }
-  }, [qv]);
+  }, [qms]);
   
   // Fetch engine families on mount
   useEffect(() => {
     const fetchEngineFamilies = async () => {
-      if (!qv) return;
+      if (!qms) return;
       try {
-        const response = await qv.listEngineFamilies();
+        const response = await qms.listEngineFamilies();
         if (response.ok && response.data) {
           setEngineFamilies(response.data.engines.filter(e => e.engine_role === 'base'));
         }
@@ -820,7 +820,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
       }
     };
     fetchEngineFamilies();
-  }, [qv]);
+  }, [qms]);
   
   // Fetch environment info on mount
   useEffect(() => {
@@ -829,20 +829,20 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   
   useEffect(() => {
     const fetchEnvInfo = async () => {
-      if (!window.qv) return;
+      if (!window.qms) return;
       
       setIsLoading(true);
       setError(null);
       
       try {
         // Fetch environment info
-        const envResponse = await window.qv.request<EnvironmentInfo>('get_env_info', {});
+        const envResponse = await window.qms.request<EnvironmentInfo>('get_env_info', {});
         if (envResponse.ok && envResponse.data) {
           setEnvInfo(envResponse.data);
         }
         
         // Fetch QE detection without forcing re-detect
-        const qeResponse = await window.qv.request<QEDetectionResult>('detect_qe', {});
+        const qeResponse = await window.qms.request<QEDetectionResult>('detect_qe', {});
         if (qeResponse.ok && qeResponse.data) {
           setQeInfo(qeResponse.data);
         }
@@ -857,13 +857,13 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   }, []);
   
   const handleRedetectQE = useCallback(async () => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     setIsDetecting(true);
     setError(null);
     
     try {
-      const response = await window.qv.request<QEDetectionResult>('detect_qe', {});
+      const response = await window.qms.request<QEDetectionResult>('detect_qe', {});
       if (response.ok && response.data) {
         setQeInfo(response.data);
       } else {
@@ -887,7 +887,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
     setIsPinging(true);
     setPingResult(null);
     
-    const response = await qv.ping();
+    const response = await qms.ping();
     
     if (response.ok && response.data) {
       setPingResult(`✓ Daemon v${response.data.version} (connected)`);
@@ -895,17 +895,17 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
       setPingResult(`✗ ${response.error?.message || 'Connection failed'}`);
     }
     setIsPinging(false);
-  }, [qv]);
+  }, [qms]);
   
   const handleLogVerbosityChange = useCallback(async (level: 'INFO' | 'DEBUG') => {
-    if (!qv) return;
+    if (!qms) return;
     
     const previousLevel = daemonLogVerbosity;
     setDaemonLogVerbosity(level);
     setLogVerbosityError(null);
     
     try {
-      const response = await qv.call('set_log_level', { level });
+      const response = await qms.call('set_log_level', { level });
       if (!response.ok) {
         // Revert on failure
         setDaemonLogVerbosity(previousLevel);
@@ -916,17 +916,17 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
       setDaemonLogVerbosity(previousLevel);
       setLogVerbosityError(e instanceof Error ? e.message : 'Failed to set log level');
     }
-  }, [qv, daemonLogVerbosity]);
+  }, [qms, daemonLogVerbosity]);
   
   const handleDebugResolutionChange = useCallback(async (enabled: boolean) => {
-    if (!qv) return;
+    if (!qms) return;
     
     const previousEnabled = debugResolution;
     setDebugResolution(enabled);
     setDebugResolutionError(null);
     
     try {
-      const response = await qv.call('set_debug_resolution', { enabled });
+      const response = await qms.call('set_debug_resolution', { enabled });
       if (!response.ok) {
         // Revert on failure
         setDebugResolution(previousEnabled);
@@ -937,7 +937,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
       setDebugResolution(previousEnabled);
       setDebugResolutionError(e instanceof Error ? e.message : 'Failed to set debug resolution flag');
     }
-  }, [qv, debugResolution]);
+  }, [qms, debugResolution]);
   
   const handleCopyLogs = useCallback(async () => {
     const textToCopy = getVisibleLogText(logs, showPollingLogs);
@@ -992,7 +992,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   return (
     <div className="settings-panel">
       <div className="settings-scroll-container">
-        <EngineManagementSection qv={qv} engineDisplayNames={engineDisplayNames} />
+        <EngineManagementSection qms={qms} engineDisplayNames={engineDisplayNames} />
 
         {/* Engine Detection Sections */}
         {engineFamilies.map((engine) => (
@@ -1143,15 +1143,15 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
               <button
                 className="settings-btn"
                 onClick={async () => {
-                  if (!qv) return;
+                  if (!qms) return;
                   setIsSettingQE(true);
                   setQeError(null);
                   try {
-                    const response = await qv.call('set_qe_engine', { bin_dir: null });
+                    const response = await qms.call('set_qe_engine', { bin_dir: null });
                     if (response.ok) {
                       await fetchQEEngineInfo();
                       // Also refresh QE detection
-                      const qeResponse = await window.qv?.request<QEDetectionResult>('detect_qe', {});
+                      const qeResponse = await window.qms?.request<QEDetectionResult>('detect_qe', {});
                       if (qeResponse?.ok && qeResponse.data) {
                         setQeInfo(qeResponse.data);
                       }
@@ -1174,7 +1174,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
               <button
                 className="settings-btn"
                 onClick={async () => {
-                  if (!window.qv?.openDirectory) {
+                  if (!window.qms?.openDirectory) {
                     setQeError('File picker not available');
                     return;
                   }
@@ -1182,7 +1182,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                   setIsSettingQE(true);
                   setQeError(null);
                   try {
-                    const selectedDir = await window.qv.openDirectory();
+                    const selectedDir = await window.qms.openDirectory();
                     if (!selectedDir) {
                       setIsSettingQE(false);
                       return;
@@ -1190,11 +1190,11 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                     
                     // Note: We can't directly check file existence from frontend,
                     // so we rely on backend validation
-                    const response = await qv.call('set_qe_engine', { bin_dir: selectedDir });
+                    const response = await qms.call('set_qe_engine', { bin_dir: selectedDir });
                     if (response.ok) {
                       await fetchQEEngineInfo();
                       // Also refresh QE detection
-                      const qeResponse = await window.qv?.request<QEDetectionResult>('detect_qe', {});
+                      const qeResponse = await window.qms?.request<QEDetectionResult>('detect_qe', {});
                       if (qeResponse?.ok && qeResponse.data) {
                         setQeInfo(qeResponse.data);
                       }
@@ -1231,8 +1231,8 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
         
         {/* Libraries Section */}
         <LibrariesPanel onRevealPath={(path) => {
-          if (window.qv?.revealPath) {
-            window.qv.revealPath(path);
+          if (window.qms?.revealPath) {
+            window.qms.revealPath(path);
           }
         }} />
         
@@ -1240,7 +1240,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
         <PseudoArchivesPanel />
         
         {/* Online Structure Sources Section */}
-        <OnlineStructuresSettingsSection qv={qv} />
+        <OnlineStructuresSettingsSection qms={qms} />
         
         {/* Python/Daemon Section */}
         <div className="settings-section">
@@ -1263,8 +1263,8 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                 <code className="detail-value detail-value--path">{envInfo.python_executable}</code>
               </div>
               <div className="detail-row">
-                <span className="detail-label">QV Version</span>
-                <span className="detail-value">{envInfo.qv_version}</span>
+                <span className="detail-label">QMS Version</span>
+                <span className="detail-value">{envInfo.qms_version}</span>
               </div>
             </div>
           ) : (
@@ -1371,13 +1371,13 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                   className="settings-path-input__field"
                   value={settings.defaultProjectsDir || ''}
                   onChange={(e) => onSettingsChange({ ...settings, defaultProjectsDir: e.target.value })}
-                  placeholder="~/Documents/QuantumVITAS-projects"
+                  placeholder="~/Documents/QMatSuite-projects"
                 />
                 <button
                   className="settings-path-input__browse"
                   onClick={async () => {
-                    if (window.qv?.openDirectory) {
-                      const path = await window.qv.openDirectory();
+                    if (window.qms?.openDirectory) {
+                      const path = await window.qms.openDirectory();
                       if (path) {
                         onSettingsChange({ ...settings, defaultProjectsDir: path });
                       }
@@ -1509,20 +1509,20 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                   <div className="diagnostics-info">
                     <div className="diagnostics-info-item">
                       <span className="diagnostics-info-label">Connected:</span>
-                      <span className={`diagnostics-info-value ${qv.state.isConnected ? 'diagnostics-info-value--success' : 'diagnostics-info-value--error'}`}>
-                        {qv.state.isConnected ? 'Yes' : 'No'}
+                      <span className={`diagnostics-info-value ${qms.state.isConnected ? 'diagnostics-info-value--success' : 'diagnostics-info-value--error'}`}>
+                        {qms.state.isConnected ? 'Yes' : 'No'}
                       </span>
                     </div>
-                    {qv.state.daemonStatus?.pythonPath && (
+                    {qms.state.daemonStatus?.pythonPath && (
                       <div className="diagnostics-info-item">
                         <span className="diagnostics-info-label">Python:</span>
-                        <code className="diagnostics-info-value">{qv.state.daemonStatus.pythonPath}</code>
+                        <code className="diagnostics-info-value">{qms.state.daemonStatus.pythonPath}</code>
                       </div>
                     )}
-                    {qv.state.daemonStatus?.projectRoot && (
+                    {qms.state.daemonStatus?.projectRoot && (
                       <div className="diagnostics-info-item">
                         <span className="diagnostics-info-label">CWD:</span>
-                        <code className="diagnostics-info-value">{qv.state.daemonStatus.projectRoot}</code>
+                        <code className="diagnostics-info-value">{qms.state.daemonStatus.projectRoot}</code>
                       </div>
                     )}
                   </div>
@@ -1539,7 +1539,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                       onClick={handleCopyLogs}
                       disabled={visibleLogs.length === 0}
                       title="Copy visible logs to clipboard"
-                      data-testid="qv-settings-daemon-logs-copy"
+                      data-testid="qms-settings-daemon-logs-copy"
                     >
                       {copyButtonLabel}
                     </button>

@@ -134,8 +134,8 @@ def compare_maps(legacy_data: dict, current_data: dict) -> dict:
 
 def main() -> int:
     repo_root = Path(__file__).parent.parent
-    legacy_path = repo_root / "src" / "quantumvitas" / "data" / "qe_module_parameters.legacy.json"
-    current_path = repo_root / "src" / "quantumvitas" / "data" / "qe_module_parameters.json"
+    legacy_path = repo_root / "src" / "qmatsuite" / "data" / "qe_module_parameters.legacy.json"
+    current_path = repo_root / "src" / "qmatsuite" / "data" / "qe_module_parameters.json"
     
     if not legacy_path.exists():
         sys.stderr.write(f"Error: Legacy file not found: {legacy_path}\n")

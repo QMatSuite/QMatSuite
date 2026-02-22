@@ -1,8 +1,8 @@
-# QuantumVITAS GUI Architecture
+# QMatSuite GUI Architecture
 
 ## Overview
 
-The QuantumVITAS GUI is a desktop application built with Electron + React + TypeScript. It communicates with the Python backend via a stdio-based JSON-RPC daemon.
+The QMatSuite GUI is a desktop application built with Electron + React + TypeScript. It communicates with the Python backend via a stdio-based JSON-RPC daemon.
 
 ## Technology Stack
 
@@ -30,11 +30,11 @@ The QuantumVITAS GUI is a desktop application built with Electron + React + Type
 │  │  │  - Path Input│   │ - Status    │   │                │   │   │
 │  │  └──────────────┘   └─────────────┘   └────────────────┘   │   │
 │  │                            │                                 │   │
-│  │                     useQVClient Hook                        │   │
+│  │                     useQMSClient Hook                        │   │
 │  │                            │                                 │   │
 │  └────────────────────────────┼─────────────────────────────────┘   │
 │                               │                                      │
-│                        window.qv.request()                          │
+│                        window.qms.request()                          │
 │                               │                                      │
 ├───────────────────────────────┼──────────────────────────────────────┤
 │                         PRELOAD (contextBridge)                      │
@@ -44,7 +44,7 @@ The QuantumVITAS GUI is a desktop application built with Electron + React + Type
 ├───────────────────────────────┼──────────────────────────────────────┤
 │                         MAIN PROCESS                                 │
 │                               │                                      │
-│                   ipcMain.handle('qv-request')                      │
+│                   ipcMain.handle('qms-request')                      │
 │                               │                                      │
 │              ┌────────────────┴────────────────┐                    │
 │              │         Request Map             │                    │
@@ -57,14 +57,14 @@ The QuantumVITAS GUI is a desktop application built with Electron + React + Type
 │                        PYTHON DAEMON                                 │
 │                               │                                      │
 │              ┌────────────────┴────────────────┐                    │
-│              │          QVDaemon               │                    │
+│              │          QMSDaemon               │                    │
 │              │     - Parse JSON request        │                    │
 │              │     - Route to handler          │                    │
-│              │     - Call QVService            │                    │
+│              │     - Call QMSService            │                    │
 │              │     - Return JSON response      │                    │
 │              └────────────────┬────────────────┘                    │
 │                               │                                      │
-│                          QVService                                   │
+│                          QMSService                                   │
 │                               │                                      │
 │                    Core Python Backend                              │
 └─────────────────────────────────────────────────────────────────────┘
@@ -115,12 +115,12 @@ gui/
 │   │
 │   ├── hooks/
 │   │   ├── index.ts
-│   │   ├── useQVClient.ts   # Daemon communication hook
+│   │   ├── useQMSClient.ts   # Daemon communication hook
 │   │   └── useJobs.ts       # Job polling hooks
 │   │
 │   └── types/
 │       ├── index.ts
-│       └── qv.ts            # QVCommandMap + all RPC types
+│       └── qms.ts            # QMSCommandMap + all RPC types
 │
 ├── public/                  # Static assets
 ├── dist/                    # Built renderer (generated)
@@ -182,62 +182,62 @@ gui/
 
 ### Hooks
 
-#### `useQVClient`
+#### `useQMSClient`
 
 The main hook for daemon communication.
 
 ```typescript
-const qv = useQVClient();
+const qms = useQMSClient();
 
 // State
-qv.state.isConnected   // boolean - daemon connection status
-qv.state.isLoading     // boolean - request in progress
-qv.state.lastError     // string | null - last error message
-qv.state.daemonStatus  // DaemonStatus | null
+qms.state.isConnected   // boolean - daemon connection status
+qms.state.isLoading     // boolean - request in progress
+qms.state.lastError     // string | null - last error message
+qms.state.daemonStatus  // DaemonStatus | null
 
 // System
-qv.ping()              // Test daemon connection
-qv.openDirectoryDialog() // Native folder picker
-window.qv.revealPath(path) // Reveal file/folder in Finder/Explorer
+qms.ping()              // Test daemon connection
+qms.openDirectoryDialog() // Native folder picker
+window.qms.revealPath(path) // Reveal file/folder in Finder/Explorer
 
 // Project operations
-qv.getProjectSummary(projectRoot)
-qv.listStructures(projectRoot)
-qv.listWorkflows(projectRoot)
+qms.getProjectSummary(projectRoot)
+qms.listStructures(projectRoot)
+qms.listWorkflows(projectRoot)
 
-// Generic call (fully typed via QVCommandMap)
-qv.call('command_name', payload)  // Returns Promise<QVResponse<ResultType>>
+// Generic call (fully typed via QMSCommandMap)
+qms.call('command_name', payload)  // Returns Promise<QMSResponse<ResultType>>
 
 // Visualization data
-qv.call('get_structure_vis', { project_root, selector, supercell?, repeat_boundary? })
-qv.call('get_scf_convergence', { project_root, calculation, step })
-qv.call('get_dos_data', { project_root, calculation, step? })
-qv.call('get_band_structure_data', { project_root, calculation, step? })
+qms.call('get_structure_vis', { project_root, selector, supercell?, repeat_boundary? })
+qms.call('get_scf_convergence', { project_root, calculation, step })
+qms.call('get_dos_data', { project_root, calculation, step? })
+qms.call('get_band_structure_data', { project_root, calculation, step? })
 
 // Project creation
-qv.call('create_project', { target_dir, name?, template? })
-qv.call('import_structure', { project_root, source_file, name? })
+qms.call('create_project', { target_dir, name?, template? })
+qms.call('import_structure', { project_root, source_file, name? })
 
 // Calculation creation
-qv.call('list_calculation_templates', {})
-qv.call('create_calculation', { project_root, name, structure?, template? })
+qms.call('list_calculation_templates', {})
+qms.call('create_calculation', { project_root, name, structure?, template? })
 
 // Jobs
-qv.call('run_calculation', { project_root, calculation, strict?, verbose? })
-qv.call('run_step', { project_root, calculation, step, verbose? })
-qv.call('get_job_status', { job_id })
-qv.call('get_job_logs', { job_id, tail_lines?, offset? })
-qv.call('list_jobs', { status?, job_type?, project_root?, limit? })
-qv.call('job_counts', {})
-qv.call('cancel_job', { job_id })
+qms.call('run_calculation', { project_root, calculation, strict?, verbose? })
+qms.call('run_step', { project_root, calculation, step, verbose? })
+qms.call('get_job_status', { job_id })
+qms.call('get_job_logs', { job_id, tail_lines?, offset? })
+qms.call('list_jobs', { status?, job_type?, project_root?, limit? })
+qms.call('job_counts', {})
+qms.call('cancel_job', { job_id })
 ```
 
-#### `useQVLogs`
+#### `useQMSLogs`
 
 Subscribe to daemon log output.
 
 ```typescript
-const logs = useQVLogs(maxLines);  // string[]
+const logs = useQMSLogs(maxLines);  // string[]
 ```
 
 #### `useJobs`
@@ -293,12 +293,12 @@ const status = useDaemonStatus();  // DaemonStatus | null
 
 ## IPC Communication
 
-### Preload API (`window.qv`)
+### Preload API (`window.qms`)
 
 ```typescript
-interface QVApi {
+interface QMSApi {
   // Send request to daemon
-  request: <T>(type: string, payload?: object) => Promise<QVResponse<T>>;
+  request: <T>(type: string, payload?: object) => Promise<QMSResponse<T>>;
   
   // Subscribe to daemon logs (stderr)
   onLog: (callback: (message: string) => void) => () => void;
@@ -375,7 +375,7 @@ The main process spawns the Python daemon on startup:
 const pythonPath = findPythonPath();  // ../..venv/bin/python
 
 // Spawn daemon
-daemonProcess = spawn(pythonPath, ['-m', 'quantumvitas.daemon.server'], {
+daemonProcess = spawn(pythonPath, ['-m', 'qmatsuite.daemon.server'], {
   cwd: projectRoot,
   env: { ...process.env, PYTHONUNBUFFERED: '1' },
   stdio: ['pipe', 'pipe', 'pipe'],
@@ -392,7 +392,7 @@ daemonProcess = spawn(pythonPath, ['-m', 'quantumvitas.daemon.server'], {
 
 ```typescript
 const pendingRequests = new Map<string, {
-  resolve: (response: QVResponse) => void;
+  resolve: (response: QMSResponse) => void;
   reject: (error: Error) => void;
   timeoutId: NodeJS.Timeout;
 }>();
@@ -500,15 +500,15 @@ Vite provides HMR for React components. Changes to:
 
 ### Adding a New Daemon Command
 
-1. **Types** (`src/types/qv.ts`):
+1. **Types** (`src/types/qms.ts`):
    ```typescript
-   export type QVCommandType = ... | 'my_new_command';
+   export type QMSCommandType = ... | 'my_new_command';
    
    export interface MyNewPayload { ... }
    export interface MyNewData { ... }
    ```
 
-2. **Hook** (`src/hooks/useQVClient.ts`):
+2. **Hook** (`src/hooks/useQMSClient.ts`):
    ```typescript
    const myNewCommand = useCallback(
      (payload: MyNewPayload) =>
@@ -547,7 +547,7 @@ Vite provides HMR for React components. Changes to:
      
      const handleSubmit = async () => {
        setIsSubmitting(true);
-       const response = await qv.call('my_command', formData);
+       const response = await qms.call('my_command', formData);
        if (response.ok) {
          onSuccess(response.data);
          onClose();
@@ -745,7 +745,7 @@ CSS-only tooltips using `data-tooltip` attribute:
 - [x] Summary panel auto-refresh on structure/calculation changes
 - [x] 3D viewer camera state preservation (zoom/rotation remembered during supercell changes)
 - [x] Log file persistence
-  - Logs saved to `.qv-daemon.log` in project directory
+  - Logs saved to `.qms-daemon.log` in project directory
   - Persisted across sessions
   - setProject/readLogs IPC methods
 - [x] Theme switching (light/dark)
@@ -755,7 +755,7 @@ CSS-only tooltips using `data-tooltip` attribute:
   - Persisted in localStorage
 - [x] Reveal in Finder/Explorer
   - OS-native file manager integration
-  - `window.qv.revealPath(path)` API
+  - `window.qms.revealPath(path)` API
   - Works on macOS (Finder), Windows (Explorer), Linux
 - [x] Automatic analysis selection
   - Auto-detects analysis type based on calculation's last step

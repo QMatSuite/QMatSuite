@@ -48,7 +48,7 @@ def test_no_deprecated_list_accepting_presets():
 
 def test_steptypespec_has_no_preset_fields():
     """StepTypeSpec dataclass must not have preset-related fields."""
-    from quantumvitas.workflow.registry import StepTypeSpec
+    from qmatsuite.workflow.registry import StepTypeSpec
     import dataclasses
     
     field_names = [f.name for f in dataclasses.fields(StepTypeSpec)]
@@ -63,7 +63,7 @@ def test_steptypespec_has_no_preset_fields():
 
 def test_registry_has_no_deprecated_method():
     """StepTypeRegistry must not have deprecated list_accepting_presets() method."""
-    from quantumvitas.workflow.registry import StepTypeRegistry
+    from qmatsuite.workflow.registry import StepTypeRegistry
     
     assert not hasattr(StepTypeRegistry, "list_accepting_presets"), (
         "StepTypeRegistry still has deprecated list_accepting_presets() method"

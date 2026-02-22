@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle
-from quantumvitas.core.analysis.orchestrator import run_post_run_analysis
-from quantumvitas.drivers.qe.driver import QEDriver
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle
+from qmatsuite.core.analysis.orchestrator import run_post_run_analysis
+from qmatsuite.drivers.qe.driver import QEDriver
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -25,7 +25,7 @@ def test_orchestrator_real_qe_driver_registration_chain() -> None:
         calc_dir=raw_dir.parent,
     )
 
-    from quantumvitas.core.analysis.capability import ResultState
+    from qmatsuite.core.analysis.capability import ResultState
 
     ok_results = [r for r in results if r.state == ResultState.OK]
     assert len(ok_results) >= 1

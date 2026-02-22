@@ -34,7 +34,7 @@ Every verification command in this plan assumes the venv is active. If a command
 
 ### Pitfall 1: Legacy Code Is Woven Into service.py
 
-`service.py` has 16 `from quantumvitas.analysis.*` import sites scattered across the `Analysis` inner class methods. These are lazy imports (inside method bodies), not top-level. When deleting legacy methods, do NOT accidentally break the new pipeline methods that live in the same class. Specifically:
+`service.py` has 16 `from qmatsuite.analysis.*` import sites scattered across the `Analysis` inner class methods. These are lazy imports (inside method bodies), not top-level. When deleting legacy methods, do NOT accidentally break the new pipeline methods that live in the same class. Specifically:
 
 - Lines 1682–1864 (Surface A/B/C + snapshot) are NEW — **do not touch**.
 - Lines 512–706, 1122–1230, 1240–1340, 1866–1943, 1945–2040 are LEGACY — these are the deletion targets.
@@ -118,9 +118,9 @@ VASP 6.5.0 is installed and runnable at `.qmatsuite/engines/vasp/vasp.6.5.0/bin/
 | VASP research docs | `docs/engines/vasp/PHASE_B1_PLAN.md`, `PHASE_B1_WORKLOG.md` | Our prior detailed VASP research |
 | VASP sources log | `docs/engines/vasp/SOURCES.md`, `.tmp/engine_research/vasp/SOURCES.md` | URLs and references used |
 | Curated index | `docs/engines/vasp/CURATED_INDEX.md` | Sample diversity rationale |
-| INCAR tag DB | `src/quantumvitas/drivers/vasp/data/vasp_incar_tags.json` | 232 tags with types |
-| Existing VASP IO | `src/quantumvitas/drivers/vasp/io/incar.py` | Parse/write INCAR (reusable patterns) |
-| Existing VASP parser | `src/quantumvitas/drivers/vasp/parsers/output.py` | VASPOutputParser for scf_digest (vasprun.xml + OUTCAR) |
+| INCAR tag DB | `src/qmatsuite/drivers/vasp/data/vasp_incar_tags.json` | 232 tags with types |
+| Existing VASP IO | `src/qmatsuite/drivers/vasp/io/incar.py` | Parse/write INCAR (reusable patterns) |
+| Existing VASP parser | `src/qmatsuite/drivers/vasp/parsers/output.py` | VASPOutputParser for scf_digest (vasprun.xml + OUTCAR) |
 
 You can also **search the web** for VASP EIGENVAL format documentation and parsing examples. The VASP wiki has detailed format specs.
 
@@ -133,12 +133,12 @@ You can also **search the web** for VASP EIGENVAL format documentation and parsi
 **Problem:** `analysis/dos.py` (168 lines) is DEPRECATED and has zero imports anywhere in the codebase.
 
 **Actions:**
-1. Delete `src/quantumvitas/analysis/dos.py`
+1. Delete `src/qmatsuite/analysis/dos.py`
 2. Remove any re-export from `analysis/public.py` or `analysis/__init__.py` if present
 
 **Verification:**
 ```bash
-grep -r "from quantumvitas.analysis.dos" src/ tests/ && echo "FAIL: still imported" || echo "OK: no imports"
+grep -r "from qmatsuite.analysis.dos" src/ tests/ && echo "FAIL: still imported" || echo "OK: no imports"
 source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
 
@@ -183,7 +183,7 @@ source .venv/bin/activate && python -m pytest tests/api/test_analysis_staleness.
 
 **Actions:**
 1. Create `tests/daemon/test_si_bands_golden_daemon.py`
-2. Use the same fixture pattern as the ancient test: `QVDaemon` + `QVService` + `JobManager`, project initialized from `si_bands_demo.yml`
+2. Use the same fixture pattern as the ancient test: `QMSDaemon` + `QMSService` + `JobManager`, project initialized from `si_bands_demo.yml`
 3. After the run completes successfully, call the 5 new RPC endpoints via `daemon.handle_request()`
 4. Assert heavily on the response shapes and CAS/SQLite artifacts
 5. Mark with `pytest.mark.qe_core`
@@ -248,16 +248,16 @@ head -20 tests/daemon/test_si_bands_calculation_daemon.py | grep -i legacy && ec
 
 **Actions:**
 1. Delete the legacy methods listed above from `service.py`
-2. Remove all `from quantumvitas.analysis.artifacts import ...` statements that are no longer needed
-3. Remove all `from quantumvitas.analysis.parsers import ...` statements that are no longer needed
-4. Keep `from quantumvitas.analysis.structure_viz import ...` (structure visualization is independent)
-5. Keep `from quantumvitas.analysis.kpath import ...` (k-path generation is independent)
+2. Remove all `from qmatsuite.analysis.artifacts import ...` statements that are no longer needed
+3. Remove all `from qmatsuite.analysis.parsers import ...` statements that are no longer needed
+4. Keep `from qmatsuite.analysis.structure_viz import ...` (structure visualization is independent)
+5. Keep `from qmatsuite.analysis.kpath import ...` (k-path generation is independent)
 
 **Verification:**
 ```bash
-grep -c "from quantumvitas.analysis.artifacts" src/quantumvitas/api/service.py
+grep -c "from qmatsuite.analysis.artifacts" src/qmatsuite/api/service.py
 # Expected: 0
-grep -c "AnalysisType" src/quantumvitas/api/service.py
+grep -c "AnalysisType" src/qmatsuite/api/service.py
 # Expected: 0
 source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
@@ -280,7 +280,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 **Verification:**
 ```bash
-grep -c "ensure_calculation_analysis\|get_scf_convergence\|get_dos_data\|get_band_structure_data" src/quantumvitas/daemon/server.py
+grep -c "ensure_calculation_analysis\|get_scf_convergence\|get_dos_data\|get_band_structure_data" src/qmatsuite/daemon/server.py
 # Expected: 0 (or just comments if any)
 source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
@@ -290,14 +290,14 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 **Problem:** After L1 and L2, `analysis/artifacts.py` should have zero import sites.
 
 **Actions:**
-1. Verify: `grep -r "from quantumvitas.analysis.artifacts" src/ tests/` returns nothing
-2. Delete `src/quantumvitas/analysis/artifacts.py`
+1. Verify: `grep -r "from qmatsuite.analysis.artifacts" src/ tests/` returns nothing
+2. Delete `src/qmatsuite/analysis/artifacts.py`
 3. Remove any re-export from `analysis/__init__.py` or `analysis/public.py`
 4. Remove `AnalysisType` from any public re-exports
 
 **Verification:**
 ```bash
-test ! -f src/quantumvitas/analysis/artifacts.py && echo "OK: deleted" || echo "FAIL: still exists"
+test ! -f src/qmatsuite/analysis/artifacts.py && echo "OK: deleted" || echo "FAIL: still exists"
 source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
 ```
 
@@ -346,17 +346,17 @@ source .venv/bin/activate && python -m pytest tests/contract_crawler/ -v --tb=sh
    def test_no_legacy_analysis_artifact_imports() -> None:
        """Legacy analysis/artifacts.py must not be imported by runtime code."""
        runtime_roots = [
-           REPO_ROOT / "src" / "quantumvitas" / "api",
-           REPO_ROOT / "src" / "quantumvitas" / "daemon",
-           REPO_ROOT / "src" / "quantumvitas" / "core",
+           REPO_ROOT / "src" / "qmatsuite" / "api",
+           REPO_ROOT / "src" / "qmatsuite" / "daemon",
+           REPO_ROOT / "src" / "qmatsuite" / "core",
        ]
        for root in runtime_roots:
            for path in root.rglob("*.py"):
                text = path.read_text(encoding="utf-8")
-               assert "from quantumvitas.analysis.artifacts" not in text, (
+               assert "from qmatsuite.analysis.artifacts" not in text, (
                    f"{path} imports deprecated analysis/artifacts module"
                )
-               assert "quantumvitas.analysis.artifacts" not in text, (
+               assert "qmatsuite.analysis.artifacts" not in text, (
                    f"{path} references deprecated analysis/artifacts module"
                )
    ```
@@ -378,7 +378,7 @@ source .venv/bin/activate && python -m pytest tests/gates/test_analysis_invarian
 
 1. Read the real EIGENVAL file at `.tmp/engine_research/vasp/real_run/si_bands/EIGENVAL` to understand the exact format (header structure, k-point blocks, band indexing, energy/occupation columns)
 2. Read the KPOINTS file at `.tmp/engine_research/vasp/real_run/si_bands/KPOINTS` to understand Line-mode format (label extraction from `! G`, `! X`, etc.)
-3. Read the existing VASPOutputParser at `src/quantumvitas/drivers/vasp/parsers/output.py` to see how vasprun.xml is already parsed (Fermi energy extraction pattern exists here — reuse it)
+3. Read the existing VASPOutputParser at `src/qmatsuite/drivers/vasp/parsers/output.py` to see how vasprun.xml is already parsed (Fermi energy extraction pattern exists here — reuse it)
 4. Read `docs/engines/vasp/PHASE_B1_WORKLOG.md` and `docs/engines/vasp/SOURCES.md` for prior research
 5. Read `.tmp/engine_research/vasp/normalized/` samples for additional EIGENVAL format variations (spin-polarized, SOC, metals, etc.)
 6. Search the web for "VASP EIGENVAL format specification" and "VASP KPOINTS line-mode format" to fill any gaps
@@ -421,15 +421,15 @@ head -6 tests/data/analysis_vasp_bands/EIGENVAL | tail -1
 
 **Research sources to consult BEFORE writing the parser:**
 - Real EIGENVAL: `tests/data/analysis_vasp_bands/EIGENVAL` (committed in V1)
-- Existing VASP output parser: `src/quantumvitas/drivers/vasp/parsers/output.py` (vasprun.xml + OUTCAR patterns)
-- QE bands parser (reference implementation): `src/quantumvitas/drivers/qe/parsers/bands.py`
+- Existing VASP output parser: `src/qmatsuite/drivers/vasp/parsers/output.py` (vasprun.xml + OUTCAR patterns)
+- QE bands parser (reference implementation): `src/qmatsuite/drivers/qe/parsers/bands.py`
 - Prior VASP research: `docs/engines/vasp/PHASE_B1_WORKLOG.md`
 - External VASP examples: `.tmp/engine_research/vasp/normalized/` (15 cases, some with bands)
 - Real run with all outputs: `.tmp/engine_research/vasp/real_run/si_bands/` (EIGENVAL + vasprun.xml + OUTCAR)
 - Web search: "VASP EIGENVAL format", "VASP wiki EIGENVAL", "VASP KPOINTS line-mode"
 
 **Actions:**
-1. Create `src/quantumvitas/drivers/vasp/parsers/bands.py` with three public functions:
+1. Create `src/qmatsuite/drivers/vasp/parsers/bands.py` with three public functions:
 
    **`parse_eigenval(eigenval_path: Path) -> dict`** — Standalone EIGENVAL parser:
    - Read 5 header lines (lines 1-5)
@@ -467,7 +467,7 @@ head -6 tests/data/analysis_vasp_bands/EIGENVAL | tail -1
            ...
    ```
 
-2. Wire parser registration in `src/quantumvitas/drivers/vasp/parsers/__init__.py`:
+2. Wire parser registration in `src/qmatsuite/drivers/vasp/parsers/__init__.py`:
    ```python
    """VASP analysis parsers.
 
@@ -479,14 +479,14 @@ head -6 tests/data/analysis_vasp_bands/EIGENVAL | tail -1
    __all__ = ["VASPOutputParser", "VASPBandsProvider"]
    ```
 
-3. Ensure `src/quantumvitas/drivers/vasp/__init__.py` imports parsers:
+3. Ensure `src/qmatsuite/drivers/vasp/__init__.py` imports parsers:
    ```python
    from . import parsers  # noqa: F401, E402
    ```
 
 **Key constraints:**
 - EIGENVAL parsing must be stdlib-only (plus numpy for arrays)
-- The parser must NOT import from `quantumvitas.analysis.*` (legacy) — only from `quantumvitas.core.analysis.*`
+- The parser must NOT import from `qmatsuite.analysis.*` (legacy) — only from `qmatsuite.core.analysis.*`
 - k-distance computation: cumulative Euclidean distance between consecutive k-point coordinates
 - Fermi energy: try `vasprun.xml` first (ElementTree, `<i name="efermi">`), then OUTCAR regex (`E-fermi\s*:\s*([\d.-]+)`), then None
 - Must handle the real EIGENVAL from V1 correctly (200 kpts, 16 bands, 8 electrons)
@@ -494,8 +494,8 @@ head -6 tests/data/analysis_vasp_bands/EIGENVAL | tail -1
 **Verification:**
 ```bash
 source .venv/bin/activate && python -c "
-from quantumvitas.parsers.registry import get_parser
-import quantumvitas.drivers.vasp
+from qmatsuite.parsers.registry import get_parser
+import qmatsuite.drivers.vasp
 p = get_parser('vasp', 'bands')
 assert p is not None, 'VASP bands parser not registered'
 print('OK: VASP bands parser registered')
@@ -507,9 +507,9 @@ print('OK: VASP bands parser registered')
 **Problem:** Gate test `test_analysis_capability_declaration` will fail if `VASPBandsProvider` is registered but `VASPDriver` has no `ANALYSIS_CAPABILITIES`.
 
 **Actions:**
-1. Add to `src/quantumvitas/drivers/vasp/driver.py`:
+1. Add to `src/qmatsuite/drivers/vasp/driver.py`:
    ```python
-   from quantumvitas.core.analysis.capability import AnalysisCapability
+   from qmatsuite.core.analysis.capability import AnalysisCapability
 
    class VASPDriver(BaseEngineDriver):
        # ... existing code ...
@@ -711,22 +711,22 @@ _To be filled by executor as each step completes._
 
 | Step | Status | Tests After | Notes |
 |------|--------|-------------|-------|
-| G1 | DONE | PASS | Deleted `src/quantumvitas/analysis/dos.py` and removed exports; `grep -r "from quantumvitas.analysis.dos" src/ tests/` -> `OK: no imports`. |
+| G1 | DONE | PASS | Deleted `src/qmatsuite/analysis/dos.py` and removed exports; `grep -r "from qmatsuite.analysis.dos" src/ tests/` -> `OK: no imports`. |
 | G2 | DONE | PASS | Added `tests/api/test_analysis_staleness.py`; `source .venv/bin/activate && python -m pytest tests/api/test_analysis_staleness.py -v --tb=short` passed. |
 | D1 | DONE | PASS | Added `tests/daemon/test_si_bands_golden_daemon.py`; `source .venv/bin/activate && python -m pytest tests/daemon/test_si_bands_golden_daemon.py -v --tb=short -m qe_core` passed. |
 | D2 | DONE | PASS | Legacy daemon test was later removed in L4; verification command reported `N/A: file deleted in L4` (superseded). |
 | V1 | DONE | PASS | Added real fixtures under `tests/data/analysis_vasp_bands/`; `ls ...`, `wc -l .../EIGENVAL`=`3606`, `head -6 ... | tail -1`=`8 200 16`. |
-| V2 | DONE | PASS | Added `src/quantumvitas/drivers/vasp/parsers/bands.py` and parser wiring; parser registration check command printed `OK: VASP bands parser registered`. |
-| V3 | DONE | PASS | Added VASP `ANALYSIS_CAPABILITIES` in `src/quantumvitas/drivers/vasp/driver.py`; `source .venv/bin/activate && python -m pytest tests/gates/test_analysis_invariants.py::test_analysis_capability_declaration -v --tb=short` passed. |
+| V2 | DONE | PASS | Added `src/qmatsuite/drivers/vasp/parsers/bands.py` and parser wiring; parser registration check command printed `OK: VASP bands parser registered`. |
+| V3 | DONE | PASS | Added VASP `ANALYSIS_CAPABILITIES` in `src/qmatsuite/drivers/vasp/driver.py`; `source .venv/bin/activate && python -m pytest tests/gates/test_analysis_invariants.py::test_analysis_capability_declaration -v --tb=short` passed. |
 | V4 | DONE | PASS | Added `tests/drivers/vasp/test_vasp_bands_parser.py`; `source .venv/bin/activate && python -m pytest tests/drivers/vasp/test_vasp_bands_parser.py -v --tb=short` passed (10 tests). |
 | V5 | DONE | PASS | Added `tests/api/test_vasp_bands_pipeline.py`; `source .venv/bin/activate && python -m pytest tests/api/test_vasp_bands_pipeline.py -v --tb=short` passed. |
-| L1 | DONE | PASS | Removed legacy analysis methods/imports from `src/quantumvitas/api/service.py`; `grep -c "from quantumvitas.analysis.artifacts" ...`=`0`, `grep -c "AnalysisType" ...`=`0`. |
-| L2 | DONE | PASS | Removed legacy daemon handlers in `src/quantumvitas/daemon/server.py`; `grep -c "ensure_calculation_analysis\\|get_scf_convergence\\|get_dos_data\\|get_band_structure_data" ...`=`0`. |
-| L3 | DONE | PASS | Deleted `src/quantumvitas/analysis/artifacts.py` and exports; `test ! -f src/quantumvitas/analysis/artifacts.py && echo "OK: deleted"` -> `OK: deleted`. |
+| L1 | DONE | PASS | Removed legacy analysis methods/imports from `src/qmatsuite/api/service.py`; `grep -c "from qmatsuite.analysis.artifacts" ...`=`0`, `grep -c "AnalysisType" ...`=`0`. |
+| L2 | DONE | PASS | Removed legacy daemon handlers in `src/qmatsuite/daemon/server.py`; `grep -c "ensure_calculation_analysis\\|get_scf_convergence\\|get_dos_data\\|get_band_structure_data" ...`=`0`. |
+| L3 | DONE | PASS | Deleted `src/qmatsuite/analysis/artifacts.py` and exports; `test ! -f src/qmatsuite/analysis/artifacts.py && echo "OK: deleted"` -> `OK: deleted`. |
 | L4 | IN PROGRESS | PENDING | Legacy tests updated/removed (including `tests/daemon/test_si_bands_calculation_daemon.py`); awaiting final mandated full-suite parallel run. |
 | L5 | DONE | PASS | Updated contract crawler fixtures/introspection; `source .venv/bin/activate && python -m pytest tests/contract_crawler/ -v --tb=short` passed (`340 passed, 18 skipped`). |
 | L6 | DONE | PASS | Added gate in `tests/gates/test_analysis_invariants.py`; `source .venv/bin/activate && python -m pytest tests/gates/test_analysis_invariants.py::test_no_legacy_analysis_artifact_imports -v --tb=short` passed. |
 | V6 | DONE | PASS | Added `resources/demo_projects/si_bands_vasp_demo.yml`; YAML verification command printed `OK: VASP bands demo has steps ['vasp_scf', 'vasp_bandspw']`. |
 | V7 | DONE | PASS | Added `tests/daemon/test_vasp_bands_golden_daemon.py`; `source .venv/bin/activate && python -m pytest tests/daemon/test_vasp_bands_golden_daemon.py -v --tb=short -m vasp_core` passed. |
-| L4 (completion) | DONE | PASS | Fixed remaining schema/import-gate fallout: added `pseudo_sha256` + `pseudo_sha_family` to `resources/demo_projects/si_bands_vasp_demo.yml`, switched `src/quantumvitas/cli/main.py` `analyze band/dos` handlers to API-only imports, added API utility wrappers in `src/quantumvitas/api/utils.py`; `source .venv/bin/activate && python -m pytest tests/unit/test_demo_schema_validation.py tests/gates/test_import_rules.py tests/gates/test_import_gate.py -v --tb=short -n auto --dist=loadfile` passed (`116 passed, 2 skipped`). |
+| L4 (completion) | DONE | PASS | Fixed remaining schema/import-gate fallout: added `pseudo_sha256` + `pseudo_sha_family` to `resources/demo_projects/si_bands_vasp_demo.yml`, switched `src/qmatsuite/cli/main.py` `analyze band/dos` handlers to API-only imports, added API utility wrappers in `src/qmatsuite/api/utils.py`; `source .venv/bin/activate && python -m pytest tests/unit/test_demo_schema_validation.py tests/gates/test_import_rules.py tests/gates/test_import_gate.py -v --tb=short -n auto --dist=loadfile` passed (`116 passed, 2 skipped`). |
 | FINAL | DONE | PASS | Mandated full-suite verification run completed with parallel mode: `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile` -> `4584 passed, 19 skipped` (includes `tests/daemon/test_si_bands_golden_daemon.py` and `tests/daemon/test_vasp_bands_golden_daemon.py`). |

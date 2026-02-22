@@ -12,12 +12,12 @@ import shutil
 
 import pytest
 
-from quantumvitas.analysis.parsers import (
+from qmatsuite.analysis.parsers import (
     parse_scf_output,
     parse_dos_data,
     parse_bands_gnu,
 )
-from quantumvitas.analysis.plotting import (
+from qmatsuite.analysis.plotting import (
     plot_dos,
     plot_bands,
     plot_scf_convergence,
@@ -27,7 +27,7 @@ from quantumvitas.analysis.plotting import (
 # Test data directory
 TEST_DATA_DIR = Path(__file__).parent.parent / "data"
 # Output directory for generated plots
-from quantumvitas.core.paths import tmp_runs_dir
+from qmatsuite.core.paths import tmp_runs_dir
 PLOT_OUTPUT_DIR = tmp_runs_dir() / "matplotlib_tests"
 
 

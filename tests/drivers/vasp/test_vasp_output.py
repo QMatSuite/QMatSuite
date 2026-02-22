@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.vasp.parsers.output import VASPDigest, VASPOutputParser
+from qmatsuite.drivers.vasp.parsers.output import VASPDigest, VASPOutputParser
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -282,7 +282,7 @@ class TestVASPOutputParser:
 
     def test_parser_registry_lookup(self):
         """VASPOutputParser is registered and findable."""
-        from quantumvitas.parsers.registry import get_parser
+        from qmatsuite.parsers.registry import get_parser
         cls = get_parser("vasp", "scf_digest")
         assert cls is VASPOutputParser
 

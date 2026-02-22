@@ -11,7 +11,7 @@
 QMCPACK integration into QMatSuite follows the plug-in driver pattern defined
 by `ENGINE_RECIPE_AND_RUNNER_CONSTITUTION.md`. The integration requires:
 
-1. A new driver bundle at `src/quantumvitas/drivers/qmcpack/`
+1. A new driver bundle at `src/qmatsuite/drivers/qmcpack/`
 2. Three new GEN steps added to `GenStepRegistry` (**kernel change**)
 3. A new recipe archetype: **Multi-Section Recipe** (variant of Directory-state)
 4. A QMCPACK-specific pseudopotential assets map in `calculation.yaml`
@@ -34,7 +34,7 @@ GEN steps. `scf` is inappropriate because QMC is not self-consistent-field.
 violate the spirit of the GEN/SPEC system.
 
 **Files modified outside `drivers/`**:
-- `src/quantumvitas/workflow/gen_steps.py` — add `"vmc"`, `"dmc"`, `"wfopt"` to `GEN_STEPS` frozenset
+- `src/qmatsuite/workflow/gen_steps.py` — add `"vmc"`, `"dmc"`, `"wfopt"` to `GEN_STEPS` frozenset
 
 This is the **only kernel file** that needs modification.
 
@@ -43,7 +43,7 @@ This is the **only kernel file** that needs modification.
 ## 1. Driver Bundle Structure
 
 ```
-src/quantumvitas/drivers/qmcpack/
+src/qmatsuite/drivers/qmcpack/
 ├── __init__.py          # DriverRegistry.register(QMCPACKDriver())
 ├── driver.py            # QMCPACKDriver (PREFIX + SUPPORTED_GEN_STEPS + 7 MUST methods)
 ├── handler.py           # qmcpack_step_handler()
@@ -445,8 +445,8 @@ The temporary `qmcpack_parser.py` provides the starting implementation:
 ### 8.1 Driver Registration
 
 ```python
-# src/quantumvitas/drivers/qmcpack/__init__.py
-from quantumvitas.core.driver_registry import DriverRegistry
+# src/qmatsuite/drivers/qmcpack/__init__.py
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import QMCPACKDriver
 
 DriverRegistry.register(QMCPACKDriver())
@@ -454,10 +454,10 @@ DriverRegistry.register(QMCPACKDriver())
 
 ### 8.2 Import Chain
 
-Add to `src/quantumvitas/drivers/__init__.py`:
+Add to `src/qmatsuite/drivers/__init__.py`:
 
 ```python
-from quantumvitas.drivers import (
+from qmatsuite.drivers import (
     qe,
     vasp,
     lammps,
@@ -476,7 +476,7 @@ from quantumvitas.drivers import (
 ### 9.1 Change
 
 ```python
-# src/quantumvitas/workflow/gen_steps.py
+# src/qmatsuite/workflow/gen_steps.py
 GEN_STEPS: FrozenSet[str] = frozenset({
     # ... existing steps ...
     # QMC methods
@@ -697,25 +697,25 @@ These tests use `@pytest.mark.qmcpack` and skip if the binary is not available.
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/workflow/gen_steps.py` | Add `"vmc"`, `"dmc"`, `"wfopt"` to `GEN_STEPS` |
+| `src/qmatsuite/workflow/gen_steps.py` | Add `"vmc"`, `"dmc"`, `"wfopt"` to `GEN_STEPS` |
 
 ### New Files (driver bundle)
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/drivers/qmcpack/__init__.py` | Registration |
-| `src/quantumvitas/drivers/qmcpack/driver.py` | Driver class |
-| `src/quantumvitas/drivers/qmcpack/handler.py` | Step handler |
-| `src/quantumvitas/drivers/qmcpack/recipe.py` | Recipe class |
-| `src/quantumvitas/drivers/qmcpack/writer.py` | XML writer |
-| `src/quantumvitas/drivers/qmcpack/parser.py` | Output parser |
-| `src/quantumvitas/drivers/qmcpack/pseudo_map.py` | Pseudo utilities |
+| `src/qmatsuite/drivers/qmcpack/__init__.py` | Registration |
+| `src/qmatsuite/drivers/qmcpack/driver.py` | Driver class |
+| `src/qmatsuite/drivers/qmcpack/handler.py` | Step handler |
+| `src/qmatsuite/drivers/qmcpack/recipe.py` | Recipe class |
+| `src/qmatsuite/drivers/qmcpack/writer.py` | XML writer |
+| `src/qmatsuite/drivers/qmcpack/parser.py` | Output parser |
+| `src/qmatsuite/drivers/qmcpack/pseudo_map.py` | Pseudo utilities |
 
 ### Modified Files (non-kernel)
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/drivers/__init__.py` | Add `qmcpack` import |
+| `src/qmatsuite/drivers/__init__.py` | Add `qmcpack` import |
 
 ### Test Files
 

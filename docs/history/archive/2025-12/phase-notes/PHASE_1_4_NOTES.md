@@ -49,7 +49,7 @@ const loadParameters = useCallback(async (module: string, section: string) => {
   // Create new load promise...
   // Mark as loaded on success
   // Remove from in-flight in finally
-}, [qv]);
+}, [qms]);
 ```
 
 ### Fix 2: Stable useEffect Dependencies

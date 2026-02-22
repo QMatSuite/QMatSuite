@@ -75,7 +75,7 @@ These tests were intentionally skipped placeholders for **deprecated legacy func
 **Solution:** Added Materials Project OPTIMADE as primary endpoint
 
 **Files Modified:**
-- `src/quantumvitas/io/online_search.py`
+- `src/qmatsuite/io/online_search.py`
 - `tests/integration/test_optimade_live.py`
 
 **Changes:**

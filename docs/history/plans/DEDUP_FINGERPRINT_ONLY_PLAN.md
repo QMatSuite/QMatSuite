@@ -28,7 +28,7 @@ if existing_fingerprint == fingerprint:
     existing_fingerprint_id = struct_meta.get("id")
     if existing_fingerprint_id:
         # Verify with semantic equality as belt-and-suspenders
-        from quantumvitas.core.structure_fingerprint import structures_semantically_equal
+        from qmatsuite.core.structure_fingerprint import structures_semantically_equal
         from pymatgen.core import Structure as PMGStructure
         
         existing_structure = read_structure(struct_file)
@@ -39,7 +39,7 @@ if existing_fingerprint == fingerprint:
         
         if is_semantic_match:
             # Reuse existing structure
-            from quantumvitas.core.resolution import require_structure
+            from qmatsuite.core.resolution import require_structure
             resolved = require_structure(...)
             return resolved
 ```
@@ -50,7 +50,7 @@ if existing_fingerprint == fingerprint:
     existing_fingerprint_id = struct_meta.get("id")
     if existing_fingerprint_id:
         # Fingerprint match is sufficient for dedup (no secondary check)
-        from quantumvitas.core.resolution import require_structure
+        from qmatsuite.core.resolution import require_structure
         resolved = require_structure(
             project_root, existing_fingerprint_id, config=config, index=index
         )
@@ -68,7 +68,7 @@ if existing_fingerprint == fingerprint:
 
 **Current code** (lines 5868-5892):
 ```python
-from quantumvitas.core.structure_fingerprint import structure_fingerprint, structures_semantically_equal
+from qmatsuite.core.structure_fingerprint import structure_fingerprint, structures_semantically_equal
 fingerprint = structure_fingerprint(structure)
 
 # ... loop ...
@@ -84,7 +84,7 @@ if existing_fingerprint == fingerprint:
 
 **Replace with** (fingerprint-only):
 ```python
-from quantumvitas.core.structure_fingerprint import structure_fingerprint
+from qmatsuite.core.structure_fingerprint import structure_fingerprint
 fingerprint = structure_fingerprint(structure)
 
 # ... loop ...
@@ -149,7 +149,7 @@ Verify these tests exist (or add if missing). They should be in `tests/unit/test
 ```python
 def test_import_same_structure_twice_returns_same_id(tmp_path):
     """Importing the same structure twice should return the same resource."""
-    project_root = QVService.init_project(tmp_path / "proj")
+    project_root = QMSService.init_project(tmp_path / "proj")
     
     # Create a simple structure
     lattice = Lattice.cubic(5.43)
@@ -158,8 +158,8 @@ def test_import_same_structure_twice_returns_same_id(tmp_path):
     structure = Structure(lattice, species, coords)
     
     # Import twice
-    result1 = QVService.import_structure(project_root, structure)
-    result2 = QVService.import_structure(project_root, structure, dedup_by_fingerprint=True)
+    result1 = QMSService.import_structure(project_root, structure)
+    result2 = QMSService.import_structure(project_root, structure, dedup_by_fingerprint=True)
     
     # Should return same resource ID
     assert result1.id == result2.id
@@ -170,7 +170,7 @@ def test_import_same_structure_twice_returns_same_id(tmp_path):
 ```python
 def test_import_structure_small_noise_dedup(tmp_path):
     """Small noise within tolerance should return same resource (dedup works)."""
-    project_root = QVService.init_project(tmp_path / "proj")
+    project_root = QMSService.init_project(tmp_path / "proj")
     
     # Create base structure
     lattice = Lattice.cubic(5.43)
@@ -183,8 +183,8 @@ def test_import_structure_small_noise_dedup(tmp_path):
     coords_noisy = [[0.0001, 0.0001, 0.0001], [0.2501, 0.2501, 0.2501]]
     structure2 = Structure(lattice, species, coords_noisy)
     
-    result1 = QVService.import_structure(project_root, structure1)
-    result2 = QVService.import_structure(project_root, structure2, dedup_by_fingerprint=True)
+    result1 = QMSService.import_structure(project_root, structure1)
+    result2 = QMSService.import_structure(project_root, structure2, dedup_by_fingerprint=True)
     
     # Should return same resource (noise absorbed by quantization)
     assert result1.id == result2.id
@@ -195,7 +195,7 @@ def test_import_structure_small_noise_dedup(tmp_path):
 ```python
 def test_import_different_structure_creates_new(tmp_path):
     """Significantly different structure should create new resource."""
-    project_root = QVService.init_project(tmp_path / "proj")
+    project_root = QMSService.init_project(tmp_path / "proj")
     
     # Create two different structures
     lattice = Lattice.cubic(5.43)
@@ -206,14 +206,14 @@ def test_import_different_structure_creates_new(tmp_path):
     structure1 = Structure(lattice, species, coords1)
     structure2 = Structure(lattice, species, coords2)
     
-    result1 = QVService.import_structure(project_root, structure1)
-    result2 = QVService.import_structure(project_root, structure2, dedup_by_fingerprint=True)
+    result1 = QMSService.import_structure(project_root, structure1)
+    result2 = QMSService.import_structure(project_root, structure2, dedup_by_fingerprint=True)
     
     # Should create different resources
     assert result1.id != result2.id
 ```
 
-If these tests already exist (check `TestQVServiceDedup` or `TestImportStructureUnifiedFingerprint` classes), verify they pass without the legacy functions.
+If these tests already exist (check `TestQMSServiceDedup` or `TestImportStructureUnifiedFingerprint` classes), verify they pass without the legacy functions.
 
 ---
 
@@ -221,7 +221,7 @@ If these tests already exist (check `TestQVServiceDedup` or `TestImportStructure
 
 ### D.1 Delete from `structure_fingerprint.py`
 
-**File**: `src/quantumvitas/core/structure_fingerprint.py`
+**File**: `src/qmatsuite/core/structure_fingerprint.py`
 
 1. **Delete `canonicalize_structure_for_identity()`** (lines 33-82)
 2. **Delete `structures_semantically_equal()`** (lines 318-384)
@@ -302,13 +302,13 @@ Review the changes to ensure:
 
 | Step | Task | File(s) |
 |------|------|---------|
-| A.1 | Remove semantic check from `import_structure()` | `src/quantumvitas/api.py` |
-| A.2 | Remove semantic check from `import_from_qe_directory()` | `src/quantumvitas/api.py` |
+| A.1 | Remove semantic check from `import_structure()` | `src/qmatsuite/api.py` |
+| A.2 | Remove semantic check from `import_from_qe_directory()` | `src/qmatsuite/api.py` |
 | B | Verify no other production usage | grep confirmation |
 | C.1 | Delete legacy function tests | `tests/unit/test_structure_fingerprint.py` |
 | C.2 | Verify fingerprint-only dedup tests exist | `tests/unit/test_structure_fingerprint.py` |
-| D.1 | Delete `canonicalize_structure_for_identity()` | `src/quantumvitas/core/structure_fingerprint.py` |
-| D.2 | Delete `structures_semantically_equal()` | `src/quantumvitas/core/structure_fingerprint.py` |
+| D.1 | Delete `canonicalize_structure_for_identity()` | `src/qmatsuite/core/structure_fingerprint.py` |
+| D.2 | Delete `structures_semantically_equal()` | `src/qmatsuite/core/structure_fingerprint.py` |
 | E.1 | Update SPEC doc | `docs/specs/STRUCTURE_FINGERPRINT_SPEC.md` |
 | E.2 | Update SSOT review | `docs/reviews/PR_FINGERPRINT_TOL_SSOT_REVIEW.md` |
 | E.3 | Update audit doc | `docs/reviews/IMPORT_STRUCTURE_AUDIT.md` |

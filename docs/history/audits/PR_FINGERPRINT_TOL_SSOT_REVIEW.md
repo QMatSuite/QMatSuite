@@ -17,9 +17,9 @@ The PR introducing `DEFAULT_FINGERPRINT_TOL_ANG` SSOT constant and idempotency t
 ### ✅ PASS — Single Canonical Location
 
 **Evidence**:
-- **File**: `src/quantumvitas/core/structure_fingerprint.py:147`
+- **File**: `src/qmatsuite/core/structure_fingerprint.py:147`
 - **Definition**: `DEFAULT_FINGERPRINT_TOL_ANG = 1e-3  # Default tolerance in Angstrom`
-- **Default in function signature**: `src/quantumvitas/core/structure_fingerprint.py:152`
+- **Default in function signature**: `src/qmatsuite/core/structure_fingerprint.py:152`
   ```python
   def structure_like_fingerprint(
       obj: Union[PMGStructure, PMGMolecule],
@@ -44,17 +44,17 @@ No other `1e-3` constants exist in the fingerprint definition path.
 
 **Evidence**:
 ```
-src/quantumvitas/api.py:399:  from quantumvitas.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
-src/quantumvitas/api.py:404:  fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
-src/quantumvitas/api.py:441:  from quantumvitas.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
-src/quantumvitas/api.py:449:  fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
-src/quantumvitas/execution/executor.py:47:   from quantumvitas.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
-src/quantumvitas/execution/executor.py:751:  effective_structure_sha = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
+src/qmatsuite/api.py:399:  from qmatsuite.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
+src/qmatsuite/api.py:404:  fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
+src/qmatsuite/api.py:441:  from qmatsuite.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
+src/qmatsuite/api.py:449:  fingerprint = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
+src/qmatsuite/execution/executor.py:47:   from qmatsuite.core.structure_fingerprint import structure_like_fingerprint, DEFAULT_FINGERPRINT_TOL_ANG
+src/qmatsuite/execution/executor.py:751:  effective_structure_sha = structure_like_fingerprint(structure, tol_ang=DEFAULT_FINGERPRINT_TOL_ANG)
 ```
 
 ### ✅ PASS — `relax_artifacts` does NOT compute fingerprint
 
-**Evidence**: Grep of `src/quantumvitas/execution/relax_artifacts.py` for `fingerprint` returns no matches.
+**Evidence**: Grep of `src/qmatsuite/execution/relax_artifacts.py` for `fingerprint` returns no matches.
 
 Fingerprint is computed only:
 1. At import time (`api.import_structure`)
@@ -68,8 +68,8 @@ Fingerprint is computed only:
 
 **Evidence** (grep for `1e-3` in `src/`):
 ```
-src/quantumvitas/core/structure_fingerprint.py:147:DEFAULT_FINGERPRINT_TOL_ANG = 1e-3  # Definition
-src/quantumvitas/core/structure_fingerprint.py:173:... (default 1e-3)  # Docstring only
+src/qmatsuite/core/structure_fingerprint.py:147:DEFAULT_FINGERPRINT_TOL_ANG = 1e-3  # Definition
+src/qmatsuite/core/structure_fingerprint.py:173:... (default 1e-3)  # Docstring only
 ```
 
 All other occurrences of `1e-3` are in documentation or the SSOT definition itself.

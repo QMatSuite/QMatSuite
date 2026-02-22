@@ -6,9 +6,9 @@ import pytest
 import yaml
 import json
 from pathlib import Path
-from quantumvitas.api import QVService
-from quantumvitas.calculation.structure_steps import StructureStepSpec
-from quantumvitas.core.resources import meta_from_name, generate_resource_id
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.structure_steps import StructureStepSpec
+from qmatsuite.core.resources import meta_from_name, generate_resource_id
 
 
 def test_save_relax_structure_ulidempotency(tmp_path: Path):
@@ -36,13 +36,13 @@ def test_save_relax_structure_ulidempotency(tmp_path: Path):
         "structures": [],
         "calculations": [],
     }
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(project_config))
     
     # Create a parent structure
     parent_structure_ulid = generate_resource_id()
     parent_structure_path = project_root / "structures" / "si-bulk.json"
     parent_structure_data = {
-        "__qv_meta__": {
+        "__qms_meta__": {
             "ulid": parent_structure_ulid,
             "name": "Si bulk",
             "slug": "si-bulk",
@@ -67,7 +67,7 @@ def test_save_relax_structure_ulidempotency(tmp_path: Path):
     }
     parent_structure_path.write_text(json.dumps(parent_structure_data, indent=2))
     project_config["structures"].append({"structure_ulid": parent_structure_ulid})
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(project_config))
     
     # Create a calculation with a relax step
     calc_id = generate_resource_id()
@@ -116,7 +116,7 @@ def test_save_relax_structure_ulidempotency(tmp_path: Path):
             "kind": "calculation",
         }
     })
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(project_config))
     
     # Create mock output file with final coordinates
     raw_dir = calc_dir / "raw"
@@ -137,7 +137,7 @@ End final coordinates
 """)
     
     # First call: should create structure
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     result1 = svc.structure.save_relax_final_structure(
         calculation_selector="relax-test",
         step_selector=step_id,
@@ -158,7 +158,7 @@ End final coordinates
     new_structure_file = project_root / "structures" / "relaxed.json"
     assert new_structure_file.exists()
     new_structure_data = json.loads(new_structure_file.read_text())
-    assert new_structure_data["__qv_meta__"]["ulid"] == structure_ulid_1
+    assert new_structure_data["__qms_meta__"]["ulid"] == structure_ulid_1
     
     # Verify step YAML was updated with produced_structure_ulid
     step_data = yaml.safe_load(step_path.read_text())

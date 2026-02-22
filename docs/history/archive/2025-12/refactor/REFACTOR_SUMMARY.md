@@ -13,7 +13,7 @@ Refactored the Calculations view into a "Calculation Studio" with a three-column
    - Left column: Calculation list (existing `CalculationListPanel`)
    - Middle column: Calculation detail with tabs (existing `CalculationDetailPanel`)
    - Right column: Step detail (existing `StepDetailPanel`, shown when step is selected)
-   - Updated localStorage keys: `qv-calculation-detail-width`, `qv-step-detail-width`
+   - Updated localStorage keys: `qms-calculation-detail-width`, `qms-step-detail-width`
 
 2. **`gui/src/App.css`**
    - Updated `.calculations-view` CSS for three-column layout
@@ -149,13 +149,13 @@ calculations-view (flex row)
 
 - Tab state (`activeTab`) is local to `CalculationDetailPanel`
 - Job filtering in `CalculationRunPanel` uses `useJobs` hook with calculation filter
-- Analysis data loading in `CalculationAnalysisPanel` uses `useQVClient` hook
+- Analysis data loading in `CalculationAnalysisPanel` uses `useQMSClient` hook
 - All existing state in `App.tsx` preserved (selected calculation, selected step, etc.)
 
 ### Data Flow
 
 - **Jobs**: `useJobs({ projectRoot })` → filter by `calculation.slug` → display in `CalculationRunPanel`
-- **Analysis**: `qv.call('get_scf_convergence'|'get_dos_data'|'get_band_structure_data')` → display in `CalculationAnalysisPanel`
+- **Analysis**: `qms.call('get_scf_convergence'|'get_dos_data'|'get_band_structure_data')` → display in `CalculationAnalysisPanel`
 - **Steps**: Existing flow unchanged (ULID-based selection from `calculation.yaml`)
 
 ## Testing Notes

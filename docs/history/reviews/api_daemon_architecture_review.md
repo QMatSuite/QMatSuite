@@ -2,7 +2,7 @@
 
 **Date**: 2026-02-14
 **Purpose**: Final closeout review before API surface freeze and comprehensive test addition.
-**Scope**: API layer (`quantumvitas.api`), Daemon/RPC layer (`quantumvitas.daemon`), CLI layer (`quantumvitas.cli`).
+**Scope**: API layer (`qmatsuite.api`), Daemon/RPC layer (`qmatsuite.daemon`), CLI layer (`qmatsuite.cli`).
 **Status**: READ-ONLY AUDIT — no code modifications.
 
 ---
@@ -13,8 +13,8 @@
 
 | Metric | Count |
 |--------|-------|
-| **Total API methods (QVService, all depths)** | **117** |
-| API methods at depth 0 (directly on QVService) | 23 |
+| **Total API methods (QMSService, all depths)** | **117** |
+| API methods at depth 0 (directly on QMSService) | 23 |
 | API methods at depth 1 (on sub-objects) | 94 |
 | API utility functions (api.utils) | ~65 |
 | DTO types | 18 |
@@ -35,7 +35,7 @@
 - Zero kernel imports from daemon or CLI (gate-tested)
 - Clean DTO boundary — kernel objects never leaked
 - Exception mapping centralized in `_mapping/exc_mapping.py`
-- CLI properly uses only `quantumvitas.api.*` imports
+- CLI properly uses only `qmatsuite.api.*` imports
 - 65 gate tests enforce architectural invariants
 
 **Concerning:**
@@ -49,7 +49,7 @@
 
 ## 2. Complete API Method Enumeration (Phase 1, Step 1.1)
 
-### 2.1 QVService Direct Methods (Depth 0) — 23 methods
+### 2.1 QMSService Direct Methods (Depth 0) — 23 methods
 
 | # | Method | Signature | Purpose | Called by |
 |---|--------|-----------|---------|----------|
@@ -216,7 +216,7 @@
 
 ### 2.10 api.utils Standalone Functions — ~65 functions
 
-These are not on QVService but are importable from `quantumvitas.api.utils`:
+These are not on QMSService but are importable from `qmatsuite.api.utils`:
 
 **Resource utilities (20):** `slugify`, `meta_from_name`, `ensure_relative_path`, `read_structure`, `write_structure`, `generate_unique_name_and_slug`, `list_calculation_templates`, `copy_calculation_template`, `copy_structure_template`, `extract_selector_from_entry`, `entry_display_name`, `move_to_trash`, `entry_matches`, `detect_runtime_control_keys`, `needs_alat_preservation`, `extract_alat_bohr`, `is_ulid_like`, `validate_ulid`, `calculations_using_structure`, `load_calculation`, `save_calculation`
 
@@ -402,8 +402,8 @@ These are not on QVService but are importable from `quantumvitas.api.utils`:
 ### Opportunity 8: Group pseudo statics under sub-object
 
 - **Methods involved:** #11-24 (14 depth-0 static methods for pseudo/library management)
-- **Current state:** 14 static methods directly on QVService.
-- **Proposed change:** Create `QVService.Pseudo` sub-object (like Structure, Calculation, etc.). Move all 14 methods there.
+- **Current state:** 14 static methods directly on QMSService.
+- **Proposed change:** Create `QMSService.Pseudo` sub-object (like Structure, Calculation, etc.). Move all 14 methods there.
 - **Rationale:** These are a coherent capability group. Having them at depth 0 clutters the top-level API.
 - **Risk/complexity:** Medium. Many daemon and CLI call sites to update.
 - **Blocked by:** Nothing, but coordination needed.
@@ -529,7 +529,7 @@ These are not on QVService but are importable from `quantumvitas.api.utils`:
 
 - **Methods involved:** utils `write_qe_input_file`, `build_step_spec_from_qe_input`, `apply_card_overrides_to_qe_input`, `apply_species_overrides_to_qe_input`
 - **Current state:** 4 QE-specific functions in the engine-agnostic API utils.
-- **Proposed change:** Move to `quantumvitas.api.qe_io` module (already exists for QECardType/QEInputParser).
+- **Proposed change:** Move to `qmatsuite.api.qe_io` module (already exists for QECardType/QEInputParser).
 - **Rationale:** QE-specific code should not be in generic utils.
 - **Risk/complexity:** Low. Already have the module.
 - **Blocked by:** Nothing.
@@ -638,10 +638,10 @@ svc.history.method()
 
 ```python
 # Step 1: Load demo
-project = QVService.create_demo_project("si_scf", target_dir)  # API ✓
+project = QMSService.create_demo_project("si_scf", target_dir)  # API ✓
 
 # Step 2: Open project
-svc = QVService(project_root)  # API ✓
+svc = QMSService(project_root)  # API ✓
 
 # Step 3: List calculations
 calcs = svc.calculation.list()  # API ✓
@@ -653,7 +653,7 @@ result = svc.run.run_calculation(calc_selector)  # API ✓
 analysis = svc.analysis.get_analysis(run_ulid, "scf_convergence")  # API ✓
 
 # Step 6: Plot (via utils)
-from quantumvitas.api.utils import parse_scf_output, plot_scf_convergence, save_figure
+from qmatsuite.api.utils import parse_scf_output, plot_scf_convergence, save_figure
 scf = parse_scf_output(output_file)  # API utils ✓
 fig = plot_scf_convergence(scf)  # API utils ✓
 save_figure(fig, "convergence.png")  # API utils ✓
@@ -665,10 +665,10 @@ save_figure(fig, "convergence.png")  # API utils ✓
 
 ```python
 # Step 1: Create project
-QVService.init_project(target_dir, "my_project")  # API ✓
+QMSService.init_project(target_dir, "my_project")  # API ✓
 
 # Step 2: Open project
-svc = QVService(project_root)  # API ✓
+svc = QMSService(project_root)  # API ✓
 
 # Step 3: Import structure (local file)
 struct = svc.structure.import_file("POSCAR")  # API ✓
@@ -736,7 +736,7 @@ analysis = svc.analysis.get_analysis(run_ulid, "scf_convergence")  # API ✓
 | 6 | `set_qe_engine` | Set QE binary | `set_qe_engine(bin_dir)` | No |
 | 7 | `set_log_level` | Set daemon log level | None | Daemon-only config |
 | 8 | `set_debug_resolution` | Toggle debug resolution | `set_settings(...)` | Thin wrapper |
-| 9 | `get_debug_resolution` | Get debug resolution state | `QVService.get_settings()` | Thin wrapper |
+| 9 | `get_debug_resolution` | Get debug resolution state | `QMSService.get_settings()` | Thin wrapper |
 
 ### Generic Engine (5)
 
@@ -755,28 +755,28 @@ analysis = svc.analysis.get_analysis(run_ulid, "scf_convergence")  # API ✓
 | 15 | `get_pseudo_config` | Get pseudo config | `get_pseudo_status_bundle()["config"]` | No |
 | 16 | `set_pseudo_config` | Set pseudo config | `set_pseudo_config(...)` | No |
 | 17 | `validate_pseudo_config` | Validate pseudo config | `get_pseudo_status_bundle()["validation"]` | No |
-| 18 | `init_pseudo_dirs` | Init pseudo dirs | `QVService.init_pseudo_dirs()` | No |
-| 19 | `install_seed_to_store` | Install SSSP from seed | `QVService.install_sssp_from_seed()` | Conditional branching |
+| 18 | `init_pseudo_dirs` | Init pseudo dirs | `QMSService.init_pseudo_dirs()` | No |
+| 19 | `install_seed_to_store` | Install SSSP from seed | `QMSService.install_sssp_from_seed()` | Conditional branching |
 | 20 | `list_installed_sssp` | List installed SSSP | `get_pseudo_status_bundle()["installed_sssp"]` | Wraps in dict |
 | 21 | `list_seed_archives` | List seed archives | `get_pseudo_status_bundle()["seed_archives"]` | Wraps in dict |
-| 22 | `download_sssp_library` | Download SSSP | `QVService.download_sssp_library()` | Config extraction + refresh |
-| 23 | `download_all_sssp` | Download all SSSP | `QVService.download_all_sssp()` | Config extraction + refresh |
+| 22 | `download_sssp_library` | Download SSSP | `QMSService.download_sssp_library()` | Config extraction + refresh |
+| 23 | `download_all_sssp` | Download all SSSP | `QMSService.download_all_sssp()` | Config extraction + refresh |
 | 24 | `resolve_project_pseudo_provenance` | Resolve pseudo provenance | `resolve_pseudo_provenance()` | Path resolution |
-| 25 | `import_seed_archives` | Import seed archives | `QVService.import_seed_archives()` | Path conversion |
+| 25 | `import_seed_archives` | Import seed archives | `QMSService.import_seed_archives()` | Path conversion |
 | 26 | `list_pseudo_archives_status` | Archive status | `get_pseudo_status_bundle()` | **YES: builds grouped_by_library** |
-| 27 | `install_pseudo_archive` | Install archive | `QVService.install_pseudo_archive()` | **YES: manifest lookup + dedup** |
+| 27 | `install_pseudo_archive` | Install archive | `QMSService.install_pseudo_archive()` | **YES: manifest lookup + dedup** |
 | 28 | `analyze_project_pseudo_effects` | Analyze pseudo effects | `svc.project.analyze_pseudo_effects()` | Thin wrapper |
 
 ### Generic Library Manager (6)
 
 | # | RPC endpoint | Purpose | API call(s) | Extra logic? |
 |---|-------------|---------|-------------|--------------|
-| 29 | `list_libraries` | List pseudo libraries | `QVService.list_pseudo_libraries()` | No |
-| 30 | `get_library_status` | Get library status | `QVService.get_library_status()` | Error handling |
-| 31 | `install_library` | Install library | `QVService.install_pseudo_library()` | Thin wrapper |
-| 32 | `remove_library` | Remove library | `QVService.remove_pseudo_library()` | Thin wrapper |
-| 33 | `repair_library` | Repair library | `QVService.repair_pseudo_library()` | Thin wrapper |
-| 34 | `compute_store_size` | Compute store size | `QVService.compute_store_size()` | Thin wrapper |
+| 29 | `list_libraries` | List pseudo libraries | `QMSService.list_pseudo_libraries()` | No |
+| 30 | `get_library_status` | Get library status | `QMSService.get_library_status()` | Error handling |
+| 31 | `install_library` | Install library | `QMSService.install_pseudo_library()` | Thin wrapper |
+| 32 | `remove_library` | Remove library | `QMSService.remove_pseudo_library()` | Thin wrapper |
+| 33 | `repair_library` | Repair library | `QMSService.repair_pseudo_library()` | Thin wrapper |
+| 34 | `compute_store_size` | Compute store size | `QMSService.compute_store_size()` | Thin wrapper |
 
 ### Project/Resource Listing (5)
 
@@ -792,7 +792,7 @@ analysis = svc.analysis.get_analysis(run_ulid, "scf_convergence")  # API ✓
 
 | # | RPC endpoint | Purpose | API call(s) | Extra logic? |
 |---|-------------|---------|-------------|--------------|
-| 40 | `create_project` | Create project | `QVService.init_project()` + `svc.project.get_summary()` | Post-creation summary |
+| 40 | `create_project` | Create project | `QMSService.init_project()` + `svc.project.get_summary()` | Post-creation summary |
 | 41 | `import_structure` | Import structure file | `svc.structure.import_file()` + `svc.structure.list()` | Post-import lookup |
 
 ### Online Structure Search (5)
@@ -872,8 +872,8 @@ analysis = svc.analysis.get_analysis(run_ulid, "scf_convergence")  # API ✓
 | # | RPC endpoint | Purpose | API call(s) | Extra logic? |
 |---|-------------|---------|-------------|--------------|
 | 84 | `preflight_check` | Pre-run checks | `svc.run.preflight()` | Optional resolution |
-| 85 | `create_demo_project` | Create demo | `QVService.create_demo_project()` | Registry rebuild |
-| 86 | `list_demo_projects` | List demos | `QVService.list_demo_projects()` | Error swallowing |
+| 85 | `create_demo_project` | Create demo | `QMSService.create_demo_project()` | Registry rebuild |
+| 86 | `list_demo_projects` | List demos | `QMSService.list_demo_projects()` | Error swallowing |
 
 ### Visualization & Analysis (11)
 
@@ -904,7 +904,7 @@ analysis = svc.analysis.get_analysis(run_ulid, "scf_convergence")  # API ✓
 |---|-------------|---------|-------------|--------------|
 | 100 | `run_calculation` | Run calculation | `svc.run.run_calculation()` via wrapper | **YES: ULID gen, step init, wrapper construction** |
 | 101 | `run_step` | Run step | `svc.run.run_step()` via wrapper | Similar to above |
-| 102 | `run_single_step` | Run standalone step | `QVService.run_single_step()` | ULID gen, cache |
+| 102 | `run_single_step` | Run standalone step | `QMSService.run_single_step()` | ULID gen, cache |
 | 103 | `get_job_status` | Job status | `job_manager.get_job_status()` | No |
 | 104 | `get_job_logs` | Job logs | `job_manager.get_job_logs()` | No |
 | 105 | `list_jobs` | List jobs | `job_manager.list_jobs()` | Path normalization |
@@ -936,7 +936,7 @@ analysis = svc.analysis.get_analysis(run_ulid, "scf_convergence")  # API ✓
 
 | # | RPC endpoint | Purpose | API call(s) | Extra logic? |
 |---|-------------|---------|-------------|--------------|
-| 119 | `list_workflow_templates` | List templates | `QVService.get_workflow_service().list_templates()` | Serialization + filter |
+| 119 | `list_workflow_templates` | List templates | `QMSService.get_workflow_service().list_templates()` | Serialization + filter |
 | 120 | `detect_workflow_for_calculation` | Detect workflow | 3 workflow service calls | **YES: coverage computation** |
 | ~~121~~ | ~~`detect_workflow`~~ (duplicate of #80) | ~~Detect workflow~~ | ~~Overridden by second registration~~ | ~~Redundant~~ |
 | 122 | `instantiate_workflow` | Instantiate workflow | `service.instantiate_workflow()` | No |
@@ -983,17 +983,17 @@ API consolidation #4. The RPC endpoints should follow.
 
 ### Direct Kernel Imports from Daemon: **ZERO**
 
-The daemon properly imports only from `quantumvitas.api` and `quantumvitas.api.utils`. Gate tests `test_import_gate.py` and `test_daemon_kernel_ban.py` enforce this continuously.
+The daemon properly imports only from `qmatsuite.api` and `qmatsuite.api.utils`. Gate tests `test_import_gate.py` and `test_daemon_kernel_ban.py` enforce this continuously.
 
 ### Boundary Smells (Not Hard Violations)
 
 | File:Line | What | Concern |
 |-----------|------|---------|
-| `server.py:70` | `from quantumvitas.api.utils import _iter_params` | Imports private API function (leading underscore). Should be public or accessed indirectly. |
+| `server.py:70` | `from qmatsuite.api.utils import _iter_params` | Imports private API function (leading underscore). Should be public or accessed indirectly. |
 | `compat.py:~531` | `_expand_step_ulids_to_steps` | Reads `calculation.yaml` directly via `yaml.safe_load`. Should use API method. |
 | `compat.py:~272` | `_derive_step_name_from_type` | Does `stype_spec.replace("qe_", "")` — borderline prefix inference. Display-only, not dispatch. |
 | `server.py:~5713` | `_snapshot_dag(index)` | Accesses `ResourceIndex.by_id`, `.by_path` — kernel type internals via `Any` typing. |
-| `compat.py:~827` | `_shape_create_demo_project` | Instantiates `QVService` directly and calls multiple service methods. |
+| `compat.py:~827` | `_shape_create_demo_project` | Instantiates `QMSService` directly and calls multiple service methods. |
 
 ---
 
@@ -1052,7 +1052,7 @@ The daemon properly imports only from `quantumvitas.api` and `quantumvitas.api.u
 - **Location:** `server.py:1251-1364` (~110 lines)
 - **What it does:** Manifest lookup, dedup check, install, status refresh.
 - **Why it's misplaced:** Installation logic with manifest parsing is domain logic.
-- **Where it should go:** `QVService.install_pseudo_archive()` should handle manifest lookup internally.
+- **Where it should go:** `QMSService.install_pseudo_archive()` should handle manifest lookup internally.
 - **Impact:** Minor — most logic is pre/post validation.
 
 ### Misplaced Logic 8: Workflow detection for calculation (MINOR)
@@ -1067,7 +1067,7 @@ The daemon properly imports only from `quantumvitas.api` and `quantumvitas.api.u
 
 ## 12. Complete Daemon Function Enumeration (Phase 2, Step 2.5)
 
-### QVDaemon Core Methods
+### QMSDaemon Core Methods
 
 | # | Function | Purpose | Calls API? | Calls kernel? | Should exist here? |
 |---|----------|---------|------------|---------------|--------------------|
@@ -1079,7 +1079,7 @@ The daemon properly imports only from `quantumvitas.api` and `quantumvitas.api.u
 | 6 | `run()` | Main stdin/stdout loop | No | No | Yes |
 | 7 | `handle_line(line)` | Parse JSON, dispatch | No | No | Yes |
 | 8 | `handle_request(request)` | Route to handler | API errors | No | Yes |
-| 9 | `_get_svc(project_root)` | Get cached QVService | API | No | Yes |
+| 9 | `_get_svc(project_root)` | Get cached QMSService | API | No | Yes |
 | 10 | `_require_calculation_ref(...)` | Resolve calc | API | No | Yes (boundary validation) |
 | 11 | `_require_structure_ref(...)` | Resolve structure | API | No | Yes (boundary validation) |
 | 12 | `_require_step_ref(...)` | Resolve step | API | No | Yes (boundary validation) |
@@ -1189,8 +1189,8 @@ These API methods are ONLY used by the daemon (never by CLI or internal API code
 | `svc.structure.get_vis_data()` | Daemon-only. Could be useful for Jupyter notebooks. |
 | `svc.calculation.get_detail()` | Daemon-only. Rich detail view. CLI uses `get` + manual enrichment. |
 | `svc.calculation.set_structure()` | Daemon-only. CLI uses `update_steps_structure`. |
-| `QVService.get_settings()` | Daemon-only. |
-| `QVService.get_workflow_service()` | Daemon-only. |
+| `QMSService.get_settings()` | Daemon-only. |
+| `QMSService.get_workflow_service()` | Daemon-only. |
 
 **Assessment:** These are all legitimate API methods that the daemon needs and that Jupyter users should also be able to call. No methods should be removed — the CLI should consider using more of them.
 
@@ -1272,19 +1272,19 @@ These API methods are ONLY used by the daemon (never by CLI or internal API code
 
 | File | Lines | Role |
 |------|-------|------|
-| `src/quantumvitas/api/service.py` | 8,610 | API service class |
-| `src/quantumvitas/api/utils.py` | 2,262 | API utility functions |
-| `src/quantumvitas/daemon/server.py` | 6,409 | Daemon RPC server |
-| `src/quantumvitas/daemon/compat.py` | 1,011 | v0 GUI compat layer |
-| `src/quantumvitas/daemon/jobs.py` | 707 | Job manager |
-| `src/quantumvitas/cli/main.py` | 5,374 | CLI commands |
+| `src/qmatsuite/api/service.py` | 8,610 | API service class |
+| `src/qmatsuite/api/utils.py` | 2,262 | API utility functions |
+| `src/qmatsuite/daemon/server.py` | 6,409 | Daemon RPC server |
+| `src/qmatsuite/daemon/compat.py` | 1,011 | v0 GUI compat layer |
+| `src/qmatsuite/daemon/jobs.py` | 707 | Job manager |
+| `src/qmatsuite/cli/main.py` | 5,374 | CLI commands |
 | **Total** | **24,373** | |
 
 ## Appendix B: Gate Tests Enforcing Architecture
 
 | Gate | What it enforces |
 |------|-----------------|
-| `test_import_gate.py` | CLI/daemon import only from `quantumvitas.api.*` |
+| `test_import_gate.py` | CLI/daemon import only from `qmatsuite.api.*` |
 | `test_daemon_kernel_ban.py` | Daemon zero kernel imports (comprehensive) |
 | `test_kernel_no_api_import.py` | Kernel does not import from API (Law K0) |
 | `test_kernel_no_frontend_import.py` | Kernel does not import from CLI/daemon |

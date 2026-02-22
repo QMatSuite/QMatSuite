@@ -59,7 +59,7 @@ These are explicitly external GitHub Actions references and must remain unchange
   - Contains: URLs with `github.com` and other external references
   - **Reason**: External third-party lockfile - URLs must remain unchanged
 
-- **`src/quantumvitas/data/qe_module_parameters*.json`**
+- **`src/qmatsuite/data/qe_module_parameters*.json`**
   - Contains: External GitHub URLs
   - **Reason**: External URL references
 

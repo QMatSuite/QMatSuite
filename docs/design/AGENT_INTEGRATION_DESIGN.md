@@ -184,7 +184,7 @@ QMatSuite cooperates with context management through three mechanisms:
 
 The "intelligent researcher" model is not marketing. It has three concrete engineering consequences:
 
-First, it determines tool granularity. Tools match the actions a researcher would take, not the internal API structure of QMatSuite. A researcher does not "call `QVService.Calculation.update_step_params` with a nested dict of SYSTEM parameters." A researcher "sets the cutoff energy to 520 eV for this VASP calculation."
+First, it determines tool granularity. Tools match the actions a researcher would take, not the internal API structure of QMatSuite. A researcher does not "call `QMSService.Calculation.update_step_params` with a nested dict of SYSTEM parameters." A researcher "sets the cutoff energy to 520 eV for this VASP calculation."
 
 Second, it determines error handling strategy. A researcher encountering a failed SCF does not need a stack trace. They need a diagnosis: "Energy oscillating, likely charge sloshing. Try reducing mixing_beta from 0.7 to 0.3." QMatSuite's error returns are structured diagnostics with actionable suggestions, not exception dumps.
 
@@ -216,7 +216,7 @@ Third, it determines the memory architecture. A researcher's expertise grows ove
 |  |Discovery|Configure |Execution |Analysis          ||
 |  |Tools    |Tools     |Tools     |Tools             ||
 |  +--------+----------+-----------+------------------+|
-|  |          QVService (API facade / ABI)             ||
+|  |          QMSService (API facade / ABI)             ||
 |  |  .calculation  .structure  .analysis  .run        ||
 |  |  .project      .history    .pseudo    .online     ||
 |  +--------------------------------------------------+|
@@ -240,53 +240,53 @@ Third, it determines the memory architecture. A researcher's expertise grows ove
 
 ### 3.2 MCP as Equal Frontend
 
-**QMatSuite's API facade (`QVService`) is the ABI. ALL frontends are equal consumers:**
+**QMatSuite's API facade (`QMSService`) is the ABI. ALL frontends are equal consumers:**
 
 ```
 GUI (Electron)  ─┐
 CLI              ─┤
-MCP Server       ─┼── QVService (API facade / ABI) ── Core Kernel
+MCP Server       ─┼── QMSService (API facade / ABI) ── Core Kernel
 Daemon           ─┤
 Jupyter (future) ─┘
 ```
 
 **Rules:**
 
-- MCP server MUST NOT call any core kernel code directly. Everything goes through `QVService`.
-- If MCP needs a capability that `QVService` doesn't expose, the correct action is to ADD a method to `QVService`, not to hack around it in MCP.
+- MCP server MUST NOT call any core kernel code directly. Everything goes through `QMSService`.
+- If MCP needs a capability that `QMSService` doesn't expose, the correct action is to ADD a method to `QMSService`, not to hack around it in MCP.
 - DTO structures and error types should be designed to serve ALL frontends. If MCP needs richer error diagnostics (e.g., `suggested_fixes`), this should be added to the core `ErrorDTO`, benefiting GUI and CLI too.
 - During MCP development, if the existing API/DTO/error hierarchy is insufficient, **propose core refactors rather than MCP-layer workarounds**. MCP development is expected to drive improvements to the core API.
 
-This principle ensures that every capability exposed to the AI agent is also available to the GUI and CLI. No frontend gets special treatment. The MCP server is architecturally identical to the Electron GUI: a thin adapter translating protocol-specific messages into `QVService` calls.
+This principle ensures that every capability exposed to the AI agent is also available to the GUI and CLI. No frontend gets special treatment. The MCP server is architecturally identical to the Electron GUI: a thin adapter translating protocol-specific messages into `QMSService` calls.
 
 ### 3.3 Layer Mapping to Code
 
 **MCP Server Layer** (new code):
-- `src/quantumvitas/mcp/server.py` — FastMCP server definition, tool registration
-- `src/quantumvitas/mcp/tools/` — Tool implementations organized by category
-- `src/quantumvitas/mcp/returns.py` — Standard return envelope, context hints
-- `src/quantumvitas/mcp/apps/` — MCP App HTML/JS for interactive visualization
+- `src/qmatsuite/mcp/server.py` — FastMCP server definition, tool registration
+- `src/qmatsuite/mcp/tools/` — Tool implementations organized by category
+- `src/qmatsuite/mcp/returns.py` — Standard return envelope, context hints
+- `src/qmatsuite/mcp/apps/` — MCP App HTML/JS for interactive visualization
 
 **API Bridge** (existing, consumed by MCP tools):
-- `src/quantumvitas/api/service.py` — `QVService` with 8 nested facades, ~100 methods
-- `src/quantumvitas/api/types/` — `CalculationDTO`, `StepDTO`, `StructureDTO`, `ErrorDTO`, etc.
-- `src/quantumvitas/api/errors.py` — `APIError` hierarchy (8 error classes with structured codes)
+- `src/qmatsuite/api/service.py` — `QMSService` with 8 nested facades, ~100 methods
+- `src/qmatsuite/api/types/` — `CalculationDTO`, `StepDTO`, `StructureDTO`, `ErrorDTO`, etc.
+- `src/qmatsuite/api/errors.py` — `APIError` hierarchy (8 error classes with structured codes)
 
 **Kernel** (existing, untouched):
-- `src/quantumvitas/core/driver_registry.py` — `DriverRegistry` singleton for engine dispatch
-- `src/quantumvitas/core/driver_protocol.py` — `EngineDriver` protocol (7-method MUST interface)
-- `src/quantumvitas/core/analysis/` — `BandStructure`, `DOS`, `Trajectory`, `Field3D` objects
-- `src/quantumvitas/presets/` — `ParamSpace` framework, compiler, detector, spaces registry
-- `src/quantumvitas/workflow/` — `StepTypeRegistry`, `WorkflowTemplate`, step type conversion
-- `src/quantumvitas/inputformat/` — `write_engine_inputs`, `parse_engine_inputs` orchestrators
+- `src/qmatsuite/core/driver_registry.py` — `DriverRegistry` singleton for engine dispatch
+- `src/qmatsuite/core/driver_protocol.py` — `EngineDriver` protocol (7-method MUST interface)
+- `src/qmatsuite/core/analysis/` — `BandStructure`, `DOS`, `Trajectory`, `Field3D` objects
+- `src/qmatsuite/presets/` — `ParamSpace` framework, compiler, detector, spaces registry
+- `src/qmatsuite/workflow/` — `StepTypeRegistry`, `WorkflowTemplate`, step type conversion
+- `src/qmatsuite/inputformat/` — `write_engine_inputs`, `parse_engine_inputs` orchestrators
 
 **Data Layer** (existing, untouched):
 - `calculations/<slug>/calculation.yaml` — Calculation SSOT (engine, structure, steps, species map)
 - `calculations/<slug>/raw/<step>.yaml` — Step SSOT (parameters, cards, kpath metadata)
 - `.provenance/` — SQLite run history + CAS content-addressable store
-- `src/quantumvitas/drivers/<engine>/data/*_tags.json` — Engine parameter metadata
+- `src/qmatsuite/drivers/<engine>/data/*_tags.json` — Engine parameter metadata
 
-The MCP server is a thin adapter layer. It translates MCP tool calls into `QVService` method calls. No kernel code is modified. No new abstractions are introduced between MCP and the existing API. This follows Argonne's "thin adapter" pattern from their science-mcps work: wrap existing mature services rather than building new ones.
+The MCP server is a thin adapter layer. It translates MCP tool calls into `QMSService` method calls. No kernel code is modified. No new abstractions are introduced between MCP and the existing API. This follows Argonne's "thin adapter" pattern from their science-mcps work: wrap existing mature services rather than building new ones.
 
 ### 3.4 Multi-Engine Workflows: Artifact Resolution
 
@@ -362,8 +362,8 @@ calc_all: [relax → scf → nscf → dos]
 
 After relax completes, the agent promotes the relaxed structure to project level via `promote_structure` (Section 5.4). The codebase provides two underlying methods:
 
-- **`QVService.Structure.promote_relax_structure()`**: Non-idempotent — creates a new project structure each time. Simple and direct.
-- **`QVService.Structure.save_relax_final_structure()`**: Idempotent — records `produced_structure_ulid` in the step YAML, so repeated calls return the same structure. Preferred when automation may retry.
+- **`QMSService.Structure.promote_relax_structure()`**: Non-idempotent — creates a new project structure each time. Simple and direct.
+- **`QMSService.Structure.save_relax_final_structure()`**: Idempotent — records `produced_structure_ulid` in the step YAML, so repeated calls return the same structure. Preferred when automation may retry.
 
 Both methods:
 1. Resolve the calculation and step (by ULID, slug, or name)
@@ -408,7 +408,7 @@ The two-layer separation serves three purposes: (1) Layer 1 provides reference i
 
 **Pattern matching.** Demos are searchable by calculation pattern — `{system_class, method, property_of_interest}` — not just by material name. A "solid + spin + PBE+U + DOS" demo is useful for *any* transition metal oxide, not just the specific material in the demo. The agent searches for matching patterns, inspects reference outputs to validate the match, then loads the demo and swaps the structure for its target material.
 
-**Loading model.** Currently QMatSuite supports loading demos as new projects via `create_demo_project()` (snapshot import). A core enhancement planned for Phase 1 is support for loading a demo as a new calculation within an existing project, adding the demo's structure to the project's structure library. Since calculations within a project are independent, this is architecturally clean and requires a new `QVService` method.
+**Loading model.** Currently QMatSuite supports loading demos as new projects via `create_demo_project()` (snapshot import). A core enhancement planned for Phase 1 is support for loading a demo as a new calculation within an existing project, adding the demo's structure to the project's structure library. Since calculations within a project are independent, this is architecturally clean and requires a new `QMSService` method.
 
 ### 3.8 Preflight Validation as Engine Plugin
 
@@ -664,7 +664,7 @@ These ~13 tools are always present in the agent's context (~3,500-4,000 tokens o
 
 **Description**: List available workflows (calculation types) for a given engine, with brief descriptions.
 
-**Maps to**: `QVService.Calculation.list_workflow_templates(engine)` via `StepTypeRegistry.get_step_type_specs(engine)` and `WorkflowTemplate` definitions
+**Maps to**: `QMSService.Calculation.list_workflow_templates(engine)` via `StepTypeRegistry.get_step_type_specs(engine)` and `WorkflowTemplate` definitions
 
 **Input Schema**:
 ```json
@@ -726,7 +726,7 @@ These ~13 tools are always present in the agent's context (~3,500-4,000 tokens o
 
 **Description**: List available presets (quality levels) for an engine+workflow combination. **Critically indicates when NO presets are available**, guiding the agent to the direct parameter-setting workflow.
 
-**Maps to**: `QVService.Calculation.get_preset_catalog(engine, workflow)` via `presets/spaces_registry.py` dimension enumeration
+**Maps to**: `QMSService.Calculation.get_preset_catalog(engine, workflow)` via `presets/spaces_registry.py` dimension enumeration
 
 **Input Schema**:
 ```json
@@ -894,7 +894,7 @@ Agent: Now I know to set EDIFF. I'll use set_parameters(calc_ulid, step=0, param
 
 **Description**: Create a calculation directory with engine, workflow template, and structure. Persists immediately to `calculation.yaml`. Returns `calc_ulid` for subsequent configuration and execution.
 
-**Maps to**: `QVService.Calculation.create()` (line ~3756 of service.py)
+**Maps to**: `QMSService.Calculation.create()` (line ~3756 of service.py)
 
 **Input Schema**:
 ```json
@@ -966,7 +966,7 @@ Agent: Now I know to set EDIFF. I'll use set_parameters(calc_ulid, step=0, param
 
 **Description**: Set engine-specific parameters on a calculation's step. Persists immediately to the step's YAML. **This is the primary configuration tool for the no-preset workflow** — how all 14 non-QE engines are configured today. Accepts the engine's native parameter namespace.
 
-**Maps to**: `QVService.Calculation.update_step_params()` (line ~3954 of service.py)
+**Maps to**: `QMSService.Calculation.update_step_params()` (line ~3954 of service.py)
 
 **Input Schema**:
 ```json
@@ -1037,7 +1037,7 @@ Agent: Now I know to set EDIFF. I'll use set_parameters(calc_ulid, step=0, param
 
 **Description**: Compile and apply preset dimensions to a calculation. Persists compiled parameters to YAML. **Only available when presets exist for the engine+workflow combination.** Returns the compiled parameters so the agent can see what was set.
 
-**Maps to**: `QVService.Calculation.apply_presets()` (line ~4694 of service.py) which invokes `presets/compiler.py:compile_presets()`
+**Maps to**: `QMSService.Calculation.apply_presets()` (line ~4694 of service.py) which invokes `presets/compiler.py:compile_presets()`
 
 **Input Schema**:
 ```json
@@ -1109,7 +1109,7 @@ Agent: Now I know to set EDIFF. I'll use set_parameters(calc_ulid, step=0, param
 
 **Description**: Read the current state of a configured calculation from YAML. Shows all parameters currently set, their provenance (preset/manual/default), the structure, and the workflow steps. Supports `dry_run` flag that materializes input files and returns the generated content WITHOUT executing.
 
-**Maps to**: `QVService.Calculation.get_detail()` (line ~4341) + `QVService.Calculation.get_step_detail()` (line ~3613) for reading current state. For `dry_run=true`, calls `write_engine_inputs()` to a temp dir and returns content.
+**Maps to**: `QMSService.Calculation.get_detail()` (line ~4341) + `QMSService.Calculation.get_step_detail()` (line ~3613) for reading current state. For `dry_run=true`, calls `write_engine_inputs()` to a temp dir and returns content.
 
 **Input Schema**:
 ```json
@@ -1232,7 +1232,7 @@ Preflight runs deterministically from QMatSuite code. The agent does not need to
 
 **Description**: Execute a configured calculation. Only runs — does not configure. The calculation must already exist (via `create_calculation`) and be configured (via `set_parameters` and/or `apply_preset`).
 
-**Maps to**: `QVService.Run.run_calculation()` (line ~6178 of service.py)
+**Maps to**: `QMSService.Run.run_calculation()` (line ~6178 of service.py)
 
 **Input Schema**:
 ```json
@@ -1277,7 +1277,7 @@ Preflight runs deterministically from QMatSuite code. The agent does not need to
 
 **Description**: Check the status of a running or completed calculation.
 
-**Maps to**: `QVService.Run.get_job_status(job_id)` via `JobManager`
+**Maps to**: `QMSService.Run.get_job_status(job_id)` via `JobManager`
 
 **Input Schema**:
 ```json
@@ -1317,7 +1317,7 @@ Preflight runs deterministically from QMatSuite code. The agent does not need to
 
 **Description**: Token-efficient summary of calculation results. Returns 5-10 key values that capture the essential outcome.
 
-**Maps to**: `QVService.Analysis.get_step_digest(run_ulid, step_ulid)` which calls engine-specific `OutputParser.parse()` (e.g., `VASPOutputParser`, `QEOutputParser`)
+**Maps to**: `QMSService.Analysis.get_step_digest(run_ulid, step_ulid)` which calls engine-specific `OutputParser.parse()` (e.g., `VASPOutputParser`, `QEOutputParser`)
 
 **Input Schema**:
 ```json
@@ -1380,7 +1380,7 @@ Preflight runs deterministically from QMatSuite code. The agent does not need to
 
 **Description**: One-shot: create calculation + apply preset + run. Equivalent to `create_calculation` → `apply_preset` → `run_calculation` in one call. Designed for the 80% case where presets exist and are good enough. **Only works when presets are available for the engine+workflow.**
 
-**Maps to**: Sequential calls to `QVService.Calculation.create()` → `QVService.Calculation.apply_presets()` → `QVService.Run.run_calculation()`
+**Maps to**: Sequential calls to `QMSService.Calculation.create()` → `QMSService.Calculation.apply_presets()` → `QMSService.Run.run_calculation()`
 
 **Input Schema**:
 ```json
@@ -1524,17 +1524,17 @@ These tools are discovered via Tool Search when needed. They add zero tokens to 
 | `get_trajectory` | Geometry frames for relaxation/MD with energies and forces | `core/analysis/trajectory/model.py:Trajectory` |
 | `compare_calculations` | Side-by-side comparison of energy, bandgap, forces across runs | Multi-calc query over provenance DB |
 | `get_field3d` | 3D scalar field data (charge density, wavefunction) | `core/analysis/field3d.py:Field3D` |
-| `get_output_raw` | Paginated raw output file access (escape hatch) | `QVService.Analysis.read_step_artifact_text()` |
+| `get_output_raw` | Paginated raw output file access (escape hatch) | `QMSService.Analysis.read_step_artifact_text()` |
 
 #### Structure Tools
 
 | Tool | Description | Maps To |
 |---|---|---|
-| `list_structures` | List available crystal structures in the current project | `QVService.Structure.list()` |
-| `fetch_structure` | Fetch structure from Materials Project, AFLOW, COD, or OPTIMADE | `QVService.OnlineSearch.search()` + `import_online_candidate()` |
-| `import_structure` | Import structure from local file (CIF, POSCAR, XYZ, etc.) | `QVService.Structure.import_file()` |
-| `get_structure_detail` | Full crystallographic data with visualization | `QVService.Structure.get()` + `get_structure_vis()` |
-| `promote_structure` | Extract relaxed structure from a completed calc step and register as project-level structure | `QVService.Structure.save_relax_final_structure()` |
+| `list_structures` | List available crystal structures in the current project | `QMSService.Structure.list()` |
+| `fetch_structure` | Fetch structure from Materials Project, AFLOW, COD, or OPTIMADE | `QMSService.OnlineSearch.search()` + `import_online_candidate()` |
+| `import_structure` | Import structure from local file (CIF, POSCAR, XYZ, etc.) | `QMSService.Structure.import_file()` |
+| `get_structure_detail` | Full crystallographic data with visualization | `QMSService.Structure.get()` + `get_structure_vis()` |
+| `promote_structure` | Extract relaxed structure from a completed calc step and register as project-level structure | `QMSService.Structure.save_relax_final_structure()` |
 
 ##### `promote_structure` Detail
 
@@ -1555,7 +1555,7 @@ Extract a structure produced by a calculation step (typically a relax step) and 
 
 **Output**: The new project-level `structure_ulid`, lattice parameters, formula, space group, and a `context_hint` suggesting the agent can now use this structure in `create_calculation`. If the structure was already promoted (idempotent path), returns `already_exists: true` with the existing ULID.
 
-**Maps to**: `QVService.Structure.save_relax_final_structure()` (idempotent — records `produced_structure_ulid` in step YAML, so repeated calls return the same structure). The method verifies the step is a relax/vc-relax/md type before extracting.
+**Maps to**: `QMSService.Structure.save_relax_final_structure()` (idempotent — records `produced_structure_ulid` in step YAML, so repeated calls return the same structure). The method verifies the step is a relax/vc-relax/md type before extracting.
 
 Note: `list_structures` is on-demand, not always-loaded. The agent usually knows the structure or fetches it; this doesn't need to be in initial context.
 
@@ -1565,8 +1565,8 @@ QMatSuite has a **native parameter scan system** (Constitution §10, ~830 lines 
 
 | Tool | Description | Maps To |
 |---|---|---|
-| `set_parameters` (scan mode) | When a parameter value is a list, MCP translates it to a `@scan:` token + `parameter_scan` entry. `set_parameters(params={INCAR: {LDAUU: [3,4,5]}})` → sets `LDAUU: "@scan:ldauu"` + `parameter_scan: {ldauu: {values: [3,4,5]}}`. Scalar values set normally. | `QVService.Calculation.update_step_params()` with `parameter_scan` key (already accepts it) |
-| `preview_scan` | Show scan expansion before executing: number of dimensions, values per dimension, total variant count. **Safety gate** — warns if Cartesian product exceeds threshold (>20 variants). | **New tool needed** — reads step.yaml, calls `collect_scan_dimensions()` + `expand_variants()` to count, returns summary without executing. No new QVService method needed (pure read). |
+| `set_parameters` (scan mode) | When a parameter value is a list, MCP translates it to a `@scan:` token + `parameter_scan` entry. `set_parameters(params={INCAR: {LDAUU: [3,4,5]}})` → sets `LDAUU: "@scan:ldauu"` + `parameter_scan: {ldauu: {values: [3,4,5]}}`. Scalar values set normally. | `QMSService.Calculation.update_step_params()` with `parameter_scan` key (already accepts it) |
+| `preview_scan` | Show scan expansion before executing: number of dimensions, values per dimension, total variant count. **Safety gate** — warns if Cartesian product exceeds threshold (>20 variants). | **New tool needed** — reads step.yaml, calls `collect_scan_dimensions()` + `expand_variants()` to count, returns summary without executing. No new QMSService method needed (pure read). |
 | `get_scan_results` | After scan completes, return aggregated results table: variant parameter values → computed properties (energy, bandgap, forces, convergence). | **New tool needed** — reads `raw/scan/slots.json` for variant list, calls `OutputParser.parse()` on each variant's output files in `raw/scan/<variant_key>/`, assembles table. |
 
 **How the native scan system works** (code-verified):
@@ -1627,7 +1627,7 @@ These tools implement Level 1 of the Agent Decision Hierarchy (Section 2.5), all
 
 **Description**: Load a demo into the current project as a new calculation. The demo's structure is added to the project's structure library. The calculation is fully configured and runnable — the agent can inspect it, swap the structure, modify parameters, or run directly.
 
-**Note**: Currently QMatSuite only supports loading demos as new projects via `create_demo_project()`. **A core enhancement is needed**: support loading a demo as a new calculation within the current project, adding the demo's structure to `project/structures/`. This requires a new `QVService` method. Calculations within a project are independent, so this is architecturally clean.
+**Note**: Currently QMatSuite only supports loading demos as new projects via `create_demo_project()`. **A core enhancement is needed**: support loading a demo as a new calculation within the current project, adding the demo's structure to `project/structures/`. This requires a new `QMSService` method. Calculations within a project are independent, so this is architecturally clean.
 
 **Input Schema**:
 ```json
@@ -1669,8 +1669,8 @@ These tools implement Level 1 of the Agent Decision Hierarchy (Section 2.5), all
 
 | Tool | Description | Maps To |
 |---|---|---|
-| `submit_batch` | Submit multiple **independent calculations** in parallel. Each is a separate calculation entity with its own YAML, provenance, and folder. For parallel execution of structurally different calcs (different engines, workflows, structures). | MCP-side orchestration over `QVService.Calculation.create()` + `QVService.Run.run_calculation()` |
-| `get_batch_status` | Poll status of multiple jobs at once. Returns status array. | MCP-side loop over `QVService.Run.get_job_status()` |
+| `submit_batch` | Submit multiple **independent calculations** in parallel. Each is a separate calculation entity with its own YAML, provenance, and folder. For parallel execution of structurally different calcs (different engines, workflows, structures). | MCP-side orchestration over `QMSService.Calculation.create()` + `QMSService.Run.run_calculation()` |
+| `get_batch_status` | Poll status of multiple jobs at once. Returns status array. | MCP-side loop over `QMSService.Run.get_job_status()` |
 
 **Native scan vs. `submit_batch`** — these are complementary, not redundant:
 - **Native scan**: One calculation, multiple parameter values, sub-folders within same calc. For systematic parameter exploration with known parameter space.
@@ -1687,10 +1687,10 @@ These tools implement Level 1 of the Agent Decision Hierarchy (Section 2.5), all
 
 | Tool | Description | Maps To |
 |---|---|---|
-| `get_project_history` | Query past calculations in the current project (timeline of runs, edits, pins) | `QVService.History.get_timeline()` + `list_run_history()` (already implemented, 5 methods) |
-| `get_provenance` | Full lineage of a calculation: run details, parameter snapshot, step results | `QVService.History.get_run_revision()` (already implemented) |
+| `get_project_history` | Query past calculations in the current project (timeline of runs, edits, pins) | `QMSService.History.get_timeline()` + `list_run_history()` (already implemented, 5 methods) |
+| `get_provenance` | Full lineage of a calculation: run details, parameter snapshot, step results | `QMSService.History.get_run_revision()` (already implemented) |
 | `annotate_calculation` | Add researcher notes to a calculation | Journal entry creation (needs new write API) |
-| `record_intent` | Record WHY a group of calculations is being run (before execution). Returns `intent_id` for linking runs. Optionally links `calc_ulids` retroactively. | `QVService.History.add_journal_entry(calc_ulid, "intent", text)` (needs new method; Journal infra at `core/journal.py` exists) |
+| `record_intent` | Record WHY a group of calculations is being run (before execution). Returns `intent_id` for linking runs. Optionally links `calc_ulids` retroactively. | `QMSService.History.add_journal_entry(calc_ulid, "intent", text)` (needs new method; Journal infra at `core/journal.py` exists) |
 
 #### Knowledge Tools
 
@@ -1724,46 +1724,46 @@ Key design: `content` and `reasoning` serve different purposes:
 
 ### 5.5 API Surface Assessment and Gaps
 
-Code review reveals that the existing QVService and infrastructure are more mature than initially assumed. The fine-grained tool model maps well to existing methods:
+Code review reveals that the existing QMSService and infrastructure are more mature than initially assumed. The fine-grained tool model maps well to existing methods:
 
 #### What Already Exists
 
-| MCP Tool | QVService Method | Status |
+| MCP Tool | QMSService Method | Status |
 |---|---|---|
-| `create_calculation` | `QVService.Calculation.create()` | Fully implemented |
-| `set_parameters` | `QVService.Calculation.update_step_params()` | Fully implemented |
-| `apply_preset` | `QVService.Calculation.apply_presets()` | Fully implemented |
-| `inspect_calculation` (read) | `QVService.Calculation.get_detail()` + `get_step_detail()` | Fully implemented |
-| `run_calculation` | `QVService.Run.run_calculation()` | Fully implemented |
-| `get_status` | `QVService.Run.get_job_status()` | Fully implemented (via JobManager) |
-| `get_results_summary` | `QVService.Analysis.get_step_digest()` | Fully implemented (15 engine parsers) |
-| `get_project_history` | `QVService.History.get_timeline()` + `list_run_history()` | Fully implemented (5 History methods) |
-| `get_provenance` | `QVService.History.get_run_revision()` | Fully implemented |
-| `duplicate_calculation` | `QVService.Calculation.duplicate()` | Fully implemented (copies SSOT + raw/, regenerates ULIDs) |
+| `create_calculation` | `QMSService.Calculation.create()` | Fully implemented |
+| `set_parameters` | `QMSService.Calculation.update_step_params()` | Fully implemented |
+| `apply_preset` | `QMSService.Calculation.apply_presets()` | Fully implemented |
+| `inspect_calculation` (read) | `QMSService.Calculation.get_detail()` + `get_step_detail()` | Fully implemented |
+| `run_calculation` | `QMSService.Run.run_calculation()` | Fully implemented |
+| `get_status` | `QMSService.Run.get_job_status()` | Fully implemented (via JobManager) |
+| `get_results_summary` | `QMSService.Analysis.get_step_digest()` | Fully implemented (15 engine parsers) |
+| `get_project_history` | `QMSService.History.get_timeline()` + `list_run_history()` | Fully implemented (5 History methods) |
+| `get_provenance` | `QMSService.History.get_run_revision()` | Fully implemented |
+| `duplicate_calculation` | `QMSService.Calculation.duplicate()` | Fully implemented (copies SSOT + raw/, regenerates ULIDs) |
 
 #### What Also Exists (Supporting Infrastructure)
 
 | Infrastructure | What It Provides | Location |
 |---|---|---|
-| **Provenance system** (3,600+ lines) | Append-only event log, CAS, snapshots, restore, query | `src/quantumvitas/provenance/` |
+| **Provenance system** (3,600+ lines) | Append-only event log, CAS, snapshots, restore, query | `src/qmatsuite/provenance/` |
 | **ErrorDTO** with rich diagnostics | type, code, message, retryable, hint, context, cause | `api/types/error.py` |
 | **30 DTOs** across 9 files | Fail-closed serialization, reference pattern, metadata normalization | `api/types/` |
 | **Multi-engine artifact resolution** | Cross-engine data flow (QE→W90, QE→QMCPACK, QE→Yambo) | `drivers/*/artifact_resolver.py` |
 | **OperationContext** | 20+ operation types for all SSOT mutations | `provenance/opctx.py` |
 | **Native parameter scan** (~830 lines) | `@scan:` tokens, Cartesian expansion, per-variant archiving, skip logic | `calculation/scan_tokens.py`, `scan_validation.py`, `execution/scan_expansion.py`, `execution/post_job.py` |
 
-#### Gaps That Need New QVService Methods
+#### Gaps That Need New QMSService Methods
 
-| MCP Tool | Required QVService Capability | Gap Description |
+| MCP Tool | Required QMSService Capability | Gap Description |
 |---|---|---|
-| `inspect_calculation(dry_run=true)` | Materialize input files to temp dir without executing | **New method needed** — `QVService.Calculation.materialize_preview()` wrapping `write_engine_inputs()` |
-| `record_intent` / `record_insight` | Write agent-authored journal entries to provenance + conditionally promote to knowledge | **New method needed** — `QVService.History.add_journal_entry(calc_ulid, entry_type, text)`. The Journal infrastructure (`core/journal.py`, 369 lines) provides append-only storage; the gap is exposing a typed write API. `record_insight` with grade ≥ finding also writes to knowledge DB. |
+| `inspect_calculation(dry_run=true)` | Materialize input files to temp dir without executing | **New method needed** — `QMSService.Calculation.materialize_preview()` wrapping `write_engine_inputs()` |
+| `record_intent` / `record_insight` | Write agent-authored journal entries to provenance + conditionally promote to knowledge | **New method needed** — `QMSService.History.add_journal_entry(calc_ulid, entry_type, text)`. The Journal infrastructure (`core/journal.py`, 369 lines) provides append-only storage; the gap is exposing a typed write API. `record_insight` with grade ≥ finding also writes to knowledge DB. |
 | `search_knowledge` | Read-only knowledge search (Phase 1: builtin only) | **New module needed** — `knowledge/` package with multi-DB SQLite+FTS5 store. Phase 1: read `builtin.db`. Phase 3: full write to `local.db` + multi-pack search. |
 | Error `suggested_fixes` | Knowledge-backed error recovery suggestions | **Enhancement needed** — MCP layer enriches existing `ErrorDTO` + `*Digest` with `suggested_fixes` from Knowledge Base. No kernel changes needed. |
-| `preview_scan` | Show scan expansion (dimensions, values, total variants) before executing | **New MCP tool needed** — pure read using `collect_scan_dimensions()` + `expand_variants()`. No new QVService method needed. |
-| `get_scan_results` | Aggregated results table across scan variants | **New MCP tool needed** — reads `raw/scan/slots.json` + parses each variant's outputs via `OutputParser`. Needs new QVService method or MCP-side assembly. |
+| `preview_scan` | Show scan expansion (dimensions, values, total variants) before executing | **New MCP tool needed** — pure read using `collect_scan_dimensions()` + `expand_variants()`. No new QMSService method needed. |
+| `get_scan_results` | Aggregated results table across scan variants | **New MCP tool needed** — reads `raw/scan/slots.json` + parses each variant's outputs via `OutputParser`. Needs new QMSService method or MCP-side assembly. |
 
-Per Section 3.2 (MCP as Equal Frontend), these capabilities should be added to `QVService`, not hacked around in the MCP layer. Both methods benefit all frontends: the GUI can use `materialize_preview` for input file inspection, and CLI can use journal entries for scripted workflows.
+Per Section 3.2 (MCP as Equal Frontend), these capabilities should be added to `QMSService`, not hacked around in the MCP layer. Both methods benefit all frontends: the GUI can use `materialize_preview` for input file inspection, and CLI can use journal entries for scripted workflows.
 
 ### 5.6 Tool Return Format Standard
 
@@ -1953,7 +1953,7 @@ Layer 3 is the most mature layer — it already exists as a fully implemented, g
 | **Query API** | `provenance/query.py` (376 lines) | `query_operations()`, `query_runs()`, `get_run_details()`, `build_timeline_entry()`. Graceful degradation: missing tables return empty results. |
 | **Pins** | `provenance/pins.py` (377 lines) | Pin analysis results (plots, JSON data) to run history with provenance linkage. |
 | **Scanner** | `provenance/scanner.py` (275 lines) | Tracks which run/step produced each output file in `raw/`. |
-| **Service API** | `api/service.py` QVService.History | 5 public methods: `get_timeline()`, `get_run_revision()`, `get_storage_summary()`, `list_run_history()`, `pin_analysis()`. |
+| **Service API** | `api/service.py` QMSService.History | 5 public methods: `get_timeline()`, `get_run_revision()`, `get_storage_summary()`, `list_run_history()`, `pin_analysis()`. |
 
 **Governance**: 9 binding laws (P1–P9) in `docs/laws/L1/PROVENANCE_VERSIONED_HISTORY_SPEC.md`, enforced by 7 gate tests in CI. Key laws: P1 (SSOT separation — deleting `.provenance/` leaves project runnable), P2 (OperationContext required on all saves), P4 (append-only timeline), P7 (graceful degradation).
 
@@ -1979,7 +1979,7 @@ Layer 3 is the most mature layer — it already exists as a fully implemented, g
 
 **Intent is NOT part of present-tense SSOT.** Presets encode intent structurally (e.g., "precision=high" IS the intent). But the textual rationale ("testing U=5 because literature suggests 4-6 eV range") lives ONLY in provenance.
 
-**Gap for MCP**: The existing provenance system records *system events* (operation diffs, run metadata, step results) automatically. What's missing is the ability to record *agent-authored entries* — intent and insight. This requires a new `QVService.History.add_journal_entry(calc_ulid, entry_type, text)` method. The Journal infrastructure (`core/journal.py`) provides the append-only storage mechanism; the gap is exposing a write API through QVService.
+**Gap for MCP**: The existing provenance system records *system events* (operation diffs, run metadata, step results) automatically. What's missing is the ability to record *agent-authored entries* — intent and insight. This requires a new `QMSService.History.add_journal_entry(calc_ulid, entry_type, text)` method. The Journal infrastructure (`core/journal.py`) provides the append-only storage mechanism; the gap is exposing a write API through QMSService.
 
 ### 7.4 Layer 4: Knowledge Base (Evolvable Best-Knowledge, Multi-Scope)
 
@@ -2454,7 +2454,7 @@ record_insight(
   → if grade ≥ finding: ALSO writes to knowledge base (Layer 4, local.db)
 ```
 
-**Implementation note**: These require a new `QVService.History.add_journal_entry(calc_ulid, entry_type, text)` method (see Section 5.5). The Journal infrastructure (`core/journal.py`, 369 lines) provides append-only JSONL storage; the OperationContext system (`provenance/opctx.py`) defines 20+ operation types. Adding `AGENT_INTENT` and `AGENT_INSIGHT` operation types is a small extension of well-tested infrastructure. `record_intent` is Phase 2. `record_insight` with knowledge promotion is Phase 3.
+**Implementation note**: These require a new `QMSService.History.add_journal_entry(calc_ulid, entry_type, text)` method (see Section 5.5). The Journal infrastructure (`core/journal.py`, 369 lines) provides append-only JSONL storage; the OperationContext system (`provenance/opctx.py`) defines 20+ operation types. Adding `AGENT_INTENT` and `AGENT_INSIGHT` operation types is a small extension of well-tested infrastructure. `record_intent` is Phase 2. `record_insight` with knowledge promotion is Phase 3.
 
 ---
 
@@ -2926,7 +2926,7 @@ QMatSuite already has a complete `AnalysisObject → canonical primitive → pro
 
 The agent cannot unilaterally approve expensive operations. The human reviews and confirms.
 
-**Audit trail.** Every tool call is logged with timestamp, input parameters, and result summary in the project's journal (`QVService.History`). The provenance system tracks the full lineage of every calculation. An agent-submitted calculation has the same auditability as a GUI-submitted one.
+**Audit trail.** Every tool call is logged with timestamp, input parameters, and result summary in the project's journal (`QMSService.History`). The provenance system tracks the full lineage of every calculation. An agent-submitted calculation has the same auditability as a GUI-submitted one.
 
 **Sandboxed MCP Apps.** Interactive visualizations run in iframe sandboxes with no access to the host page, no network access, and no filesystem access. Data is passed via `postMessage` JSON-RPC. A malicious visualization cannot exfiltrate data or modify state.
 
@@ -2949,7 +2949,7 @@ The default deployment runs the MCP server locally via stdio transport. Zero net
   "mcpServers": {
     "qmatsuite": {
       "command": "python",
-      "args": ["-m", "quantumvitas.mcp.server"],
+      "args": ["-m", "qmatsuite.mcp.server"],
       "env": {
         "QMATSUITE_PROJECT": "/path/to/project"
       }
@@ -2958,7 +2958,7 @@ The default deployment runs the MCP server locally via stdio transport. Zero net
 }
 ```
 
-This is identical to how the existing GUI daemon works: the Electron app spawns a Python subprocess communicating over stdin/stdout JSON-RPC (`daemon/server.py`). The MCP server reuses the same `QVService` layer, replacing the daemon's custom JSON-RPC protocol with the standard MCP protocol.
+This is identical to how the existing GUI daemon works: the Electron app spawns a Python subprocess communicating over stdin/stdout JSON-RPC (`daemon/server.py`). The MCP server reuses the same `QMSService` layer, replacing the daemon's custom JSON-RPC protocol with the standard MCP protocol.
 
 **Calculations run on the local machine.** The existing `JobManager` (`daemon/jobs.py`) manages background execution via `ThreadPoolExecutor`. The MCP server exposes this through `run_calculation` (non-blocking submit) and `get_status` (polling).
 
@@ -2972,7 +2972,7 @@ User's laptop                          HPC login node
 | Claude Code /     |  HTTPS           | QMatSuite MCP Server       |
 | Codex CLI /       |  ===============>| (Streamable HTTP)          |
 | Gemini CLI        |  Mcp-Session-Id  |                            |
-+-------------------+                  | QVService → SLURM sbatch  |
++-------------------+                  | QMSService → SLURM sbatch  |
                                        +----------------------------+
 ```
 
@@ -3059,7 +3059,7 @@ Measure total tokens consumed by typical workflows:
 - On-demand: `list_structures`, `search_knowledge` (read-only, queries `builtin.db` only)
 
 **Infrastructure**:
-- FastMCP server at `src/quantumvitas/mcp/server.py`
+- FastMCP server at `src/qmatsuite/mcp/server.py`
 - stdio transport (reusing patterns from `daemon/server.py`)
 - `.mcp.json` configuration for Claude Code
 - Standard return envelope with `context_hint`

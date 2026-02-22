@@ -11,9 +11,9 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from quantumvitas.core.engines.qe_calculation import QECalculationRunner, StepResult
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe_calculation import QECalculationRunner, StepResult
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 
 class TestOutputFileOverwrite:

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document explains in detail the three fixes implemented for the QuantumVITAS GUI, including the logic flow, dependencies, and how each component interacts.
+This document explains in detail the three fixes implemented for the QMatSuite GUI, including the logic flow, dependencies, and how each component interacts.
 
 ---
 
@@ -285,7 +285,7 @@ User sees calculation detail immediately (no error)
 ### Dependencies
 
 **`fetchWorkflows` Dependencies:**
-- `qv` (from `useQVClient()` hook, line 161)
+- `qms` (from `useQMSClient()` hook, line 161)
 - `projectRoot` (from useState, line 60)
 - `projectLoaded` (from useState, line 82)
 - **Returns**: `Promise<CalculationInfo[] | null>`

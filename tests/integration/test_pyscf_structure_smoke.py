@@ -61,7 +61,7 @@ def test_structure_loading_chain(h2_molecule_file: Path):
     4. Build pyscf.gto.Mole
     5. Run minimal SCF
     """
-    from quantumvitas.io.structure_io import read_structure
+    from qmatsuite.io.structure_io import read_structure
     from pymatgen.core import Molecule as PMGMolecule
     from pyscf import gto, scf
     
@@ -117,7 +117,7 @@ def test_atoms_list_conversion_format(h2_molecule_file: Path):
     
     Regression test: ensures atoms list is non-empty and in correct format.
     """
-    from quantumvitas.io.structure_io import read_structure
+    from qmatsuite.io.structure_io import read_structure
     from pymatgen.core import Molecule as PMGMolecule
     
     structure = read_structure(h2_molecule_file)

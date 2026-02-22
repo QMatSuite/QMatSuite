@@ -8,10 +8,10 @@ The importer:
 1. Scans `tests/data/` for folders matching pattern `0_*` through `19_*`
 2. For each dataset, finds `.in` files in execution order
 3. Extracts structure and parameters from inputs
-4. Maps pseudopotentials from `src/quantumvitas/resources/pseudo/` directory
+4. Maps pseudopotentials from `src/qmatsuite/resources/pseudo/` directory
 5. Creates calculation structure using QMatSuite APIs
 6. Validates by round-tripping (parse -> export -> compare)
-7. Generates demo snapshots in `src/quantumvitas/resources/demo_projects/` with naming `00_*` to `19_*`
+7. Generates demo snapshots in `src/qmatsuite/resources/demo_projects/` with naming `00_*` to `19_*`
 8. Extracts reference artifacts from output files (`.scf.json`, `.dos.json`, `.bands.json`)
 9. Verifies consistency of generated demos
 
@@ -58,21 +58,21 @@ python tools/import_tutorial_datasets.py --clean --verify
 
 - Python 3.8+
 - All dependencies from `requirements.txt` installed
-- Pseudopotentials available in `src/quantumvitas/resources/pseudo/` directory (missing ones will be automatically downloaded to `repo/src/quantumvitas/resources/pseudo/`)
+- Pseudopotentials available in `src/qmatsuite/resources/pseudo/` directory (missing ones will be automatically downloaded to `repo/src/qmatsuite/resources/pseudo/`)
 
 ## Output
 
 The tool creates:
 
-1. **Demo snapshots** in `src/quantumvitas/resources/demo_projects/`:
+1. **Demo snapshots** in `src/qmatsuite/resources/demo_projects/`:
    - Each demo is a single `.yml` file (e.g., `00_Si_scf.yml`, `04_Si_DOS.yml`)
    - Matches the structure of existing demos (`si_dos_demo.yml`, `si_bands_demo.yml`)
    - Contains complete project snapshot with structures, calculations, steps
    - Includes reference artifacts (`.scf.json`, `.dos.json`, `.bands.json`) if available
 
 2. **Reports**:
-   - `src/quantumvitas/resources/demo_projects/import_report.json` - Machine-readable summary
-   - `src/quantumvitas/resources/demo_projects/import_report.md` - Human-readable summary
+   - `src/qmatsuite/resources/demo_projects/import_report.json` - Machine-readable summary
+   - `src/qmatsuite/resources/demo_projects/import_report.md` - Human-readable summary
 
 ## Demo Structure
 
@@ -172,12 +172,12 @@ This matches the reference demo format (`si_dos_demo.yml`) and ensures proper se
 
 ## Architecture
 
-The importer uses the QVService API to create projects, following the same workflow as manual project creation:
+The importer uses the QMSService API to create projects, following the same workflow as manual project creation:
 
-1. **Project Initialization**: `QVService.init_project()` - Creates empty project
-2. **Structure Import**: `QVService.import_structure()` - Imports structure from first `.in` file
-3. **Calculation Creation**: `QVService.init_calculation()` - Creates calculation with structure
-4. **Step Import**: `QVService.import_step_from_qe_input()` - Imports each step sequentially
+1. **Project Initialization**: `QMSService.init_project()` - Creates empty project
+2. **Structure Import**: `QMSService.import_structure()` - Imports structure from first `.in` file
+3. **Calculation Creation**: `QMSService.init_calculation()` - Creates calculation with structure
+4. **Step Import**: `QMSService.import_step_from_qe_input()` - Imports each step sequentially
 5. **Snapshot Export**: `export_project_to_snapshot()` - Exports to demo format
 
 This ensures generated demos match the structure of manually created projects.
@@ -187,12 +187,12 @@ This ensures generated demos match the structure of manually created projects.
 The importer handles pseudopotentials automatically:
 
 1. **During Import**: 
-   - Searches for pseudos in dataset folder, `tests/data/`, and `src/quantumvitas/resources/pseudo/` directory
-   - If not found, attempts to download from QE repository to `repo/src/quantumvitas/resources/pseudo/`
+   - Searches for pseudos in dataset folder, `tests/data/`, and `src/qmatsuite/resources/pseudo/` directory
+   - If not found, attempts to download from QE repository to `repo/src/qmatsuite/resources/pseudo/`
    - Reports failures if download also fails (404 errors)
 
 2. **During Demo Expansion** (when materializing from snapshot):
-   - Copies pseudos from `repo/src/quantumvitas/resources/pseudo/` to `project/pseudo/`
+   - Copies pseudos from `repo/src/qmatsuite/resources/pseudo/` to `project/pseudo/`
    - Falls back to download if not in repo
    - QE execution always uses `project/pseudo/` as `pseudo_dir`
 

@@ -7,10 +7,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.dos import DOS
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.cp2k.parsers.dos import CP2KDOSProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.dos import DOS
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.cp2k.parsers.dos import CP2KDOSProvider
 
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_cp2k_dos"

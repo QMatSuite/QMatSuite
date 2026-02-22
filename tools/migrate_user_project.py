@@ -15,7 +15,7 @@ import yaml
 
 # Add src to path for registry import
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 
 
 def gen_to_spec(step_type_gen: str, engine: str = "qe") -> str:

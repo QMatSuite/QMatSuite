@@ -5,7 +5,7 @@ Added internal-only QE metadata load status tracking that displays in Settings -
 
 ## Backend Changes
 
-### 1. `src/quantumvitas/data/qe_metadata.py`
+### 1. `src/qmatsuite/data/qe_metadata.py`
 - **Added global state**: `QE_METADATA_LOAD_STATE` dictionary tracking:
   - `loaded_via`: "cache" | "disk" | "unknown"
   - `loaded_at`: ISO timestamp string
@@ -25,10 +25,10 @@ Added internal-only QE metadata load status tracking that displays in Settings -
   - Returns a copy of `QE_METADATA_LOAD_STATE`
   - Used by the debug RPC endpoint
 
-### 2. `src/quantumvitas/data/__init__.py`
+### 2. `src/qmatsuite/data/__init__.py`
 - Exported `get_qe_metadata_debug_info` in `__all__`
 
-### 3. `src/quantumvitas/daemon/server.py`
+### 3. `src/qmatsuite/daemon/server.py`
 - **Added RPC handler**: `_handle_get_qe_parameter_metadata_debug_info()`
   - Command: `get_qe_parameter_metadata_debug_info`
   - Returns load state for debug/internal use only
@@ -36,12 +36,12 @@ Added internal-only QE metadata load status tracking that displays in Settings -
 
 - **Added req_id logging**:
   - All RPC logs now include `req_id={request.id}` to help identify duplicate calls
-  - Added optional debug logging with `QV_DEBUG_RPC=1` environment variable
+  - Added optional debug logging with `QMS_DEBUG_RPC=1` environment variable
   - Logs incoming requests with req_id when debug mode enabled
 
 ## Frontend Changes
 
-### 1. `gui/src/types/qv.ts`
+### 1. `gui/src/types/qms.ts`
 - **Added RPC command type**: `get_qe_parameter_metadata_debug_info`
   - Payload: `Record<string, never>`
   - Result: `{ loaded_via, loaded_at, schema_version, path_abs }`
@@ -60,14 +60,14 @@ Added internal-only QE metadata load status tracking that displays in Settings -
 
 ### Findings
 1. **Added req_id logging**: All RPC logs now include `req_id={request.id}` to help identify duplicate calls
-2. **Added debug mode**: Set `QV_DEBUG_RPC=1` to log incoming requests with req_id
+2. **Added debug mode**: Set `QMS_DEBUG_RPC=1` to log incoming requests with req_id
 3. **Investigation method**: 
    - Check daemon logs for duplicate `req_id` values
    - If same `req_id` appears twice, it's log duplication (not duplicate calls)
    - If different `req_id` values for same command, it's actual duplicate calls
 
 ### How to Investigate
-1. Enable debug mode: `export QV_DEBUG_RPC=1`
+1. Enable debug mode: `export QMS_DEBUG_RPC=1`
 2. Run the GUI and perform operations
 3. Check daemon logs for patterns:
    - Same `req_id` appearing twice → log duplication (stdout/stderr forwarding)
@@ -80,17 +80,17 @@ Added internal-only QE metadata load status tracking that displays in Settings -
 ### Summary
 - **Not implemented**: Automatic deduplication (requires evidence of actual duplicate calls)
 - **Implemented**: Instrumentation to identify the issue (req_id logging)
-- **Next steps**: Monitor logs with `QV_DEBUG_RPC=1` to determine if duplicates are real calls or log forwarding
+- **Next steps**: Monitor logs with `QMS_DEBUG_RPC=1` to determine if duplicates are real calls or log forwarding
 
 ## Files Changed
 
 ### Backend
-1. `src/quantumvitas/data/qe_metadata.py` - Load state tracking
-2. `src/quantumvitas/data/__init__.py` - Export new function
-3. `src/quantumvitas/daemon/server.py` - New RPC handler + req_id logging
+1. `src/qmatsuite/data/qe_metadata.py` - Load state tracking
+2. `src/qmatsuite/data/__init__.py` - Export new function
+3. `src/qmatsuite/daemon/server.py` - New RPC handler + req_id logging
 
 ### Frontend
-1. `gui/src/types/qv.ts` - RPC type definition
+1. `gui/src/types/qms.ts` - RPC type definition
 2. `gui/src/components/panels/SettingsPanel.tsx` - Debug UI
 
 ## Testing

@@ -16,11 +16,11 @@ import pytest
 from pathlib import Path
 from typing import Dict, Any
 
-from quantumvitas.engine.vasp_engine import VaspEngine
-from quantumvitas.engine.vasp_parser import parse_vasp_output
-from quantumvitas.execution.reference_resolver import find_reference_scf
-from quantumvitas.execution.vasp_staging import stage_chgcar, MissingPrerequisiteError
-from quantumvitas.calculation.manifest import Manifest, ManifestStepEntry
+from qmatsuite.engine.vasp_engine import VaspEngine
+from qmatsuite.engine.vasp_parser import parse_vasp_output
+from qmatsuite.execution.reference_resolver import find_reference_scf
+from qmatsuite.execution.vasp_staging import stage_chgcar, MissingPrerequisiteError
+from qmatsuite.calculation.manifest import Manifest, ManifestStepEntry
 
 
 class MockStep:
@@ -329,7 +329,7 @@ Reciprocal
         
         # With fake_vasp, it will succeed (fake_vasp doesn't check prerequisites)
         # But we can verify the staging logic would fail
-        from quantumvitas.execution.vasp_staging import MissingArtifactError
+        from qmatsuite.execution.vasp_staging import MissingArtifactError
         
         # Test staging logic directly
         # Create a mock reference SCF step

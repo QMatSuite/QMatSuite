@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useQVClient } from '../../hooks/useQVClient';
+import { useQMSClient } from '../../hooks/useQMSClient';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 import './StepOutputTextViewer.css';
 
@@ -31,7 +31,7 @@ export function StepOutputTextViewer({
   calculation, 
   stepId 
 }: StepOutputTextViewerProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
   const [content, setContent] = useState<string>('');
@@ -42,7 +42,7 @@ export function StepOutputTextViewer({
 
   // Load artifacts list
   const loadArtifacts = useCallback(async () => {
-    if (!qv || !projectRoot || !calculation || !stepId) return;
+    if (!qms || !projectRoot || !calculation || !stepId) return;
     
     setIsLoading(true);
     setError(null);
@@ -51,7 +51,7 @@ export function StepOutputTextViewer({
       const normalizedRoot = normalizeProjectRoot(projectRoot);
       if (!normalizedRoot) return;
       
-      const response = await qv.call('list_step_artifacts', {
+      const response = await qms.call('list_step_artifacts', {
         project_root: normalizedRoot,
         calculation,
         step: stepId,
@@ -84,11 +84,11 @@ export function StepOutputTextViewer({
     } finally {
       setIsLoading(false);
     }
-  }, [qv, projectRoot, calculation, stepId]);
+  }, [qms, projectRoot, calculation, stepId]);
 
   // Load artifact content
   const loadContent = useCallback(async (artifactPath: string) => {
-    if (!qv || !projectRoot || !calculation || !stepId) return;
+    if (!qms || !projectRoot || !calculation || !stepId) return;
     
     setIsLoading(true);
     setError(null);
@@ -98,7 +98,7 @@ export function StepOutputTextViewer({
       if (!normalizedRoot) return;
       
       // For large files, show first 1000 lines and last 100 lines
-      const response = await qv.call('read_step_artifact_text', {
+      const response = await qms.call('read_step_artifact_text', {
         project_root: normalizedRoot,
         calculation,
         step: stepId,
@@ -122,7 +122,7 @@ export function StepOutputTextViewer({
     } finally {
       setIsLoading(false);
     }
-  }, [qv, projectRoot, calculation, stepId]);
+  }, [qms, projectRoot, calculation, stepId]);
 
   // Load artifacts on mount and when props change
   useEffect(() => {
@@ -163,7 +163,7 @@ export function StepOutputTextViewer({
   }
 
   return (
-    <div className="step-output-viewer" data-testid="qv-step-output-viewer">
+    <div className="step-output-viewer" data-testid="qms-step-output-viewer">
       {/* Artifact selector */}
       <div className="step-output-header">
         <div className="step-output-selector">

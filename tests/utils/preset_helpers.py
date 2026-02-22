@@ -8,7 +8,7 @@ behavior for engine availability checks and roundtrip testing.
 from typing import Dict, Any, Optional
 from pathlib import Path
 
-from quantumvitas.engine.registry import create_default_registry
+from qmatsuite.engine.registry import create_default_registry
 
 
 def is_pyscf_available() -> bool:
@@ -147,7 +147,7 @@ def apply_and_detect_roundtrip(
     Returns:
         Detected option enum (or CUSTOM if no match)
     """
-    from quantumvitas.presets.variants_registry import (
+    from qmatsuite.presets.variants_registry import (
         compile_dimension_patch_for_step,
         detect_dimension_for_step,
     )
@@ -202,7 +202,7 @@ def apply_preset_to_yaml(
     Returns:
         Modified YAML dict (copy of step_yaml with patch applied)
     """
-    from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
+    from qmatsuite.presets.variants_registry import compile_dimension_patch_for_step
     
     # Compile preset to patch
     patch, deletions = compile_dimension_patch_for_step(

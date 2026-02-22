@@ -25,10 +25,10 @@ These steps fix issues discovered in the Acceptance Review. Must be completed be
 
 ### Step G1: Fix QE Parser Registration Chain
 
-**Problem:** `src/quantumvitas/drivers/qe/parsers/__init__.py` does not exist. `@register_parser` decorators in `bands.py` and `trajectory.py` never fire at runtime.
+**Problem:** `src/qmatsuite/drivers/qe/parsers/__init__.py` does not exist. `@register_parser` decorators in `bands.py` and `trajectory.py` never fire at runtime.
 
 **Actions:**
-1. Create `src/quantumvitas/drivers/qe/parsers/__init__.py`:
+1. Create `src/qmatsuite/drivers/qe/parsers/__init__.py`:
    ```python
    """QE analysis parsers.
 
@@ -40,7 +40,7 @@ These steps fix issues discovered in the Acceptance Review. Must be completed be
 
    __all__ = ["QEBandsProvider", "QETrajectoryParser"]
    ```
-2. Add to `src/quantumvitas/drivers/qe/__init__.py` after the driver import:
+2. Add to `src/qmatsuite/drivers/qe/__init__.py` after the driver import:
    ```python
    from . import parsers  # noqa: F401, E402
    ```
@@ -48,8 +48,8 @@ These steps fix issues discovered in the Acceptance Review. Must be completed be
 **Verification:**
 ```bash
 python -c "
-from quantumvitas.parsers.registry import get_parser
-import quantumvitas.drivers.qe
+from qmatsuite.parsers.registry import get_parser
+import qmatsuite.drivers.qe
 p = get_parser('qe', 'bands')
 assert p is not None, 'QE bands parser not registered'
 p = get_parser('qe', 'trajectory')
@@ -71,8 +71,8 @@ print('OK: both QE parsers registered')
 **Verification:**
 ```bash
 python -c "
-from quantumvitas.parsers.registry import get_parser
-import quantumvitas.drivers
+from qmatsuite.parsers.registry import get_parser
+import qmatsuite.drivers
 engines = ['vasp', 'orca', 'abinit', 'cp2k', 'w90', 'qe']
 for e in engines:
     p = get_parser(e, 'scf_digest')
@@ -93,7 +93,7 @@ print('OK: all engine parsers registered')
 
 4. `test_no_lazy_payloads` (Inv-A9) — Grep `core/analysis/` for `LazyArray`, `LateList`, `deferred`, `proxy`. Must find none.
 
-5. `test_no_tmp_corpus_in_runtime` (Inv-A14) — Grep all Python source under `src/quantumvitas/` for `.tmp/` in non-comment lines. Must find none.
+5. `test_no_tmp_corpus_in_runtime` (Inv-A14) — Grep all Python source under `src/qmatsuite/` for `.tmp/` in non-comment lines. Must find none.
 
 **Verification:**
 ```bash
@@ -154,7 +154,7 @@ Run completes
 
 ### Step A1: Implement canonical_sha Computation
 
-**Location:** `src/quantumvitas/core/analysis/bundles.py`
+**Location:** `src/qmatsuite/core/analysis/bundles.py`
 
 **Actions:**
 1. Add `compute_canonical_sha(bundle: CanonicalPrimitiveBundle) -> str` function
@@ -164,7 +164,7 @@ Run completes
 **Verification:**
 ```bash
 python -c "
-from quantumvitas.core.analysis.bundles import compute_canonical_sha, CanonicalPrimitiveBundle, RenderMeta, ProvenanceMeta
+from qmatsuite.core.analysis.bundles import compute_canonical_sha, CanonicalPrimitiveBundle, RenderMeta, ProvenanceMeta
 import numpy as np
 bundle = CanonicalPrimitiveBundle(
     object_type='test', render_meta=RenderMeta(), provenance_meta=ProvenanceMeta(
@@ -180,7 +180,7 @@ print(f'OK: canonical_sha = {sha1}')
 
 ### Step A2: Implement Eager CAS Write Function
 
-**Location:** New file `src/quantumvitas/core/analysis/cas_writer.py`
+**Location:** New file `src/qmatsuite/core/analysis/cas_writer.py`
 
 **Actions:**
 1. Create `write_canonical_to_cas(bundle, cas_dir) -> str` — writes serialized bundle to `cas_dir/<sha>.json.gz`, returns sha
@@ -229,10 +229,10 @@ python -m pytest tests/api/test_analysis_eager_write.py -v
 
 ### Step A4: Add API Endpoint — GET /analysis (Operational Derivation)
 
-**Location:** `src/quantumvitas/api/service.py` and `src/quantumvitas/daemon/server.py`
+**Location:** `src/qmatsuite/api/service.py` and `src/qmatsuite/daemon/server.py`
 
 **Actions:**
-1. Add `get_analysis(run_ulid, object_type, transforms=None)` to QVService
+1. Add `get_analysis(run_ulid, object_type, transforms=None)` to QMSService
 2. Implementation:
    - Load run metadata to get engine, driver, ordered_gen_steps, calc_dir
    - Call `run_post_run_analysis()` (derive from present raw evidence — NOT from CAS)
@@ -252,10 +252,10 @@ python -m pytest tests/api/test_analysis_endpoint.py -v
 
 ### Step A5: Add API Endpoint — GET /analysis/snapshot (Provenance Replay)
 
-**Location:** `src/quantumvitas/api/service.py`
+**Location:** `src/qmatsuite/api/service.py`
 
 **Actions:**
-1. Add `get_analysis_snapshot(run_ulid, object_type)` to QVService
+1. Add `get_analysis_snapshot(run_ulid, object_type)` to QMSService
 2. Implementation:
    - Query `analysis_snapshots` table for `(run_ulid, object_type) → canonical_sha`
    - Read CAS blob by `canonical_sha`
@@ -270,7 +270,7 @@ python -m pytest tests/api/test_analysis_snapshot_endpoint.py -v
 
 ### Step A6: Add Staleness Detection
 
-**Location:** `src/quantumvitas/core/analysis/base.py` (helper) + `src/quantumvitas/api/service.py` (usage)
+**Location:** `src/qmatsuite/core/analysis/base.py` (helper) + `src/qmatsuite/api/service.py` (usage)
 
 **Actions:**
 1. Add `check_staleness(meta: AnalysisObjectMeta) -> bool` to base.py
@@ -401,7 +401,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 ### Step B5: Add Frontend Gate Test
 
 **Actions:** Add `test_frontend_no_kernel_import` (Inv-A12):
-- Scan `gui/src/` for imports matching `quantumvitas.core`, `quantumvitas.analysis`, `quantumvitas.drivers`
+- Scan `gui/src/` for imports matching `qmatsuite.core`, `qmatsuite.analysis`, `qmatsuite.drivers`
 - Must find none
 
 **Verification:**
@@ -486,22 +486,22 @@ B5 (frontend gate test) — after B3 + B4
 
 ### 2026-02-08 — Step G1 (QE parser registration chain)
 - Changed paths:
-  - `src/quantumvitas/drivers/qe/parsers/__init__.py`
-  - `src/quantumvitas/drivers/qe/__init__.py`
+  - `src/qmatsuite/drivers/qe/parsers/__init__.py`
+  - `src/qmatsuite/drivers/qe/__init__.py`
 - Verification command:
-  - `source .venv/bin/activate && python -c "from quantumvitas.parsers.registry import get_parser; import quantumvitas.drivers.qe; p = get_parser('qe','bands'); assert p is not None, 'QE bands parser not registered'; p = get_parser('qe','trajectory'); assert p is not None, 'QE trajectory parser not registered'; print('OK: both QE parsers registered')"`
+  - `source .venv/bin/activate && python -c "from qmatsuite.parsers.registry import get_parser; import qmatsuite.drivers.qe; p = get_parser('qe','bands'); assert p is not None, 'QE bands parser not registered'; p = get_parser('qe','trajectory'); assert p is not None, 'QE trajectory parser not registered'; print('OK: both QE parsers registered')"`
 - Result: PASS (`OK: both QE parsers registered`)
 
 ### 2026-02-08 — Step G2 (all engine parser registration)
 - Changed paths:
-  - `src/quantumvitas/drivers/vasp/__init__.py`
-  - `src/quantumvitas/drivers/orca/__init__.py`
-  - `src/quantumvitas/drivers/abinit/__init__.py`
-  - `src/quantumvitas/drivers/cp2k/__init__.py`
-  - `src/quantumvitas/drivers/w90/__init__.py`
+  - `src/qmatsuite/drivers/vasp/__init__.py`
+  - `src/qmatsuite/drivers/orca/__init__.py`
+  - `src/qmatsuite/drivers/abinit/__init__.py`
+  - `src/qmatsuite/drivers/cp2k/__init__.py`
+  - `src/qmatsuite/drivers/w90/__init__.py`
   - parser package `__init__.py` imports for affected engines
 - Verification command:
-  - `source .venv/bin/activate && python -c "from quantumvitas.parsers.registry import get_parser; import quantumvitas.drivers; engines=['vasp','orca','abinit','cp2k','w90','qe'];\nfor e in engines:\n p=get_parser(e,'scf_digest'); assert p is not None, f'{e} scf_digest parser not registered';\nprint('OK: all engine parsers registered')"`
+  - `source .venv/bin/activate && python -c "from qmatsuite.parsers.registry import get_parser; import qmatsuite.drivers; engines=['vasp','orca','abinit','cp2k','w90','qe'];\nfor e in engines:\n p=get_parser(e,'scf_digest'); assert p is not None, f'{e} scf_digest parser not registered';\nprint('OK: all engine parsers registered')"`
 - Result: PASS (`OK: all engine parsers registered`)
 
 ### 2026-02-08 — Step G3 (missing high-priority gate tests)
@@ -527,16 +527,16 @@ B5 (frontend gate test) — after B3 + B4
 
 ### 2026-02-08 — Step A1 (canonical_sha computation)
 - Changed paths:
-  - `src/quantumvitas/core/analysis/bundles.py`
+  - `src/qmatsuite/core/analysis/bundles.py`
 - Plan amendment (minimal):
   - The original one-liner verification instantiated `RenderMeta()` with no args; `RenderMeta` now supports empty defaults via `field(default_factory=dict)` for `axis_labels`/`units`, preserving compatibility and determinism.
 - Verification command:
-  - `source .venv/bin/activate && python -c "from quantumvitas.core.analysis.bundles import compute_canonical_sha, CanonicalPrimitiveBundle, RenderMeta, ProvenanceMeta; import numpy as np; bundle=CanonicalPrimitiveBundle(object_type='test', render_meta=RenderMeta(), provenance_meta=ProvenanceMeta(schema_version='1.0', object_type='test', parser_name='test', parser_version='1.0'), series=[], arrays={'x': np.array([1.0, 2.0])}); sha1=compute_canonical_sha(bundle); sha2=compute_canonical_sha(bundle); assert sha1==sha2; assert len(sha1)==64; print(f'OK: canonical_sha = {sha1}')"`
+  - `source .venv/bin/activate && python -c "from qmatsuite.core.analysis.bundles import compute_canonical_sha, CanonicalPrimitiveBundle, RenderMeta, ProvenanceMeta; import numpy as np; bundle=CanonicalPrimitiveBundle(object_type='test', render_meta=RenderMeta(), provenance_meta=ProvenanceMeta(schema_version='1.0', object_type='test', parser_name='test', parser_version='1.0'), series=[], arrays={'x': np.array([1.0, 2.0])}); sha1=compute_canonical_sha(bundle); sha2=compute_canonical_sha(bundle); assert sha1==sha2; assert len(sha1)==64; print(f'OK: canonical_sha = {sha1}')"`
 - Result: PASS
 
 ### 2026-02-08 — Step A2 (eager CAS write helpers)
 - Changed paths:
-  - `src/quantumvitas/core/analysis/cas_writer.py`
+  - `src/qmatsuite/core/analysis/cas_writer.py`
   - `tests/core/analysis/test_cas_writer.py`
 - Verification command:
   - `source .venv/bin/activate && python -m pytest tests/core/analysis/test_cas_writer.py -v --tb=short -n auto --dist=loadfile`
@@ -544,8 +544,8 @@ B5 (frontend gate test) — after B3 + B4
 
 ### 2026-02-08 — Step A3 (end-of-run eager write wiring)
 - Changed paths:
-  - `src/quantumvitas/api/service.py`
-  - `src/quantumvitas/provenance/schema.py`
+  - `src/qmatsuite/api/service.py`
+  - `src/qmatsuite/provenance/schema.py`
   - `tests/api/test_analysis_eager_write.py`
 - Verification command:
   - `source .venv/bin/activate && python -m pytest tests/api/test_analysis_eager_write.py -v --tb=short -n auto --dist=loadfile`
@@ -553,8 +553,8 @@ B5 (frontend gate test) — after B3 + B4
 
 ### 2026-02-08 — Step A4 (operational GET /analysis)
 - Changed paths:
-  - `src/quantumvitas/api/service.py`
-  - `src/quantumvitas/daemon/server.py`
+  - `src/qmatsuite/api/service.py`
+  - `src/qmatsuite/daemon/server.py`
   - `tests/api/test_analysis_endpoint.py`
 - Verification command:
   - `source .venv/bin/activate && python -m pytest tests/api/test_analysis_endpoint.py -v --tb=short -n auto --dist=loadfile`
@@ -562,8 +562,8 @@ B5 (frontend gate test) — after B3 + B4
 
 ### 2026-02-08 — Step A5 (provenance replay GET /analysis/snapshot)
 - Changed paths:
-  - `src/quantumvitas/api/service.py`
-  - `src/quantumvitas/daemon/server.py`
+  - `src/qmatsuite/api/service.py`
+  - `src/qmatsuite/daemon/server.py`
   - `tests/api/test_analysis_snapshot_endpoint.py`
 - Verification command:
   - `source .venv/bin/activate && python -m pytest tests/api/test_analysis_snapshot_endpoint.py -v --tb=short -n auto --dist=loadfile`
@@ -571,8 +571,8 @@ B5 (frontend gate test) — after B3 + B4
 
 ### 2026-02-08 — Step A6 (staleness detection)
 - Changed paths:
-  - `src/quantumvitas/core/analysis/base.py`
-  - `src/quantumvitas/api/service.py`
+  - `src/qmatsuite/core/analysis/base.py`
+  - `src/qmatsuite/api/service.py`
   - `tests/core/analysis/test_staleness.py`
 - Verification command:
   - `source .venv/bin/activate && python -m pytest tests/core/analysis/test_staleness.py -v --tb=short -n auto --dist=loadfile`
@@ -587,8 +587,8 @@ B5 (frontend gate test) — after B3 + B4
 
 ### 2026-02-08 — Step B1 (raw text viewer surface)
 - Changed paths:
-  - `src/quantumvitas/api/service.py`
-  - `src/quantumvitas/daemon/server.py`
+  - `src/qmatsuite/api/service.py`
+  - `src/qmatsuite/daemon/server.py`
   - `gui/src/components/panels/RawFileViewer.tsx`
   - `tests/api/test_raw_file_endpoints.py`
 - Verification command:
@@ -597,8 +597,8 @@ B5 (frontend gate test) — after B3 + B4
 
 ### 2026-02-08 — Step B2 (digest display surface)
 - Changed paths:
-  - `src/quantumvitas/api/service.py`
-  - `src/quantumvitas/daemon/server.py`
+  - `src/qmatsuite/api/service.py`
+  - `src/qmatsuite/daemon/server.py`
   - `gui/src/components/panels/StepDigestPanel.tsx`
   - `tests/api/test_digest_endpoint.py`
 - Verification command:
@@ -610,7 +610,7 @@ B5 (frontend gate test) — after B3 + B4
   - `gui/src/components/panels/CalculationAnalysisPanel.tsx`
   - `gui/src/components/panels/CalculationAnalysisPanel.css`
   - `gui/src/components/panels/AnalysisVizPanel.tsx`
-  - `gui/src/types/qv.ts`
+  - `gui/src/types/qms.ts`
 - Verification commands:
   - `cd gui && npx tsc --noEmit`
   - `cd gui && npm run build`
@@ -622,10 +622,10 @@ B5 (frontend gate test) — after B3 + B4
   - `gui/src/components/panels/AnalysisPanel.tsx` (deleted)
   - `gui/src/components/panels/AnalysisPanel.css` (deleted)
   - `gui/src/components/panels/index.ts`
-  - `gui/src/types/qv.ts`
-  - `src/quantumvitas/api/service.py` (legacy artifact-ensure call sites removed)
-  - `src/quantumvitas/analysis/artifacts.py` (deprecated marker)
-  - `src/quantumvitas/analysis/dos.py` (deprecated marker)
+  - `gui/src/types/qms.ts`
+  - `src/qmatsuite/api/service.py` (legacy artifact-ensure call sites removed)
+  - `src/qmatsuite/analysis/artifacts.py` (deprecated marker)
+  - `src/qmatsuite/analysis/dos.py` (deprecated marker)
 - Verification commands:
   - `rg -n 'BandStructureData|DosData|ScfConvergenceData' gui/src/`
   - `source .venv/bin/activate && python -m pytest tests/unit/test_api_get_band_structure_data.py -v --tb=short -n auto --dist=loadfile`
@@ -640,8 +640,8 @@ B5 (frontend gate test) — after B3 + B4
 
 ### 2026-02-09 — Post-plan contract alignment fixes (legacy schema/behavior parity)
 - Changed paths:
-  - `src/quantumvitas/analysis/parsers.py`
-  - `src/quantumvitas/api/service.py`
+  - `src/qmatsuite/analysis/parsers.py`
+  - `src/qmatsuite/api/service.py`
   - `tests/contract_crawler/introspection.py`
   - `tests/contract_crawler/test_coverage.py`
 - What changed:

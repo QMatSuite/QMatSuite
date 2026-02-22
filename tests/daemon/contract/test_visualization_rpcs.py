@@ -2,14 +2,14 @@
 
 from pathlib import Path
 import pytest
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 from .conftest import send_request
 
 
 class TestGetStructureVis:
     """Contract tests for get_structure_vis RPC."""
 
-    def test_get_structure_vis_happy_path(self, demo_project_with_structure, daemon: QVDaemon):
+    def test_get_structure_vis_happy_path(self, demo_project_with_structure, daemon: QMSDaemon):
         """get_structure_vis returns 3D viewer data."""
         project_root, structure_ulid = demo_project_with_structure
 
@@ -26,7 +26,7 @@ class TestGetStructureVis:
         assert "bonds" in response
         assert "lattice" in response
 
-    def test_get_structure_vis_with_supercell(self, demo_project_with_structure, daemon: QVDaemon):
+    def test_get_structure_vis_with_supercell(self, demo_project_with_structure, daemon: QMSDaemon):
         """get_structure_vis with supercell parameter."""
         project_root, structure_ulid = demo_project_with_structure
 
@@ -40,7 +40,7 @@ class TestGetStructureVis:
         assert response["supercell"] == [2, 2, 1]
         # Should have more atoms than primitive cell (if crystal)
 
-    def test_get_structure_vis_not_found(self, temp_project: Path, daemon: QVDaemon):
+    def test_get_structure_vis_not_found(self, temp_project: Path, daemon: QMSDaemon):
         """get_structure_vis errors on non-existent structure."""
         fake_ulid = "01HZZZZZZZZZZZZZZZZZZZZZZ"
 
@@ -52,7 +52,7 @@ class TestGetStructureVis:
 
         assert "not_found" in str(exc_info.value).lower()
 
-    def test_get_structure_vis_workflow(self, demo_project_with_structure, daemon: QVDaemon):
+    def test_get_structure_vis_workflow(self, demo_project_with_structure, daemon: QMSDaemon):
         """get_structure_vis after list_structures."""
         project_root, structure_ulid = demo_project_with_structure
 

@@ -59,9 +59,9 @@ Create `tools/demo_store/analysis_resweep.py` for analysis-only iteration.
 | Action | File | Purpose |
 |--------|------|---------|
 | CREATE | `tools/demo_store/analysis_resweep.py` | Analysis-only re-sweep tool |
-| MODIFY | `src/quantumvitas/core/analysis/capability.py` | `effective_sequence`, `canonical_match_key()` |
-| MODIFY | `src/quantumvitas/core/analysis/orchestrator.py` | Wire effective_sequence + match_key |
-| MODIFY | `src/quantumvitas/api/service.py` | Replace ad-hoc match_key (2 sites) |
+| MODIFY | `src/qmatsuite/core/analysis/capability.py` | `effective_sequence`, `canonical_match_key()` |
+| MODIFY | `src/qmatsuite/core/analysis/orchestrator.py` | Wire effective_sequence + match_key |
+| MODIFY | `src/qmatsuite/api/service.py` | Replace ad-hoc match_key (2 sites) |
 | CREATE | 6x `drivers/<engine>/parsers/convergence.py` | Convergence parsers |
 | MODIFY | 6x `drivers/<engine>/driver.py` | Add convergence capabilities |
 | MODIFY | 6x `drivers/<engine>/parsers/__init__.py` | Import convergence |

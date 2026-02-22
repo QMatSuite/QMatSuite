@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
 # Using ensure_qe_pseudos directly (canonical entry point)
-from quantumvitas.calculation import (
+from qmatsuite.calculation import (
     build_step_spec_from_qe_input,
     materialize_step_spec,
 )
@@ -136,7 +136,7 @@ class TestPWScfIbravStepSpecsExecution:
             # run_step will set ESPRESSO_PSEUDO to sandbox_dir/pseudo
             sandbox_pseudo_dir = sandbox_dir / "pseudo"
             sandbox_pseudo_dir.mkdir(parents=True, exist_ok=True)
-            from quantumvitas.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
+            from qmatsuite.core.pseudo import ensure_qe_pseudos, get_system_pseudo_dir
             result = ensure_qe_pseudos(
                 qe_input_file=sandbox_input,
                 project_pseudo_dir=sandbox_pseudo_dir,
@@ -158,7 +158,7 @@ class TestPWScfIbravStepSpecsExecution:
             # run_step will set ESPRESSO_PSEUDO to sandbox_dir/pseudo (standalone mode)
             step_type_gen = qe_engine.detect_step_type(sandbox_input)  # Returns GEN type (e.g., "scf")
             # Convert GEN to SPEC for execution layer
-            from quantumvitas.workflow.step_type_convert import spec_from
+            from qmatsuite.workflow.step_type_convert import spec_from
             step_type_spec = spec_from("qe", step_type_gen)  # Convert to SPEC (e.g., "qe_scf")
             step_result = qe_engine.run_step(
                 input_file=sandbox_input,

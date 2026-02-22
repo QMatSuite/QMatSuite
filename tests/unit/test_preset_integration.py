@@ -18,14 +18,14 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any
 
-from quantumvitas.presets.dimensions import (
+from qmatsuite.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
     ConvergenceOption,
     CUSTOM,
     _CustomType,
 )
-from quantumvitas.presets.integration import (
+from qmatsuite.presets.integration import (
     detect_presets_from_calculation,
     detect_presets_from_calculation_typed,
     apply_presets_to_step,
@@ -299,7 +299,7 @@ class TestApplyPresetsToStep:
     
     def test_apply_validates_physics_by_default(self, tmp_path):
         """Physics validation is on by default."""
-        from quantumvitas.presets.compiler import PresetCompilationError
+        from qmatsuite.presets.compiler import PresetCompilationError
         
         step_path = tmp_path / "test.step.yaml"
         step_path.write_text(yaml.safe_dump({"step_type_gen": "scf", "parameters": {}}))
@@ -496,8 +496,8 @@ class TestConvergencePreset:
     
     def test_fast_profile_patch(self):
         """FAST profile produces exact patch values."""
-        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
-        from quantumvitas.presets.dimensions import ConvergenceOption
+        from qmatsuite.presets.variants_registry import compile_dimension_patch_for_step
+        from qmatsuite.presets.dimensions import ConvergenceOption
         
         step_yaml = {"parameters": {"ELECTRONS": {}}}
         patch, deletions = compile_dimension_patch_for_step(
@@ -522,8 +522,8 @@ class TestConvergencePreset:
     
     def test_normal_profile_patch(self):
         """NORMAL profile produces exact patch values."""
-        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
-        from quantumvitas.presets.dimensions import ConvergenceOption
+        from qmatsuite.presets.variants_registry import compile_dimension_patch_for_step
+        from qmatsuite.presets.dimensions import ConvergenceOption
         
         step_yaml = {"parameters": {"ELECTRONS": {}}}
         patch, deletions = compile_dimension_patch_for_step(
@@ -544,8 +544,8 @@ class TestConvergencePreset:
     
     def test_robust_profile_patch(self):
         """ROBUST profile produces exact patch values."""
-        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
-        from quantumvitas.presets.dimensions import ConvergenceOption
+        from qmatsuite.presets.variants_registry import compile_dimension_patch_for_step
+        from qmatsuite.presets.dimensions import ConvergenceOption
         
         step_yaml = {"parameters": {"ELECTRONS": {}}}
         patch, deletions = compile_dimension_patch_for_step(
@@ -566,8 +566,8 @@ class TestConvergencePreset:
     
     def test_very_robust_profile_patch(self):
         """VERY_ROBUST profile produces exact patch values."""
-        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
-        from quantumvitas.presets.dimensions import ConvergenceOption
+        from qmatsuite.presets.variants_registry import compile_dimension_patch_for_step
+        from qmatsuite.presets.dimensions import ConvergenceOption
         
         step_yaml = {"parameters": {"ELECTRONS": {}}}
         patch, deletions = compile_dimension_patch_for_step(
@@ -588,8 +588,8 @@ class TestConvergencePreset:
     
     def test_convergence_never_sets_conv_thr(self):
         """Convergence preset never sets conv_thr (belongs to precision)."""
-        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
-        from quantumvitas.presets.dimensions import ConvergenceOption
+        from qmatsuite.presets.variants_registry import compile_dimension_patch_for_step
+        from qmatsuite.presets.dimensions import ConvergenceOption
         
         step_yaml = {"parameters": {"ELECTRONS": {}}}
         
@@ -608,8 +608,8 @@ class TestConvergencePreset:
     
     def test_convergence_and_precision_coexist(self, tmp_path):
         """Convergence and precision can coexist; conv_thr only from precision."""
-        from quantumvitas.presets.integration import apply_presets_to_step
-        from quantumvitas.presets.dimensions import ConvergenceOption, PrecisionOption
+        from qmatsuite.presets.integration import apply_presets_to_step
+        from qmatsuite.presets.dimensions import ConvergenceOption, PrecisionOption
         
         step_path = tmp_path / "test.step.yaml"
         step_path.write_text(yaml.safe_dump({
@@ -622,7 +622,7 @@ class TestConvergencePreset:
         
         # Apply both convergence and precision
         # Note: precision requires context, so we'll test the patch compilation directly
-        from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
+        from qmatsuite.presets.variants_registry import compile_dimension_patch_for_step
         
         step_yaml = {
             "parameters": {
@@ -640,7 +640,7 @@ class TestConvergencePreset:
         )
         
         # Compile precision patch (requires context, but we can check conv_thr ownership)
-        from quantumvitas.presets.spaces_registry import compile_dimension_patch
+        from qmatsuite.presets.spaces_registry import compile_dimension_patch
         precision_patch, precision_deletions = compile_dimension_patch(
             "precision",
             PrecisionOption.MED,
@@ -665,8 +665,8 @@ class TestConvergencePreset:
     
     def test_convergence_applies_to_pw_steps(self, tmp_path):
         """Convergence preset applies to all pw-based step types."""
-        from quantumvitas.presets.integration import apply_presets_to_step
-        from quantumvitas.presets.dimensions import ConvergenceOption
+        from qmatsuite.presets.integration import apply_presets_to_step
+        from qmatsuite.presets.dimensions import ConvergenceOption
         
         # Test all pw-based step types
         pw_step_types = ["scf", "nscf", "relax", "vc-relax", "bandspw", "md", "vc-md"]
@@ -698,7 +698,7 @@ class TestConvergencePreset:
     
     def test_convergence_does_not_apply_to_non_pw_steps(self, tmp_path):
         """Convergence preset does not apply to non-pw step types."""
-        from quantumvitas.presets.integration import apply_presets_to_step
+        from qmatsuite.presets.integration import apply_presets_to_step
         
         # Test non-pw step types (SPEC types - step files use step_type_spec)
         non_pw_step_types = ["qe_dos", "qe_bands", "qe_projwfc", "qe_pp"]

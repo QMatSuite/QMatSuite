@@ -7,13 +7,13 @@ import yaml
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from quantumvitas.core.calc_identity import (
+from qmatsuite.core.calc_identity import (
     infer_calculation_identity,
     ensure_calculation_identity,
     _infer_engine_family_from_spec_types,
     _infer_structure_kind_from_engine_family,
 )
-from quantumvitas.core.models import CalculationModel, CalculationStepEntry, ResourceMeta
+from qmatsuite.core.models import CalculationModel, CalculationStepEntry, ResourceMeta
 
 
 def test_infer_engine_family_from_spec_types_qe():
@@ -188,7 +188,7 @@ def test_save_calculation_immutability(
     existing_kind, existing_family, new_kind, new_family, should_raise
 ):
     """Test that save_calculation enforces immutability of identity fields."""
-    from quantumvitas.core.models import save_calculation, ResourceMeta
+    from qmatsuite.core.models import save_calculation, ResourceMeta
     
     with TemporaryDirectory() as tmpdir:
         calc_dir = Path(tmpdir) / "test_calc"

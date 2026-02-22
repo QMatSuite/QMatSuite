@@ -14,23 +14,23 @@ import shutil
 import yaml
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc, StepDoc
-from quantumvitas.core.models import load_calculation
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
-from quantumvitas.core.resources import get_resources_dir
-from quantumvitas.calculation.hash_utils import compute_step_sha, compute_potential_assets_sha
-from quantumvitas.calculation.manifest import load_manifest, ManifestStepEntry
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc, StepDoc
+from qmatsuite.core.models import load_calculation
+from qmatsuite.core.pseudo_provenance import compute_sha256_file
+from qmatsuite.core.resources import get_resources_dir
+from qmatsuite.calculation.hash_utils import compute_step_sha, compute_potential_assets_sha
+from qmatsuite.calculation.manifest import load_manifest, ManifestStepEntry
 
 
 def get_lammps_binary_info():
     """Get LAMMPS binary path or skip with diagnostic."""
-    from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
+    from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin
     
     try:
         return resolve_lammps_bin()
@@ -48,7 +48,7 @@ def lammps_binary():
 def inline_lj_project(tmp_path: Path, lammps_binary):
     """Create a minimal LAMMPS project with inline LJ potential."""
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=tmp_path / "inline_lj",
         name="Inline LJ Test"
     )
@@ -66,11 +66,11 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
     struct_file.write_text(json.dumps(structure.as_dict()))
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="Ar FCC")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="Ar FCC")
     structure_ulid = struct_result.meta.ulid
     
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="inline_lj",
         structure_selector=structure_ulid,
     )
@@ -86,7 +86,7 @@ def inline_lj_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create relax step with inline LJ potential using domain API
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     step = svc.calculation.add_step(
         calc_selector=calc_id,
         step_type_gen="relax",
@@ -154,7 +154,7 @@ def test_inline_lj_potential_affects_skip(inline_lj_project, lammps_binary):
     assert (step_dir / "log.lammps").exists(), "First run should produce log"
     
     # Load manifest and verify done=True
-    from quantumvitas.calculation.manifest import load_manifest
+    from qmatsuite.calculation.manifest import load_manifest
     manifest = load_manifest(calc_dir)
     assert manifest is not None, "Manifest should exist"
     assert len(manifest.steps) > 0, "Manifest should have step entry"
@@ -166,8 +166,8 @@ def test_inline_lj_potential_affects_skip(inline_lj_project, lammps_binary):
     first_step_sha = step_entry.step_sha
     
     # Get step file path using resolution
-    from quantumvitas.core.resolution import require_step
-    from quantumvitas.core.project_utils import load_project_config
+    from qmatsuite.core.resolution import require_step
+    from qmatsuite.core.project_utils import load_project_config
     config = load_project_config(project_root)
     step_resolved = require_step(project_root, calc_id, step_id, config=config)
     step_path = step_resolved.absolute_path
@@ -229,7 +229,7 @@ def test_inline_lj_potential_affects_skip(inline_lj_project, lammps_binary):
 def external_potential_project(tmp_path: Path, lammps_binary):
     """Create a minimal LAMMPS project with external EAM potential."""
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=tmp_path / "external_pot",
         name="External Potential Test"
     )
@@ -247,7 +247,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     struct_file.write_text(json.dumps(structure.as_dict()))
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="Cu FCC")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file from resources
@@ -262,7 +262,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     initial_sha = compute_sha256_file(potential_dst)
     
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="external_pot",
         structure_selector=structure_ulid,
     )
@@ -286,7 +286,7 @@ def external_potential_project(tmp_path: Path, lammps_binary):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create MD step using domain API
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     step = svc.calculation.add_step(
         calc_selector=calc_id,
         step_type_gen="md",

@@ -1,7 +1,7 @@
 """Tests for QMCPACK output digest parser.
 
 Tests the QMCPACKDigest and QMCPACKOutputParser in
-src/quantumvitas/drivers/qmcpack/parsers/output.py.
+src/qmatsuite/drivers/qmcpack/parsers/output.py.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.qmcpack.parsers.output import (
+from qmatsuite.drivers.qmcpack.parsers.output import (
     QMCPACKDigest,
     QMCPACKOutputParser,
     parse_qmcpack_stdout_text,
@@ -220,6 +220,6 @@ class TestQMCPACKOutputParser:
         assert d.n_walkers == 14
 
     def test_registration(self):
-        from quantumvitas.parsers.registry import get_parser
+        from qmatsuite.parsers.registry import get_parser
         parser_cls = get_parser("qmcpack", "scf_digest")
         assert parser_cls is QMCPACKOutputParser

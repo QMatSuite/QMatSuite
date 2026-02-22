@@ -110,12 +110,12 @@
 **Question**: Should QE I/O models (`QEModule`, `QEInput`, etc.) be part of public API or internal to driver?
 
 **Current State**:
-- Exported from `quantumvitas.io`
+- Exported from `qmatsuite.io`
 - Used by external code for QE input manipulation
 
 **Recommendation**: Keep as public API via re-exports
 - Move implementation to `drivers/qe/io/`
-- Re-export from `quantumvitas.io` for backward compat
+- Re-export from `qmatsuite.io` for backward compat
 - Document as stable API
 
 **Decision**: [ ] Public API / [ ] Internal only / [ ] Hybrid

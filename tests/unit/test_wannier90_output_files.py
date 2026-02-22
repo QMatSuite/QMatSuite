@@ -15,9 +15,9 @@ from unittest.mock import Mock, patch, MagicMock
 import tempfile
 import shutil
 
-from quantumvitas.core.engines.qe_calculation import QECalculationRunner, StepResult
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe_calculation import QECalculationRunner, StepResult
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 
 class TestWannier90StdoutStderrNotOverwritten:

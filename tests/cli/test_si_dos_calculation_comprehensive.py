@@ -5,7 +5,7 @@ This test creates a full project with a DOS calculation:
 - SCF calculation (pw.x calculation='scf', K_POINTS automatic)
 - NSCF calculation (pw.x calculation='nscf', K_POINTS automatic denser)
 - DOS calculation (dos.x)
-- DOS analysis (qv analyze dos)
+- DOS analysis (qms analyze dos)
 
 Requires QE to be installed.
 """
@@ -20,15 +20,15 @@ import uuid
 from pathlib import Path
 
 import pytest
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 # Mark all tests as requiring QE
 pytestmark = pytest.mark.qe_core
 
 
-def run_qv(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
-    """Run qv CLI command."""
-    cmd = [sys.executable, "-m", "quantumvitas.cli.main"] + args
+def run_qms(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
+    """Run qms CLI command."""
+    cmd = [sys.executable, "-m", "qmatsuite.cli.main"] + args
     result = subprocess.run(
         cmd,
         cwd=cwd,
@@ -90,7 +90,7 @@ K_POINTS (automatic)
     scf_in.write_text(qe_input_content)
     
     # Initialize project
-    run_qv(["init", "project", "--name", "si_dos_test"], cwd=test_project_dir)
+    run_qms(["init", "project", "--name", "si_dos_test"], cwd=test_project_dir)
     
     project_dir = test_project_dir / "si_dos_test"
     assert project_dir.exists(), f"Project not created at {project_dir}"
@@ -106,7 +106,7 @@ K_POINTS (automatic)
         shutil.copy2(pp_file, pseudo_dst / pp_file.name)
     
     # Import structure from SCF input (same as bands test)
-    run_qv(["import-structure", str(scf_in), "--name", "si"], cwd=project_dir)
+    run_qms(["import-structure", str(scf_in), "--name", "si"], cwd=project_dir)
     
     return project_dir
 
@@ -119,7 +119,7 @@ class TestSiDosCalculation:
         """Create calculation."""
         project_dir = project_with_structure
         
-        run_qv(["init", "calculation", "si_dos", "--structure", "si", "--engine-family", "qe"], cwd=project_dir)
+        run_qms(["init", "calculation", "si_dos", "--structure", "si", "--engine-family", "qe"], cwd=project_dir)
         
         calculation_dir = project_dir / "calculations" / "si_dos"
         assert calculation_dir.exists()
@@ -132,7 +132,7 @@ class TestSiDosCalculation:
         project_dir = project_with_structure
         
         # Step 1: SCF (calculation='scf', K_POINTS automatic 8x8x8)
-        run_qv([
+        run_qms([
             "init", "step", "scf",
             "--structure", "si",
             "--calculation", "si_dos",
@@ -148,7 +148,7 @@ class TestSiDosCalculation:
         ], cwd=project_dir)
         
         # Step 2: NSCF (calculation='nscf', K_POINTS automatic 12x12x12 denser)
-        run_qv([
+        run_qms([
             "init", "step", "nscf",
             "--structure", "si",
             "--calculation", "si_dos",
@@ -165,7 +165,7 @@ class TestSiDosCalculation:
         ], cwd=project_dir)
         
         # Step 3: DOS calculation (dos.x)
-        run_qv([
+        run_qms([
             "init", "step", "dos",
             "--structure", "si",
             "--calculation", "si_dos",
@@ -182,7 +182,7 @@ class TestSiDosCalculation:
         if not scf_in.exists():
             # Fallback: create input file in project root if not in expected location
             scf_in = project_dir.parent / "si.0_scf.in"
-        run_qv([
+        run_qms([
             "configure", "species", "--from-input", str(scf_in),
             "--calc", "si_dos",
         ], cwd=project_dir)
@@ -200,7 +200,7 @@ class TestSiDosCalculation:
         raw_dir = calculation_dir / "raw"
         
         # Run the calculation once
-        result = run_qv(
+        result = run_qms(
             ["run", "calculation", "si_dos", "--verbose"],
             cwd=project_dir,
             check=False,
@@ -237,17 +237,17 @@ class TestSiDosCalculation:
             if scf_out:
                 fermi_file = scf_out[0]
         
-        # Run qv analyze dos
+        # Run qms analyze dos
         args = ["analyze", "dos", str(dos_file), "--plot", "--format", "png"]
         if fermi_file:
             args.extend(["--scf", str(fermi_file)])
         
-        result = run_qv(args, cwd=project_dir, check=False)
+        result = run_qms(args, cwd=project_dir, check=False)
         
         # Check if analyze command failed
         if result.returncode != 0:
             pytest.fail(
-                "qv analyze dos failed:\n"
+                "qms analyze dos failed:\n"
                 f"STDOUT:\n{result.stdout}\n\n"
                 f"STDERR:\n{result.stderr}"
             )

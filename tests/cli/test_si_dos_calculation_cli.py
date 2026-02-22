@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from quantumvitas.cli.main import app as cli_app
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.cli.main import app as cli_app
+from qmatsuite.core.resources import get_resources_dir
 from tests.utils.calculation_projects import create_calculation_project
 
 pytestmark = pytest.mark.qe_cli

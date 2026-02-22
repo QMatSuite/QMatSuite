@@ -6,7 +6,7 @@ Tests for:
 - Builtin.db expansion (35+ entries, new categories)
 - InsightRecord dataclass
 
-Shared fixtures (qv_project, etc.) are in conftest.py.
+Shared fixtures (qms_project, etc.) are in conftest.py.
 """
 
 from __future__ import annotations
@@ -28,10 +28,10 @@ class TestPromoteStructure:
     Real relax execution tests require QE and are covered separately.
     """
 
-    def test_promote_no_relax_step_error(self, qv_project):
+    def test_promote_no_relax_step_error(self, qms_project):
         """SCF-only calculation → error: no relax step."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.promote_structure import promote_structure
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.promote_structure import promote_structure
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -44,18 +44,18 @@ class TestPromoteStructure:
         assert result["error_type"] == "no_relax_step"
         assert "relax" in result["message"].lower()
 
-    def test_promote_invalid_calc_ulid(self, qv_project):
+    def test_promote_invalid_calc_ulid(self, qms_project):
         """Non-existent calc → not_found error."""
-        from quantumvitas.mcp.tools.promote_structure import promote_structure
+        from qmatsuite.mcp.tools.promote_structure import promote_structure
 
         result = promote_structure.fn(calc_ulid="NONEXISTENT_ULID")
         assert result["status"] == "error"
         assert result["error_type"] == "not_found"
 
-    def test_promote_invalid_step_index(self, qv_project):
+    def test_promote_invalid_step_index(self, qms_project):
         """Out-of-range step index → error."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.promote_structure import promote_structure
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.promote_structure import promote_structure
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -67,10 +67,10 @@ class TestPromoteStructure:
         assert result["status"] == "error"
         assert result["error_type"] == "invalid_step_index"
 
-    def test_promote_step_not_relax_type(self, qv_project):
+    def test_promote_step_not_relax_type(self, qms_project):
         """Explicitly selecting an SCF step → not_relax_step error."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.promote_structure import promote_structure
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.promote_structure import promote_structure
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="Silicon",
@@ -82,10 +82,10 @@ class TestPromoteStructure:
         assert result["status"] == "error"
         assert result["error_type"] == "not_relax_step"
 
-    def test_promote_relax_step_not_run(self, qv_project):
+    def test_promote_relax_step_not_run(self, qms_project):
         """Relax step that hasn't been executed → error about missing output."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.promote_structure import promote_structure
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.promote_structure import promote_structure
 
         calc = create_calculation.fn(
             engine="qe", workflow="relax", structure_selector="Silicon",
@@ -110,7 +110,7 @@ class TestKnowledgeSchemaEvolution:
 
     def test_schema_has_last_validated(self, tmp_path):
         """The insights table has a last_validated column."""
-        from quantumvitas.mcp.knowledge.schema import init_db
+        from qmatsuite.mcp.knowledge.schema import init_db
 
         db_path = tmp_path / "test_schema.db"
         conn = init_db(db_path)
@@ -124,7 +124,7 @@ class TestKnowledgeSchemaEvolution:
 
     def test_schema_has_contradiction_count(self, tmp_path):
         """The insights table has contradiction_count with default 0."""
-        from quantumvitas.mcp.knowledge.schema import init_db
+        from qmatsuite.mcp.knowledge.schema import init_db
 
         db_path = tmp_path / "test_schema.db"
         conn = init_db(db_path)
@@ -140,8 +140,8 @@ class TestKnowledgeSchemaEvolution:
 
     def test_existing_search_still_works(self, tmp_path):
         """Search works after schema evolution — no regression."""
-        from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
-        from quantumvitas.mcp.knowledge.store import KnowledgeStore
+        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
+        from qmatsuite.mcp.knowledge.store import KnowledgeStore
 
         db_path = tmp_path / "test_search.db"
         build_builtin_db(db_path)
@@ -157,7 +157,7 @@ class TestKnowledgeSchemaEvolution:
 
     def test_new_columns_populated_in_builtin(self, tmp_path):
         """Builtin entries have last_validated set and contradiction_count=0."""
-        from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
+        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
 
         db_path = tmp_path / "test_cols.db"
         build_builtin_db(db_path)
@@ -185,8 +185,8 @@ class TestBuiltinExpansion:
 
     def test_entry_count_at_least_35(self, tmp_path):
         """KnowledgeStore has at least 35 active entries."""
-        from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
-        from quantumvitas.mcp.knowledge.store import KnowledgeStore
+        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
+        from qmatsuite.mcp.knowledge.store import KnowledgeStore
 
         db_path = tmp_path / "test_count.db"
         build_builtin_db(db_path)
@@ -200,8 +200,8 @@ class TestBuiltinExpansion:
 
     def test_methodology_entries_exist(self, tmp_path):
         """Entries tagged with 'methodology' or 'cross_engine' exist."""
-        from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
-        from quantumvitas.mcp.knowledge.store import KnowledgeStore
+        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
+        from qmatsuite.mcp.knowledge.store import KnowledgeStore
 
         db_path = tmp_path / "test_meth.db"
         build_builtin_db(db_path)
@@ -215,8 +215,8 @@ class TestBuiltinExpansion:
 
     def test_interpretation_entries_exist(self, tmp_path):
         """Entries about result interpretation exist."""
-        from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
-        from quantumvitas.mcp.knowledge.store import KnowledgeStore
+        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
+        from qmatsuite.mcp.knowledge.store import KnowledgeStore
 
         db_path = tmp_path / "test_interp.db"
         build_builtin_db(db_path)
@@ -231,8 +231,8 @@ class TestBuiltinExpansion:
 
     def test_workflow_sequence_entries_exist(self, tmp_path):
         """Entries about workflow sequencing (relax before bands, etc.) exist."""
-        from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
-        from quantumvitas.mcp.knowledge.store import KnowledgeStore
+        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
+        from qmatsuite.mcp.knowledge.store import KnowledgeStore
 
         db_path = tmp_path / "test_wf.db"
         build_builtin_db(db_path)
@@ -246,7 +246,7 @@ class TestBuiltinExpansion:
 
     def test_no_duplicate_entry_ids(self, tmp_path):
         """All deterministic ULIDs are unique."""
-        from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
+        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
 
         db_path = tmp_path / "test_dedup.db"
         build_builtin_db(db_path)
@@ -261,8 +261,8 @@ class TestBuiltinExpansion:
 
     def test_builtin_entries_match_db(self, tmp_path):
         """Number of BUILTIN_ENTRIES matches DB count."""
-        from quantumvitas.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
-        from quantumvitas.mcp.knowledge.build_builtin import build_builtin_db
+        from qmatsuite.mcp.knowledge.builtin_entries import BUILTIN_ENTRIES
+        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
 
         db_path = tmp_path / "test_match.db"
         build_builtin_db(db_path)
@@ -285,7 +285,7 @@ class TestInsightRecord:
 
     def test_insight_record_fields(self):
         """InsightRecord has all required fields with correct defaults."""
-        from quantumvitas.mcp.knowledge.insight_record import InsightRecord
+        from qmatsuite.mcp.knowledge.insight_record import InsightRecord
 
         record = InsightRecord(content="Test insight")
         assert record.content == "Test insight"
@@ -299,7 +299,7 @@ class TestInsightRecord:
 
     def test_insight_record_content_reasoning_separation(self):
         """content and reasoning are separate fields."""
-        from quantumvitas.mcp.knowledge.insight_record import InsightRecord
+        from qmatsuite.mcp.knowledge.insight_record import InsightRecord
 
         record = InsightRecord(
             content="PBE underestimates Si band gap",

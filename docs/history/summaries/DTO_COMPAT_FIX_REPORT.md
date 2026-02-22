@@ -8,7 +8,7 @@ Fixed DTO compatibility issues that broke historical output/serialization contra
 
 ### 1. DTO Compatibility Properties
 
-#### StructureDTO (`src/quantumvitas/api/types/structure.py`)
+#### StructureDTO (`src/qmatsuite/api/types/structure.py`)
 - Added `id` property: returns `meta.id` if available, otherwise `structure_id`
 - Added `name` property: returns `meta.name`
 - Added `slug` property: returns `meta.slug`
@@ -16,7 +16,7 @@ Fixed DTO compatibility issues that broke historical output/serialization contra
 - Added `n_atoms` property: alias for `num_atoms`
 - Overrode `to_dict()` to include all compatibility properties
 
-#### CalculationDTO (`src/quantumvitas/api/types/calculation.py`)
+#### CalculationDTO (`src/qmatsuite/api/types/calculation.py`)
 - Added `id` property: returns `meta.id` if available, otherwise `calc_id`
 - Added `name` property: returns `meta.name`
 - Added `slug` property: returns `meta.slug`
@@ -24,7 +24,7 @@ Fixed DTO compatibility issues that broke historical output/serialization contra
 - Added `n_steps` property: alias for `step_count`
 - Overrode `to_dict()` to include all compatibility properties
 
-#### RunResultDTO (`src/quantumvitas/api/types/run.py`)
+#### RunResultDTO (`src/qmatsuite/api/types/run.py`)
 - Added `steps` property: returns list of `StepResultCompat` objects with `step_id`, `step_type`, `status`, `message`, `metrics`
 - Added `io_dir`, `input_file`, `output_file` fields for CLI compatibility
 - Added `_step_details` private field to store step details from execution
@@ -33,24 +33,24 @@ Fixed DTO compatibility issues that broke historical output/serialization contra
 
 ### 2. Daemon Handler Fixes
 
-#### `_handle_list_structures` (`src/quantumvitas/daemon/server.py`)
+#### `_handle_list_structures` (`src/qmatsuite/daemon/server.py`)
 - Changed from manual dict construction to `dto.to_dict()` for all structure DTOs
 - Ensures JSON serialization and includes all compatibility properties
 
-#### `_handle_list_calculations` (`src/quantumvitas/daemon/server.py`)
+#### `_handle_list_calculations` (`src/qmatsuite/daemon/server.py`)
 - Changed from manual dict construction to `dto.to_dict()` for all calculation DTOs
 - Ensures JSON serialization and includes all compatibility properties
 
 ### 3. Job Manager DTO Conversion
 
-#### `JobManager.execute_job` (`src/quantumvitas/daemon/jobs.py`)
+#### `JobManager.execute_job` (`src/qmatsuite/daemon/jobs.py`)
 - Added automatic DTO-to-dict conversion using `to_dict()` method
 - Handles both `submit()` and `submit_with_id()` methods
 - Ensures job results are always dicts, not DTO objects
 
 ### 4. Service Layer Updates
 
-#### `_result_dict_to_dto` (`src/quantumvitas/api/service.py`)
+#### `_result_dict_to_dto` (`src/qmatsuite/api/service.py`)
 - Updated to store `_step_details` from result_dict["steps"]
 - Stores `io_dir`, `input_file`, `output_file` for CLI compatibility
 
@@ -153,7 +153,7 @@ The status mapping is correct: DTOs use "completed" status, which is the proper 
 ## Architecture Compliance
 
 ✅ No kernel imports in CLI or daemon
-✅ All operations route through `quantumvitas.api.*`
+✅ All operations route through `qmatsuite.api.*`
 ✅ API layer remains single channel
 ✅ No dual-channel static project-scoped logic
 ✅ Daemon handlers use `to_dict()` or `dataclasses.asdict()`

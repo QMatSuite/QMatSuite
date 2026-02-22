@@ -24,38 +24,38 @@ import pytest
 class TestFTS5Sanitization:
     """Verify search_knowledge handles FTS5-hostile characters safely."""
 
-    def test_hyphenated_query_no_crash(self, qv_project):
+    def test_hyphenated_query_no_crash(self, qms_project):
         """Hyphens in query must not trigger FTS5 syntax errors."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query="Quantum-ESPRESSO")
         # Should succeed (may return empty results) — must not crash
         assert result["status"] == "success"
 
-    def test_quoted_query_no_crash(self, qv_project):
+    def test_quoted_query_no_crash(self, qms_project):
         """Double quotes in query must not trigger FTS5 syntax errors."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query='"SCF convergence"')
         assert result["status"] == "success"
 
-    def test_boolean_operator_stripped(self, qv_project):
+    def test_boolean_operator_stripped(self, qms_project):
         """FTS5 boolean operators (AND, OR, NOT) must be stripped."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query="NOT convergence OR crash")
         assert result["status"] == "success"
 
-    def test_normal_query_still_works(self, qv_project):
+    def test_normal_query_still_works(self, qms_project):
         """Normal alphanumeric queries must still work."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query="ecutwfc cutoff")
         assert result["status"] == "success"
 
-    def test_empty_after_sanitize_returns_empty(self, qv_project):
+    def test_empty_after_sanitize_returns_empty(self, qms_project):
         """A query that is all special chars returns empty results, not crash."""
-        from quantumvitas.mcp.tools.search_knowledge import search_knowledge
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query="---!!!")
         assert result["status"] == "success"
@@ -69,10 +69,10 @@ class TestFTS5Sanitization:
 class TestPreflightStepGating:
     """Verify preflight is skipped for non-pw.x steps."""
 
-    def test_dos_step_no_preflight_issues(self, qv_project):
+    def test_dos_step_no_preflight_issues(self, qms_project):
         """A 'dos' step must not produce pw.x-specific preflight issues."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         calc = create_calculation.fn(
             engine="qe", workflow="dos", structure_selector="silicon",
@@ -102,10 +102,10 @@ class TestPreflightStepGating:
         found_pw_issues = [i for i in issues if i.get("code") in pw_codes]
         assert not found_pw_issues, f"False positive pw.x issues on dos step: {found_pw_issues}"
 
-    def test_bands_step_no_false_positives(self, qv_project):
+    def test_bands_step_no_false_positives(self, qms_project):
         """A 'bands' post-processing step must not produce pw.x preflight issues."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         calc = create_calculation.fn(
             engine="qe", workflow="bands", structure_selector="silicon",
@@ -133,10 +133,10 @@ class TestPreflightStepGating:
         found_pw_issues = [i for i in issues if i.get("code") in pw_codes]
         assert not found_pw_issues, f"False positive pw.x issues on bands step: {found_pw_issues}"
 
-    def test_scf_step_still_checked(self, qv_project):
+    def test_scf_step_still_checked(self, qms_project):
         """An 'scf' step must still go through preflight checking."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="silicon",
@@ -151,9 +151,9 @@ class TestPreflightStepGating:
         # We can verify by checking that _run_preflight was actually invoked
         # (the absence of issues when ecutwfc is not set would be a sign of skipping)
 
-    def test_ph_step_skipped(self, qv_project):
+    def test_ph_step_skipped(self, qms_project):
         """A phonon (ph) step, if present, should skip pw.x preflight."""
-        from quantumvitas.mcp.tools.inspect_calculation import _PW_X_GEN_STEPS
+        from qmatsuite.mcp.tools.inspect_calculation import _PW_X_GEN_STEPS
 
         assert "ph" not in _PW_X_GEN_STEPS
         assert "dos" not in _PW_X_GEN_STEPS
@@ -169,10 +169,10 @@ class TestPreflightStepGating:
 class TestDryRunStepGating:
     """Verify dry_run is skipped for non-pw.x steps."""
 
-    def test_dos_step_dry_run_skipped_with_note(self, qv_project):
+    def test_dos_step_dry_run_skipped_with_note(self, qms_project):
         """dry_run on a dos step should return a note, not try to materialize."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         calc = create_calculation.fn(
             engine="qe", workflow="dos", structure_selector="silicon",
@@ -199,10 +199,10 @@ class TestDryRunStepGating:
         )
         assert "post-processing" in detail["data"]["dry_run_note"].lower()
 
-    def test_scf_step_dry_run_still_works(self, qv_project):
+    def test_scf_step_dry_run_still_works(self, qms_project):
         """dry_run on an scf step should still materialize input files."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.inspect_calculation import inspect_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.inspect_calculation import inspect_calculation
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="silicon",
@@ -224,14 +224,14 @@ class TestDownloadPseudoLibrary:
 
     def test_tool_registered(self):
         """download_pseudo_library must be registered as an MCP tool."""
-        from quantumvitas.mcp.tools.download_pseudo_library import download_pseudo_library
+        from qmatsuite.mcp.tools.download_pseudo_library import download_pseudo_library
 
         # Tool should be callable
         assert callable(download_pseudo_library.fn)
 
     def test_invalid_library_error(self):
         """Invalid library must return an error."""
-        from quantumvitas.mcp.tools.download_pseudo_library import download_pseudo_library
+        from qmatsuite.mcp.tools.download_pseudo_library import download_pseudo_library
 
         result = download_pseudo_library.fn(library="nonexistent_library")
         assert result["status"] == "error"
@@ -239,7 +239,7 @@ class TestDownloadPseudoLibrary:
 
     def test_tool_returns_expected_structure(self, monkeypatch):
         """When download succeeds, response has expected keys."""
-        from quantumvitas.mcp.tools import download_pseudo_library as mod
+        from qmatsuite.mcp.tools import download_pseudo_library as mod
 
         # Mock the pipeline to avoid network calls
         def mock_pipeline(library, variant, version):
@@ -255,11 +255,11 @@ class TestDownloadPseudoLibrary:
             }
 
         monkeypatch.setattr(
-            "quantumvitas.pseudo.pipeline.download_and_install",
+            "qmatsuite.pseudo.pipeline.download_and_install",
             mock_pipeline,
         )
         monkeypatch.setattr(
-            "quantumvitas.pseudo.download_and_install",
+            "qmatsuite.pseudo.download_and_install",
             mock_pipeline,
         )
 
@@ -280,9 +280,9 @@ class TestDownloadPseudoLibrary:
 class TestListResourcesInstalled:
     """Verify list_available_resources includes installed count."""
 
-    def test_qe_response_includes_n_installed(self, qv_project):
+    def test_qe_response_includes_n_installed(self, qms_project):
         """QE resource listing must include n_installed per element."""
-        from quantumvitas.mcp.tools.list_resources import list_available_resources
+        from qmatsuite.mcp.tools.list_resources import list_available_resources
 
         result = list_available_resources.fn(engine="qe", elements=["Si"])
         assert result["status"] == "success"
@@ -290,9 +290,9 @@ class TestListResourcesInstalled:
         if "Si" in elements:
             assert "n_installed" in elements["Si"]
 
-    def test_installed_flag_per_element(self, qv_project):
+    def test_installed_flag_per_element(self, qms_project):
         """QE resource listing must include top-level any_installed flag."""
-        from quantumvitas.mcp.tools.list_resources import list_available_resources
+        from qmatsuite.mcp.tools.list_resources import list_available_resources
 
         result = list_available_resources.fn(engine="qe")
         assert result["status"] == "success"
@@ -306,10 +306,10 @@ class TestListResourcesInstalled:
 class TestAutoResolveHint:
     """Verify resolution failure hints mention download_pseudo_library."""
 
-    def test_failure_hint_mentions_download(self, qv_project):
+    def test_failure_hint_mentions_download(self, qms_project):
         """When auto_resolve fails, hint should mention download_pseudo_library."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.resolve_species_map import auto_resolve_species_map
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.resolve_species_map import auto_resolve_species_map
 
         # Create a calc with an element that internal pseudos don't cover
         calc = create_calculation.fn(
@@ -334,10 +334,10 @@ class TestAutoResolveHint:
 class TestSetSpeciesMapWarning:
     """Verify set_species_map warns about missing pseudo files."""
 
-    def test_nonexistent_pseudo_warns(self, qv_project):
+    def test_nonexistent_pseudo_warns(self, qms_project):
         """Setting a non-existent pseudo file should produce a warning."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.set_species_map import set_species_map
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.set_species_map import set_species_map
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="silicon",
@@ -355,10 +355,10 @@ class TestSetSpeciesMapWarning:
         assert len(warnings) > 0, "Expected warning about non-existent pseudo file"
         assert "NONEXISTENT_Si.UPF" in warnings[0]
 
-    def test_existing_pseudo_no_warning(self, qv_project):
+    def test_existing_pseudo_no_warning(self, qms_project):
         """Setting an existing internal pseudo should not produce a warning."""
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
-        from quantumvitas.mcp.tools.set_species_map import set_species_map
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.set_species_map import set_species_map
 
         calc = create_calculation.fn(
             engine="qe", workflow="scf", structure_selector="silicon",
@@ -386,7 +386,7 @@ class TestPreviewCompilationEmpty:
 
     def test_empty_params_has_note(self):
         """When a step compiles to empty params, it should have a note."""
-        from quantumvitas.mcp.tools.preview_compilation import preview_compilation
+        from qmatsuite.mcp.tools.preview_compilation import preview_compilation
 
         # Use presets that won't match anything
         result = preview_compilation.fn(
@@ -403,7 +403,7 @@ class TestPreviewCompilationEmpty:
 
     def test_all_empty_has_hint(self):
         """When ALL steps compile to empty params, result should have a hint."""
-        from quantumvitas.mcp.tools.preview_compilation import preview_compilation
+        from qmatsuite.mcp.tools.preview_compilation import preview_compilation
 
         # Use a workflow/presets combo that produces all empty
         result = preview_compilation.fn(
@@ -426,7 +426,7 @@ class TestPreflightSeverity:
 
     def test_metal_fixed_occ_is_advisory(self):
         """METAL_FIXED_OCC must have severity='advisory', not 'warning'."""
-        from quantumvitas.drivers.qe.preflight import QEPreflightChecker
+        from qmatsuite.drivers.qe.preflight import QEPreflightChecker
 
         checker = QEPreflightChecker()
         params = {

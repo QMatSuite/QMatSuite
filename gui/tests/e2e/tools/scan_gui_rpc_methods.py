@@ -2,8 +2,8 @@
 GUI Static Scanner: Extract RPC method names used by the Electron GUI.
 
 This scanner walks the GUI source tree and extracts method names from:
-- qv.call('method_name', ...)
-- window.qv.request('method_name', ...)
+- qms.call('method_name', ...)
+- window.qms.request('method_name', ...)
 - Other RPC call patterns
 
 Outputs both plain text and JSON formats.
@@ -23,12 +23,12 @@ OUTPUT_JSON = Path(__file__).parent / "gui_rpc_methods.json"
 
 # Patterns to match RPC method calls
 PATTERNS = [
-    # Pattern 1: qv.call('method_name', ...)
-    re.compile(r"qv\.call\(['\"]([^'\"]+)['\"]"),
-    # Pattern 2: window.qv.request('method_name', ...)
-    re.compile(r"window\.qv\.request(?:<[^>]+>)?\(['\"]([^'\"]+)['\"]"),
-    # Pattern 3: qv.request('method_name', ...) (if used directly)
-    re.compile(r"qv\.request(?:<[^>]+>)?\(['\"]([^'\"]+)['\"]"),
+    # Pattern 1: qms.call('method_name', ...)
+    re.compile(r"qms\.call\(['\"]([^'\"]+)['\"]"),
+    # Pattern 2: window.qms.request('method_name', ...)
+    re.compile(r"window\.qms\.request(?:<[^>]+>)?\(['\"]([^'\"]+)['\"]"),
+    # Pattern 3: qms.request('method_name', ...) (if used directly)
+    re.compile(r"qms\.request(?:<[^>]+>)?\(['\"]([^'\"]+)['\"]"),
 ]
 
 
@@ -105,9 +105,9 @@ def main():
     output_data = {
         "methods": sorted_methods,
         "extracted_from_patterns": [
-            "qv.call('method_name', ...)",
-            "window.qv.request('method_name', ...)",
-            "qv.request('method_name', ...)",
+            "qms.call('method_name', ...)",
+            "window.qms.request('method_name', ...)",
+            "qms.request('method_name', ...)",
         ],
         "file_count_scanned": total_files,
         "src_files": src_count,

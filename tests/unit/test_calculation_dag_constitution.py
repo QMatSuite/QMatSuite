@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.models import CalculationModel, ResourceMeta, save_calculation, load_calculation
-from quantumvitas.core.resources import generate_resource_id
-from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
+from qmatsuite.core.models import CalculationModel, ResourceMeta, save_calculation, load_calculation
+from qmatsuite.core.resources import generate_resource_id
+from qmatsuite.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
 
 
 def test_calculation_yaml_only_persists_structure_ulid(tmp_path):
@@ -106,7 +106,7 @@ def test_calculation_roundtrip_strips_legacy_fields(tmp_path):
 
 def test_calculation_legacy_selector_raises_error(tmp_path):
     """Test that legacy structure selector (without structure_ulid) raises LegacyProjectError."""
-    from quantumvitas.core.exceptions import LegacyProjectError
+    from qmatsuite.core.exceptions import LegacyProjectError
     
     calc_dir = tmp_path / "calculations" / "legacy"
     calc_dir.mkdir(parents=True)
@@ -119,7 +119,7 @@ def test_calculation_legacy_selector_raises_error(tmp_path):
     structure_ulid = generate_resource_id()
     structure_file = structures_dir / "test-structure.json"
     import json
-    from quantumvitas.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
+    from qmatsuite.io.structure_io import STRUCTURE_META_KEY, STRUCTURE_DATA_KEY
     structure_file.write_text(json.dumps({
         STRUCTURE_META_KEY: {
             "ulid": structure_ulid,
@@ -136,7 +136,7 @@ def test_calculation_legacy_selector_raises_error(tmp_path):
         },
     }, indent=2))
     
-    # Create project.qv.yml
+    # Create project.qms.yml
     project_config = {
         "project": {"name": "Test Project"},
         "structures": [{
@@ -146,7 +146,7 @@ def test_calculation_legacy_selector_raises_error(tmp_path):
         }],
         "calculations": [],
     }
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump(project_config))
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump(project_config))
     
     # Create calculation.yaml with legacy structure selector (no structure_ulid)
     legacy_yaml = {

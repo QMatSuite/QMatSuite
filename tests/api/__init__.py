@@ -1,6 +1,6 @@
 """
 API tests.
 
-Tests for the quantumvitas.api module.
+Tests for the qmatsuite.api module.
 """
 

@@ -9,19 +9,19 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from quantumvitas.daemon.server import QVDaemon
+from qmatsuite.daemon.server import QMSDaemon
 
 
 @pytest.fixture
 def temp_project(tmp_path):
     """Create a temporary project directory."""
-    from quantumvitas.api import QVService
+    from qmatsuite.api import QMSService
     
     project_root = tmp_path / "test_project"
     project_root.mkdir()
     
-    # Initialize as a proper QuantumVITAS project
-    QVService.init_project(project_root, name="test_project")
+    # Initialize as a proper QMatSuite project
+    QMSService.init_project(project_root, name="test_project")
     
     # Ensure cache directory exists
     (project_root / "structures" / "cache").mkdir(parents=True, exist_ok=True)
@@ -31,8 +31,8 @@ def temp_project(tmp_path):
 
 @pytest.fixture
 def daemon():
-    """Create a QVDaemon instance."""
-    return QVDaemon()
+    """Create a QMSDaemon instance."""
+    return QMSDaemon()
 
 
 def test_get_online_candidate_missing_candidate(temp_project, daemon):
@@ -42,7 +42,7 @@ def test_get_online_candidate_missing_candidate(temp_project, daemon):
     Regression test for: candidate was only assigned when structure is None,
     but used later regardless, causing UnboundLocalError when structure exists in cache.
     """
-    from quantumvitas.io.online_cache import OnlineStructureCache
+    from qmatsuite.io.online_cache import OnlineStructureCache
     
     # Create a cache with a session but no matching candidate
     # Handler uses global cache, so we need to use the global cache location
@@ -87,8 +87,8 @@ def test_get_online_candidate_missing_structure(temp_project, daemon):
     
     Regression test: ensure structure lookup failure returns structured error.
     """
-    from quantumvitas.io.online_cache import OnlineStructureCache
-    from quantumvitas.io.online_cache import CandidateSummary
+    from qmatsuite.io.online_cache import OnlineStructureCache
+    from qmatsuite.io.online_cache import CandidateSummary
     
     # Create a cache with a session and candidate, but no structure
     # Handler uses global cache, so we need to use the global cache location
@@ -143,8 +143,8 @@ def test_get_online_candidate_cached_structure_has_candidate(temp_project, daemo
     Regression test: ensure candidate is assigned even when structure exists in cache,
     preventing UnboundLocalError at line 1426 (now 1453).
     """
-    from quantumvitas.io.online_cache import OnlineStructureCache
-    from quantumvitas.io.online_cache import CandidateSummary
+    from qmatsuite.io.online_cache import OnlineStructureCache
+    from qmatsuite.io.online_cache import CandidateSummary
     from pymatgen.core import Structure, Lattice
 
     # Create a cache with session, candidate, and structure

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.engines import micromamba
+from qmatsuite.core.engines import micromamba
 
 
 def _sha256_bytes(data: bytes) -> str:

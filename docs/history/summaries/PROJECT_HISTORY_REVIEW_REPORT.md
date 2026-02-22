@@ -25,7 +25,7 @@
 
 ```
 QMatSuite
-├── src/quantumvitas/
+├── src/qmatsuite/
 │   ├── core/               # Core infrastructure
 │   │   ├── yaml_io.py      # **CRITICAL**: Single YAML commit point with Journal hook
 │   │   ├── yamldoc.py      # YamlDoc/StepDoc/CalcDoc/ProjectDoc wrappers
@@ -55,7 +55,7 @@ QMatSuite
 │   │   ├── model.py        # Project dataclass, open/save
 │   │   └── storage.py      # ProjectStorage utility
 │   │
-│   └── api.py              # QVService: high-level API (CLI + daemon use)
+│   └── api.py              # QMSService: high-level API (CLI + daemon use)
 │
 └── gui/src/                # Electron GUI
     ├── App.tsx             # Main app with view routing
@@ -65,7 +65,7 @@ QMatSuite
     │   └── settings/
     │       └── JournalHistoryPanel.tsx # **EXISTING**: Debug history view
     └── hooks/
-        └── useQVClient.ts  # Daemon RPC client
+        └── useQMSClient.ts  # Daemon RPC client
 ```
 
 ### Data Flow Boundaries
@@ -77,13 +77,13 @@ QMatSuite
                         └───────────────────────┬─────────────────────────┘
                                                 │ JSON-RPC (stdio)
                         ┌───────────────────────▼─────────────────────────┐
-                        │             daemon/server.py (QVDaemon)          │
+                        │             daemon/server.py (QMSDaemon)          │
                         │  ├─ RPC handlers (_handle_run_calculation, etc.) │
                         │  └─ JobManager (ThreadPoolExecutor)              │
                         └───────────────────────┬─────────────────────────┘
-                                                │ QVService API calls
+                                                │ QMSService API calls
                         ┌───────────────────────▼─────────────────────────┐
-                        │              api.py (QVService)                  │
+                        │              api.py (QMSService)                  │
                         │  Static methods: run_calculation, apply_presets  │
                         └───────────────────────┬─────────────────────────┘
                                                 │
@@ -105,7 +105,7 @@ QMatSuite
                         │       │                                          │
                         │       ▼                                          │
                         │  core/journal.py                                 │
-                        │  Journal.record_change() → ~/.quantumvitas/...   │
+                        │  Journal.record_change() → ~/.qmatsuite/...   │
                         └─────────────────────────────────────────────────┘
 ```
 
@@ -181,7 +181,7 @@ class JournalEntry:
     path: str         # File path (optional)
 
 class Journal:
-    # Storage: ~/.quantumvitas/journal/journal.jsonl
+    # Storage: ~/.qmatsuite/journal/journal.jsonl
     # Append-only JSONL format
 ```
 
@@ -199,9 +199,9 @@ class Journal:
 
 ```
 <project_root>/
-├── project.qv.yml          # Project manifest (structure/calc registry)
+├── project.qms.yml          # Project manifest (structure/calc registry)
 ├── structures/
-│   └── <slug>.json         # Structure files with __qv_meta__
+│   └── <slug>.json         # Structure files with __qms_meta__
 ├── calculations/
 │   └── <slug>/             # Calculation directory (= workdir)
 │       ├── calculation.yaml    # Calculation manifest
@@ -249,10 +249,10 @@ No explicit family field in calculation.yaml yet.
 
 | Layer | File | Function/Method | Description |
 |-------|------|-----------------|-------------|
-| CLI | `cli/main.py` | Various commands | `qv run`, `qv step run`, etc. |
+| CLI | `cli/main.py` | Various commands | `qms run`, `qms step run`, etc. |
 | Daemon RPC | `daemon/server.py:5039` | `_handle_run_calculation()` | GUI → daemon |
 | Daemon RPC | `daemon/server.py:5063` | `_handle_run_step()` | Single step run |
-| API | `api.py` | `QVService.run_calculation()` | Core execution logic |
+| API | `api.py` | `QMSService.run_calculation()` | Core execution logic |
 | Runner | `calculation/runner.py:62` | `CalculationRunner.run()` | Step orchestration |
 
 ### Daemon Run Flow (GUI Path)
@@ -266,7 +266,7 @@ def _handle_run_calculation(self, payload):
     3. Submit to JobManager:
        job_id = self.job_manager.submit(
            job_type="run_calculation",
-           func=QVService.run_calculation,  # <-- actual execution
+           func=QMSService.run_calculation,  # <-- actual execution
            ...
        )
     4. Return job_id to GUI
@@ -303,7 +303,7 @@ class JobManager:
 class CalculationRunner:
     def run(self, calculation: Calculation) -> CalculationResult:
         # === HISTORY HOOK: Create Run Revision Snapshot ===
-        from quantumvitas.core.history import create_run_snapshot
+        from qmatsuite.core.history import create_run_snapshot
         run_id = create_run_snapshot(
             calculation=calculation,
             intention_record=self._build_intention_record(calculation),
@@ -409,7 +409,7 @@ class JournalEntry:
 ├── .history/
 │   ├── events.jsonl            # Append-only structured events
 │   ├── baseline/               # Optional: initial project state snapshot
-│   │   ├── project.qv.yml
+│   │   ├── project.qms.yml
 │   │   ├── structures/
 │   │   └── calculations/
 │   │
@@ -417,7 +417,7 @@ class JournalEntry:
 │       └── run_<ULID>/
 │           ├── run_revision.json   # Run metadata
 │           └── snapshot/           # OR snapshot.tar.zst
-│               ├── project.qv.yml
+│               ├── project.qms.yml
 │               ├── structures/
 │               │   └── *.json
 │               └── calculations/
@@ -524,7 +524,7 @@ class JournalEntry:
 
 | Aspect | Per-Project History | Global Journal (existing) |
 |--------|---------------------|---------------------------|
-| Location | `<project>/.history/` | `~/.quantumvitas/journal/` |
+| Location | `<project>/.history/` | `~/.qmatsuite/journal/` |
 | Scope | Single project | All projects |
 | Includes | Edits, runs, intentions | YAML saves only |
 | Snapshots | Full run snapshots | Before/after diffs |
@@ -560,7 +560,7 @@ export type ViewType = 'home' | 'structures' | 'calculations' | 'jobs' | 'histor
   onClick={() => onViewChange('history')}
   disabled={!projectLoaded}
   title={projectLoaded ? 'View project history timeline' : 'Load a project first'}
-  data-testid="qv-nav-history"
+  data-testid="qms-nav-history"
 >
   <span className="sidebar__tab-icon">📜</span>
   {!isCollapsed && 'History'}
@@ -576,7 +576,7 @@ The App.tsx uses a switch-like pattern based on `currentView`:
 {currentView === 'history' && projectLoaded && (
   <HistoryPanel
     projectRoot={projectRoot}
-    qv={qv}
+    qms={qms}
   />
 )}
 ```
@@ -638,7 +638,7 @@ gui/src/components/panels/
 **Goal:** Record history events without UI changes.
 
 #### Phase 1.1: History Module Setup
-- [ ] Create `src/quantumvitas/core/history.py` module
+- [ ] Create `src/qmatsuite/core/history.py` module
 - [ ] Define `HistoryEvent` dataclass
 - [ ] Define `RunRevision` dataclass
 - [ ] Implement `ProjectHistory` class with:

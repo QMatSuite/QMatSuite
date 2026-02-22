@@ -12,9 +12,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.drivers.vasp.io.incar import parse_incar_text
-from quantumvitas.drivers.vasp.io.poscar import write_poscar_text, parse_poscar_text
-from quantumvitas.drivers.vasp.io.kpoints import write_kpoints_text, parse_kpoints_text
+from qmatsuite.drivers.vasp.io.incar import parse_incar_text
+from qmatsuite.drivers.vasp.io.poscar import write_poscar_text, parse_poscar_text
+from qmatsuite.drivers.vasp.io.kpoints import write_kpoints_text, parse_kpoints_text
 
 
 CORPUS_DIR = Path(__file__).parent.parent.parent / "inputformat" / "samples" / "vasp"
@@ -164,8 +164,8 @@ class TestCorpusOrchestrator:
     @pytest.mark.parametrize("case_name", EXPECTED_CASES)
     def test_orchestrator_roundtrip(self, case_name, tmp_path):
         """Copy case -> parse -> write -> parse -> semantic equality."""
-        from quantumvitas.inputformat import write_engine_inputs, parse_engine_inputs
-        from quantumvitas.drivers.vasp.inputspec import get_vasp_input_spec
+        from qmatsuite.inputformat import write_engine_inputs, parse_engine_inputs
+        from qmatsuite.drivers.vasp.inputspec import get_vasp_input_spec
 
         spec = get_vasp_input_spec()
         case_dir = CORPUS_DIR / case_name

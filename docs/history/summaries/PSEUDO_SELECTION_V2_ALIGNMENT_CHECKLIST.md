@@ -10,8 +10,8 @@
 
 **Implementation Status**: ✅ OK
 - `gui/src/components/common_cards/CommonCardPseudo.tsx`: Uses `selectedSha256ByElement` state
-- `src/quantumvitas/core/pseudo_options.py`: Returns `PseudoVariant[]` keyed by sha256
-- `gui/src/types/qv.ts`: `PseudoVariant` interface has `sha256` as primary field
+- `src/qmatsuite/core/pseudo_options.py`: Returns `PseudoVariant[]` keyed by sha256
+- `gui/src/types/qms.ts`: `PseudoVariant` interface has `sha256` as primary field
 
 **Action**: None
 
@@ -22,7 +22,7 @@
 
 **Implementation Status**: ✅ OK
 - `gui/src/components/common_cards/CommonCardPseudo.tsx`: Filters to `realVariants` (filesystem-real only)
-- `src/quantumvitas/core/pseudo_options.py`: Only includes installed lib sources
+- `src/qmatsuite/core/pseudo_options.py`: Only includes installed lib sources
 
 **Action**: None
 
@@ -74,7 +74,7 @@
 **Constitution**: If project basename and external have same sha_token but different sha256 → separate entries (no merge). Show token-match hints.
 
 **Implementation Status**: ✅ OK
-- `src/quantumvitas/core/pseudo_options.py`: Creates separate variants, adds `token_match_warnings`
+- `src/qmatsuite/core/pseudo_options.py`: Creates separate variants, adds `token_match_warnings`
 - `gui/src/components/common_cards/CommonCardPseudo.tsx`: Displays token-match warnings inline
 
 **Action**: None
@@ -85,7 +85,7 @@
 **Constitution**: If user selects project/pseudo file, Step0 must noop (no overwrite/rename), but refresh calc sha256/sha_token.
 
 **Implementation Status**: ✅ OK
-- `src/quantumvitas/core/pseudo_runtime.py::prepare_project_pseudos_for_run()`:
+- `src/qmatsuite/core/pseudo_runtime.py::prepare_project_pseudos_for_run()`:
   - ✅ Checks `source_kind == "project"` and does noop
   - ✅ Still refreshes calc records
 
@@ -100,7 +100,7 @@
 - different sha_token → rename_existing + update calcs by sha_token
 
 **Implementation Status**: ✅ OK
-- `src/quantumvitas/core/pseudo_runtime.py::prepare_project_pseudos_for_run()`:
+- `src/qmatsuite/core/pseudo_runtime.py::prepare_project_pseudos_for_run()`:
   - ✅ Implements all three collision rules correctly
 
 **Action**: None
@@ -111,8 +111,8 @@
 **Constitution**: Calc can have stale sha256 (sha_token unchanged). Only sha_token change indicates physical change.
 
 **Implementation Status**: ✅ OK
-- `src/quantumvitas/core/pseudo_runtime.py`: Handles stale sha256 correctly
-- `src/quantumvitas/calculation/runner.py`: Refreshes after Step0
+- `src/qmatsuite/core/pseudo_runtime.py`: Handles stale sha256 correctly
+- `src/qmatsuite/calculation/runner.py`: Refreshes after Step0
 
 **Action**: None
 

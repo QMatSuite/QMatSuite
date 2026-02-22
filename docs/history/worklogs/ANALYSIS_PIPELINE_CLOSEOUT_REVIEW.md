@@ -23,7 +23,7 @@ source .venv/bin/activate && python -m pytest tests/daemon/test_si_bands_golden_
 ```
 
 **What it exercises:**
-- `create_demo_project` → `si_bands_demo` scaffold with `project.qv.yml`
+- `create_demo_project` → `si_bands_demo` scaffold with `project.qms.yml`
 - `list_calculations` → finds `si-bands` slug
 - `run_calculation` → executes 4 steps (scf → nscf → bandspw → bandspp)
 - `get_step_digest` → per-step SHA256 digest from CAS (all 4 steps)
@@ -117,7 +117,7 @@ This is thread-safe and test-isolated — each daemon test uses `tmp_path` (auto
 | Item | Status | Evidence |
 |------|--------|---------|
 | `analysis/artifacts.py` | **Deleted** | File does not exist on disk |
-| Gate enforcement | **Active** | `test_no_legacy_analysis_artifact_imports` scans all runtime code in `api/`, `daemon/`, `core/` for any reference to `quantumvitas.analysis.artifacts` |
+| Gate enforcement | **Active** | `test_no_legacy_analysis_artifact_imports` scans all runtime code in `api/`, `daemon/`, `core/` for any reference to `qmatsuite.analysis.artifacts` |
 | Legacy API methods | **Deleted** | `get_summary`, `list_properties`, `ensure_analysis`, `get_band_structure_data`, `get_dos_data`, `get_scf_convergence_data` all removed from `service.py` |
 | New API surface | **Active** | `list_raw_files`, `read_raw_file`, `get_step_digest`, `get_analysis`, `get_analysis_snapshot` — all use the new pipeline |
 

@@ -15,8 +15,8 @@ import math
 from typing import Dict, Any
 from unittest.mock import patch, MagicMock
 
-from quantumvitas.presets.dimensions import PrecisionOption
-from quantumvitas.presets.precision import (
+from qmatsuite.presets.dimensions import PrecisionOption
+from qmatsuite.presets.precision import (
     compute_kmesh,
     compute_reciprocal_lengths,
     aggregate_cutoffs,
@@ -383,8 +383,8 @@ class TestCompilerDetectorEquivalence:
     
     def test_equivalence_via_variants_detection(self):
         """Compiled params can be detected back to the same level using variants."""
-        from quantumvitas.presets.compiler import compile_precision_from_advice
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.compiler import compile_precision_from_advice
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         
         # Si lattice
         a = 5.43
@@ -438,7 +438,7 @@ class TestPseudoIndexCaching:
             advisor.advise(PrecisionOption.MED)
         
         # Check cache info - should have 1 hit per call after first
-        from quantumvitas.presets.precision import _load_pseudo_index_cached
+        from qmatsuite.presets.precision import _load_pseudo_index_cached
         info = _load_pseudo_index_cached.cache_info()
         
         # hits should be 4 (first call is a miss, next 4 are hits)
@@ -447,7 +447,7 @@ class TestPseudoIndexCaching:
     
     def test_clear_cache_works(self):
         """Cache can be cleared."""
-        from quantumvitas.presets.precision import _load_pseudo_index_cached
+        from qmatsuite.presets.precision import _load_pseudo_index_cached
         
         clear_pseudo_index_cache()
         info = _load_pseudo_index_cached.cache_info()
@@ -484,7 +484,7 @@ class TestStepTypeAwareAdvice:
     
     def test_nscf_gets_denser_kmesh(self):
         """NSCF step gets 2x denser k-mesh than SCF."""
-        from quantumvitas.presets.precision import NSCF_KMESH_FACTOR
+        from qmatsuite.presets.precision import NSCF_KMESH_FACTOR
         
         species_map = {"Si": {}}
         a = 5.43
@@ -526,12 +526,12 @@ class TestStepTypeAwareAdvice:
     
     def test_nscf_kmesh_factor_is_2(self):
         """NSCF k-mesh factor constant is 2."""
-        from quantumvitas.presets.precision import NSCF_KMESH_FACTOR
+        from qmatsuite.presets.precision import NSCF_KMESH_FACTOR
         assert NSCF_KMESH_FACTOR == 2
     
     def test_no_kpoints_step_types_includes_bands(self):
         """bandspw does not accept kmesh via receiver spec."""
-        from quantumvitas.presets.receivers import get_precision_receiver_spec
+        from qmatsuite.presets.receivers import get_precision_receiver_spec
 
         spec = get_precision_receiver_spec("bandspw")
         assert spec is not None

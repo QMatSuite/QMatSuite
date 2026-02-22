@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import pytest
 
-from quantumvitas.inputformat.core import (
+from qmatsuite.inputformat.core import (
     EngineInputSpec,
     InputFileSpec,
     SSOTMappingSpec,
 )
-from quantumvitas.inputformat.parser import (
+from qmatsuite.inputformat.parser import (
     Diagnostic,
     ParseResult,
     parse_engine_inputs,

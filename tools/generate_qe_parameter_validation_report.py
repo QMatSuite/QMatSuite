@@ -284,13 +284,13 @@ def main() -> int:
     parser.add_argument(
         "--v1-path",
         type=Path,
-        default=Path(__file__).parent.parent / "src" / "quantumvitas" / "data" / "qe_module_parameters.legacy.json",
+        default=Path(__file__).parent.parent / "src" / "qmatsuite" / "data" / "qe_module_parameters.legacy.json",
         help="Path to legacy v1 JSON file",
     )
     parser.add_argument(
         "--v2-path",
         type=Path,
-        default=Path(__file__).parent.parent / "src" / "quantumvitas" / "data" / "qe_module_parameters.json",
+        default=Path(__file__).parent.parent / "src" / "qmatsuite" / "data" / "qe_module_parameters.json",
         help="Path to v2 JSON file",
     )
     parser.add_argument(

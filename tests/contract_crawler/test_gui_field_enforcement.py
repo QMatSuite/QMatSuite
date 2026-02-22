@@ -16,7 +16,7 @@ from pathlib import Path
 from io import StringIO
 from typing import Any
 
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
 from tests.contract_crawler.recipes import get_recipe_for_method
 from tests.contract_crawler.payloads import get_minimal_payload
 
@@ -108,7 +108,7 @@ def _execute_method(method_name: str, tmp_path: Path) -> tuple[bool, dict | None
 
     Returns: (success, response_data, error_message)
     """
-    daemon = QVDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
+    daemon = QMSDaemon(stdin=StringIO(), stdout=StringIO(), stderr=StringIO())
 
     try:
         # Try recipe first, then minimal payload

@@ -118,7 +118,7 @@
     - 原始 token：`githubusercontent.com`（URL 中的域名）
     - 判定理由：外部 URL
 
-18. **`src/quantumvitas/data/qe_module_parameters*.json`** (多处)
+18. **`src/qmatsuite/data/qe_module_parameters*.json`** (多处)
     - 出现：`https://github.com/aoterodelaroza/postg/blob/master/xdm.param`
     - 原始 token：`github.com`（URL 中的域名）
     - 判定理由：外部 URL 引用
@@ -126,15 +126,15 @@
 ### 2.3 描述性文本中的 workflow（应重命名）
 
 19. **`pyproject.toml`** (第 8 行)
-   - 出现：`description = "Python rewrite of QuantumVITAS - a workflow engine and GUI layer..."`
+   - 出现：`description = "Python rewrite of QMatSuite - a workflow engine and GUI layer..."`
    - 原始 token：`workflow engine`
-   - 判定理由：**应重命名** - 这是对本项目的定义，描述 QuantumVITAS 本身的功能
+   - 判定理由：**应重命名** - 这是对本项目的定义，描述 QMatSuite 本身的功能
    - **建议**: 改为 "calculation engine"
 
 20. **`README.md`** (第 2 行)
    - 出现：`> I am working on a full Python rewrite (v2) with a modern workflow engine,`
    - 原始 token：`workflow engine`
-   - 判定理由：**应重命名** - 同上，描述 QuantumVITAS 本身
+   - 判定理由：**应重命名** - 同上，描述 QMatSuite 本身
    - **建议**: 改为 "calculation engine"
 
 ### 2.4 外部 workflow 统计
@@ -154,38 +154,38 @@
 #### 类 / 类型定义
 
 **Python 类**:
-1. **`src/quantumvitas/workflow/workflow.py`**
+1. **`src/qmatsuite/workflow/workflow.py`**
    - `class Workflow` (第 23 行)
    - 原始大小写：`Workflow` (PascalCase)
 
-2. **`src/quantumvitas/workflow/runner.py`**
+2. **`src/qmatsuite/workflow/runner.py`**
    - `class WorkflowRunner` (第 54 行)
    - 原始大小写：`WorkflowRunner` (PascalCase)
 
-3. **`src/quantumvitas/workflow/results.py`**
+3. **`src/qmatsuite/workflow/results.py`**
    - `class WorkflowResult` (需确认)
    - `class WorkflowImportResult` (需确认)
    - 原始大小写：`Workflow*` (PascalCase)
 
-4. **`src/quantumvitas/core/models.py`**
+4. **`src/qmatsuite/core/models.py`**
    - `class WorkflowStepEntry` (第 36 行)
    - `class WorkflowModel` (需确认)
    - 原始大小写：`Workflow*` (PascalCase)
 
-5. **`src/quantumvitas/project/model.py`**
+5. **`src/qmatsuite/project/model.py`**
    - `class WorkflowRef` (第 73 行)
    - 原始大小写：`WorkflowRef` (PascalCase)
 
-6. **`src/quantumvitas/workflow/io.py`**
+6. **`src/qmatsuite/workflow/io.py`**
    - `class WorkflowIO` (需确认)
    - 原始大小写：`WorkflowIO` (PascalCase)
 
-7. **`src/quantumvitas/workflow/naming.py`**
+7. **`src/qmatsuite/workflow/naming.py`**
    - `class WorkflowFileNaming` (需确认)
    - 原始大小写：`WorkflowFileNaming` (PascalCase)
 
 **TypeScript/React 类型**:
-8. **`gui/src/types/qv.ts`**
+8. **`gui/src/types/qms.ts`**
    - `interface WorkflowInfo` (需确认)
    - `interface WorkflowDetailResult` (需确认)
    - 原始大小写：`Workflow*` (PascalCase)
@@ -227,17 +227,17 @@
 
 **目录**:
 - `workflows/` (复数，全小写) - 项目根目录下的 workflows 目录
-  - 出现在：`project.qv.yml` 配置、代码中的路径构建
+  - 出现在：`project.qms.yml` 配置、代码中的路径构建
   - 示例路径：`workflows/si-dos/`, `workflows/si-bands/`
 
 **文件**:
 - `workflow.yaml` (单数，全小写) - 每个 workflow 目录下的配置文件
-- `workflow.py` (单数，全小写) - `src/quantumvitas/workflow/workflow.py`
+- `workflow.py` (单数，全小写) - `src/qmatsuite/workflow/workflow.py`
 - `workflow_*.py` (前缀，全小写) - 如 `workflow_analysis.py`
 
 #### YAML / JSON Schema 字段
 
-**project.qv.yml**:
+**project.qms.yml**:
 - `workflows:` (复数，全小写) - 顶级键
 - `workflow_id:` (全小写，下划线) - workflow 条目中的字段
 - `workflows_dir:` (全小写，下划线) - 配置中的目录名
@@ -257,12 +257,12 @@
 #### CLI 命令字符串
 
 **Typer 命令**:
-- `qv init workflow <id>` (全小写)
-- `qv run workflow <selector>` (全小写)
-- `qv list-workflows` (kebab-case，复数)
-- `qv delete workflow <selector>` (全小写)
-- `qv rename workflow <selector>` (全小写)
-- `qv configure workflow <selector>` (全小写)
+- `qms init workflow <id>` (全小写)
+- `qms run workflow <selector>` (全小写)
+- `qms list-workflows` (kebab-case，复数)
+- `qms delete workflow <selector>` (全小写)
+- `qms rename workflow <selector>` (全小写)
+- `qms configure workflow <selector>` (全小写)
 
 **CLI 选项/参数**:
 - `--workflow` (全小写，kebab-case) - 选项名
@@ -270,7 +270,7 @@
 
 #### HTTP/IPC 接口
 
-**Daemon API 方法名** (在 `src/quantumvitas/daemon/server.py`):
+**Daemon API 方法名** (在 `src/qmatsuite/daemon/server.py`):
 - `list_workflows` (全小写，下划线，复数)
 - `get_workflow_detail` (全小写，下划线)
 - `create_workflow` (全小写，下划线)
@@ -328,7 +328,7 @@
 
 **README.md**:
 - `"with a modern workflow engine"` (第 2 行，项目描述 - **应重命名**为 "calculation engine")
-- `"qv run workflow"` (CLI 命令示例)
+- `"qms run workflow"` (CLI 命令示例)
 - `"workflows/<id>/reference/"` (路径示例)
 - `"workflow.yaml"` (文件名)
 - `"workflow:"` (YAML 键)
@@ -446,7 +446,7 @@
 
 #### Python 函数
 
-**核心函数** (在 `src/quantumvitas/` 中):
+**核心函数** (在 `src/qmatsuite/` 中):
 - `load_workflow()` (全小写，下划线)
 - `save_workflow()` (全小写，下划线)
 - `require_workflow()` (全小写，下划线)
@@ -479,23 +479,23 @@
 #### Python import 语句
 
 **模块导入**:
-- `from quantumvitas.workflow import Workflow, WorkflowRunner, ...`
-- `from quantumvitas.workflow.workflow import Workflow`
-- `from quantumvitas.workflow.runner import WorkflowRunner`
-- `from quantumvitas.workflow.results import WorkflowResult`
-- `from quantumvitas.workflow.importers import WorkflowImportResult`
-- `from quantumvitas.core.models import WorkflowModel, WorkflowStepEntry`
-- `from quantumvitas.project.model import WorkflowRef`
+- `from qmatsuite.workflow import Workflow, WorkflowRunner, ...`
+- `from qmatsuite.workflow.workflow import Workflow`
+- `from qmatsuite.workflow.runner import WorkflowRunner`
+- `from qmatsuite.workflow.results import WorkflowResult`
+- `from qmatsuite.workflow.importers import WorkflowImportResult`
+- `from qmatsuite.core.models import WorkflowModel, WorkflowStepEntry`
+- `from qmatsuite.project.model import WorkflowRef`
 
 **函数导入**:
-- `from quantumvitas.core.resolution import require_workflow, resolve_workflow`
-- `from quantumvitas.core.selectors import extract_workflow_selector_from_entry`
-- `from quantumvitas.core.project_utils import workflow_directory, workflows_using_structure`
+- `from qmatsuite.core.resolution import require_workflow, resolve_workflow`
+- `from qmatsuite.core.selectors import extract_workflow_selector_from_entry`
+- `from qmatsuite.core.project_utils import workflow_directory, workflows_using_structure`
 
 #### TypeScript import 语句
 
 **类型导入**:
-- `import { WorkflowInfo, WorkflowDetailResult } from './types/qv'`
+- `import { WorkflowInfo, WorkflowDetailResult } from './types/qms'`
 
 **组件导入**:
 - `import { WorkflowListPanel, WorkflowDetailPanel } from './components/panels'`
@@ -544,7 +544,7 @@
 - 变量名：`workflow`, `workflows`, `workflow_id`, `workflow_dir`, `workflow_slug` 等
 - 函数名：`load_workflow()`, `save_workflow()`, `run_workflow()` 等
 - 文件/目录名：`workflow.yaml`, `workflow.py`, `workflows/`
-- CLI 命令：`qv run workflow`, `qv init workflow`
+- CLI 命令：`qms run workflow`, `qms init workflow`
 - API 方法：`list_workflows`, `get_workflow_detail`
 - YAML/JSON 键：`workflow:`, `workflows:`, `workflow_id:`
 - 字符串值：`"workflow"`, `"run_workflow"`
@@ -615,9 +615,9 @@
    - `workflow.py` → `calculation.py` (但模块名 `workflow/` → `calculation/`)
 
 2. **CLI 命令**:
-   - `qv init workflow` → `qv init calculation`
-   - `qv run workflow` → `qv run calculation`
-   - `qv list-workflows` → `qv list-calculations`
+   - `qms init workflow` → `qms init calculation`
+   - `qms run workflow` → `qms run calculation`
+   - `qms list-workflows` → `qms list-calculations`
 
 3. **API 方法**:
    - `list_workflows` → `list_calculations`
@@ -638,7 +638,7 @@
 以下位置的 "workflow" 需要根据上下文判断：
 
 1. **`pyproject.toml`** (第 8 行):
-   - `"a workflow engine"` - 如果这是描述 QuantumVITAS 本身的功能，应该改为 "calculation engine"
+   - `"a workflow engine"` - 如果这是描述 QMatSuite 本身的功能，应该改为 "calculation engine"
 
 2. **`README.md`** (第 2 行):
    - `"with a modern workflow engine"` - 同上
@@ -651,7 +651,7 @@
 
 检查是否有外部 Python 包名为 `*workflow*` 的导入：
 - 搜索结果显示没有发现外部 workflow 库的导入
-- 所有 `from quantumvitas.workflow import ...` 都是内部模块
+- 所有 `from qmatsuite.workflow import ...` 都是内部模块
 
 ---
 
@@ -693,7 +693,7 @@
    - Schema 字段：`workflow_id`, `kind: "workflow"`
 
 2. **中优先级**（API/CLI）:
-   - CLI 命令：`qv run workflow` → `qv run calculation`
+   - CLI 命令：`qms run workflow` → `qms run calculation`
    - API 方法：`list_workflows` → `list_calculations`
    - 文件/目录：`workflows/`, `workflow.yaml`
 

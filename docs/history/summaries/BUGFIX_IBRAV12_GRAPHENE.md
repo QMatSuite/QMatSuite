@@ -11,7 +11,7 @@ This was incorrectly labeled as a "data issue" but was actually a **parser bug**
 
 ## Root Cause
 
-The `_ibrav_vectors` function in `src/quantumvitas/io/structure_io.py` had incorrect parameter mapping for ibrav=12:
+The `_ibrav_vectors` function in `src/qmatsuite/io/structure_io.py` had incorrect parameter mapping for ibrav=12:
 
 - **Bug**: For `ibrav=12`, it was looking for `cosbc` (cos of angle between b and c)
 - **Correct**: For `ibrav=12` (monoclinic, unique axis c), it should use `cosab` (cos of angle between a and b)
@@ -22,7 +22,7 @@ According to QE documentation:
 
 ## Fix
 
-**File**: `src/quantumvitas/io/structure_io.py`
+**File**: `src/qmatsuite/io/structure_io.py`
 
 **Change**: In `_ibrav_vectors` function, line 626:
 ```python
@@ -83,7 +83,7 @@ v3 = [0.0,    0.0,    20.0]   # (0, 0, c)
 
 ## Files Modified
 
-1. `src/quantumvitas/io/structure_io.py`: Fixed `_ibrav_vectors` to use `cosab` for ibrav=12
+1. `src/qmatsuite/io/structure_io.py`: Fixed `_ibrav_vectors` to use `cosab` for ibrav=12
 2. `tests/unit/test_graphene_ibrav12_parsing.py`: New comprehensive test suite
 3. `docs/FAILED_DEMOS_REPORT.md`: Updated to reflect fix
 4. `docs/BUGFIX_IBRAV12_GRAPHENE.md`: This documentation

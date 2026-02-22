@@ -27,7 +27,7 @@ This document provides step-by-step implementation instructions for the Analysis
 
 **Create directory structure**:
 ```
-src/quantumvitas/core/analysis/
+src/qmatsuite/core/analysis/
 ├── __init__.py
 ├── base.py           # AnalysisObjectMeta, SourceFileStat
 ├── primitives.py     # Series1D, GeometryFrame, etc.
@@ -35,7 +35,7 @@ src/quantumvitas/core/analysis/
 └── policy.py         # MaterializationPolicy
 ```
 
-**Task 1.1.1**: Create `src/quantumvitas/core/analysis/__init__.py`
+**Task 1.1.1**: Create `src/qmatsuite/core/analysis/__init__.py`
 
 ```python
 """
@@ -45,21 +45,21 @@ Provides engine-agnostic canonical analysis objects (Trajectory, DOS, Bands, etc
 parsed from raw engine outputs.
 """
 
-from quantumvitas.core.analysis.base import (
+from qmatsuite.core.analysis.base import (
     AnalysisObjectMeta,
     SourceFileStat,
 )
-from quantumvitas.core.analysis.primitives import (
+from qmatsuite.core.analysis.primitives import (
     Series1D,
     GeometryFrame,
     GeometryFrames,
     Marker,
 )
-from quantumvitas.core.analysis.policy import (
+from qmatsuite.core.analysis.policy import (
     MaterializationPolicy,
     CacheConfig,
 )
-from quantumvitas.core.analysis.cache import (
+from qmatsuite.core.analysis.cache import (
     CacheManager,
     is_cache_stale,
 )
@@ -78,7 +78,7 @@ __all__ = [
 ]
 ```
 
-**Task 1.1.2**: Create `src/quantumvitas/core/analysis/base.py`
+**Task 1.1.2**: Create `src/qmatsuite/core/analysis/base.py`
 
 ```python
 """
@@ -215,7 +215,7 @@ class AnalysisObjectMeta:
         )
 ```
 
-**Task 1.1.3**: Create `src/quantumvitas/core/analysis/primitives.py`
+**Task 1.1.3**: Create `src/qmatsuite/core/analysis/primitives.py`
 
 ```python
 """
@@ -295,7 +295,7 @@ class Marker:
     axis: str = "x"  # "x" or "y"
 ```
 
-**Task 1.1.4**: Create `src/quantumvitas/core/analysis/policy.py`
+**Task 1.1.4**: Create `src/qmatsuite/core/analysis/policy.py`
 
 ```python
 """
@@ -335,7 +335,7 @@ class CacheConfig:
         return cls(policy=MaterializationPolicy.from_settings())
 ```
 
-**Task 1.1.5**: Create `src/quantumvitas/core/analysis/cache.py`
+**Task 1.1.5**: Create `src/qmatsuite/core/analysis/cache.py`
 
 ```python
 """
@@ -349,8 +349,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
-from quantumvitas.core.analysis.policy import CacheConfig, MaterializationPolicy
+from qmatsuite.core.analysis.base import AnalysisObjectMeta, SourceFileStat
+from qmatsuite.core.analysis.policy import CacheConfig, MaterializationPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -507,7 +507,7 @@ class CacheManager:
 
 ### 2.1 Create Artifact Scanning Module
 
-**Task 2.1.1**: Create `src/quantumvitas/core/artifact_scanning.py`
+**Task 2.1.1**: Create `src/qmatsuite/core/artifact_scanning.py`
 
 ```python
 """
@@ -727,7 +727,7 @@ def diff_scans(
 
 ### 3.1 Create Provenance Module
 
-**Task 3.1.1**: Create `src/quantumvitas/core/provenance.py`
+**Task 3.1.1**: Create `src/qmatsuite/core/provenance.py`
 
 ```python
 """
@@ -746,7 +746,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from quantumvitas.core.artifact_scanning import (
+from qmatsuite.core.artifact_scanning import (
     FileStat,
     scan_raw_directory,
     diff_scans,
@@ -932,11 +932,11 @@ def get_file_provenance(calc_dir: Path, file_path: str) -> Optional[ProvenanceEn
 
 ### 3.2 Hook Provenance into Runner
 
-**Task 3.2.1**: Modify `src/quantumvitas/calculation/runner.py`
+**Task 3.2.1**: Modify `src/qmatsuite/calculation/runner.py`
 
 Add import at top:
 ```python
-from quantumvitas.core.provenance import update_provenance_after_step
+from qmatsuite.core.provenance import update_provenance_after_step
 ```
 
 In `_execute_with_jobgraph()`, after manifest update (around line 610), add provenance update:
@@ -946,7 +946,7 @@ In `_execute_with_jobgraph()`, after manifest update (around line 610), add prov
 
 # Update provenance (after staging is complete)
 try:
-    from quantumvitas.core.provenance import update_provenance_after_step
+    from qmatsuite.core.provenance import update_provenance_after_step
     engine_name = job.engine or "qe"
     update_provenance_after_step(
         calc_dir=calculation.dir,
@@ -966,14 +966,14 @@ except Exception as e:
 
 **Create directory**:
 ```
-src/quantumvitas/core/analysis/trajectory/
+src/qmatsuite/core/analysis/trajectory/
 ├── __init__.py
 ├── model.py          # Frame, Trajectory
 ├── io.py             # Serialization
 └── utils.py          # Wrapping, observables
 ```
 
-**Task 4.1.1**: Create `src/quantumvitas/core/analysis/trajectory/__init__.py`
+**Task 4.1.1**: Create `src/qmatsuite/core/analysis/trajectory/__init__.py`
 
 ```python
 """
@@ -983,15 +983,15 @@ The first fully-specified analysis object in the framework.
 Supports MD, relax, and NEB trajectories.
 """
 
-from quantumvitas.core.analysis.trajectory.model import (
+from qmatsuite.core.analysis.trajectory.model import (
     Frame,
     Trajectory,
 )
-from quantumvitas.core.analysis.trajectory.io import (
+from qmatsuite.core.analysis.trajectory.io import (
     save_trajectory,
     load_trajectory,
 )
-from quantumvitas.core.analysis.trajectory.utils import (
+from qmatsuite.core.analysis.trajectory.utils import (
     wrap_positions,
 )
 
@@ -1004,7 +1004,7 @@ __all__ = [
 ]
 ```
 
-**Task 4.1.2**: Create `src/quantumvitas/core/analysis/trajectory/model.py`
+**Task 4.1.2**: Create `src/qmatsuite/core/analysis/trajectory/model.py`
 
 ```python
 """
@@ -1020,8 +1020,8 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 
-from quantumvitas.core.analysis.base import AnalysisObjectMeta
-from quantumvitas.core.analysis.primitives import (
+from qmatsuite.core.analysis.base import AnalysisObjectMeta
+from qmatsuite.core.analysis.primitives import (
     GeometryFrame,
     GeometryFrames,
     Series1D,
@@ -1311,7 +1311,7 @@ class Trajectory:
         )
 ```
 
-**Task 4.1.3**: Create `src/quantumvitas/core/analysis/trajectory/io.py`
+**Task 4.1.3**: Create `src/qmatsuite/core/analysis/trajectory/io.py`
 
 ```python
 """
@@ -1323,8 +1323,8 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from quantumvitas.core.analysis.cache import CacheManager, get_cache_path
-from quantumvitas.core.analysis.trajectory.model import Trajectory
+from qmatsuite.core.analysis.cache import CacheManager, get_cache_path
+from qmatsuite.core.analysis.trajectory.model import Trajectory
 
 
 def save_trajectory(
@@ -1367,7 +1367,7 @@ def load_trajectory(
     return Trajectory.from_dict(data)
 ```
 
-**Task 4.1.4**: Create `src/quantumvitas/core/analysis/trajectory/utils.py`
+**Task 4.1.4**: Create `src/qmatsuite/core/analysis/trajectory/utils.py`
 
 ```python
 """
@@ -1443,7 +1443,7 @@ def compute_msd(
         (time, msd)
     """
     # Placeholder implementation
-    from quantumvitas.core.analysis.trajectory.model import Trajectory
+    from qmatsuite.core.analysis.trajectory.model import Trajectory
     n_frames = len(trajectory)
     time = np.arange(n_frames)
     msd = np.zeros(n_frames)  # Placeholder
@@ -1458,7 +1458,7 @@ def compute_msd(
 
 **Create directory**:
 ```
-src/quantumvitas/parsers/
+src/qmatsuite/parsers/
 ├── __init__.py
 ├── registry.py
 └── qe/
@@ -1466,19 +1466,19 @@ src/quantumvitas/parsers/
     └── trajectory.py
 ```
 
-**Task 5.1.1**: Create `src/quantumvitas/parsers/__init__.py`
+**Task 5.1.1**: Create `src/qmatsuite/parsers/__init__.py`
 
 ```python
 """
 Engine-specific parsers for analysis objects.
 """
 
-from quantumvitas.parsers.registry import ParserRegistry
+from qmatsuite.parsers.registry import ParserRegistry
 
 __all__ = ["ParserRegistry"]
 ```
 
-**Task 5.1.2**: Create `src/quantumvitas/parsers/registry.py`
+**Task 5.1.2**: Create `src/qmatsuite/parsers/registry.py`
 
 ```python
 """
@@ -1490,7 +1490,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from quantumvitas.core.analysis.base import AnalysisObjectMeta
+    from qmatsuite.core.analysis.base import AnalysisObjectMeta
 
 # Registry: (engine, object_type) -> parser class
 _PARSERS: Dict[Tuple[str, str], type] = {}
@@ -1540,18 +1540,18 @@ class ParserRegistry:
         return find_parser_for_raw(raw_dir, object_type)
 ```
 
-**Task 5.1.3**: Create `src/quantumvitas/parsers/qe/__init__.py`
+**Task 5.1.3**: Create `src/qmatsuite/parsers/qe/__init__.py`
 
 ```python
 """QE parsers."""
 
 # Import to register parsers
-from quantumvitas.parsers.qe.trajectory import QETrajectoryParser
+from qmatsuite.parsers.qe.trajectory import QETrajectoryParser
 
 __all__ = ["QETrajectoryParser"]
 ```
 
-**Task 5.1.4**: Create `src/quantumvitas/parsers/qe/trajectory.py`
+**Task 5.1.4**: Create `src/qmatsuite/parsers/qe/trajectory.py`
 
 ```python
 """
@@ -1568,9 +1568,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
-from quantumvitas.core.analysis.trajectory.model import Frame, Trajectory
-from quantumvitas.parsers.registry import register_parser
+from qmatsuite.core.analysis.base import AnalysisObjectMeta, SourceFileStat
+from qmatsuite.core.analysis.trajectory.model import Frame, Trajectory
+from qmatsuite.parsers.registry import register_parser
 
 logger = logging.getLogger(__name__)
 
@@ -1874,7 +1874,7 @@ import pytest
 from pathlib import Path
 from datetime import datetime, timezone
 
-from quantumvitas.core.analysis.base import (
+from qmatsuite.core.analysis.base import (
     AnalysisObjectMeta,
     SourceFileStat,
 )
@@ -1947,7 +1947,7 @@ class TestAnalysisObjectMeta:
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.provenance import (
+from qmatsuite.core.provenance import (
     ProvenanceMap,
     ProvenanceEntry,
     load_provenance,
@@ -2067,8 +2067,8 @@ class TestUpdateProvenance:
 import pytest
 import numpy as np
 
-from quantumvitas.core.analysis.trajectory.model import Frame, Trajectory
-from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
+from qmatsuite.core.analysis.trajectory.model import Frame, Trajectory
+from qmatsuite.core.analysis.base import AnalysisObjectMeta, SourceFileStat
 
 
 class TestFrame:
@@ -2195,7 +2195,7 @@ import pytest
 from pathlib import Path
 import shutil
 
-from quantumvitas.core.provenance import (
+from qmatsuite.core.provenance import (
     update_provenance_after_step,
     load_provenance,
 )
@@ -2269,7 +2269,7 @@ class TestProvenanceStagingCompatibility:
 
 **Task 7.1.1**: Add cache policy to settings
 
-In `src/quantumvitas/core/settings.py` (or equivalent), add:
+In `src/qmatsuite/core/settings.py` (or equivalent), add:
 
 ```python
 class AnalysisSettings:
@@ -2283,14 +2283,14 @@ class AnalysisSettings:
 
 **Task 7.1.2**: Wire to MaterializationPolicy
 
-Update `src/quantumvitas/core/analysis/policy.py`:
+Update `src/qmatsuite/core/analysis/policy.py`:
 
 ```python
 @classmethod
 def from_settings(cls) -> "MaterializationPolicy":
     """Get policy from user settings."""
     try:
-        from quantumvitas.core.settings import get_analysis_settings
+        from qmatsuite.core.settings import get_analysis_settings
         settings = get_analysis_settings()
         if not settings.cache_enabled:
             return cls.DISABLED
@@ -2306,7 +2306,7 @@ def from_settings(cls) -> "MaterializationPolicy":
 
 ### 8.1 Update Existing Analysis Module
 
-**Task 8.1.1**: Update `src/quantumvitas/analysis/artifacts.py`
+**Task 8.1.1**: Update `src/qmatsuite/analysis/artifacts.py`
 
 Change `get_analysis_dir()` to use hidden directory:
 
@@ -2366,21 +2366,21 @@ Before loading cached artifacts, add stale check using `AnalysisObjectMeta.sourc
 
 ### New Files
 ```
-src/quantumvitas/core/analysis/__init__.py
-src/quantumvitas/core/analysis/base.py
-src/quantumvitas/core/analysis/primitives.py
-src/quantumvitas/core/analysis/policy.py
-src/quantumvitas/core/analysis/cache.py
-src/quantumvitas/core/analysis/trajectory/__init__.py
-src/quantumvitas/core/analysis/trajectory/model.py
-src/quantumvitas/core/analysis/trajectory/io.py
-src/quantumvitas/core/analysis/trajectory/utils.py
-src/quantumvitas/core/artifact_scanning.py
-src/quantumvitas/core/provenance.py
-src/quantumvitas/parsers/__init__.py
-src/quantumvitas/parsers/registry.py
-src/quantumvitas/parsers/qe/__init__.py
-src/quantumvitas/parsers/qe/trajectory.py
+src/qmatsuite/core/analysis/__init__.py
+src/qmatsuite/core/analysis/base.py
+src/qmatsuite/core/analysis/primitives.py
+src/qmatsuite/core/analysis/policy.py
+src/qmatsuite/core/analysis/cache.py
+src/qmatsuite/core/analysis/trajectory/__init__.py
+src/qmatsuite/core/analysis/trajectory/model.py
+src/qmatsuite/core/analysis/trajectory/io.py
+src/qmatsuite/core/analysis/trajectory/utils.py
+src/qmatsuite/core/artifact_scanning.py
+src/qmatsuite/core/provenance.py
+src/qmatsuite/parsers/__init__.py
+src/qmatsuite/parsers/registry.py
+src/qmatsuite/parsers/qe/__init__.py
+src/qmatsuite/parsers/qe/trajectory.py
 tests/unit/test_analysis_objects_base.py
 tests/unit/test_provenance.py
 tests/unit/test_trajectory_model.py
@@ -2390,8 +2390,8 @@ tests/integration/test_analysis_cache_staging.py
 
 ### Modified Files
 ```
-src/quantumvitas/calculation/runner.py  # Add provenance hook
-src/quantumvitas/analysis/artifacts.py  # Change to .analysis/
+src/qmatsuite/calculation/runner.py  # Add provenance hook
+src/qmatsuite/analysis/artifacts.py  # Change to .analysis/
 ```
 
 ---
@@ -2400,12 +2400,12 @@ src/quantumvitas/analysis/artifacts.py  # Change to .analysis/
 
 | Evidence | Location |
 |----------|----------|
-| Existing analysis artifacts | `src/quantumvitas/analysis/artifacts.py:63-75` |
-| Manifest storage pattern | `src/quantumvitas/calculation/manifest.py` |
-| VASP staging | `src/quantumvitas/execution/vasp_staging.py` |
-| Step artifact rules | `src/quantumvitas/calculation/step_artifacts.py` |
-| Runner orchestration | `src/quantumvitas/calculation/runner.py:94-630` |
-| Job execution | `src/quantumvitas/execution/executor.py:76-178` |
+| Existing analysis artifacts | `src/qmatsuite/analysis/artifacts.py:63-75` |
+| Manifest storage pattern | `src/qmatsuite/calculation/manifest.py` |
+| VASP staging | `src/qmatsuite/execution/vasp_staging.py` |
+| Step artifact rules | `src/qmatsuite/calculation/step_artifacts.py` |
+| Runner orchestration | `src/qmatsuite/calculation/runner.py:94-630` |
+| Job execution | `src/qmatsuite/execution/executor.py:76-178` |
 
 ---
 

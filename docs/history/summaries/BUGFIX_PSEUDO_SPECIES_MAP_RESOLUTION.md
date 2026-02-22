@@ -19,7 +19,7 @@ Fixed two critical bugs in the silicon-wannier90 demo:
 
 ### Bug 2: Daemon Handler API Mismatch
 
-**Problem**: `_handle_get_pseudo_options_for_calculation` called `QVService.get_calculation_detail` with `calculation_selector` parameter, but the API expected `calculation_ulid`.
+**Problem**: `_handle_get_pseudo_options_for_calculation` called `QMSService.get_calculation_detail` with `calculation_selector` parameter, but the API expected `calculation_ulid`.
 
 ## Solution
 
@@ -27,19 +27,19 @@ Fixed two critical bugs in the silicon-wannier90 demo:
 
 **Changes**:
 
-1. **Modified `ensure_qe_pseudos`** (`src/quantumvitas/core/pseudo.py`):
+1. **Modified `ensure_qe_pseudos`** (`src/qmatsuite/core/pseudo.py`):
    - Added optional `species_map` parameter
    - Changed resolution precedence:
      - **PRIMARY**: If `species_map` is provided, use it as source of truth (calculation-level authority)
      - **FALLBACK**: Parse from QE input ATOMIC_SPECIES (for legacy/standalone cases)
    - Updated docstring to explain the precedence rules
 
-2. **Modified `materialize_step_spec`** (`src/quantumvitas/calculation/structure_steps.py`):
+2. **Modified `materialize_step_spec`** (`src/qmatsuite/calculation/structure_steps.py`):
    - Load `calculation.species_map` from `calculation.yaml` when available
    - Pass `species_map` to `generate_qe_input_from_spec` so ATOMIC_SPECIES is populated correctly
    - Pass `species_map` to `ensure_qe_pseudos` as PRIMARY source
 
-3. **Updated `apply_species_overrides_to_qe_input`** (`src/quantumvitas/calculation/input_runner.py`):
+3. **Updated `apply_species_overrides_to_qe_input`** (`src/qmatsuite/calculation/input_runner.py`):
    - Now handles both `pseudopot` (legacy) and `pseudo_basename` (new) keys from species_map
 
 **Key Design Decision**:
@@ -51,7 +51,7 @@ Fixed two critical bugs in the silicon-wannier90 demo:
 
 **Changes**:
 
-1. **Modified `_handle_get_pseudo_options_for_calculation`** (`src/quantumvitas/daemon/server.py`):
+1. **Modified `_handle_get_pseudo_options_for_calculation`** (`src/qmatsuite/daemon/server.py`):
    - Added boundary resolution: accept calculation selector (slug/name/ULID) and resolve to ULID
    - Changed call from `calculation_selector=...` to `calculation_ulid=...`
    - Consistent with other endpoints like `_handle_get_calculation_pseudo_mapping`
@@ -71,10 +71,10 @@ All tests pass ✅
 
 ## Files Changed
 
-1. `src/quantumvitas/core/pseudo.py` - Added `species_map` parameter and resolution logic
-2. `src/quantumvitas/calculation/structure_steps.py` - Pass species_map through the chain
-3. `src/quantumvitas/daemon/server.py` - Fixed API parameter mismatch
-4. `src/quantumvitas/calculation/input_runner.py` - Handle `pseudo_basename` key
+1. `src/qmatsuite/core/pseudo.py` - Added `species_map` parameter and resolution logic
+2. `src/qmatsuite/calculation/structure_steps.py` - Pass species_map through the chain
+3. `src/qmatsuite/daemon/server.py` - Fixed API parameter mismatch
+4. `src/qmatsuite/calculation/input_runner.py` - Handle `pseudo_basename` key
 5. `tests/unit/test_pseudo_species_map_resolution.py` - New regression tests
 
 ## Backward Compatibility

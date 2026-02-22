@@ -2,8 +2,8 @@
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.parsers.qe.trajectory import QETrajectoryParser, RY_TO_EV
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.parsers.qe.trajectory import QETrajectoryParser, RY_TO_EV
 
 
 def _make_evidence(raw_dir: Path) -> EvidenceBundle:

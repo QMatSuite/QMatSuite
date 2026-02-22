@@ -22,8 +22,8 @@ from the daemon API and calculation layer while maintaining Constitution complia
 
 ### What's Already Done
 
-- ✅ `quantumvitas.presets.detector` - Tolerant detection from step params
-- ✅ `quantumvitas.presets.compiler` - Canonical encoding, strict
+- ✅ `qmatsuite.presets.detector` - Tolerant detection from step params
+- ✅ `qmatsuite.presets.compiler` - Canonical encoding, strict
 - ✅ Mathematical equivalence verified by tests
 - ✅ 70 unit tests passing
 
@@ -45,12 +45,12 @@ from the daemon API and calculation layer while maintaining Constitution complia
 **Goal**: Expose `detect_all_presets` via daemon so GUI can derive preset state.
 
 - [x] **2.1.1** Add daemon handler for preset detection
-  - File: `src/quantumvitas/daemon/server.py`
+  - File: `src/qmatsuite/daemon/server.py`
   - Method: `_handle_detect_presets(calculation_id)`
   - Returns: `{spin: "collinear", soc: "no_soc", material: "metal"}` or `"Custom"`
   
 - [x] **2.1.2** Load step parameters from calculation
-  - `src/quantumvitas/presets/integration.py` - `_load_step_parameters()`
+  - `src/qmatsuite/presets/integration.py` - `_load_step_parameters()`
   - Read all step.yaml files for calculation
   - Extract parameters dict from each
   - Pass to `detect_all_presets(steps)`
@@ -65,7 +65,7 @@ from the daemon API and calculation layer while maintaining Constitution complia
 **Goal**: Allow applying preset options to an existing step (overwrite params).
 
 - [x] **2.2.1** Create apply_presets_to_step function
-  - File: `src/quantumvitas/presets/integration.py`
+  - File: `src/qmatsuite/presets/integration.py`
   - Function: `apply_presets_to_step(step_path, options, validate_physics=True)`
   - Reads step.yaml, applies compiled params, writes back
   - Per §10.3.3: OVERWRITE, not merge
@@ -100,7 +100,7 @@ from the daemon API and calculation layer while maintaining Constitution complia
 **Goal**: Detect workflow type from step sequence (informational only).
 
 - [x] **2.4.1** Define workflow detection logic
-  - File: `src/quantumvitas/presets/integration.py` (combined with integration)
+  - File: `src/qmatsuite/presets/integration.py` (combined with integration)
   - Analyze step_types in calculation
   - Return detected workflow: DOS, BandStructure, Relaxation, etc.
 
@@ -124,7 +124,7 @@ from the daemon API and calculation layer while maintaining Constitution complia
 **Goal**: Non-fatal physics warnings for preset combinations.
 
 - [ ] **2.5.1** Create validation module
-  - File: `src/quantumvitas/presets/validation.py`
+  - File: `src/qmatsuite/presets/validation.py`
   - Function: `validate_preset_combination(options) -> List[Warning]`
 
 - [ ] **2.5.2** Define warning rules
@@ -226,9 +226,9 @@ result = {"SYSTEM": {"ecutwfc": 50, "nspin": 2, "occupations": "'smearing'", "sm
 
 If resuming this phase:
 
-1. Presets module is complete at `src/quantumvitas/presets/`
-2. Daemon server is at `src/quantumvitas/daemon/server.py`
-3. Step specs are at `src/quantumvitas/calculation/structure_steps.py`
+1. Presets module is complete at `src/qmatsuite/presets/`
+2. Daemon server is at `src/qmatsuite/daemon/server.py`
+3. Step specs are at `src/qmatsuite/calculation/structure_steps.py`
 4. Start with Phase 2.1.1 (daemon handler)
 
 ---

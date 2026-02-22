@@ -1,19 +1,19 @@
-# QVService Single-Source API Migration Plan
+# QMSService Single-Source API Migration Plan
 
 **Status:** Design Document (No Code Changes)
 **Date:** 2026-01-28
-**Problem:** Repo governance failure - multiple QVService classes, hidden legacy layers, 500+ dangling calls
+**Problem:** Repo governance failure - multiple QMSService classes, hidden legacy layers, 500+ dangling calls
 
 ---
 
 ## Executive Summary
 
-The API slimming effort failed to achieve its stated goal. Despite claims of a "single public QVService," the repository currently has:
+The API slimming effort failed to achieve its stated goal. Despite claims of a "single public QMSService," the repository currently has:
 
-- **3 QVService definitions** in production code
+- **3 QMSService definitions** in production code
 - **2 hidden legacy layers** still being imported across the repo
 - **500+ dangling calls** - code calling methods that don't exist on the imported class
-- **Internal self-referential breakage** - the "new" QVService calls non-existent methods on the legacy class
+- **Internal self-referential breakage** - the "new" QMSService calls non-existent methods on the legacy class
 
 This document provides a concrete migration plan to achieve actual single-source API compliance.
 
@@ -25,35 +25,35 @@ This document provides a concrete migration plan to achieve actual single-source
 
 The root cause is a **semantic split** between import path and method resolution:
 
-1. **Import Path:** Code correctly imports `from quantumvitas.api import QVService`
-2. **Method Resolution:** Code then calls `QVService.create_project_from_snapshot()`
-3. **Failure:** The `api.service.QVService` class only has **26 methods**
+1. **Import Path:** Code correctly imports `from qmatsuite.api import QMSService`
+2. **Method Resolution:** Code then calls `QMSService.create_project_from_snapshot()`
+3. **Failure:** The `api.service.QMSService` class only has **26 methods**
 4. **The called method only exists on legacy classes** with 100-215 methods
 
 **Concrete example from cli/main.py:703:**
 ```python
-from quantumvitas.api import QVService  # Imports api.service.QVService (26 methods)
+from qmatsuite.api import QMSService  # Imports api.service.QMSService (26 methods)
 ...
-QVService.create_project_from_snapshot(...)  # Method doesn't exist! (only on _api_legacy)
+QMSService.create_project_from_snapshot(...)  # Method doesn't exist! (only on _api_legacy)
 ```
 
-### A.2 The Three QVService Classes
+### A.2 The Three QMSService Classes
 
 | Module | File | Method Count | Purpose |
 |--------|------|--------------|---------|
-| `quantumvitas.api.service.QVService` | `src/quantumvitas/api/service.py:27` | 26 + 7 nested | **Intended** new public API |
-| `quantumvitas._api_legacy.QVService` | `src/quantumvitas/_api_legacy.py:229` | 215 | **Hidden** full legacy monolith |
-| `quantumvitas.api_legacy.QVService` | `src/quantumvitas/api_legacy.py:148` | 101 | **Hidden** partial legacy subset |
+| `qmatsuite.api.service.QMSService` | `src/qmatsuite/api/service.py:27` | 26 + 7 nested | **Intended** new public API |
+| `qmatsuite._api_legacy.QMSService` | `src/qmatsuite/_api_legacy.py:229` | 215 | **Hidden** full legacy monolith |
+| `qmatsuite.api_legacy.QMSService` | `src/qmatsuite/api_legacy.py:148` | 101 | **Hidden** partial legacy subset |
 
 ### A.3 How the Two Legacy Layers Differ
 
-**`quantumvitas._api_legacy` (215 methods):**
+**`qmatsuite._api_legacy` (215 methods):**
 - Underscore-prefixed module (appears "private")
 - Contains the FULL legacy implementation
 - Has internal methods like `_build_structure_vis_payload`, `_detect_calculation_results_dir`
 - Has advanced features: pseudo library management, preset system, blob stores, workflow service
 
-**`quantumvitas.api_legacy` (101 methods):**
+**`qmatsuite.api_legacy` (101 methods):**
 - No underscore (appears "public legacy")
 - Subset of `_api_legacy` methods
 - Has CLI-specific methods like `get_calculation_for_cli`, `get_step_for_cli`
@@ -67,21 +67,21 @@ QVService.create_project_from_snapshot(...)  # Method doesn't exist! (only on _a
 
 | File | Legacy Calls | Dangling | Category |
 |------|-------------|----------|----------|
-| `src/quantumvitas/daemon/server.py` | 150+ | 80+ | Daemon |
-| `src/quantumvitas/cli/main.py` | 50+ | 30+ | CLI |
-| `src/quantumvitas/frontends/daemon/server.py` | 80+ | 40+ | Daemon |
+| `src/qmatsuite/daemon/server.py` | 150+ | 80+ | Daemon |
+| `src/qmatsuite/cli/main.py` | 50+ | 30+ | CLI |
+| `src/qmatsuite/frontends/daemon/server.py` | 80+ | 40+ | Daemon |
 | `tests/integration/*` | 200+ | 100+ | Tests |
 | `tests/daemon/*` | 100+ | 50+ | Tests |
 | `tests/unit/*` | 80+ | 30+ | Tests |
 
 ### A.5 Most Dangerous Pattern
 
-**The new QVService internally calls non-existent methods on legacy!**
+**The new QMSService internally calls non-existent methods on legacy!**
 
 From `api/service.py:1155`:
 ```python
-def analysis(self) -> QVService.Analysis:
-    return QVService.Analysis(self)  # This is calling _api_legacy.QVService.Analysis() - DOESN'T EXIST
+def analysis(self) -> QMSService.Analysis:
+    return QMSService.Analysis(self)  # This is calling _api_legacy.QMSService.Analysis() - DOESN'T EXIST
 ```
 
 The nested class factory pattern in the new service attempts to instantiate classes that were **never migrated** from the legacy monolith. This causes:
@@ -91,9 +91,9 @@ The nested class factory pattern in the new service attempts to instantiate clas
 ### A.6 Dangling Call Categories (from audit)
 
 **By target class:**
-- `quantumvitas.api.QVService` (resolves to api.service): 200+ dangling
-- `quantumvitas.api_legacy.QVService`: 50+ dangling (private methods)
-- `quantumvitas._api_legacy.QVService`: 20+ dangling (nested class constructors)
+- `qmatsuite.api.QMSService` (resolves to api.service): 200+ dangling
+- `qmatsuite.api_legacy.QMSService`: 50+ dangling (private methods)
+- `qmatsuite._api_legacy.QMSService`: 20+ dangling (nested class constructors)
 
 **By method type:**
 - Nested class constructors (`Analysis()`, `Calculation()`, etc.): 7 calls
@@ -113,7 +113,7 @@ Move legacy code to a **quarantined "vault"** area that is:
 
 **Proposed structure:**
 ```
-src/quantumvitas/_vault/
+src/qmatsuite/_vault/
     __init__.py           # Empty - no exports, import protection
     _legacy_service.py    # Renamed from _api_legacy.py
     _legacy_facade.py     # Renamed from api_legacy.py
@@ -143,7 +143,7 @@ def _vault_import_guard():
     warnings.warn(
         "Importing from _vault is prohibited. "
         "This module contains deprecated legacy code for reference only. "
-        "Use quantumvitas.api.QVService for all production code.",
+        "Use qmatsuite.api.QMSService for all production code.",
         DeprecationWarning,
         stacklevel=3
     )
@@ -158,10 +158,10 @@ __all__ = []
 
 | Consumer | Can Import Vault? | Reason |
 |----------|------------------|--------|
-| `quantumvitas.api.*` | **NO** | API must be self-contained |
-| `quantumvitas.cli.*` | **NO** | CLI uses public API only |
-| `quantumvitas.daemon.*` | **NO** | Daemon uses public API only |
-| `quantumvitas.frontends.*` | **NO** | Frontends use public API only |
+| `qmatsuite.api.*` | **NO** | API must be self-contained |
+| `qmatsuite.cli.*` | **NO** | CLI uses public API only |
+| `qmatsuite.daemon.*` | **NO** | Daemon uses public API only |
+| `qmatsuite.frontends.*` | **NO** | Frontends use public API only |
 | `tests/*` | **NO** | Tests should test public API |
 | `tools/migration_*.py` | YES (temporary) | Migration tooling only |
 | `docs/examples/*` | NO | Examples use public API |
@@ -182,43 +182,43 @@ __all__ = []
 
 **Goal:** Prevent regression during migration. All gates should FAIL initially to prove they detect the problem.
 
-#### Gate 0.1: Multiple QVService Definition Detector
+#### Gate 0.1: Multiple QMSService Definition Detector
 
 **Scan command:**
 ```bash
-grep -rn "^class QVService" src/quantumvitas/ --include="*.py" | grep -v "_vault" | grep -v "test_"
+grep -rn "^class QMSService" src/qmatsuite/ --include="*.py" | grep -v "_vault" | grep -v "test_"
 ```
 
 **Expected error format:**
 ```
-ERROR: Multiple QVService definitions found:
-  - src/quantumvitas/api/service.py:27 (ALLOWED - canonical)
-  - src/quantumvitas/_api_legacy.py:229 (VIOLATION)
-  - src/quantumvitas/api_legacy.py:148 (VIOLATION)
+ERROR: Multiple QMSService definitions found:
+  - src/qmatsuite/api/service.py:27 (ALLOWED - canonical)
+  - src/qmatsuite/_api_legacy.py:229 (VIOLATION)
+  - src/qmatsuite/api_legacy.py:148 (VIOLATION)
 
-Only src/quantumvitas/api/service.py may define class QVService.
+Only src/qmatsuite/api/service.py may define class QMSService.
 ```
 
-**CI integration:** `tests/gates/test_single_qvservice_definition.py`
+**CI integration:** `tests/gates/test_single_qmsservice_definition.py`
 
 #### Gate 0.2: Legacy Import Detector
 
 **Scan patterns:**
 ```
-from quantumvitas._api_legacy import
-from quantumvitas.api_legacy import
-from quantumvitas._vault import
-import quantumvitas._api_legacy
-import quantumvitas.api_legacy
-import quantumvitas._vault
+from qmatsuite._api_legacy import
+from qmatsuite.api_legacy import
+from qmatsuite._vault import
+import qmatsuite._api_legacy
+import qmatsuite.api_legacy
+import qmatsuite._vault
 ```
 
 **Expected error format:**
 ```
 ERROR: Legacy import detected in production code:
-  - src/quantumvitas/daemon/server.py:15: from quantumvitas.api_legacy import QVService
+  - src/qmatsuite/daemon/server.py:15: from qmatsuite.api_legacy import QMSService
 
-Production code must only import from quantumvitas.api
+Production code must only import from qmatsuite.api
 ```
 
 **CI integration:** `tests/gates/test_no_legacy_imports.py`
@@ -227,17 +227,17 @@ Production code must only import from quantumvitas.api
 
 **Detection approach:**
 1. Parse all Python files using AST
-2. For each file, resolve `from quantumvitas.api import QVService`
-3. Collect all `QVService.method_name()` calls (static and instance)
-4. Check if `method_name` exists on `quantumvitas.api.service.QVService`
+2. For each file, resolve `from qmatsuite.api import QMSService`
+3. Collect all `QMSService.method_name()` calls (static and instance)
+4. Check if `method_name` exists on `qmatsuite.api.service.QMSService`
 5. Report mismatches as dangling
 
 **Expected error format:**
 ```
 ERROR: Dangling API call detected:
-  - src/quantumvitas/cli/main.py:703: QVService.create_project_from_snapshot()
-    Method 'create_project_from_snapshot' not found on quantumvitas.api.service.QVService
-    Suggestion: Method exists on quantumvitas._api_legacy.QVService - needs migration
+  - src/qmatsuite/cli/main.py:703: QMSService.create_project_from_snapshot()
+    Method 'create_project_from_snapshot' not found on qmatsuite.api.service.QMSService
+    Suggestion: Method exists on qmatsuite._api_legacy.QMSService - needs migration
 ```
 
 **CI integration:** `tests/gates/test_no_dangling_calls.py`
@@ -254,20 +254,20 @@ Methods that already exist on both old and new API with identical signatures.
 
 | Legacy Method | New Method | Callsites | Notes |
 |--------------|------------|-----------|-------|
-| `QVService.get_project_summary()` | `QVService.get_project_summary()` | 8 | Already exists |
-| `QVService.list_structures_data()` | `QVService.list_structures_data()` | 9 | Already exists |
-| `QVService.list_calculations_data()` | `QVService.list_calculations_data()` | 11 | Already exists |
-| `QVService.init_project()` | `QVService.init_project()` | 97 | Already exists |
-| `QVService.init_calculation()` | `QVService.init_calculation()` | 78 | Already exists |
-| `QVService.init_step()` | `QVService.init_step()` | 43 | Already exists |
-| `QVService.run_calculation()` | `QVService.run_calculation()` | 12 | Already exists |
-| `QVService.run_step()` | `QVService.run_step()` | 20 | Already exists |
-| `QVService.import_structure()` | `QVService.import_structure()` | 67 | Already exists |
-| `QVService.promote_relax_structure()` | `QVService.promote_relax_structure()` | 12 | Already exists |
-| `QVService.save_relax_final_structure()` | `QVService.save_relax_final_structure()` | 4 | Already exists |
-| `QVService.configure_species_map()` | `QVService.configure_species_map()` | 4 | Already exists |
-| `QVService.create_demo_project()` | `QVService.create_demo_project()` | 7 | Already exists |
-| `QVService.list_demo_projects()` | `QVService.list_demo_projects()` | 2 | Already exists |
+| `QMSService.get_project_summary()` | `QMSService.get_project_summary()` | 8 | Already exists |
+| `QMSService.list_structures_data()` | `QMSService.list_structures_data()` | 9 | Already exists |
+| `QMSService.list_calculations_data()` | `QMSService.list_calculations_data()` | 11 | Already exists |
+| `QMSService.init_project()` | `QMSService.init_project()` | 97 | Already exists |
+| `QMSService.init_calculation()` | `QMSService.init_calculation()` | 78 | Already exists |
+| `QMSService.init_step()` | `QMSService.init_step()` | 43 | Already exists |
+| `QMSService.run_calculation()` | `QMSService.run_calculation()` | 12 | Already exists |
+| `QMSService.run_step()` | `QMSService.run_step()` | 20 | Already exists |
+| `QMSService.import_structure()` | `QMSService.import_structure()` | 67 | Already exists |
+| `QMSService.promote_relax_structure()` | `QMSService.promote_relax_structure()` | 12 | Already exists |
+| `QMSService.save_relax_final_structure()` | `QMSService.save_relax_final_structure()` | 4 | Already exists |
+| `QMSService.configure_species_map()` | `QMSService.configure_species_map()` | 4 | Already exists |
+| `QMSService.create_demo_project()` | `QMSService.create_demo_project()` | 7 | Already exists |
+| `QMSService.list_demo_projects()` | `QMSService.list_demo_projects()` | 2 | Already exists |
 
 **Total Phase 1:** ~375 callsites that should "just work" once nested accessors are fixed
 
@@ -277,48 +277,48 @@ Methods that already exist on both old and new API with identical signatures.
 
 For each dangling method, decide its fate:
 
-#### Category A: Add as Official QVService Capability
+#### Category A: Add as Official QMSService Capability
 
 Methods that belong on the public API surface.
 
 | Legacy Method | Proposed Home | Callsites | Difficulty | Notes |
 |--------------|---------------|-----------|------------|-------|
-| `create_project_from_snapshot()` | `QVService.project.restore()` | 1 | Medium | Snapshot restore |
-| `save_project_snapshot()` | `QVService.project.snapshot()` | 1 | Medium | Snapshot create |
-| `export_project_snapshot()` | `QVService.project.export()` | 2 | Medium | Archive export |
-| `get_calculation_detail()` | `QVService.calculation.get_detail()` | 3 | Low | Already pattern |
-| `get_step_detail()` | `QVService.calculation.get_step_detail()` | 1 | Low | Already pattern |
-| `rename_structure()` | `QVService.structure.rename()` | 2 | Low | CRUD operation |
-| `rename_calculation()` | `QVService.calculation.rename()` | 2 | Low | CRUD operation |
-| `delete_structure()` | `QVService.structure.delete()` | 2 | Low | Already exists! |
-| `delete_calculation()` | `QVService.calculation.delete()` | 1 | Low | Already exists! |
-| `can_delete_structure()` | `QVService.structure.can_delete()` | 4 | Low | Pre-flight check |
-| `can_delete_calculation()` | `QVService.calculation.can_delete()` | 2 | Low | Already exists! |
-| `get_common_cards()` | `QVService.calculation.get_common_cards()` | 1 | Low | Already exists! |
-| `reorder_calculation_steps()` | `QVService.calculation.reorder_steps()` | 2 | Medium | Step management |
-| `get_workflow_service()` | `QVService.get_workflow_service()` | 5 | Low | Already exists! |
-| `get_settings()` | `QVService.get_settings()` | 4 | Low | Already exists! |
-| `generate_kpath()` | `QVService.generate_kpath()` | 1 | Low | Already exists! |
-| `get_default_step_params()` | `QVService.get_default_step_params()` | 3 | Low | Already exists! |
-| `get_band_structure_data()` | `QVService.analysis.get_band_structure_data()` | 1 | Low | Analysis |
-| `get_dos_data()` | `QVService.analysis.get_dos_data()` | 2 | Low | Analysis |
-| `get_scf_convergence_data()` | `QVService.analysis.get_scf_convergence_data()` | 1 | Low | Already exists! |
-| `list_step_artifacts()` | `QVService.analysis.list_step_artifacts()` | 2 | Low | Already exists! |
-| `read_step_artifact_text()` | `QVService.analysis.read_step_artifact_text()` | 2 | Low | Already exists! |
-| `get_reference_analysis()` | `QVService.analysis.get_reference()` | 2 | Medium | Reference data |
-| `ensure_calculation_analysis()` | `QVService.analysis.ensure()` | 2 | Medium | Compute trigger |
-| `analyze_band()` | `QVService.analysis.analyze_band()` | 2 | Low | Already exists! |
-| `analyze_dos()` | `QVService.analysis.analyze_dos()` | 1 | Low | Already exists! |
-| `list_qe_engines()` | `QVService.engine.list()` | 2 | Low | Already exists! |
-| `discover_qe_engines()` | `QVService.engine.discover()` | 2 | Low | Engine discovery |
-| `set_qe_engine()` | `QVService.engine.set()` | 2 | Low | Engine config |
-| `detect_qe()` | `QVService.engine.detect()` | 2 | Low | Engine detection |
-| `get_environment_info()` | `QVService.engine.get_environment()` | 2 | Low | Env info |
-| `preflight_check()` | `QVService.run.preflight()` | 1 | Low | Already exists! |
+| `create_project_from_snapshot()` | `QMSService.project.restore()` | 1 | Medium | Snapshot restore |
+| `save_project_snapshot()` | `QMSService.project.snapshot()` | 1 | Medium | Snapshot create |
+| `export_project_snapshot()` | `QMSService.project.export()` | 2 | Medium | Archive export |
+| `get_calculation_detail()` | `QMSService.calculation.get_detail()` | 3 | Low | Already pattern |
+| `get_step_detail()` | `QMSService.calculation.get_step_detail()` | 1 | Low | Already pattern |
+| `rename_structure()` | `QMSService.structure.rename()` | 2 | Low | CRUD operation |
+| `rename_calculation()` | `QMSService.calculation.rename()` | 2 | Low | CRUD operation |
+| `delete_structure()` | `QMSService.structure.delete()` | 2 | Low | Already exists! |
+| `delete_calculation()` | `QMSService.calculation.delete()` | 1 | Low | Already exists! |
+| `can_delete_structure()` | `QMSService.structure.can_delete()` | 4 | Low | Pre-flight check |
+| `can_delete_calculation()` | `QMSService.calculation.can_delete()` | 2 | Low | Already exists! |
+| `get_common_cards()` | `QMSService.calculation.get_common_cards()` | 1 | Low | Already exists! |
+| `reorder_calculation_steps()` | `QMSService.calculation.reorder_steps()` | 2 | Medium | Step management |
+| `get_workflow_service()` | `QMSService.get_workflow_service()` | 5 | Low | Already exists! |
+| `get_settings()` | `QMSService.get_settings()` | 4 | Low | Already exists! |
+| `generate_kpath()` | `QMSService.generate_kpath()` | 1 | Low | Already exists! |
+| `get_default_step_params()` | `QMSService.get_default_step_params()` | 3 | Low | Already exists! |
+| `get_band_structure_data()` | `QMSService.analysis.get_band_structure_data()` | 1 | Low | Analysis |
+| `get_dos_data()` | `QMSService.analysis.get_dos_data()` | 2 | Low | Analysis |
+| `get_scf_convergence_data()` | `QMSService.analysis.get_scf_convergence_data()` | 1 | Low | Already exists! |
+| `list_step_artifacts()` | `QMSService.analysis.list_step_artifacts()` | 2 | Low | Already exists! |
+| `read_step_artifact_text()` | `QMSService.analysis.read_step_artifact_text()` | 2 | Low | Already exists! |
+| `get_reference_analysis()` | `QMSService.analysis.get_reference()` | 2 | Medium | Reference data |
+| `ensure_calculation_analysis()` | `QMSService.analysis.ensure()` | 2 | Medium | Compute trigger |
+| `analyze_band()` | `QMSService.analysis.analyze_band()` | 2 | Low | Already exists! |
+| `analyze_dos()` | `QMSService.analysis.analyze_dos()` | 1 | Low | Already exists! |
+| `list_qe_engines()` | `QMSService.engine.list()` | 2 | Low | Already exists! |
+| `discover_qe_engines()` | `QMSService.engine.discover()` | 2 | Low | Engine discovery |
+| `set_qe_engine()` | `QMSService.engine.set()` | 2 | Low | Engine config |
+| `detect_qe()` | `QMSService.engine.detect()` | 2 | Low | Engine detection |
+| `get_environment_info()` | `QMSService.engine.get_environment()` | 2 | Low | Env info |
+| `preflight_check()` | `QMSService.run.preflight()` | 1 | Low | Already exists! |
 
 #### Category B: Convert to Pure Utils Functions
 
-Methods that are stateless and belong in `quantumvitas.api.utils`.
+Methods that are stateless and belong in `qmatsuite.api.utils`.
 
 | Legacy Method | Proposed Utils Location | Callsites | Notes |
 |--------------|------------------------|-----------|-------|
@@ -351,63 +351,63 @@ Methods for pseudopotential library management - decide if this belongs in API o
 
 | Legacy Method | Decision | Callsites | Notes |
 |--------------|----------|-----------|-------|
-| `get_pseudo_config()` | Add to `QVService.pseudo.get_config()` | 15 | Core functionality |
-| `set_pseudo_config()` | Add to `QVService.pseudo.set_config()` | 2 | Core functionality |
-| `validate_pseudo_config()` | Add to `QVService.pseudo.validate()` | 1 | Validation |
-| `init_pseudo_dirs()` | Add to `QVService.pseudo.init()` | 1 | Setup |
-| `list_pseudo_libraries()` | Add to `QVService.pseudo.list_libraries()` | 1 | Discovery |
-| `install_pseudo_library()` | Add to `QVService.pseudo.install()` | 1 | Install |
-| `remove_pseudo_library()` | Add to `QVService.pseudo.remove()` | 1 | Uninstall |
-| `repair_pseudo_library()` | Add to `QVService.pseudo.repair()` | 1 | Maintenance |
-| `get_library_status()` | Add to `QVService.pseudo.get_status()` | 1 | Status |
-| `get_pseudo_mapping()` | Add to `QVService.pseudo.get_mapping()` | 2 | Mapping |
-| `set_pseudo_mapping()` | Add to `QVService.pseudo.set_mapping()` | 2 | Mapping |
-| `import_pseudo_files()` | Add to `QVService.pseudo.import_files()` | 2 | Import |
-| `download_pseudo_by_filename()` | Add to `QVService.pseudo.download()` | 4 | Download |
-| `download_pseudo_from_url()` | Add to `QVService.pseudo.download_url()` | 2 | Download |
-| `search_legacy_pseudos()` | Add to `QVService.pseudo.search()` | 2 | Search |
-| `resolve_pseudo_provenance()` | Add to `QVService.pseudo.resolve()` | 2 | Resolution |
-| `get_pseudo_options_for_elements()` | Add to `QVService.pseudo.options_for_elements()` | 1 | Options |
-| `list_installed_sssp()` | Add to `QVService.pseudo.list_sssp()` | 3 | SSSP specific |
-| `install_sssp_from_seed()` | Add to `QVService.pseudo.install_sssp()` | 1 | SSSP install |
-| `install_all_sssp_from_seed()` | Add to `QVService.pseudo.install_all_sssp()` | 1 | SSSP install |
-| `download_sssp_library()` | Add to `QVService.pseudo.download_sssp()` | 1 | SSSP download |
-| `download_all_sssp()` | Add to `QVService.pseudo.download_all_sssp()` | 1 | SSSP download |
-| `list_seed_archives()` | Add to `QVService.pseudo.list_seeds()` | 1 | Seeds |
-| `import_seed_archives()` | Add to `QVService.pseudo.import_seeds()` | 1 | Seeds |
-| `check_archives_status()` | Add to `QVService.pseudo.archives_status()` | 3 | Status |
+| `get_pseudo_config()` | Add to `QMSService.pseudo.get_config()` | 15 | Core functionality |
+| `set_pseudo_config()` | Add to `QMSService.pseudo.set_config()` | 2 | Core functionality |
+| `validate_pseudo_config()` | Add to `QMSService.pseudo.validate()` | 1 | Validation |
+| `init_pseudo_dirs()` | Add to `QMSService.pseudo.init()` | 1 | Setup |
+| `list_pseudo_libraries()` | Add to `QMSService.pseudo.list_libraries()` | 1 | Discovery |
+| `install_pseudo_library()` | Add to `QMSService.pseudo.install()` | 1 | Install |
+| `remove_pseudo_library()` | Add to `QMSService.pseudo.remove()` | 1 | Uninstall |
+| `repair_pseudo_library()` | Add to `QMSService.pseudo.repair()` | 1 | Maintenance |
+| `get_library_status()` | Add to `QMSService.pseudo.get_status()` | 1 | Status |
+| `get_pseudo_mapping()` | Add to `QMSService.pseudo.get_mapping()` | 2 | Mapping |
+| `set_pseudo_mapping()` | Add to `QMSService.pseudo.set_mapping()` | 2 | Mapping |
+| `import_pseudo_files()` | Add to `QMSService.pseudo.import_files()` | 2 | Import |
+| `download_pseudo_by_filename()` | Add to `QMSService.pseudo.download()` | 4 | Download |
+| `download_pseudo_from_url()` | Add to `QMSService.pseudo.download_url()` | 2 | Download |
+| `search_legacy_pseudos()` | Add to `QMSService.pseudo.search()` | 2 | Search |
+| `resolve_pseudo_provenance()` | Add to `QMSService.pseudo.resolve()` | 2 | Resolution |
+| `get_pseudo_options_for_elements()` | Add to `QMSService.pseudo.options_for_elements()` | 1 | Options |
+| `list_installed_sssp()` | Add to `QMSService.pseudo.list_sssp()` | 3 | SSSP specific |
+| `install_sssp_from_seed()` | Add to `QMSService.pseudo.install_sssp()` | 1 | SSSP install |
+| `install_all_sssp_from_seed()` | Add to `QMSService.pseudo.install_all_sssp()` | 1 | SSSP install |
+| `download_sssp_library()` | Add to `QMSService.pseudo.download_sssp()` | 1 | SSSP download |
+| `download_all_sssp()` | Add to `QMSService.pseudo.download_all_sssp()` | 1 | SSSP download |
+| `list_seed_archives()` | Add to `QMSService.pseudo.list_seeds()` | 1 | Seeds |
+| `import_seed_archives()` | Add to `QMSService.pseudo.import_seeds()` | 1 | Seeds |
+| `check_archives_status()` | Add to `QMSService.pseudo.archives_status()` | 3 | Status |
 | `load_manifest_archives()` | **DELETE** - internal | 2 | Internal |
-| `is_pseudo_archive_installed()` | Add to `QVService.pseudo.is_installed()` | 1 | Check |
-| `install_pseudo_archive()` | Add to `QVService.pseudo.install_archive()` | 1 | Install |
+| `is_pseudo_archive_installed()` | Add to `QMSService.pseudo.is_installed()` | 1 | Check |
+| `install_pseudo_archive()` | Add to `QMSService.pseudo.install_archive()` | 1 | Install |
 | `load_pseudo_config()` | **DELETE** - use get_pseudo_config | 4 | Redundant |
-| `compute_store_size()` | Add to `QVService.pseudo.store_size()` | 1 | Metrics |
-| `materialize_pseudo_file()` | Add to `QVService.pseudo.materialize()` | 1 | File ops |
+| `compute_store_size()` | Add to `QMSService.pseudo.store_size()` | 1 | Metrics |
+| `materialize_pseudo_file()` | Add to `QMSService.pseudo.materialize()` | 1 | File ops |
 
-**Recommendation:** Add `QVService.Pseudo` nested class for pseudopotential management.
+**Recommendation:** Add `QMSService.Pseudo` nested class for pseudopotential management.
 
 #### Category E: Advanced/Preset System
 
 | Legacy Method | Decision | Callsites | Notes |
 |--------------|----------|-----------|-------|
-| `get_preset_catalog()` | Add to `QVService.preset.catalog()` | 1 | Preset system |
-| `apply_presets_to_step()` | Add to `QVService.preset.apply_to_step()` | 2 | Apply presets |
-| `detect_presets_from_calculation()` | Add to `QVService.preset.detect()` | 3 | Detection |
-| `detect_engine_for_calculation()` | Add to `QVService.preset.detect_engine()` | 3 | Engine detection |
-| `detect_workflow_type()` | Add to `QVService.preset.detect_workflow()` | 1 | Workflow detection |
-| `create_precision_advisor()` | Add to `QVService.preset.create_advisor()` | 1 | Precision |
-| `resolve_precision_context()` | Add to `QVService.preset.resolve_precision()` | 1 | Precision |
-| `get_step_preset_footprints()` | Add to `QVService.preset.get_footprints()` | 1 | Footprints |
+| `get_preset_catalog()` | Add to `QMSService.preset.catalog()` | 1 | Preset system |
+| `apply_presets_to_step()` | Add to `QMSService.preset.apply_to_step()` | 2 | Apply presets |
+| `detect_presets_from_calculation()` | Add to `QMSService.preset.detect()` | 3 | Detection |
+| `detect_engine_for_calculation()` | Add to `QMSService.preset.detect_engine()` | 3 | Engine detection |
+| `detect_workflow_type()` | Add to `QMSService.preset.detect_workflow()` | 1 | Workflow detection |
+| `create_precision_advisor()` | Add to `QMSService.preset.create_advisor()` | 1 | Precision |
+| `resolve_precision_context()` | Add to `QMSService.preset.resolve_precision()` | 1 | Precision |
+| `get_step_preset_footprints()` | Add to `QMSService.preset.get_footprints()` | 1 | Footprints |
 
-**Recommendation:** Add `QVService.Preset` nested class or merge into Engine.
+**Recommendation:** Add `QMSService.Preset` nested class or merge into Engine.
 
 #### Category F: Online Structure Search
 
 | Legacy Method | Decision | Callsites | Notes |
 |--------------|----------|-----------|-------|
-| `search_online_structures()` | Add to `QVService.structure.search_online()` | 1 | Search |
-| `fetch_structure_from_optimade()` | Add to `QVService.structure.fetch_optimade()` | 1 | OPTIMADE |
-| `canonicalize_structure()` | Add to `QVService.structure.canonicalize()` | 1 | Normalization |
-| `extract_provenance()` | Add to `QVService.structure.extract_provenance()` | 1 | Provenance |
+| `search_online_structures()` | Add to `QMSService.structure.search_online()` | 1 | Search |
+| `fetch_structure_from_optimade()` | Add to `QMSService.structure.fetch_optimade()` | 1 | OPTIMADE |
+| `canonicalize_structure()` | Add to `QMSService.structure.canonicalize()` | 1 | Normalization |
+| `extract_provenance()` | Add to `QMSService.structure.extract_provenance()` | 1 | Provenance |
 
 #### Category G: Miscellaneous/Rare
 
@@ -421,26 +421,26 @@ Methods for pseudopotential library management - decide if this belongs in API o
 | `find_calculation_results_dir()` | **DELETE** - internal | 1 | Internal |
 | `find_band_analysis_files()` | **DELETE** - internal | 1 | Internal |
 | `find_path_context_from_pwd()` | **DELETE** - internal | 1 | Internal |
-| `get_journal()` | Add to `QVService.history.journal()` | 2 | Journal |
-| `list_calculation_templates()` | Add to `QVService.calculation.list_templates()` | 1 | Templates |
+| `get_journal()` | Add to `QMSService.history.journal()` | 2 | Journal |
+| `list_calculation_templates()` | Add to `QMSService.calculation.list_templates()` | 1 | Templates |
 | `run_input_step()` | **REPLACE** with `run.run_step()` | 3 | Consolidate |
-| `apply_card_overrides_to_qe_input()` | Move to `quantumvitas.core.qe_utils` | 1 | QE specific |
-| `apply_species_overrides_to_qe_input()` | Move to `quantumvitas.core.qe_utils` | 1 | QE specific |
-| `analyze_scf()` | Add to `QVService.analysis.analyze_scf()` | 1 | Analysis |
+| `apply_card_overrides_to_qe_input()` | Move to `qmatsuite.core.qe_utils` | 1 | QE specific |
+| `apply_species_overrides_to_qe_input()` | Move to `qmatsuite.core.qe_utils` | 1 | QE specific |
+| `analyze_scf()` | Add to `QMSService.analysis.analyze_scf()` | 1 | Analysis |
 | `parse_volume_artifact()` | **DELETE** - internal | 2 | Internal |
 | `read_structure()` | Use `structure.get_atoms()` | 1 | Consolidate |
-| `set_settings()` | Add to `QVService.set_settings()` | 1 | Settings |
-| `get_qe_home()` | Add to `QVService.engine.qe_home()` | 1 | QE paths |
-| `analyze_project_pseudo_effects()` | Add to `QVService.pseudo.analyze_effects()` | 1 | Analysis |
-| `get_relax_final_structure_preview()` | Add to `QVService.analysis.relax_preview()` | 2 | Preview |
+| `set_settings()` | Add to `QMSService.set_settings()` | 1 | Settings |
+| `get_qe_home()` | Add to `QMSService.engine.qe_home()` | 1 | QE paths |
+| `analyze_project_pseudo_effects()` | Add to `QMSService.pseudo.analyze_effects()` | 1 | Analysis |
+| `get_relax_final_structure_preview()` | Add to `QMSService.analysis.relax_preview()` | 2 | Preview |
 | `configure_step()` | **REPLACE** with `calculation.update_step_params()` | 7 | Consolidate |
 | `delete_step_from_calculation()` | Use `calculation.remove_step()` | 1 | Consolidate |
 | `add_step_to_calculation()` | Use `calculation.add_step()` | 1 | Consolidate |
 | `change_calculation_structure()` | Use `calculation.set_structure()` | 1 | Consolidate |
-| `get_calculation_pseudo_mapping()` | Add to `QVService.calculation.get_pseudo_mapping()` | 3 | Pseudo |
-| `update_calculation_species_map()` | Add to `QVService.calculation.update_species_map()` | 2 | Species |
-| `reset_step_params()` | Add to `QVService.calculation.reset_step_params()` | 2 | Reset |
-| `import_step_from_qe_input()` | Add to `QVService.calculation.import_step()` | 3 | Import |
+| `get_calculation_pseudo_mapping()` | Add to `QMSService.calculation.get_pseudo_mapping()` | 3 | Pseudo |
+| `update_calculation_species_map()` | Add to `QMSService.calculation.update_species_map()` | 2 | Species |
+| `reset_step_params()` | Add to `QMSService.calculation.reset_step_params()` | 2 | Reset |
+| `import_step_from_qe_input()` | Add to `QMSService.calculation.import_step()` | 3 | Import |
 | `get_structure_vis_data()` | Use `structure.get_vis_data()` | 1 | Consolidate |
 
 ---
@@ -453,11 +453,11 @@ After migration is complete, enforce that vault is unreachable:
 
 ```bash
 # Create vault directory
-mkdir -p src/quantumvitas/_vault
+mkdir -p src/qmatsuite/_vault
 
 # Move legacy files
-mv src/quantumvitas/_api_legacy.py src/quantumvitas/_vault/_legacy_service.py
-mv src/quantumvitas/api_legacy.py src/quantumvitas/_vault/_legacy_facade.py
+mv src/qmatsuite/_api_legacy.py src/qmatsuite/_vault/_legacy_service.py
+mv src/qmatsuite/api_legacy.py src/qmatsuite/_vault/_legacy_facade.py
 
 # Create vault __init__.py (import guard)
 # Create vault README.md (documentation)
@@ -466,7 +466,7 @@ mv src/quantumvitas/api_legacy.py src/quantumvitas/_vault/_legacy_facade.py
 #### Step 3.2: Update CI Gates
 
 Gates from Phase 0 should now PASS:
-- No `class QVService` outside `api/service.py`
+- No `class QMSService` outside `api/service.py`
 - No imports from `_api_legacy` or `api_legacy` (now `_vault`)
 - Zero dangling calls
 
@@ -475,8 +475,8 @@ Gates from Phase 0 should now PASS:
 Run repo-wide scan to verify:
 
 ```bash
-# Should output: "PASS: Only 1 QVService definition found"
-python tools/check_single_qvservice.py
+# Should output: "PASS: Only 1 QMSService definition found"
+python tools/check_single_qmsservice.py
 
 # Should output: "PASS: Zero legacy imports found"
 python tools/check_no_legacy_imports.py
@@ -489,12 +489,12 @@ python tools/api_dangling_calls_scanner.py --strict
 
 ## D. API Layer Architecture Proposal
 
-### D.1 Proposed QVService Public Surface
+### D.1 Proposed QMSService Public Surface
 
 **Pattern: Nested capability classes (current approach, but complete)**
 
 ```python
-class QVService:
+class QMSService:
     """Single public API entrypoint."""
 
     def __init__(self, project_root: Path): ...
@@ -511,15 +511,15 @@ class QVService:
     def list_demo_projects(self) -> ...: ...
 
     # Capability accessors
-    def analysis(self) -> QVService.Analysis: ...
-    def structure(self) -> QVService.Structure: ...
-    def calculation(self) -> QVService.Calculation: ...
-    def run(self) -> QVService.Run: ...
-    def project(self) -> QVService.Project: ...
-    def engine(self) -> QVService.Engine: ...
-    def history(self) -> QVService.History: ...
-    def pseudo(self) -> QVService.Pseudo: ...       # NEW
-    def preset(self) -> QVService.Preset: ...       # NEW (optional)
+    def analysis(self) -> QMSService.Analysis: ...
+    def structure(self) -> QMSService.Structure: ...
+    def calculation(self) -> QMSService.Calculation: ...
+    def run(self) -> QMSService.Run: ...
+    def project(self) -> QMSService.Project: ...
+    def engine(self) -> QMSService.Engine: ...
+    def history(self) -> QMSService.History: ...
+    def pseudo(self) -> QMSService.Pseudo: ...       # NEW
+    def preset(self) -> QMSService.Preset: ...       # NEW (optional)
 
     # Nested capability classes
     class Analysis:
@@ -664,9 +664,9 @@ class QVService:
 
 ### D.2 Add Capability vs Re-export Utils Decision Framework
 
-**Rule: "Does it need QVService state?"**
+**Rule: "Does it need QMSService state?"**
 
-| Question | YES (Add to QVService) | NO (Put in utils) |
+| Question | YES (Add to QMSService) | NO (Put in utils) |
 |----------|----------------------|-------------------|
 | Needs `project_root`? | Add to capability | Utils |
 | Reads/writes project files? | Add to capability | Utils |
@@ -689,10 +689,10 @@ class QVService:
 
 | Category | Callsites | Files | Risk |
 |----------|-----------|-------|------|
-| CLI (`src/quantumvitas/cli/`) | ~80 | 1 | **High** - user-facing |
-| Daemon (`src/quantumvitas/daemon/`) | ~150 | 1 | **High** - IPC boundary |
-| Frontend Daemon (`src/quantumvitas/frontends/daemon/`) | ~80 | 1 | **High** - IPC boundary |
-| Frontend CLI (`src/quantumvitas/frontends/cli/`) | ~10 | 1 | **Medium** |
+| CLI (`src/qmatsuite/cli/`) | ~80 | 1 | **High** - user-facing |
+| Daemon (`src/qmatsuite/daemon/`) | ~150 | 1 | **High** - IPC boundary |
+| Frontend Daemon (`src/qmatsuite/frontends/daemon/`) | ~80 | 1 | **High** - IPC boundary |
+| Frontend CLI (`src/qmatsuite/frontends/cli/`) | ~10 | 1 | **Medium** |
 | Integration tests | ~200 | 30+ | **Medium** - may need fixture updates |
 | Unit tests | ~80 | 20+ | **Low** - can update incrementally |
 | Daemon tests | ~100 | 10+ | **Medium** |
@@ -740,16 +740,16 @@ class QVService:
 
 ## F. Appendix: Scan Rules Reference
 
-### F.1 Single QVService Definition Check
+### F.1 Single QMSService Definition Check
 
 ```python
-# tests/gates/test_single_qvservice_definition.py
+# tests/gates/test_single_qmsservice_definition.py
 import ast
 from pathlib import Path
 
-def test_single_qvservice_definition():
-    """Ensure only one QVService class exists in production code."""
-    src = Path("src/quantumvitas")
+def test_single_qmsservice_definition():
+    """Ensure only one QMSService class exists in production code."""
+    src = Path("src/qmatsuite")
     definitions = []
 
     for py_file in src.rglob("*.py"):
@@ -758,11 +758,11 @@ def test_single_qvservice_definition():
 
         tree = ast.parse(py_file.read_text())
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name == "QVService":
+            if isinstance(node, ast.ClassDef) and node.name == "QMSService":
                 definitions.append(f"{py_file}:{node.lineno}")
 
-    # Only api/service.py should define QVService
-    assert len(definitions) == 1, f"Multiple QVService definitions: {definitions}"
+    # Only api/service.py should define QMSService
+    assert len(definitions) == 1, f"Multiple QMSService definitions: {definitions}"
     assert "api/service.py" in definitions[0]
 ```
 
@@ -774,17 +774,17 @@ import re
 from pathlib import Path
 
 LEGACY_PATTERNS = [
-    r"from quantumvitas\._api_legacy",
-    r"from quantumvitas\.api_legacy",
-    r"from quantumvitas\._vault",
-    r"import quantumvitas\._api_legacy",
-    r"import quantumvitas\.api_legacy",
-    r"import quantumvitas\._vault",
+    r"from qmatsuite\._api_legacy",
+    r"from qmatsuite\.api_legacy",
+    r"from qmatsuite\._vault",
+    r"import qmatsuite\._api_legacy",
+    r"import qmatsuite\.api_legacy",
+    r"import qmatsuite\._vault",
 ]
 
 def test_no_legacy_imports():
     """Ensure no production code imports from legacy modules."""
-    src = Path("src/quantumvitas")
+    src = Path("src/qmatsuite")
     violations = []
 
     for py_file in src.rglob("*.py"):
@@ -810,7 +810,7 @@ import subprocess
 import json
 
 def test_no_dangling_calls():
-    """Ensure all QVService calls resolve to existing methods."""
+    """Ensure all QMSService calls resolve to existing methods."""
     result = subprocess.run(
         ["python", "tools/api_dangling_calls_scanner.py", "--json"],
         capture_output=True,

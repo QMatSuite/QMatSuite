@@ -221,14 +221,14 @@ save_step_doc() → yaml_io.save_yaml_doc() → Journal hook
 ## 5. Migration Checklist
 
 ### Phase 1: StepTypeRegistry
-- [x] Create `src/quantumvitas/workflow/registry.py`
+- [x] Create `src/qmatsuite/workflow/registry.py`
 - [x] Define StepTypeSpec dataclass
 - [x] Implement StepTypeRegistry with v0 step types
 - [x] Merge defaults from step_defaults.py
 - [x] Add unit tests for registry
 
 ### Phase 2: WorkflowService
-- [x] Create `src/quantumvitas/workflow/templates.py`
+- [x] Create `src/qmatsuite/workflow/templates.py`
 - [x] Define WorkflowTemplate dataclass
 - [x] Implement WorkflowService with v0 workflows
 - [x] Add detection from calculation directory
@@ -236,7 +236,7 @@ save_step_doc() → yaml_io.save_yaml_doc() → Journal hook
 - [x] Add unit tests for workflows
 
 ### Phase 3: Centralize Step Creation
-- [x] Create `src/quantumvitas/workflow/step_factory.py`
+- [x] Create `src/qmatsuite/workflow/step_factory.py`
 - [x] Implement create_step_doc() and save_step_doc()
 - [x] Update api.py:add_step_to_calculation() to use factory (P0.2 complete)
 - [x] Update api.py:import_step_from_qe_input() to use factory (P0.2 complete)
@@ -306,7 +306,7 @@ All step writes go through yaml_io, so Journal is automatically wired.
   - Created `detect_workflow_for_calculation` RPC that takes calculation ULID
   - Returns workflow match + issues list (missing/duplicate/mismatch)
   - Wired to daemon router at line 346
-  - Added TypeScript types in qv.ts
+  - Added TypeScript types in qms.ts
 
 - [x] **UI: show detected workflow badge on calculation detail**
   - Added badge in CalculationDetailPanel showing workflow name and coverage
@@ -411,10 +411,10 @@ All step writes go through yaml_io, so Journal is automatically wired.
 - [ ] TypeScript compiles (pending)
 
 ### Files to Modify
-- `src/quantumvitas/core/models.py` - CalcDoc wrapper if needed
-- `src/quantumvitas/api.py` - Step membership helpers, ULID-based rename/delete
-- `src/quantumvitas/workflow/templates.py` - instantiate_workflow updates calc steps[]
-- `src/quantumvitas/daemon/server.py` - RPC handlers accept calc_ulid
+- `src/qmatsuite/core/models.py` - CalcDoc wrapper if needed
+- `src/qmatsuite/api.py` - Step membership helpers, ULID-based rename/delete
+- `src/qmatsuite/workflow/templates.py` - instantiate_workflow updates calc steps[]
+- `src/qmatsuite/daemon/server.py` - RPC handlers accept calc_ulid
 - `gui/src/components/dialogs/CreateCalculationDialog.tsx` - Structure dropdown fix
 - `gui/src/components/panels/CalculationListPanel.tsx` - Use calc_ulid
 - `tests/unit/test_workflow.py` - Add calc steps[] tests

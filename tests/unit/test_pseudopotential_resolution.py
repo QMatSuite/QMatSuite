@@ -9,12 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.io.parser.qe_parser import QEInputParser
-from quantumvitas.io.model import QECardType
-from quantumvitas.calculation.structure_steps import StructureStepSpec
-from quantumvitas.calculation.calculation import _build_step_from_spec
-from quantumvitas.core.resources import meta_from_name, generate_resource_id
-from quantumvitas.project.model import Project
+from qmatsuite.io.parser.qe_parser import QEInputParser
+from qmatsuite.io.model import QECardType
+from qmatsuite.calculation.structure_steps import StructureStepSpec
+from qmatsuite.calculation.calculation import _build_step_from_spec
+from qmatsuite.core.resources import meta_from_name, generate_resource_id
+from qmatsuite.project.model import Project
 
 
 class TestPseudopotentialResolution:
@@ -136,9 +136,9 @@ class TestPseudopotentialResolutionEdgeCases:
         si_pseudo = pseudo_dir / "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
         si_pseudo.write_text("fake Si pseudo content")
         
-        # Mock _find_quantumvitas_root to return None to avoid finding system pseudo dirs
+        # Mock _find_qmatsuite_root to return None to avoid finding system pseudo dirs
         # Patch it in both modules that use it
-        monkeypatch.setattr("quantumvitas.core.pseudo._find_quantumvitas_root", lambda: None)
+        monkeypatch.setattr("qmatsuite.core.pseudo._find_qmatsuite_root", lambda: None)
         
         # Create a QE input file that requires both Si and C
         qe_input_file = tmp_path / "test.in"
@@ -172,7 +172,7 @@ K_POINTS (automatic)
         qe_input_file.write_text(qe_input_content)
         
         # Try to resolve pseudopotentials in strict mode - should raise FileNotFoundError for C
-        from quantumvitas.core.pseudo import ensure_qe_pseudos
+        from qmatsuite.core.pseudo import ensure_qe_pseudos
         
         # In strict mode, should raise FileNotFoundError when pseudo file is missing
         with pytest.raises(FileNotFoundError) as exc_info:
@@ -235,7 +235,7 @@ K_POINTS (automatic)
         qe_input_file.write_text(qe_input_content)
         
         # Resolve pseudopotentials - should use the exact filename from input
-        from quantumvitas.core.pseudo import ensure_qe_pseudos
+        from qmatsuite.core.pseudo import ensure_qe_pseudos
         
         result = ensure_qe_pseudos(
             qe_input_file=qe_input_file,
@@ -319,7 +319,7 @@ K_POINTS (automatic)
             si_pseudo.write_text("")  # Empty file simulates corruption
         
         # Try to resolve pseudopotentials
-        from quantumvitas.core.pseudo import ensure_qe_pseudos
+        from qmatsuite.core.pseudo import ensure_qe_pseudos
         
         # Resolution should handle the unreadable file gracefully
         # If file exists but is unreadable, it should be detected and reported

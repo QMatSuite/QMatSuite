@@ -2,7 +2,7 @@
 
 ## 1. ProjectSnapshot 结构
 
-**文件**: `src/quantumvitas/project/snapshot.py:61-62`
+**文件**: `src/qmatsuite/project/snapshot.py:61-62`
 
 ```python
 structures: List[Dict[str, Any]] = field(default_factory=list)
@@ -15,7 +15,7 @@ calculations: List[Dict[str, Any]] = field(default_factory=list)
 
 ## 2. Calculation 的 structure 字段
 
-**文件**: `src/quantumvitas/calculation/calculation.py:30, 47-77`
+**文件**: `src/qmatsuite/calculation/calculation.py:30, 47-77`
 
 ```python
 structure: Optional[StructureRef] = None  # Legacy reference (backwards compat)
@@ -28,7 +28,7 @@ def structure_id(self) -> Optional[str]:
     self._structure_id = wf_model.structure_id
 ```
 
-**文件**: `src/quantumvitas/core/models.py` (CalculationModel)
+**文件**: `src/qmatsuite/core/models.py` (CalculationModel)
 
 - Calculation 模型有 `structure_id: Optional[str]` 字段
 - 存储在 `calculation.yaml` 中
@@ -36,7 +36,7 @@ def structure_id(self) -> Optional[str]:
 
 ## 3. StepSpec/Step YAML 的 structure 字段
 
-**文件**: `src/quantumvitas/calculation/structure_steps.py:34-46`
+**文件**: `src/qmatsuite/calculation/structure_steps.py:34-46`
 
 ```python
 @dataclass(slots=True)
@@ -58,7 +58,7 @@ class StructureStepSpec:
 
 ## 4. 强制所有 steps 共用一个 structure 的硬约束
 
-**文件**: `src/quantumvitas/calculation/importers.py:268-614`
+**文件**: `src/qmatsuite/calculation/importers.py:268-614`
 
 **之前有约束** (已移除):
 ```python
@@ -74,7 +74,7 @@ class StructureStepSpec:
 
 ## 5. generate_qe_input_from_spec() 的结构来源
 
-**文件**: `src/quantumvitas/calculation/structure_steps.py:311-336`
+**文件**: `src/qmatsuite/calculation/structure_steps.py:311-336`
 
 ```python
 def generate_qe_input_from_spec(
@@ -156,12 +156,12 @@ if step_type_lower in POST_PROCESSING_STEP_TYPES:
 
 ## 关键文件路径总结
 
-- **ProjectSnapshot**: `src/quantumvitas/project/snapshot.py:61` - `structures: List[Dict]`
-- **Calculation.structure_id**: `src/quantumvitas/calculation/calculation.py:47` - `@property def structure_id()`
-- **CalculationModel.structure_id**: `src/quantumvitas/core/models.py` - CalculationModel 类
-- **StepSpec.structure_id**: `src/quantumvitas/calculation/structure_steps.py:46` - `structure_id: Optional[str]`
-- **Step YAML 不保存 structure_id**: `src/quantumvitas/calculation/structure_steps.py:177` - `to_dict()` 排除
-- **generate_qe_input_from_spec**: `src/quantumvitas/calculation/structure_steps.py:311` - 需要 `structure` 参数
-- **结构解析**: `src/quantumvitas/calculation/structure_steps.py:599` - `_resolve_structure_for_spec()`
-- **没有 enforce 约束**: `src/quantumvitas/calculation/importers.py:268` - `build_calculation_from_qe_inputs()` 不再强制
+- **ProjectSnapshot**: `src/qmatsuite/project/snapshot.py:61` - `structures: List[Dict]`
+- **Calculation.structure_id**: `src/qmatsuite/calculation/calculation.py:47` - `@property def structure_id()`
+- **CalculationModel.structure_id**: `src/qmatsuite/core/models.py` - CalculationModel 类
+- **StepSpec.structure_id**: `src/qmatsuite/calculation/structure_steps.py:46` - `structure_id: Optional[str]`
+- **Step YAML 不保存 structure_id**: `src/qmatsuite/calculation/structure_steps.py:177` - `to_dict()` 排除
+- **generate_qe_input_from_spec**: `src/qmatsuite/calculation/structure_steps.py:311` - 需要 `structure` 参数
+- **结构解析**: `src/qmatsuite/calculation/structure_steps.py:599` - `_resolve_structure_for_spec()`
+- **没有 enforce 约束**: `src/qmatsuite/calculation/importers.py:268` - `build_calculation_from_qe_inputs()` 不再强制
 

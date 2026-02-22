@@ -1,9 +1,9 @@
 """Tests for LAMMPS driver bundle."""
 
 import pytest
-from quantumvitas.drivers.lammps import LAMMPSDriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.lammps import LAMMPSDriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestLAMMPSDriver:
@@ -67,7 +67,7 @@ class TestLAMMPSRegistration:
 
     def test_lammps_registered(self):
         """LAMMPS should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("lammps")
         driver = DriverRegistry.get_driver("lammps")
@@ -75,7 +75,7 @@ class TestLAMMPSRegistration:
 
     def test_lammps_step_types_registered(self):
         """LAMMPS step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("lammps_minimize")
         assert DriverRegistry.is_step_type_registered("lammps_md")
@@ -87,7 +87,7 @@ class TestLAMMPSIsolation:
     def test_handlers_no_lammps_handler(self):
         """handlers.py should not contain lammps_step_handler."""
         from pathlib import Path
-        handlers_path = Path(__file__).parent.parent.parent.parent / "src" / "quantumvitas" / "execution" / "handlers.py"
+        handlers_path = Path(__file__).parent.parent.parent.parent / "src" / "qmatsuite" / "execution" / "handlers.py"
         source = handlers_path.read_text()
 
         assert "def lammps_step_handler" not in source
@@ -95,7 +95,7 @@ class TestLAMMPSIsolation:
     def test_recipes_no_lammps_recipe(self):
         """recipes.py should not contain LAMMPSRecipe."""
         from pathlib import Path
-        recipes_path = Path(__file__).parent.parent.parent.parent / "src" / "quantumvitas" / "execution" / "recipes.py"
+        recipes_path = Path(__file__).parent.parent.parent.parent / "src" / "qmatsuite" / "execution" / "recipes.py"
         source = recipes_path.read_text()
 
         assert "class LAMMPSRecipe" not in source
@@ -106,7 +106,7 @@ class TestLAMMPSRestart:
 
     def test_find_restart_file(self, tmp_path):
         """Test finding latest restart file."""
-        from quantumvitas.drivers.lammps.restart import find_restart_file
+        from qmatsuite.drivers.lammps.restart import find_restart_file
         import time
 
         # Create mock restart files (LAMMPS uses restart*.bin pattern typically)
@@ -120,7 +120,7 @@ class TestLAMMPSRestart:
 
     def test_find_restart_file_none(self, tmp_path):
         """Test no restart file found."""
-        from quantumvitas.drivers.lammps.restart import find_restart_file
+        from qmatsuite.drivers.lammps.restart import find_restart_file
 
         result = find_restart_file(tmp_path)
         assert result is None

@@ -2,9 +2,9 @@
 import pytest
 import numpy as np
 
-from quantumvitas.core.analysis.trajectory.model import Frame, Trajectory
-from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle
+from qmatsuite.core.analysis.trajectory.model import Frame, Trajectory
+from qmatsuite.core.analysis.base import AnalysisObjectMeta, SourceFileStat
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle
 
 
 class TestFrame:

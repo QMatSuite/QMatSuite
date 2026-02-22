@@ -8,7 +8,7 @@ engine alongside QE, LAMMPS, ORCA, PySCF, and CP2K.
 | Property           | Value                             |
 |--------------------|-----------------------------------|
 | Engine family      | `qmcpack`                         |
-| Driver module      | `quantumvitas.drivers.qmcpack`    |
+| Driver module      | `qmatsuite.drivers.qmcpack`    |
 | Engine class       | `QmcpackEngine`                   |
 | Step types (gen)   | `vmc`, `dmc`, `wfopt`             |
 | Step types (spec)  | `qmcpack_vmc`, `qmcpack_dmc`, `qmcpack_wfopt` |
@@ -19,7 +19,7 @@ engine alongside QE, LAMMPS, ORCA, PySCF, and CP2K.
 
 ## Architecture
 
-### Driver Bundle (`src/quantumvitas/drivers/qmcpack/`)
+### Driver Bundle (`src/qmatsuite/drivers/qmcpack/`)
 
 ```
 drivers/qmcpack/
@@ -31,7 +31,7 @@ drivers/qmcpack/
   parser.py         # Output parsing (scalar.dat, dmc.dat, stdout)
 ```
 
-### Engine (`src/quantumvitas/engine/qmcpack_engine.py`)
+### Engine (`src/qmatsuite/engine/qmcpack_engine.py`)
 
 - `QmcpackEngine.materialize_inputs()`: Builds `qmc_input.xml` from step
   parameters, stages HDF5 wavefunction and pseudopotential files into workdir.
@@ -39,7 +39,7 @@ drivers/qmcpack/
 - `_stage_supporting_files()`: Copies `.h5` and pseudo XML files from
   `project_root` into the step's isolated working directory.
 
-### Resolver (`src/quantumvitas/core/engines/qmcpack_resolver.py`)
+### Resolver (`src/qmatsuite/core/engines/qmcpack_resolver.py`)
 
 Two resolver functions:
 

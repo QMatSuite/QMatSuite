@@ -3,7 +3,7 @@ Siesta FDF input writer — utility script for engine exploration.
 
 Generates Siesta FDF input files from structured parameters.
 This is a temporary exploration tool. It will be adapted into
-src/quantumvitas/drivers/siesta/writer.py during the integration phase.
+src/qmatsuite/drivers/siesta/writer.py during the integration phase.
 """
 
 from __future__ import annotations

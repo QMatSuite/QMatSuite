@@ -30,15 +30,15 @@ Not applicable (molecular/classical/QMC): ORCA, Gaussian, Psi4, PySCF, xTB, LAMM
 ### Providers (9 files)
 | File | Engine | Type |
 |------|--------|------|
-| `src/quantumvitas/drivers/qe/parsers/dos.py` | QE | DOS+PDOS |
-| `src/quantumvitas/drivers/abinit/parsers/bands.py` | ABINIT | Bands |
-| `src/quantumvitas/drivers/abinit/parsers/dos.py` | ABINIT | DOS |
-| `src/quantumvitas/drivers/siesta/parsers/bands.py` | Siesta | Bands |
-| `src/quantumvitas/drivers/siesta/parsers/dos.py` | Siesta | DOS+PDOS |
-| `src/quantumvitas/drivers/cp2k/parsers/bands.py` | CP2K | Bands |
-| `src/quantumvitas/drivers/cp2k/parsers/dos.py` | CP2K | DOS+PDOS |
-| `src/quantumvitas/drivers/gpaw/parsers/bands.py` | GPAW | Bands |
-| `src/quantumvitas/drivers/gpaw/parsers/dos.py` | GPAW | DOS |
+| `src/qmatsuite/drivers/qe/parsers/dos.py` | QE | DOS+PDOS |
+| `src/qmatsuite/drivers/abinit/parsers/bands.py` | ABINIT | Bands |
+| `src/qmatsuite/drivers/abinit/parsers/dos.py` | ABINIT | DOS |
+| `src/qmatsuite/drivers/siesta/parsers/bands.py` | Siesta | Bands |
+| `src/qmatsuite/drivers/siesta/parsers/dos.py` | Siesta | DOS+PDOS |
+| `src/qmatsuite/drivers/cp2k/parsers/bands.py` | CP2K | Bands |
+| `src/qmatsuite/drivers/cp2k/parsers/dos.py` | CP2K | DOS+PDOS |
+| `src/qmatsuite/drivers/gpaw/parsers/bands.py` | GPAW | Bands |
+| `src/qmatsuite/drivers/gpaw/parsers/dos.py` | GPAW | DOS |
 
 ### Fixtures (9 directories, all from real engine runs)
 | Directory | Engine | Files |
@@ -102,8 +102,8 @@ Not applicable (molecular/classical/QMC): ORCA, Gaussian, Psi4, PySCF, xTB, LAMM
 ```bash
 # Parser registration matrix
 python -c "
-from quantumvitas.parsers.registry import _PARSERS
-import quantumvitas.drivers
+from qmatsuite.parsers.registry import _PARSERS
+import qmatsuite.drivers
 for e in ['qe','vasp','abinit','siesta','cp2k','gpaw']:
     for t in ['bands','dos']:
         p = _PARSERS.get((e,t))
@@ -111,8 +111,8 @@ for e in ['qe','vasp','abinit','siesta','cp2k','gpaw']:
 
 # Capability declarations
 python -c "
-from quantumvitas.core.driver_registry import DriverRegistry
-import quantumvitas.drivers
+from qmatsuite.core.driver_registry import DriverRegistry
+import qmatsuite.drivers
 for e in ['qe','vasp','abinit','siesta','cp2k','gpaw']:
     d = DriverRegistry.get_driver(e)
     caps = [c.object_type for c in getattr(d,'ANALYSIS_CAPABILITIES',[])]

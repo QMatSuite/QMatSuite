@@ -41,35 +41,35 @@ See `docs/impl/CP2K_PHASE0_FINDINGS.md` for detailed findings including:
 ## Implementation Phases Completed
 
 ### Phase 1: Engine Skeleton ✅
-- `src/quantumvitas/core/engines/cp2k_resolver.py` - Binary discovery
-- `src/quantumvitas/execution/latest_selector.py` - mtime-based artifact selection
-- `src/quantumvitas/engine/cp2k_engine.py` - Engine class
+- `src/qmatsuite/core/engines/cp2k_resolver.py` - Binary discovery
+- `src/qmatsuite/execution/latest_selector.py` - mtime-based artifact selection
+- `src/qmatsuite/engine/cp2k_engine.py` - Engine class
 
 ### Phase 2: Input Writer ✅
-- `src/quantumvitas/engine/cp2k_writer.py` - CP2K input generation
+- `src/qmatsuite/engine/cp2k_writer.py` - CP2K input generation
 - CELL output enabled for relax/md steps
 - Supports all step types: scf, relax, md
 
 ### Phase 3: Output Parser ✅
-- `src/quantumvitas/engine/cp2k_parser.py` - Output parsing
+- `src/qmatsuite/engine/cp2k_parser.py` - Output parsing
 - Cell file parsing implemented
 - Trajectory parsing with cell support
 - Energy file parsing
 
 ### Phase 4: Recipe, Handler, Preflight ✅
-- `src/quantumvitas/execution/preflight.py` - General preflight checker
-- `CP2KRecipe` in `src/quantumvitas/execution/recipes.py`
-- `cp2k_step_handler` in `src/quantumvitas/execution/handlers.py`
+- `src/qmatsuite/execution/preflight.py` - General preflight checker
+- `CP2KRecipe` in `src/qmatsuite/execution/recipes.py`
+- `cp2k_step_handler` in `src/qmatsuite/execution/handlers.py`
 - Preflight checks integrated
 
 ### Phase 5: Registry Integration ✅
 - Step types added: `cp2k_scf`, `cp2k_relax`, `cp2k_md`
 - MATERIALIZATION_MAP entries added
-- Engine registered in `src/quantumvitas/engine/registry.py`
+- Engine registered in `src/qmatsuite/engine/registry.py`
 - MD incremental skip disabled (`supports_incremental_skip=False`)
 
 ### Phase 7: Relax Artifact Handler ✅
-- `_handle_cp2k_trajectory_artifact` in `src/quantumvitas/execution/relax_artifacts.py`
+- `_handle_cp2k_trajectory_artifact` in `src/qmatsuite/execution/relax_artifacts.py`
 - Cell file support integrated
 
 ## Test Results
@@ -82,24 +82,24 @@ All existing tests pass. CP2K integration does not break existing functionality.
 
 | File | Lines | Status |
 |------|-------|--------|
-| `src/quantumvitas/core/engines/cp2k_resolver.py` | 86 | ✅ |
-| `src/quantumvitas/execution/latest_selector.py` | 27 | ✅ |
-| `src/quantumvitas/execution/preflight.py` | 93 | ✅ |
-| `src/quantumvitas/engine/cp2k_engine.py` | 273 | ✅ |
-| `src/quantumvitas/engine/cp2k_writer.py` | 438 | ✅ |
-| `src/quantumvitas/engine/cp2k_parser.py` | 330 | ✅ |
+| `src/qmatsuite/core/engines/cp2k_resolver.py` | 86 | ✅ |
+| `src/qmatsuite/execution/latest_selector.py` | 27 | ✅ |
+| `src/qmatsuite/execution/preflight.py` | 93 | ✅ |
+| `src/qmatsuite/engine/cp2k_engine.py` | 273 | ✅ |
+| `src/qmatsuite/engine/cp2k_writer.py` | 438 | ✅ |
+| `src/qmatsuite/engine/cp2k_parser.py` | 330 | ✅ |
 | `docs/impl/CP2K_PHASE0_FINDINGS.md` | ~200 | ✅ |
 
 ## Files Modified
 
 | File | Changes |
 |------|---------|
-| `src/quantumvitas/workflow/registry.py` | Added 3 CP2K step types |
-| `src/quantumvitas/workflow/generalized_steps.py` | Added 5 MATERIALIZATION_MAP entries |
-| `src/quantumvitas/execution/recipes.py` | Added CP2KRecipe, updated factory |
-| `src/quantumvitas/execution/handlers.py` | Added cp2k_step_handler, updated map |
-| `src/quantumvitas/execution/relax_artifacts.py` | Added cp2k_trajectory handler |
-| `src/quantumvitas/engine/registry.py` | Registered Cp2kEngine |
+| `src/qmatsuite/workflow/registry.py` | Added 3 CP2K step types |
+| `src/qmatsuite/workflow/generalized_steps.py` | Added 5 MATERIALIZATION_MAP entries |
+| `src/qmatsuite/execution/recipes.py` | Added CP2KRecipe, updated factory |
+| `src/qmatsuite/execution/handlers.py` | Added cp2k_step_handler, updated map |
+| `src/qmatsuite/execution/relax_artifacts.py` | Added cp2k_trajectory handler |
+| `src/qmatsuite/engine/registry.py` | Registered Cp2kEngine |
 | `tests/unit/test_step_type_mapping.py` | Added "cp2k_" to valid prefixes |
 
 ## Hard Rules Compliance
@@ -137,10 +137,10 @@ All existing tests pass. CP2K integration does not break existing functionality.
 /opt/homebrew/bin/cp2k.ssmp --version
 
 # Verify engine registration
-python -c "from quantumvitas.engine.registry import create_default_registry; reg = create_default_registry(); print('CP2K registered:', reg.has('cp2k'))"
+python -c "from qmatsuite.engine.registry import create_default_registry; reg = create_default_registry(); print('CP2K registered:', reg.has('cp2k'))"
 
 # Verify step types
-python -c "from quantumvitas.workflow.registry import get_registry; reg = get_registry(); print('cp2k_scf:', reg.has('cp2k_scf'))"
+python -c "from qmatsuite.workflow.registry import get_registry; reg = get_registry(); print('cp2k_scf:', reg.has('cp2k_scf'))"
 
 # Run tests
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile

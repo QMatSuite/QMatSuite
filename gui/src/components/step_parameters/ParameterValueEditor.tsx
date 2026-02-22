@@ -290,7 +290,7 @@ export function ParameterValueEditor({
         }}
         placeholder={inputPlaceholder}
         disabled={disabled}
-        {...(testIdSuffix ? { 'data-testid': `qv-param-input-${testIdSuffix}` } : {})}
+        {...(testIdSuffix ? { 'data-testid': `qms-param-input-${testIdSuffix}` } : {})}
       />
       {(hasEnum || paramType === 'LOGICAL') && useRawMode && (
         <button

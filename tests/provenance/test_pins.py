@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.provenance import (
+from qmatsuite.provenance import (
     PinError,
     open_provenance_db,
     pin_analysis_to_history,
 )
-from quantumvitas.provenance.cas import CAS
+from qmatsuite.provenance.cas import CAS
 
 
 def _seed_run_step(project_root: Path, run_ulid: str, step_ulid: str) -> None:

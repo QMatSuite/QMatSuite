@@ -12,12 +12,12 @@ M0 and M1 must be complete.
 
 ### Modify
 
-1. `src/quantumvitas/api/service.py` (5 locations: lines ~3182, ~3825, ~3921, ~6244, ~7267)
-2. `src/quantumvitas/core/models.py` (1 location: line ~359)
-3. `src/quantumvitas/core/templates.py` (1 location: line ~399)
-4. `src/quantumvitas/frontends/cli/app.py` (1 location: line ~848)
-5. `src/quantumvitas/cli/main.py` (2 locations: lines ~1289, ~1291)
-6. `src/quantumvitas/workflow/templates.py` (1 location: line ~486)
+1. `src/qmatsuite/api/service.py` (5 locations: lines ~3182, ~3825, ~3921, ~6244, ~7267)
+2. `src/qmatsuite/core/models.py` (1 location: line ~359)
+3. `src/qmatsuite/core/templates.py` (1 location: line ~399)
+4. `src/qmatsuite/frontends/cli/app.py` (1 location: line ~848)
+5. `src/qmatsuite/cli/main.py` (2 locations: lines ~1289, ~1291)
+6. `src/qmatsuite/workflow/templates.py` (1 location: line ~486)
 
 ### Create
 
@@ -25,11 +25,11 @@ M0 and M1 must be complete.
 
 ## Do NOT Touch
 
-- `src/quantumvitas/drivers/` (driver code legitimately references "qe")
-- `src/quantumvitas/daemon/server.py` (QE RPCs still exist, removed in M8)
+- `src/qmatsuite/drivers/` (driver code legitimately references "qe")
+- `src/qmatsuite/daemon/server.py` (QE RPCs still exist, removed in M8)
 - GUI files
 - Demo files (already fixed in M1)
-- `src/quantumvitas/core/driver_registry.py`
+- `src/qmatsuite/core/driver_registry.py`
 
 ## Exact Instructions
 
@@ -40,7 +40,7 @@ Find: `engine = step_spec.engine if step_spec else "qe"`
 Replace with:
 ```python
 if step_spec is None:
-    from quantumvitas.workflow.step_type_convert import prefix_from
+    from qmatsuite.workflow.step_type_convert import prefix_from
     engine = prefix_from(step_type_spec)
 else:
     engine = step_spec.engine
@@ -63,7 +63,7 @@ Find: `engine = step_spec.engine if step_spec else "qe"`
 Replace with same pattern as F1:
 ```python
 if step_spec is None:
-    from quantumvitas.workflow.step_type_convert import prefix_from
+    from qmatsuite.workflow.step_type_convert import prefix_from
     engine = prefix_from(step_type_spec)
 else:
     engine = step_spec.engine
@@ -150,7 +150,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).parent.parent.parent
-SCAN_DIRS = [REPO_ROOT / "src" / "quantumvitas"]
+SCAN_DIRS = [REPO_ROOT / "src" / "qmatsuite"]
 
 # Patterns that indicate a silent QE default
 FALLBACK_PATTERNS = [
@@ -216,10 +216,10 @@ def test_no_silent_qe_fallbacks():
 source .venv/bin/activate && python -m pytest tests/gates/test_no_qe_fallback.py -v
 
 # 2. Manual verification
-grep -rn 'or "qe"' src/quantumvitas/ --include="*.py" | grep -v drivers/ | grep -v _vault/
+grep -rn 'or "qe"' src/qmatsuite/ --include="*.py" | grep -v drivers/ | grep -v _vault/
 # Expected: empty
 
-grep -rn 'else "qe"' src/quantumvitas/ --include="*.py" | grep -v drivers/ | grep -v _vault/
+grep -rn 'else "qe"' src/qmatsuite/ --include="*.py" | grep -v drivers/ | grep -v _vault/
 # Expected: empty
 
 # 3. Full test suite

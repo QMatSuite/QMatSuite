@@ -6,7 +6,7 @@ Tests that mapping is complete, bijective, and handles conversions correctly.
 
 import pytest
 
-from quantumvitas.ir.backends.qe.mapping import (
+from qmatsuite.ir.backends.qe.mapping import (
     IR_TO_QE_MAPPING,
     QE_TO_IR_MAPPING,
     ir_to_qe_param,
@@ -26,7 +26,7 @@ class TestIRQEMapping:
     
     def test_all_ir_keys_have_qe_mappings(self):
         """All IR keys must have QE mappings."""
-        from quantumvitas.ir.parameters import IR_REGISTRY
+        from qmatsuite.ir.parameters import IR_REGISTRY
         
         for ir_key in IR_REGISTRY.keys():
             assert ir_key in IR_TO_QE_MAPPING, (

@@ -6,10 +6,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.core.analysis.trajectory.model import Trajectory
-from quantumvitas.drivers.gaussian.parsers.trajectory import GaussianTrajectoryParser
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.core.analysis.trajectory.model import Trajectory
+from qmatsuite.drivers.gaussian.parsers.trajectory import GaussianTrajectoryParser
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_gaussian_trajectory"
 

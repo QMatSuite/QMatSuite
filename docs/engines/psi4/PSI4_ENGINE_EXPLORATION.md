@@ -350,7 +350,7 @@ If we want to support `freq` or `ccsd` as first-class GEN steps, we need to add 
    - Impact: Minimal — additive only, no existing code changes
 
 2. **Import in `drivers/__init__.py`**:
-   - Add `from quantumvitas.drivers.psi4 import Psi4Driver` or similar
+   - Add `from qmatsuite.drivers.psi4 import Psi4Driver` or similar
    - Reason: Required for auto-registration
    - Impact: One line addition
 

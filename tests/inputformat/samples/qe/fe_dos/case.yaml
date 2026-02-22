@@ -32,7 +32,7 @@ asset_requirements:
   pseudopotentials:
   - file: Fe.pbe-spn-kjpaw_psl.0.2.1.UPF
     element: Fe
-    source: src/quantumvitas/resources/pseudo
+    source: src/qmatsuite/resources/pseudo
 multi_step: false
 attribution:
   source: Constructed for QMatSuite, inspired by QE tutorials

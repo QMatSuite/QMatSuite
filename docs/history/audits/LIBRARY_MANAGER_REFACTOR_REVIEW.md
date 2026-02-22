@@ -136,7 +136,7 @@ def get_unit_install_path(unit: InstallableUnit, store_dir: Path) -> Path:
 
 ### 6. Files That Will Need Changes
 
-#### Backend (`src/quantumvitas/core/`)
+#### Backend (`src/qmatsuite/core/`)
 
 1. **`library_manager.py`** (Major Refactor)
    - Replace `LibraryMetadata`, `LibraryVariantStatus`, `LibraryStatus` with `InstallableUnit`, `UnitStatus`, `LibraryGroup`
@@ -178,7 +178,7 @@ def get_unit_install_path(unit: InstallableUnit, store_dir: Path) -> Path:
    - May need styles for unit lists
    - Unit status indicators
 
-#### RPC Handlers (`src/quantumvitas/daemon/server.py`)
+#### RPC Handlers (`src/qmatsuite/daemon/server.py`)
 
 1. **RPC Changes**
    - `list_libraries`: Return `LibraryGroup[]` instead of `LibraryMetadata[]`

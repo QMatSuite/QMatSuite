@@ -15,7 +15,7 @@ This plan addresses all violations identified in `GEN_SPEC_CONSTITUTION_REVIEW.m
 
 **Constitution Reference**: §3.1 (Conversion API Law)
 
-### Task 1.1: Fix src/quantumvitas/calculation/verification.py
+### Task 1.1: Fix src/qmatsuite/calculation/verification.py
 
 **Location**: Line 102
 
@@ -29,13 +29,13 @@ else:
 
 **After**:
 ```python
-from quantumvitas.workflow.step_type_convert import gen_from
+from qmatsuite.workflow.step_type_convert import gen_from
 step_type_gen = gen_from(step_type_str)
 ```
 
 ---
 
-### Task 1.2: Fix src/quantumvitas/calculation/runner.py
+### Task 1.2: Fix src/qmatsuite/calculation/runner.py
 
 **Location**: Lines 78-82
 
@@ -49,7 +49,7 @@ if is_spec(step_type_spec):
 
 **After**:
 ```python
-from quantumvitas.workflow.step_type_convert import gen_from, prefix_from
+from qmatsuite.workflow.step_type_convert import gen_from, prefix_from
 if is_spec(step_type_spec):
     engine_prefix = prefix_from(step_type_spec)
     gen_type = gen_from(step_type_spec)
@@ -57,7 +57,7 @@ if is_spec(step_type_spec):
 
 ---
 
-### Task 1.3: Fix src/quantumvitas/engines/pyscf/chain.py
+### Task 1.3: Fix src/qmatsuite/engines/pyscf/chain.py
 
 **Location**: Line 27
 
@@ -69,14 +69,14 @@ engine_prefix = step_type_spec.split("_", 1)[0] if "_" in step_type_spec else "p
 
 **After**:
 ```python
-from quantumvitas.workflow.step_type_convert import gen_from, prefix_from, is_spec
+from qmatsuite.workflow.step_type_convert import gen_from, prefix_from, is_spec
 step_type_gen = gen_from(step_type_spec)
 engine_prefix = prefix_from(step_type_spec) if is_spec(step_type_spec) else "pyscf"
 ```
 
 ---
 
-### Task 1.4: Fix src/quantumvitas/daemon/compat.py
+### Task 1.4: Fix src/qmatsuite/daemon/compat.py
 
 **Location**: Line 737
 
@@ -87,14 +87,14 @@ step["name"] = step.get("step_type_gen", step.get("step_type_spec", "").split("_
 
 **After**:
 ```python
-from quantumvitas.workflow.step_type_convert import gen_from
+from qmatsuite.workflow.step_type_convert import gen_from
 spec_val = step.get("step_type_spec", "")
 step["name"] = step.get("step_type_gen", gen_from(spec_val) if spec_val else "")
 ```
 
 ---
 
-### Task 1.5: Fix src/quantumvitas/api/_mapping/dto_mapping.py
+### Task 1.5: Fix src/qmatsuite/api/_mapping/dto_mapping.py
 
 **Location**: Line 383
 
@@ -106,14 +106,14 @@ if step_type_spec and "_" in step_type_spec:
 
 **After**:
 ```python
-from quantumvitas.workflow.step_type_convert import prefix_from, is_spec
+from qmatsuite.workflow.step_type_convert import prefix_from, is_spec
 if step_type_spec and is_spec(step_type_spec):
     engine = prefix_from(step_type_spec)
 ```
 
 ---
 
-### Task 1.6: Fix src/quantumvitas/api/service.py
+### Task 1.6: Fix src/qmatsuite/api/service.py
 
 **Location**: Line 6966
 
@@ -125,14 +125,14 @@ elif "_" in machine_step_type:
 
 **After**:
 ```python
-from quantumvitas.workflow.step_type_convert import prefix_from, is_spec
+from qmatsuite.workflow.step_type_convert import prefix_from, is_spec
 elif is_spec(machine_step_type):
     engine_family = prefix_from(machine_step_type)
 ```
 
 ---
 
-### Task 1.7: Fix src/quantumvitas/execution/reference_resolver.py
+### Task 1.7: Fix src/qmatsuite/execution/reference_resolver.py
 
 **Location**: Lines 61-65
 
@@ -146,7 +146,7 @@ if is_spec(step_type_str):
 
 **After**:
 ```python
-from quantumvitas.workflow.step_type_convert import gen_from, prefix_from
+from qmatsuite.workflow.step_type_convert import gen_from, prefix_from
 if is_spec(step_type_str):
     engine_prefix = prefix_from(step_type_str)
     gen_type = gen_from(step_type_str)
@@ -154,7 +154,7 @@ if is_spec(step_type_str):
 
 ---
 
-### Task 1.8: Fix src/quantumvitas/execution/vasp_staging.py
+### Task 1.8: Fix src/qmatsuite/execution/vasp_staging.py
 
 **Location**: Lines 57-60
 
@@ -168,7 +168,7 @@ if is_spec(step_type_str):
 
 **After**:
 ```python
-from quantumvitas.workflow.step_type_convert import gen_from, prefix_from
+from qmatsuite.workflow.step_type_convert import gen_from, prefix_from
 if is_spec(step_type_str):
     engine_prefix = prefix_from(step_type_str)
     gen_type = gen_from(step_type_str)
@@ -176,7 +176,7 @@ if is_spec(step_type_str):
 
 ---
 
-### Task 1.9: Fix src/quantumvitas/drivers/vasp/staging.py
+### Task 1.9: Fix src/qmatsuite/drivers/vasp/staging.py
 
 **Location**: Lines 57-60
 
@@ -190,7 +190,7 @@ if is_spec(step_type_str):
 
 **After**:
 ```python
-from quantumvitas.workflow.step_type_convert import gen_from, prefix_from
+from qmatsuite.workflow.step_type_convert import gen_from, prefix_from
 if is_spec(step_type_str):
     engine_prefix = prefix_from(step_type_str)
     gen_type = gen_from(step_type_str)
@@ -234,8 +234,8 @@ SCAN_DIRS = [
 
 # Files to skip (canonical implementation and tests)
 ALLOWLIST_PATTERNS = [
-    "src/quantumvitas/workflow/step_type_convert.py",  # Canonical implementation
-    "src/quantumvitas/_vault/*",  # Legacy archive
+    "src/qmatsuite/workflow/step_type_convert.py",  # Canonical implementation
+    "src/qmatsuite/_vault/*",  # Legacy archive
     "tests/*",  # Tests may contain examples
 ]
 
@@ -344,7 +344,7 @@ machine_type = gen_to_spec.get(step_type, step_type)
 
 **After**:
 ```python
-from quantumvitas.workflow.step_type_convert import spec_from, is_spec
+from qmatsuite.workflow.step_type_convert import spec_from, is_spec
 if is_spec(step_type):
     machine_type = step_type  # Already SPEC
 else:
@@ -371,7 +371,7 @@ Multiple files perform spec→gen conversion independently:
 
 Create a single `StepTypeUnpacker` utility that all execution code uses:
 
-**New file**: `src/quantumvitas/execution/step_type_unpack.py`
+**New file**: `src/qmatsuite/execution/step_type_unpack.py`
 
 ```python
 """
@@ -384,7 +384,7 @@ at a SINGLE choke point before recipe lookup.
 from dataclasses import dataclass
 from typing import Tuple
 
-from quantumvitas.workflow.step_type_convert import gen_from, prefix_from, is_spec
+from qmatsuite.workflow.step_type_convert import gen_from, prefix_from, is_spec
 
 
 @dataclass(frozen=True)
@@ -429,7 +429,7 @@ def unpack_step_type(step_type_spec: str) -> UnpackedStepType:
 All files currently doing manual unpacking should import and use `unpack_step_type()`:
 
 ```python
-from quantumvitas.execution.step_type_unpack import unpack_step_type
+from qmatsuite.execution.step_type_unpack import unpack_step_type
 
 unpacked = unpack_step_type(step_type_spec)
 engine_prefix = unpacked.prefix

@@ -19,10 +19,10 @@ All v3 content preserved. Changes are additive/tightening only.
 
 Path A (load demo snapshot) is working. Path B (authoring from scratch) is the missing
 half: prove every Level-2 demo snapshot can be compiled to fine-grained user-like ops,
-replayed through QVService, and the resulting project re-snapshots to semantic equivalence
+replayed through QMSService, and the resulting project re-snapshots to semantic equivalence
 with the original. This plan covers Phase 0-2 (Phase 3 real-run is deferred).
 
-Two daemon handlers bypass QVService (second truth). The step default lookup uses
+Two daemon handlers bypass QMSService (second truth). The step default lookup uses
 GEN-keyed defaults that leak QE namelists into non-QE engines. Both must be fixed
 first (Phase 0) before the authoring IR and replay engine (Phase 1-2) can work.
 
@@ -38,7 +38,7 @@ first (Phase 0) before the authoring IR and replay engine (Phase 1-2) can work.
 
 **Changes**:
 
-**`src/quantumvitas/api/service.py`** — Add two methods to Calculation inner class:
+**`src/qmatsuite/api/service.py`** — Add two methods to Calculation inner class:
 
 1. `set_engine_family(calc_selector, engine_family) -> CalculationDTO`
    - Validate via `validate_engine_family()` (reuse from `api/utils.py:751`)
@@ -50,7 +50,7 @@ first (Phase 0) before the authoring IR and replay engine (Phase 1-2) can work.
    - Same return shape: `{status, steps_updated, steps_skipped, step_results, dimension_states}`
    - Reusable by both daemon and CLI (capability mouth per API_CONSTITUTION H1)
 
-**`src/quantumvitas/daemon/server.py`** — Both handlers become 5-line thin wrappers.
+**`src/qmatsuite/daemon/server.py`** — Both handlers become 5-line thin wrappers.
 
 **`tests/gates/test_daemon_no_yaml_write.py`** (NEW) — Scans `_handle_*` methods for:
 - `yaml.safe_load` (outside dispatch parsing)
@@ -73,7 +73,7 @@ create_step_doc(step_type_gen="scf", engine_family="vasp")
 
 **Fix — spec-keyed defaults (no fallback)**:
 
-1. **`src/quantumvitas/calculation/step_defaults.py`** — Rename all GEN keys to SPEC keys:
+1. **`src/qmatsuite/calculation/step_defaults.py`** — Rename all GEN keys to SPEC keys:
    - `"scf"` → `"qe_scf"`
    - `"nscf"` → `"qe_nscf"`
    - `"dos"` → `"qe_dos"`
@@ -86,7 +86,7 @@ create_step_doc(step_type_gen="scf", engine_family="vasp")
    - `"mp2"` legacy entry → remove
    - Rename function: `get_default_step_params(step_type_spec: str)` (docstring: accepts SPEC type, no GEN fallback)
 
-2. **`src/quantumvitas/workflow/step_factory.py:68`** — Change:
+2. **`src/qmatsuite/workflow/step_factory.py:68`** — Change:
    ```python
    # Before (line 68):
    defaults = registry.get_defaults(step_type_gen)
@@ -95,7 +95,7 @@ create_step_doc(step_type_gen="scf", engine_family="vasp")
    ```
    Note: the local variable `machine_step_type` in `step_factory.py` is a `step_type_spec` value per GEN/SPEC Constitution §2. No rename of the variable is needed (it's local), but in this plan and all new code we use the constitutional name `step_type_spec`.
 
-3. **`src/quantumvitas/workflow/registry.py:1170-1184`** — Rename `get_defaults(step_type_gen)` to `get_defaults(step_type_spec)`. Update docstring.
+3. **`src/qmatsuite/workflow/registry.py:1170-1184`** — Rename `get_defaults(step_type_gen)` to `get_defaults(step_type_spec)`. Update docstring.
 
 4. **Callers that pass GEN type — update to pass SPEC type**:
    - `cli/main.py:1227`: CLI has engine context → construct `step_type_spec` via `spec_from(engine, gen)` (canonical derivation per §3)
@@ -128,7 +128,7 @@ The `registry.get(step_type_gen)` fallback ignores `engine_family` entirely — 
 
 **Fix**: Replace the two-tier fallback with `DriverRegistry.resolve_companion_step()` (already exists at `driver_registry.py:330-367`), which respects the companion allowlist (COMPANION_ENGINES). This is the same resolution used by `materialize_public_step_key()` at `generalized_steps.py:161-191` — single SSOT for all step resolution.
 
-**`src/quantumvitas/api/service.py`** — In `add_step()` (lines 4019-4043):
+**`src/qmatsuite/api/service.py`** — In `add_step()` (lines 4019-4043):
 ```python
 # Before:
 spec = registry.get_for_engine(step_type_gen, engine_family)
@@ -161,7 +161,7 @@ python -m pytest tests/gates/test_daemon_no_yaml_write.py tests/gates/test_no_cr
 
 ## Patch Semantics — Verified In-Repo Behavior
 
-All patch operations used by the replay engine go through `yamldoc.py` (read: `src/quantumvitas/core/yamldoc.py:299-396`). Verified behavior:
+All patch operations used by the replay engine go through `yamldoc.py` (read: `src/qmatsuite/core/yamldoc.py:299-396`). Verified behavior:
 
 ### `set(path, value)` (line 299)
 - Creates intermediate dicts as needed
@@ -220,7 +220,7 @@ For QE steps (have defaults): compiler emits explicit UnsetField ops for default
 
 | Op | Maps to | Fields | Granularity |
 |----|---------|--------|-------------|
-| `InitProject` | `QVService.init_project()` | `name` | 1 per project |
+| `InitProject` | `QMSService.init_project()` | `name` | 1 per project |
 | `ImportStructure` | `svc.structure.import_file()` | `name, structure_data` | 1 per structure |
 | `CreateCalculation` | `svc.project.init_calculation()` | `name, engine_family, structure_selector` | 1 per calc |
 | `AddStep` | `svc.calculation.add_step()` | `calc_selector, step_type_gen, name` | 1 per step |
@@ -259,7 +259,7 @@ For QE steps (have defaults): compiler emits explicit UnsetField ops for default
 - Species overrides: `ReplaceMap("step:C/S", "/species_overrides/Si", {mass: 28.086})`
 - For sections where defaults may have been injected: compiler emits `UnsetField` for the section first, then `ReplaceMap` to recreate from scratch (no merge residue).
 
-### Replay Engine — No New QVService Methods
+### Replay Engine — No New QMSService Methods
 
 All SetField/UnsetField/ReplaceMap route through existing `update_step_params`:
 
@@ -280,16 +280,16 @@ Returns True if an op carries a full params tree. Specifically:
 
 ### Files
 
-**`src/quantumvitas/demo_store/authoring_ops.py`** (NEW ~120 lines)
+**`src/qmatsuite/demo_store/authoring_ops.py`** (NEW ~120 lines)
 - 8 frozen `@dataclass` op types
 - `AuthoringOp = Union[...]` type alias
 - `ops_to_json(ops) -> str`, `ops_from_json(json_str) -> list[AuthoringOp]`
 - `is_bulk_op(op) -> bool`
 
-**`src/quantumvitas/demo_store/replay.py`** (NEW ~130 lines)
+**`src/qmatsuite/demo_store/replay.py`** (NEW ~130 lines)
 - `replay_ops(ops: list[AuthoringOp], target_dir: Path) -> Path`
 - `_pointer_to_nested_dict(pointer: str, value: Any) -> dict`
-- Dispatches to QVService calls per table above
+- Dispatches to QMSService calls per table above
 - ImportStructure: write temp `.json`, call `svc.structure.import_file()`, cleanup
 - AddStep: calls `svc.calculation.add_step()` (no skip_defaults — defaults are now engine-correct)
 - No direct YAML writes
@@ -385,7 +385,7 @@ _walk_leaves({"_commands": [{cmd: "units", args: ["lj"]}, ...]})
 
 ### Canonicalizer — Strict Allowlist
 
-**`src/quantumvitas/demo_store/roundtrip.py`** — `_canonicalize_snapshot()` uses a strict, tiny allowlist. No field may be added without explicit rationale.
+**`src/qmatsuite/demo_store/roundtrip.py`** — `_canonicalize_snapshot()` uses a strict, tiny allowlist. No field may be added without explicit rationale.
 
 #### Allowed-to-ignore fields (exhaustive)
 
@@ -430,7 +430,7 @@ The harness categorizes each mismatch and prints diagnostics:
 class MismatchCategory(Enum):
     ALLOWED_IGNORE = "allowed_ignore"     # Sanity check: should not appear (canonicalizer stripped)
     AUTHORSHIP = "authorship_mismatch"    # Compiler/op bug: field missing or extra
-    SERVICE = "service_inconsistency"     # QVService bug: value changed unexpectedly
+    SERVICE = "service_inconsistency"     # QMSService bug: value changed unexpectedly
 
 def categorize_diff(diff_path: str, snap_a, snap_b) -> MismatchCategory:
     """Categorize a diff path for diagnostic reporting."""
@@ -457,7 +457,7 @@ FAIL: qe_si_scf (3 mismatches)
 
 ### Files
 
-**`src/quantumvitas/demo_store/compiler.py`** (NEW ~170 lines)
+**`src/qmatsuite/demo_store/compiler.py`** (NEW ~170 lines)
 - `compile_snapshot(snapshot: dict) -> list[AuthoringOp]`
 - `_walk_leaves(d: dict, prefix: str = "") -> list[tuple[str, Any]]`
 - `_reconcile_defaults(step_type_spec, engine, demo_step) -> list[AuthoringOp]`
@@ -465,7 +465,7 @@ FAIL: qe_si_scf (3 mismatches)
 - Uses `gen_from()` from `workflow/step_type_convert.py`
 - Uses `get_default_step_params()` from `calculation/step_defaults.py`
 
-**`src/quantumvitas/demo_store/roundtrip.py`** (MODIFY +15 lines)
+**`src/qmatsuite/demo_store/roundtrip.py`** (MODIFY +15 lines)
 - Strip pseudo-related keys from species_map entries (4 lines)
 - Strip top-level `pseudo` section (1 line)
 - Add `MismatchCategory` enum and `categorize_diff()` (10 lines)
@@ -533,23 +533,23 @@ If easy, add pilot in `tests/integrity/authoring/test_authoring_realrun.py`:
 
 | File | Phase | Action | Lines (est.) |
 |------|-------|--------|------|
-| `src/quantumvitas/api/service.py` | 0A+0C | MODIFY | +140 (set_engine_family, apply_presets) + add_step fallback ban |
-| `src/quantumvitas/daemon/server.py` | 0A | MODIFY | -130, +12 |
-| `src/quantumvitas/calculation/step_defaults.py` | 0B | MODIFY | rename keys (same line count) |
-| `src/quantumvitas/workflow/step_factory.py` | 0B | MODIFY | +1 (use step_type_spec for defaults lookup) |
-| `src/quantumvitas/workflow/registry.py` | 0B | MODIFY | +2 (docstring) |
-| `src/quantumvitas/cli/main.py` | 0B | MODIFY | +2 (construct spec type) |
-| `src/quantumvitas/calculation/importers.py` | 0B | MODIFY | +1 (prefix with "qe_") |
-| `src/quantumvitas/frontends/cli/app.py` | 0B | MODIFY | +2 (construct spec type) |
+| `src/qmatsuite/api/service.py` | 0A+0C | MODIFY | +140 (set_engine_family, apply_presets) + add_step fallback ban |
+| `src/qmatsuite/daemon/server.py` | 0A | MODIFY | -130, +12 |
+| `src/qmatsuite/calculation/step_defaults.py` | 0B | MODIFY | rename keys (same line count) |
+| `src/qmatsuite/workflow/step_factory.py` | 0B | MODIFY | +1 (use step_type_spec for defaults lookup) |
+| `src/qmatsuite/workflow/registry.py` | 0B | MODIFY | +2 (docstring) |
+| `src/qmatsuite/cli/main.py` | 0B | MODIFY | +2 (construct spec type) |
+| `src/qmatsuite/calculation/importers.py` | 0B | MODIFY | +1 (prefix with "qe_") |
+| `src/qmatsuite/frontends/cli/app.py` | 0B | MODIFY | +2 (construct spec type) |
 | `tests/gates/test_daemon_no_yaml_write.py` | 0A | NEW | ~40 |
 | `tests/gates/test_no_cross_engine_defaults.py` | 0B | NEW | ~40 |
-| `src/quantumvitas/demo_store/authoring_ops.py` | 1 | NEW | ~120 |
-| `src/quantumvitas/demo_store/replay.py` | 1 | NEW | ~130 |
+| `src/qmatsuite/demo_store/authoring_ops.py` | 1 | NEW | ~120 |
+| `src/qmatsuite/demo_store/replay.py` | 1 | NEW | ~130 |
 | `tests/demo_store/test_authoring_ops.py` | 1 | NEW | ~60 |
 | `tests/demo_store/test_replay.py` | 1 | NEW | ~70 |
 | `tests/demo_store/test_patch_semantics.py` | 1 | NEW | ~60 |
-| `src/quantumvitas/demo_store/compiler.py` | 2 | NEW | ~170 |
-| `src/quantumvitas/demo_store/roundtrip.py` | 2 | MODIFY | +15 |
+| `src/qmatsuite/demo_store/compiler.py` | 2 | NEW | ~170 |
+| `src/qmatsuite/demo_store/roundtrip.py` | 2 | MODIFY | +15 |
 | `tests/integrity/authoring/__init__.py` | 2 | NEW | 0 |
 | `tests/integrity/authoring/conftest.py` | 2 | NEW | ~10 |
 | `tests/integrity/authoring/test_roundtrip_b.py` | 2 | NEW | ~120 |

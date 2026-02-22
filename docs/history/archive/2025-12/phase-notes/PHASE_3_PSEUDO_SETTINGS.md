@@ -32,9 +32,9 @@ The system provides:
 ### Persistence
 
 Config is stored in the user config file:
-- **macOS**: `~/Library/Application Support/QuantumVITAS/config.json`
-- **Linux**: `~/.config/quantumvitas/config.json`
-- **Windows**: `%APPDATA%/QuantumVITAS/config.json`
+- **macOS**: `~/Library/Application Support/QMatSuite/config.json`
+- **Linux**: `~/.config/qmatsuite/config.json`
+- **Windows**: `%APPDATA%/QMatSuite/config.json`
 
 Example config:
 ```json
@@ -248,7 +248,7 @@ The Settings page now includes a "Pseudopotentials" card with:
 
 ### Backend (Python)
 
-- `src/quantumvitas/core/pseudo_config.py` (NEW)
+- `src/qmatsuite/core/pseudo_config.py` (NEW)
   - `PseudoConfig` dataclass
   - `load_pseudo_config()` / `save_pseudo_config()`
   - `validate_pseudo_config()`
@@ -256,7 +256,7 @@ The Settings page now includes a "Pseudopotentials" card with:
   - `install_sssp_from_seed()` / `install_all_sssp_from_seed()`
   - `resolve_project_pseudos()`
 
-- `src/quantumvitas/daemon/server.py` (MODIFIED)
+- `src/qmatsuite/daemon/server.py` (MODIFIED)
   - Added RPC handlers for pseudo config
 
 ### Frontend (TypeScript/React)
@@ -270,7 +270,7 @@ The Settings page now includes a "Pseudopotentials" card with:
 - `gui/src/components/panels/SettingsPanel.css` (MODIFIED)
   - Added pseudo-specific styles
 
-- `gui/src/types/qv.ts` (MODIFIED)
+- `gui/src/types/qms.ts` (MODIFIED)
   - Added RPC types for pseudo config
 
 ## Online Pseudopotential Resolution

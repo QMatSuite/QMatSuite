@@ -147,9 +147,9 @@ advisor.advise(PrecisionOption.MED)
 - **dos/bands**: 不接受 precision（非 receiver）
 
 **代码证据**:
-- Receiver spec: `src/quantumvitas/presets/receivers.py:118-164`
-- Apply 过滤: `src/quantumvitas/presets/integration.py:438-442`
-- Detect 条件: `src/quantumvitas/presets/detector.py:525-529`
+- Receiver spec: `src/qmatsuite/presets/receivers.py:118-164`
+- Apply 过滤: `src/qmatsuite/presets/integration.py:438-442`
+- Detect 条件: `src/qmatsuite/presets/detector.py:525-529`
 
 ---
 
@@ -162,7 +162,7 @@ advisor.advise(PrecisionOption.MED)
 **详细解释**:
 
 1. **Hard-code 部分** (常量):
-   - **位置**: `src/quantumvitas/presets/precision.py:45-61`
+   - **位置**: `src/qmatsuite/presets/precision.py:45-61`
    - **内容**: `PRECISION_CONSTANTS` 定义每个 level 的:
      - `delta_k`: k 点间距 (LOW=0.30, MED=0.20, HIGH=0.15 Å⁻¹)
      - `conv_thr`: 收敛阈值 (LOW=1e-6, MED=1e-8, HIGH=1e-10)
@@ -172,13 +172,13 @@ advisor.advise(PrecisionOption.MED)
    - **ecutwfc/ecutrho**:
      - **来源**: `PSEUDO_FILE_INDEX.json` 中的 `cutoff_wfc_normal`, `cutoff_rho_normal`
      - **计算**: `ecutwfc = round_cutoff_integer(base_ecutwfc * constants.cutoff_multiplier)`
-     - **位置**: `src/quantumvitas/presets/precision.py:300-352` (aggregate_cutoffs)
+     - **位置**: `src/qmatsuite/presets/precision.py:300-352` (aggregate_cutoffs)
      - **回退**: 如果 index 无数据 → defaults (50 Ry, 400 Ry)
    
    - **kmesh (nk1, nk2, nk3)**:
      - **来源**: `lattice_matrix` (结构)
      - **计算**: `nk_i = max(1, ceil(|b_i| / delta_k))` 其中 `|b_i|` 是倒格矢长度
-     - **位置**: `src/quantumvitas/presets/precision.py:133-167` (compute_kmesh)
+     - **位置**: `src/qmatsuite/presets/precision.py:133-167` (compute_kmesh)
      - **公式**: `b_i = 2π * (a_j × a_k) / V`
 
 **证据链**:
@@ -197,27 +197,27 @@ advisor.advise(PrecisionOption.MED)
 
 1. **匹配策略**:
    - **ecutwfc/ecutrho**: **严格整数匹配** (exact match)
-     - **位置**: `src/quantumvitas/presets/paramspace.py:805-809`
+     - **位置**: `src/qmatsuite/presets/paramspace.py:805-809`
      - **代码**: `if actual_ecutwfc != canonical_ecutwfc: return None`
    
    - **conv_thr**: **容差匹配** (tolerance = 1e-11)
-     - **位置**: `src/quantumvitas/presets/paramspace.py:811-813`
+     - **位置**: `src/qmatsuite/presets/paramspace.py:811-813`
      - **代码**: `if not key_conv_thr.matches(actual_conv_thr, canonical_conv_thr): return None`
-     - **容差定义**: `src/quantumvitas/presets/paramspace.py:688` (tolerance=1e-11)
+     - **容差定义**: `src/qmatsuite/presets/paramspace.py:688` (tolerance=1e-11)
    
    - **kmesh**: **严格匹配** (exact match)
-     - **位置**: `src/quantumvitas/presets/paramspace.py:815-819`
+     - **位置**: `src/qmatsuite/presets/paramspace.py:815-819`
      - **代码**: `if (actual_nk1, actual_nk2, actual_nk3) != (canonical_nk1, canonical_nk2, canonical_nk3): return None`
 
 2. **缺字段处理**:
    - **必需字段**: ecutwfc, ecutrho, conv_thr, K_POINTS (如果 step 接受 kmesh)
-   - **位置**: `src/quantumvitas/presets/paramspace.py:761-763`
+   - **位置**: `src/qmatsuite/presets/paramspace.py:761-763`
    - **代码**: `if not (ecutwfc_present and ecutrho_present and conv_thr_present and kpoints_present): return None`
    - **结果**: 返回 `None` → 最终返回 `CUSTOM`**
-   - **位置**: `src/quantumvitas/presets/spaces_registry.py:191` (return CUSTOM)
+   - **位置**: `src/qmatsuite/presets/spaces_registry.py:191` (return CUSTOM)
 
 3. **bands_pw 特殊处理**:
-   - **位置**: `src/quantumvitas/presets/detector.py:525-529`
+   - **位置**: `src/qmatsuite/presets/detector.py:525-529`
    - **逻辑**: 如果 `accepts_kmesh=False`，使用 `_match_precision_without_kpoints()` 跳过 K_POINTS 检查
    - **代码**: `if spec.accepts_kmesh: match_precision_profile(...) else: _match_precision_without_kpoints(...)`
 
@@ -291,14 +291,14 @@ advisor.advise(PrecisionOption.MED)
 #### 1.1 Compile 入口
 
 **主要函数**:
-- `compile_precision()`: `src/quantumvitas/presets/compiler.py:95-150`
-- `compile_precision_from_advice()`: `src/quantumvitas/presets/compiler.py:153-179`
-- `compile_dimension_patch("precision")`: `src/quantumvitas/presets/spaces_registry.py:209-301`
+- `compile_precision()`: `src/qmatsuite/presets/compiler.py:95-150`
+- `compile_precision_from_advice()`: `src/qmatsuite/presets/compiler.py:153-179`
+- `compile_dimension_patch("precision")`: `src/qmatsuite/presets/spaces_registry.py:209-301`
 
 **ParamSpace 定义**:
-- `build_precision_paramspace()`: `src/quantumvitas/presets/paramspace.py:652-716`
-- `get_precision_paramspace()`: `src/quantumvitas/presets/paramspace.py:722-727`
-- Registry: `src/quantumvitas/presets/spaces_registry.py:45` (PRECISION_SPACE)
+- `build_precision_paramspace()`: `src/qmatsuite/presets/paramspace.py:652-716`
+- `get_precision_paramspace()`: `src/qmatsuite/presets/paramspace.py:722-727`
+- Registry: `src/qmatsuite/presets/spaces_registry.py:45` (PRECISION_SPACE)
 
 **证据**:
 ```bash
@@ -309,10 +309,10 @@ rg "def compile_precision|def compile_dimension_patch|build_precision_paramspace
 #### 1.2 Detect 入口
 
 **主要函数**:
-- `detect_precision()`: `src/quantumvitas/presets/detector.py:240-272`
-- `detect_dimension("precision")`: `src/quantumvitas/presets/spaces_registry.py:122-202`
-- `match_precision_profile()`: `src/quantumvitas/presets/paramspace.py:730-823`
-- `detect_precision_strict_for_step_type()`: `src/quantumvitas/presets/detector.py:458-535`
+- `detect_precision()`: `src/qmatsuite/presets/detector.py:240-272`
+- `detect_dimension("precision")`: `src/qmatsuite/presets/spaces_registry.py:122-202`
+- `match_precision_profile()`: `src/qmatsuite/presets/paramspace.py:730-823`
+- `detect_precision_strict_for_step_type()`: `src/qmatsuite/presets/detector.py:458-535`
 
 **证据**:
 ```bash
@@ -323,9 +323,9 @@ rg "def detect_precision|match_precision_profile"
 #### 1.3 Advisor 入口
 
 **主要类/函数**:
-- `PrecisionAdvisor`: `src/quantumvitas/presets/precision.py:404-563`
-- `PrecisionAdvice`: `src/quantumvitas/presets/precision.py:372-401`
-- `get_precision_advice()`: `src/quantumvitas/presets/precision.py:570-589`
+- `PrecisionAdvisor`: `src/qmatsuite/presets/precision.py:404-563`
+- `PrecisionAdvice`: `src/qmatsuite/presets/precision.py:372-401`
+- `get_precision_advice()`: `src/qmatsuite/presets/precision.py:570-589`
 
 **证据**:
 ```bash
@@ -336,9 +336,9 @@ rg "class PrecisionAdvisor|class PrecisionAdvice|def get_precision_advice"
 #### 1.4 Receivers/Spec 入口
 
 **主要定义**:
-- `PRECISION_RECEIVER_SPECS`: `src/quantumvitas/presets/receivers.py:118-164`
-- `PrecisionReceiverSpec`: `src/quantumvitas/presets/receivers.py:91-114`
-- `get_precision_receiver_spec()`: `src/quantumvitas/presets/receivers.py:167-178`
+- `PRECISION_RECEIVER_SPECS`: `src/qmatsuite/presets/receivers.py:118-164`
+- `PrecisionReceiverSpec`: `src/qmatsuite/presets/receivers.py:91-114`
+- `get_precision_receiver_spec()`: `src/qmatsuite/presets/receivers.py:167-178`
 
 **各 step_type 配置**:
 - `scf/relax/md/vc-*`: `accepts_kmesh=True, kmesh_strategy="default"`
@@ -354,8 +354,8 @@ rg "accepts_kmesh|kmesh_strategy|PRECISION_RECEIVER_SPECS"
 #### 1.5 Integration 入口
 
 **主要定义**:
-- `DIMENSION_OWNED_KEYS`: `src/quantumvitas/presets/integration.py:293-305`
-- `apply_presets_to_step()`: `src/quantumvitas/presets/integration.py:308-517`
+- `DIMENSION_OWNED_KEYS`: `src/qmatsuite/presets/integration.py:293-305`
+- `apply_presets_to_step()`: `src/qmatsuite/presets/integration.py:308-517`
 
 **Ownership**:
 - `DIMENSION_PRECISION`: `{"SYSTEM": {"ecutwfc", "ecutrho"}, "ELECTRONS": {"conv_thr"}, "cards": {"K_POINTS"}}`
@@ -744,10 +744,10 @@ import shutil
 from pathlib import Path
 import yaml
 
-from quantumvitas.presets.integration import apply_presets_to_step
-from quantumvitas.presets.precision import PrecisionAdvisor, PrecisionOption
-from quantumvitas.presets.compiler import compile_precision_from_advice
-from quantumvitas.presets.receivers import get_precision_receiver_spec
+from qmatsuite.presets.integration import apply_presets_to_step
+from qmatsuite.presets.precision import PrecisionAdvisor, PrecisionOption
+from qmatsuite.presets.compiler import compile_precision_from_advice
+from qmatsuite.presets.receivers import get_precision_receiver_spec
 
 # 创建临时目录
 temp_dir = tempfile.mkdtemp()
@@ -759,8 +759,8 @@ try:
     steps_dir = calc_dir / "steps"
     steps_dir.mkdir()
     
-    # 创建 project.qv.yml
-    (project_root / "project.qv.yml").write_text(yaml.safe_dump({
+    # 创建 project.qms.yml
+    (project_root / "project.qms.yml").write_text(yaml.safe_dump({
         "name": "Test Project",
         "version": "1.0",
     }))

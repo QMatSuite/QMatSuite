@@ -34,11 +34,11 @@ review of the existing codebase was conducted to understand:
 |----------------|---------|--------------|
 | `CONSTITUTION_ZH.md` | Project constitution | Chapter 10 defines all preset/workflow rules |
 | `docs/WORKFLOW_PRESET_DESIGN_V0.md` | Design document | V0 dimensions: Spin, SOC, Material |
-| `src/quantumvitas/calculation/types.py` | Step type definitions | `StepType` enum (SCF, NSCF, DOS, etc.) |
-| `src/quantumvitas/calculation/step_defaults.py` | Default parameters | `DEFAULT_STEP_PARAMS` dict per step type |
-| `src/quantumvitas/calculation/step.py` | Step data model | `Step` dataclass with meta, input_file, options |
-| `src/quantumvitas/calculation/structure_steps.py` | Step specification | `StructureStepSpec` for declarative step definitions |
-| `src/quantumvitas/data/qe_module_parameters.json` | QE parameter metadata | Parsed from QE HTML docs, includes defaults |
+| `src/qmatsuite/calculation/types.py` | Step type definitions | `StepType` enum (SCF, NSCF, DOS, etc.) |
+| `src/qmatsuite/calculation/step_defaults.py` | Default parameters | `DEFAULT_STEP_PARAMS` dict per step type |
+| `src/qmatsuite/calculation/step.py` | Step data model | `Step` dataclass with meta, input_file, options |
+| `src/qmatsuite/calculation/structure_steps.py` | Step specification | `StructureStepSpec` for declarative step definitions |
+| `src/qmatsuite/data/qe_module_parameters.json` | QE parameter metadata | Parsed from QE HTML docs, includes defaults |
 | `tests/unit/` | Unit test patterns | pytest, fixtures, test_data usage |
 | `tests/data/` | Tutorial datasets | Real QE inputs (Si, Fe, Al, etc.) |
 
@@ -260,7 +260,7 @@ The implementation would be considered complete when:
 This Phase 1 document led to the following implementation artifacts:
 
 - `docs/IMPLEMENTATION_PLAN_PRESETS.md` - Living plan with checkboxes (marked COMPLETE)
-- `src/quantumvitas/presets/` - Module directory
+- `src/qmatsuite/presets/` - Module directory
 - `tests/unit/test_detector_b.py` - 70 comprehensive tests
 
 ---

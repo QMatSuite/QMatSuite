@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.abinit.parsers.output import ABINITDigest, ABINITOutputParser
+from qmatsuite.drivers.abinit.parsers.output import ABINITDigest, ABINITOutputParser
 
 GOLDEN_DIR = Path(__file__).resolve().parents[3] / "docs" / "engines" / "abinit" / "golden_refs"
 
@@ -181,7 +181,7 @@ class TestABINITOutputParserRegistration:
     """Test parser registry integration."""
 
     def test_registered_in_registry(self):
-        from quantumvitas.parsers.registry import get_parser
+        from qmatsuite.parsers.registry import get_parser
         parser = get_parser("abinit", "scf_digest")
         assert parser is not None
         assert parser.engine == "abinit"

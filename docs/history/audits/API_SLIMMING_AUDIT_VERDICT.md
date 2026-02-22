@@ -173,8 +173,8 @@ All 22 LegacyService delegations replaced with direct kernel calls:
 ### Architecture Gate
 
 ```
-CLI imports only: quantumvitas.api.*, quantumvitas.api.utils
-Daemon imports only: quantumvitas.api.*, quantumvitas.api.utils
+CLI imports only: qmatsuite.api.*, qmatsuite.api.utils
+Daemon imports only: qmatsuite.api.*, qmatsuite.api.utils
 No kernel modules imported by frontends
 service.py uses direct kernel calls (no LegacyService layer)
 ```
@@ -189,7 +189,7 @@ service.py uses direct kernel calls (no LegacyService layer)
 
 **Fix:** Call `update_registry_add_structure` BEFORE `require_structure` when index is provided
 
-**Location:** `QVService.import_structure()` static method
+**Location:** `QMSService.import_structure()` static method
 
 ### F.2 promote_relax_structure Import Path
 
@@ -197,7 +197,7 @@ service.py uses direct kernel calls (no LegacyService layer)
 
 **Fix:** Import `get_generated_structure_path` from `execution.relax_artifacts` and use step ULID
 
-**Location:** `QVService.promote_relax_structure()` static method
+**Location:** `QMSService.promote_relax_structure()` static method
 
 ### F.3 analyze_band/analyze_dos Output Directory Auto-Detection
 

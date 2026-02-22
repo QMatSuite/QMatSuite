@@ -216,7 +216,7 @@ def siesta_system_label(step_ulid: str) -> str:
 ```
 
 **Consistency with QE:**
-- QE uses `"qv" + ULID[-6:]` for prefix (e.g., `qvg5fav`)
+- QE uses `"qms" + ULID[-6:]` for prefix (e.g., `qmsg5fav`)
 - SIESTA uses `"si" + ULID[-8:]` for SystemLabel (e.g., `sidk8dp82`)
 - Both are ULID-derived, stable, and deterministic
 
@@ -988,12 +988,12 @@ def is_step_done_siesta(calc_raw_dir: Path, step_ulid: str, step_type: str) -> b
 ```python
 # tests/integration/siesta/test_siesta_workflows.py
 import pytest
-from quantumvitas.api.service import QVService
+from qmatsuite.api.service import QMSService
 
 @pytest.fixture
 def siesta_project(tmp_path):
     """Create test project with SIESTA calculation."""
-    service = QVService(project_root=tmp_path)
+    service = QMSService(project_root=tmp_path)
 
     # Create project
     project = service.create_project(name="siesta_test")
@@ -1019,7 +1019,7 @@ def siesta_project(tmp_path):
 def test_siesta_scf_periodic(siesta_project):
     """Test basic SCF calculation."""
     project, structure = siesta_project
-    service = QVService(project_root=project.root)
+    service = QMSService(project_root=project.root)
 
     # Create calculation
     calc = service.create_calculation(
@@ -1074,7 +1074,7 @@ def test_siesta_scf_periodic(siesta_project):
 def test_siesta_relax_structure_artifact(siesta_project):
     """Test that relax produces structure artifact."""
     project, structure = siesta_project
-    service = QVService(project_root=project.root)
+    service = QMSService(project_root=project.root)
 
     # Create calculation with relax step
     calc = service.create_calculation(
@@ -1115,7 +1115,7 @@ def test_siesta_relax_structure_artifact(siesta_project):
 def test_siesta_scf_bands_explicit_ref(siesta_project):
     """Test bands calculation with explicit hamiltonian_from ref."""
     project, structure = siesta_project
-    service = QVService(project_root=project.root)
+    service = QMSService(project_root=project.root)
 
     calc = service.create_calculation(
         project_id=project.id,
@@ -1166,7 +1166,7 @@ def test_siesta_scf_bands_explicit_ref(siesta_project):
 def test_siesta_incremental_skip(siesta_project):
     """Test incremental skip when step unchanged."""
     project, structure = siesta_project
-    service = QVService(project_root=project.root)
+    service = QMSService(project_root=project.root)
 
     calc = service.create_calculation(...)
     scf_step = service.add_step(...)
@@ -1223,7 +1223,7 @@ The SIESTA integration requires **zero changes** to core infrastructure:
 ### 9.2 New Files (Additions Only)
 
 ```
-src/quantumvitas/drivers/siesta/
+src/qmatsuite/drivers/siesta/
   __init__.py              # Driver registration
   driver.py                # SiestaDriver class
   step_types.py            # SIESTA_STEP_TYPE_SPECS
@@ -1258,12 +1258,12 @@ The SIESTA integration:
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/drivers/siesta/driver.py` | Driver protocol implementation |
-| `src/quantumvitas/drivers/siesta/step_types.py` | StepTypeSpec definitions |
-| `src/quantumvitas/drivers/siesta/handler.py` | Job execution handler |
-| `src/quantumvitas/drivers/siesta/recipe.py` | JobGraph materialization |
-| `src/quantumvitas/drivers/siesta/fdf_writer.py` | FDF input generation |
-| `src/quantumvitas/drivers/siesta/parsers/` | Output parsing |
+| `src/qmatsuite/drivers/siesta/driver.py` | Driver protocol implementation |
+| `src/qmatsuite/drivers/siesta/step_types.py` | StepTypeSpec definitions |
+| `src/qmatsuite/drivers/siesta/handler.py` | Job execution handler |
+| `src/qmatsuite/drivers/siesta/recipe.py` | JobGraph materialization |
+| `src/qmatsuite/drivers/siesta/fdf_writer.py` | FDF input generation |
+| `src/qmatsuite/drivers/siesta/parsers/` | Output parsing |
 | `tests/integration/siesta/` | Integration tests |
 | `tests/data/siesta/` | Test fixtures |
 

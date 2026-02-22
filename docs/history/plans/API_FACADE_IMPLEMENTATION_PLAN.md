@@ -17,7 +17,7 @@ This preamble defines the binding rules that Auto MUST follow for every PR. Thes
 ## A.1 Capability→DTO Minimalism
 
 ### The Problem
-Today `quantumvitas.api` re-exports ~600+ kernel symbols. CLI and daemon import kernel dataclasses directly (`Step`, `Calculation`, `ResourceMeta`, etc.). This creates tight coupling:
+Today `qmatsuite.api` re-exports ~600+ kernel symbols. CLI and daemon import kernel dataclasses directly (`Step`, `Calculation`, `ResourceMeta`, etc.). This creates tight coupling:
 - Kernel refactors break frontends
 - Frontends depend on kernel internals (`.manifest`, `._cache`, internal methods)
 - No stable contract for external tools/agents
@@ -364,9 +364,9 @@ Establish directory structure, base classes, and CI gates. Freeze re-export grow
 
 ### Files to Create
 ```
-src/quantumvitas/api/
-├── __init__.py          # ONLY: QVService, errors, DTOs (stub)
-├── service.py           # QVService class (stub)
+src/qmatsuite/api/
+├── __init__.py          # ONLY: QMSService, errors, DTOs (stub)
+├── service.py           # QMSService class (stub)
 ├── types/
 │   ├── __init__.py      # DTO exports
 │   ├── base.py          # BaseDTO, to_json_value()
@@ -381,7 +381,7 @@ src/quantumvitas/api/
 ```
 
 ### Files to Modify
-- `src/quantumvitas/api/__init__.py`: Replace massive re-exports with stub exports
+- `src/qmatsuite/api/__init__.py`: Replace massive re-exports with stub exports
 
 ### Capabilities Introduced
 None (stubs only)
@@ -416,7 +416,7 @@ tests/api/
 ```python
 def test_api_export_count_frozen():
     """Top-level api exports must not grow."""
-    import quantumvitas.api as api
+    import qmatsuite.api as api
     exports = [x for x in dir(api) if not x.startswith('_')]
     # Record baseline on first run; fail if grows
     BASELINE = 650  # Measure actual
@@ -424,7 +424,7 @@ def test_api_export_count_frozen():
 
 def test_no_new_kernel_reexports():
     """Forbid specific kernel symbols."""
-    import quantumvitas.api as api
+    import qmatsuite.api as api
     FORBIDDEN = ['Step', 'Calculation', 'ResourceMeta', 'EngineConfig',
                  'CalculationStepEntry', 'ResourceIndex', 'Manifest']
     for name in FORBIDDEN:
@@ -451,9 +451,9 @@ Implement complete error hierarchy and kernel→API exception mapping.
 None (use stubs from PR0)
 
 ### Files to Modify
-- `src/quantumvitas/api/errors.py`: Full implementation
-- `src/quantumvitas/api/types/error.py`: ErrorDTO full implementation
-- `src/quantumvitas/api/_mapping/exc_mapping.py`: Full mapping logic
+- `src/qmatsuite/api/errors.py`: Full implementation
+- `src/qmatsuite/api/types/error.py`: ErrorDTO full implementation
+- `src/qmatsuite/api/_mapping/exc_mapping.py`: Full mapping logic
 
 ### Capabilities Introduced
 None (infrastructure only)
@@ -541,8 +541,8 @@ def test_error_dto_json_serializable():
 ```python
 def test_calculation_not_found_maps_correctly():
     """CalculationNotFoundError → NOT_FOUND."""
-    from quantumvitas.core.exceptions import CalculationNotFoundError
-    from quantumvitas.api._mapping.exc_mapping import map_kernel_exception
+    from qmatsuite.core.exceptions import CalculationNotFoundError
+    from qmatsuite.api._mapping.exc_mapping import map_kernel_exception
 
     kernel_exc = CalculationNotFoundError("si-scf")
     api_err = map_kernel_exception(kernel_exc)
@@ -573,15 +573,15 @@ Revert error.py, exc_mapping.py changes.
 Implement core DTO classes and fail-closed serialization.
 
 ### Files to Modify
-- `src/quantumvitas/api/types/base.py`: `to_json_value()` implementation
-- `src/quantumvitas/api/types/__init__.py`: Export DTOs
+- `src/qmatsuite/api/types/base.py`: `to_json_value()` implementation
+- `src/qmatsuite/api/types/__init__.py`: Export DTOs
 
 ### Files to Create
-- `src/quantumvitas/api/types/common.py`: MetaDTO, StatusEnum
-- `src/quantumvitas/api/types/calculation.py`: CalculationDTO, StepDTO
-- `src/quantumvitas/api/types/structure.py`: StructureDTO
-- `src/quantumvitas/api/types/run.py`: RunResultDTO
-- `src/quantumvitas/api/types/analysis.py`: AnalysisRefDTO, AnalysisSummaryDTO
+- `src/qmatsuite/api/types/common.py`: MetaDTO, StatusEnum
+- `src/qmatsuite/api/types/calculation.py`: CalculationDTO, StepDTO
+- `src/qmatsuite/api/types/structure.py`: StructureDTO
+- `src/qmatsuite/api/types/run.py`: RunResultDTO
+- `src/qmatsuite/api/types/analysis.py`: AnalysisRefDTO, AnalysisSummaryDTO
 
 ### DTOs Introduced
 
@@ -788,15 +788,15 @@ tests/api/test_dto_analysis.py
 def test_fail_closed_on_numpy_array():
     """Numpy arrays must raise TypeError, not silently convert."""
     import numpy as np
-    from quantumvitas.api.types.base import to_json_value
+    from qmatsuite.api.types.base import to_json_value
 
     with pytest.raises(TypeError, match="Cannot serialize ndarray"):
         to_json_value(np.array([1, 2, 3]))
 
 def test_fail_closed_on_kernel_object():
     """Kernel objects must raise TypeError."""
-    from quantumvitas.core.models import Step
-    from quantumvitas.api.types.base import to_json_value
+    from qmatsuite.core.models import Step
+    from qmatsuite.api.types.base import to_json_value
 
     step = Step(...)  # Create somehow
     with pytest.raises(TypeError):
@@ -868,9 +868,9 @@ Implement analysis capabilities end-to-end: API → DTO → daemon response.
 Proves the full pipeline works.
 
 ### Files to Modify
-- `src/quantumvitas/api/service.py`: Add `svc.analysis.*` domain
-- `src/quantumvitas/api/_mapping/dto_mapping.py`: Add analysis mappings
-- `src/quantumvitas/daemon/endpoints/analysis.py`: Use DTO responses
+- `src/qmatsuite/api/service.py`: Add `svc.analysis.*` domain
+- `src/qmatsuite/api/_mapping/dto_mapping.py`: Add analysis mappings
+- `src/qmatsuite/daemon/endpoints/analysis.py`: Use DTO responses
 
 ### Capabilities Introduced
 ```python
@@ -913,8 +913,8 @@ def get_analysis_summary(calc: str, step: str) -> dict:
 ```
 
 ### Call-sites Migrated
-1. `src/quantumvitas/daemon/endpoints/analysis.py`
-2. `src/quantumvitas/cli/commands/analysis.py` (if exists)
+1. `src/qmatsuite/daemon/endpoints/analysis.py`
+2. `src/qmatsuite/cli/commands/analysis.py` (if exists)
 
 ### Re-export Deletions (PR3)
 
@@ -935,7 +935,7 @@ Remove from `api/__init__.py`:
 
 **Grep command to find them**:
 ```bash
-grep -E "^from quantumvitas\.(analysis|parsers\.analysis)" src/quantumvitas/api/__init__.py
+grep -E "^from qmatsuite\.(analysis|parsers\.analysis)" src/qmatsuite/api/__init__.py
 ```
 
 ### Tests to Add
@@ -965,7 +965,7 @@ def test_get_property_ref_no_embedded_arrays(svc, completed_calc):
 
 ### Gates/Acceptance Criteria
 1. `python -m pytest tests/ -v --tb=short -n auto --dist=loadfile` passes
-2. `grep -c "AnalysisResult" src/quantumvitas/api/__init__.py` returns 0
+2. `grep -c "AnalysisResult" src/qmatsuite/api/__init__.py` returns 0
 3. Daemon analysis endpoints return `{"data": {...}}` with DTO shape
 4. No numpy arrays in analysis DTO `to_dict()` output
 
@@ -995,8 +995,8 @@ svc.structure.visualize(selector, format="json") -> dict  # For viz tools
 - `GET /api/structures`
 
 ### Call-sites Migrated
-1. `src/quantumvitas/daemon/endpoints/structure.py`
-2. `src/quantumvitas/cli/commands/structure.py`
+1. `src/qmatsuite/daemon/endpoints/structure.py`
+2. `src/qmatsuite/cli/commands/structure.py`
 
 ### Re-export Deletions (PR4)
 
@@ -1051,7 +1051,7 @@ Revert structure endpoints and capabilities.
 **Command**:
 ```bash
 python -m pytest tests/ -v --tb=short -n auto --dist=loadfile
-grep -c "^from quantumvitas\.(core|calculation|analysis|structure)" src/quantumvitas/api/__init__.py
+grep -c "^from qmatsuite\.(core|calculation|analysis|structure)" src/qmatsuite/api/__init__.py
 # Should be significantly reduced
 ```
 
@@ -1076,8 +1076,8 @@ svc.calculation.get_effective_params(calc_selector) -> dict  # Merged params
 - `StepDTO`
 
 ### Call-sites Migrated
-1. `src/quantumvitas/daemon/endpoints/calculation.py` (GET endpoints)
-2. `src/quantumvitas/cli/commands/calc.py` (show, list commands)
+1. `src/qmatsuite/daemon/endpoints/calculation.py` (GET endpoints)
+2. `src/qmatsuite/cli/commands/calc.py` (show, list commands)
 
 ### Re-export Deletions (PR5)
 
@@ -1103,7 +1103,7 @@ tests/api/test_calculation_read.py
 
 ### Gates/Acceptance Criteria
 1. Tests pass
-2. `grep "^from quantumvitas.calculation import" api/__init__.py` reduced significantly
+2. `grep "^from qmatsuite.calculation import" api/__init__.py` reduced significantly
 3. CLI `show` command works with DTO
 
 ---
@@ -1125,8 +1125,8 @@ svc.calculation.remove_step(calc_selector, step_selector) -> None
 ```
 
 ### Call-sites Migrated
-1. `src/quantumvitas/daemon/endpoints/calculation.py` (POST/PUT/DELETE)
-2. `src/quantumvitas/cli/commands/calc.py` (create, update, delete)
+1. `src/qmatsuite/daemon/endpoints/calculation.py` (POST/PUT/DELETE)
+2. `src/qmatsuite/cli/commands/calc.py` (create, update, delete)
 
 ### Re-export Deletions (PR6)
 ```python
@@ -1172,8 +1172,8 @@ svc.run.list_runs(calc_selector=None, status=None) -> list[RunResultDTO]
 - `RunResultDTO` (with `run_id` ULID, not `job_id`)
 
 ### Call-sites Migrated
-1. `src/quantumvitas/daemon/endpoints/run.py`
-2. `src/quantumvitas/cli/commands/run.py`
+1. `src/qmatsuite/daemon/endpoints/run.py`
+2. `src/qmatsuite/cli/commands/run.py`
 
 ### Re-export Deletions (PR7)
 ```python
@@ -1206,8 +1206,8 @@ svc.project.list_calculations() -> list[CalculationDTO]
 - `ProjectConfigDTO` (optional, may use plain dict)
 
 ### Call-sites Migrated
-1. `src/quantumvitas/daemon/endpoints/project.py`
-2. `src/quantumvitas/cli/commands/project.py`
+1. `src/qmatsuite/daemon/endpoints/project.py`
+2. `src/qmatsuite/cli/commands/project.py`
 
 ### Re-export Deletions (PR8)
 ```python
@@ -1234,8 +1234,8 @@ svc.engine.validate_installation(engine_name) -> dict
 ```
 
 ### Call-sites Migrated
-1. `src/quantumvitas/daemon/endpoints/engine.py`
-2. `src/quantumvitas/cli/commands/engine.py`
+1. `src/qmatsuite/daemon/endpoints/engine.py`
+2. `src/qmatsuite/cli/commands/engine.py`
 
 ### Re-export Deletions (PR9)
 ```python
@@ -1265,23 +1265,23 @@ svc.engine.validate_installation(engine_name) -> dict
 Remove ALL remaining re-exports. Achieve Definition of Done.
 
 ### Files to Modify
-- `src/quantumvitas/api/__init__.py`: Strip to minimal exports
+- `src/qmatsuite/api/__init__.py`: Strip to minimal exports
 
 ### Final `__init__.py` State
 ```python
 """
-QuantumVITAS API - Stable public interface.
+QMatSuite API - Stable public interface.
 
 This module exports ONLY:
-- QVService: The service entry point
+- QMSService: The service entry point
 - API-owned errors
 - API-owned DTO types
 """
 
-from quantumvitas.api.service import QVService
+from qmatsuite.api.service import QMSService
 
 # Errors
-from quantumvitas.api.errors import (
+from qmatsuite.api.errors import (
     APIError,
     NotFoundError,
     AmbiguousError,
@@ -1294,7 +1294,7 @@ from quantumvitas.api.errors import (
 )
 
 # DTOs
-from quantumvitas.api.types import (
+from qmatsuite.api.types import (
     ErrorDTO,
     MetaDTO,
     CalculationDTO,
@@ -1306,7 +1306,7 @@ from quantumvitas.api.types import (
 )
 
 # Error codes (constants)
-from quantumvitas.api.errors import (
+from qmatsuite.api.errors import (
     NOT_FOUND,
     AMBIGUOUS_SELECTOR,
     INVALID_SELECTOR,
@@ -1324,7 +1324,7 @@ from quantumvitas.api.errors import (
 
 __all__ = [
     # Service
-    "QVService",
+    "QMSService",
     # Errors
     "APIError",
     "NotFoundError",
@@ -1368,7 +1368,7 @@ __version__ = "..."
 
 List by grepping current state:
 ```bash
-grep "^from quantumvitas\." src/quantumvitas/api/__init__.py | grep -v "api\."
+grep "^from qmatsuite\." src/qmatsuite/api/__init__.py | grep -v "api\."
 # Remove ALL of these
 ```
 
@@ -1381,13 +1381,13 @@ tests/api/test_public_surface_final.py
 ```python
 def test_export_count_final():
     """Final export count must be ≤30."""
-    import quantumvitas.api as api
+    import qmatsuite.api as api
     exports = [x for x in api.__all__]
     assert len(exports) <= 30, f"Too many exports: {len(exports)}"
 
 def test_no_kernel_symbols():
     """No kernel symbols in api namespace."""
-    import quantumvitas.api as api
+    import qmatsuite.api as api
     FORBIDDEN = [
         'Step', 'Calculation', 'CalculationStepEntry', 'ResourceMeta',
         'EngineConfig', 'ResourceIndex', 'Manifest', 'StepSpec', 'StepResult',
@@ -1398,15 +1398,15 @@ def test_no_kernel_symbols():
         assert not hasattr(api, name), f"Forbidden symbol: {name}"
 
 def test_all_exports_are_api_owned():
-    """Every export must be from quantumvitas.api.*"""
-    import quantumvitas.api as api
+    """Every export must be from qmatsuite.api.*"""
+    import qmatsuite.api as api
     import inspect
 
     for name in api.__all__:
         obj = getattr(api, name)
         if inspect.isclass(obj) or inspect.isfunction(obj):
             module = obj.__module__
-            assert module.startswith("quantumvitas.api"), \
+            assert module.startswith("qmatsuite.api"), \
                 f"{name} is from {module}, not api.*"
 ```
 
@@ -1425,48 +1425,48 @@ Re-add necessary re-exports if critical breakage found.
 
 **Checklist**:
 
-- [ ] `quantumvitas.api` top-level exports ONLY:
-  - [ ] `QVService`
+- [ ] `qmatsuite.api` top-level exports ONLY:
+  - [ ] `QMSService`
   - [ ] API-owned errors (9 classes + 13 code constants)
   - [ ] API-owned DTOs (8 classes)
 
 - [ ] ZERO kernel types exposed:
   ```bash
-  grep "^from quantumvitas\.(core|calculation|drivers|execution|workflow)" \
-    src/quantumvitas/api/__init__.py
+  grep "^from qmatsuite\.(core|calculation|drivers|execution|workflow)" \
+    src/qmatsuite/api/__init__.py
   # Expected: 0 matches
   ```
 
 - [ ] ZERO re-export symbols remain:
   ```bash
-  grep -c "^from quantumvitas\." src/quantumvitas/api/__init__.py | \
+  grep -c "^from qmatsuite\." src/qmatsuite/api/__init__.py | \
     grep -v "api\."
   # Expected: 0 (only api.* imports)
   ```
 
 - [ ] Frontends NEVER import kernel:
   ```bash
-  grep -rn "^from quantumvitas\.(core|calculation|drivers|execution|workflow)" \
-    src/quantumvitas/cli/ src/quantumvitas/daemon/ src/quantumvitas/frontends/
+  grep -rn "^from qmatsuite\.(core|calculation|drivers|execution|workflow)" \
+    src/qmatsuite/cli/ src/qmatsuite/daemon/ src/qmatsuite/frontends/
   # Expected: 0 matches
   ```
 
 - [ ] Frontends NEVER instantiate kernel models:
   ```bash
   grep -rn "Calculation\(\|Step\(\|Structure\(" \
-    src/quantumvitas/cli/ src/quantumvitas/daemon/
+    src/qmatsuite/cli/ src/qmatsuite/daemon/
   # Expected: 0 direct instantiations (only via svc.*)
   ```
 
 - [ ] Daemon endpoints NEVER hand-serialize:
   ```bash
-  grep -rn "json\.dumps\|__dict__" src/quantumvitas/daemon/endpoints/
+  grep -rn "json\.dumps\|__dict__" src/qmatsuite/daemon/endpoints/
   # Expected: 0 (only dto.to_dict())
   ```
 
 - [ ] No huge arrays in DTO:
   ```bash
-  grep -rn "eigenvalues\|positions\|trajectory" src/quantumvitas/api/types/
+  grep -rn "eigenvalues\|positions\|trajectory" src/qmatsuite/api/types/
   # Expected: only in preview/summary, not as main fields
   ```
 
@@ -1516,11 +1516,11 @@ Install: `pip install ulid-py`
 ## Appendix C: Response Helper for Daemon
 
 ```python
-# src/quantumvitas/api/_internal/response.py
+# src/qmatsuite/api/_internal/response.py
 
 from typing import TypeVar
-from quantumvitas.api.types.base import BaseDTO
-from quantumvitas.api.errors import APIError
+from qmatsuite.api.types.base import BaseDTO
+from qmatsuite.api.errors import APIError
 
 T = TypeVar("T", bound=BaseDTO)
 
@@ -1549,7 +1549,7 @@ echo "=== API Surface Gates ==="
 
 # Gate 1: Export count
 EXPORT_COUNT=$(python -c "
-import quantumvitas.api as api
+import qmatsuite.api as api
 exports = [x for x in api.__all__]
 print(len(exports))
 ")
@@ -1560,8 +1560,8 @@ if [ "$EXPORT_COUNT" -gt 30 ]; then
 fi
 
 # Gate 2: No kernel re-exports
-KERNEL_REEXPORTS=$(grep -c "^from quantumvitas\.\(core\|calculation\|drivers\)" \
-    src/quantumvitas/api/__init__.py || true)
+KERNEL_REEXPORTS=$(grep -c "^from qmatsuite\.\(core\|calculation\|drivers\)" \
+    src/qmatsuite/api/__init__.py || true)
 echo "Kernel re-exports: $KERNEL_REEXPORTS"
 if [ "$KERNEL_REEXPORTS" -gt 0 ]; then
     echo "FAIL: Found kernel re-exports"
@@ -1569,8 +1569,8 @@ if [ "$KERNEL_REEXPORTS" -gt 0 ]; then
 fi
 
 # Gate 3: No frontend kernel imports
-FRONTEND_IMPORTS=$(grep -rn "^from quantumvitas\.\(core\|calculation\|drivers\)" \
-    src/quantumvitas/cli/ src/quantumvitas/daemon/ 2>/dev/null | wc -l || true)
+FRONTEND_IMPORTS=$(grep -rn "^from qmatsuite\.\(core\|calculation\|drivers\)" \
+    src/qmatsuite/cli/ src/qmatsuite/daemon/ 2>/dev/null | wc -l || true)
 echo "Frontend kernel imports: $FRONTEND_IMPORTS"
 if [ "$FRONTEND_IMPORTS" -gt 0 ]; then
     echo "FAIL: Frontends import kernel"
@@ -1579,7 +1579,7 @@ fi
 
 # Gate 4: No daemon hand-serialization
 HAND_SERIAL=$(grep -rn "json\.dumps.*__dict__" \
-    src/quantumvitas/daemon/ 2>/dev/null | wc -l || true)
+    src/qmatsuite/daemon/ 2>/dev/null | wc -l || true)
 echo "Hand-serialization: $HAND_SERIAL"
 if [ "$HAND_SERIAL" -gt 0 ]; then
     echo "FAIL: Daemon hand-serializes"

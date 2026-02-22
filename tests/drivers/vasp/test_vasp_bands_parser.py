@@ -7,10 +7,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.band_structure import BandStructure
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.vasp.parsers.bands import (
+from qmatsuite.core.analysis.band_structure import BandStructure
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.vasp.parsers.bands import (
     VASPBandsProvider,
     _compute_k_distances,
     _read_kpoints_labels,

@@ -15,7 +15,7 @@
 - Section名称：QE section名称（如`"SYSTEM"`, `"ELECTRONS"`, `"cards"`）
 - Key名称：**概念上IR key**，但在v0中与QE key同名（如`"nspin"`, `"ecutwfc"`）
 
-**证据**: `src/quantumvitas/presets/paramspace.py:241-309` - `match_profile()`和`compile_profile_patch()`接受`yaml_tree: dict[str, dict[str, Any]]`
+**证据**: `src/qmatsuite/presets/paramspace.py:241-309` - `match_profile()`和`compile_profile_patch()`接受`yaml_tree: dict[str, dict[str, Any]]`
 
 ### 1.2 当前系统IR YAML数据形状
 
@@ -24,7 +24,7 @@
 - Section名称：在v0中与QE section相同（`"SYSTEM"`, `"ELECTRONS"`, `"cards"`）
 - Key名称：IR key（如`"nspin"`, `"ecutwfc"`），在v0中与QE key同名
 
-**证据**: `src/quantumvitas/ir/backends/qe/mapping.py:16-44` - `IR_TO_QE_MAPPING`显示IR keys与QE keys在v0中同名
+**证据**: `src/qmatsuite/ir/backends/qe/mapping.py:16-44` - `IR_TO_QE_MAPPING`显示IR keys与QE keys在v0中同名
 
 ### 1.3 IR 1:1映射下的字段对应关系
 
@@ -54,7 +54,7 @@
 ### 2.2 适配入口函数
 
 **编译适配**:
-- **位置**: `src/quantumvitas/presets/variants_registry.py:260-346`
+- **位置**: `src/qmatsuite/presets/variants_registry.py:260-346`
 - **函数**: `compile_dimension_patch_for_step()`
 - **适配逻辑**:
   1. 输入：QE YAML（从step.yaml读取）
@@ -64,7 +64,7 @@
   5. 输出：QE patch（写入step.yaml）
 
 **检测适配**:
-- **位置**: `src/quantumvitas/presets/variants_registry.py:499-529`
+- **位置**: `src/qmatsuite/presets/variants_registry.py:499-529`
 - **函数**: `detect_dimension_for_step()`
 - **适配逻辑**:
   1. 输入：QE YAML（从step.yaml读取）
@@ -73,7 +73,7 @@
   4. 输出：enum option（通过profile_to_enum映射）
 
 **精度检测适配**:
-- **位置**: `src/quantumvitas/presets/variants_registry.py:556-648`
+- **位置**: `src/qmatsuite/presets/variants_registry.py:556-648`
 - **函数**: `_detect_precision_for_step()`
 - **适配逻辑**:
   1. 输入：QE YAML
@@ -91,7 +91,7 @@
 
 **实现**:
 ```python
-from quantumvitas.presets.paramspace import ParamSpaceContext
+from qmatsuite.presets.paramspace import ParamSpaceContext
 
 with ParamSpaceContext(variant.space):
     # ParamSpace operations (match_profile, compile_profile_patch)
@@ -99,13 +99,13 @@ with ParamSpaceContext(variant.space):
 ```
 
 **证据**: 
-- `src/quantumvitas/presets/variants_registry.py:318-320` - compile时使用
-- `src/quantumvitas/presets/variants_registry.py:533-534` - detect时使用
-- `src/quantumvitas/presets/variants_registry.py:637-638` - precision detect时使用
+- `src/qmatsuite/presets/variants_registry.py:318-320` - compile时使用
+- `src/qmatsuite/presets/variants_registry.py:533-534` - detect时使用
+- `src/qmatsuite/presets/variants_registry.py:637-638` - precision detect时使用
 
 ### 3.2 Key Ownership Registry
 
-**位置**: `src/quantumvitas/presets/paramspace.py:360-375`
+**位置**: `src/qmatsuite/presets/paramspace.py:360-375`
 
 **机制**: 
 - ParamSpace在`__post_init__()`时自动注册owned keys
@@ -122,14 +122,14 @@ with ParamSpaceContext(variant.space):
 
 ### 4.1 映射点位置
 
-**位置**: `src/quantumvitas/presets/variants_registry.py:245-258`
+**位置**: `src/qmatsuite/presets/variants_registry.py:245-258`
 
 **函数**: `get_variant(dimension: str, step_type: str)`
 
 **映射逻辑**:
 ```python
 # Map machine_type to public_type for variant lookup
-from quantumvitas.workflow.registry import get_registry
+from qmatsuite.workflow.registry import get_registry
 registry = get_registry()
 spec = registry.get(step_type)
 if spec and spec.public_type:

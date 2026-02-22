@@ -40,8 +40,8 @@ export function LibrariesPanel({ onRevealPath }: LibrariesPanelProps) {
   const handleRevealPath = useCallback((path: string) => {
     if (onRevealPath) {
       onRevealPath(path);
-    } else if (window.qv?.revealPath) {
-      window.qv.revealPath(path);
+    } else if (window.qms?.revealPath) {
+      window.qms.revealPath(path);
     }
   }, [onRevealPath]);
   
@@ -411,9 +411,9 @@ function InstallLibraryModal({
   };
   
   const handleSelectFiles = async () => {
-    if (!window.qv?.openFile) return;
+    if (!window.qms?.openFile) return;
     
-    const path = await window.qv.openFile({
+    const path = await window.qms.openFile({
       filters: [
         { name: 'Archive Files', extensions: ['tar.gz', 'tgz', 'zip'] },
         { name: 'All Files', extensions: ['*'] },

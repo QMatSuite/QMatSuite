@@ -7,8 +7,8 @@ No Psi4 installation is required — these test the driver bundle only.
 
 import pytest
 
-from quantumvitas.drivers.psi4.driver import Psi4Driver
-from quantumvitas.core.driver_protocol import WorkdirPolicy, ErrorClass
+from qmatsuite.drivers.psi4.driver import Psi4Driver
+from qmatsuite.core.driver_protocol import WorkdirPolicy, ErrorClass
 
 
 @pytest.fixture
@@ -93,7 +93,7 @@ class TestPsi4DriverMethods:
         assert callable(handler)
 
     def test_recipe_class(self, driver):
-        from quantumvitas.drivers.psi4.recipe import Psi4Recipe
+        from qmatsuite.drivers.psi4.recipe import Psi4Recipe
         recipe_class = driver.get_recipe_class()
         assert recipe_class is Psi4Recipe
 
@@ -127,23 +127,23 @@ class TestPsi4Registration:
     """Test driver registration in the DriverRegistry."""
 
     def test_driver_registered(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         assert "psi4" in DriverRegistry.get_all_engines(), "Psi4 driver not registered"
 
     def test_registry_lookup(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         driver = DriverRegistry.get_driver("psi4")
         assert driver is not None
         assert driver.PREFIX == "psi4"
 
     def test_engine_registry_has_psi4(self):
-        from quantumvitas.engine.registry import create_default_registry
+        from qmatsuite.engine.registry import create_default_registry
         registry = create_default_registry()
         assert registry.has("psi4")
 
     def test_step_types_in_workflow_registry(self):
         """Verify Psi4 step types are registered in the workflow StepTypeRegistry."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
 
         # The GEN steps should resolve for engine="psi4"

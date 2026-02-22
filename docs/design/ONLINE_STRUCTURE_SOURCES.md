@@ -16,7 +16,7 @@ QMatSuite currently fetches structures from **two sources**:
 
 ### How It Works Today
 
-The implementation lives in `src/quantumvitas/io/online_search.py`:
+The implementation lives in `src/qmatsuite/io/online_search.py`:
 
 1. **OPTIMADE search** — tries endpoints in order:
    - `https://optimade.materialsproject.org` (primary)

@@ -11,14 +11,14 @@ Before implementing, review these critical lessons to avoid common pitfalls:
 ### Lesson 1: Dual Registration Requirement
 
 **Problem**: QMatSuite has TWO separate `StepTypeSpec` classes that must BOTH be populated:
-1. `quantumvitas.core.driver_protocol.StepTypeSpec` — for DriverRegistry (has `step_type_spec`, `engine`, `executable`, etc.)
-2. `quantumvitas.workflow.registry.StepTypeSpec` — for workflow system (has `step_type_gen`, `requires_structure`, etc.)
+1. `qmatsuite.core.driver_protocol.StepTypeSpec` — for DriverRegistry (has `step_type_spec`, `engine`, `executable`, etc.)
+2. `qmatsuite.workflow.registry.StepTypeSpec` — for workflow system (has `step_type_gen`, `requires_structure`, etc.)
 
 The gate test `test_step_type_declared_sets.py` builds GEN_SET from the **workflow registry**, not from DriverRegistry.
 
 **Solution**: Register Gaussian step types in BOTH places:
-1. `src/quantumvitas/drivers/gaussian/driver.py` → `get_step_type_specs()`
-2. `src/quantumvitas/workflow/registry.py` → `_STEP_TYPES` dict
+1. `src/qmatsuite/drivers/gaussian/driver.py` → `get_step_type_specs()`
+2. `src/qmatsuite/workflow/registry.py` → `_STEP_TYPES` dict
 
 ### Lesson 2: Hardcoded Engine Lists in Tests
 
@@ -56,7 +56,7 @@ Gaussian is an external binary quantum chemistry engine, similar to ORCA. It sup
 
 ## 2. Files to MODIFY (7 files)
 
-### 2.1 `src/quantumvitas/workflow/gen_steps.py` ✅
+### 2.1 `src/qmatsuite/workflow/gen_steps.py` ✅
 
 Add 6 new GEN steps to `GenStepRegistry.GEN_STEPS`:
 
@@ -68,11 +68,11 @@ Add 6 new GEN steps to `GenStepRegistry.GEN_STEPS`:
 # Note: "scf", "relax", "freq" already exist
 ```
 
-### 2.2 `src/quantumvitas/workflow/step_type_convert.py` ✅
+### 2.2 `src/qmatsuite/workflow/step_type_convert.py` ✅
 
 Add `"gaussian"` to `ENGINE_PREFIXES` frozenset.
 
-### 2.3 `src/quantumvitas/workflow/registry.py` ✅
+### 2.3 `src/qmatsuite/workflow/registry.py` ✅
 
 Add Gaussian step types to `_STEP_TYPES` dict:
 
@@ -93,14 +93,14 @@ Add Gaussian step types to `_STEP_TYPES` dict:
 
 Also add `"gaussian_"` prefix to `normalize_step_type_to_gen()` if needed.
 
-### 2.4 `src/quantumvitas/drivers/__init__.py` ✅
+### 2.4 `src/qmatsuite/drivers/__init__.py` ✅
 
 Add import:
 ```python
-from quantumvitas.drivers import gaussian
+from qmatsuite.drivers import gaussian
 ```
 
-### 2.5 `src/quantumvitas/core/engines/discovery.py` ✅
+### 2.5 `src/qmatsuite/core/engines/discovery.py` ✅
 
 Add Gaussian EngineProbe to `_ENGINE_PROBES`:
 
@@ -122,13 +122,13 @@ Add `"gaussian_"` to `valid_prefixes` tuple (2 locations).
 
 ---
 
-## 3. Files to CREATE (7 files in `src/quantumvitas/drivers/gaussian/`)
+## 3. Files to CREATE (7 files in `src/qmatsuite/drivers/gaussian/`)
 
 ### 3.1 `__init__.py` ✅
 
 ```python
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.drivers.gaussian.driver import GaussianDriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.drivers.gaussian.driver import GaussianDriver
 
 DriverRegistry.register(GaussianDriver())
 ```
@@ -159,11 +159,11 @@ class GaussianDriver(EngineDriver):
         ...
 
     def get_handler(self, step_type_spec: str) -> Callable:
-        from quantumvitas.drivers.gaussian.handler import gaussian_step_handler
+        from qmatsuite.drivers.gaussian.handler import gaussian_step_handler
         return gaussian_step_handler
 
     def get_recipe_class(self) -> type[Recipe]:
-        from quantumvitas.drivers.gaussian.recipe import GaussianRecipe
+        from qmatsuite.drivers.gaussian.recipe import GaussianRecipe
         return GaussianRecipe
 
     def get_workdir_policy(self) -> WorkdirPolicy:

@@ -2,7 +2,7 @@
 Roundtrip B: compile demo → replay → re-snapshot → verify equivalence.
 
 Proves every Level-2 demo snapshot can be compiled to fine-grained user-like ops,
-replayed through QVService, and the resulting project re-snapshots to semantic
+replayed through QMSService, and the resulting project re-snapshots to semantic
 equivalence with the original.
 """
 
@@ -13,15 +13,15 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.demo_store.authoring_ops import is_bulk_op
-from quantumvitas.demo_store.compiler import compile_snapshot
-from quantumvitas.demo_store.replay import replay_ops
-from quantumvitas.demo_store.roundtrip import (
+from qmatsuite.demo_store.authoring_ops import is_bulk_op
+from qmatsuite.demo_store.compiler import compile_snapshot
+from qmatsuite.demo_store.replay import replay_ops
+from qmatsuite.demo_store.roundtrip import (
     MismatchCategory,
     categorize_diff,
     verify_roundtrip_equivalence,
 )
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 DEMO_DIR = get_resources_dir() / "demo_projects"
 
@@ -73,7 +73,7 @@ class TestRoundtripB:
         project_root = replay_ops(ops, tmp_path)
 
         # Re-snapshot
-        from quantumvitas.project.snapshot import export_project_to_snapshot
+        from qmatsuite.project.snapshot import export_project_to_snapshot
         replayed_snap = export_project_to_snapshot(project_root).to_dict()
 
         # Verify

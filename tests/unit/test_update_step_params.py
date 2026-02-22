@@ -6,9 +6,9 @@ import pytest
 import yaml
 from pathlib import Path
 
-from quantumvitas.api import QVService, APIError
-from quantumvitas.core.resources import generate_resource_id
-from quantumvitas.core.yamldoc import StepDoc
+from qmatsuite.api import QMSService, APIError
+from qmatsuite.core.resources import generate_resource_id
+from qmatsuite.core.yamldoc import StepDoc
 
 
 class TestClassATyping:
@@ -16,8 +16,8 @@ class TestClassATyping:
     
     def test_class_a_bool_stored_as_bool(self, tmp_path):
         """Test that Class A bool values are parsed and stored as Python bool."""
-        from quantumvitas.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
-        from quantumvitas.core.param_validation import validate_and_parse
+        from qmatsuite.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
+        from qmatsuite.core.param_validation import validate_and_parse
         
         # Simulate the patching logic
         section = "SYSTEM"
@@ -34,8 +34,8 @@ class TestClassATyping:
     
     def test_class_a_int_stored_as_int(self, tmp_path):
         """Test that Class A int values are parsed and stored as Python int."""
-        from quantumvitas.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
-        from quantumvitas.core.param_validation import validate_and_parse
+        from qmatsuite.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
+        from qmatsuite.core.param_validation import validate_and_parse
         
         section = "SYSTEM"
         key = "nspin"
@@ -51,8 +51,8 @@ class TestClassATyping:
     
     def test_class_a_float_stored_as_float(self, tmp_path):
         """Test that Class A float values are parsed and stored as Python float."""
-        from quantumvitas.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
-        from quantumvitas.core.param_validation import validate_and_parse
+        from qmatsuite.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
+        from qmatsuite.core.param_validation import validate_and_parse
         
         section = "SYSTEM"
         key = "ecutwfc"
@@ -72,8 +72,8 @@ class TestClassBTyping:
     
     def test_class_b_stored_as_string(self, tmp_path):
         """Test that Class B keys are normalized (trim only)."""
-        from quantumvitas.ir.backends.qe.mapping import is_class_a_key
-        from quantumvitas.core.param_validation import normalize_class_b_value
+        from qmatsuite.ir.backends.qe.mapping import is_class_a_key
+        from qmatsuite.core.param_validation import normalize_class_b_value
         
         section = "SYSTEM"
         key = "unknown_param"
@@ -86,7 +86,7 @@ class TestClassBTyping:
     
     def test_class_b_preserves_case(self, tmp_path):
         """Test that Class B values preserve case."""
-        from quantumvitas.core.param_validation import normalize_class_b_value
+        from qmatsuite.core.param_validation import normalize_class_b_value
         
         normalized = normalize_class_b_value("MixedCase")
         assert normalized == "MixedCase"
@@ -100,8 +100,8 @@ class TestClassAValidation:
     
     def test_class_a_invalid_raises_error(self, tmp_path):
         """Invalid Class A value raises ValidationError."""
-        from quantumvitas.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
-        from quantumvitas.core.param_validation import validate_and_parse, ValidationError
+        from qmatsuite.ir.backends.qe.mapping import is_class_a_key, get_class_a_type
+        from qmatsuite.core.param_validation import validate_and_parse, ValidationError
         
         section = "SYSTEM"
         key = "nspin"

@@ -4,7 +4,7 @@ Tests for hash utilities, including effective fingerprint integration.
 
 import pytest
 
-from quantumvitas.calculation.hash_utils import (
+from qmatsuite.calculation.hash_utils import (
     build_effective_engine_params_view,
     compute_step_sha,
 )

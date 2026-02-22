@@ -14,7 +14,7 @@
 
 ### 1. Generate kpoints from mp_grid
 
-**File**: `src/quantumvitas/calculation/structure_steps.py`
+**File**: `src/qmatsuite/calculation/structure_steps.py`
 
 Added automatic kpoints generation when `mp_grid` is specified:
 
@@ -24,13 +24,13 @@ if "mp_grid" in flat_params and flat_params["mp_grid"] is not None:
     if isinstance(mp_grid, list):
         w90_input.mp_grid = [int(x) for x in mp_grid if x is not None]
         # Generate explicit kpoints from mp_grid (Wannier90 requires this)
-        from quantumvitas.io.wannier90_input import generate_kpoints_from_mp_grid
+        from qmatsuite.io.wannier90_input import generate_kpoints_from_mp_grid
         w90_input.kpoints = generate_kpoints_from_mp_grid(w90_input.mp_grid)
 ```
 
 ### 2. Filter QE namelist syntax from .win file
 
-**File**: `src/quantumvitas/io/wannier90_input.py`
+**File**: `src/qmatsuite/io/wannier90_input.py`
 
 Modified `to_string()` to filter out QE-specific parameters and namelist syntax:
 
@@ -110,7 +110,7 @@ If the existing `.win` file in the project is corrupted (contains QE namelist sy
 
 ## Related Files
 
-- `src/quantumvitas/calculation/structure_steps.py`: Added kpoints generation
-- `src/quantumvitas/io/wannier90_input.py`: Filtered QE syntax, fixed block order
-- `src/quantumvitas/io/wannier90_input.py`: `generate_kpoints_from_mp_grid()` function
+- `src/qmatsuite/calculation/structure_steps.py`: Added kpoints generation
+- `src/qmatsuite/io/wannier90_input.py`: Filtered QE syntax, fixed block order
+- `src/qmatsuite/io/wannier90_input.py`: `generate_kpoints_from_mp_grid()` function
 

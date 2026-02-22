@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { JournalEntry, ListJournalEntriesResult } from '../../types/qv';
+import type { JournalEntry, ListJournalEntriesResult } from '../../types/qms';
 import './JournalHistoryPanel.css';
 
 interface JournalHistoryPanelProps {
@@ -26,13 +26,13 @@ export function JournalHistoryPanel({ autoLoad = true }: JournalHistoryPanelProp
   const [showDiff, setShowDiff] = useState(false);
 
   const fetchEntries = useCallback(async () => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await window.qv.request<ListJournalEntriesResult>('list_journal_entries', {
+      const response = await window.qms.request<ListJournalEntriesResult>('list_journal_entries', {
         limit: 50,
       });
       

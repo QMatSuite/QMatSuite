@@ -18,7 +18,7 @@ import yaml
 from pathlib import Path
 from typer.testing import CliRunner
 
-from quantumvitas.cli.main import app
+from qmatsuite.cli.main import app
 
 
 @pytest.fixture
@@ -31,16 +31,16 @@ class TestInitProjectBehavior:
     """Capture init project behavior before migration."""
 
     def test_init_project_creates_project_yaml(self, tmp_path: Path, cli_runner: CliRunner):
-        """init project creates project.qv.yml with correct schema."""
+        """init project creates project.qms.yml with correct schema."""
         project_dir = tmp_path / "test_project"
 
         result = cli_runner.invoke(app, ["init", "project", "--path", str(project_dir)])
 
         assert result.exit_code == 0, result.output
-        assert (project_dir / "project.qv.yml").exists()
+        assert (project_dir / "project.qms.yml").exists()
 
         # Verify schema
-        config = yaml.safe_load((project_dir / "project.qv.yml").read_text())
+        config = yaml.safe_load((project_dir / "project.qms.yml").read_text())
         # Schema has "project" key with nested fields or top-level keys
         assert "calculations" in config
         assert "structures" in config
@@ -100,12 +100,12 @@ class TestCLIViolationLocations:
 
     def test_cli_has_write_step_spec_function(self):
         """Verify _write_step_spec exists in CLI (will be removed after migration)."""
-        from quantumvitas.cli import main
+        from qmatsuite.cli import main
         assert hasattr(main, "_write_step_spec")
 
     def test_cli_imports_yaml(self):
         """Verify CLI imports yaml for direct writes (indicates violation)."""
-        import quantumvitas.cli.main as cli_main
+        import qmatsuite.cli.main as cli_main
         import inspect
         source = inspect.getsource(cli_main)
         # CLI currently imports yaml for direct writes

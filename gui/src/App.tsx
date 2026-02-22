@@ -1,5 +1,5 @@
 /**
- * QuantumVITAS GUI - Main Application Component
+ * QMatSuite GUI - Main Application Component
  * 
  * Provides the main application layout with:
  * - Sidebar for navigation and actions
@@ -41,7 +41,7 @@ import {
   VolumeViewerSandbox,
 } from './components';
 import type { ViewType } from './components/layout/Sidebar';
-import { useQVClient, useDaemonStatus } from './hooks';
+import { useQMSClient, useDaemonStatus } from './hooks';
 import { useJobs } from './hooks/useJobs';
 import type { 
   ProjectSummary, 
@@ -52,7 +52,7 @@ import type {
   StructureModel,
   RightSelection,
   Provenance,
-  QVResponse,
+  QMSResponse,
   JobSubmitResult,
   PreflightCheckResult,
   RuntimeSetupStatus,
@@ -90,13 +90,13 @@ type MissingEngineGuidanceState = {
 function App() {
   // Project root path state (persisted in localStorage)
   const [projectRoot, setProjectRoot] = useState<string>(() => {
-    return localStorage.getItem('qv-project-root') || '';
+    return localStorage.getItem('qms-project-root') || '';
   });
   
   // Recent projects (persisted in localStorage)
   const [recentProjects, setRecentProjects] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('qv-recent-projects') || '[]');
+      return JSON.parse(localStorage.getItem('qms-recent-projects') || '[]');
     } catch {
       return [];
     }
@@ -153,7 +153,7 @@ function App() {
   const [structureVisData, setStructureVisData] = useState<StructureVisData | null>(null);
   
   // Debug state
-  const [, setDebugResult] = useState<QVResponse | null>(null);
+  const [, setDebugResult] = useState<QMSResponse | null>(null);
   const [showDebugFooter, setShowDebugFooter] = useState(true);
   
   // Loading states
@@ -195,7 +195,7 @@ function App() {
     defaultProjectsDir: string;
   }>(() => {
     try {
-      const saved = localStorage.getItem('qv-app-settings');
+      const saved = localStorage.getItem('qms-app-settings');
       if (saved) {
         const parsed = JSON.parse(saved);
         return {
@@ -213,33 +213,33 @@ function App() {
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', appSettings.theme);
-    localStorage.setItem('qv-app-settings', JSON.stringify(appSettings));
+    localStorage.setItem('qms-app-settings', JSON.stringify(appSettings));
   }, [appSettings]);
   
   // Hooks
-  const qv = useQVClient();
+  const qms = useQMSClient();
   const daemonStatus = useDaemonStatus();
 
   useEffect(() => {
-    if (!window.qv) return;
+    if (!window.qms) return;
     let cancelled = false;
 
-    void window.qv.getRuntimeSetupStatus().then((status) => {
+    void window.qms.getRuntimeSetupStatus().then((status) => {
       if (!cancelled) setRuntimeSetupStatus(status);
     }).catch(() => {
       // Runtime status channel is best-effort.
     });
 
-    void window.qv.getUpdaterState().then((status) => {
+    void window.qms.getUpdaterState().then((status) => {
       if (!cancelled) setUpdaterState(status);
     }).catch(() => {
       // Updater state channel is best-effort.
     });
 
-    const unsubRuntime = window.qv.onRuntimeSetupStatus((status) => {
+    const unsubRuntime = window.qms.onRuntimeSetupStatus((status) => {
       if (!cancelled) setRuntimeSetupStatus(status);
     });
-    const unsubUpdater = window.qv.onUpdaterState((status) => {
+    const unsubUpdater = window.qms.onUpdaterState((status) => {
       if (!cancelled) setUpdaterState(status);
     });
 
@@ -292,24 +292,24 @@ function App() {
   }, [updaterState?.state, updaterState?.version]);
 
   const handleCheckForUpdates = useCallback(async () => {
-    if (!window.qv?.checkForUpdates) return;
-    const response = await window.qv.checkForUpdates();
+    if (!window.qms?.checkForUpdates) return;
+    const response = await window.qms.checkForUpdates();
     if (!response.ok && response.message) {
       showNotification(response.message, 'error');
     }
   }, [showNotification]);
 
   const handleDownloadUpdate = useCallback(async () => {
-    if (!window.qv?.downloadUpdate) return;
-    const response = await window.qv.downloadUpdate();
+    if (!window.qms?.downloadUpdate) return;
+    const response = await window.qms.downloadUpdate();
     if (!response.ok) {
       showNotification(response.message || 'Failed to start update download', 'error');
     }
   }, [showNotification]);
 
   const handleInstallDownloadedUpdate = useCallback(async () => {
-    if (!window.qv?.quitAndInstallUpdate) return;
-    const response = await window.qv.quitAndInstallUpdate();
+    if (!window.qms?.quitAndInstallUpdate) return;
+    const response = await window.qms.quitAndInstallUpdate();
     if (!response.ok) {
       showNotification(response.message || 'Failed to install update', 'error');
     }
@@ -358,7 +358,7 @@ function App() {
       // Remove if already exists, then add to front
       const filtered = prev.filter(p => p !== path);
       const updated = [path, ...filtered].slice(0, 5); // Keep max 5
-      localStorage.setItem('qv-recent-projects', JSON.stringify(updated));
+      localStorage.setItem('qms-recent-projects', JSON.stringify(updated));
       return updated;
     });
   }, []);
@@ -367,7 +367,7 @@ function App() {
   const removeFromRecentProjects = useCallback((path: string) => {
     setRecentProjects(prev => {
       const filtered = prev.filter(p => p !== path);
-      localStorage.setItem('qv-recent-projects', JSON.stringify(filtered));
+      localStorage.setItem('qms-recent-projects', JSON.stringify(filtered));
       return filtered;
     });
   }, []);
@@ -381,12 +381,12 @@ function App() {
     setSelectedStructure(null);
     
     setProjectRoot(path);
-    localStorage.setItem('qv-project-root', path);
+    localStorage.setItem('qms-project-root', path);
     
     setIsLoadingProject(true);
     setProjectError(null);
     
-    const response = await qv.getProjectSummary(path);
+    const response = await qms.getProjectSummary(path);
     
     setIsLoadingProject(false);
     
@@ -399,18 +399,18 @@ function App() {
       addToRecentProjects(path);
       
       // Set project path for log file storage
-      window.qv?.setProject?.(path);
+      window.qms?.setProject?.(path);
     } else {
       setProjectSummary(null);
       setProjectLoaded(false);
       setProjectError(response.error?.message || 'Failed to load project');
     }
-  }, [qv, addToRecentProjects]);
+  }, [qms, addToRecentProjects]);
   
   const handleBrowseAndLoad = useCallback(async () => {
-    if (!window.qv?.openDirectory) return;
+    if (!window.qms?.openDirectory) return;
     
-    const selectedPath = await window.qv.openDirectory();
+    const selectedPath = await window.qms.openDirectory();
     if (!selectedPath) return;
     
     setIsLoadingProject(true);
@@ -418,7 +418,7 @@ function App() {
     
     // First, check if selected directory is a project
     let projectPath = selectedPath;
-    const directResponse = await qv.getProjectSummary(selectedPath);
+    const directResponse = await qms.getProjectSummary(selectedPath);
     
     if (directResponse.ok && directResponse.data) {
       // Selected directory is a valid project
@@ -429,19 +429,19 @@ function App() {
       setSelectedStructure(null);
       
       setProjectRoot(selectedPath);
-      localStorage.setItem('qv-project-root', selectedPath);
+      localStorage.setItem('qms-project-root', selectedPath);
       setProjectSummary(directResponse.data);
       setProjectLoaded(true);
       setStructures(null);
       setCalculations(null);
       addToRecentProjects(selectedPath);
-      window.qv?.setProject?.(selectedPath);
+      window.qms?.setProject?.(selectedPath);
       setIsLoadingProject(false);
       return;
     }
     
     // Not a project - search up for project root
-    const findResponse = await qv.call('find_project_root', { start_dir: selectedPath });
+    const findResponse = await qms.call('find_project_root', { start_dir: selectedPath });
     
     if (findResponse.ok && findResponse.data?.found && findResponse.data?.project_root) {
       // Found a project in parent directory
@@ -454,9 +454,9 @@ function App() {
       setSelectedStructure(null);
       
       setProjectRoot(projectPath);
-      localStorage.setItem('qv-project-root', projectPath);
+      localStorage.setItem('qms-project-root', projectPath);
       
-      const parentResponse = await qv.getProjectSummary(projectPath);
+      const parentResponse = await qms.getProjectSummary(projectPath);
       
       if (parentResponse.ok && parentResponse.data) {
         setProjectSummary(parentResponse.data);
@@ -464,7 +464,7 @@ function App() {
         setStructures(null);
         setCalculations(null);
         addToRecentProjects(projectPath);
-        window.qv?.setProject?.(projectPath);
+        window.qms?.setProject?.(projectPath);
         setIsLoadingProject(false);
         showNotification(`Loaded project from: ${projectPath}`, 'success');
         return;
@@ -475,29 +475,29 @@ function App() {
     
     // No project found - ask user if they want to create one
     const shouldCreate = window.confirm(
-      `This folder is not a QuantumVITAS project.\n\nWould you like to create a new project here?\n\n${selectedPath}`
+      `This folder is not a QMatSuite project.\n\nWould you like to create a new project here?\n\n${selectedPath}`
     );
     
     if (shouldCreate) {
       setIsLoadingProject(true);
-      const createResponse = await qv.call('create_project', {
+      const createResponse = await qms.call('create_project', {
         target_dir: selectedPath,
       });
       
       if (createResponse.ok && createResponse.data) {
-        const loadResponse = await qv.getProjectSummary(selectedPath);
+        const loadResponse = await qms.getProjectSummary(selectedPath);
         setIsLoadingProject(false);
         
         if (loadResponse.ok && loadResponse.data) {
           setProjectRoot(selectedPath);
-          localStorage.setItem('qv-project-root', selectedPath);
+          localStorage.setItem('qms-project-root', selectedPath);
           setProjectSummary(loadResponse.data);
           setProjectLoaded(true);
           setStructures(null);
           setCalculations(null);
           addToRecentProjects(selectedPath);
           showNotification('Project created successfully!', 'success');
-          window.qv?.setProject?.(selectedPath);
+          window.qms?.setProject?.(selectedPath);
         } else {
           // Check for legacy_project error
         if (loadResponse.error?.code === 'legacy_project') {
@@ -524,9 +524,9 @@ function App() {
     } else {
       setProjectError(null);
       setProjectRoot('');
-      localStorage.removeItem('qv-project-root');
+      localStorage.removeItem('qms-project-root');
     }
-  }, [qv, addToRecentProjects, showNotification]);
+  }, [qms, addToRecentProjects, showNotification]);
   
   const handleCreateProjectSuccess = useCallback(async (newProjectRoot: string) => {
     // Clear selected calculation and step when opening a new project (fixes stale step selection)
@@ -536,13 +536,13 @@ function App() {
     setSelectedStructure(null);
     
     setProjectRoot(newProjectRoot);
-    localStorage.setItem('qv-project-root', newProjectRoot);
+    localStorage.setItem('qms-project-root', newProjectRoot);
     
     // Load the newly created project immediately with the new path
     setIsLoadingProject(true);
     setProjectError(null);
     
-    const response = await qv.getProjectSummary(newProjectRoot);
+    const response = await qms.getProjectSummary(newProjectRoot);
     
     setIsLoadingProject(false);
     
@@ -558,13 +558,13 @@ function App() {
       addToRecentProjects(newProjectRoot);
       
       // Set project path for log file storage
-      window.qv?.setProject?.(newProjectRoot);
+      window.qms?.setProject?.(newProjectRoot);
     } else {
       setProjectSummary(null);
       setProjectLoaded(false);
       setProjectError(response.error?.message || 'Failed to load project');
     }
-  }, [qv, addToRecentProjects]);
+  }, [qms, addToRecentProjects]);
   
   // Open demo gallery - can be triggered from sidebar or welcome screen
   const handleOpenDemoGallery = useCallback(() => {
@@ -580,11 +580,11 @@ function App() {
   const refreshSummary = useCallback(async () => {
     if (!projectRoot || !projectLoaded) return;
     
-    const response = await qv.getProjectSummary(projectRoot);
+    const response = await qms.getProjectSummary(projectRoot);
     if (response.ok && response.data) {
       setProjectSummary(response.data);
     }
-  }, [qv, projectRoot, projectLoaded]);
+  }, [qms, projectRoot, projectLoaded]);
   
   const fetchStructures = useCallback(async () => {
     if (!projectRoot || !projectLoaded) {
@@ -595,7 +595,7 @@ function App() {
     console.log('[App] fetchStructures called', { projectRoot: projectRoot.substring(projectRoot.lastIndexOf('/') + 1), projectLoaded });
     setIsLoadingStructures(true);
     try {
-      const response = await qv.listStructures(projectRoot);
+      const response = await qms.listStructures(projectRoot);
       if (response.ok && response.data) {
         setStructures(response.data.structures);
       } else {
@@ -610,7 +610,7 @@ function App() {
     } finally {
       setIsLoadingStructures(false);
     }
-  }, [qv, projectRoot, projectLoaded]);
+  }, [qms, projectRoot, projectLoaded]);
   
   const fetchCalculations = useCallback(async () => {
     if (!projectRoot || !projectLoaded) {
@@ -621,7 +621,7 @@ function App() {
     console.log('[App] fetchCalculations called', { projectRoot: projectRoot.substring(projectRoot.lastIndexOf('/') + 1), projectLoaded });
     setIsLoadingCalculations(true);
     try {
-      const response = await qv.listCalculations(projectRoot);
+      const response = await qms.listCalculations(projectRoot);
       if (response.ok && response.data) {
         const calculationsList = response.data.calculations;
         setCalculations(calculationsList);
@@ -640,7 +640,7 @@ function App() {
     } finally {
       setIsLoadingCalculations(false);
     }
-  }, [qv, projectRoot, projectLoaded]);
+  }, [qms, projectRoot, projectLoaded]);
   
   // Refresh project registry handler
   const handleRefreshProjectRegistry = useCallback(async () => {
@@ -657,7 +657,7 @@ function App() {
     console.log('[App] Refreshing project registry', { projectRoot: normalized });
     
     try {
-      const response = await qv.rebuildProjectRegistry(normalized);
+      const response = await qms.rebuildProjectRegistry(normalized);
       
       if (response.ok && response.data) {
         const { index_stats, dag_diff } = response.data;
@@ -721,7 +721,7 @@ function App() {
       console.error('[App] Failed to refresh project registry', err);
       setProjectError(err.message || 'Failed to refresh project registry');
     }
-  }, [projectRoot, qv, fetchStructures, fetchCalculations]);
+  }, [projectRoot, qms, fetchStructures, fetchCalculations]);
   
   // Auto-fetch data when switching views
   useEffect(() => {
@@ -847,8 +847,8 @@ function App() {
     selection: RightSelection,
     viewerSettingsOverride?: Partial<typeof viewerSettings>
   ): Promise<StructureModel> => {
-    if (!projectRoot || !qv) {
-      throw new Error('Project root or QV client not available');
+    if (!projectRoot || !qms) {
+      throw new Error('Project root or QMS client not available');
     }
     
     // Frontend timing: RPC start
@@ -873,7 +873,7 @@ function App() {
         }
         
         const settings = viewerSettingsOverride || viewerSettings;
-        const response = await qv.call('get_structure_vis', {
+        const response = await qms.call('get_structure_vis', {
           project_root: projectRoot,
           selector: structure.slug,
           supercell: settings.supercell,
@@ -936,7 +936,7 @@ function App() {
       } else {
         // Online candidate path
         const settings = viewerSettingsOverride || viewerSettings;
-        const response = await qv.call('structure_get_online_candidate', {
+        const response = await qms.call('structure_get_online_candidate', {
           session_id: selection.sessionId,
           candidate_id: selection.candidateId,
           supercell: settings.supercell,
@@ -1193,7 +1193,7 @@ function App() {
       console.error('[structure_vis_parse_failed] outer catch', e, { selection });
       throw e instanceof Error ? e : new Error(`Failed to load structure: ${String(e)}`);
     }
-  }, [qv, projectRoot, structures, viewerSettings, generateTraceId]);
+  }, [qms, projectRoot, structures, viewerSettings, generateTraceId]);
   
   // Viewer first frame callback
   const handleViewerFirstFrame = useCallback((traceId: string) => {
@@ -1365,7 +1365,7 @@ function App() {
     if (!projectRoot || !onlineSessionId || !selectedOnlineCandidateId) return;
     
     try {
-      const response = await qv.call('structure_import_online_candidate', {
+      const response = await qms.call('structure_import_online_candidate', {
         project_root: projectRoot,
         session_id: onlineSessionId,
         candidate_id: selectedOnlineCandidateId,
@@ -1376,7 +1376,7 @@ function App() {
         await fetchStructures();
         
         // Find and select the newly imported structure
-        const newStructures = await qv.call('list_structures', { project_root: projectRoot });
+        const newStructures = await qms.call('list_structures', { project_root: projectRoot });
         if (newStructures.ok && newStructures.data) {
           // list_structures returns { structures: StructureInfo[]; count: number }
           const structuresList = newStructures.data.structures || [];
@@ -1392,7 +1392,7 @@ function App() {
     } catch (e) {
       console.error('Failed to import online candidate:', e);
     }
-  }, [projectRoot, onlineSessionId, selectedOnlineCandidateId, qv, handleExitImportMode, handleSelectStructure]);
+  }, [projectRoot, onlineSessionId, selectedOnlineCandidateId, qms, handleExitImportMode, handleSelectStructure]);
   
   const handleImportStructureSuccess = useCallback(async (structureId: string) => {
     // Refresh structures list and summary
@@ -1432,7 +1432,7 @@ function App() {
     // Fire and forget async detail fetch
     // The detail's steps array is the ONLY source of truth for step order and IDs
     (async () => {
-      if (!projectRoot || !window.qv) return;
+      if (!projectRoot || !window.qms) return;
       
       try {
         const normalizedRoot = normalizeProjectRoot(projectRoot);
@@ -1443,7 +1443,7 @@ function App() {
           calculationId: calculation.calc_ulid,
         });
         
-        const response = await qv.call('get_calculation_detail', {
+        const response = await qms.call('get_calculation_detail', {
           project_root: normalizedRoot,
           calculation: calculation.calc_ulid,  // Use ULID to avoid slug collisions
         });
@@ -1471,7 +1471,7 @@ function App() {
             console.warn('[App] Calculation not found, will retry after delay', { calculationSlug: calculation.slug });
             setTimeout(async () => {
               // Retry once after a short delay
-              const retryResponse = await qv.call('get_calculation_detail', {
+              const retryResponse = await qms.call('get_calculation_detail', {
                 project_root: normalizedRoot,
                 calculation: calculation.calc_ulid,  // Use ULID to avoid slug collisions
               });
@@ -1487,7 +1487,7 @@ function App() {
         setSelectedCalculationDetail(null);
       }
     })();
-  }, [projectRoot, qv, clearMissingEngineGuidance]);
+  }, [projectRoot, qms, clearMissingEngineGuidance]);
   
   // Reset auto-select flags when switching views or project changes
   useEffect(() => {
@@ -1555,7 +1555,7 @@ function App() {
       return;
     }
     
-    if (currentView === 'structures' && selectedStructure && projectRoot && qv) {
+    if (currentView === 'structures' && selectedStructure && projectRoot && qms) {
       const selectionKey = `project:${selectedStructure.ulid}`;
       const refreshToken = structureRefreshToken;
       
@@ -1658,7 +1658,7 @@ function App() {
     selectedStructure?.ulid,  // selectionKey
     structureRefreshToken,  // P0: refresh token forces reload on same selection
     projectRoot, 
-    qv, 
+    qms, 
     loadStructureModel,
     currentSupercell,  // P0: viewer settings must trigger reload
     currentRepeatBoundary,
@@ -1679,7 +1679,7 @@ function App() {
       return;
     }
     
-    if (currentView === 'structures' && selectedOnlineCandidateId && onlineSessionId && projectRoot && qv) {
+    if (currentView === 'structures' && selectedOnlineCandidateId && onlineSessionId && projectRoot && qms) {
       const selectionKey = `online:${onlineSessionId}:${selectedOnlineCandidateId}`;
       const refreshToken = structureRefreshToken;
       
@@ -1792,7 +1792,7 @@ function App() {
     onlineSessionId,
     structureRefreshToken,  // P0: refresh token forces reload on same selection
     projectRoot, 
-    qv, 
+    qms, 
     loadStructureModel,
     viewerSettings.supercell,  // P0: viewer settings must trigger reload
     viewerSettings.repeatBoundary,
@@ -1830,7 +1830,7 @@ function App() {
   
   const handleCreateCalculationSuccess = useCallback(async (calculationId: string) => {
     // CRITICAL: Rebuild registry FIRST to ensure the new calculation is indexed
-    const rebuildResponse = await qv.call('rebuild_project_registry', {
+    const rebuildResponse = await qms.call('rebuild_project_registry', {
       project_root: projectRoot,
     });
     
@@ -1864,14 +1864,14 @@ function App() {
       console.error('[App] Created calculation not found after refresh', { calculationId });
       // Don't show error - calculation might still be syncing, user can manually select it
     }
-  }, [qv, projectRoot, fetchCalculations, refreshSummary, handleSelectCalculation]);
+  }, [qms, projectRoot, fetchCalculations, refreshSummary, handleSelectCalculation]);
 
   useEffect(() => {
     if (!missingEngineGuidance?.installJobId) return;
     let cancelled = false;
 
     const pollInstallStatus = async () => {
-      const statusResponse = await qv.call('get_job_status', { job_id: missingEngineGuidance.installJobId! });
+      const statusResponse = await qms.call('get_job_status', { job_id: missingEngineGuidance.installJobId! });
       if (cancelled) return;
       if (!statusResponse.ok || !statusResponse.data) {
         setMissingEngineGuidance((prev) => prev ? {
@@ -1931,12 +1931,12 @@ function App() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [missingEngineGuidance?.installJobId, qv]);
+  }, [missingEngineGuidance?.installJobId, qms]);
 
   const handleInstallMissingEngine = useCallback(async () => {
     if (!missingEngineGuidance) return;
     const engineFamily = missingEngineGuidance.engineFamily;
-    const response = await qv.installEngine(engineFamily, { async: true, source: 'auto' });
+    const response = await qms.installEngine(engineFamily, { async: true, source: 'auto' });
     if (!response.ok) {
       setMissingEngineGuidance((prev) => prev ? {
         ...prev,
@@ -1962,21 +1962,21 @@ function App() {
       installStatus: 'Install queued...',
       installError: null,
     } : prev);
-  }, [missingEngineGuidance, qv]);
+  }, [missingEngineGuidance, qms]);
 
   const handleConfigureMissingEnginePath = useCallback(async () => {
     if (!missingEngineGuidance) return;
-    if (!window.qv?.openDirectory) {
+    if (!window.qms?.openDirectory) {
       setMissingEngineGuidance((prev) => prev ? {
         ...prev,
         installError: 'Path picker is unavailable',
       } : prev);
       return;
     }
-    const selectedPath = await window.qv.openDirectory();
+    const selectedPath = await window.qms.openDirectory();
     if (!selectedPath) return;
 
-    const response = await qv.registerEnginePath(missingEngineGuidance.engineFamily, selectedPath, {
+    const response = await qms.registerEnginePath(missingEngineGuidance.engineFamily, selectedPath, {
       source: 'user_path',
     });
     if (!response.ok) {
@@ -1994,13 +1994,13 @@ function App() {
       installError: null,
       installJobId: null,
     } : prev);
-  }, [missingEngineGuidance, qv]);
+  }, [missingEngineGuidance, qms]);
   
   const handleRunCalculation = useCallback(async (calculation: CalculationInfo, runMode: 'incremental' | 'full' = 'incremental') => {
     const selectedEngineFamily = selectedCalculationDetail?.engine_family || null;
 
     // Perform preflight checks first
-    const preflightResponse = await qv.call('preflight_check', {
+    const preflightResponse = await qms.call('preflight_check', {
       project_root: projectRoot,
       calculation: calculation.slug,
     });
@@ -2037,7 +2037,7 @@ function App() {
     // Backend contract: { project_root: string (normalized absolute), calculation: string (slug), strict?: bool, verbose?: bool, run_mode?: string }
     // GUI sends: calculation.slug (from selectedCalculation.slug), run_mode: "incremental" or "full"
     // See tests/daemon/test_gui_job_and_step_flows.py for RPC contract details
-    const response = await qv.call('run_calculation', {
+    const response = await qms.call('run_calculation', {
       project_root: normalizedProjectRoot,
       calculation: calculation.slug, // Backend expects calculation selector (slug)
       run_mode: runMode || 'incremental', // Default incremental (Overleaf-like)
@@ -2074,9 +2074,9 @@ function App() {
       // Do NOT change tabs on error - stay in Overview
     }
     
-    setDebugResult(response as QVResponse);
+    setDebugResult(response as QMSResponse);
   }, [
-    qv,
+    qms,
     projectRoot,
     showNotification,
     selectedCalculationDetail,
@@ -2124,8 +2124,8 @@ function App() {
     // Refresh calculation detail to show updated steps list
     if (selectedCalculationSummary) {
       const normalizedRoot = normalizeProjectRoot(projectRoot);
-      if (normalizedRoot && window.qv) {
-        const response = await qv.call('get_calculation_detail', {
+      if (normalizedRoot && window.qms) {
+        const response = await qms.call('get_calculation_detail', {
           project_root: normalizedRoot,
           calculation: selectedCalculationSummary.slug,
         });
@@ -2135,7 +2135,7 @@ function App() {
         }
       }
     }
-  }, [selectedStepId, selectedCalculationSummary, projectRoot, qv]);
+  }, [selectedStepId, selectedCalculationSummary, projectRoot, qms]);
   
   
   // ==========================================================================
@@ -2146,7 +2146,7 @@ function App() {
     if (!renameStructure) return false;
     
     setIsRenaming(true);
-    const response = await qv.call('rename_structure', {
+    const response = await qms.call('rename_structure', {
       project_root: projectRoot,
       selector: renameStructure.slug,
       new_name: newName,
@@ -2166,13 +2166,13 @@ function App() {
       showNotification(`Failed to rename: ${response.error?.message || 'Unknown error'}`, 'error');
       return false;
     }
-  }, [qv, projectRoot, renameStructure, fetchStructures, selectedStructure, showNotification]);
+  }, [qms, projectRoot, renameStructure, fetchStructures, selectedStructure, showNotification]);
   
   const handleDeleteStructure = useCallback(async (force: boolean): Promise<boolean> => {
     if (!deleteStructure) return false;
     
     setIsDeleting(true);
-    const response = await qv.call('delete_structure', {
+    const response = await qms.call('delete_structure', {
       project_root: projectRoot,
       selector: deleteStructure.slug,
       force: force,
@@ -2193,7 +2193,7 @@ function App() {
       showNotification(`Failed to delete: ${response.error?.message || 'Unknown error'}`, 'error');
       return false;
     }
-  }, [qv, projectRoot, deleteStructure, fetchStructures, refreshSummary, selectedStructure, showNotification]);
+  }, [qms, projectRoot, deleteStructure, fetchStructures, refreshSummary, selectedStructure, showNotification]);
   
   // ==========================================================================
   // Calculation Rename/Delete
@@ -2203,7 +2203,7 @@ function App() {
     if (!renameCalculation) return false;
     
     setIsRenaming(true);
-    const response = await qv.call('rename_calculation', {
+    const response = await qms.call('rename_calculation', {
       project_root: projectRoot,
       calculation_ulid: renameCalculation.calc_ulid,  // Use ULID, not slug
       new_name: newName,
@@ -2224,13 +2224,13 @@ function App() {
       showNotification(`Failed to rename: ${response.error?.message || 'Unknown error'}`, 'error');
       return false;
     }
-  }, [qv, projectRoot, renameCalculation, fetchCalculations, selectedCalculation, showNotification]);
+  }, [qms, projectRoot, renameCalculation, fetchCalculations, selectedCalculation, showNotification]);
   
   const handleDeleteCalculation = useCallback(async (force: boolean): Promise<boolean> => {
     if (!deleteCalculation) return false;
     
     setIsDeleting(true);
-    const response = await qv.call('delete_calculation', {
+    const response = await qms.call('delete_calculation', {
       project_root: projectRoot,
       calculation_ulid: deleteCalculation.calc_ulid,  // Use ULID, not slug
       force: force,
@@ -2252,7 +2252,7 @@ function App() {
       showNotification(`Failed to delete: ${response.error?.message || 'Unknown error'}`, 'error');
       return false;
     }
-  }, [qv, projectRoot, deleteCalculation, fetchCalculations, refreshSummary, selectedCalculation, showNotification]);
+  }, [qms, projectRoot, deleteCalculation, fetchCalculations, refreshSummary, selectedCalculation, showNotification]);
   
   // ==========================================================================
   // Analysis Data Loading
@@ -2293,7 +2293,7 @@ function App() {
     let currentStructures = structures;
     if (!currentStructures) {
       setIsLoadingStructures(true);
-      const response = await qv.listStructures(projectRoot);
+      const response = await qms.listStructures(projectRoot);
       setIsLoadingStructures(false);
       if (response.ok && response.data) {
         currentStructures = response.data.structures;
@@ -2307,7 +2307,7 @@ function App() {
         handleSelectStructure(struct);
       }
     }
-  }, [structures, handleSelectStructure, qv, projectRoot]);
+  }, [structures, handleSelectStructure, qms, projectRoot]);
   
   // Navigate to a specific calculation
   const handleNavigateToCalculation = useCallback(async (calculationName: string) => {
@@ -2321,7 +2321,7 @@ function App() {
     let currentCalculations = calculations;
     if (!currentCalculations) {
       setIsLoadingCalculations(true);
-      const response = await qv.listCalculations(projectRoot);
+      const response = await qms.listCalculations(projectRoot);
       setIsLoadingCalculations(false);
       if (response.ok && response.data) {
         currentCalculations = response.data.calculations;
@@ -2335,7 +2335,7 @@ function App() {
         handleSelectCalculation(wf);
       }
     }
-  }, [calculations, handleSelectCalculation, qv, projectRoot]);
+  }, [calculations, handleSelectCalculation, qms, projectRoot]);
   
   // Close the current project
   const handleCloseProject = useCallback(() => {
@@ -2351,7 +2351,7 @@ function App() {
     setSelectedCalculationDetail(null);
     setSelectedStepId(null); // Clear step selection
     setStructureVisData(null);
-    localStorage.removeItem('qv-project-root');
+    localStorage.removeItem('qms-project-root');
     setCurrentView('home');
   }, []);
   
@@ -2386,7 +2386,7 @@ function App() {
               defaultWidth={400}
               minWidth={300}
               maxWidth={550}
-              storageKey="qv-structures-list-width"
+              storageKey="qms-structures-list-width"
               className="structures-view__list"
             >
               <StructureListPanel
@@ -2410,7 +2410,7 @@ function App() {
                 <button
                   className="view-action-btn"
                   onClick={() => setShowImportStructure(true)}
-                  data-testid="qv-btn-import-structure"
+                  data-testid="qms-btn-import-structure"
                 >
                   ➕ Import Structure
                 </button>
@@ -2419,12 +2419,12 @@ function App() {
             {currentStructureModel ? (
               <div className="structures-view__detail">
                 <ResizableSplitPane
-                  storageKey="qv.structures.detailsHeightPx"
+                  storageKey="qms.structures.detailsHeightPx"
                   defaultTopHeight={260}
                   minTopHeight={180}
                   minBottomHeight={360}
                   top={
-                    <div className="structures-view__detail-panel-wrapper" data-testid="qv-structure-detail">
+                    <div className="structures-view__detail-panel-wrapper" data-testid="qms-structure-detail">
                       <StructureDetailPanel
                         model={currentStructureModel}
                         onClose={leftMode === 'project' ? () => {
@@ -2438,7 +2438,7 @@ function App() {
                     </div>
                   }
                   bottom={
-                    <div className="structures-view__3d-wrapper" data-testid="qv-structure-viewer">
+                    <div className="structures-view__3d-wrapper" data-testid="qms-structure-viewer">
                       <StructureViewer3D
                         data={currentStructureModel.vis || null}
                         isLoading={isLoading3D || isStructureLoading}
@@ -2513,14 +2513,14 @@ function App() {
                 {leftMode === 'import' && (
                   <div className="structures-view__import-actions">
                     <button
-                      className="qv-button qv-button--primary"
+                      className="qms-button qms-button--primary"
                       onClick={handleImportOnlineCandidate}
                       style={{ flex: 1, padding: '10px 20px', fontSize: '14px', fontWeight: '500' }}
                     >
                       Import
                     </button>
                     <button
-                      className="qv-button qv-button--secondary"
+                      className="qms-button qms-button--secondary"
                       onClick={handleExitImportMode}
                       style={{ flex: 1, padding: '10px 20px', fontSize: '14px', fontWeight: '500' }}
                     >
@@ -2542,7 +2542,7 @@ function App() {
                   )}
                   <p>{structureLoadError}</p>
                   <button 
-                    className="qv-button qv-button--secondary"
+                    className="qms-button qms-button--secondary"
                     onClick={() => {
                       if (rightSelection) {
                         const selectionKey = rightSelection.kind === 'project' ? `project:${rightSelection.structureId}` : `online:${rightSelection.sessionId}:${rightSelection.candidateId}`;
@@ -2636,7 +2636,7 @@ function App() {
               defaultWidth={200}
               minWidth={56}
               maxWidth={420}
-              storageKey="qv-calculations-list-width"
+              storageKey="qms-calculations-list-width"
               className="calculations-view__list"
               collapsedWidth={56}
             >
@@ -2654,7 +2654,7 @@ function App() {
               <button
                 className="view-action-btn"
                 onClick={() => setShowCreateCalculation(true)}
-                data-testid="qv-btn-new-calculation"
+                data-testid="qms-btn-new-calculation"
               >
                 ➕ New Calculation
               </button>
@@ -2667,21 +2667,21 @@ function App() {
                 <button
                   className={`calculations-workspace-tab ${activeCalcTab === 'overview' ? 'calculations-workspace-tab--active' : ''}`}
                   onClick={() => setActiveCalcTab('overview')}
-                  data-testid="qv-calc-tab-overview"
+                  data-testid="qms-calc-tab-overview"
                 >
                   Overview & Steps
                 </button>
                 <button
                   className={`calculations-workspace-tab ${activeCalcTab === 'run' ? 'calculations-workspace-tab--active' : ''}`}
                   onClick={() => setActiveCalcTab('run')}
-                  data-testid="qv-calc-tab-run"
+                  data-testid="qms-calc-tab-run"
                 >
                   Run & Logs
                 </button>
                 <button
                   className={`calculations-workspace-tab ${activeCalcTab === 'analysis' ? 'calculations-workspace-tab--active' : ''}`}
                   onClick={() => setActiveCalcTab('analysis')}
-                  data-testid="qv-calc-tab-analysis"
+                  data-testid="qms-calc-tab-analysis"
                 >
                   Analysis
                 </button>
@@ -2690,7 +2690,7 @@ function App() {
               {/* Tab Content */}
               <div className="calculations-workspace-content">
                 {missingEngineGuidance && (
-                  <div className="missing-engine-panel" data-testid="qv-missing-engine-panel">
+                  <div className="missing-engine-panel" data-testid="qms-missing-engine-panel">
                     <div className="missing-engine-panel__title">
                       {ENGINE_DISPLAY_NAMES[missingEngineGuidance.engineFamily] || missingEngineGuidance.engineFamily} is not installed
                     </div>
@@ -2713,7 +2713,7 @@ function App() {
                           className="settings-btn"
                           onClick={() => void handleInstallMissingEngine()}
                           disabled={!!missingEngineGuidance.installJobId}
-                          data-testid="qv-missing-engine-install"
+                          data-testid="qms-missing-engine-install"
                         >
                           {missingEngineGuidance.installJobId ? 'Installing...' : `Install ${ENGINE_DISPLAY_NAMES[missingEngineGuidance.engineFamily] || missingEngineGuidance.engineFamily}`}
                         </button>
@@ -2721,14 +2721,14 @@ function App() {
                       <button
                         className="settings-btn"
                         onClick={() => void handleConfigureMissingEnginePath()}
-                        data-testid="qv-missing-engine-configure-path"
+                        data-testid="qms-missing-engine-configure-path"
                       >
                         Configure Path
                       </button>
                       <button
                         className="settings-btn"
                         onClick={() => setCurrentView('settings')}
-                        data-testid="qv-missing-engine-open-manager"
+                        data-testid="qms-missing-engine-open-manager"
                       >
                         Open Engine Manager
                       </button>
@@ -2736,7 +2736,7 @@ function App() {
                         <button
                           className="settings-btn settings-btn--primary"
                           onClick={() => void handleRunCalculation(selectedCalculationSummary, 'incremental')}
-                          data-testid="qv-missing-engine-run-again"
+                          data-testid="qms-missing-engine-run-again"
                         >
                           Run Again
                         </button>
@@ -2744,7 +2744,7 @@ function App() {
                       <button
                         className="settings-btn settings-btn--sm"
                         onClick={() => clearMissingEngineGuidance()}
-                        data-testid="qv-missing-engine-dismiss"
+                        data-testid="qms-missing-engine-dismiss"
                       >
                         Dismiss
                       </button>
@@ -2771,7 +2771,7 @@ function App() {
                       
                       if (selectedCalculationSummary) {
                         // Use calculation ULID (id) instead of slug for subsequent calls
-                        const response = await qv.call('get_calculation_detail', {
+                        const response = await qms.call('get_calculation_detail', {
                           project_root: projectRoot,
                           calculation: selectedCalculationSummary.calc_ulid,  // Use ULID, not slug
                         });
@@ -2866,7 +2866,7 @@ function App() {
       <AppShell
         sidebar={
           <Sidebar
-            qv={qv}
+            qms={qms}
             projectRoot={projectRoot}
             projectLoaded={projectLoaded}
             projectError={projectError}
@@ -2909,7 +2909,7 @@ function App() {
           )}
 
           {showUpdaterBanner && updaterState && (
-            <div className="updater-banner" data-testid="qv-updater-banner">
+            <div className="updater-banner" data-testid="qms-updater-banner">
               <div className="updater-banner__content">
                 <div className="updater-banner__title">
                   {updaterState.state === 'error'
@@ -2940,7 +2940,7 @@ function App() {
                   <button
                     className="settings-btn settings-btn--sm"
                     onClick={() => void handleDownloadUpdate()}
-                    data-testid="qv-updater-download"
+                    data-testid="qms-updater-download"
                   >
                     Download
                   </button>
@@ -2949,7 +2949,7 @@ function App() {
                   <button
                     className="settings-btn settings-btn--sm"
                     onClick={() => void handleCheckForUpdates()}
-                    data-testid="qv-updater-retry"
+                    data-testid="qms-updater-retry"
                   >
                     Retry
                   </button>
@@ -2958,7 +2958,7 @@ function App() {
                   <button
                     className="settings-btn settings-btn--primary settings-btn--sm"
                     onClick={() => void handleInstallDownloadedUpdate()}
-                    data-testid="qv-updater-restart"
+                    data-testid="qms-updater-restart"
                   >
                     Restart Now
                   </button>
@@ -2966,7 +2966,7 @@ function App() {
                 <button
                   className="settings-btn settings-btn--sm"
                   onClick={() => setUpdaterDismissed(true)}
-                  data-testid="qv-updater-later"
+                  data-testid="qms-updater-later"
                 >
                   Later
                 </button>
@@ -3015,7 +3015,7 @@ function App() {
       </AppShell>
 
       {showRuntimeSetupOverlay && runtimeSetupStatus && (
-        <div className="runtime-setup-overlay" data-testid="qv-runtime-setup-overlay">
+        <div className="runtime-setup-overlay" data-testid="qms-runtime-setup-overlay">
           <div className="runtime-setup-overlay__card">
             <h2 className="runtime-setup-overlay__title">Setting up QMatSuite...</h2>
             <p className="runtime-setup-overlay__message">{runtimeSetupStatus.message}</p>
@@ -3029,7 +3029,7 @@ function App() {
               {(runtimeSetupStatus.progress || 0).toFixed(0)}%
             </div>
             {runtimeSetupStatus.stage === 'error' && (
-              <div className="runtime-setup-overlay__error" data-testid="qv-runtime-setup-error">
+              <div className="runtime-setup-overlay__error" data-testid="qms-runtime-setup-error">
                 <p>{runtimeSetupStatus.error || 'Runtime setup failed.'}</p>
                 <a
                   href="https://github.com/QMatSuite/QMatSuite/issues"

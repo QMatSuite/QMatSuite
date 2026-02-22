@@ -31,7 +31,7 @@ test.describe('E2E: Structures View Rendering', () => {
     });
     
     // Wait for project to load
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 60000 });
+    await expect(appPage.getByTestId('qms-home-project')).toBeVisible({ timeout: 60000 });
     
     // Navigate to Structures view
     await navigateToView(appPage, 'structures');
@@ -50,7 +50,7 @@ test.describe('E2E: Structures View Rendering', () => {
     await appPage.waitForTimeout(1000);
     
     // Verify Details panel is visible (using testid)
-    const detailsPanel = appPage.getByTestId('qv-structure-detail');
+    const detailsPanel = appPage.getByTestId('qms-structure-detail');
     await expect(detailsPanel).toBeVisible({ timeout: 5000 });
     
     // Verify Details panel contains non-empty structure info
@@ -61,7 +61,7 @@ test.describe('E2E: Structures View Rendering', () => {
     expect(detailsText?.trim().length).toBeGreaterThan(0);
     
     // Verify 3D Viewer wrapper is visible (using testid)
-    const viewerWrapper = appPage.getByTestId('qv-structure-viewer');
+    const viewerWrapper = appPage.getByTestId('qms-structure-viewer');
     await expect(viewerWrapper).toBeVisible({ timeout: 5000 });
     
     // Verify 3D Viewer container has content (canvas or WebGL container with children)
@@ -104,7 +104,7 @@ test.describe('E2E: Structures View Rendering', () => {
     });
     
     // Wait for project to load
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 60000 });
+    await expect(appPage.getByTestId('qms-home-project')).toBeVisible({ timeout: 60000 });
     
     // Navigate to Structures view
     await navigateToView(appPage, 'structures');
@@ -161,7 +161,7 @@ test.describe('E2E: Structures View Rendering', () => {
     });
     
     // Wait for project to load
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 60000 });
+    await expect(appPage.getByTestId('qms-home-project')).toBeVisible({ timeout: 60000 });
     
     // Navigate to Structures view
     await navigateToView(appPage, 'structures');
@@ -204,11 +204,11 @@ test.describe('E2E: Structures View Rendering', () => {
     await appPage.waitForTimeout(2000);
     
     // Assert: Details panel is visible
-    const detailsPanel = appPage.getByTestId('qv-structure-detail');
+    const detailsPanel = appPage.getByTestId('qms-structure-detail');
     await expect(detailsPanel).toBeVisible({ timeout: 5000 });
     
     // Assert: Viewer wrapper is visible
-    const viewerWrapper = appPage.getByTestId('qv-structure-viewer');
+    const viewerWrapper = appPage.getByTestId('qms-structure-viewer');
     await expect(viewerWrapper).toBeVisible({ timeout: 5000 });
     
     // Assert: Viewer contains canvas/WebGL element

@@ -32,20 +32,20 @@ test.describe('E2E Test 1: Welcome Screen', () => {
   
   test('displays welcome screen with all action buttons', async ({ appPage }) => {
     // Wait for the welcome screen to be visible
-    await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible({ timeout: 30000 });
-    const welcomeContainer = appPage.getByTestId('qv-welcome');
+    await expect(appPage.getByTestId('qms-welcome-title')).toBeVisible({ timeout: 30000 });
+    const welcomeContainer = appPage.getByTestId('qms-welcome');
     await expect(welcomeContainer).toBeVisible();
     
     // Verify all action buttons are present within the welcome screen
-    // Use namespaced test IDs (welcome-* instead of generic qv-btn-*)
-    await expect(welcomeContainer.getByTestId('qv-welcome-btn-open-project')).toBeVisible();
-    await expect(welcomeContainer.getByTestId('qv-welcome-btn-create-new-project')).toBeVisible();
+    // Use namespaced test IDs (welcome-* instead of generic qms-btn-*)
+    await expect(welcomeContainer.getByTestId('qms-welcome-btn-open-project')).toBeVisible();
+    await expect(welcomeContainer.getByTestId('qms-welcome-btn-create-new-project')).toBeVisible();
     // Updated: "Create Demo Project" button is now "Browse Demo Gallery"
-    await expect(welcomeContainer.getByTestId('qv-welcome-btn-demo-gallery')).toBeVisible();
+    await expect(welcomeContainer.getByTestId('qms-welcome-btn-demo-gallery')).toBeVisible();
     
     // Verify the welcome title text
-    const title = appPage.getByTestId('qv-welcome-title');
-    await expect(title).toContainText('Welcome to QuantumVITAS');
+    const title = appPage.getByTestId('qms-welcome-title');
+    await expect(title).toContainText('Welcome to QMatSuite');
   });
 });
 

@@ -19,8 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.engines.discovery import discover_engine, is_engine_available
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.engines.discovery import discover_engine, is_engine_available
+from qmatsuite.core.resources import get_resources_dir
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -236,7 +236,7 @@ class TestAbinitRawExecution:
         assert any(workdir.glob("*o_DEN")), "No density file (*o_DEN) created"
 
         # ── Parse and verify results ──
-        from quantumvitas.drivers.abinit.parser import parse_abinit_output
+        from qmatsuite.drivers.abinit.parser import parse_abinit_output
 
         parsed = parse_abinit_output(output_file)
         assert parsed.version, "Could not parse ABINIT version"
@@ -310,7 +310,7 @@ class TestAbinitRawExecution:
         # Note: HIST.nc may not be created for small test, check output instead
 
         # ── Parse and verify results ──
-        from quantumvitas.drivers.abinit.parser import parse_abinit_output
+        from qmatsuite.drivers.abinit.parser import parse_abinit_output
 
         parsed = parse_abinit_output(output_file)
         assert parsed.calculation_type in ("relax", "vc_relax"), (
@@ -336,8 +336,8 @@ class TestAbinitDriverRegistration:
 
     def test_driver_registry_lookup(self):
         """Verify ABINIT driver is accessible via DriverRegistry."""
-        import quantumvitas.drivers.abinit  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.abinit  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("abinit")
         assert driver is not None
@@ -351,8 +351,8 @@ class TestAbinitDriverRegistration:
 
     def test_step_type_specs(self):
         """Verify all 3 step type specs are registered."""
-        import quantumvitas.drivers.abinit  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.abinit  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         expected = {"abinit_scf", "abinit_nscf", "abinit_relax"}
         for spec_name in expected:
@@ -362,8 +362,8 @@ class TestAbinitDriverRegistration:
 
     def test_step_type_handler_lookup(self):
         """Verify handler is resolvable for each step type."""
-        import quantumvitas.drivers.abinit  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.abinit  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         for spec_name in ["abinit_scf", "abinit_nscf", "abinit_relax"]:
             handler = DriverRegistry.get_handler(spec_name)
@@ -372,8 +372,8 @@ class TestAbinitDriverRegistration:
 
     def test_materialization_map(self):
         """Verify gen → spec materialization."""
-        import quantumvitas.drivers.abinit  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.abinit  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         assert DriverRegistry.materialize_step_type("abinit", "scf") == "abinit_scf"
         assert DriverRegistry.materialize_step_type("abinit", "nscf") == "abinit_nscf"
@@ -387,17 +387,17 @@ class TestAbinitDriverRegistration:
 
     def test_recipe_class(self):
         """Verify recipe class is accessible."""
-        import quantumvitas.drivers.abinit  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.abinit  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         recipe_cls = DriverRegistry.get_recipe_class("abinit")
         assert recipe_cls is not None
 
     def test_workdir_policy(self):
         """Verify SHARED workdir policy (Directory-state archetype)."""
-        import quantumvitas.drivers.abinit  # noqa: F401
-        from quantumvitas.core.driver_protocol import WorkdirPolicy
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.abinit  # noqa: F401
+        from qmatsuite.core.driver_protocol import WorkdirPolicy
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("abinit")
         assert driver.get_workdir_policy() == WorkdirPolicy.SHARED
@@ -419,7 +419,7 @@ class TestAbinitParser:
     )
     def test_parse_scf_golden(self):
         """Parse golden SCF output file."""
-        from quantumvitas.drivers.abinit.parser import parse_abinit_output
+        from qmatsuite.drivers.abinit.parser import parse_abinit_output
 
         output = parse_abinit_output(self._GOLDEN / "si_scf.abo")
         assert output.version, "No version parsed"
@@ -438,7 +438,7 @@ class TestAbinitParser:
     )
     def test_parse_relax_golden(self):
         """Parse golden relax output file."""
-        from quantumvitas.drivers.abinit.parser import parse_abinit_output
+        from qmatsuite.drivers.abinit.parser import parse_abinit_output
 
         output = parse_abinit_output(self._GOLDEN / "si_relax.abo")
         assert output.calculation_type in ("relax", "vc_relax")
@@ -451,7 +451,7 @@ class TestAbinitParser:
     )
     def test_parse_eig_golden(self):
         """Parse golden eigenvalue file."""
-        from quantumvitas.drivers.abinit.parser import parse_eig_file
+        from qmatsuite.drivers.abinit.parser import parse_eig_file
 
         eig = parse_eig_file(self._GOLDEN / "si_scfo_EIG")
         assert len(eig) > 0, "No k-points parsed"
@@ -469,7 +469,7 @@ class TestAbinitWriter:
 
     def test_write_scf_input(self, tmp_path):
         """Write and verify SCF input file."""
-        from quantumvitas.drivers.abinit.writer import (
+        from qmatsuite.drivers.abinit.writer import (
             AbinitStructure, SCFParams, write_scf_input
         )
 
@@ -497,7 +497,7 @@ class TestAbinitWriter:
 
     def test_write_relax_input(self, tmp_path):
         """Write and verify relax input file."""
-        from quantumvitas.drivers.abinit.writer import (
+        from qmatsuite.drivers.abinit.writer import (
             AbinitStructure, SCFParams, RelaxParams, write_relax_input
         )
 
@@ -524,7 +524,7 @@ class TestAbinitWriter:
 
     def test_structure_to_input_string(self):
         """Test structure serialization."""
-        from quantumvitas.drivers.abinit.writer import AbinitStructure
+        from qmatsuite.drivers.abinit.writer import AbinitStructure
 
         si = AbinitStructure(
             acell=(10.26, 10.26, 10.26),
@@ -552,7 +552,7 @@ class TestAbinitWorkflowRegistry:
 
     def test_abinit_in_workflow_registry(self):
         """Verify ABINIT step types in workflow registry."""
-        from quantumvitas.workflow.registry import get_registry, _STEP_TYPES
+        from qmatsuite.workflow.registry import get_registry, _STEP_TYPES
 
         registry = get_registry()
 
@@ -565,7 +565,7 @@ class TestAbinitWorkflowRegistry:
 
     def test_abinit_relax_is_structure_transform(self):
         """Verify abinit_relax has is_structure_transform=True."""
-        from quantumvitas.workflow.registry import _STEP_TYPES
+        from qmatsuite.workflow.registry import _STEP_TYPES
 
         spec = _STEP_TYPES.get("abinit_relax")
         assert spec is not None
@@ -573,13 +573,13 @@ class TestAbinitWorkflowRegistry:
 
     def test_abinit_prefix_in_step_type_convert(self):
         """Verify 'abinit' is in ENGINE_PREFIXES."""
-        from quantumvitas.workflow.step_type_convert import ENGINE_PREFIXES
+        from qmatsuite.workflow.step_type_convert import ENGINE_PREFIXES
 
         assert "abinit" in ENGINE_PREFIXES
 
     def test_gen_from_spec(self):
         """Test GEN extraction from SPEC."""
-        from quantumvitas.workflow.step_type_convert import gen_from
+        from qmatsuite.workflow.step_type_convert import gen_from
 
         assert gen_from("abinit_scf") == "scf"
         assert gen_from("abinit_nscf") == "nscf"
@@ -587,7 +587,7 @@ class TestAbinitWorkflowRegistry:
 
     def test_spec_from_gen(self):
         """Test SPEC creation from prefix + GEN."""
-        from quantumvitas.workflow.step_type_convert import spec_from
+        from qmatsuite.workflow.step_type_convert import spec_from
 
         assert spec_from("abinit", "scf") == "abinit_scf"
         assert spec_from("abinit", "nscf") == "abinit_nscf"

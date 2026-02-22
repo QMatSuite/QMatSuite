@@ -152,7 +152,7 @@ def verify_qc_topology(steps: List["Step"], registry) -> None:
             step_type_spec = getattr(step, 'step_type_spec', None)
             if step_type_spec:
                 # Convert SPEC to GEN for registry lookup
-                from quantumvitas.api.utils import step_type_gen_from_spec
+                from qmatsuite.api.utils import step_type_gen_from_spec
                 step_type_gen = step_type_gen_from_spec(step_type_spec)  # ❌ 转换发生在 execution 层内部
 ```
 
@@ -186,7 +186,7 @@ def get_gen_type(step: Any, registry: Optional[StepTypeRegistry] = None) -> Opti
 ```python
 # api/service.py:2687-2691
 # Convert spec to gen for get_default_step_params (which expects gen type)
-from quantumvitas.api.utils import step_type_gen_from_spec
+from qmatsuite.api.utils import step_type_gen_from_spec
 step_type_gen = step_type_gen_from_spec(step_type_spec)
 
 # Get defaults for step type (using gen type)
@@ -197,7 +197,7 @@ defaults = get_default_step_params(step_type_gen)
 
 ```python
 # api/service.py:6985-6991
-from quantumvitas.api.utils import is_step_type_spec, step_type_spec_from_gen
+from qmatsuite.api.utils import is_step_type_spec, step_type_spec_from_gen
 if is_step_type_spec(machine_step_type):
     step_type_spec_value = machine_step_type  # Already SPEC
 else:
@@ -229,7 +229,7 @@ def get_default_step_params(step_type_gen: str) -> dict[str, Any]:
 **`calculation/calculation.py`**:
 ```python
 # calculation/calculation.py:559-561
-from quantumvitas.workflow.step_type_convert import is_spec, gen_from
+from qmatsuite.workflow.step_type_convert import is_spec, gen_from
 if is_spec(step_type_spec):
     # Already spec type, skip materialization
 ```
@@ -239,7 +239,7 @@ if is_spec(step_type_spec):
 **`calculation/step_defaults.py`**:
 ```python
 # calculation/step_defaults.py:229-233
-from quantumvitas.workflow.step_type_convert import gen_from, is_spec
+from qmatsuite.workflow.step_type_convert import gen_from, is_spec
 
 # Convert to gen type if spec type provided (backward compatibility)
 if is_spec(step_type_gen):  # ❌ 参数名是 step_type_gen，但可能是 SPEC
@@ -259,7 +259,7 @@ if is_spec(step_type_gen):  # ❌ 参数名是 step_type_gen，但可能是 SPEC
 1. **`workflow/step_factory.py`**: 创建 step.yaml 时
    ```python
    # workflow/step_factory.py:47-48
-   from quantumvitas.workflow.step_type_convert import spec_from
+   from qmatsuite.workflow.step_type_convert import spec_from
    step_type_spec = spec_from(prefix, step_type_gen)
    ```
 
@@ -274,7 +274,7 @@ if is_spec(step_type_gen):  # ❌ 参数名是 step_type_gen，但可能是 SPEC
    ```python
    def get_template_for_step_type(step_type_gen: str) -> str:
        # Convert gen to spec for template lookup
-       from quantumvitas.workflow.step_type_convert import spec_from, is_spec
+       from qmatsuite.workflow.step_type_convert import spec_from, is_spec
        if is_spec(step_type_gen):  # ❌ 参数名是 step_type_gen，但可能是 SPEC
            step_type_spec = step_type_gen
        else:
@@ -288,7 +288,7 @@ if is_spec(step_type_gen):  # ❌ 参数名是 step_type_gen，但可能是 SPEC
 2. **`drivers/qe/engine/qe_calculation.py:227-228`**: QE calculation runner
    ```python
    step_type_gen_detected = self.detect_step_type(input_file)
-   from quantumvitas.workflow.step_type_convert import spec_from
+   from qmatsuite.workflow.step_type_convert import spec_from
    step_type_spec = spec_from("qe", step_type_gen_detected)  # ❌ 本应传 SPEC，但传了 GEN+engine
    ```
 
@@ -328,7 +328,7 @@ if is_spec(step_type_gen):  # ❌ 参数名是 step_type_gen，但可能是 SPEC
 
 2. **`execution/recipes.py:62-63`**: Execution 层内部
    ```python
-   from quantumvitas.api.utils import step_type_gen_from_spec
+   from qmatsuite.api.utils import step_type_gen_from_spec
    step_type_gen = step_type_gen_from_spec(step_type_spec)  # ❌ 转换发生在 execution 层
    ```
 

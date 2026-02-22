@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { useQVClient } from '../../hooks/useQVClient';
+import { useQMSClient } from '../../hooks/useQMSClient';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
 
 interface RawFileViewerProps {
@@ -18,7 +18,7 @@ interface RawArtifact {
 }
 
 export function RawFileViewer({ projectRoot, calculation, stepId }: RawFileViewerProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
   const [files, setFiles] = useState<RawArtifact[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [content, setContent] = useState<string>('');
@@ -37,7 +37,7 @@ export function RawFileViewer({ projectRoot, calculation, stepId }: RawFileViewe
     setLoadingFiles(true);
     setError(null);
     try {
-      const response = await qv.call('list_raw_files', {
+      const response = await qms.call('list_raw_files', {
         project_root: normalizedRoot,
         calculation,
         step: stepId,
@@ -65,7 +65,7 @@ export function RawFileViewer({ projectRoot, calculation, stepId }: RawFileViewe
     } finally {
       setLoadingFiles(false);
     }
-  }, [calculation, projectRoot, qv, stepId]);
+  }, [calculation, projectRoot, qms, stepId]);
 
   const loadContent = useCallback(
     async (filename: string) => {
@@ -77,7 +77,7 @@ export function RawFileViewer({ projectRoot, calculation, stepId }: RawFileViewe
       setLoadingContent(true);
       setError(null);
       try {
-        const response = await qv.call('read_raw_file', {
+        const response = await qms.call('read_raw_file', {
           project_root: normalizedRoot,
           calculation,
           step: stepId,
@@ -102,7 +102,7 @@ export function RawFileViewer({ projectRoot, calculation, stepId }: RawFileViewe
         setLoadingContent(false);
       }
     },
-    [calculation, projectRoot, qv, stepId],
+    [calculation, projectRoot, qms, stepId],
   );
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export function RawFileViewer({ projectRoot, calculation, stepId }: RawFileViewe
         <label htmlFor="analysis-raw-file-select">Raw File</label>
         <select
           id="analysis-raw-file-select"
-          data-testid="qv-analysis-raw-file-select"
+          data-testid="qms-analysis-raw-file-select"
           value={selectedFile ?? ''}
           onChange={(event) => setSelectedFile(event.target.value)}
         >
@@ -158,11 +158,11 @@ export function RawFileViewer({ projectRoot, calculation, stepId }: RawFileViewe
       </div>
       <div className="analysis-raw-viewer__content">
         {error ? (
-          <div className="analysis-surface__error" data-testid="qv-analysis-raw-error">{error}</div>
+          <div className="analysis-surface__error" data-testid="qms-analysis-raw-error">{error}</div>
         ) : loadingContent ? (
-          <div className="analysis-surface__placeholder" data-testid="qv-analysis-raw-loading">Loading file content...</div>
+          <div className="analysis-surface__placeholder" data-testid="qms-analysis-raw-loading">Loading file content...</div>
         ) : (
-          <pre data-testid="qv-analysis-raw-content">{content || '(empty file)'}</pre>
+          <pre data-testid="qms-analysis-raw-content">{content || '(empty file)'}</pre>
         )}
       </div>
     </div>

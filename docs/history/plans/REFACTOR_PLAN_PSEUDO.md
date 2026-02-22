@@ -70,7 +70,7 @@ Move pseudopotential management from step-level (StepDetailPanel) to calculation
   useEffect(() => {
     if (calculationForSteps && projectRoot) {
       setIsLoadingPseudoMapping(true);
-      qv.getCalculationPseudoMapping(projectRoot, calculationForSteps.slug)
+      qms.getCalculationPseudoMapping(projectRoot, calculationForSteps.slug)
         .then(response => {
           if (response.ok && response.data) {
             setPseudoMapping(response.data);

@@ -25,7 +25,7 @@ def get_parameter_keys(module_data: Dict[str, Any]) -> Set[str]:
 
 def generate_diff_report() -> str:
     """Generate markdown diff report."""
-    data_dir = Path(__file__).parent.parent / "src" / "quantumvitas" / "data"
+    data_dir = Path(__file__).parent.parent / "src" / "qmatsuite" / "data"
     
     v0_path = data_dir / "qe_module_parameters.legacy.v0.json"
     v1_path = data_dir / "qe_module_parameters.legacy.v1.json"

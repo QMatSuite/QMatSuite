@@ -186,7 +186,7 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
   - `loaded_at`: ISO timestamp (转换为本地时间 HH:MM:SS)
   - `schema_version`: number
   - `path_abs`: 绝对路径（tooltip显示）
-- **单一真相来源**：后端 `QE_METADATA_LOAD_STATE` (`src/quantumvitas/data/qe_metadata.py` 31-36行)
+- **单一真相来源**：后端 `QE_METADATA_LOAD_STATE` (`src/qmatsuite/data/qe_metadata.py` 31-36行)
 
 #### QE Parameter Browser Metadata Info
 - **位置**：`gui/src/components/panels/QEParameterBrowserPanel.tsx` (58-64行, 210行, 600行) - subtitle row右侧
@@ -197,43 +197,43 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
 - **位置**：
   - Sidebar：`gui/src/components/layout/Sidebar.tsx` (93-102行) - 连接状态dot
   - SettingsPanel Diagnostics：`gui/src/components/panels/SettingsPanel.tsx` (399-460行) - Python path, project root
-- **数据源**：`useDaemonStatus()` hook → `window.qv.getDaemonStatus()`
+- **数据源**：`useDaemonStatus()` hook → `window.qms.getDaemonStatus()`
 
 #### Daemon Logs
 - **位置**：
   - DebugPanel（底部resizable panel）：`gui/src/components/panels/DebugPanel.tsx` (23-101行)
   - SettingsPanel Diagnostics：`gui/src/components/panels/SettingsPanel.tsx` (460-500行)
-- **数据源**：`useQVLogs()` hook → `window.qv.onLog()` (stderr转发)
+- **数据源**：`useQMSLogs()` hook → `window.qms.onLog()` (stderr转发)
 
 #### Job I/O Directory
 - **位置**：`gui/src/components/panels/JobsPanel.tsx` (295-315行) - Job detail panel
 - **显示**：`io_dir` 路径 + "Reveal in Finder"按钮
 - **数据源**：`get_job_status` 响应中的 `io_dir` 字段
-- **单一真相来源**：后端 `compute_io_dir_from_workflow_model()` (`src/quantumvitas/calculation/runner.py` 18-42行)
+- **单一真相来源**：后端 `compute_io_dir_from_workflow_model()` (`src/qmatsuite/calculation/runner.py` 18-42行)
 
 ---
 
 ### 4.2 缺失的Debug信息（仅在console/log）
 
 1. **RPC调用计数/频率**
-   - **现状**：`useQVClient.ts` (148-155行) 有 `console.time/timeEnd` 日志
+   - **现状**：`useQMSClient.ts` (148-155行) 有 `console.time/timeEnd` 日志
    - **缺失**：GUI无入口查看RPC调用历史/频率统计
-   - **数据源**：前端 `window.qv.request()` 调用
+   - **数据源**：前端 `window.qms.request()` 调用
 
 2. **ResourceIndex cache状态**
-   - **现状**：后端 `DaemonState.project_caches` (`src/quantumvitas/daemon/server.py` 94-100行) 维护per-project cache
+   - **现状**：后端 `DaemonState.project_caches` (`src/qmatsuite/daemon/server.py` 94-100行) 维护per-project cache
    - **缺失**：GUI无入口查看cache命中率、invalidation事件
    - **数据源**：后端daemon state
 
 3. **Calculation execution trace**
    - **现状**：`CalculationResult` 包含 `steps` 数组，但无详细execution trace
    - **缺失**：GUI无入口查看step执行顺序、依赖关系、失败原因
-   - **数据源**：后端 `CalculationRunner.run()` (`src/quantumvitas/calculation/runner.py`)
+   - **数据源**：后端 `CalculationRunner.run()` (`src/qmatsuite/calculation/runner.py`)
 
 4. **QE metadata schema migration history**
    - **现状**：有legacy v0/v1/v2 JSON文件，但无迁移历史记录
    - **缺失**：GUI无入口查看schema版本历史、迁移路径
-   - **数据源**：文件系统（`src/quantumvitas/data/*.json`）
+   - **数据源**：文件系统（`src/qmatsuite/data/*.json`）
 
 5. **IPC bridge request/response latency**
    - **现状**：preload/main process有日志，但无聚合统计
@@ -246,10 +246,10 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
 
 | Debug信息 | 单一真相来源 | 文件路径 |
 |-----------|-------------|---------|
-| QE metadata load state | 后端 `QE_METADATA_LOAD_STATE` | `src/quantumvitas/data/qe_metadata.py` (31-36行) |
-| Job io_dir | 后端 `compute_io_dir_from_workflow_model()` | `src/quantumvitas/calculation/runner.py` (18-42行) |
+| QE metadata load state | 后端 `QE_METADATA_LOAD_STATE` | `src/qmatsuite/data/qe_metadata.py` (31-36行) |
+| Job io_dir | 后端 `compute_io_dir_from_workflow_model()` | `src/qmatsuite/calculation/runner.py` (18-42行) |
 | Daemon status | Electron main process | `gui/electron/main.ts` (daemonStatus对象) |
-| ResourceIndex cache | 后端 `DaemonState.project_caches` | `src/quantumvitas/daemon/server.py` (94-100行) |
+| ResourceIndex cache | 后端 `DaemonState.project_caches` | `src/qmatsuite/daemon/server.py` (94-100行) |
 
 ---
 
@@ -357,7 +357,7 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
 ### 2. 添加RPC调用统计到Diagnostics
 - **改动点**：在SettingsPanel Diagnostics区域添加"RPC Statistics"section，显示最近N次调用的command、耗时、错误率
 - **涉及文件**：
-  - `gui/src/hooks/useQVClient.ts` (148-155行) - 添加统计收集
+  - `gui/src/hooks/useQMSClient.ts` (148-155行) - 添加统计收集
   - `gui/src/components/panels/SettingsPanel.tsx` (399-460行) - 添加显示区域
 - **收益**：快速诊断RPC性能问题、重复调用
 - **风险**：中（需要维护统计state，可能影响性能）
@@ -386,7 +386,7 @@ const [currentView, setCurrentView] = useState<ViewType>('home');
 ### 5. 添加ResourceIndex cache状态到Diagnostics
 - **改动点**：新增RPC `get_project_cache_info`，返回当前project的cache状态（hit/miss计数、invalidation事件）
 - **涉及文件**：
-  - `src/quantumvitas/daemon/server.py` - 添加handler
+  - `src/qmatsuite/daemon/server.py` - 添加handler
   - `gui/src/components/panels/SettingsPanel.tsx` - 添加显示
 - **收益**：诊断registry同步问题、cache效率
 - **风险**：中（需要后端改动，可能暴露内部实现细节）

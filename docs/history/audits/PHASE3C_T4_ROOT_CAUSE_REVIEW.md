@@ -15,7 +15,7 @@
 
 The test calls:
 ```python
-result = QVService.run_step(
+result = QMSService.run_step(
     project_root=temp_project,
     calculation_selector=calc_id,
     step_selector=mp2_step_id,
@@ -24,43 +24,43 @@ result = QVService.run_step(
 
 ### Call Chain
 
-**1. API Layer Entry**: `src/quantumvitas/api.py`
-- Function: `QVService.run_step()` (approx lines ~2000-2500)
+**1. API Layer Entry**: `src/qmatsuite/api.py`
+- Function: `QMSService.run_step()` (approx lines ~2000-2500)
 - Routing logic determines engine based on `calculation.engine_family` ("pyscf")
 - For PySCF, routes to: `PySCFEngine.run_step()` or `PySCFEngine.run_step_with_chain()`
 
-**2. Engine Layer - Chain Detection**: `src/quantumvitas/engine/pyscf_engine.py`
+**2. Engine Layer - Chain Detection**: `src/qmatsuite/engine/pyscf_engine.py`
 - Function: `PySCFEngine.run_step()` (lines ~145-405)
   - Reads `step_type` from `step.yaml` (machine type: "pyscf_mp2")
   - Checks if step has dependencies via registry lookup
   - For `pyscf_mp2` (consumes_state="mf"), calls `run_step_with_chain()`
 
 - Function: `PySCFEngine.run_step_with_chain()` (lines ~550-777)
-  - **Line ~570**: Resolves dependency chain using `resolve_dependency_chain()` from `src/quantumvitas/engines/pyscf/chain.py`
+  - **Line ~570**: Resolves dependency chain using `resolve_dependency_chain()` from `src/qmatsuite/engines/pyscf/chain.py`
   - **Line ~575-600**: Resolves structure from `calculation.structure_id` (for SCF step)
   - **Line ~620-690**: Builds `chain_step_specs` list:
     - For each step in chain, reads parameters from step.yaml
     - **Line ~681**: Only merges `structure_data` if `step_spec.requires_structure == True`
     - For MP2 (requires_structure=False), params should be empty (no structure data)
   - **Line ~695**: Writes `job_chain.json` file
-  - **Line ~707**: Executes subprocess: `python -m quantumvitas.engines.pyscf <job_chain.json>`
+  - **Line ~707**: Executes subprocess: `python -m qmatsuite.engines.pyscf <job_chain.json>`
 
-**3. Dependency Resolution**: `src/quantumvitas/engines/pyscf/chain.py`
+**3. Dependency Resolution**: `src/qmatsuite/engines/pyscf/chain.py`
 - Function: `resolve_dependency_chain()` (lines ~15-100)
   - Input: target_step_ulid, list of (ulid, step_type) tuples, registry
   - For `pyscf_mp2`, finds nearest left step with `produces_state == "mf"` (pyscf_scf)
   - Returns: list of step indices [0, 1] (SCF then MP2)
 
-**4. Subprocess Entry**: `src/quantumvitas/engines/pyscf/__main__.py`
+**4. Subprocess Entry**: `src/qmatsuite/engines/pyscf/__main__.py`
 - **Line ~24**: Detects `job_chain.json` format (has "chain_steps" key)
 - **Line ~26**: Calls `run_job_chain(job_chain_path)`
 
-**5. Chain Execution Entry**: `src/quantumvitas/engines/pyscf/runner.py`
+**5. Chain Execution Entry**: `src/qmatsuite/engines/pyscf/runner.py`
 - Function: `run_job_chain()` (lines ~578-665)
   - **Line ~592**: Reads `job_chain.json`
   - **Line ~644**: Calls `run_chain_session()` from `chain_execution.py`
 
-**6. In-Session Chain Execution**: `src/quantumvitas/engines/pyscf/chain_execution.py`
+**6. In-Session Chain Execution**: `src/qmatsuite/engines/pyscf/chain_execution.py`
 - Function: `run_chain_session()` (lines ~22-133)
   - **Line ~59**: Creates empty `state_objects: Dict[str, Any] = {}`
   - **Line ~62**: Loops through `chain_steps` sequentially
@@ -72,7 +72,7 @@ result = QVService.run_step(
     - **Line ~107**: Retrieves `mf = state_objects["mf"]`
     - **Line ~108**: Calls `_run_mp2_in_session(params, mf, working_dir)`
 
-**7. MP2 Execution**: `src/quantumvitas/engines/pyscf/chain_execution.py`
+**7. MP2 Execution**: `src/qmatsuite/engines/pyscf/chain_execution.py`
 - Function: `_run_mp2_in_session()` (lines ~287-334)
   - **Line ~289**: Receives `mf` parameter (PySCF mean-field object)
   - **Line ~303**: Creates `mp2_calc = mp.MP2(mf)`
@@ -83,12 +83,12 @@ result = QVService.run_step(
 
 ```
 test_t4_runstep_mp2_chain_execution
-  → QVService.run_step()
+  → QMSService.run_step()
     → PySCFEngine.run_step()
       → PySCFEngine.run_step_with_chain()
         → resolve_dependency_chain() [finds SCF provider]
         → Builds job_chain.json (with structure for SCF, empty params for MP2)
-        → Subprocess: python -m quantumvitas.engines.pyscf job_chain.json
+        → Subprocess: python -m qmatsuite.engines.pyscf job_chain.json
           → run_job_chain()
             → run_chain_session()
               → _run_scf_in_session() → stores state["mf"]
@@ -103,7 +103,7 @@ test_t4_runstep_mp2_chain_execution
 
 ### State Creation Location
 
-**File**: `src/quantumvitas/engines/pyscf/chain_execution.py`  
+**File**: `src/qmatsuite/engines/pyscf/chain_execution.py`  
 **Function**: `run_chain_session()` (line ~59)
 
 ```python
@@ -112,7 +112,7 @@ state_objects: Dict[str, Any] = {}  # In-memory dict, not persisted
 
 ### State Storage Location
 
-**File**: `src/quantumvitas/engines/pyscf/chain_execution.py`  
+**File**: `src/qmatsuite/engines/pyscf/chain_execution.py`  
 **Function**: `run_chain_session()` (lines ~85-98)
 
 ```python
@@ -132,7 +132,7 @@ The `mf_object` comes from `_run_scf_in_session()` (lines ~138-285):
 
 ### State Consumption Location
 
-**File**: `src/quantumvitas/engines/pyscf/chain_execution.py`  
+**File**: `src/qmatsuite/engines/pyscf/chain_execution.py`  
 **Function**: `run_chain_session()` (lines ~100-119)
 
 ```python
@@ -161,7 +161,7 @@ elif step_type == "pyscf_mp2":
 
 ### Evidence from Code
 
-**File**: `src/quantumvitas/engines/pyscf/chain_execution.py`
+**File**: `src/qmatsuite/engines/pyscf/chain_execution.py`
 
 **Function**: `_run_mp2_in_session()` (lines ~287-334)
 
@@ -186,12 +186,12 @@ def _run_mp2_in_session(
 
 ### Where "Failed to build molecule" Error Originates
 
-**File**: `src/quantumvitas/engines/pyscf/chain_execution.py`  
+**File**: `src/qmatsuite/engines/pyscf/chain_execution.py`  
 **Function**: `_run_scf_in_session()` (lines ~138-285)
 
 ```python
 def _run_scf_in_session(...):
-    from quantumvitas.engines.pyscf.runner import build_mole
+    from qmatsuite.engines.pyscf.runner import build_mole
     try:
         mol = build_mole(params)  # LINE 153
     except Exception as e:
@@ -235,7 +235,7 @@ The error result returned from `run_chain_session()` contains information about 
 
 ### Manual Subprocess Execution Path
 
-**Command**: `python -m quantumvitas.engines.pyscf <job_chain.json>`
+**Command**: `python -m qmatsuite.engines.pyscf <job_chain.json>`
 
 **Execution**:
 1. `__main__.py` detects `job_chain.json` format
@@ -249,10 +249,10 @@ The error result returned from `run_chain_session()` contains information about 
 
 ### Integration Test Execution Path
 
-**Command**: `QVService.run_step()` → `PySCFEngine.run_step_with_chain()` → subprocess
+**Command**: `QMSService.run_step()` → `PySCFEngine.run_step_with_chain()` → subprocess
 
 **Execution**:
-1. Test calls `QVService.run_step()`
+1. Test calls `QMSService.run_step()`
 2. Engine builds `job_chain.json` dynamically
 3. Subprocess executes with that `job_chain.json`
 4. **Same code path as manual**, but with different input data
@@ -261,7 +261,7 @@ The error result returned from `run_chain_session()` contains information about 
 
 | Aspect | Manual Run | Integration Test |
 |--------|------------|------------------|
-| Entry point | Direct `run_job_chain()` | `QVService.run_step()` → `run_step_with_chain()` |
+| Entry point | Direct `run_job_chain()` | `QMSService.run_step()` → `run_step_with_chain()` |
 | job_chain.json source | Pre-existing file (from test run) | Dynamically generated by engine |
 | Structure data | Present in SCF step params | Should be present (resolved from calculation.structure_id) |
 | MP2 params | Empty (no structure data) | Should be empty (requires_structure=False) |
@@ -282,7 +282,7 @@ The error result returned from `run_chain_session()` contains information about 
 2. **Atoms list is empty**: `build_mole()` receives `params` with empty or invalid `atoms` list
 3. **Timing/race condition**: Structure resolution happens, but params dict is not properly updated before job_chain.json is written
 
-**File**: `src/quantumvitas/engine/pyscf_engine.py` (lines ~668-686)
+**File**: `src/qmatsuite/engine/pyscf_engine.py` (lines ~668-686)
 
 ```python
 # Get parameters
@@ -319,24 +319,24 @@ if step_spec and step_spec.requires_structure and structure_data:
 - **Used by**: UI, workflow intent (not execution)
 
 **3. StepType Enum**
-- **Location**: `src/quantumvitas/calculation/types.py`
+- **Location**: `src/qmatsuite/calculation/types.py`
 - **Examples**: `StepType.PYSCF_SCF`, `StepType.CUSTOM`
 - **Limitation**: Does not have `PYSCF_MP2` (only has `PYSCF_SCF`)
 - **Used by**: Legacy code, UI display
 
 ### Step Type Usage in Chain Execution
 
-**Dependency Resolution**: `src/quantumvitas/engines/pyscf/chain.py`
+**Dependency Resolution**: `src/qmatsuite/engines/pyscf/chain.py`
 - **Input**: List of `(ulid, step_type)` tuples where `step_type` is **machine type string** (from step.yaml)
 - **Line ~40**: Looks up `registry.get(step_type)` using machine type
 - **Line ~50**: Checks `spec.produces_state` and `spec.consumes_state`
 
-**Engine Execution**: `src/quantumvitas/engine/pyscf_engine.py`
+**Engine Execution**: `src/qmatsuite/engine/pyscf_engine.py`
 - **Line ~570**: Reads `step_type` from step.yaml (machine type)
 - **Line ~658**: Validates `step_type` is in registry using machine type
 - **Line ~680**: Looks up `registry.get(step_type)` using machine type
 
-**Chain Session Execution**: `src/quantumvitas/engines/pyscf/chain_execution.py`
+**Chain Session Execution**: `src/qmatsuite/engines/pyscf/chain_execution.py`
 - **Line ~64**: Receives `step_type` from `step_spec["step_type"]` (machine type from job_chain.json)
 - **Line ~80**: Checks `if step_type in ("pyscf_scf", ...)` using machine type string
 - **Line ~100**: Checks `elif step_type == "pyscf_mp2"` using machine type string
@@ -364,7 +364,7 @@ if step_spec and step_spec.requires_structure and structure_data:
 
 ### Proposed Fix
 
-**Location**: `src/quantumvitas/engine/pyscf_engine.py`, `run_step_with_chain()` method
+**Location**: `src/qmatsuite/engine/pyscf_engine.py`, `run_step_with_chain()` method
 
 **Problem Area**: Lines ~575-600 (structure resolution) and ~668-686 (parameter merging)
 
@@ -378,7 +378,7 @@ if step_spec and step_spec.requires_structure and structure_data:
    - Raise error immediately if structure data is invalid, rather than failing later in subprocess
 
 3. **Add defensive check in build_mole()**:
-   - In `src/quantumvitas/engines/pyscf/runner.py`, `build_mole()` function (line ~69)
+   - In `src/qmatsuite/engines/pyscf/runner.py`, `build_mole()` function (line ~69)
    - Add explicit check: `if not atoms or len(atoms) == 0: raise ValueError("Atoms list is empty")`
    - This provides clearer error message than "list index out of range"
 

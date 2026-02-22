@@ -8,7 +8,7 @@ Local tests can find and use QE even without a managed engine in `.qmatsuite/eng
 
 ### 1. New Registry System (Not Used by Tests)
 
-**Location**: `src/quantumvitas/core/engines/qe_registry.py`
+**Location**: `src/qmatsuite/core/engines/qe_registry.py`
 
 **Priority Order** (as designed):
 1. Project override (`project_engine_id`)
@@ -22,7 +22,7 @@ Local tests can find and use QE even without a managed engine in `.qmatsuite/eng
 
 ### 2. Legacy Auto-Detection (Currently Used by Tests)
 
-**Location**: `src/quantumvitas/core/engines/qe_installation.py`
+**Location**: `src/qmatsuite/core/engines/qe_installation.py`
 
 **How Tests Use It**:
 ```python
@@ -110,14 +110,14 @@ engine = QuantumEspressoEngine(config)  # ← Bypasses registry!
    ```
    - **Bypasses**: Registry completely
    - **Uses**: Legacy `QEInstallation()` auto-detection
-   - **Files**: `src/quantumvitas/core/engines/qe.py:114`
+   - **Files**: `src/qmatsuite/core/engines/qe.py:114`
 
 2. **CLI Commands** (If tests use CLI)
-   - **Location**: `src/quantumvitas/cli/main.py`
+   - **Location**: `src/qmatsuite/cli/main.py`
    - **Status**: Need to check if CLI uses registry or legacy
 
 3. **API/Service Layer** (If tests use daemon)
-   - **Location**: `src/quantumvitas/api.py`
+   - **Location**: `src/qmatsuite/api.py`
    - **Status**: Need to check if API uses registry or legacy
 
 ### Legacy Detection Flow
@@ -136,7 +136,7 @@ QuantumEspressoEngine(config)
 
 ## Evidence from Code
 
-### File: `src/quantumvitas/core/engines/qe.py:94-114`
+### File: `src/qmatsuite/core/engines/qe.py:94-114`
 
 ```python
 def __init__(self, config: EngineConfig):
@@ -151,7 +151,7 @@ def __init__(self, config: EngineConfig):
 
 **Problem**: When `config` has no `qe_home` or `executable_path`, it calls `QEInstallation()` which triggers full auto-detection.
 
-### File: `src/quantumvitas/core/engines/qe_installation.py:88-113`
+### File: `src/qmatsuite/core/engines/qe_installation.py:88-113`
 
 ```python
 def _initialize_qe_home() -> None:
@@ -169,7 +169,7 @@ def _initialize_qe_home() -> None:
 
 **Problem**: Always checks `QE_HOME` env var and runs auto-detection, regardless of registry settings.
 
-### File: `src/quantumvitas/core/engines/qe_installation.py:203-365`
+### File: `src/qmatsuite/core/engines/qe_installation.py:203-365`
 
 ```python
 def _detect_qe_home() -> Optional[Path]:
@@ -207,7 +207,7 @@ engine = QuantumEspressoEngine(config)  # ← Bypasses registry
 
 ### 2. CLI Commands (Bypass Registry)
 
-**File**: `src/quantumvitas/cli/main.py`
+**File**: `src/qmatsuite/cli/main.py`
 
 **Locations**:
 - Line 1627: `_run_standalone_step()` creates `QuantumEspressoEngine(engine_config)`
@@ -217,7 +217,7 @@ engine = QuantumEspressoEngine(config)  # ← Bypasses registry
 
 ### 3. API/Service Layer (Bypass Registry)
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 
 **Location**: Line 1270 in `run_step()` method
 ```python
@@ -229,7 +229,7 @@ engine = QuantumEspressoEngine(engine_config)  # ← Bypasses registry
 
 ### 4. Engine Registry Wrapper (Also Bypasses Registry)
 
-**File**: `src/quantumvitas/engine/registry.py:27-33`
+**File**: `src/qmatsuite/engine/registry.py:27-33`
 
 **Code**:
 ```python
@@ -245,7 +245,7 @@ def create_default_registry(config: Optional[EngineConfig] = None) -> EngineRegi
 
 ### Fix 1: Make QuantumEspressoEngine Use Registry (High Priority)
 
-**File**: `src/quantumvitas/core/engines/qe.py`
+**File**: `src/qmatsuite/core/engines/qe.py`
 
 **Change**: Modify `__init__` to use registry when no explicit path provided:
 
@@ -260,13 +260,13 @@ def __init__(self, config: EngineConfig):
         self._installation = QEInstallation(qe_home=config.executable_path)
     else:
         # Use registry for resolution
-        from quantumvitas.core.engines.qe_registry import resolve_qe_engine
+        from qmatsuite.core.engines.qe_registry import resolve_qe_engine
         try:
             engine_info = resolve_qe_engine()
             self._installation = QEInstallation(qe_home=engine_info.engine_path)
         except RuntimeError:
             # Fallback to legacy only if registry fails AND allow_path_fallback
-            from quantumvitas.core.settings import load_settings
+            from qmatsuite.core.settings import load_settings
             settings = load_settings()
             if settings.qe.allow_path_fallback:
                 self._installation = QEInstallation()  # Legacy auto-detect
@@ -286,7 +286,7 @@ def __init__(self, config: EngineConfig):
 ```python
 @pytest.fixture(scope="module")
 def qe_engine() -> QuantumEspressoEngine:
-    from quantumvitas.core.engines.qe_diagnostics import diagnose_qe_resolution
+    from qmatsuite.core.engines.qe_diagnostics import diagnose_qe_resolution
     report = diagnose_qe_resolution()
     
     if report.resolution_reason.startswith("legacy_"):
@@ -303,7 +303,7 @@ def qe_engine() -> QuantumEspressoEngine:
 
 ### Fix 3: Default allow_path_fallback to False (Low Priority)
 
-**File**: `src/quantumvitas/core/settings.py`
+**File**: `src/qmatsuite/core/settings.py`
 
 **Change**: Already defaults to `False` ✅ (line 370 in settings.py)
 
@@ -382,7 +382,7 @@ def qe_engine() -> QuantumEspressoEngine:
 
 ### Priority 1: Wire Registry into QuantumEspressoEngine
 
-**File**: `src/quantumvitas/core/engines/qe.py:94-114`
+**File**: `src/qmatsuite/core/engines/qe.py:94-114`
 
 **Change**: Use registry when no explicit path provided:
 
@@ -397,8 +397,8 @@ def __init__(self, config: EngineConfig):
         self._installation = QEInstallation(qe_home=config.executable_path)
     else:
         # Use registry for resolution
-        from quantumvitas.core.engines.qe_registry import resolve_qe_engine
-        from quantumvitas.core.settings import load_settings
+        from qmatsuite.core.engines.qe_registry import resolve_qe_engine
+        from qmatsuite.core.settings import load_settings
         
         try:
             engine_info = resolve_qe_engine()
@@ -428,8 +428,8 @@ def __init__(self, config: EngineConfig):
 @pytest.fixture(autouse=True)
 def reset_qe_registry():
     """Reset QE home registry before and after each test."""
-    from quantumvitas.core.engines import reset_qe_home
-    from quantumvitas.core.engines.qe_diagnostics import diagnose_qe_resolution
+    from qmatsuite.core.engines import reset_qe_home
+    from qmatsuite.core.engines.qe_diagnostics import diagnose_qe_resolution
     
     reset_qe_home()
     
@@ -457,7 +457,7 @@ def reset_qe_registry():
 
 ```python
 # In test setup
-from quantumvitas.core.settings import load_settings, save_settings
+from qmatsuite.core.settings import load_settings, save_settings
 settings = load_settings()
 settings.qe.allow_path_fallback = True  # Explicit opt-in
 save_settings(settings)

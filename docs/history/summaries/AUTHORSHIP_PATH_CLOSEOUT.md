@@ -3,7 +3,7 @@
 ## Summary
 
 All 52 Level-2 demo snapshots can now be compiled to fine-grained AuthoringOps,
-replayed through QVService, and re-snapshotted to semantic equivalence with
+replayed through QMSService, and re-snapshotted to semantic equivalence with
 the original. Both Path A (load snapshot) and Path B (authoring from scratch)
 are working.
 
@@ -25,7 +25,7 @@ are working.
 ## Phases Completed
 
 ### Phase 0A: Fix Second-Truth Daemon Handlers
-- `_handle_set_engine_family` and `_handle_apply_presets_to_calculation` now delegate to `QVService` methods
+- `_handle_set_engine_family` and `_handle_apply_presets_to_calculation` now delegate to `QMSService` methods
 - Daemon handlers are thin wrappers (~5 lines each)
 - Gate test: `tests/gates/test_daemon_no_yaml_write.py`
 
@@ -43,7 +43,7 @@ are working.
 ### Phase 1: AuthoringOps IR + Replay Engine
 - 8 op types: InitProject, ImportStructure, CreateCalculation, AddStep, SetField, UnsetField, ReplaceMap, ConfigureSpeciesMap
 - `authoring_ops.py` (137 lines): frozen dataclasses, serialization, `is_bulk_op()` gate
-- `replay.py` (149 lines): dispatches ops through QVService (no direct YAML writes)
+- `replay.py` (149 lines): dispatches ops through QMSService (no direct YAML writes)
 - `test_patch_semantics.py` (112 lines): locks yamldoc set/delete/apply_patch behavior
 
 ### Phase 2: Compiler + Roundtrip B Harness
@@ -94,16 +94,16 @@ from all meta blocks via `_strip_slugs()`.
 
 | File | Action | Lines |
 |------|--------|-------|
-| `src/quantumvitas/demo_store/authoring_ops.py` | NEW | 137 |
-| `src/quantumvitas/demo_store/replay.py` | NEW | 149 |
-| `src/quantumvitas/demo_store/compiler.py` | NEW | 249 |
-| `src/quantumvitas/demo_store/roundtrip.py` | MODIFY | 249 |
-| `src/quantumvitas/core/yamldoc.py` | MODIFY | ~10 lines changed |
-| `src/quantumvitas/workflow/registry.py` | MODIFY | +12 lines |
-| `src/quantumvitas/calculation/step_defaults.py` | MODIFY | key renames |
-| `src/quantumvitas/workflow/step_factory.py` | MODIFY | +1 line |
-| `src/quantumvitas/api/service.py` | MODIFY | +140 lines |
-| `src/quantumvitas/daemon/server.py` | MODIFY | -130, +12 lines |
+| `src/qmatsuite/demo_store/authoring_ops.py` | NEW | 137 |
+| `src/qmatsuite/demo_store/replay.py` | NEW | 149 |
+| `src/qmatsuite/demo_store/compiler.py` | NEW | 249 |
+| `src/qmatsuite/demo_store/roundtrip.py` | MODIFY | 249 |
+| `src/qmatsuite/core/yamldoc.py` | MODIFY | ~10 lines changed |
+| `src/qmatsuite/workflow/registry.py` | MODIFY | +12 lines |
+| `src/qmatsuite/calculation/step_defaults.py` | MODIFY | key renames |
+| `src/qmatsuite/workflow/step_factory.py` | MODIFY | +1 line |
+| `src/qmatsuite/api/service.py` | MODIFY | +140 lines |
+| `src/qmatsuite/daemon/server.py` | MODIFY | -130, +12 lines |
 
 ### Tests (454 lines new)
 

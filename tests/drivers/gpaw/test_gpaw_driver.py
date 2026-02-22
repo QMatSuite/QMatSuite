@@ -7,8 +7,8 @@ No GPAW installation is required — these test the driver bundle only.
 
 import pytest
 
-from quantumvitas.drivers.gpaw.driver import GPAWDriver
-from quantumvitas.core.driver_protocol import WorkdirPolicy, ErrorClass
+from qmatsuite.drivers.gpaw.driver import GPAWDriver
+from qmatsuite.core.driver_protocol import WorkdirPolicy, ErrorClass
 
 
 @pytest.fixture
@@ -103,7 +103,7 @@ class TestGPAWDriverMethods:
         assert callable(handler)
 
     def test_recipe_class(self, driver):
-        from quantumvitas.drivers.gpaw.recipe import GPAWRecipe
+        from qmatsuite.drivers.gpaw.recipe import GPAWRecipe
         recipe_class = driver.get_recipe_class()
         assert recipe_class is GPAWRecipe
 
@@ -159,23 +159,23 @@ class TestGPAWRegistration:
     """Test driver registration in the DriverRegistry."""
 
     def test_driver_registered(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         assert "gpaw" in DriverRegistry.get_all_engines(), "GPAW driver not registered"
 
     def test_registry_lookup(self):
-        from quantumvitas.core.driver_registry import DriverRegistry
+        from qmatsuite.core.driver_registry import DriverRegistry
         driver = DriverRegistry.get_driver("gpaw")
         assert driver is not None
         assert driver.PREFIX == "gpaw"
 
     def test_engine_registry_has_gpaw(self):
-        from quantumvitas.engine.registry import create_default_registry
+        from qmatsuite.engine.registry import create_default_registry
         registry = create_default_registry()
         assert registry.has("gpaw")
 
     def test_step_types_in_workflow_registry(self):
         """Verify GPAW step types are registered in the workflow StepTypeRegistry."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
 
         for gen_type in ("scf", "nscf", "relax", "bandspw", "dos", "md"):
@@ -195,7 +195,7 @@ class TestGPAWIsolation:
         from pathlib import Path
         handlers_path = (
             Path(__file__).parent.parent.parent.parent
-            / "src" / "quantumvitas" / "execution" / "handlers.py"
+            / "src" / "qmatsuite" / "execution" / "handlers.py"
         )
         source = handlers_path.read_text()
         assert "def gpaw_step_handler" not in source, (
@@ -207,7 +207,7 @@ class TestGPAWIsolation:
         from pathlib import Path
         recipes_path = (
             Path(__file__).parent.parent.parent.parent
-            / "src" / "quantumvitas" / "execution" / "recipes.py"
+            / "src" / "qmatsuite" / "execution" / "recipes.py"
         )
         source = recipes_path.read_text()
         assert "class GPAWRecipe" not in source, (

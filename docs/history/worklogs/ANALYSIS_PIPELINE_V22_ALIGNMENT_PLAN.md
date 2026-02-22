@@ -61,12 +61,12 @@ The L2 spec was updated to v2.2 with multi-match semantics, three matching domai
 
 | File | Changes |
 |------|---------|
-| `src/quantumvitas/core/analysis/capability.py` | +enumerate_all_matches, +ResultState, +MissingReason, +AnalysisResult, +validation |
-| `src/quantumvitas/core/analysis/orchestrator.py` | Rewrite to multi-match + result states |
-| `src/quantumvitas/core/analysis/cas_writer.py` | Update UNIQUE conflict target |
-| `src/quantumvitas/provenance/schema.py` | Change UNIQUE constraint |
-| `src/quantumvitas/api/service.py` | Update memo keys, persist loop, add Domain B method |
-| `src/quantumvitas/daemon/server.py` | Register new handler |
+| `src/qmatsuite/core/analysis/capability.py` | +enumerate_all_matches, +ResultState, +MissingReason, +AnalysisResult, +validation |
+| `src/qmatsuite/core/analysis/orchestrator.py` | Rewrite to multi-match + result states |
+| `src/qmatsuite/core/analysis/cas_writer.py` | Update UNIQUE conflict target |
+| `src/qmatsuite/provenance/schema.py` | Change UNIQUE constraint |
+| `src/qmatsuite/api/service.py` | Update memo keys, persist loop, add Domain B method |
+| `src/qmatsuite/daemon/server.py` | Register new handler |
 | `tests/core/analysis/test_capability.py` | Add multi-match + validation tests |
 | `tests/core/analysis/test_orchestrator.py` | Adapt to AnalysisResult, add multi-match tests |
 | `tests/gates/test_analysis_invariants.py` | Add gate tests |

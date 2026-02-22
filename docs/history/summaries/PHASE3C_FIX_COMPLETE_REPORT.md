@@ -16,22 +16,22 @@ All four phases of fixes have been completed and verified. The codebase is now i
 ### ✅ Phase A: Registry Completeness
 - **Status**: COMPLETE (already existed)
 - **Changes**: 
-  - `pyscf_td` StepTypeSpec already registered in `src/quantumvitas/workflow/registry.py`
+  - `pyscf_td` StepTypeSpec already registered in `src/qmatsuite/workflow/registry.py`
   - MATERIALIZATION_MAP already includes `("pyscf", "TD"): "pyscf_td"` mapping
 - **Verification**: Registry contains `pyscf_td` with correct fields
 
 ### ✅ Phase B: StepResult Import Regression
 - **Status**: COMPLETE (already fixed in previous session)
 - **Changes**:
-  - `src/quantumvitas/calculation/step.py`: Import from `quantumvitas.engine.base` (line 120)
-  - `src/quantumvitas/calculation/runner.py`: Already correct
-- **Verification**: No imports from `quantumvitas.calculation.results` found
+  - `src/qmatsuite/calculation/step.py`: Import from `qmatsuite.engine.base` (line 120)
+  - `src/qmatsuite/calculation/runner.py`: Already correct
+- **Verification**: No imports from `qmatsuite.calculation.results` found
 - **Tests**: All StepResult import tests pass
 
 ### ✅ Phase C: CLI Deprecated Step.yaml Path
 - **Status**: COMPLETE - FIXED
 - **Problem**: `NameError: name 'structure' is not defined` in QE execution path
-- **Root Cause**: In `QVService.run_step()` QE path, `structure` variable was referenced but never defined before calling `generate_qe_input_from_spec()`.
+- **Root Cause**: In `QMSService.run_step()` QE path, `structure` variable was referenced but never defined before calling `generate_qe_input_from_spec()`.
 - **Fix**: Added structure resolution from `calculation.structure_id` before calling `generate_qe_input_from_spec()`:
   ```python
   # Resolve structure from calculation.structure_id (DAG model)
@@ -39,7 +39,7 @@ All four phases of fixes have been completed and verified. The codebase is now i
   structure = read_structure(structure_resolved.absolute_path)
   ```
 - **Files Changed**:
-  - `src/quantumvitas/api.py` (lines 1523-1525)
+  - `src/qmatsuite/api.py` (lines 1523-1525)
 - **Tests**: ✅ `test_cli_run_stepfile_generates_input` PASSES
 - **Tests**: ✅ `test_cli_run_step_accepts_step_yaml` PASSES
 
@@ -56,7 +56,7 @@ All four phases of fixes have been completed and verified. The codebase is now i
 ## Files Changed
 
 ### Phase C Fix
-1. **`src/quantumvitas/api.py`** (lines 1523-1525):
+1. **`src/qmatsuite/api.py`** (lines 1523-1525):
    - Added structure resolution from `calculation.structure_id` before generating QE input
    - Ensures structure is properly resolved in deprecated CLI path
 

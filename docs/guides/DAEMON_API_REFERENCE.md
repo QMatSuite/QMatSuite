@@ -1,20 +1,20 @@
-# QuantumVITAS Daemon API Reference
+# QMatSuite Daemon API Reference
 
 > A stdio JSON-RPC daemon for GUI integration.
 
 ## Overview
 
-The QuantumVITAS daemon (`qv-daemon`) provides a JSON-RPC interface over stdin/stdout for GUI applications (e.g., Electron). It calls `QVService` internally, never CLI commands.
+The QMatSuite daemon (`qms-daemon`) provides a JSON-RPC interface over stdin/stdout for GUI applications (e.g., Electron). It calls `QMSService` internally, never CLI commands.
 
 ### Starting the Daemon
 
 ```bash
 # As a module
-python -m quantumvitas.daemon.server
+python -m qmatsuite.daemon.server
 
 # Or in Python
-from quantumvitas.daemon import QVDaemon
-daemon = QVDaemon()
+from qmatsuite.daemon import QMSDaemon
+daemon = QMSDaemon()
 daemon.run()
 ```
 
@@ -77,7 +77,7 @@ daemon.run()
 | `parse_error` | Invalid JSON in request |
 | `invalid_request` | Missing required fields (e.g., `type`) |
 | `unknown_command` | Command not found |
-| `service_error` | Error from QVService |
+| `service_error` | Error from QMSService |
 | `not_found` | File or resource not found |
 | `invalid_argument` | Invalid parameter value |
 | `handler_error` | Unexpected error in handler |
@@ -838,7 +838,7 @@ Download a pseudopotential from a candidate (URL or filename).
 
 ### Daemon Design Principles
 
-1. **No CLI dependency**: Daemon calls `QVService`, never CLI commands or subprocesses
+1. **No CLI dependency**: Daemon calls `QMSService`, never CLI commands or subprocesses
 2. **No cwd dependency**: All paths come from request payloads
 3. **Pure JSON over stdio**: One request/response per line
 4. **Never crashes**: All exceptions become error responses
@@ -864,7 +864,7 @@ The daemon never crashes. All exceptions are caught and returned as error respon
 try:
     result = handler(payload)
     return {"ok": True, "data": result}
-except QVServiceError as e:
+except QMSServiceError as e:
     return {"ok": False, "error": {"code": "service_error", "message": str(e)}}
 except Exception as e:
     return {"ok": False, "error": {"code": "handler_error", "message": str(e)}}
@@ -877,11 +877,11 @@ except Exception as e:
 For direct Python usage (e.g., in tests):
 
 ```python
-from quantumvitas.daemon import QVDaemon
-from quantumvitas.daemon.server import RPCRequest
+from qmatsuite.daemon import QMSDaemon
+from qmatsuite.daemon.server import RPCRequest
 
 # Create daemon
-daemon = QVDaemon()
+daemon = QMSDaemon()
 
 # Send request directly (no stdin/stdout)
 response = daemon.handle_request(RPCRequest(
@@ -899,7 +899,7 @@ else:
 ### JobManager Direct Usage
 
 ```python
-from quantumvitas.daemon.jobs import JobManager, JobStatus
+from qmatsuite.daemon.jobs import JobManager, JobStatus
 
 manager = JobManager(max_workers=1)
 

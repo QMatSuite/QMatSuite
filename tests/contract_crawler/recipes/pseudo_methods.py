@@ -10,15 +10,15 @@ from .world import build_demo_world
 
 # Try to import API
 try:
-    from quantumvitas.api import get_service, QVService
+    from qmatsuite.api import get_service, QMSService
 except ImportError:
     try:
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         def get_service(project_root):
-            return QVService(project_root)
+            return QMSService(project_root)
     except ImportError:
         get_service = None
-        QVService = None
+        QMSService = None
 
 
 class PseudoMethodsRecipe(Recipe):
@@ -52,19 +52,19 @@ class PseudoMethodsRecipe(Recipe):
     
     def setup(self) -> bool:
         """Create minimal project world if needed."""
-        if QVService is None:
+        if QMSService is None:
             return False
         
         # Most pseudo methods need a project
         if self.method_name in ("resolve_project_pseudo_provenance", "materialize_pseudo_file"):
             self.project_root = self.tmp_path / "demo_project"
             self.project_root.mkdir()
-            QVService.init_project(self.project_root, name="demo_project")
+            QMSService.init_project(self.project_root, name="demo_project")
             self.world = build_demo_world(self.project_root)
         
         # For validate_pseudo_config, set up directories and config
         if self.method_name == "validate_pseudo_config":
-            from quantumvitas.core.pseudo_config import PseudoConfig, save_pseudo_config
+            from qmatsuite.core.pseudo_config import PseudoConfig, save_pseudo_config
             store_dir = self.tmp_path / "pseudo_store"
             seed_dir = self.tmp_path / "pseudo_seed"
             store_dir.mkdir(exist_ok=True)
@@ -112,7 +112,7 @@ class PseudoMethodsRecipe(Recipe):
             if self.world is None:
                 project_root = self.tmp_path / "demo_project"
                 project_root.mkdir(exist_ok=True)
-                QVService.init_project(project_root, name="demo_project")
+                QMSService.init_project(project_root, name="demo_project")
                 self.world = {"project_root": str(project_root)}
             return {
                 "project_root": self.world["project_root"],  # 0873ebf expects project_root

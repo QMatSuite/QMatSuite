@@ -68,7 +68,7 @@ Calculation Note:
 
 ## 代码更改
 
-### `src/quantumvitas/core/engines/qe_input.py`
+### `src/qmatsuite/core/engines/qe_input.py`
 
 1. **添加 Q2R 和 MATDYN 模块**:
    ```python
@@ -91,7 +91,7 @@ Calculation Note:
 5. **添加官方文档链接**:
    - 在模块注释和 `detect_module` 方法中添加了文档链接
 
-### `src/quantumvitas/core/engines/qe.py`
+### `src/qmatsuite/core/engines/qe.py`
 
 1. **更新 `MODULE_NAMELISTS`**:
    - 添加了 `q2r` 和 `matdyn` 的 namelist 映射

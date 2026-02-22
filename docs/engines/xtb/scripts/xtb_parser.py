@@ -10,7 +10,7 @@ Parses xTB calculation results from:
 - .xtboptok / xtbmdok (success markers)
 
 Designed as a standalone exploration utility. When integrating into
-QMatSuite, this will be adapted into src/quantumvitas/drivers/xtb/parser.py
+QMatSuite, this will be adapted into src/qmatsuite/drivers/xtb/parser.py
 """
 
 from __future__ import annotations

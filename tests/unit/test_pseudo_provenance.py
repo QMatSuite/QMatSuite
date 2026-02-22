@@ -9,14 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.pseudo_provenance import (
+from qmatsuite.core.pseudo_provenance import (
     compute_sha256_file,
     compute_sha_family_file,
     parse_element_from_upf_text,
     resolve_pseudo_provenance,
 )
-from quantumvitas.core.pseudo_libinfo import compute_sha_family_text
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.pseudo_libinfo import compute_sha_family_text
+from qmatsuite.core.resources import get_resources_dir
 
 
 def test_provenance_matches_internal_resources_pseudo_by_sha256_or_token(

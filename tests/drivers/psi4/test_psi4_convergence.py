@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.psi4.parsers.convergence import (
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.psi4.parsers.convergence import (
     Psi4ConvergenceProvider,
     parse_psi4_convergence,
 )
-from quantumvitas.parsers.registry import get_parser
+from qmatsuite.parsers.registry import get_parser
 
 
 PSI4_SCF_OUTPUT = """\

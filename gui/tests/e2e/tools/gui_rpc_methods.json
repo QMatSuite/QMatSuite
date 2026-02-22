@@ -71,9 +71,9 @@
     "update_step_params"
   ],
   "extracted_from_patterns": [
-    "qv.call('method_name', ...)",
-    "window.qv.request('method_name', ...)",
-    "qv.request('method_name', ...)"
+    "qms.call('method_name', ...)",
+    "window.qms.request('method_name', ...)",
+    "qms.request('method_name', ...)"
   ],
   "file_count_scanned": 97,
   "src_files": 84,

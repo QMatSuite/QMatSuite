@@ -10,8 +10,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 // Listen for main process ready message (optional)
-if (window.qv) {
-  window.qv.onMainMessage((data) => {
-    console.log('[QV] Main process message:', data)
+if (window.qms) {
+  window.qms.onMainMessage((data) => {
+    console.log('[QMS] Main process message:', data)
   })
 }

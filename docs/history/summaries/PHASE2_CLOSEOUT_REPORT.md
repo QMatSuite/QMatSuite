@@ -12,12 +12,12 @@ Phase 2 close-out items completed successfully. All required tasks have been imp
 ### 1. CLI Support for structure_kind and engine_family
 
 **Files Modified**:
-- `src/quantumvitas/cli/main.py`: Added `--structure-kind` and `--engine-family` options to `init_calculation_command`
+- `src/qmatsuite/cli/main.py`: Added `--structure-kind` and `--engine-family` options to `init_calculation_command`
   - Defaults: `structure_kind` defaults to "periodic", `engine_family` defaults to "qe" for periodic, "pyscf" for molecule
   - Validation: Validates `structure_kind` is "periodic" or "molecule"
   - Immutability: Fields are set only during creation (no configure command exists to modify them)
 
-- `src/quantumvitas/core/templates.py`: Added defaults for structure_kind/engine_family in template copying
+- `src/qmatsuite/core/templates.py`: Added defaults for structure_kind/engine_family in template copying
   - If template calculation.yaml is missing these fields, defaults are applied (periodic/qe or molecule/pyscf)
 
 **New Files**:

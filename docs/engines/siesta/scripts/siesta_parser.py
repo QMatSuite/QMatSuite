@@ -5,7 +5,7 @@ Parses Siesta output files (.out, .EIG, .FA, .STRUCT_OUT, .XV, FORCE_STRESS,
 OUTVARS.yml, .MDE, .PDOS.xml, .DOS) and extracts structured data.
 
 This is a temporary exploration tool. It will be adapted into
-src/quantumvitas/drivers/siesta/parser.py during the integration phase.
+src/qmatsuite/drivers/siesta/parser.py during the integration phase.
 """
 
 from __future__ import annotations

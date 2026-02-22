@@ -6,7 +6,7 @@ This test creates a project with an auto k-path band structure calculation:
 - NSCF calculation (pw.x calculation='nscf', K_POINTS automatic denser)
 - Bands calculation (pw.x calculation='bands', K_POINTS crystal_b auto-generated)
 - Bands post-processing (bands.x)
-- Band structure analysis (qv analyze band)
+- Band structure analysis (qms analyze band)
 
 Requires QE to be installed and pymatgen for auto k-path generation.
 """
@@ -21,7 +21,7 @@ import yaml
 from pathlib import Path
 
 import pytest
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 # Check for pymatgen (required for auto k-path tests)
 try:
@@ -34,9 +34,9 @@ except ImportError:
 pytestmark = pytest.mark.qe_core
 
 
-def run_qv(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
-    """Run qv CLI command."""
-    cmd = [sys.executable, "-m", "quantumvitas.cli.main"] + args
+def run_qms(args: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
+    """Run qms CLI command."""
+    cmd = [sys.executable, "-m", "qmatsuite.cli.main"] + args
     result = subprocess.run(
         cmd,
         cwd=cwd,
@@ -100,7 +100,7 @@ def project_with_structure(test_project_dir: Path, project_root_path: Path) -> P
     scf_in.write_text(QE_INPUT_CONTENT)
     
     # Initialize AUTO project
-    run_qv(["init", "project", "--name", "si_bands_auto"], cwd=test_project_dir)
+    run_qms(["init", "project", "--name", "si_bands_auto"], cwd=test_project_dir)
     
     project_dir = test_project_dir / "si_bands_auto"
     assert project_dir.exists(), f"Project not created at {project_dir}"
@@ -116,7 +116,7 @@ def project_with_structure(test_project_dir: Path, project_root_path: Path) -> P
         shutil.copy2(pp_file, pseudo_dst / pp_file.name)
     
     # Import structure from SCF input
-    run_qv(["import-structure", str(scf_in), "--name", "si"], cwd=project_dir)
+    run_qms(["import-structure", str(scf_in), "--name", "si"], cwd=project_dir)
     
     return project_dir
 
@@ -130,7 +130,7 @@ class TestSiBandsCalculationAutoKpath:
         """Create calculation with auto k-path."""
         project_dir = project_with_structure
         
-        run_qv(["init", "calculation", "bands_auto", "--structure", "si", "--engine-family", "qe"], cwd=project_dir)
+        run_qms(["init", "calculation", "bands_auto", "--structure", "si", "--engine-family", "qe"], cwd=project_dir)
         
         calculation_dir = project_dir / "calculations" / "bands_auto"
         assert calculation_dir.exists()
@@ -143,7 +143,7 @@ class TestSiBandsCalculationAutoKpath:
         project_dir = project_with_structure
         
         # Step 1: SCF (same as manual)
-        run_qv([
+        run_qms([
             "init", "step", "scf",
             "--structure", "si",
             "--calculation", "bands_auto",
@@ -158,7 +158,7 @@ class TestSiBandsCalculationAutoKpath:
         ], cwd=project_dir)
         
         # Step 2: NSCF (same as manual)
-        run_qv([
+        run_qms([
             "init", "step", "nscf",
             "--structure", "si",
             "--calculation", "bands_auto",
@@ -175,7 +175,7 @@ class TestSiBandsCalculationAutoKpath:
         
         # Step 3: Bands calculation with AUTO k-path
         # --auto-kpath will generate K_POINTS crystal_b from structure symmetry
-        run_qv([
+        run_qms([
             "init", "step", "bandspw",
             "--structure", "si",
             "--calculation", "bands_auto",
@@ -200,7 +200,7 @@ class TestSiBandsCalculationAutoKpath:
             "Auto k-path should use crystal_b option"
         
         # Step 4: Bands post-processing (bands.x)
-        run_qv([
+        run_qms([
             "init", "step", "bands",
             "--structure", "si",
             "--calculation", "bands_auto",
@@ -214,7 +214,7 @@ class TestSiBandsCalculationAutoKpath:
         # The SCF input file was created in project_with_structure fixture at test_project_dir / "si.0_scf.in"
         # Since project_dir = test_project_dir / "si_bands_auto", the input is at project_dir.parent / "si.0_scf.in"
         scf_in = project_dir.parent / "si.0_scf.in"
-        run_qv([
+        run_qms([
             "configure", "species", "--from-input", str(scf_in),
             "--calc", "bands_auto",
         ], cwd=project_dir)
@@ -232,7 +232,7 @@ class TestSiBandsCalculationAutoKpath:
         raw_dir = calculation_dir / "raw"
         
         # Run the calculation once
-        result = run_qv(
+        result = run_qms(
             ["run", "calculation", "bands_auto", "--verbose"],
             cwd=project_dir,
             check=False,
@@ -288,19 +288,19 @@ class TestSiBandsCalculationAutoKpath:
             if scf_out:
                 fermi_file = scf_out[0]
         
-        # Run qv analyze band
+        # Run qms analyze band
         args = ["analyze", "band", str(bands_gnu), "--plot", "--format", "png"]
         if symmetry_file:
             args.extend(["--symmetry", str(symmetry_file)])
         if fermi_file:
             args.extend(["--scf", str(fermi_file)])
         
-        result = run_qv(args, cwd=project_dir, check=False)
+        result = run_qms(args, cwd=project_dir, check=False)
         
         # Check if analyze command failed
         if result.returncode != 0:
             pytest.fail(
-                "qv analyze band failed for auto k-path:\n"
+                "qms analyze band failed for auto k-path:\n"
                 f"STDOUT:\n{result.stdout}\n\n"
                 f"STDERR:\n{result.stderr}"
             )

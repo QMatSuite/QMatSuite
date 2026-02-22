@@ -35,7 +35,7 @@ Output file: <HOME>/QMatSuite/.tmp/runs/cli_show_command_exec/project/calculatio
 - Warning: `No output file provided for step scf, using input_file as fallback` (line 1625 in `cli/main.py`)
 - Test expects output file to contain "JOB DONE" marker
 - Test extracts output_file from CLI stdout: `"Step finished: <output_path> -> (input <input_path>)"`
-- CLI command uses `result.get("output_file")` from `QVService.run_step()` return value
+- CLI command uses `result.get("output_file")` from `QMSService.run_step()` return value
 - `api.py:1449` returns `"output_file": None` with TODO comment
 
 **Matches Previous Report**: ✅ Yes (same failure pattern)
@@ -73,7 +73,7 @@ AssertionError: calc.yaml pseudo_set_sha not updated: expected 52d2d981dddaaec4b
 ValueError: K_POINTS option 'crystal_b' requires 'data' to be provided. K-path formats (crystal_b, crystal_c, tpiba_b, tpiba_c) cannot use automatic grid data.
 ```
 
-**Origin**: `src/quantumvitas/calculation/input_runner.py:687`
+**Origin**: `src/qmatsuite/calculation/input_runner.py:687`
 
 **Key Evidence**:
 - Error occurs during `Calculation.from_yaml(..., materialize_steps=True)` call
@@ -90,7 +90,7 @@ ValueError: K_POINTS option 'crystal_b' requires 'data' to be provided. K-path f
 
 ### A1) CLI Command Path Trace
 
-**File**: `src/quantumvitas/cli/main.py`
+**File**: `src/qmatsuite/cli/main.py`
 
 **Entry Point**: `run_step_command()` (lines 1427-1633)
 
@@ -105,11 +105,11 @@ if not output_file:
 ```
 
 **Evidence**:
-- CLI expects `result["output_file"]` from `QVService.run_step()` return value
+- CLI expects `result["output_file"]` from `QMSService.run_step()` return value
 - Falls back to `result["stdout_file"]`, then `input_file` (with warning)
 - Test extracts output_file from CLI stdout line: `"Step finished: <output_path> -> (input <input_path>)"` (line 199)
 
-**API Return Value** (`src/quantumvitas/api.py:1443-1453`):
+**API Return Value** (`src/qmatsuite/api.py:1443-1453`):
 ```python
 return {
     "step": step_selector,
@@ -130,7 +130,7 @@ return {
 
 ### A2) StepResultSummary Construction in JobGraph Path
 
-**File**: `src/quantumvitas/calculation/runner.py`
+**File**: `src/qmatsuite/calculation/runner.py`
 
 **Location**: `_execute_with_jobgraph()` method (lines 536-604)
 
@@ -151,22 +151,22 @@ summary = StepResultSummary(
 
 **Available Data Sources**:
 
-1. **Job.input_files** (`src/quantumvitas/execution/job_graph.py:Job`):
+1. **Job.input_files** (`src/qmatsuite/execution/job_graph.py:Job`):
    - Type: `List[Path]`
    - Contains: `[calc_raw_dir / f"{public_type}.in"]` (from `QERecipe`, line 128)
    - Evidence: `recipes.py:128` sets `input_file = f"{public_type}.in"`
 
-2. **Job.expected_outputs** (`src/quantumvitas/execution/job_graph.py:Job`):
+2. **Job.expected_outputs** (`src/qmatsuite/execution/job_graph.py:Job`):
    - Type: `List[Path]`
    - Contains: `[calc_raw_dir / f"{public_type}.out"]` (from `QERecipe`, line 134)
    - Evidence: `recipes.py:134` sets `expected_outputs = [calc_raw_dir / f"{public_type}.out"]`
 
-3. **JobResult.step_results** (`src/quantumvitas/execution/executor.py:JobResult`):
+3. **JobResult.step_results** (`src/qmatsuite/execution/executor.py:JobResult`):
    - Type: `Dict[str, Dict[str, Any]]`
    - Contains: `{step_ulid: {"success": bool, "output_file": str, "return_code": int}}`
    - Evidence: `handlers.py:126-132` sets `"output_file": str(result.output_file)` from `StepResult.output_file`
 
-4. **StepResult.output_file** (`src/quantumvitas/core/engines/qe_calculation.py:StepResult`):
+4. **StepResult.output_file** (`src/qmatsuite/core/engines/qe_calculation.py:StepResult`):
    - Type: `Optional[Path]`
    - Set by: `qe_step_handler()` calls `step.run()` which returns `StepResult`
    - Evidence: `handlers.py:112` calls `step.run()`, `handlers.py:129` extracts `result.output_file`
@@ -181,7 +181,7 @@ summary = StepResultSummary(
 
 **Rationale**: Job fields are the source of truth for filenames (GEN naming per Constitution §F). They are available at construction time and don't require handler execution.
 
-**Location**: `src/quantumvitas/calculation/runner.py`, `_execute_with_jobgraph()` method, lines 589-599
+**Location**: `src/qmatsuite/calculation/runner.py`, `_execute_with_jobgraph()` method, lines 589-599
 
 **Change**:
 ```python
@@ -311,8 +311,8 @@ summary = StepResultSummary(
    - Set `"input_file": str(target_summary.input_file)` if `target_summary.input_file` exists
 
 **Files to Change**:
-- `src/quantumvitas/calculation/runner.py` (lines 589-599)
-- `src/quantumvitas/api.py` (lines 1443-1453)
+- `src/qmatsuite/calculation/runner.py` (lines 589-599)
+- `src/qmatsuite/api.py` (lines 1443-1453)
 
 **Test Validation**:
 ```bash
@@ -326,7 +326,7 @@ pytest tests/unit/test_project_and_cli.py::test_cli_show_command_import_preserve
 
 ### B1) Pseudo Preflight Computation Trace
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 
 **Location**: `run_calculation()` method, lines 1210-1265
 
@@ -345,7 +345,7 @@ save_yaml_doc(calc_doc, calc_yaml_path)
 
 **Lock Handling**: `save_yaml_doc()` handles edit lock internally (line 1254 comment).
 
-**Step0 Execution** (`src/quantumvitas/calculation/runner.py:180-227`):
+**Step0 Execution** (`src/qmatsuite/calculation/runner.py:180-227`):
 - Step0 prepares pseudos in `project/pseudo` (line 197)
 - Calls `refresh_calc_pseudo_records_after_step0()` (line 203)
 - This function may update `calc.yaml` with pseudo file info
@@ -364,7 +364,7 @@ save_yaml_doc(calc_doc, calc_yaml_path)
 **Test Flow** (lines 738-823):
 1. Create calculation with `pseudo_set_sha = "WRONG_SHA"` (placeholder)
 2. Mock `ensure_qe_pseudos` to return fake result
-3. Call `QVService.run_calculation()` (may fail, but preflight should run)
+3. Call `QMSService.run_calculation()` (may fail, but preflight should run)
 4. Re-read `calc.yaml` from disk
 5. Assert `pseudo_set_sha == actual_sha` (computed from species_map)
 
@@ -410,16 +410,16 @@ save_yaml_doc(calc_doc, calc_yaml_path)
 
 **Rationale**: Step0 is the authoritative source for pseudo file info. Update `pseudo_set_sha` after Step0 completes, using the same SHA computation as preflight.
 
-**Location**: `src/quantumvitas/calculation/runner.py`, `run()` method, after Step0 (line 207)
+**Location**: `src/qmatsuite/calculation/runner.py`, `run()` method, after Step0 (line 207)
 
 **Change**:
 ```python
 # After refresh_calc_pseudo_records_after_step0() (line 203)
 # Update pseudo_set_sha in calc.yaml (using edit lock)
-from quantumvitas.calculation.hash_utils import compute_pseudo_set_sha
-from quantumvitas.core.locking import calc_edit_lock
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc
+from qmatsuite.calculation.hash_utils import compute_pseudo_set_sha
+from qmatsuite.core.locking import calc_edit_lock
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc
 import yaml
 
 if calculation.species_map:
@@ -457,7 +457,7 @@ if calculation.species_map:
 
 **Rationale**: Preflight already computes SHA. Step0 should preserve it instead of overwriting.
 
-**Location**: `src/quantumvitas/core/pseudo_runtime.py`, `refresh_calc_pseudo_records_after_step0()`
+**Location**: `src/qmatsuite/core/pseudo_runtime.py`, `refresh_calc_pseudo_records_after_step0()`
 
 **Change**: Check if `pseudo_set_sha` exists in `calc.yaml` before overwriting. If it exists and is valid, preserve it.
 
@@ -471,7 +471,7 @@ if calculation.species_map:
 
 **Rationale**: Preflight update is redundant. Only update after Step0 (authoritative).
 
-**Location**: `src/quantumvitas/api.py`, remove preflight update (lines 1248-1265)
+**Location**: `src/qmatsuite/api.py`, remove preflight update (lines 1248-1265)
 
 **Change**: Remove the `save_yaml_doc()` call in preflight. Keep only the warning.
 
@@ -496,8 +496,8 @@ if calculation.species_map:
    - Keep exception handling (warnings only)
 
 **Files to Change**:
-- `src/quantumvitas/calculation/runner.py` (after line 207)
-- `src/quantumvitas/api.py` (remove lines 1248-1255)
+- `src/qmatsuite/calculation/runner.py` (after line 207)
+- `src/qmatsuite/api.py` (remove lines 1248-1255)
 
 **Test Validation**:
 ```bash
@@ -510,7 +510,7 @@ pytest tests/integration/test_incremental_run.py::test_pseudo_preflight_warning_
 
 ### C1) Validation Code Location
 
-**File**: `src/quantumvitas/calculation/input_runner.py`
+**File**: `src/qmatsuite/calculation/input_runner.py`
 
 **Location**: `apply_card_overrides_to_qe_input()` method, lines 680-697
 
@@ -545,7 +545,7 @@ if new_option and new_option.lower() in kpath_formats:
 
 **Step Creation** (lines 166-171):
 ```python
-step3_resolved = QVService.init_step(
+step3_resolved = QMSService.init_step(
     project_root=tmp_project,
     calculation_selector=calc_id,
     step_type="bands",  # ← Creates bands step
@@ -581,14 +581,14 @@ step3_resolved = QVService.init_step(
 **Change**: After creating `bands` step (line 169), configure it with valid `K_POINTS`:
 
 ```python
-step3_resolved = QVService.init_step(
+step3_resolved = QMSService.init_step(
     project_root=tmp_project,
     calculation_selector=calc_id,
     step_type="bands",
 )
 
 # Configure bands step with valid K_POINTS crystal_b data
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 step3_spec_path = step3_resolved.absolute_path
 step3_data = yaml.safe_load(step3_spec_path.read_text())
 if "cards" not in step3_data:
@@ -626,7 +626,7 @@ step3_data["cards"]["K_POINTS"] = {
 
 **Rationale**: Allow `crystal_b` without `data` if structure provides k-path.
 
-**Location**: `src/quantumvitas/calculation/input_runner.py:680-697`
+**Location**: `src/qmatsuite/calculation/input_runner.py:680-697`
 
 **Change**: If `data` is missing, generate from structure symmetry (if available).
 
@@ -661,12 +661,12 @@ pytest tests/integration/test_incremental_run.py::test_pseudo_preflight_update_f
 
 ### Cluster A: CLI Show Failure
 
-**File**: `src/quantumvitas/calculation/runner.py`
+**File**: `src/qmatsuite/calculation/runner.py`
 - **Location**: `_execute_with_jobgraph()` method, lines 589-599
 - **Change**: Extract `input_file` from `job.input_files[0]`, `output_file` from `job.expected_outputs[0]` (or handler `step_results` if available)
 - **Set**: `StepResultSummary.input_file = job_input_file`, `StepResultSummary.output_file = job_output_file`
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 - **Location**: `run_step()` method, lines 1443-1453
 - **Change**: Extract `output_file` and `input_file` from `target_summary`
 - **Set**: `"output_file": str(target_summary.output_file)` if exists, `"input_file": str(target_summary.input_file)` if exists
@@ -675,12 +675,12 @@ pytest tests/integration/test_incremental_run.py::test_pseudo_preflight_update_f
 
 ### Cluster B: Pseudo Set SHA Not Updated
 
-**File**: `src/quantumvitas/calculation/runner.py`
+**File**: `src/qmatsuite/calculation/runner.py`
 - **Location**: `run()` method, after `refresh_calc_pseudo_records_after_step0()` (line 207)
 - **Change**: Compute `fresh_pseudo_sha`, acquire `calc_edit_lock`, update `calc.yaml` with `pseudo_set_sha`
 - **Lock Ordering**: `calc_run_lock` (outer, already held) → `calc_edit_lock` (inner, acquire here)
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 - **Location**: `run_calculation()` method, lines 1248-1255
 - **Change**: Remove `save_yaml_doc()` call (keep warning only)
 
@@ -727,8 +727,8 @@ pytest tests/unit/test_project_and_cli.py -q
 **Total Changes**: 3 files (2 production, 1 test)
 
 **Production Code Changes**:
-1. `src/quantumvitas/calculation/runner.py` (2 changes: Cluster A + Cluster B)
-2. `src/quantumvitas/api.py` (2 changes: Cluster A + Cluster B)
+1. `src/qmatsuite/calculation/runner.py` (2 changes: Cluster A + Cluster B)
+2. `src/qmatsuite/api.py` (2 changes: Cluster A + Cluster B)
 
 **Test Code Changes**:
 1. `tests/integration/test_incremental_run.py` (1 change: Cluster C)

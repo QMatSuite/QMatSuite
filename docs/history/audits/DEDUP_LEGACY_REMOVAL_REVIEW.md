@@ -12,8 +12,8 @@ This review documents two legacy functions that violate the two-phase fingerprin
 
 | Function | Location | Lines | Problem |
 |----------|----------|-------|---------|
-| `canonicalize_structure_for_identity()` | `src/quantumvitas/core/structure_fingerprint.py` | 33-82 | Uses `np.mod(frac, 1.0)` |
-| `structures_semantically_equal()` | `src/quantumvitas/core/structure_fingerprint.py` | 318-384 | Calls `canonicalize_structure_for_identity()` |
+| `canonicalize_structure_for_identity()` | `src/qmatsuite/core/structure_fingerprint.py` | 33-82 | Uses `np.mod(frac, 1.0)` |
+| `structures_semantically_equal()` | `src/qmatsuite/core/structure_fingerprint.py` | 318-384 | Calls `canonicalize_structure_for_identity()` |
 
 **Contract Violation**: Both functions use `np.mod()` for coordinate wrapping, which can produce different results than the deterministic quantization rule (`floor(x/tol + 0.5 + eps)`) used by the canonical fingerprint path. This creates a potential for knife-edge instability and false negatives in deduplication.
 
@@ -25,7 +25,7 @@ This review documents two legacy functions that violate the two-phase fingerprin
 
 ### 2.1 `canonicalize_structure_for_identity()`
 
-**File**: `src/quantumvitas/core/structure_fingerprint.py`  
+**File**: `src/qmatsuite/core/structure_fingerprint.py`  
 **Lines**: 33-82
 
 ```python
@@ -56,7 +56,7 @@ def canonicalize_structure_for_identity(structure: PMGStructure) -> PMGStructure
 
 ### 2.2 `structures_semantically_equal()`
 
-**File**: `src/quantumvitas/core/structure_fingerprint.py`  
+**File**: `src/qmatsuite/core/structure_fingerprint.py`  
 **Lines**: 318-384
 
 ```python
@@ -93,13 +93,13 @@ def structures_semantically_equal(
 
 ### 3.1 `api.py` — `import_structure()` (Lines 417-428)
 
-**File**: `src/quantumvitas/api.py`  
+**File**: `src/qmatsuite/api.py`  
 **Lines**: 417-428
 
 ```python
 # Verify with semantic equality as belt-and-suspenders
 # Note: structures_semantically_equal only supports Structure (not Molecule)
-from quantumvitas.core.structure_fingerprint import structures_semantically_equal
+from qmatsuite.core.structure_fingerprint import structures_semantically_equal
 from pymatgen.core import Structure as PMGStructure
 
 existing_structure = read_structure(struct_file)
@@ -117,12 +117,12 @@ if is_semantic_match:
 
 ### 3.2 `api.py` — `import_from_qe_directory()` (Lines 5868-5890)
 
-**File**: `src/quantumvitas/api.py`  
+**File**: `src/qmatsuite/api.py`  
 **Lines**: 5868-5890
 
 ```python
 # Compute fingerprint for content-based deduplication
-from quantumvitas.core.structure_fingerprint import structure_fingerprint, structures_semantically_equal
+from qmatsuite.core.structure_fingerprint import structure_fingerprint, structures_semantically_equal
 fingerprint = structure_fingerprint(structure)
 
 # ... fingerprint matching loop ...
@@ -159,7 +159,7 @@ if existing_fingerprint == fingerprint:
 
 **Import at top of file** (lines 13-17):
 ```python
-from quantumvitas.core.structure_fingerprint import (
+from qmatsuite.core.structure_fingerprint import (
     canonicalize_structure_for_identity,
     structure_fingerprint,
     structure_like_fingerprint,

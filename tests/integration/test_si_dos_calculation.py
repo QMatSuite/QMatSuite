@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.resources import get_resources_dir
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.calculation.types import StepStatus
+from qmatsuite.core.resources import get_resources_dir
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.calculation.types import StepStatus
 from tests.utils.calculation_projects import create_calculation_project
 
 pytestmark = pytest.mark.qe_core
@@ -34,7 +34,7 @@ def si_dos_project(project_root_path: Path, si_dos_dir: Path) -> Path:
         {"ulid": "nscf", "input": "si.2_nscf.in", "reference": "si.2_nscf.out"},
         {"ulid": "dos", "input": "si.3_dos.in", "reference": "si.3_dos.out"},
     ]
-    from quantumvitas.core.paths import tmp_runs_dir
+    from qmatsuite.core.paths import tmp_runs_dir
     destination = tmp_runs_dir() / "calculation_si_dos"
     return create_calculation_project(
         project_root=destination,

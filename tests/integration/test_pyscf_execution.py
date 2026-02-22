@@ -13,7 +13,7 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 
 def _pyscf_available() -> bool:
@@ -41,7 +41,7 @@ class TestPySCFH2OCalculation:
     
     def test_h2o_rhf_sto3g(self, tmp_path):
         """Run H2O RHF/STO-3G and verify energy."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -81,7 +81,7 @@ class TestPySCFH2OCalculation:
     
     def test_h2o_rhf_631g(self, tmp_path):
         """Run H2O RHF/6-31G and verify energy."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -108,7 +108,7 @@ class TestPySCFH2OCalculation:
     
     def test_h2o_dft_pbe(self, tmp_path):
         """Run H2O RKS/PBE/STO-3G and verify energy."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -141,7 +141,7 @@ class TestPySCFResultsFile:
     
     def test_results_json_created(self, tmp_path):
         """Verify results.json is created with correct schema."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -179,7 +179,7 @@ class TestPySCFResultsFile:
     
     def test_pyscf_log_created(self, tmp_path):
         """Verify pyscf.log is created."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -208,7 +208,7 @@ class TestPySCFUnrestrictedMethods:
     
     def test_oxygen_atom_uhf(self, tmp_path):
         """Run UHF on triplet oxygen atom."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -233,7 +233,7 @@ class TestPySCFUnrestrictedMethods:
     
     def test_methyl_radical_uhf(self, tmp_path):
         """Run UHF on CH3 radical (doublet)."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -264,7 +264,7 @@ class TestPySCFDemoExecution:
     def test_run_demo_calculation(self, tmp_path):
         """Load and run the demo project calculation."""
         import yaml
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
 
         # Load demo project
         demo_path = get_resources_dir() / "demo_projects" / "pyscf_water_scf.yml"
@@ -307,7 +307,7 @@ class TestPySCFEdgeCases:
     
     def test_empty_atoms_error(self, tmp_path):
         """Empty atoms list should give clear error."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -327,7 +327,7 @@ class TestPySCFEdgeCases:
     
     def test_invalid_method_error(self, tmp_path):
         """Invalid method should give clear error."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         
@@ -350,7 +350,7 @@ class TestPySCFEdgeCases:
     
     def test_convergence_failure(self, tmp_path):
         """Convergence failure should be reported."""
-        from quantumvitas.engine.pyscf_engine import PySCFEngine
+        from qmatsuite.engine.pyscf_engine import PySCFEngine
         
         engine = PySCFEngine()
         

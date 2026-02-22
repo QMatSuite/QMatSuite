@@ -6,8 +6,8 @@ Tests for the map_kernel_exception function.
 
 import pytest
 
-from quantumvitas.api._mapping.exc_mapping import map_kernel_exception
-from quantumvitas.api.errors import (
+from qmatsuite.api._mapping.exc_mapping import map_kernel_exception
+from qmatsuite.api.errors import (
     AmbiguousError,
     ConfigError,
     ConflictError,
@@ -21,7 +21,7 @@ from quantumvitas.api.errors import (
 
 def test_calculation_not_found_maps_correctly():
     """ResourceNotFoundError → NOT_FOUND."""
-    from quantumvitas.core.resolution import ResourceNotFoundError
+    from qmatsuite.core.resolution import ResourceNotFoundError
     
     kernel_exc = ResourceNotFoundError(
         kind="calculation",
@@ -39,7 +39,7 @@ def test_calculation_not_found_maps_correctly():
 
 def test_ambiguous_selector_maps_correctly():
     """AmbiguousSelectorError → AMBIGUOUS_SELECTOR."""
-    from quantumvitas.core.resolution import AmbiguousSelectorError
+    from qmatsuite.core.resolution import AmbiguousSelectorError
     
     kernel_exc = AmbiguousSelectorError("si-", ["si-scf", "si-relax"])
     api_err = map_kernel_exception(kernel_exc)
@@ -53,7 +53,7 @@ def test_ambiguous_selector_maps_correctly():
 
 def test_validation_error_maps_correctly():
     """ValidationError → VALIDATION_FAILED."""
-    from quantumvitas.core.param_validation import ValidationError as KernelValidationError
+    from qmatsuite.core.param_validation import ValidationError as KernelValidationError
     
     kernel_exc = KernelValidationError("Invalid value for ecutwfc")
     api_err = map_kernel_exception(kernel_exc)
@@ -84,7 +84,7 @@ def test_type_error_maps_to_validation():
 
 def test_calculation_lock_error_maps_correctly():
     """CalculationLockError → EDIT_LOCK_HELD or RUN_LOCK_HELD."""
-    from quantumvitas.core.locking import CalculationLockError
+    from qmatsuite.core.locking import CalculationLockError
     
     # Edit lock (default)
     kernel_exc = CalculationLockError("Calculation is being edited")
@@ -129,7 +129,7 @@ def test_os_error_maps_to_filesystem():
 
 def test_project_config_error_maps_correctly():
     """ProjectConfigError → PROJECT_SSOT_MISSING."""
-    from quantumvitas.core.project_utils import ProjectConfigError
+    from qmatsuite.core.project_utils import ProjectConfigError
     
     kernel_exc = ProjectConfigError("Missing species_map")
     api_err = map_kernel_exception(kernel_exc)
@@ -157,7 +157,7 @@ def test_assertion_error_maps_to_internal():
 
 def test_mapping_includes_trace_id():
     """All mapped errors include trace_id in cause."""
-    from quantumvitas.core.resolution import ResourceNotFoundError
+    from qmatsuite.core.resolution import ResourceNotFoundError
     
     kernel_exc = ResourceNotFoundError(kind="calculation", selector="x")
     api_err = map_kernel_exception(kernel_exc)
@@ -169,7 +169,7 @@ def test_mapping_includes_trace_id():
 
 def test_mapping_preserves_context():
     """Mapping preserves relevant context from kernel exceptions."""
-    from quantumvitas.core.resolution import ResourceNotFoundError
+    from qmatsuite.core.resolution import ResourceNotFoundError
     
     kernel_exc = ResourceNotFoundError(
         kind="step",

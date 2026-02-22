@@ -40,38 +40,38 @@ test.describe('Demo Project Run: si_bands_demo comprehensive', () => {
       projectName: 'e2e-run',
       parentDir: projectDir,
     });
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-home-project')).toBeVisible({ timeout: 10000 });
 
     // === Navigate to Calculations and select ===
     await navigateToView(appPage, 'calculations');
-    await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-calculations-view')).toBeVisible({ timeout: 10000 });
     await expect(appPage.getByRole('heading', { name: /All Calculations/i })).toBeVisible();
 
-    const calcRow = appPage.getByTestId('qv-calculation-row').first();
+    const calcRow = appPage.getByTestId('qms-calculation-row').first();
     await expect(calcRow).toBeVisible({ timeout: 5000 });
     await calcRow.click();
 
     // Verify Overview & Steps tab is active
-    const overviewTab = appPage.getByTestId('qv-calc-tab-overview');
+    const overviewTab = appPage.getByTestId('qms-calc-tab-overview');
     await expect(overviewTab).toHaveClass(/calculations-workspace-tab--active/);
-    await expect(appPage.getByTestId('qv-calc-overview-panel')).toBeVisible({ timeout: 5000 });
+    await expect(appPage.getByTestId('qms-calc-overview-panel')).toBeVisible({ timeout: 5000 });
 
     // =============================================
     // PHASE 1: Run calculation
     // =============================================
-    const runButton = appPage.getByTestId('qv-btn-run-calculation');
+    const runButton = appPage.getByTestId('qms-btn-run-calculation');
     await expect(runButton).toBeVisible();
     await expect(runButton).toBeEnabled();
     await runButton.click();
 
     // Verify auto-switch to Run & Logs tab
-    const runLogsTab = appPage.getByTestId('qv-calc-tab-run');
+    const runLogsTab = appPage.getByTestId('qms-calc-tab-run');
     await expect(runLogsTab).toHaveClass(/calculations-workspace-tab--active/, { timeout: 5000 });
-    const runLogsPanel = appPage.getByTestId('qv-calc-run-logs-panel');
+    const runLogsPanel = appPage.getByTestId('qms-calc-run-logs-panel');
     await expect(runLogsPanel).toBeVisible({ timeout: 10000 });
 
     // Wait for job status to appear
-    const statusBadge = runLogsPanel.getByTestId('qv-job-status');
+    const statusBadge = runLogsPanel.getByTestId('qms-job-status');
     await expect(statusBadge).toBeVisible({ timeout: 30000 });
 
     // Poll for completion
@@ -105,22 +105,22 @@ test.describe('Demo Project Run: si_bands_demo comprehensive', () => {
     }
 
     // Verify logs are visible
-    await expect(runLogsPanel.getByTestId('qv-calc-job-logs')).toBeVisible();
+    await expect(runLogsPanel.getByTestId('qms-calc-job-logs')).toBeVisible();
 
     // =============================================
     // PHASE 2: Convergence analysis (SCF step)
     // =============================================
-    const analysisTab = appPage.getByTestId('qv-calc-tab-analysis');
+    const analysisTab = appPage.getByTestId('qms-calc-tab-analysis');
     await expect(analysisTab).toBeVisible({ timeout: 5000 });
     await analysisTab.click();
     await expect(analysisTab).toHaveClass(/calculations-workspace-tab--active/, { timeout: 5000 });
 
-    const analysisPanel = appPage.getByTestId('qv-calc-analysis-panel');
+    const analysisPanel = appPage.getByTestId('qms-calc-analysis-panel');
     await expect(analysisPanel).toBeVisible({ timeout: 5000 });
     await appPage.waitForTimeout(2000);
 
     // Select SCF step chip
-    const scfChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-scf"]');
+    const scfChip = analysisPanel.locator('[data-testid="qms-analysis-step-tab-scf"]');
     await expect(scfChip).toBeVisible({ timeout: 5000 });
     await scfChip.click();
 
@@ -131,18 +131,18 @@ test.describe('Demo Project Run: si_bands_demo comprehensive', () => {
     await expect(plotTab).toHaveClass(/--active/, { timeout: 5000 });
 
     // Ensure we validate run output, not reference
-    const referenceToggle = appPage.getByTestId('qv-analysis-reference-toggle');
+    const referenceToggle = appPage.getByTestId('qms-analysis-reference-toggle');
     if (await referenceToggle.isVisible().catch(() => false)) {
       if (await referenceToggle.isChecked()) {
         await referenceToggle.uncheck();
       }
       await expect(referenceToggle).not.toBeChecked();
     }
-    await expect(appPage.getByTestId('qv-analysis-reference-banner')).toHaveCount(0);
+    await expect(appPage.getByTestId('qms-analysis-reference-banner')).toHaveCount(0);
 
     // Wait for convergence chart
-    const loadingIndicator = appPage.getByTestId('qv-analysis-loading');
-    const convergenceChart = appPage.getByTestId('qv-analysis-convergence-chart');
+    const loadingIndicator = appPage.getByTestId('qms-analysis-loading');
+    const convergenceChart = appPage.getByTestId('qms-analysis-convergence-chart');
 
     await expect(async () => {
       const isLoading = await loadingIndicator.isVisible().catch(() => false);
@@ -176,7 +176,7 @@ test.describe('Demo Project Run: si_bands_demo comprehensive', () => {
       .toBeGreaterThan(1);
 
     // Verify convergence info bar + badge
-    const convergenceInfo = appPage.getByTestId('qv-analysis-convergence-info');
+    const convergenceInfo = appPage.getByTestId('qms-analysis-convergence-info');
     await expect(convergenceInfo).toBeVisible({ timeout: 5000 });
     const convergedBadge = convergenceInfo.locator('.analysis-viz__convergence-badge');
     await expect(convergedBadge).toBeVisible({ timeout: 5000 });
@@ -186,7 +186,7 @@ test.describe('Demo Project Run: si_bands_demo comprehensive', () => {
     // =============================================
     // PHASE 3: Bands analysis (bandspw step)
     // =============================================
-    const bandsChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-bandspw"]');
+    const bandsChip = analysisPanel.locator('[data-testid="qms-analysis-step-tab-bandspw"]');
     await expect(bandsChip).toBeVisible({ timeout: 5000 });
     await bandsChip.click();
 
@@ -197,7 +197,7 @@ test.describe('Demo Project Run: si_bands_demo comprehensive', () => {
     await expect(plotTab2).toHaveClass(/--active/, { timeout: 5000 });
 
     // Wait for bands chart
-    const bandsChart = appPage.getByTestId('qv-analysis-bands-chart');
+    const bandsChart = appPage.getByTestId('qms-analysis-bands-chart');
 
     await expect(async () => {
       const isLoading = await loadingIndicator.isVisible().catch(() => false);
@@ -214,12 +214,12 @@ test.describe('Demo Project Run: si_bands_demo comprehensive', () => {
     expect(await chartChildren.count()).toBeGreaterThan(0);
 
     // Verify Fermi energy displayed
-    const fermiElement = appPage.getByTestId('qv-analysis-fermi');
+    const fermiElement = appPage.getByTestId('qms-analysis-fermi');
     await expect(fermiElement).toBeVisible();
     await expect(fermiElement).not.toHaveText(/^\s*$/, { timeout: 5000 });
 
     // Verify k-path with special point labels
-    const kpathElement = appPage.getByTestId('qv-analysis-kpath');
+    const kpathElement = appPage.getByTestId('qms-analysis-kpath');
     await expect(kpathElement).toBeVisible();
     const kpathText = await kpathElement.textContent();
     expect(kpathText).toBeTruthy();

@@ -3,7 +3,7 @@
 Tests that the 3 structure tools correctly wrap the existing
 ``svc.structure.*`` backend methods and produce standard envelopes.
 
-Shared fixtures (qv_project, qe_available, qe_project_with_si) are in conftest.py.
+Shared fixtures (qms_project, qe_available, qe_project_with_si) are in conftest.py.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 
 # ===========================================================================
@@ -71,9 +71,9 @@ Direct
 class TestImportStructure:
     """Tests for the import_structure tool."""
 
-    def test_import_cif_string(self, qv_project):
+    def test_import_cif_string(self, qms_project):
         """Import Si from inline CIF string → success with structure_ulid."""
-        from quantumvitas.mcp.tools.import_structure import import_structure
+        from qmatsuite.mcp.tools.import_structure import import_structure
 
         result = import_structure.fn(
             file_content=_SI_CIF, format="cif", name="Si_from_cif",
@@ -84,9 +84,9 @@ class TestImportStructure:
         assert len(data["structure_ulid"]) > 0
         assert data["name"] is not None
 
-    def test_import_cif_file(self, qv_project, tmp_path):
+    def test_import_cif_file(self, qms_project, tmp_path):
         """Import Si from a CIF file on disk."""
-        from quantumvitas.mcp.tools.import_structure import import_structure
+        from qmatsuite.mcp.tools.import_structure import import_structure
 
         cif_path = tmp_path / "si_test.cif"
         cif_path.write_text(_SI_CIF)
@@ -95,9 +95,9 @@ class TestImportStructure:
         assert result["status"] == "success"
         assert result["data"]["structure_ulid"]
 
-    def test_import_poscar_string(self, qv_project):
+    def test_import_poscar_string(self, qms_project):
         """Import Si from POSCAR string."""
-        from quantumvitas.mcp.tools.import_structure import import_structure
+        from qmatsuite.mcp.tools.import_structure import import_structure
 
         result = import_structure.fn(
             file_content=_SI_POSCAR, format="poscar", name="Si_poscar",
@@ -105,9 +105,9 @@ class TestImportStructure:
         assert result["status"] == "success", f"import failed: {result}"
         assert result["data"]["n_atoms"] == 2
 
-    def test_import_invalid_content(self, qv_project):
+    def test_import_invalid_content(self, qms_project):
         """Bad content → error envelope."""
-        from quantumvitas.mcp.tools.import_structure import import_structure
+        from qmatsuite.mcp.tools.import_structure import import_structure
 
         result = import_structure.fn(
             file_content="this is not a valid structure", format="cif",
@@ -115,9 +115,9 @@ class TestImportStructure:
         assert result["status"] == "error"
         assert result["error_type"] == "import_failed"
 
-    def test_import_returns_formula(self, qv_project):
+    def test_import_returns_formula(self, qms_project):
         """Imported structure response includes correct formula."""
-        from quantumvitas.mcp.tools.import_structure import import_structure
+        from qmatsuite.mcp.tools.import_structure import import_structure
 
         result = import_structure.fn(
             file_content=_SI_CIF, format="cif", name="Si_formula_test",
@@ -125,25 +125,25 @@ class TestImportStructure:
         assert result["status"] == "success"
         assert "Si" in result["data"]["formula"]
 
-    def test_import_missing_input(self, qv_project):
+    def test_import_missing_input(self, qms_project):
         """Neither file_path nor file_content → error."""
-        from quantumvitas.mcp.tools.import_structure import import_structure
+        from qmatsuite.mcp.tools.import_structure import import_structure
 
         result = import_structure.fn()
         assert result["status"] == "error"
         assert result["error_type"] == "missing_input"
 
-    def test_import_file_not_found(self, qv_project):
+    def test_import_file_not_found(self, qms_project):
         """Non-existent file_path → not_found error."""
-        from quantumvitas.mcp.tools.import_structure import import_structure
+        from qmatsuite.mcp.tools.import_structure import import_structure
 
         result = import_structure.fn(file_path="/nonexistent/path/file.cif")
         assert result["status"] == "error"
         assert result["error_type"] == "not_found"
 
-    def test_import_context_hint(self, qv_project):
+    def test_import_context_hint(self, qms_project):
         """Context hint includes structure_ulid and create_calculation."""
-        from quantumvitas.mcp.tools.import_structure import import_structure
+        from qmatsuite.mcp.tools.import_structure import import_structure
 
         result = import_structure.fn(
             file_content=_SI_CIF, format="cif", name="Si_hint_test",
@@ -164,10 +164,10 @@ class TestListStructures:
 
     def test_list_empty_project(self, tmp_path, monkeypatch):
         """Fresh project with no structures → empty list + helpful hint."""
-        from quantumvitas.mcp.tools.list_structures import list_structures
-        from quantumvitas.mcp import project as mcp_project
+        from qmatsuite.mcp.tools.list_structures import list_structures
+        from qmatsuite.mcp import project as mcp_project
 
-        project_root = QVService.init_project(tmp_path / "empty_project")
+        project_root = QMSService.init_project(tmp_path / "empty_project")
         monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
         result = list_structures.fn()
@@ -176,11 +176,11 @@ class TestListStructures:
         assert result["data"]["total"] == 0
         assert "import_structure" in result.get("context_hint", "")
 
-    def test_list_after_import(self, qv_project):
+    def test_list_after_import(self, qms_project):
         """After import → shows the structure with correct fields."""
-        from quantumvitas.mcp.tools.list_structures import list_structures
+        from qmatsuite.mcp.tools.list_structures import list_structures
 
-        # qv_project fixture already imports a Si structure
+        # qms_project fixture already imports a Si structure
         result = list_structures.fn()
         assert result["status"] == "success"
         structs = result["data"]["structures"]
@@ -194,9 +194,9 @@ class TestListStructures:
         assert si["n_atoms"] > 0
         assert "Si" in si["formula"]
 
-    def test_list_context_hint_nonempty(self, qv_project):
+    def test_list_context_hint_nonempty(self, qms_project):
         """Non-empty list hint mentions get_structure_detail and create_calculation."""
-        from quantumvitas.mcp.tools.list_structures import list_structures
+        from qmatsuite.mcp.tools.list_structures import list_structures
 
         result = list_structures.fn()
         assert result["status"] == "success"
@@ -213,10 +213,10 @@ class TestListStructures:
 class TestGetStructureDetail:
     """Tests for the get_structure_detail tool."""
 
-    def test_structure_detail_si(self, qv_project):
+    def test_structure_detail_si(self, qms_project):
         """Si has correct species, sites, lattice info."""
-        from quantumvitas.mcp.tools.list_structures import list_structures
-        from quantumvitas.mcp.tools.get_structure_detail import get_structure_detail
+        from qmatsuite.mcp.tools.list_structures import list_structures
+        from qmatsuite.mcp.tools.get_structure_detail import get_structure_detail
 
         # Get the ULID from listing
         listing = list_structures.fn()
@@ -239,10 +239,10 @@ class TestGetStructureDetail:
         assert "cart_coords" in site
         assert len(site["cart_coords"]) == 3
 
-    def test_structure_detail_lattice_params(self, qv_project):
+    def test_structure_detail_lattice_params(self, qms_project):
         """Lattice parameters a, b, c, alpha, beta, gamma present."""
-        from quantumvitas.mcp.tools.list_structures import list_structures
-        from quantumvitas.mcp.tools.get_structure_detail import get_structure_detail
+        from qmatsuite.mcp.tools.list_structures import list_structures
+        from qmatsuite.mcp.tools.get_structure_detail import get_structure_detail
 
         listing = list_structures.fn()
         ulid = listing["data"]["structures"][0]["structure_ulid"]
@@ -261,18 +261,18 @@ class TestGetStructureDetail:
         assert len(lv) == 3
         assert len(lv[0]) == 3
 
-    def test_structure_detail_invalid_ulid(self, qv_project):
+    def test_structure_detail_invalid_ulid(self, qms_project):
         """Error for non-existent structure."""
-        from quantumvitas.mcp.tools.get_structure_detail import get_structure_detail
+        from qmatsuite.mcp.tools.get_structure_detail import get_structure_detail
 
         result = get_structure_detail.fn(structure_ulid="NONEXISTENT_ULID")
         assert result["status"] == "error"
         assert result["error_type"] == "not_found"
 
-    def test_structure_detail_context_hint(self, qv_project):
+    def test_structure_detail_context_hint(self, qms_project):
         """Context hint includes structure ULID and create_calculation."""
-        from quantumvitas.mcp.tools.list_structures import list_structures
-        from quantumvitas.mcp.tools.get_structure_detail import get_structure_detail
+        from qmatsuite.mcp.tools.list_structures import list_structures
+        from qmatsuite.mcp.tools.get_structure_detail import get_structure_detail
 
         listing = list_structures.fn()
         ulid = listing["data"]["structures"][0]["structure_ulid"]
@@ -294,14 +294,14 @@ class TestImportThenCreateCalc:
 
     def test_import_list_create(self, tmp_path, monkeypatch):
         """Import → list → detail → create_calculation works end-to-end."""
-        from quantumvitas.mcp import project as mcp_project
-        from quantumvitas.mcp.tools.import_structure import import_structure
-        from quantumvitas.mcp.tools.list_structures import list_structures
-        from quantumvitas.mcp.tools.get_structure_detail import get_structure_detail
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp import project as mcp_project
+        from qmatsuite.mcp.tools.import_structure import import_structure
+        from qmatsuite.mcp.tools.list_structures import list_structures
+        from qmatsuite.mcp.tools.get_structure_detail import get_structure_detail
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
 
         # 1. Fresh project
-        project_root = QVService.init_project(tmp_path / "e2e_project")
+        project_root = QMSService.init_project(tmp_path / "e2e_project")
         monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
         # 2. Import

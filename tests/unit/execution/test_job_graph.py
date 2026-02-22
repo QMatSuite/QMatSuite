@@ -8,7 +8,7 @@ and selection mode logic.
 import pytest
 from pathlib import Path
 
-from quantumvitas.execution.job_graph import (
+from qmatsuite.execution.job_graph import (
     Job,
     JobGraph,
     SelectionMode,

@@ -20,7 +20,7 @@
 | 可执行名搜索 | ✅ 已满足 | 支持 `lmp_serial`, `lmp_mpi`, `lmp` |
 | brew 路径检测 | ✅ 已满足 | `/opt/homebrew/opt/lammps/bin/lmp_serial` |
 
-**位置**：`src/quantumvitas/core/engines/lammps_resolver.py:19-117`
+**位置**：`src/qmatsuite/core/engines/lammps_resolver.py:19-117`
 
 ### 2.2 Recipe / JobGraph
 
@@ -32,7 +32,7 @@
 
 **问题证据**：
 ```python
-# src/quantumvitas/execution/recipes.py:572-578
+# src/qmatsuite/execution/recipes.py:572-578
 recipes = {
     "qe": QERecipe,
     "orca": ORCARecipe,
@@ -70,11 +70,11 @@ LAMMPS 需要：
 
 **污染证据**：
 ```python
-# src/quantumvitas/calculation/structure_steps.py:785-787
+# src/qmatsuite/calculation/structure_steps.py:785-787
 LAMMPS_STEP_TYPES = {"lammps_relax", "lammps_md"}
 is_lammps_step = step_type_lower in LAMMPS_STEP_TYPES or calculation_engine_family == "lammps"
 
-# src/quantumvitas/calculation/structure_steps.py:1099-1118
+# src/qmatsuite/calculation/structure_steps.py:1099-1118
 if is_lammps_step:  # ❌ 必须移除
     logger.info(...)
     # ... 返回 dummy input file path
@@ -139,7 +139,7 @@ if is_lammps_step:  # ❌ 必须移除
 
 **调用链分析**：
 
-1. `QVService.run_calculation()` 或 `CalculationRunner.run()` 被调用
+1. `QMSService.run_calculation()` 或 `CalculationRunner.run()` 被调用
 2. `runner.py:154` 检查 `if calculation.species_map:` - 对 LAMMPS 跳过 pseudo prep
 3. `runner.py:422` 调用 `execute_calculation_steps()` 传入 engine_family
 4. `execute_calculation_steps()` 获取 recipe 并 materialize
@@ -178,7 +178,7 @@ if is_project_run and requires_pseudopotentials:
 brew --prefix lammps
 ls -l /opt/homebrew/opt/lammps/bin
 /opt/homebrew/opt/lammps/bin/lmp_serial -h | head -n 5
-python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
+python -c "from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
 ```
 
 ### 3.3 Job/Recipe 泛化分析
@@ -216,20 +216,20 @@ python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_
 
 ### 需要回滚/移除的代码
 
-1. **`src/quantumvitas/execution/recipes.py:577`**
+1. **`src/qmatsuite/execution/recipes.py:577`**
    ```python
    # 删除这一行
    "lammps": VASPRecipe,  # LAMMPS uses same recipe pattern as VASP (isolated workdirs)
    ```
 
-2. **`src/quantumvitas/calculation/structure_steps.py:785-787`**
+2. **`src/qmatsuite/calculation/structure_steps.py:785-787`**
    ```python
    # 删除这三行
    LAMMPS_STEP_TYPES = {"lammps_relax", "lammps_md"}
    is_lammps_step = step_type_lower in LAMMPS_STEP_TYPES or calculation_engine_family == "lammps"
    ```
 
-3. **`src/quantumvitas/calculation/structure_steps.py:1099-1118`**
+3. **`src/qmatsuite/calculation/structure_steps.py:1099-1118`**
    ```python
    # 删除整个 if is_lammps_step: 块
    if is_lammps_step:
@@ -240,12 +240,12 @@ python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_
 
 ### 需要新增的代码
 
-1. **`src/quantumvitas/execution/recipes.py`**：新增 `LAMMPSRecipe` 类
+1. **`src/qmatsuite/execution/recipes.py`**：新增 `LAMMPSRecipe` 类
 
 ### 需要验证的代码
 
-1. **`src/quantumvitas/calculation/runner.py:154`**：`if calculation.species_map:` 已正确条件化
-2. **`src/quantumvitas/execution/handlers.py`**：需要检查是否有 LAMMPS handler 分发
+1. **`src/qmatsuite/calculation/runner.py:154`**：`if calculation.species_map:` 已正确条件化
+2. **`src/qmatsuite/execution/handlers.py`**：需要检查是否有 LAMMPS handler 分发
 
 ---
 

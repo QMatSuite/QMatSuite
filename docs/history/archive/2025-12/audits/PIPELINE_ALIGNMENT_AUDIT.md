@@ -13,7 +13,7 @@ This document provides a complete audit of the visualization pipelines for proje
    - Action: Calls RPC `get_structure_vis`
 
 2. **RPC Handler**: `_handle_get_structure_vis`
-   - File: `src/quantumvitas/daemon/server.py:2416`
+   - File: `src/qmatsuite/daemon/server.py:2416`
    - Function: `_handle_get_structure_vis(payload)`
    - Parameters extracted:
      - `project_root`: Path to project
@@ -24,8 +24,8 @@ This document provides a complete audit of the visualization pipelines for proje
      - `box_bounds`: Optional tuple (for box mode)
      - `trace_id`: Optional str
 
-3. **Service Layer**: `QVService.get_structure_vis_data`
-   - File: `src/quantumvitas/api.py:2087`
+3. **Service Layer**: `QMSService.get_structure_vis_data`
+   - File: `src/qmatsuite/api.py:2087`
    - Function: `get_structure_vis_data(project_root, selector, supercell, repeat_boundary, display_mode, box_bounds, trace_id)`
    - Steps:
      a. Resolve structure: `resolve_structure(project_root, selector)` → `ResolvedResource`
@@ -33,16 +33,16 @@ This document provides a complete audit of the visualization pipelines for proje
      c. Normalize supercell: `_normalize_supercell(supercell)`
      d. Determine effective mode and supercell (backward compatibility logic)
      e. Build `DisplayModeParams` from effective values
-     f. Call shared builder: `QVService._build_structure_vis_payload(structure, params, structure_meta, trace_id)`
+     f. Call shared builder: `QMSService._build_structure_vis_payload(structure, params, structure_meta, trace_id)`
 
-4. **Shared Builder**: `QVService._build_structure_vis_payload`
-   - File: `src/quantumvitas/api.py:1863`
+4. **Shared Builder**: `QMSService._build_structure_vis_payload`
+   - File: `src/qmatsuite/api.py:1863`
    - Function: `_build_structure_vis_payload(structure, params, structure_meta, trace_id)`
    - Input structure: `PMGStructure` (from project file, already in standard format)
    - Steps:
      a. **Debug logging**: Log canonical structure state (lattice, nsites, species, frac_coords)
      b. **Build display atoms**: `build_display_atoms(structure, params, wrap_coords=True)`
-       - File: `src/quantumvitas/analysis/structure_viz.py:1227`
+       - File: `src/qmatsuite/analysis/structure_viz.py:1227`
        - This function:
          - Canonicalizes structure once: `canonicalize_structure_in_place(structure_canon)`
          - Builds display atoms based on mode (primitive/conventional/supercell/box)
@@ -51,7 +51,7 @@ This document provides a complete audit of the visualization pipelines for proje
      c. **Debug logging**: Log display atoms state (count, samples, cart bbox)
      d. **Debug logging**: Log boundary atoms if present
      e. **Build bonds**: `build_bonds(atoms_cart, species, ...)`
-       - File: `src/quantumvitas/analysis/structure_viz.py:649` (internal `_build_bonds`)
+       - File: `src/qmatsuite/analysis/structure_viz.py:649` (internal `_build_bonds`)
        - Input: `atoms_cart = np.array([da.cart_coords for da in display_atoms_list])`
        - Uses: Cartesian distances only, no PBC wrapping
        - Returns: `List[Bond]`
@@ -79,7 +79,7 @@ This document provides a complete audit of the visualization pipelines for proje
    - Action: Calls RPC `structure_get_online_candidate`
 
 2. **RPC Handler**: `_handle_structure_get_online_candidate`
-   - File: `src/quantumvitas/daemon/server.py:1302`
+   - File: `src/qmatsuite/daemon/server.py:1302`
    - Function: `_handle_structure_get_online_candidate(payload)`
    - Parameters extracted:
      - `project_root`: Path to project
@@ -94,17 +94,17 @@ This document provides a complete audit of the visualization pipelines for proje
 3. **Structure Loading**:
    - Load from cache: `cache.get_structure(session_id, candidate_id)`
    - If not cached: Fetch from OPTIMADE: `fetch_structure_from_optimade(optimade_base, candidate.source_id)`
-     - File: `src/quantumvitas/io/online_search.py:331`
+     - File: `src/qmatsuite/io/online_search.py:331`
      - Returns: `(PMGStructure, raw_data)`
      - Structure built from: `Structure(lattice, species_at_sites, cartesian_positions, coords_are_cartesian=True)`
 
 4. **Structure Normalization** (CRITICAL STEP):
-   - File: `src/quantumvitas/daemon/server.py:1448`
+   - File: `src/qmatsuite/daemon/server.py:1448`
    - Step: `structure = structure.get_primitive_structure()`
    - **This is the ONLY transformation allowed before entering shared pipeline**
 
-5. **Shared Builder**: `QVService._build_structure_vis_payload`
-   - File: `src/quantumvitas/api.py:1863`
+5. **Shared Builder**: `QMSService._build_structure_vis_payload`
+   - File: `src/qmatsuite/api.py:1863`
    - Function: `_build_structure_vis_payload(structure, params, structure_meta, trace_id)`
    - Input structure: `PMGStructure` (primitive, from OPTIMADE)
    - **Same exact steps as project pipeline** (see section A.4)
@@ -124,21 +124,21 @@ This document provides a complete audit of the visualization pipelines for proje
 
 ### ✅ Currently Aligned (Verified)
 
-1. **Shared Builder**: Both paths call `QVService._build_structure_vis_payload()`
-   - File: `src/quantumvitas/api.py:1863`
+1. **Shared Builder**: Both paths call `QMSService._build_structure_vis_payload()`
+   - File: `src/qmatsuite/api.py:1863`
    - Same function, same parameters
    - Same internal logic
    - **Status**: ✅ Verified - both paths use identical function call
 
 2. **Display Atoms Building**: Both use `build_display_atoms()`
-   - File: `src/quantumvitas/analysis/structure_viz.py:1227`
+   - File: `src/qmatsuite/analysis/structure_viz.py:1227`
    - Same canonicalization: `canonicalize_structure_in_place()` called once at line 1253
    - Same mode handling (primitive/conventional/supercell/box)
    - Same boundary atom generation: `generate_boundary_atoms()` at lines 1273, 1302, 1333
    - **Status**: ✅ Verified - no online-specific code paths
 
 3. **Bond Building**: Both use `build_bonds()`
-   - File: `src/quantumvitas/api.py:1946`
+   - File: `src/qmatsuite/api.py:1946`
    - Same input: `atoms_cart = np.array([da.cart_coords for da in display_atoms_list])`
    - Same algorithm: Cartesian distances only (no PBC wrapping)
    - Same parameters: `max_factor=1.2, tolerance=0.3, max_cutoff=3.5`
@@ -176,14 +176,14 @@ This document provides a complete audit of the visualization pipelines for proje
 
 1. **GUI** → RPC `get_structure_vis`
 2. **Handler**: `_handle_get_structure_vis` (`server.py:2416`)
-   - Calls: `QVService.get_structure_vis_data(...)`
+   - Calls: `QMSService.get_structure_vis_data(...)`
 3. **Service**: `get_structure_vis_data` (`api.py:2175`)
    - Line 2132: `resolved = resolve_structure(project_root, selector)`
    - Line 2138: `original_structure = read_structure(resolved.absolute_path)`
    - Line 2141: `supercell_normalized = _normalize_supercell(supercell)`
    - Line 2147-2156: Determine effective mode and supercell
    - Line 2176: Build `DisplayModeParams`
-   - Line 2196: **Call shared builder**: `QVService._build_structure_vis_payload(original_structure, params, structure_meta, trace_id)`
+   - Line 2196: **Call shared builder**: `QMSService._build_structure_vis_payload(original_structure, params, structure_meta, trace_id)`
 4. **Shared Builder**: `_build_structure_vis_payload` (`api.py:1863`)
    - Line 1897: `display_atoms_list, display_structure = build_display_atoms(structure, params, wrap_coords=True)`
    - Line 1932: `atoms_cart = np.array([da.cart_coords for da in display_atoms_list])`
@@ -198,7 +198,7 @@ This document provides a complete audit of the visualization pipelines for proje
    - Line 1386: If not cached: `structure, optimade_raw_data = fetch_structure_from_optimade(...)`
    - Line 1449: **ONLY transformation**: `structure = structure.get_primitive_structure()`
    - Line 1543: Build `DisplayModeParams`
-   - Line 1556: **Call shared builder**: `QVService._build_structure_vis_payload(structure, params, structure_meta, trace_id)`
+   - Line 1556: **Call shared builder**: `QMSService._build_structure_vis_payload(structure, params, structure_meta, trace_id)`
 3. **Shared Builder**: `_build_structure_vis_payload` (`api.py:1863`)
    - **SAME EXACT STEPS AS PROJECT** (lines 1897, 1932, 1946, 2172)
 
@@ -249,7 +249,7 @@ This test:
 
 ### Fix 1: Ensure Online Structure Input Format
 
-**Location**: `src/quantumvitas/daemon/server.py:1448`
+**Location**: `src/qmatsuite/daemon/server.py:1448`
 
 **Current**: 
 ```python
@@ -297,7 +297,7 @@ structure = structure.get_primitive_structure()
 
 ### 1. Added Comprehensive Debug Logging
 
-**File**: `src/quantumvitas/api.py`
+**File**: `src/qmatsuite/api.py`
 
 Added detailed `[PIPELINE]` logs in `_build_structure_vis_payload()`:
 - Canonical structure state (before `build_display_atoms`)
@@ -330,18 +330,18 @@ Changed viewer controls to two-row layout:
 
 ### 4. Import Fix
 
-**File**: `src/quantumvitas/daemon/server.py:1656-1657`
+**File**: `src/qmatsuite/daemon/server.py:1656-1657`
 
 Fixed import crash:
-- Changed from: `from quantumvitas.core.naming import ...`
-- Changed to: `from quantumvitas.core.resources import generate_unique_name_and_slug`
-- Changed to: `from quantumvitas.core.project_utils import collect_slugs`
+- Changed from: `from qmatsuite.core.naming import ...`
+- Changed to: `from qmatsuite.core.resources import generate_unique_name_and_slug`
+- Changed to: `from qmatsuite.core.project_utils import collect_slugs`
 
 **Test**: `tests/unit/test_online_import.py` verifies import works correctly.
 
 ### 5. Provider Field Fix
 
-**File**: `src/quantumvitas/io/online_search.py:673-682`
+**File**: `src/qmatsuite/io/online_search.py:673-682`
 
 Fixed provider extraction:
 - Now prioritizes `provider` parameter (from base URL parsing) over raw meta `prefix`

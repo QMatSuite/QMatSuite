@@ -163,7 +163,7 @@ Only truly non-deterministic fields are normalized:
 
 ### Implementation
 
-**File**: `src/quantumvitas/daemon/compat.py`
+**File**: `src/qmatsuite/daemon/compat.py`
 
 **Integration**: `server.py` → `handle_request()` applies compat transformations at RPC boundary
 

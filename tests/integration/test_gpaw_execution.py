@@ -16,7 +16,7 @@ import textwrap
 
 import pytest
 
-from quantumvitas.core.engines.discovery import is_engine_available
+from qmatsuite.core.engines.discovery import is_engine_available
 
 pytestmark = pytest.mark.skipif(
     not is_engine_available("gpaw"),
@@ -324,7 +324,7 @@ class TestGPAWEngineProbe:
 
     def test_engine_probe(self):
         """Test GpawEngine.probe() returns available=True."""
-        from quantumvitas.engine.gpaw_engine import GpawEngine
+        from qmatsuite.engine.gpaw_engine import GpawEngine
 
         engine = GpawEngine()
         probe = engine.probe()
@@ -335,8 +335,8 @@ class TestGPAWEngineProbe:
 
     def test_driver_registry_lookup(self):
         """Verify GPAW driver is accessible via DriverRegistry."""
-        import quantumvitas.drivers.gpaw  # noqa: F401 — triggers registration
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.gpaw  # noqa: F401 — triggers registration
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("gpaw")
         assert driver is not None

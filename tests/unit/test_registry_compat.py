@@ -9,7 +9,7 @@ Per constitution, there are NO step type aliases.
 
 import warnings
 
-from quantumvitas.workflow.registry import (
+from qmatsuite.workflow.registry import (
     get_registry,
     normalize_step_type,
     STEP_TYPE_ALIASES,

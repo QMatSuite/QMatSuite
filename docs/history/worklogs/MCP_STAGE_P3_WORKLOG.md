@@ -73,12 +73,12 @@ Full suite:            6102 passed, 0 failed, 4 skipped
 
 ## Files Modified (source)
 
-- `src/quantumvitas/mcp/tools/init_project.py` — rewritten (remove path param, load-or-create)
-- `src/quantumvitas/mcp/server.py` — added startup auto-load block
-- `src/quantumvitas/mcp/tools/inspect_calculation.py` — merge cards into dry_run + preflight
-- `src/quantumvitas/mcp/tools/apply_preset.py` — profile→enum normalization
-- `src/quantumvitas/mcp/tools/import_structure.py` — CIF error hints
-- `src/quantumvitas/mcp/tools/list_engines.py` — context hint update
+- `src/qmatsuite/mcp/tools/init_project.py` — rewritten (remove path param, load-or-create)
+- `src/qmatsuite/mcp/server.py` — added startup auto-load block
+- `src/qmatsuite/mcp/tools/inspect_calculation.py` — merge cards into dry_run + preflight
+- `src/qmatsuite/mcp/tools/apply_preset.py` — profile→enum normalization
+- `src/qmatsuite/mcp/tools/import_structure.py` — CIF error hints
+- `src/qmatsuite/mcp/tools/list_engines.py` — context hint update
 
 ## Files Created (MCP tests)
 

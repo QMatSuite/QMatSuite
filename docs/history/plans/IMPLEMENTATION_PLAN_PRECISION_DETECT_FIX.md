@@ -16,7 +16,7 @@
 ## Phase 1: Identify Current Resolution Logic
 
 ### [x] 1.1 Document apply path resolution
-- **Location**: `src/quantumvitas/daemon/server.py::_handle_apply_presets_to_calculation`
+- **Location**: `src/qmatsuite/daemon/server.py::_handle_apply_presets_to_calculation`
 - **Current logic**:
   - Reads `calculation.yaml` directly
   - Gets `species_map` from `calc_content.get("species_map", {})`
@@ -26,7 +26,7 @@
   - Creates `PrecisionAdvisor(species_map, lattice_matrix=lattice_matrix)`
 
 ### [x] 1.2 Document detect path resolution
-- **Location**: `src/quantumvitas/presets/detector.py::_detect_precision_from_steps_strict`
+- **Location**: `src/qmatsuite/presets/detector.py::_detect_precision_from_steps_strict`
 - **Current logic**:
   - Uses `load_calculation(calc_yaml_path)` to get `CalculationModel`
   - Gets `species_map` from `calc_model.species_map`
@@ -47,7 +47,7 @@
 ## Phase 2: Implement Unified Resolver
 
 ### [x] 2.1 Create precision context resolver module
-- **File**: `src/quantumvitas/presets/precision_context.py`
+- **File**: `src/qmatsuite/presets/precision_context.py`
 - **Function**: `resolve_precision_context(project_root, calculation_dir, calc_model=None) -> PrecisionContext`
 - **Returns**:
   - `structure`: pymatgen Structure (required, raises if missing)
@@ -60,13 +60,13 @@
   - If pseudo cutoff missing → use deterministic fallback (same as current `aggregate_cutoffs`)
 
 ### [x] 2.2 Update apply path to use resolver
-- **File**: `src/quantumvitas/daemon/server.py`
+- **File**: `src/qmatsuite/daemon/server.py`
 - **Change**: Replace structure/species_map loading logic in `_handle_apply_presets_to_calculation`
 - **Use**: `resolve_precision_context(project_root, calculation_dir)`
 - **Error handling**: If resolver raises, return error response (not warning)
 
 ### [x] 2.3 Update detect path to use resolver
-- **File**: `src/quantumvitas/presets/detector.py`
+- **File**: `src/qmatsuite/presets/detector.py`
 - **Change**: Replace structure/species_map loading logic in `_detect_precision_from_steps_strict`
 - **Use**: `resolve_precision_context(project_root, calculation_dir, calc_model)`
 - **Error handling**: If resolver raises, propagate exception (don't return CUSTOM)
@@ -124,11 +124,11 @@
 ## Phase 4: Remove Silent Exception Swallowing
 
 ### [x] 4.1 Remove `except Exception: continue` in structure loading
-- **File**: `src/quantumvitas/presets/detector.py`
+- **File**: `src/qmatsuite/presets/detector.py`
 - **Change**: Remove silent exception handling, let exceptions propagate
 
 ### [x] 4.2 Remove `except Exception: pass` in structure loading
-- **File**: `src/quantumvitas/presets/detector.py`
+- **File**: `src/qmatsuite/presets/detector.py`
 - **Change**: Remove silent exception handling
 
 ### [ ] 4.3 Update error messages

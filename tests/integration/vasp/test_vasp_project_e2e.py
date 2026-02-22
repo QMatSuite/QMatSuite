@@ -1,4 +1,4 @@
-"""End-to-end integration tests for VASP via QVService API.
+"""End-to-end integration tests for VASP via QMSService API.
 
 These tests verify complete workflows through the Service API:
 - SCF → Bands workflow
@@ -18,9 +18,9 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any
 
-from quantumvitas.api import QVService
-from quantumvitas.calculation.manifest import load_manifest, Manifest
-from quantumvitas.core.paths import tmp_runs_dir
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.manifest import load_manifest, Manifest
+from qmatsuite.core.paths import tmp_runs_dir
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def vasp_project(use_fake_vasp, tmp_path):
     project_root = tmp_path / "vasp_e2e_project"
     project_root.mkdir(parents=True, exist_ok=True)
     
-    project_root = QVService.init_project(project_root)
+    project_root = QMSService.init_project(project_root)
     
     # Create minimal Si structure
     lattice = Lattice.cubic(5.43)
@@ -41,7 +41,7 @@ def vasp_project(use_fake_vasp, tmp_path):
     # Import structure
     struct_file = tmp_path / "si.json"
     struct_file.write_text(json.dumps(structure.as_dict()))
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="Silicon")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="Silicon")
     
     return {
         "root": project_root,
@@ -56,7 +56,7 @@ def vasp_calculation(vasp_project):
     structure_ulid = vasp_project["structure_ulid"]
     
     # Create calculation
-    calc_result = QVService(project_root).project.init_calculation(
+    calc_result = QMSService(project_root).project.init_calculation(
         name="vasp_test",
         structure_selector=structure_ulid,
     )
@@ -88,30 +88,30 @@ def vasp_calculation(vasp_project):
 
 @pytest.mark.integration
 class TestVASPProjectE2E:
-    """End-to-end tests for VASP via QVService API."""
+    """End-to-end tests for VASP via QMSService API."""
     
     def test_scf_to_bands_workflow(self, vasp_calculation, use_fake_vasp):
-        """Test SCF → Bands workflow via QVService."""
+        """Test SCF → Bands workflow via QMSService."""
         project_root = vasp_calculation["project_root"]
         calc_ulid = vasp_calculation["calc_ulid"]
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = QVService(project_root).calculation.add_step(calc_ulid,
+        scf_result = QMSService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_ulid = scf_result.id
         
         # Add Bands step (bandspw = band structure calculation, not bands = post-processing)
-        bands_result = QVService(project_root).calculation.add_step(calc_ulid,
+        bands_result = QMSService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="bandspw",  # GEN type for UI layer (bandspw for band calculation)
             name="bands",
         )
         bands_ulid = bands_result.id
         
         # Run SCF
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         scf_run_result = svc.run.run_step(
             calc_selector=calc_ulid,
             step_selector=scf_ulid,
@@ -139,27 +139,27 @@ class TestVASPProjectE2E:
         assert (bands_workdir / "CHGCAR").exists()  # Should be copied from SCF
     
     def test_scf_to_dos_workflow(self, vasp_calculation, use_fake_vasp):
-        """Test SCF → DOS workflow via QVService."""
+        """Test SCF → DOS workflow via QMSService."""
         project_root = vasp_calculation["project_root"]
         calc_ulid = vasp_calculation["calc_ulid"]
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = QVService(project_root).calculation.add_step(calc_ulid,
+        scf_result = QMSService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_ulid = scf_result.id
         
         # Add DOS step
-        dos_result = QVService(project_root).calculation.add_step(calc_ulid,
+        dos_result = QMSService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="dos",  # GEN type for UI layer
             name="dos",
         )
         dos_ulid = dos_result.id
         
         # Run SCF
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         scf_run_result = svc.run.run_step(
             calc_selector=calc_ulid,
             step_selector=scf_ulid,
@@ -191,21 +191,21 @@ class TestVASPProjectE2E:
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = QVService(project_root).calculation.add_step(calc_ulid,
+        scf_result = QMSService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
         scf_ulid = scf_result.id
         
         # Add Bands step (bandspw = band structure calculation, not bands = post-processing)
-        bands_result = QVService(project_root).calculation.add_step(calc_ulid,
+        bands_result = QMSService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="bandspw",  # GEN type for UI layer (bandspw for band calculation)
             name="bands",
         )
         bands_ulid = bands_result.id
         
         # Run calculation (should run both steps)
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         first_run = svc.run.run_calculation(
             calc_selector=calc_ulid,
         )
@@ -247,7 +247,7 @@ class TestVASPProjectE2E:
         calc_dir = vasp_calculation["calc_dir"]
         
         # Add SCF step
-        scf_result = QVService(project_root).calculation.add_step(calc_ulid,
+        scf_result = QMSService(project_root).calculation.add_step(calc_ulid,
             step_type_gen="scf",  # GEN type for UI layer
             name="scf",
         )
@@ -262,7 +262,7 @@ class TestVASPProjectE2E:
             assert manifest.steps[0].done is False
         
         # Run SCF
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         scf_run_result = svc.run.run_step(
             calc_selector=calc_ulid,
             step_selector=scf_ulid,

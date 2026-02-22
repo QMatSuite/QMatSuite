@@ -2,7 +2,7 @@
 
 ## Where calculation.structure_id is stored and used
 
-- **Storage**: `calculation.structure_id` is stored in `calculation.yaml` as a ULID (canonical reference). The `CalculationModel` class (`src/quantumvitas/core/models.py`) has `structure_id: Optional[str]` field that persists to YAML via `to_dict()`.
+- **Storage**: `calculation.structure_id` is stored in `calculation.yaml` as a ULID (canonical reference). The `CalculationModel` class (`src/qmatsuite/core/models.py`) has `structure_id: Optional[str]` field that persists to YAML via `to_dict()`.
 
 - **Usage during run/export**:
   - `api.py:run_step()` (line 1216-1226): Loads calculation, reads `calculation.structure_id`, then calls `require_structure(project_root, calculation.structure_id)` to resolve the structure for step execution.

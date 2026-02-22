@@ -20,8 +20,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.api import QMSService
+from qmatsuite.core.resources import get_resources_dir
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -94,15 +94,15 @@ loop_
 
 def _ensure_sssp_installed(variant: str = "precision", version: str = "1.3.0"):
     """Download + install SSSP if not already present."""
-    from quantumvitas.core.paths import home_pseudo_libraries_dir
-    from quantumvitas.pseudo.layout import find_installed_library
+    from qmatsuite.core.paths import home_pseudo_libraries_dir
+    from qmatsuite.pseudo.layout import find_installed_library
 
     libraries_root = home_pseudo_libraries_dir()
     lib = find_installed_library(libraries_root, "sssp", variant, version)
     if lib is not None:
         return  # already installed
 
-    from quantumvitas.pseudo.pipeline import download_and_install
+    from qmatsuite.pseudo.pipeline import download_and_install
 
     result = download_and_install(library="sssp", variant=variant, version=version)
     assert result.get("success", False), f"SSSP {variant} install failed: {result}"
@@ -110,7 +110,7 @@ def _ensure_sssp_installed(variant: str = "precision", version: str = "1.3.0"):
 
 def _qe_available() -> bool:
     """Check if QE pw.x is available."""
-    from quantumvitas.api.utils import get_qe_engine_status
+    from qmatsuite.api.utils import get_qe_engine_status
 
     status = get_qe_engine_status()
     return status.get("detection", {}).get("found", False)
@@ -126,7 +126,7 @@ class TestNoRootHeadJson:
 
     @pytest.fixture(autouse=True)
     def _install_sssp(self):
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
 
         # Remove any stale root head.json left from OLD pipeline runs
         libraries_root = home_pseudo_libraries_dir()
@@ -138,7 +138,7 @@ class TestNoRootHeadJson:
 
     def test_no_root_head_json(self):
         """Fresh install must NOT create root-level head.json."""
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
 
         libraries_root = home_pseudo_libraries_dir()
         root_head = libraries_root / "SSSP" / "head.json"
@@ -147,7 +147,7 @@ class TestNoRootHeadJson:
         )
 
     def test_install_level_head_json_exists(self):
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
 
         libraries_root = home_pseudo_libraries_dir()
         install_head = libraries_root / "SSSP" / "precision" / _SSSP_PRECISION_VERSION / "head.json"
@@ -156,7 +156,7 @@ class TestNoRootHeadJson:
         )
 
     def test_install_head_has_library_key(self):
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
 
         libraries_root = home_pseudo_libraries_dir()
         install_head = libraries_root / "SSSP" / "precision" / _SSSP_PRECISION_VERSION / "head.json"
@@ -181,8 +181,8 @@ class TestTwoVariantsCoexist:
         _ensure_sssp_installed("efficiency")
 
     def test_both_discovered(self):
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
-        from quantumvitas.pseudo.layout import iter_installed_libraries
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.pseudo.layout import iter_installed_libraries
 
         libraries_root = home_pseudo_libraries_dir()
         sssp_variants = set()
@@ -194,8 +194,8 @@ class TestTwoVariantsCoexist:
         assert "efficiency" in sssp_variants, "efficiency must be discoverable"
 
     def test_find_installed_library_precision(self):
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
-        from quantumvitas.pseudo.layout import find_installed_library
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.pseudo.layout import find_installed_library
 
         libraries_root = home_pseudo_libraries_dir()
         lib = find_installed_library(libraries_root, "sssp", "precision", _SSSP_PRECISION_VERSION)
@@ -203,8 +203,8 @@ class TestTwoVariantsCoexist:
         assert lib.install_dir.is_dir()
 
     def test_find_installed_library_efficiency(self):
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
-        from quantumvitas.pseudo.layout import find_installed_library
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.pseudo.layout import find_installed_library
 
         libraries_root = home_pseudo_libraries_dir()
         lib = find_installed_library(libraries_root, "sssp", "efficiency", _SSSP_EFFICIENCY_VERSION)
@@ -212,8 +212,8 @@ class TestTwoVariantsCoexist:
         assert lib.install_dir.is_dir()
 
     def test_separate_directories(self):
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
-        from quantumvitas.pseudo.layout import find_installed_library
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.pseudo.layout import find_installed_library
 
         libraries_root = home_pseudo_libraries_dir()
         prec = find_installed_library(libraries_root, "sssp", "precision", _SSSP_PRECISION_VERSION)
@@ -233,39 +233,39 @@ class TestNoOldLayoutReferences:
     def test_no_pseudo_installs_module(self):
         """pseudo_installs.py was deleted."""
         with pytest.raises(ImportError):
-            import quantumvitas.core.pseudo_installs  # noqa: F401
+            import qmatsuite.core.pseudo_installs  # noqa: F401
 
     def test_no_download_sssp_library(self):
         """Old download_sssp_library function must not exist in pseudo_config."""
-        from quantumvitas.core import pseudo_config
+        from qmatsuite.core import pseudo_config
 
         assert not hasattr(pseudo_config, "download_sssp_library")
 
     def test_no_install_sssp_from_seed(self):
-        from quantumvitas.core import pseudo_config
+        from qmatsuite.core import pseudo_config
 
         assert not hasattr(pseudo_config, "install_sssp_from_seed")
 
     def test_no_get_sssp_library_path(self):
-        from quantumvitas.core import pseudo_config
+        from qmatsuite.core import pseudo_config
 
         assert not hasattr(pseudo_config, "get_sssp_library_path")
 
     def test_no_list_installed_sssp(self):
-        from quantumvitas.core import pseudo_config
+        from qmatsuite.core import pseudo_config
 
         assert not hasattr(pseudo_config, "list_installed_sssp")
 
     def test_no_flavor_field_in_request(self):
         """PseudoResolutionRequest must use 'variant', not 'flavor'."""
-        from quantumvitas.core.pseudo_config import PseudoResolutionRequest
+        from qmatsuite.core.pseudo_config import PseudoResolutionRequest
 
         fields = {f.name for f in PseudoResolutionRequest.__dataclass_fields__.values()}
         assert "flavor" not in fields, "flavor field must be gone"
         assert "variant" in fields, "variant field must exist"
 
     def test_variant_default_is_precision(self):
-        from quantumvitas.core.pseudo_config import PseudoResolutionRequest
+        from qmatsuite.core.pseudo_config import PseudoResolutionRequest
 
         field_info = PseudoResolutionRequest.__dataclass_fields__["variant"]
         assert field_info.default == "precision", (
@@ -280,7 +280,7 @@ class TestNoOldLayoutReferences:
         import subprocess
 
         result = subprocess.run(
-            ["grep", "-rn", "flavor", "src/quantumvitas/",
+            ["grep", "-rn", "flavor", "src/qmatsuite/",
              "--include=*.py"],
             capture_output=True,
             text=True,
@@ -310,8 +310,8 @@ class TestSeedFallback:
 
     def test_resolve_after_install(self, tmp_path, monkeypatch):
         """Resolution succeeds when SSSP precision is installed."""
-        from quantumvitas.core.paths import home_pseudo_libraries_dir
-        from quantumvitas.core.pseudo_config import (
+        from qmatsuite.core.paths import home_pseudo_libraries_dir
+        from qmatsuite.core.pseudo_config import (
             PseudoConfig,
             PseudoResolutionRequest,
             resolve_project_pseudos,
@@ -347,12 +347,12 @@ class TestListResourcesShowsInstalled:
         _ensure_sssp_installed("precision")
 
         # Set up a temp project for MCP context
-        project_root = QVService.init_project(tmp_path / "project")
+        project_root = QMSService.init_project(tmp_path / "project")
 
         # Import a structure using known-good CIF from test data
         si_cif = Path(__file__).parent.parent / "data" / "structures" / "si_diamond.cif"
         if si_cif.exists():
-            QVService(project_root).structure.import_file(si_cif, name="Si")
+            QMSService(project_root).structure.import_file(si_cif, name="Si")
         else:
             # Fallback: use pymatgen JSON format
             import json as _json
@@ -370,13 +370,13 @@ class TestListResourcesShowsInstalled:
                      "abc": [0, 0, 0], "xyz": [0, 0, 0]},
                 ],
             }))
-            QVService(project_root).structure.import_file(si_json, name="Si")
+            QMSService(project_root).structure.import_file(si_json, name="Si")
 
-        from quantumvitas.mcp import project as mcp_project
+        from qmatsuite.mcp import project as mcp_project
         monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
     def test_qe_shows_installed_libraries(self):
-        from quantumvitas.mcp.tools.list_resources import list_available_resources
+        from qmatsuite.mcp.tools.list_resources import list_available_resources
 
         r = list_available_resources.fn(engine="qe", elements=["Si"])
         assert r["status"] == "success", f"Failed: {r}"
@@ -394,7 +394,7 @@ class TestListResourcesShowsInstalled:
         assert found_precision, "SSSP precision should be in installed_libraries"
 
     def test_si_available_in_library(self):
-        from quantumvitas.mcp.tools.list_resources import list_available_resources
+        from qmatsuite.mcp.tools.list_resources import list_available_resources
 
         r = list_available_resources.fn(engine="qe", elements=["Si"])
         data = r["data"]
@@ -438,7 +438,7 @@ class TestRealSCFSmoke:
 
     def test_tl_in_sssp_precision_index(self):
         """Precondition: Tl IS in SSSP precision index."""
-        from quantumvitas.pseudo.registry import resolve_element_from_index
+        from qmatsuite.pseudo.registry import resolve_element_from_index
 
         filename = resolve_element_from_index("sssp", "precision", "1.3.0", "Tl")
         assert filename is not None, "Tl must be in SSSP precision index"
@@ -446,10 +446,10 @@ class TestRealSCFSmoke:
 
     def test_full_scf_smoke(self, tmp_path, monkeypatch):
         """Download SSSP → resolve Tl → run QE SCF → verify converged."""
-        from quantumvitas.mcp import project as mcp_project
+        from qmatsuite.mcp import project as mcp_project
 
-        project_root = QVService.init_project(tmp_path / "tl_scf_project")
-        svc = QVService(project_root)
+        project_root = QMSService.init_project(tmp_path / "tl_scf_project")
+        svc = QMSService(project_root)
 
         # Import Tl BCC structure
         tl_cif = tmp_path / "tl_bcc.cif"
@@ -460,13 +460,13 @@ class TestRealSCFSmoke:
         monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
         # Create SCF calculation
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
         r = create_calculation.fn(engine="qe", workflow="scf", structure_selector="Tl_BCC")
         assert r["status"] == "success", f"Create calc failed: {r}"
         calc_ulid = r["data"]["calc_ulid"]
 
         # Auto-resolve species map — THE KEY ASSERTION
-        from quantumvitas.mcp.tools.resolve_species_map import auto_resolve_species_map
+        from qmatsuite.mcp.tools.resolve_species_map import auto_resolve_species_map
         r = auto_resolve_species_map.fn(calc_ulid=calc_ulid)
         assert r["status"] == "success", f"auto_resolve failed: {r}"
         data = r["data"]
@@ -480,11 +480,11 @@ class TestRealSCFSmoke:
         assert staged_file.exists(), f"Staged UPF must exist: {staged_file}"
 
         # Apply preset and run
-        from quantumvitas.mcp.tools.apply_preset import apply_preset
+        from qmatsuite.mcp.tools.apply_preset import apply_preset
         r = apply_preset.fn(calc_ulid=calc_ulid, presets={"magnetism": "NM", "precision": "LOW"})
         assert r["status"] == "success", f"apply_preset failed: {r}"
 
-        from quantumvitas.mcp.tools.run_calculation import run_calculation
+        from qmatsuite.mcp.tools.run_calculation import run_calculation
         r = run_calculation.fn(calc_ulid=calc_ulid)
         assert r["status"] == "success", f"run_calculation failed: {r}"
         assert r["data"]["status"] == "completed", f"SCF did not converge: {r['data']}"
@@ -509,10 +509,10 @@ class TestGaAsEndToEnd:
     def test_gaas_bands_full_workflow(self, tmp_path, monkeypatch):
         """Clean project → download SSSP → import GaAs → create bands →
         auto_resolve → verify Ga and As both staged."""
-        from quantumvitas.mcp import project as mcp_project
+        from qmatsuite.mcp import project as mcp_project
 
-        project_root = QVService.init_project(tmp_path / "gaas_project")
-        svc = QVService(project_root)
+        project_root = QMSService.init_project(tmp_path / "gaas_project")
+        svc = QMSService(project_root)
 
         # Import GaAs structure
         gaas_cif = tmp_path / "gaas.cif"
@@ -522,13 +522,13 @@ class TestGaAsEndToEnd:
         monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
         # Create bands calculation
-        from quantumvitas.mcp.tools.create_calculation import create_calculation
+        from qmatsuite.mcp.tools.create_calculation import create_calculation
         r = create_calculation.fn(engine="qe", workflow="bands", structure_selector="GaAs")
         assert r["status"] == "success", f"Create calc failed: {r}"
         calc_ulid = r["data"]["calc_ulid"]
 
         # Auto-resolve — THE KEY ASSERTION
-        from quantumvitas.mcp.tools.resolve_species_map import auto_resolve_species_map
+        from qmatsuite.mcp.tools.resolve_species_map import auto_resolve_species_map
         r = auto_resolve_species_map.fn(calc_ulid=calc_ulid)
         assert r["status"] == "success", f"auto_resolve failed: {r}"
         data = r["data"]
@@ -552,7 +552,7 @@ class TestGaAsEndToEnd:
 
     def test_cutoffs_loaded_for_gaas(self, tmp_path, monkeypatch):
         """Cutoffs must be loaded from SSSP companion JSON (the dict-vs-list bug fix)."""
-        from quantumvitas.core.pseudo_config import (
+        from qmatsuite.core.pseudo_config import (
             PseudoConfig,
             PseudoResolutionRequest,
             resolve_project_pseudos,

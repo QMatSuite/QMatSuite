@@ -36,8 +36,8 @@
 - Source: Test projects in `tests/data/project_examples/`
 
 **Execution**:
-- Via CLI: `qv run <demo_id>` or `qv create-demo-project --demo-id <demo_id>`
-- Via API: `QVService.create_demo_project(target_dir, demo_id=<demo_id>)`
+- Via CLI: `qms run <demo_id>` or `qms create-demo-project --demo-id <demo_id>`
+- Via API: `QMSService.create_demo_project(target_dir, demo_id=<demo_id>)`
 - Via GUI: Demo gallery panel (`gui/src/components/panels/DemoGalleryPanel.tsx`)
 
 **Artifacts**:
@@ -47,9 +47,9 @@
 - Additional artifacts: `.dat`, `.gnu`, `.rap` files for bands/DOS
 
 **UI Text Display**:
-- Uses `list_step_artifacts()` API endpoint (`src/quantumvitas/api.py:3595`)
+- Uses `list_step_artifacts()` API endpoint (`src/qmatsuite/api.py:3595`)
 - Pattern matching: `{step_type}.out` or `{step_type}-{n}.out` (numbered versions)
-- Default candidate selection via `get_default_artifact()` in `src/quantumvitas/calculation/step_artifacts.py`
+- Default candidate selection via `get_default_artifact()` in `src/qmatsuite/calculation/step_artifacts.py`
 - UI component: `StepOutputTextViewer.tsx` displays artifact content via `read_step_artifact_text` RPC call
 
 **Text Resolution Rule**:
@@ -82,7 +82,7 @@
   - `w90_run`: `<seedname>.wout` (main output for GUI)
 
 **UI Text Display**:
-- Uses step-specific artifact rules in `src/quantumvitas/calculation/step_artifacts.py`
+- Uses step-specific artifact rules in `src/qmatsuite/calculation/step_artifacts.py`
 - `_w90_run_artifacts()` returns `{seedname}.wout` as primary artifact
 - Default candidate: `.wout` file (preferred over `.out` if both exist)
 
@@ -98,7 +98,7 @@
 - Creates snapshot with molecular structure and SCF parameters
 
 **Execution**:
-- Via subprocess: `python -m quantumvitas.engines.pyscf.runner <job.json>`
+- Via subprocess: `python -m qmatsuite.engines.pyscf.runner <job.json>`
 - Job file contains step parameters, structure, and step_type
 - Results written to `results.json` in working directory
 
@@ -123,11 +123,11 @@
 
 #### **Adapter Code Location**
 
-- **Engine**: `src/quantumvitas/engine/orca_engine.py`
-- **Input Compiler**: `src/quantumvitas/engines/orca/input_compiler.py`
-- **Property Parser**: `src/quantumvitas/engines/orca/property_parser.py`
-- **Chain Infrastructure**: `src/quantumvitas/engine/qc_engine_base.py`
-- **Token Registry**: `src/quantumvitas/workflow/registry.py`
+- **Engine**: `src/qmatsuite/engine/orca_engine.py`
+- **Input Compiler**: `src/qmatsuite/engines/orca/input_compiler.py`
+- **Property Parser**: `src/qmatsuite/engines/orca/property_parser.py`
+- **Chain Infrastructure**: `src/qmatsuite/engine/qc_engine_base.py`
+- **Token Registry**: `src/qmatsuite/workflow/registry.py`
 
 #### **Step Materialization**
 
@@ -201,18 +201,18 @@ calc_01/raw/qc_chains/
 - UI should show the same text output for all steps in the chain (may repeat, but deterministic)
 
 **Implementation Location**:
-- Chain detection: `src/quantumvitas/engine/qc_engine_base.py::find_chain_for_step()`
-- Subchain extraction: `src/quantumvitas/engine/qc_engine_base.py::QCChain` (partial chain logic)
-- Basename generation: `src/quantumvitas/workflow/registry.py::generate_subchain_basename()`
-- Namespace resolution: `src/quantumvitas/workflow/registry.py::get_chain_namespace_folder()`
+- Chain detection: `src/qmatsuite/engine/qc_engine_base.py::find_chain_for_step()`
+- Subchain extraction: `src/qmatsuite/engine/qc_engine_base.py::QCChain` (partial chain logic)
+- Basename generation: `src/qmatsuite/workflow/registry.py::generate_subchain_basename()`
+- Namespace resolution: `src/qmatsuite/workflow/registry.py::get_chain_namespace_folder()`
 
 ### C) PySCF Integration Overview
 
-**Engine**: `src/quantumvitas/engine/pyscf_engine.py`
+**Engine**: `src/qmatsuite/engine/pyscf_engine.py`
 
 **Execution Model**:
-- **Standalone steps**: Subprocess execution via `quantumvitas.engines.pyscf.runner`
-- **Chain execution**: In-memory session via `quantumvitas.engines.pyscf.chain_execution`
+- **Standalone steps**: Subprocess execution via `qmatsuite.engines.pyscf.runner`
+- **Chain execution**: In-memory session via `qmatsuite.engines.pyscf.chain_execution`
 - **Weak-chain internally**: Steps execute sequentially in one Python session
 - **Shared chain semantics**: Uses same namespace folders and basenames as ORCA
 
@@ -418,17 +418,17 @@ Each demo YAML file contains:
 
 ```bash
 # Create project from demo
-qv create-demo-project --demo-id water_orca_scf
+qms create-demo-project --demo-id water_orca_scf
 
 # Or via GUI: Select "Water ORCA SCF" from demo gallery
 
 # Run calculation
-qv run calc water-orca-scf
+qms run calc water-orca-scf
 
 # Or via GUI: Click "Run" on the calculation
 
 # View results
-qv show calc water-orca-scf
+qms show calc water-orca-scf
 
 # Or via GUI: Open calculation → View step output
 ```
@@ -441,7 +441,7 @@ qv show calc water-orca-scf
 
 ### A) Text Artifact Resolver (Conceptual)
 
-**Location**: `src/quantumvitas/calculation/step_artifacts.py`
+**Location**: `src/qmatsuite/calculation/step_artifacts.py`
 
 **Function**: `resolve_text_artifact_for_step(step_type, step_id, calculation_dir, project_root) -> Optional[Path]`
 
@@ -537,7 +537,7 @@ qv show calc water-orca-scf
   - [ ] `formaldehyde_orca_tddft.yml`
   - [ ] `methane_orca_freq.yml`
 - [ ] Add demo metadata (title, subtitle, tags, difficulty)
-- [ ] Test materialization: `qv create-demo-project --demo-id water_orca_scf`
+- [ ] Test materialization: `qms create-demo-project --demo-id water_orca_scf`
 - [ ] Verify project structure is correct (steps, structures, calculations)
 
 **Tests to Add**:
@@ -550,7 +550,7 @@ qv show calc water-orca-scf
 python tools/generate_orca_demos.py
 
 # Test materialization
-qv create-demo-project /tmp/test-water --demo-id water_orca_scf
+qms create-demo-project /tmp/test-water --demo-id water_orca_scf
 ls /tmp/test-water/calculations/*/steps/
 
 # Run focused tests
@@ -738,7 +738,7 @@ pytest tests/integration/test_ui_text_viewer_polish.py -v
 - Chain: Unknown (may be `calc/raw/qc_chains/scf_<suffix>/pyscf.log` or `calc/raw/pyscf.log`)
 
 **Investigation Needed**:
-- Review `src/quantumvitas/engines/pyscf/chain_execution.py`
+- Review `src/qmatsuite/engines/pyscf/chain_execution.py`
 - Check `run_chain_session()` to see where log file is written
 - Verify with integration test
 
@@ -769,13 +769,13 @@ pytest tests/integration/test_ui_text_viewer_polish.py -v
 ## Appendix: Key Files Reference
 
 ### Backend
-- `src/quantumvitas/api.py:3595` - `list_step_artifacts()` implementation
-- `src/quantumvitas/calculation/step_artifacts.py` - Artifact rules registry
-- `src/quantumvitas/engine/qc_engine_base.py` - Chain detection and subchain extraction
-- `src/quantumvitas/workflow/registry.py` - Token mapping and basename generation
-- `src/quantumvitas/engine/orca_engine.py` - ORCA engine execution
-- `src/quantumvitas/engines/pyscf/runner.py` - PySCF standalone execution
-- `src/quantumvitas/engines/pyscf/chain_execution.py` - PySCF chain execution
+- `src/qmatsuite/api.py:3595` - `list_step_artifacts()` implementation
+- `src/qmatsuite/calculation/step_artifacts.py` - Artifact rules registry
+- `src/qmatsuite/engine/qc_engine_base.py` - Chain detection and subchain extraction
+- `src/qmatsuite/workflow/registry.py` - Token mapping and basename generation
+- `src/qmatsuite/engine/orca_engine.py` - ORCA engine execution
+- `src/qmatsuite/engines/pyscf/runner.py` - PySCF standalone execution
+- `src/qmatsuite/engines/pyscf/chain_execution.py` - PySCF chain execution
 
 ### Frontend
 - `gui/src/components/panels/StepOutputTextViewer.tsx` - Text viewer component

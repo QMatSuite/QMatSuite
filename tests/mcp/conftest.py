@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.api import QVService
+from qmatsuite.api import QMSService
 
 # Minimal pymatgen-format Silicon structure (1 atom, FCC-like).
 SI_STRUCTURE_JSON = json.dumps({
@@ -25,20 +25,20 @@ SI_STRUCTURE_JSON = json.dumps({
 
 
 @pytest.fixture
-def qv_project(tmp_path, monkeypatch):
+def qms_project(tmp_path, monkeypatch):
     """Create a temporary QMatSuite project with an imported Silicon structure.
 
     Patches the MCP project module so all tools resolve to this project.
     """
-    project_root = QVService.init_project(tmp_path / "project")
+    project_root = QMSService.init_project(tmp_path / "project")
 
     # Import structure
     source = tmp_path / "si.json"
     source.write_text(SI_STRUCTURE_JSON)
-    QVService(project_root).structure.import_file(source, name="Silicon")
+    QMSService(project_root).structure.import_file(source, name="Silicon")
 
     # Patch MCP project context
-    from quantumvitas.mcp import project as mcp_project
+    from qmatsuite.mcp import project as mcp_project
     monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
     return project_root
@@ -47,7 +47,7 @@ def qv_project(tmp_path, monkeypatch):
 @pytest.fixture
 def qe_available() -> bool:
     """Ensure QE is available. Fails (not skips) if not found."""
-    from quantumvitas.api.utils import get_qe_engine_status
+    from qmatsuite.api.utils import get_qe_engine_status
 
     status = get_qe_engine_status()
     if not status.get("detection", {}).get("found"):
@@ -61,8 +61,8 @@ def qe_project_with_si(tmp_path, qe_available, monkeypatch):
 
     Returns project_root for a project ready for QE calculations.
     """
-    project_root = QVService.init_project(tmp_path / "si_qe_project")
-    svc = QVService(project_root)
+    project_root = QMSService.init_project(tmp_path / "si_qe_project")
+    svc = QMSService(project_root)
 
     # Import Si structure from test CIF
     si_cif = Path(__file__).parent.parent / "data" / "structures" / "si_diamond.cif"
@@ -72,7 +72,7 @@ def qe_project_with_si(tmp_path, qe_available, monkeypatch):
     svc.structure.import_file(source=si_cif, name="Si")
 
     # Patch MCP project context
-    from quantumvitas.mcp import project as mcp_project
+    from qmatsuite.mcp import project as mcp_project
     monkeypatch.setattr(mcp_project, "_project_root_override", project_root)
 
     return project_root

@@ -12,9 +12,9 @@ from pathlib import Path
 import tempfile
 import subprocess
 
-from quantumvitas.core.engines.qe_calculation import QECalculationRunner
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe_calculation import QECalculationRunner
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
 
 
 def test_pw2wannier90_stderr_file_creation(tmp_path):
@@ -67,7 +67,7 @@ exit 0
 
 def test_stderr_file_path_format():
     """Test that stderr file path uses step_type.err naming convention."""
-    from quantumvitas.core.engines.qe_calculation import QECalculationRunner
+    from qmatsuite.core.engines.qe_calculation import QECalculationRunner
     
     # F: Verify the path format logic - output files use step_type.err naming
     step_type_gen = "pw2wannier"  # GEN type for UI layer
@@ -87,7 +87,7 @@ def test_pw2wannier90_actual_stderr_output(tmp_path):
     This test runs pw2wannier90.x with a minimal invocation to verify stderr file creation.
     It conditionally skips if pw2wannier90.x is not found via QE engine discovery.
     """
-    from quantumvitas.core.engines.qe_binary_locator import locate_pw2wannier90
+    from qmatsuite.core.engines.qe_binary_locator import locate_pw2wannier90
     import subprocess
     
     # Locate pw2wannier90.x via QE engine discovery

@@ -72,13 +72,13 @@
 ### New Files (15)
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/drivers/cp2k/data/__init__.py` | Package init |
-| `src/quantumvitas/drivers/cp2k/data/cp2k_tags.json` | 215-tag metadata catalog |
-| `src/quantumvitas/drivers/cp2k/data/cp2k_metadata.py` | Metadata access layer |
-| `src/quantumvitas/drivers/cp2k/io/__init__.py` | Package init |
-| `src/quantumvitas/drivers/cp2k/io/cp2k_input.py` | Parser + writer |
-| `src/quantumvitas/drivers/cp2k/parsers/__init__.py` | Package init |
-| `src/quantumvitas/drivers/cp2k/parsers/output.py` | CP2KDigest + CP2KOutputParser |
+| `src/qmatsuite/drivers/cp2k/data/__init__.py` | Package init |
+| `src/qmatsuite/drivers/cp2k/data/cp2k_tags.json` | 215-tag metadata catalog |
+| `src/qmatsuite/drivers/cp2k/data/cp2k_metadata.py` | Metadata access layer |
+| `src/qmatsuite/drivers/cp2k/io/__init__.py` | Package init |
+| `src/qmatsuite/drivers/cp2k/io/cp2k_input.py` | Parser + writer |
+| `src/qmatsuite/drivers/cp2k/parsers/__init__.py` | Package init |
+| `src/qmatsuite/drivers/cp2k/parsers/output.py` | CP2KDigest + CP2KOutputParser |
 | `tests/drivers/cp2k/test_cp2k_metadata.py` | Metadata tests (19) |
 | `tests/drivers/cp2k/test_cp2k_output.py` | Output digest tests (12) |
 | `docs/engines/cp2k/PHASE_B1_PLAN.md` | B1 plan document |
@@ -89,7 +89,7 @@
 ### Modified Files (2)
 | File | Change |
 |------|--------|
-| `src/quantumvitas/drivers/cp2k/inputspec.py` | Rewired to use `io/cp2k_input.py` |
+| `src/qmatsuite/drivers/cp2k/inputspec.py` | Rewired to use `io/cp2k_input.py` |
 | `tests/drivers/cp2k/test_cp2k_driver.py` | Expanded from ~10 to 67 tests |
 
 ---

@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.siesta.parsers.output import SiestaDigest, SiestaOutputParser
-from quantumvitas.parsers.registry import get_parser
+from qmatsuite.drivers.siesta.parsers.output import SiestaDigest, SiestaOutputParser
+from qmatsuite.parsers.registry import get_parser
 
 
 ARTIFACTS_DIR = Path(__file__).resolve().parents[2] / "docs" / "engines" / "siesta" / "artifacts"
@@ -30,7 +30,7 @@ class TestSiestaDigestDataclass:
 
 class TestSiestaOutputParserClass:
     def test_registry_lookup(self):
-        import quantumvitas.drivers.siesta  # noqa: F401
+        import qmatsuite.drivers.siesta  # noqa: F401
 
         cls = get_parser("siesta", "scf_digest")
         assert cls is not None

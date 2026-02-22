@@ -14,21 +14,21 @@ hangs, crashes, or misleading errors.
 
 | ID | Severity | Fix |
 |----|----------|-----|
-| V1 | MEDIUM | `get_service()` catches `ValueError` from `QVService.__init__` and converts to `ProjectNotFoundError` |
+| V1 | MEDIUM | `get_service()` catches `ValueError` from `QMSService.__init__` and converts to `ProjectNotFoundError` |
 | V2 | MEDIUM | `build_resource_index()` collects warnings for corrupt files (via `get_last_index_warnings()`) instead of silently swallowing |
 | V3 | LOW | `load_project_config()` wraps YAML parse errors in `ProjectConfigError` |
 | V4 | MEDIUM | `init_project` runs `_quick_health_check()` and returns warnings for missing dirs, orphaned refs, corrupt files |
-| V5 | LOW | New `cleanup_project` MCP tool removes orphaned references from `project.qv.yml` |
+| V5 | LOW | New `cleanup_project` MCP tool removes orphaned references from `project.qms.yml` |
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/mcp/project.py` | +2 lines: catch `ValueError` in `get_service()` |
-| `src/quantumvitas/core/resolution.py` | +15 lines: `_last_index_warnings` + `get_last_index_warnings()` + 3 except block updates |
-| `src/quantumvitas/core/project_utils.py` | +4 lines: wrap YAML errors in `load_project_config()` |
-| `src/quantumvitas/mcp/tools/init_project.py` | +60 lines: `_quick_health_check()` + integration |
-| `src/quantumvitas/mcp/server.py` | +1 line: register `cleanup_project` |
+| `src/qmatsuite/mcp/project.py` | +2 lines: catch `ValueError` in `get_service()` |
+| `src/qmatsuite/core/resolution.py` | +15 lines: `_last_index_warnings` + `get_last_index_warnings()` + 3 except block updates |
+| `src/qmatsuite/core/project_utils.py` | +4 lines: wrap YAML errors in `load_project_config()` |
+| `src/qmatsuite/mcp/tools/init_project.py` | +60 lines: `_quick_health_check()` + integration |
+| `src/qmatsuite/mcp/server.py` | +1 line: register `cleanup_project` |
 | `tests/mcp/test_stage11.py` | Tool count 30→31 + expected_names set |
 | `tests/mcp/test_stage_p1.py` | Tool count 30→31 |
 | `tests/mcp/test_stage_p2.py` | Tool count 30→31 |
@@ -37,7 +37,7 @@ hangs, crashes, or misleading errors.
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/mcp/tools/cleanup_project.py` | New MCP tool (dry_run/remove orphaned refs) |
+| `src/qmatsuite/mcp/tools/cleanup_project.py` | New MCP tool (dry_run/remove orphaned refs) |
 | `tests/mcp/test_project_robustness.py` | 19 robustness tests |
 
 ## Test Results

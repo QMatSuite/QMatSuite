@@ -13,9 +13,9 @@ import re
 import pytest
 from pathlib import Path
 
-from quantumvitas.api.service import QVService
-from quantumvitas.inputformat import write_engine_inputs
-from quantumvitas.drivers.qe.inputspec import get_qe_input_spec
+from qmatsuite.api.service import QMSService
+from qmatsuite.inputformat import write_engine_inputs
+from qmatsuite.drivers.qe.inputspec import get_qe_input_spec
 
 CIF_DIR = Path(__file__).parent.parent / "data" / "structures"
 
@@ -115,15 +115,15 @@ def al_cif():
 
 @pytest.fixture
 def project(tmp_path):
-    """Create a fresh QVService project."""
+    """Create a fresh QMSService project."""
     project_root = tmp_path / "test_project"
-    QVService.init_project(project_root, name="test")
-    return QVService(project_root)
+    QMSService.init_project(project_root, name="test")
+    return QMSService(project_root)
 
 
 def _import_and_read(project, cif_path, name):
     """Import CIF, read back pymatgen structure, return (StructureDTO, PMGStructure)."""
-    from quantumvitas.io.structure_io import read_structure
+    from qmatsuite.io.structure_io import read_structure
 
     dto = project.structure.import_file(source=cif_path, name=name)
     ref = project.structure.require_ref(dto.meta.ulid)
@@ -147,7 +147,7 @@ class TestSiImport:
         json_files = list((project.project_root / "structures").glob("*.json"))
         assert len(json_files) == 1
         data = json.loads(json_files[0].read_text())
-        assert "__qv_meta__" in data
+        assert "__qms_meta__" in data
         assert "structure" in data
         sites = data["structure"]["sites"]
         assert len(sites) == SI_NATOMS

@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import pytest
 
-from quantumvitas.drivers.qe.preflight import QEPreflightChecker
-from quantumvitas.core.driver_protocol import PreflightIssue
+from qmatsuite.drivers.qe.preflight import QEPreflightChecker
+from qmatsuite.core.driver_protocol import PreflightIssue
 
 
 @pytest.fixture

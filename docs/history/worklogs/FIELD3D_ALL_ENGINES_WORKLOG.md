@@ -12,12 +12,12 @@
 
 ### Shared Infrastructure (Step 1)
 
-**1a. Promoted Field3D to core** (`src/quantumvitas/core/analysis/field3d.py`)
+**1a. Promoted Field3D to core** (`src/qmatsuite/core/analysis/field3d.py`)
 - Moved Field3D class from `drivers/vasp/parsers/field3d.py` to shared core location
 - Added class-level `meta: AnalysisObjectMeta` annotation (required by Inv-A2 gate)
 - Updated imports in VASP parser and test
 
-**1b. Created shared parsers** (`src/quantumvitas/io/parser/cube_parser.py`)
+**1b. Created shared parsers** (`src/qmatsuite/io/parser/cube_parser.py`)
 - `parse_cube_file()`: Full Gaussian cube parser with Bohr->Angstrom conversion
   - Handles MO cubes (negative N_atoms), Z->symbol mapping, grid reconstruction
 - `parse_xsf_field3d()`: Lightweight XSF DATAGRID_3D parser (no BlobStore dependency)
@@ -76,9 +76,9 @@ Added to `tests/gates/test_analysis_invariants.py`:
 ## New File Inventory
 
 ### Source Files (12 new)
-- `src/quantumvitas/core/analysis/field3d.py` (promoted from VASP)
-- `src/quantumvitas/io/parser/cube_parser.py`
-- `src/quantumvitas/drivers/{w90,qe,cp2k,abinit,siesta,gaussian,orca,gpaw,psi4,pyscf}/parsers/field3d.py` (10 files)
+- `src/qmatsuite/core/analysis/field3d.py` (promoted from VASP)
+- `src/qmatsuite/io/parser/cube_parser.py`
+- `src/qmatsuite/drivers/{w90,qe,cp2k,abinit,siesta,gaussian,orca,gpaw,psi4,pyscf}/parsers/field3d.py` (10 files)
 
 ### Test Files (10 new)
 - `tests/drivers/{w90,qe,cp2k,abinit,siesta,gaussian,orca,gpaw,psi4,pyscf}/test_*_field3d_parser.py`
@@ -87,7 +87,7 @@ Added to `tests/gates/test_analysis_invariants.py`:
 - `tests/data/analysis_{w90,qe,cp2k,abinit,siesta,gaussian,orca,gpaw,psi4,pyscf}_field3d/`
 
 ### Modified Files
-- `src/quantumvitas/drivers/vasp/parsers/field3d.py` — import Field3D from core
+- `src/qmatsuite/drivers/vasp/parsers/field3d.py` — import Field3D from core
 - `tests/drivers/vasp/test_vasp_field3d_parser.py` — update import
 - `tests/gates/test_analysis_invariants.py` — update import + new gate tests
 - 10x `drivers/<engine>/parsers/__init__.py` — add field3d imports

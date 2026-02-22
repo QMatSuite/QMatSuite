@@ -91,16 +91,16 @@ This plan guides Cursor Auto through implementing LAMMPS as a full engine in QMa
 
 | Task | Files to Create/Modify | API Changes | Verification Command |
 |------|------------------------|-------------|---------------------|
-| **1.1** Create engine module | `src/quantumvitas/engine/lammps_engine.py` | `class LammpsEngine(Engine)` | `from quantumvitas.engine.lammps_engine import LammpsEngine` |
-| **1.2** Create binary resolver | `src/quantumvitas/core/engines/lammps_resolver.py` | `resolve_lammps_bin() -> Path` | Unit test with mock paths |
-| **1.3** Register in registry | `src/quantumvitas/engine/registry.py` | Add to `create_default_registry()` | `registry.list_engines()` includes `"lammps"` |
-| **1.4** Define step types | `src/quantumvitas/workflow/registry.py` | Add `lammps_minimize`, `lammps_md`, `lammps_restart` | `get_registry().get("lammps_minimize")` |
+| **1.1** Create engine module | `src/qmatsuite/engine/lammps_engine.py` | `class LammpsEngine(Engine)` | `from qmatsuite.engine.lammps_engine import LammpsEngine` |
+| **1.2** Create binary resolver | `src/qmatsuite/core/engines/lammps_resolver.py` | `resolve_lammps_bin() -> Path` | Unit test with mock paths |
+| **1.3** Register in registry | `src/qmatsuite/engine/registry.py` | Add to `create_default_registry()` | `registry.list_engines()` includes `"lammps"` |
+| **1.4** Define step types | `src/qmatsuite/workflow/registry.py` | Add `lammps_minimize`, `lammps_md`, `lammps_restart` | `get_registry().get("lammps_minimize")` |
 | **1.5** Implement `supported_presets` | `lammps_engine.py` | Return `["classical_ensemble", "potential_type"]` | Unit test |
 
 ### 3.3 `LammpsEngine` Class Skeleton
 
 ```python
-# src/quantumvitas/engine/lammps_engine.py
+# src/qmatsuite/engine/lammps_engine.py
 
 class LammpsEngine(Engine):
     """LAMMPS classical molecular dynamics engine."""
@@ -137,7 +137,7 @@ class LammpsEngine(Engine):
 ### 3.4 Binary Resolver Logic
 
 ```python
-# src/quantumvitas/core/engines/lammps_resolver.py
+# src/qmatsuite/core/engines/lammps_resolver.py
 
 def resolve_lammps_bin(variant: str = "serial") -> Path:
     """
@@ -160,11 +160,11 @@ def resolve_lammps_bin(variant: str = "serial") -> Path:
 
 ```bash
 # After Phase 1 completion:
-python -c "from quantumvitas.engine.registry import create_default_registry; r = create_default_registry(include_lammps=True); print('lammps' in r.list_engines())"
+python -c "from qmatsuite.engine.registry import create_default_registry; r = create_default_registry(include_lammps=True); print('lammps' in r.list_engines())"
 # Expected: True
 
 # Binary discovery test (if LAMMPS installed):
-python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
+python -c "from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
 ```
 
 ### 3.6 Definition of Done (Phase 1)
@@ -188,10 +188,10 @@ python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_
 
 | Task | Files | Input | Output | Verification |
 |------|-------|-------|--------|--------------|
-| **2.1** LAMMPS data writer | `src/quantumvitas/io/lammps_data.py` | Structure object | `structure.data` file | Parse with ASE; compare atom counts |
+| **2.1** LAMMPS data writer | `src/qmatsuite/io/lammps_data.py` | Structure object | `structure.data` file | Parse with ASE; compare atom counts |
 | **2.2** Input script templates | `resources/calculation_templates/lammps/*.j2` | Step params | `in.lammps` | `lmp -skiprun -in in.lammps` exits 0 |
-| **2.3** Template renderer | `src/quantumvitas/engine/lammps_writer.py` | Template + params | Rendered script | Unit test output matches expected |
-| **2.4** Potential staging | `src/quantumvitas/engine/lammps_potentials.py` | `potential_map` + ref | Staged files + digest | Files copied; SHA computed |
+| **2.3** Template renderer | `src/qmatsuite/engine/lammps_writer.py` | Template + params | Rendered script | Unit test output matches expected |
+| **2.4** Potential staging | `src/qmatsuite/engine/lammps_potentials.py` | `potential_map` + ref | Staged files + digest | Files copied; SHA computed |
 | **2.5** Materialize orchestrator | `lammps_engine.py:materialize_inputs()` | Step, Calculation | All files in working_dir | Directory contains all expected files |
 | **2.6** Custom script handler | `lammps_engine.py` | `custom_script` param | User script + staged assets | Script unchanged; required_files validated |
 
@@ -322,7 +322,7 @@ def validate_custom_script_assets(
 # Create test calculation and materialize
 python -c "
 from pathlib import Path
-from quantumvitas.engine.lammps_engine import LammpsEngine
+from qmatsuite.engine.lammps_engine import LammpsEngine
 # ... setup step and calculation ...
 engine = LammpsEngine()
 engine.materialize_inputs(step, Path('/tmp/test_lammps'), calculation)
@@ -361,7 +361,7 @@ ls -la /tmp/test_lammps/
 | Task | Files | Input | Output | Verification |
 |------|-------|-------|--------|--------------|
 | **3.1** Run executor | `lammps_engine.py:run_step()` | Working dir with inputs | StepResult | Exit code 0; log exists |
-| **3.2** Log parser | `src/quantumvitas/engine/lammps_parser.py` | `log.lammps` | ThermoSeries | DataFrame with step/temp/pe/etc |
+| **3.2** Log parser | `src/qmatsuite/engine/lammps_parser.py` | `log.lammps` | ThermoSeries | DataFrame with step/temp/pe/etc |
 | **3.3** Dump parser | `lammps_parser.py` | `trajectory.lammpstrj` | List[Frame] | Frames with positions/velocities/forces |
 | **3.4** Trajectory builder | `lammps_parser.py` | Parsed frames + thermo | Trajectory object | Canonical trajectory with meta |
 | **3.5** Error detection | `run_step()` | log + exit code | Error message | "ERROR" detection in log |
@@ -497,7 +497,7 @@ lmp -in in.lammps -log log.lammps
 
 # Parse log:
 python -c "
-from quantumvitas.engine.lammps_parser import parse_lammps_log
+from qmatsuite.engine.lammps_parser import parse_lammps_log
 thermo = parse_lammps_log('/tmp/test_lammps/log.lammps')
 print(thermo.columns.tolist())
 print(thermo.head())
@@ -505,7 +505,7 @@ print(thermo.head())
 
 # Parse dump:
 python -c "
-from quantumvitas.engine.lammps_parser import parse_lammps_dump
+from qmatsuite.engine.lammps_parser import parse_lammps_dump
 frames = parse_lammps_dump('/tmp/test_lammps/trajectory.lammpstrj')
 print(f'{len(frames)} frames parsed')
 print(f'First frame has {len(frames[0].positions)} atoms')
@@ -765,7 +765,7 @@ pytest tests/integration/test_lammps_chain.py -v
 
 # All workflows via high-level API:
 python -c "
-from quantumvitas.daemon.runner import run_calculation
+from qmatsuite.daemon.runner import run_calculation
 from pathlib import Path
 
 # This must work through the full daemon/runner stack
@@ -899,7 +899,7 @@ Each phase can be reverted independently:
 ### New Files to Create
 
 ```
-src/quantumvitas/
+src/qmatsuite/
 ├── engine/
 │   ├── lammps_engine.py          # Main engine class
 │   ├── lammps_writer.py          # Input script generation
@@ -940,8 +940,8 @@ tests/
 ### Files to Modify
 
 ```
-src/quantumvitas/engine/registry.py          # Add LammpsEngine
-src/quantumvitas/workflow/registry.py        # Add step types
+src/qmatsuite/engine/registry.py          # Add LammpsEngine
+src/qmatsuite/workflow/registry.py        # Add step types
 .github/workflows/ci.yml                     # Add LAMMPS jobs
 docs/engines/lammps/*.md                     # Update cross-refs
 ```

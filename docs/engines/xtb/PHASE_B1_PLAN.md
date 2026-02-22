@@ -5,7 +5,7 @@ Updated: 2026-02-07
 
 ## Baseline
 - Existing auto groundwork: `docs/engines/xtb/PLAN.md`, `docs/engines/xtb/WORKLOG_AUTO_PHASE0_1.md`
-- Existing xTB driver: `src/quantumvitas/drivers/xtb/`
+- Existing xTB driver: `src/qmatsuite/drivers/xtb/`
 - Existing sample coverage before B1: one flat sample (`tests/inputformat/samples/xtb/water.xyz`)
 
 ## Scope
@@ -29,10 +29,10 @@ Updated: 2026-02-07
   - diverse `real_run/<slug>/` evidence bundles
   - canonical `.tmp` source/index/worklog docs
 - Driver code:
-  - `src/quantumvitas/drivers/xtb/data/xtb_tags.json`
-  - `src/quantumvitas/drivers/xtb/data/xtb_metadata.py`
-  - `src/quantumvitas/drivers/xtb/io/xtb_input.py`
-  - `src/quantumvitas/drivers/xtb/parsers/output.py`
+  - `src/qmatsuite/drivers/xtb/data/xtb_tags.json`
+  - `src/qmatsuite/drivers/xtb/data/xtb_metadata.py`
+  - `src/qmatsuite/drivers/xtb/io/xtb_input.py`
+  - `src/qmatsuite/drivers/xtb/parsers/output.py`
 - Tests:
   - `tests/inputformat/test_xtb_parse.py`
   - `tests/inputformat/test_xtb_digest.py`

@@ -131,6 +131,6 @@ Many QE calculations run modules sequentially where:
 ## References
 
 All official documentation links are embedded in the code comments for easy reference:
-- `src/quantumvitas/core/engines/qe_input.py`
-- `src/quantumvitas/core/engines/qe.py`
+- `src/qmatsuite/core/engines/qe_input.py`
+- `src/qmatsuite/core/engines/qe.py`
 

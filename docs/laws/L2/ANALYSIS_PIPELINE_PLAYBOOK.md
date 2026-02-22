@@ -166,7 +166,7 @@ This is the most common task — e.g., adding trajectory support for CP2K when `
 
 ### Step 3: Write the Provider
 
-**File:** `src/quantumvitas/drivers/<engine>/parsers/<type>.py`
+**File:** `src/qmatsuite/drivers/<engine>/parsers/<type>.py`
 
 Follow the VASP template structure:
 
@@ -179,10 +179,10 @@ from pathlib import Path
 
 import numpy as np
 
-from quantumvitas.core.analysis.base import AnalysisObjectMeta, SourceFileStat
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.core.analysis.<domain_model> import <AnalysisObject>
-from quantumvitas.parsers.registry import register_parser
+from qmatsuite.core.analysis.base import AnalysisObjectMeta, SourceFileStat
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.core.analysis.<domain_model> import <AnalysisObject>
+from qmatsuite.parsers.registry import register_parser
 
 logger = logging.getLogger(__name__)
 
@@ -250,20 +250,20 @@ class <Engine><Type>Provider:
 
 ### Step 4: Wire the Registration
 
-**Edit:** `src/quantumvitas/drivers/<engine>/parsers/__init__.py`
+**Edit:** `src/qmatsuite/drivers/<engine>/parsers/__init__.py`
 
 ```python
 from .<type> import <Engine><Type>Provider  # triggers @register_parser
 ```
 
-**Verify:** `src/quantumvitas/drivers/<engine>/__init__.py` must have `from . import parsers`.
+**Verify:** `src/qmatsuite/drivers/<engine>/__init__.py` must have `from . import parsers`.
 
 ### Step 5: Declare ANALYSIS_CAPABILITIES
 
-**Edit:** `src/quantumvitas/drivers/<engine>/driver.py`
+**Edit:** `src/qmatsuite/drivers/<engine>/driver.py`
 
 ```python
-from quantumvitas.core.analysis.capability import AnalysisCapability
+from qmatsuite.core.analysis.capability import AnalysisCapability
 
 class <Engine>Driver(BaseEngineDriver):
     ANALYSIS_CAPABILITIES = [
@@ -287,9 +287,9 @@ Follow the 7-test template used by ALL existing parsers:
 ```python
 """Tests for <engine> <type> parser using real <engine> fixture output."""
 from pathlib import Path
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.drivers.<engine>.parsers.<type> import <Engine><Type>Provider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.drivers.<engine>.parsers.<type> import <Engine><Type>Provider
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_<engine>_<type>"
 
@@ -380,7 +380,7 @@ Only needed when the domain object class doesn't exist yet (e.g., adding `Trajec
 
 ### Step 0: Define the AnalysisObject Class
 
-**File:** `src/quantumvitas/core/analysis/<type>/model.py`
+**File:** `src/qmatsuite/core/analysis/<type>/model.py`
 
 Requirements:
 - `meta: AnalysisObjectMeta` field (enforced by gate test)
@@ -517,14 +517,14 @@ These files are engine-agnostic and must NOT be modified when adding engine supp
 
 | File | Role |
 |------|------|
-| `src/quantumvitas/core/analysis/orchestrator.py` | Multi-match enumeration + provider dispatch (see Spec §5.4, §5.9) |
-| `src/quantumvitas/core/analysis/capability.py` | `AnalysisCapability` + `find_contiguous_match()` + `enumerate_all_matches()` |
-| `src/quantumvitas/core/analysis/bundles.py` | `CanonicalPrimitiveBundle` + `DerivedPrimitiveBundle` |
-| `src/quantumvitas/core/analysis/cas_writer.py` | CAS blob write + SQLite row write |
-| `src/quantumvitas/core/analysis/base.py` | `AnalysisObjectMeta` + `SourceFileStat` |
-| `src/quantumvitas/core/analysis/evidence.py` | `EvidenceBundle` (8 fields) |
-| `src/quantumvitas/api/service.py` | `_finalize_run_analysis_pipeline()` and API handlers |
-| `src/quantumvitas/parsers/registry.py` | `@register_parser` decorator + `get_parser()` lookup |
+| `src/qmatsuite/core/analysis/orchestrator.py` | Multi-match enumeration + provider dispatch (see Spec §5.4, §5.9) |
+| `src/qmatsuite/core/analysis/capability.py` | `AnalysisCapability` + `find_contiguous_match()` + `enumerate_all_matches()` |
+| `src/qmatsuite/core/analysis/bundles.py` | `CanonicalPrimitiveBundle` + `DerivedPrimitiveBundle` |
+| `src/qmatsuite/core/analysis/cas_writer.py` | CAS blob write + SQLite row write |
+| `src/qmatsuite/core/analysis/base.py` | `AnalysisObjectMeta` + `SourceFileStat` |
+| `src/qmatsuite/core/analysis/evidence.py` | `EvidenceBundle` (8 fields) |
+| `src/qmatsuite/api/service.py` | `_finalize_run_analysis_pipeline()` and API handlers |
+| `src/qmatsuite/parsers/registry.py` | `@register_parser` decorator + `get_parser()` lookup |
 
 ---
 
@@ -563,7 +563,7 @@ Before merging any analysis pipeline addition:
 - [ ] Test file docstring documents fixture provenance
 - [ ] 7-test template: can_parse+/-, parse returns type, shapes, physics, to_primitives, SHA
 - [ ] No engine branching in orchestrator or transforms
-- [ ] No imports from `quantumvitas.drivers` in `core/analysis/`
+- [ ] No imports from `qmatsuite.drivers` in `core/analysis/`
 - [ ] Full test suite passes: `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
 - [ ] Gate tests pass: `source .venv/bin/activate && python -m pytest tests/gates/test_analysis_invariants.py -v --tb=short`
 
@@ -573,15 +573,15 @@ Before merging any analysis pipeline addition:
 
 | What | Where |
 |------|-------|
-| Provider code | `src/quantumvitas/drivers/<engine>/parsers/<type>.py` |
-| Provider __init__ | `src/quantumvitas/drivers/<engine>/parsers/__init__.py` |
-| Driver capabilities | `src/quantumvitas/drivers/<engine>/driver.py` |
+| Provider code | `src/qmatsuite/drivers/<engine>/parsers/<type>.py` |
+| Provider __init__ | `src/qmatsuite/drivers/<engine>/parsers/__init__.py` |
+| Driver capabilities | `src/qmatsuite/drivers/<engine>/driver.py` |
 | Test file | `tests/drivers/<engine>/test_<engine>_<type>_parser.py` |
 | Test fixtures | `tests/data/analysis_<engine>_<type>/` |
-| Domain model | `src/quantumvitas/core/analysis/<type>/model.py` |
+| Domain model | `src/qmatsuite/core/analysis/<type>/model.py` |
 | Gate tests | `tests/gates/test_analysis_invariants.py` |
-| Parser registry | `src/quantumvitas/parsers/registry.py` |
-| Orchestrator | `src/quantumvitas/core/analysis/orchestrator.py` |
+| Parser registry | `src/qmatsuite/parsers/registry.py` |
+| Orchestrator | `src/qmatsuite/core/analysis/orchestrator.py` |
 | Design docs | `docs/design/` |
 | Engine docs | `docs/engines/<engine>/` |
 | Research corpus | `.tmp/engine_research/<engine>/` |

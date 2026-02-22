@@ -4,7 +4,7 @@
 
 ## 1. Core Engine Files (Primary Migration Targets)
 
-### 1.1 `src/quantumvitas/core/engines/qe.py` (622 lines)
+### 1.1 `src/qmatsuite/core/engines/qe.py` (622 lines)
 **Role**: Main QuantumEspressoEngine class
 **Key Components**:
 - `QuantumEspressoEngine` class - Primary QE engine implementation
@@ -19,7 +19,7 @@
 - Uses `qe_calculation.py` for step execution
 - Uses `qe_resolver.py` for two-state bin resolution
 
-### 1.2 `src/quantumvitas/core/engines/qe_calculation.py` (~705 lines)
+### 1.2 `src/qmatsuite/core/engines/qe_calculation.py` (~705 lines)
 **Role**: QE calculation runner for step/chain execution
 **Key Components**:
 - `QECalculationRunner` class
@@ -30,7 +30,7 @@
 - `ESPRESSO_PSEUDO` environment variable setup
 - Post-run verification for different step types
 
-### 1.3 `src/quantumvitas/core/engines/qe_installation.py` (571 lines)
+### 1.3 `src/qmatsuite/core/engines/qe_installation.py` (571 lines)
 **Role**: QE installation detection and path management
 **Key Components**:
 - `QEInstallation` class - Represents QE installation
@@ -41,7 +41,7 @@
 
 **Note**: DEPRECATED for runtime selection - use `qe_resolver.py` instead
 
-### 1.4 `src/quantumvitas/core/engines/qe_resolver.py` (192 lines)
+### 1.4 `src/qmatsuite/core/engines/qe_resolver.py` (192 lines)
 **Role**: Two-state QE bin directory resolution
 **Key Components**:
 - `resolve_qe_bin_dir()` - Main entry point for QE resolution
@@ -49,13 +49,13 @@
 - `validate_qe_bin_dir()` - Validates bin directory has pw.x
 - Two-state model: external (settings.qe.bin_dir) or internal (auto-select)
 
-### 1.5 `src/quantumvitas/core/engines/qe_binary_locator.py` (69 lines)
+### 1.5 `src/qmatsuite/core/engines/qe_binary_locator.py` (69 lines)
 **Role**: Helper for locating QE executables
 **Key Components**:
 - `locate_qe_executable()` - Finds QE executables via engine discovery
 - `locate_pw2wannier90()` - Specific helper for pw2wannier90.x
 
-### 1.6 `src/quantumvitas/core/engines/qe_diagnostics.py` (196 lines)
+### 1.6 `src/qmatsuite/core/engines/qe_diagnostics.py` (196 lines)
 **Role**: Diagnostic tools for QE engine resolution
 **Key Components**:
 - `QEResolutionReport` dataclass - Diagnostic report
@@ -64,24 +64,24 @@
 - `check_environment_variables()` - Env var inspection
 - `check_managed_engines()` - Managed engine inspection
 
-### 1.7 `src/quantumvitas/core/engines/qe_pseudopotentials.py` (226 lines)
+### 1.7 `src/qmatsuite/core/engines/qe_pseudopotentials.py` (226 lines)
 **Role**: QE pseudopotential management
 **Key Components**:
 - `download_pseudopotential()` - Downloads from QE pseudo server
 - `PseudoManager` dataclass - Centralized pseudo management
 - Resolution order: project pseudo → global pseudo → test-suite → download
 
-### 1.8 `src/quantumvitas/core/engines/qe_registry.py`
+### 1.8 `src/qmatsuite/core/engines/qe_registry.py`
 **Role**: QE-specific registry utilities
 
-### 1.9 `src/quantumvitas/core/engines/qe_seed.py`
+### 1.9 `src/qmatsuite/core/engines/qe_seed.py`
 **Role**: QE seed/seedname handling
 
 ---
 
 ## 2. Driver Shim (To Be Replaced)
 
-### 2.1 `src/quantumvitas/drivers/qe_shim/__init__.py` (194 lines)
+### 2.1 `src/qmatsuite/drivers/qe_shim/__init__.py` (194 lines)
 **Role**: Minimal driver shim wrapping legacy QE code
 **Key Components**:
 - `QELegacyDriver` class extending `BaseEngineDriver`
@@ -101,7 +101,7 @@
 
 ## 3. Engine Wrapper
 
-### 3.1 `src/quantumvitas/engine/qe_engine.py` (79 lines)
+### 3.1 `src/qmatsuite/engine/qe_engine.py` (79 lines)
 **Role**: Thin adapter over legacy QuantumEspressoEngine
 **Key Components**:
 - `QeEngine` class extending `Engine`
@@ -112,14 +112,14 @@
 
 ## 4. Execution Layer
 
-### 4.1 `src/quantumvitas/execution/handlers.py` (436 lines)
+### 4.1 `src/qmatsuite/execution/handlers.py` (436 lines)
 **QE-Specific Content**:
 - `qe_step_handler()` (lines 141-293) - Main QE step handler
 - `handle_qe_relax_output()` (lines 303-362) - Relax artifact handling
 - `_get_step_input_from_calculation_yaml()` - Compat input playback
 - Fallback to `qe_step_handler` in `create_handler_map()` (lines 403-413)
 
-### 4.2 `src/quantumvitas/execution/recipes.py` (280 lines)
+### 4.2 `src/qmatsuite/execution/recipes.py` (280 lines)
 **QE-Specific Content**:
 - `QERecipe` class (lines 157-234) - Creates one job per QE step
 - Uses shared outdir model: `scratch_dir: calc_raw_dir / "outdir"`
@@ -129,7 +129,7 @@
 
 ## 5. I/O Layer (QE Models, Parsers, Generators)
 
-### 5.1 `src/quantumvitas/io/model.py` (218 lines)
+### 5.1 `src/qmatsuite/io/model.py` (218 lines)
 **Role**: QE data structures
 **Key Components**:
 - `QEModule` enum - PW, PH, Q2R, MATDYN, PP, etc. (25 modules)
@@ -138,25 +138,25 @@
 - `QECard` dataclass - Represents cards
 - `QEInput` dataclass - Complete QE input with `detect_module()`
 
-### 5.2 `src/quantumvitas/io/parser/qe_parser.py`
+### 5.2 `src/qmatsuite/io/parser/qe_parser.py`
 **Role**: QE input file parser
 **Key Components**:
 - `QEInputParser` class - Parses QE input files to `QEInput`
 - `parse_file()` - Main entry point
 - Namelist and card parsing logic
 
-### 5.3 `src/quantumvitas/io/generator/qe_generator.py`
+### 5.3 `src/qmatsuite/io/generator/qe_generator.py`
 **Role**: QE input file generator
 **Key Components**:
 - `QEInputGenerator` class - Generates QE input from `QEInput`
 - `write_file()` - Main entry point
 - Namelist and card serialization
 
-### 5.4 `src/quantumvitas/io/structure_io.py`
+### 5.4 `src/qmatsuite/io/structure_io.py`
 **QE-Specific Content**:
 - `structure_from_qe_input()` - Extracts pymatgen Structure from QE input
 
-### 5.5 `src/quantumvitas/io/__init__.py`
+### 5.5 `src/qmatsuite/io/__init__.py`
 **Exports**:
 - QEModule, QECardType, QENamelist, QECard, QEInput
 - QEInputParser, QEInputGenerator
@@ -166,7 +166,7 @@
 
 ## 6. IR Backend
 
-### 6.1 `src/quantumvitas/ir/backends/qe/mapping.py` (463 lines)
+### 6.1 `src/qmatsuite/ir/backends/qe/mapping.py` (463 lines)
 **Role**: IR ↔ QE adapter mapping
 **Key Components**:
 - `CLASS_A_TYPES` dict - Strict-typed parameter registry
@@ -184,10 +184,10 @@
 
 ## 7. Parsers
 
-### 7.1 `src/quantumvitas/parsers/qe/__init__.py`
+### 7.1 `src/qmatsuite/parsers/qe/__init__.py`
 **Role**: QE parser module init
 
-### 7.2 `src/quantumvitas/parsers/qe/trajectory.py` (295 lines)
+### 7.2 `src/qmatsuite/parsers/qe/trajectory.py` (295 lines)
 **Role**: QE trajectory parser
 **Key Components**:
 - `QETrajectoryParser` class - Parses QE MD/relax outputs
@@ -200,7 +200,7 @@
 
 ## 8. Workflow/Registry
 
-### 8.1 `src/quantumvitas/workflow/registry.py` (947 lines)
+### 8.1 `src/qmatsuite/workflow/registry.py` (947 lines)
 **QE-Specific Content** (lines 166-626):
 - QE step type specs (~25 entries with `engine="qe"`):
   - qe_scf, qe_nscf, qe_relax, qe_bands_pw, qe_md, qe_vc_md
@@ -216,12 +216,12 @@
 
 ## 9. Calculation Layer
 
-### 9.1 `src/quantumvitas/calculation/step.py` (137 lines)
+### 9.1 `src/qmatsuite/calculation/step.py` (137 lines)
 **QE-Specific Content**:
 - Line 28: `engine: str = "qe"` - **DEFAULT ENGINE**
 - Lines 79-85: Special QE path checking in `run()` method
 
-### 9.2 `src/quantumvitas/calculation/runner.py` (846 lines)
+### 9.2 `src/qmatsuite/calculation/runner.py` (846 lines)
 **QE-Specific Content**:
 - Line 523: `engine_family = "qe"  # Default`
 - Line 631: `engine_name = job.engine or "qe"`
@@ -229,16 +229,16 @@
 - Line 761: `engine="qe"` in event creation
 - `_get_engine_family_from_step()` with QE/W90 family mapping
 
-### 9.3 `src/quantumvitas/calculation/geometry.py`
+### 9.3 `src/qmatsuite/calculation/geometry.py`
 **QE-Specific Content**:
 - `read_final_geometry_from_output_text()` - Parses QE output
 - `structure_from_qe_geometry_snapshot()` - Converts to pymatgen
 
-### 9.4 `src/quantumvitas/calculation/compat_executor.py`
+### 9.4 `src/qmatsuite/calculation/compat_executor.py`
 **QE-Specific Content**:
 - `run_qe_step_from_existing_input_compat()` - Compat mode execution
 
-### 9.5 `src/quantumvitas/calculation/wannier90_kpoints.py`
+### 9.5 `src/qmatsuite/calculation/wannier90_kpoints.py`
 **QE-Specific Content**:
 - K-point generation for QE+W90 workflows
 
@@ -246,7 +246,7 @@
 
 ## 10. Core Infrastructure
 
-### 10.1 `src/quantumvitas/core/calc_identity.py` (242 lines)
+### 10.1 `src/qmatsuite/core/calc_identity.py` (242 lines)
 **QE-Specific Content**:
 - Lines 103-107: W90 → QE mapping:
   ```python
@@ -255,7 +255,7 @@
   ```
 - Line 132: `return "periodic"  # Default for qe, w90, etc.`
 
-### 10.2 `src/quantumvitas/core/pseudo.py` (492 lines)
+### 10.2 `src/qmatsuite/core/pseudo.py` (492 lines)
 **Role**: Pseudopotential handling (QE-centric)
 **Key Components**:
 - `ensure_qe_pseudos()` - Main pseudo resolution
@@ -263,12 +263,12 @@
 - `PseudoResolutionResult` dataclass
 - Species map handling
 
-### 10.3 `src/quantumvitas/core/settings.py`
+### 10.3 `src/qmatsuite/core/settings.py`
 **QE-Specific Content**:
 - `QESettings` class with `bin_dir` field
 - Settings section for QE configuration
 
-### 10.4 `src/quantumvitas/core/paths.py`
+### 10.4 `src/qmatsuite/core/paths.py`
 **QE-Specific Content**:
 - `home_qe_engines_dir()` - Returns `.qmatsuite/engines/qe/`
 
@@ -276,11 +276,11 @@
 
 ## 11. Presets
 
-### 11.1 `src/quantumvitas/presets/capability.py`
+### 11.1 `src/qmatsuite/presets/capability.py`
 **QE-Specific Content**:
 - QE engine capability declarations
 
-### 11.2 `src/quantumvitas/presets/integration.py`
+### 11.2 `src/qmatsuite/presets/integration.py`
 **QE-Specific Content**:
 - QE preset integration
 
@@ -288,10 +288,10 @@
 
 ## 12. Data/Metadata
 
-### 12.1 `src/quantumvitas/data/qe_metadata.py`
+### 12.1 `src/qmatsuite/data/qe_metadata.py`
 **Role**: QE module documentation and parameter metadata
 
-### 12.2 `src/quantumvitas/data/qe_module_parameters.json`
+### 12.2 `src/qmatsuite/data/qe_module_parameters.json`
 **Role**: QE parameter definitions
 
 ---
@@ -302,44 +302,44 @@
 Total: 54 files
 
 **API/CLI**:
-- `src/quantumvitas/api.py`
-- `src/quantumvitas/cli/main.py`
+- `src/qmatsuite/api.py`
+- `src/qmatsuite/cli/main.py`
 
 **Analysis**:
-- `src/quantumvitas/analysis/__init__.py`
-- `src/quantumvitas/analysis/kpath.py`
+- `src/qmatsuite/analysis/__init__.py`
+- `src/qmatsuite/analysis/kpath.py`
 
 **Calculation**:
-- `src/quantumvitas/calculation/__init__.py`
-- `src/quantumvitas/calculation/calculation.py`
-- `src/quantumvitas/calculation/folder_import.py`
-- `src/quantumvitas/calculation/importers.py`
-- `src/quantumvitas/calculation/input_runner.py`
-- `src/quantumvitas/calculation/species_config.py`
-- `src/quantumvitas/calculation/standalone.py`
-- `src/quantumvitas/calculation/structure_steps.py`
+- `src/qmatsuite/calculation/__init__.py`
+- `src/qmatsuite/calculation/calculation.py`
+- `src/qmatsuite/calculation/folder_import.py`
+- `src/qmatsuite/calculation/importers.py`
+- `src/qmatsuite/calculation/input_runner.py`
+- `src/qmatsuite/calculation/species_config.py`
+- `src/qmatsuite/calculation/standalone.py`
+- `src/qmatsuite/calculation/structure_steps.py`
 
 **Core**:
-- `src/quantumvitas/core/artifact_scanning.py`
-- `src/quantumvitas/core/models.py`
-- `src/quantumvitas/core/templates.py`
+- `src/qmatsuite/core/artifact_scanning.py`
+- `src/qmatsuite/core/models.py`
+- `src/qmatsuite/core/templates.py`
 
 **Daemon**:
-- `src/quantumvitas/daemon/server.py`
+- `src/qmatsuite/daemon/server.py`
 
 **Execution**:
-- `src/quantumvitas/execution/job_graph.py`
-- `src/quantumvitas/execution/relax_artifacts.py`
+- `src/qmatsuite/execution/job_graph.py`
+- `src/qmatsuite/execution/relax_artifacts.py`
 
 **History**:
-- `src/quantumvitas/history/run_revision.py`
+- `src/qmatsuite/history/run_revision.py`
 
 **IR**:
-- `src/quantumvitas/ir/dialects/pw/__init__.py`
+- `src/qmatsuite/ir/dialects/pw/__init__.py`
 
 **Workflow**:
-- `src/quantumvitas/workflow/generalized_steps.py`
-- `src/quantumvitas/workflow/templates.py`
+- `src/qmatsuite/workflow/generalized_steps.py`
+- `src/qmatsuite/workflow/templates.py`
 
 ---
 

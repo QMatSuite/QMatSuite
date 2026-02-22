@@ -1,9 +1,9 @@
-# QVService.get_settings() Compatibility Wrapper - Summary
+# QMSService.get_settings() Compatibility Wrapper - Summary
 
 ## Implementation
 
-**File**: `src/quantumvitas/api/service.py`  
-**Method**: `QVService.get_settings()` (static method)  
+**File**: `src/qmatsuite/api/service.py`  
+**Method**: `QMSService.get_settings()` (static method)  
 **Lines**: 2628-2665
 
 ### Signature
@@ -13,7 +13,7 @@ def get_settings() -> dict[str, Any]:
 ```
 
 ### Implementation Details
-- **Backwards-compatible**: Matches legacy `QVService.get_settings()` signature exactly
+- **Backwards-compatible**: Matches legacy `QMSService.get_settings()` signature exactly
 - **Kernel imports**: All imports are inside the function body (compliant with PR10)
 - **Error handling**: Returns safe defaults if settings loading fails (ensures daemon can start)
 - **Return value**: Returns dict with JSON-serializable primitives only
@@ -32,10 +32,10 @@ def get_settings() -> dict[str, Any]:
 ```
 
 ### Implementation Notes
-- Uses `quantumvitas.core.settings.load_settings()` internally
+- Uses `qmatsuite.core.settings.load_settings()` internally
 - Returns safe defaults if settings file is missing or corrupted
 - All kernel imports are inside the function body (PR10 compliant)
-- No new exports added to `quantumvitas.api.__init__.__all__`
+- No new exports added to `qmatsuite.api.__init__.__all__`
 
 ---
 
@@ -44,18 +44,18 @@ def get_settings() -> dict[str, Any]:
 ### Before (PR10 without get_settings)
 ```bash
 $ python -m pytest tests/daemon/test_si_bands_calculation_daemon.py::TestDaemonProtocol::test_ping -q
-ERROR - AttributeError: type object 'QVService' has no attribute 'get_settings'
+ERROR - AttributeError: type object 'QMSService' has no attribute 'get_settings'
 ```
 
 ### After (with get_settings compatibility wrapper)
 ```bash
-$ python -c "from quantumvitas.api import QVService; settings = QVService.get_settings(); print('Settings keys:', list(settings.keys()))"
+$ python -c "from qmatsuite.api import QMSService; settings = QMSService.get_settings(); print('Settings keys:', list(settings.keys()))"
 Settings keys: ['version', 'qe', 'debug_resolution', 'max_concurrent_calcs', 'analysis_cache_enabled']
 ```
 
 **Test Status**:
-- ✅ `AttributeError: type object 'QVService' has no attribute 'get_settings'` - **FIXED**
-- ⚠️ New failure: `ImportError: cannot import name 'ResourceNotFoundError' from 'quantumvitas.api'` - **Separate issue** (not related to get_settings)
+- ✅ `AttributeError: type object 'QMSService' has no attribute 'get_settings'` - **FIXED**
+- ⚠️ New failure: `ImportError: cannot import name 'ResourceNotFoundError' from 'qmatsuite.api'` - **Separate issue** (not related to get_settings)
 
 ### Gates Status
 ```bash
@@ -81,24 +81,24 @@ The method returns the following keys (all JSON-serializable):
 
 ## Tests That Now Work
 
-The following code locations use `QVService.get_settings()` and should now work:
+The following code locations use `QMSService.get_settings()` and should now work:
 
-1. **`src/quantumvitas/daemon/server.py:189`**: Daemon initialization
+1. **`src/qmatsuite/daemon/server.py:189`**: Daemon initialization
    ```python
-   settings = QVService.get_settings()
+   settings = QMSService.get_settings()
    max_workers = settings.get("max_concurrent_calcs", 2)
    ```
 
-2. **`src/quantumvitas/daemon/server.py:1383`**: Debug resolution check
+2. **`src/qmatsuite/daemon/server.py:1383`**: Debug resolution check
    ```python
-   settings = QVService.get_settings()
+   settings = QMSService.get_settings()
    return {"ok": True, "enabled": settings.get("debug_resolution", False)}
    ```
 
 ### Test Files That Should Now Pass (if no other issues)
 - `tests/unit/test_daemon.py` - Protocol and logging tests
 - `tests/daemon/test_si_bands_calculation_daemon.py` - Protocol tests
-- Any test that creates a `QVDaemon` instance (which calls `get_settings()` in `__init__`)
+- Any test that creates a `QMSDaemon` instance (which calls `get_settings()` in `__init__`)
 
 ---
 
@@ -106,8 +106,8 @@ The following code locations use `QVService.get_settings()` and should now work:
 
 The following failures are **NOT** caused by missing `get_settings`:
 
-1. **`ImportError: cannot import name 'ResourceNotFoundError' from 'quantumvitas.api'`**
-   - **Location**: `src/quantumvitas/daemon/server.py:548`
+1. **`ImportError: cannot import name 'ResourceNotFoundError' from 'qmatsuite.api'`**
+   - **Location**: `src/qmatsuite/daemon/server.py:548`
    - **Issue**: Daemon is trying to import kernel exceptions that are no longer exported
    - **Status**: Separate compatibility issue (not addressed in this change)
 
@@ -127,7 +127,7 @@ python -m pytest tests/gates -q
 
 ### 2. Direct Function Test
 ```bash
-python -c "from quantumvitas.api import QVService; settings = QVService.get_settings(); print('Settings:', settings)"
+python -c "from qmatsuite.api import QMSService; settings = QMSService.get_settings(); print('Settings:', settings)"
 # Result: ✅ Returns dict with all expected keys
 ```
 
@@ -141,7 +141,7 @@ python -m pytest tests/unit/test_daemon.py tests/daemon/test_si_bands_calculatio
 
 ## Code Changes
 
-**File**: `src/quantumvitas/api/service.py`
+**File**: `src/qmatsuite/api/service.py`
 
 **Added**: Static method `get_settings()` at lines 2628-2665
 
@@ -156,12 +156,12 @@ python -m pytest tests/unit/test_daemon.py tests/daemon/test_si_bands_calculatio
 
 ## Conclusion
 
-✅ **`QVService.get_settings()` compatibility wrapper successfully implemented**
+✅ **`QMSService.get_settings()` compatibility wrapper successfully implemented**
 
 - **Gates**: All pass (35 passed, 3 skipped)
 - **Functionality**: Returns settings correctly with safe defaults
 - **Compliance**: PR10 rules followed (no module-level kernel imports)
-- **Impact**: Fixes `AttributeError: type object 'QVService' has no attribute 'get_settings'` in daemon initialization and settings checks
+- **Impact**: Fixes `AttributeError: type object 'QMSService' has no attribute 'get_settings'` in daemon initialization and settings checks
 
 **Remaining work**: Other import/export issues (like `ResourceNotFoundError`) are separate compatibility problems and not addressed in this change.
 

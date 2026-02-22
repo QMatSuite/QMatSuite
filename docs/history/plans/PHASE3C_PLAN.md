@@ -51,7 +51,7 @@
   - `supports_incremental_skip`: False (always rerun)
 
 - [ ] Add `supports_incremental_skip` field to `StepTypeSpec`
-  - File: `src/quantumvitas/workflow/registry.py`
+  - File: `src/qmatsuite/workflow/registry.py`
   - Default: `True` (backward compatible)
 
 - [ ] Add step type defaults for PySCF steps
@@ -71,14 +71,14 @@
   - `("pyscf", "MP2")`: "pyscf_mp2" (new generalized step)
   
 - [ ] Add `MP2` to `GeneralizedStep` enum
-  - File: `src/quantumvitas/workflow/generalized_steps.py`
+  - File: `src/qmatsuite/workflow/generalized_steps.py`
 
 - [ ] Update `materialize_public_step_key()` to support "mp2" public key
   - "mp2" → "pyscf_mp2" for engine_family="pyscf"
   - "mp2" → None for engine_family="qe"
 
 - [ ] Add workflow template "scf_mp2"
-  - File: `src/quantumvitas/workflow/templates.py`
+  - File: `src/qmatsuite/workflow/templates.py`
   - `step_sequence`: ("scf", "mp2")
   - Public step keys (lowercase)
 
@@ -93,12 +93,12 @@
 ### C3: Step.yaml Generation (Templates)
 
 - [ ] Add PySCF step defaults to registry
-  - File: `src/quantumvitas/workflow/registry.py`
+  - File: `src/qmatsuite/workflow/registry.py`
   - `get_defaults("pyscf_scf")`: Returns default parameters dict
   - `get_defaults("pyscf_mp2")`: Returns default parameters dict
 
 - [ ] Verify `create_step_doc()` handles PySCF steps correctly
-  - File: `src/quantumvitas/workflow/step_factory.py`
+  - File: `src/qmatsuite/workflow/step_factory.py`
   - Should use machine_type for step.yaml
   - Should include parameters dict (NO structure)
   - Should include meta (ULID, name, slug, path)
@@ -130,7 +130,7 @@ parameters:
 ### C4: Execution Engine
 
 - [ ] Enhance PySCF runner to support session-based execution
-  - File: `src/quantumvitas/engines/pyscf/runner.py`
+  - File: `src/qmatsuite/engines/pyscf/runner.py`
   - Runner should accept multiple steps in one process
   - Import PySCF once per session (not per step)
   
@@ -150,7 +150,7 @@ parameters:
     - Write `results.json`, `stdout.txt` (NO checkpoint for mp2 in v0)
 
 - [ ] Update PySCF engine to use session-based runner
-  - File: `src/quantumvitas/engine/pyscf_engine.py`
+  - File: `src/qmatsuite/engine/pyscf_engine.py`
   - Spawn ONE subprocess per "Run Calc" (not per step)
   - Pass multiple steps to runner in session
 
@@ -178,17 +178,17 @@ parameters:
 ### C5: Incremental Skip Gating
 
 - [ ] Add `supports_incremental_skip` field to `StepTypeSpec`
-  - File: `src/quantumvitas/workflow/registry.py`
+  - File: `src/qmatsuite/workflow/registry.py`
   - Type: `bool`
   - Default: `True` (backward compatible)
 
 - [ ] Update incremental planner to respect `supports_incremental_skip`
-  - File: `src/quantumvitas/calculation/manifest_reconcile.py`
+  - File: `src/qmatsuite/calculation/manifest_reconcile.py`
   - If `supports_incremental_skip=False`, step is never marked done/skip even if sha matches
   - Check step type capability before marking as done
 
 - [ ] Update `is_step_done()` or skip logic to check capability
-  - File: `src/quantumvitas/calculation/step_done.py` (or manifest_reconcile.py)
+  - File: `src/qmatsuite/calculation/step_done.py` (or manifest_reconcile.py)
   - For PySCF steps, also check checkpoint existence for `pyscf_scf`
 
 **Tests**:
@@ -253,12 +253,12 @@ This mapping is already implemented in Phase 3A via `_infer_structure_kind_from_
 ## Files to Modify/Create
 
 ### Modify
-- `src/quantumvitas/workflow/registry.py` (step types, defaults)
-- `src/quantumvitas/workflow/generalized_steps.py` (materialization map)
-- `src/quantumvitas/workflow/templates.py` (scf_mp2 workflow)
-- `src/quantumvitas/engines/pyscf/runner.py` (session-based execution)
-- `src/quantumvitas/engine/pyscf_engine.py` (session management)
-- `src/quantumvitas/calculation/manifest_reconcile.py` (incremental skip gating)
+- `src/qmatsuite/workflow/registry.py` (step types, defaults)
+- `src/qmatsuite/workflow/generalized_steps.py` (materialization map)
+- `src/qmatsuite/workflow/templates.py` (scf_mp2 workflow)
+- `src/qmatsuite/engines/pyscf/runner.py` (session-based execution)
+- `src/qmatsuite/engine/pyscf_engine.py` (session management)
+- `src/qmatsuite/calculation/manifest_reconcile.py` (incremental skip gating)
 
 ### Create
 - `tests/integration/test_pyscf_workflows.py` (integration tests)

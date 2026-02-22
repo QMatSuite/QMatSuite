@@ -12,7 +12,7 @@ import pytest
 from tests.gates._import_scan import ImportScanner, Violation
 
 # Root of the source tree
-SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "quantumvitas"
+SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "qmatsuite"
 
 # All kernel packages to scan (same as G-K0)
 KERNEL_PACKAGES = [
@@ -36,8 +36,8 @@ KERNEL_PACKAGES = [
 
 # Forbidden import prefixes
 FORBIDDEN_PREFIXES = (
-    "quantumvitas.cli",
-    "quantumvitas.daemon",
+    "qmatsuite.cli",
+    "qmatsuite.daemon",
 )
 
 # No known violations expected
@@ -54,7 +54,7 @@ def _relative_key(violation: Violation) -> str:
 
 
 def test_kernel_no_frontend_import():
-    """Kernel packages must not import from quantumvitas.cli or quantumvitas.daemon."""
+    """Kernel packages must not import from qmatsuite.cli or qmatsuite.daemon."""
     scanner = ImportScanner(forbidden_prefixes=FORBIDDEN_PREFIXES)
 
     all_violations: list[Violation] = []

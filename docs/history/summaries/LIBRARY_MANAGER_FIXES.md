@@ -14,7 +14,7 @@ Fixed critical bugs in the Library Manager that prevented correct detection of i
   - `precision` installed iff `<store_dir>/sssp/1.3.0/precision/library` exists and contains at least 1 `*.UPF` file
   - `efficiency` installed iff `<store_dir>/sssp/1.3.0/efficiency/library` exists and contains at least 1 `*.UPF` file
 
-**Implementation** (`src/quantumvitas/core/library_manager.py`):
+**Implementation** (`src/qmatsuite/core/library_manager.py`):
 - Directly checks each variant's library directory
 - Counts UPF files to determine if installed
 - Computes size for installed variants
@@ -189,7 +189,7 @@ The status object now includes:
 ## Files Modified
 
 ### Backend
-- `src/quantumvitas/core/library_manager.py`:
+- `src/qmatsuite/core/library_manager.py`:
   - Rewrote `_get_sssp_status()` with direct filesystem checks
   - Added `path_checked` field to `LibraryVariantStatus`
   - Improved detection logic to match actual directory structure

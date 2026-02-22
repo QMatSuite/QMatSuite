@@ -7,14 +7,14 @@ QE-specific operations (list_sections) are tested via the internal helper.
 """
 
 import pytest
-from quantumvitas.daemon.server import QVDaemon, RPCRequest
-from quantumvitas.data.qe_metadata import list_supported_modules, safe_load_metadata
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest
+from qmatsuite.data.qe_metadata import list_supported_modules, safe_load_metadata
 
 
 @pytest.fixture
 def daemon():
-    """Create a QVDaemon instance for testing."""
-    return QVDaemon()
+    """Create a QMSDaemon instance for testing."""
+    return QMSDaemon()
 
 
 def _generic_request(id_, operation, **extra):
@@ -117,7 +117,7 @@ def test_list_sections_for_valid_module(daemon):
 
 def test_list_sections_preserves_metadata_order(daemon):
     """Test that list_sections returns sections in metadata order (not sorted)."""
-    from quantumvitas.data.qe_metadata import safe_load_metadata, get_module_card_sections, get_module_param_sections
+    from qmatsuite.data.qe_metadata import safe_load_metadata, get_module_card_sections, get_module_param_sections
 
     # Get expected order from raw metadata
     raw_data = safe_load_metadata()

@@ -54,8 +54,8 @@ runner execution
 **Entry Points**:
 - GUI `run_calculation` / `run_step`
 - Daemon `run_calculation` / `run_step`
-- CLI `qv run step` (project mode)
-- CLI `qv run structure`
+- CLI `qms run step` (project mode)
+- CLI `qms run structure`
 
 **Evidence**:
 - `Step.run()` calls `engine.backend.run_step()` directly (step.py:114)
@@ -88,7 +88,7 @@ NO EXECUTION - just creates YAML from .in
 
 **Evidence**:
 - `build_step_spec_from_qe_input()` creates step.yaml from .in (importers.py:95)
-- `QVService.import_step_from_qe_input()` only creates step.yaml, no execution (api.py:5550)
+- `QMSService.import_step_from_qe_input()` only creates step.yaml, no execution (api.py:5550)
 
 ### Standalone Run (Path S)
 
@@ -111,7 +111,7 @@ runner execution
 - **Temporary project structure** created for import, cleaned up after
 
 **Entry Points**:
-- CLI `qv run step --standalone --input <file.in>`
+- CLI `qms run step --standalone --input <file.in>`
 
 **Evidence**:
 - `_run_standalone_step()` imports to YAML first, then runs (cli/main.py:1698-1750)
@@ -123,7 +123,7 @@ runner execution
 
 ### prepare_input_step() — IMPORT-ONLY
 
-**File**: `src/quantumvitas/calculation/input_runner.py:199-400`
+**File**: `src/qmatsuite/calculation/input_runner.py:199-400`
 
 **Purpose**: Parse existing .in file and apply overrides (for import workflows only).
 
@@ -136,7 +136,7 @@ runner execution
 
 ### run_input_step() — DEPRECATED FOR PRODUCTION
 
-**File**: `src/quantumvitas/calculation/input_runner.py:458-514`
+**File**: `src/qmatsuite/calculation/input_runner.py:458-514`
 
 **Purpose**: Convenience function combining `prepare_input_step()` + `run_prepared_step()`.
 
@@ -148,7 +148,7 @@ runner execution
 
 ### Step.run() — PRODUCTION EXECUTION
 
-**File**: `src/quantumvitas/calculation/step.py:63-125`
+**File**: `src/qmatsuite/calculation/step.py:63-125`
 
 **Purpose**: Execute step using engine directly (no parsing).
 
@@ -162,7 +162,7 @@ runner execution
 
 ### materialize_step_spec() — GENERATES .IN FROM YAML
 
-**File**: `src/quantumvitas/calculation/structure_steps.py:648-1193`
+**File**: `src/qmatsuite/calculation/structure_steps.py:648-1193`
 
 **Purpose**: Generate .in file from step.yaml (YAML SSOT → clean rewrite).
 
@@ -196,7 +196,7 @@ QEInputGenerator.write_file(qe_input, generated_input)  # Write with overrides a
 
 ## existing_input_file — IMPORT-ONLY
 
-**File**: `src/quantumvitas/calculation/calculation.py:336-388`
+**File**: `src/qmatsuite/calculation/calculation.py:336-388`
 
 **Purpose**: Legacy field from calculation.yaml step entry (`input:` or `file:` field).
 
@@ -213,7 +213,7 @@ QEInputGenerator.write_file(qe_input, generated_input)  # Write with overrides a
 
 ## Standalone Implementation
 
-**File**: `src/quantumvitas/cli/main.py:1636-1762`
+**File**: `src/qmatsuite/cli/main.py:1636-1762`
 
 **Implementation**:
 1. **Import phase**: `build_step_spec_from_qe_input()` creates temporary step.yaml from .in

@@ -21,7 +21,7 @@ import pytest
 import yaml
 from pymatgen.core import Molecule
 
-from quantumvitas.core.engines.discovery import is_engine_available
+from qmatsuite.core.engines.discovery import is_engine_available
 
 # Repo root for .tmp directory
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -48,7 +48,7 @@ def gaussian_workdir(tmp_path_factory):
 
 def _find_gaussian() -> str:
     """Find the Gaussian binary (g09 or g16)."""
-    from quantumvitas.core.engines.discovery import discover_engine
+    from qmatsuite.core.engines.discovery import discover_engine
 
     # Use centralized discovery
     result = discover_engine("gaussian", project_root=_REPO_ROOT)
@@ -166,7 +166,7 @@ Water single point energy
         )
 
         # ── Parse and verify energy ──
-        from quantumvitas.drivers.gaussian.parser import parse_log_file
+        from qmatsuite.drivers.gaussian.parser import parse_log_file
 
         parsed = parse_log_file(output_log)
         assert parsed["normal_termination"] is True
@@ -220,7 +220,7 @@ Water geometry optimization
         assert "Normal termination of Gaussian" in output_text
         assert "Optimization completed" in output_text or "Stationary point found" in output_text
 
-        from quantumvitas.drivers.gaussian.parser import parse_log_file
+        from qmatsuite.drivers.gaussian.parser import parse_log_file
 
         parsed = parse_log_file(output_log)
         assert parsed["normal_termination"] is True
@@ -270,7 +270,7 @@ Ethylene MP2 single point
 
         assert result.returncode == 0, f"Gaussian failed:\n{result.stderr[:500]}"
 
-        from quantumvitas.drivers.gaussian.parser import parse_log_file
+        from qmatsuite.drivers.gaussian.parser import parse_log_file
 
         parsed = parse_log_file(output_log)
         assert parsed["normal_termination"] is True
@@ -295,8 +295,8 @@ class TestGaussianDriverRegistration:
 
     def test_driver_registry_lookup(self):
         """Verify Gaussian driver is accessible via DriverRegistry."""
-        import quantumvitas.drivers.gaussian  # noqa: F401 — triggers registration
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.gaussian  # noqa: F401 — triggers registration
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         driver = DriverRegistry.get_driver("gaussian")
         assert driver is not None
@@ -309,8 +309,8 @@ class TestGaussianDriverRegistration:
 
     def test_step_type_lookup(self):
         """Verify gaussian_scf step type resolves through registry."""
-        import quantumvitas.drivers.gaussian  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.gaussian  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         handler = DriverRegistry.get_handler("gaussian_scf")
         assert handler is not None
@@ -318,8 +318,8 @@ class TestGaussianDriverRegistration:
 
     def test_materialization_map(self):
         """Verify scf -> gaussian_scf materialization."""
-        import quantumvitas.drivers.gaussian  # noqa: F401
-        from quantumvitas.core.driver_registry import DriverRegistry
+        import qmatsuite.drivers.gaussian  # noqa: F401
+        from qmatsuite.core.driver_registry import DriverRegistry
 
         spec = DriverRegistry.materialize_step_type("gaussian", "scf")
         assert spec == "gaussian_scf"
@@ -351,14 +351,14 @@ class TestGaussianProjectLevel:
         if "g09root" not in os.environ and _BUNDLED_GAUSSIAN.exists():
             os.environ["g09root"] = str(_BUNDLED_GAUSSIAN)
 
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
 
         # ── Setup: project in .tmp/gaussian/ ──
         unique_id = f"gaussian_e2e_{int(time.time())}_{uuid.uuid4().hex[:8]}"
         test_dir = _REPO_ROOT / ".tmp" / "gaussian" / unique_id
         test_dir.mkdir(parents=True, exist_ok=True)
 
-        project_root = QVService.init_project(test_dir / "gaussian_scf_project")
+        project_root = QMSService.init_project(test_dir / "gaussian_scf_project")
 
         # ── Import H2O molecule via API ──
         h2o = Molecule(
@@ -372,7 +372,7 @@ class TestGaussianProjectLevel:
         h2o_xyz = tmp_path / "h2o.xyz"
         h2o.to(str(h2o_xyz), fmt="xyz")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         imported = svc.structure.import_file(h2o_xyz, name="H2O")
         structure_ulid = imported.meta.ulid
 
@@ -449,14 +449,14 @@ class TestGaussianProjectLevel:
         if "g09root" not in os.environ and _BUNDLED_GAUSSIAN.exists():
             os.environ["g09root"] = str(_BUNDLED_GAUSSIAN)
 
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
 
         # ── Setup ──
         unique_id = f"gaussian_relax_{int(time.time())}_{uuid.uuid4().hex[:8]}"
         test_dir = _REPO_ROOT / ".tmp" / "gaussian" / unique_id
         test_dir.mkdir(parents=True, exist_ok=True)
 
-        project_root = QVService.init_project(test_dir / "gaussian_relax_project")
+        project_root = QMSService.init_project(test_dir / "gaussian_relax_project")
 
         # ── Import molecule ──
         h2o = Molecule(
@@ -470,7 +470,7 @@ class TestGaussianProjectLevel:
         h2o_xyz = tmp_path / "h2o_distorted.xyz"
         h2o.to(str(h2o_xyz), fmt="xyz")
 
-        svc = QVService(project_root)
+        svc = QMSService(project_root)
         imported = svc.structure.import_file(h2o_xyz, name="H2O_distorted")
         structure_ulid = imported.meta.ulid
 
@@ -542,7 +542,7 @@ class TestGaussianParser:
 
     def test_parse_scf_energy(self):
         """Test parsing SCF energy from output."""
-        from quantumvitas.drivers.gaussian.parser import parse_scf_energy
+        from qmatsuite.drivers.gaussian.parser import parse_scf_energy
 
         # Sample output text
         text = """
@@ -556,7 +556,7 @@ class TestGaussianParser:
 
     def test_parse_mp2_energy(self):
         """Test parsing MP2 energy from output."""
-        from quantumvitas.drivers.gaussian.parser import parse_mp2_energy
+        from qmatsuite.drivers.gaussian.parser import parse_mp2_energy
 
         text = """
          SCF Done:  E(RHF) =  -77.0728565000     A.U. after   10 cycles
@@ -570,7 +570,7 @@ class TestGaussianParser:
 
     def test_parse_optimization(self):
         """Test parsing optimization results."""
-        from quantumvitas.drivers.gaussian.parser import parse_optimization
+        from qmatsuite.drivers.gaussian.parser import parse_optimization
 
         text = """
          SCF Done:  E(RB3LYP) =  -76.4000000000     A.U. after    5 cycles
@@ -585,7 +585,7 @@ class TestGaussianParser:
 
     def test_parse_termination_status(self):
         """Test parsing termination status."""
-        from quantumvitas.drivers.gaussian.parser import parse_termination_status
+        from qmatsuite.drivers.gaussian.parser import parse_termination_status
 
         # Normal termination
         success, msg = parse_termination_status("Normal termination of Gaussian 09")

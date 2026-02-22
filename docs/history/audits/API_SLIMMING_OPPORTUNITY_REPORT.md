@@ -206,7 +206,7 @@
 
 **Proposed minimal public API (1 nested service class)**:
 
-New nested class: `QVService.OnlineSearch` (no project context required - static accessor)
+New nested class: `QMSService.OnlineSearch` (no project context required - static accessor)
 
 ```python
 class OnlineSearch:
@@ -228,18 +228,18 @@ class OnlineSearch:
 Internal (not exported): `score_candidate`, `extract_provenance`, `reduce_formula`
 
 **What gets deleted (5 utils)**:
-- `search_online_structures` → `QVService.OnlineSearch.search()`
-- `fetch_structure_from_optimade` → `QVService.OnlineSearch.fetch()`
+- `search_online_structures` → `QMSService.OnlineSearch.search()`
+- `fetch_structure_from_optimade` → `QMSService.OnlineSearch.fetch()`
 - `score_candidate` → internal to search capability
 - `extract_provenance` → internal to search capability
 - `reduce_formula` → internal to search capability (pure helper)
-- `OnlineStructureCache` → `QVService.OnlineSearch.create_cache()`
+- `OnlineStructureCache` → `QMSService.OnlineSearch.create_cache()`
 
 **Expected delta**: **-5** utils, +1 nested class = **-5** net (nested class has 3 methods but counts as domain, not individual entrypoints)
 
 **Migration impact**:
 - Daemon: 28 refs → update to use service capability
-- Create `QVService.OnlineSearch` static nested class
+- Create `QMSService.OnlineSearch` static nested class
 
 **Risk level**: HIGH - requires new nested class, daemon handler refactoring
 
@@ -371,10 +371,10 @@ class CalculationDTO:
 
 ```bash
 # Count daemon usage
-grep -r -c "function_name" src/quantumvitas/daemon/
+grep -r -c "function_name" src/qmatsuite/daemon/
 
 # Count CLI usage
-grep -r -c "function_name" src/quantumvitas/cli/
+grep -r -c "function_name" src/qmatsuite/cli/
 ```
 
 ### Cluster Analysis

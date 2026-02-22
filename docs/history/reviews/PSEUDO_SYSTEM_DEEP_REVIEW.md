@@ -44,7 +44,7 @@ These three systems do not interoperate. A library installed by System 2 is invi
 
 ### BUG 1: `auto_resolve_species_map_internal` missing `version` parameter
 
-**File**: `src/quantumvitas/mcp/tools/_resource_utils.py:52-57`
+**File**: `src/qmatsuite/mcp/tools/_resource_utils.py:52-57`
 **Severity**: CRITICAL (root cause of MCP failure)
 
 ```python
@@ -65,7 +65,7 @@ request = PseudoResolutionRequest(
 
 ### BUG 2: Root `head.json` missing `library_key`
 
-**File**: `src/quantumvitas/pseudo/pipeline.py:248-253`
+**File**: `src/qmatsuite/pseudo/pipeline.py:248-253`
 **Severity**: CRITICAL (root cause of resolution failure)
 
 ```python
@@ -97,7 +97,7 @@ When `library_key` is missing, it falls back to `exact_filename` — which IS th
 
 ### BUG 3: Resolution scans root `head.json`, not install-level `head.json`
 
-**File**: `src/quantumvitas/core/pseudo_config.py:1452-1503`
+**File**: `src/qmatsuite/core/pseudo_config.py:1452-1503`
 **Severity**: CRITICAL (root cause)
 
 The resolution loop at step 3:
@@ -122,7 +122,7 @@ Even worse: if the user requests `flavor="precision"` but only `SSSP/efficiency/
 
 ### BUG 4: Root `head.json` overwritten on second variant install
 
-**File**: `src/quantumvitas/pseudo/pipeline.py:248-253`
+**File**: `src/qmatsuite/pseudo/pipeline.py:248-253`
 **Severity**: HIGH
 
 Installing efficiency after precision overwrites `SSSP/head.json` with `{"variant":"efficiency","version":"1.3.0"}`. Now the code can never discover the precision install. This is exactly what happened in testing — precision was installed first, then efficiency, and the root head.json lost the precision reference.
@@ -133,7 +133,7 @@ Installing efficiency after precision overwrites `SSSP/head.json` with `{"varian
 
 ### BUG 5: `list_available_resources` reports `n_installed=0`
 
-**File**: `src/quantumvitas/mcp/tools/list_resources.py:115-157`
+**File**: `src/qmatsuite/mcp/tools/list_resources.py:115-157`
 **Severity**: HIGH (user-visible, misleading)
 
 The code reads root `head.json` to get `lib_key`, which is empty (BUG 2). Then:
@@ -155,7 +155,7 @@ Meanwhile, `svc.project.get_pseudo_options(elements)` goes through `pseudo_optio
 
 ### BUG 6: `library_manager.py` uses OLD layout exclusively
 
-**File**: `src/quantumvitas/core/library_manager.py:148-151`
+**File**: `src/qmatsuite/core/library_manager.py:148-151`
 **Severity**: HIGH
 
 ```python
@@ -172,7 +172,7 @@ library_path = lib_path / "library"
 
 ### BUG 7: `pseudo_options.py` checks `archives/` directory (System 3)
 
-**File**: `src/quantumvitas/core/pseudo_options.py:380-385`
+**File**: `src/qmatsuite/core/pseudo_options.py:380-385`
 **Severity**: MEDIUM
 
 The `get_pseudo_options_for_elements()` function checks archive installation status via `check_archive_status()`, which looks for archives in `store_dir/archives/<filename>`. The NEW pipeline doesn't put archives there — it extracts UPFs directly to `SSSP/variant/version/`. So `any_installed` is always `False` for libraries installed by the pipeline.
@@ -183,7 +183,7 @@ The `get_pseudo_options_for_elements()` function checks archive installation sta
 
 ### BUG 8: `download_pseudo_library` docstring says `flavor` but param is `variant`
 
-**File**: `src/quantumvitas/mcp/tools/download_pseudo_library.py:24-26`
+**File**: `src/qmatsuite/mcp/tools/download_pseudo_library.py:24-26`
 **Severity**: LOW (cosmetic but confusing for LLM agents)
 
 ```python
@@ -204,22 +204,22 @@ The LLM agent sees the docstring and tries `flavor=` which fails. The actual par
 
 ---
 
-### BUG 9: `_find_quantumvitas_root()` fails in wheel installs
+### BUG 9: `_find_qmatsuite_root()` fails in wheel installs
 
-**File**: `src/quantumvitas/core/pseudo_config.py:56-67`
+**File**: `src/qmatsuite/core/pseudo_config.py:56-67`
 **Severity**: MEDIUM (blocks production deployment)
 
 ```python
-def _find_quantumvitas_root() -> Optional[Path]:
+def _find_qmatsuite_root() -> Optional[Path]:
     current = Path(__file__).parent
     while current != current.parent:
-        if (current / "src" / "quantumvitas").exists():
+        if (current / "src" / "qmatsuite").exists():
             return current
         current = current.parent
     return None
 ```
 
-When installed as a wheel, `__file__` is inside `site-packages/quantumvitas/core/pseudo_config.py` — there is no `src/quantumvitas` directory above it. Returns `None`, which means:
+When installed as a wheel, `__file__` is inside `site-packages/qmatsuite/core/pseudo_config.py` — there is no `src/qmatsuite` directory above it. Returns `None`, which means:
 - `repo_pseudo_dir = None` → bundled resources not found
 - `store_dir` may be empty if `PseudoConfig.get_default_store_dir()` also fails
 
@@ -231,7 +231,7 @@ Similarly `paths.py:get_repo_root()` (line 42-52) fails with `RuntimeError` in w
 
 ### BUG 10: `PseudoConfig.store_dir` silently empty when repo root not found
 
-**File**: `src/quantumvitas/core/pseudo_config.py:92-97`
+**File**: `src/qmatsuite/core/pseudo_config.py:92-97`
 **Severity**: MEDIUM
 
 ```python
@@ -251,7 +251,7 @@ If `home_pseudo_libraries_dir()` raises (because `get_repo_root()` fails), `stor
 
 ### BUG 11: Resolution seed path uses OLD layout
 
-**File**: `src/quantumvitas/core/pseudo_config.py:1507`
+**File**: `src/qmatsuite/core/pseudo_config.py:1507`
 **Severity**: MEDIUM
 
 ```python
@@ -267,7 +267,7 @@ But the NEW pipeline stores seeds at `seeds_root / info.filename` (flat, not in 
 
 ### BUG 12: `install_sssp_from_seed` installs to OLD layout
 
-**File**: `src/quantumvitas/core/pseudo_config.py:621-623`
+**File**: `src/qmatsuite/core/pseudo_config.py:621-623`
 **Severity**: MEDIUM
 
 ```python
@@ -284,7 +284,7 @@ If resolution step 4 (seed install) succeeds, it creates the OLD layout. Then th
 
 ### BUG 13: Cutoffs loaded from OLD layout only
 
-**File**: `src/quantumvitas/core/pseudo_config.py:1387-1401`
+**File**: `src/qmatsuite/core/pseudo_config.py:1387-1401`
 **Severity**: LOW (cutoffs not critical for resolution, just for optimal parameters)
 
 ```python
@@ -301,7 +301,7 @@ The NEW pipeline stores cutoffs at `SSSP/precision/1.3.0/SSSP_1.3.0_PBE_precisio
 
 ### BUG 14: `resolve_project_pseudos` step 3 skips when `exact_filename` is None
 
-**File**: `src/quantumvitas/core/pseudo_config.py:1448`
+**File**: `src/qmatsuite/core/pseudo_config.py:1448`
 **Severity**: MEDIUM
 
 ```python
@@ -317,7 +317,7 @@ If the element is not in the index (e.g., rare element, or version mismatch), th
 
 ### BUG 15: `list_resources` double-counts library sources
 
-**File**: `src/quantumvitas/mcp/tools/list_resources.py:161-177`
+**File**: `src/qmatsuite/mcp/tools/list_resources.py:161-177`
 **Severity**: LOW
 
 `svc.project.get_pseudo_options(elements)` goes through `pseudo_options.py` which does SHA256-based scanning across project, internal, and library sources. This is completely independent of the head.json-based installed library scan above it. They can report conflicting information.
@@ -328,7 +328,7 @@ If the element is not in the index (e.g., rare element, or version mismatch), th
 
 ### BUG 16: `download_pseudo_library` default variant resolves to first archive
 
-**File**: `src/quantumvitas/pseudo/pipeline.py:87` + `registry.py`
+**File**: `src/qmatsuite/pseudo/pipeline.py:87` + `registry.py`
 **Severity**: LOW
 
 When `variant=""` (default), the registry resolves to the first archive for the library. For SSSP this is `efficiency`. But `auto_resolve_species_map_internal` defaults to `flavor="precision"`. So: download defaults to efficiency, but resolution requests precision → resolution fails because precision was never installed.
@@ -548,15 +548,15 @@ These 3 changes ensure: download → install → resolution → species_map work
 
 | File | Bugs | Priority |
 |------|------|----------|
-| `src/quantumvitas/pseudo/pipeline.py` | BUG 2, 4 | Phase 1 |
-| `src/quantumvitas/core/pseudo_config.py` | BUG 3, 11, 12, 13, 14 | Phase 1-3 |
-| `src/quantumvitas/mcp/tools/_resource_utils.py` | BUG 1 | Phase 1 |
-| `src/quantumvitas/mcp/tools/list_resources.py` | BUG 5, 15 | Phase 2 |
-| `src/quantumvitas/core/library_manager.py` | BUG 6 | Phase 2 |
-| `src/quantumvitas/core/pseudo_options.py` | BUG 7 | Phase 3 |
-| `src/quantumvitas/mcp/tools/download_pseudo_library.py` | BUG 8, 16 | Phase 2 |
-| `src/quantumvitas/core/pseudo_installs.py` | BUG 7 (consumer) | Phase 3 |
-| `src/quantumvitas/core/paths.py` | BUG 9, 10 | Phase 4 |
+| `src/qmatsuite/pseudo/pipeline.py` | BUG 2, 4 | Phase 1 |
+| `src/qmatsuite/core/pseudo_config.py` | BUG 3, 11, 12, 13, 14 | Phase 1-3 |
+| `src/qmatsuite/mcp/tools/_resource_utils.py` | BUG 1 | Phase 1 |
+| `src/qmatsuite/mcp/tools/list_resources.py` | BUG 5, 15 | Phase 2 |
+| `src/qmatsuite/core/library_manager.py` | BUG 6 | Phase 2 |
+| `src/qmatsuite/core/pseudo_options.py` | BUG 7 | Phase 3 |
+| `src/qmatsuite/mcp/tools/download_pseudo_library.py` | BUG 8, 16 | Phase 2 |
+| `src/qmatsuite/core/pseudo_installs.py` | BUG 7 (consumer) | Phase 3 |
+| `src/qmatsuite/core/paths.py` | BUG 9, 10 | Phase 4 |
 | `tests/integration/test_pseudo_resolution.py` | — | Update |
 
 ---

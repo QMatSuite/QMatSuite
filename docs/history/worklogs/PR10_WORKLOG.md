@@ -7,12 +7,12 @@
 **Baseline:** 185 failed, 2308 passed, 58 errors (total ~243 failures)
 
 **Top failure patterns:**
-1. 21 files import from `quantumvitas.api.compat` (missing: configure_step, run_step, update_step_params)
-2. 21 occurrences of `QVService.init_step` / `QVService.add_step_to_calculation` (don't exist as static)
-3. CLI `init step` command failing (missing static methods on QVService)
+1. 21 files import from `qmatsuite.api.compat` (missing: configure_step, run_step, update_step_params)
+2. 21 occurrences of `QMSService.init_step` / `QMSService.add_step_to_calculation` (don't exist as static)
+3. CLI `init step` command failing (missing static methods on QMSService)
 4. MetaDTO.id attribute errors (tests expect `.id` but DTO uses `.meta.id`)
 
-**Next:** Define canonical capability verbs for QVService (Step 1).
+**Next:** Define canonical capability verbs for QMSService (Step 1).
 
 ## LOG STEP 1
 
@@ -33,10 +33,10 @@
 - `svc.analysis.*` - analysis capabilities
 
 **Static methods (factory/bootstrap):**
-- `QVService.init_project()` - create new project
-- `QVService.init_calculation()` - (convenience, calls svc.calculation.create internally)
+- `QMSService.init_project()` - create new project
+- `QMSService.init_calculation()` - (convenience, calls svc.calculation.create internally)
 
-**Pattern:** Tests should use `svc = QVService(project_root)` then call `svc.calculation.add_step()`, NOT `QVService.init_step()`.
+**Pattern:** Tests should use `svc = QMSService(project_root)` then call `svc.calculation.add_step()`, NOT `QMSService.init_step()`.
 
 **Next:** Delete compat.py and migrate tests to use proper domain API (Step 2).
 
@@ -45,10 +45,10 @@
 **Goal:** Delete compat.py, migrate first test file to domain API.
 
 **Change:**
-- Deleted `src/quantumvitas/api/compat.py`
+- Deleted `src/qmatsuite/api/compat.py`
 - Migrated `tests/integration/test_incremental_run.py` to use `svc.calculation.add_step()` instead of `init_step()`
 
-**Files:** `src/quantumvitas/api/compat.py` (deleted), `tests/integration/test_incremental_run.py`
+**Files:** `src/qmatsuite/api/compat.py` (deleted), `tests/integration/test_incremental_run.py`
 
 **Tests:** `python -m pytest tests/integration/test_incremental_run.py -v --tb=short`
 
@@ -62,7 +62,7 @@
 
 **Change:**
 - Added `is_ulid_like` to `api/utils.py` as transparent re-export from `core.resolution`
-- Updated daemon (`server.py`) to import `is_ulid_like` from `api.utils` instead of `QVService`
+- Updated daemon (`server.py`) to import `is_ulid_like` from `api.utils` instead of `QMSService`
 - Fixed `test_update_step_params_persistence.py` to use domain API
 
 **Utility added:** `is_ulid_like`
@@ -74,7 +74,7 @@
 
 **Tests:** `python -m pytest tests/daemon/test_update_step_params_persistence.py -v`
 
-**Result:** Tests still fail - daemon calls `QVService.update_step_params` (static) which doesn't exist. Daemon needs separate fix to use instance methods.
+**Result:** Tests still fail - daemon calls `QMSService.update_step_params` (static) which doesn't exist. Daemon needs separate fix to use instance methods.
 
 **Next:** Continue with other test files; daemon static method fixes are separate scope.
 
@@ -104,7 +104,7 @@
 - `result.absolute_path` → construct from `calc_dir / "steps" / f"{step_dto.meta.slug}.step.yaml"`
 
 **Files modified:**
-- `src/quantumvitas/api/service.py` (slug deduplication fix)
+- `src/qmatsuite/api/service.py` (slug deduplication fix)
 - 8 test files (import fixes, API migration, skip markers)
 
 **Result:** Reduced compat import errors from 18 files to ~11 files.
@@ -121,10 +121,10 @@
 **Goal:** Package #4 - Fix CLI analyze_band/analyze_dos method calls
 
 **Changes (by Cursor Auto):**
-- Fixed `analyze_band_command` in CLI (line 4572): `QVService.analyze_band(...)` → `svc.analysis.analyze_band(...)`
-- Fixed `analyze_dos_command` in CLI (line 4659): `QVService.analyze_dos(...)` → `svc.analysis.analyze_dos(...)`
+- Fixed `analyze_band_command` in CLI (line 4572): `QMSService.analyze_band(...)` → `svc.analysis.analyze_band(...)`
+- Fixed `analyze_dos_command` in CLI (line 4659): `QMSService.analyze_dos(...)` → `svc.analysis.analyze_dos(...)`
 
-**Files:** `src/quantumvitas/cli/main.py`
+**Files:** `src/qmatsuite/cli/main.py`
 
 **Result:** 129 failed, 2344 passed, 5 errors (down from 131 failed, 2342 passed)
 
@@ -145,7 +145,7 @@
 - `_handle_get_step_detail` → `svc.calculation.get_step()`
 - Plus utility replacements (validate_ulid, is_path_like, etc.)
 
-**Files:** `src/quantumvitas/daemon/server.py`
+**Files:** `src/qmatsuite/daemon/server.py`
 
 **Result:** 121 failed, 2352 passed, 5 errors (down from 129 failed, 2344 passed)
 
@@ -157,7 +157,7 @@
 
 **Target:** 6 test files with ~50 failures
 - `tests/unit/test_api_service.py` - migrate list/get/delete to svc.domain.method()
-- `tests/unit/test_qvservice_gui.py` - migrate get_structure_vis_data
+- `tests/unit/test_qmsservice_gui.py` - migrate get_structure_vis_data
 - `tests/unit/test_api_get_band_structure_data.py` - migrate get_band_structure_data
 - `tests/unit/test_analysis_artifacts.py` - migrate get_scf_convergence_data, skip get_reference_analysis
 - `tests/unit/test_api_step_artifacts.py` - skip all (methods not in domain API)
@@ -179,7 +179,7 @@
 - DELETE 2 tests in `test_calculation_ulid_contracts.py` - tests deprecated `calc_set_steps`
 
 **Part B - FIX source bug:**
-- `workflow/templates.py` line 535/549: change `from quantumvitas.api import QVService` to `from quantumvitas._api_legacy import QVService as LegacyService`
+- `workflow/templates.py` line 535/549: change `from qmatsuite.api import QMSService` to `from qmatsuite._api_legacy import QMSService as LegacyService`
 
 **Part C - FIX test assertions:**
 - `test_api_service.py` - fix DTO field access and timing issues
@@ -303,7 +303,7 @@
 6. `test_resolution_absolute_path.py` - migrated to `svc.calculation.require_ref()`
 7. Fixed `update_step_params` in service.py to handle dict values with `apply_patch`
 8. Fixed dto_mapping to use `getattr` for optional attributes (description, tags, etc.)
-9. Added QVServiceError to exception mapping
+9. Added QMSServiceError to exception mapping
 10. Fixed daemon handler `_handle_update_step_params` to wrap params in {"parameters": ...}
 
 **Domain API additions:**
@@ -360,10 +360,10 @@
 2. Skipped TestOnlinePseudoResolve class (search_legacy_pseudos, download_pseudo_by_filename)
 3. Skipped TestGetReferenceAnalysis class (get_reference_analysis)
 4. Skipped TestUIWritebackContract class (update_calculation_species_map)
-5. Skipped TestIntegrationWithQVService class (ensure_calculation_analysis, get_scf_convergence_data)
+5. Skipped TestIntegrationWithQMSService class (ensure_calculation_analysis, get_scf_convergence_data)
 6. Skipped test_save_relax_structure_idempotency (save_relax_final_structure)
 7. Skipped test_create_demo_project_* tests
-8. Skipped test_get_online_candidate_cached_structure_has_candidate (QVService._build_structure_vis_payload)
+8. Skipped test_get_online_candidate_cached_structure_has_candidate (QMSService._build_structure_vis_payload)
 9. Skipped test_cli_show_command_executes_against_references (fixture issue)
 
 **Result:** 9 failed, 2415 passed, 82 skipped, 2 errors

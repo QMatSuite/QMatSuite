@@ -12,17 +12,17 @@ parameter mistakes before wasting compute and preview exact input files.
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `src/quantumvitas/drivers/qe/preflight.py` | ~250 | QEPreflightChecker — 20 deterministic rules |
+| `src/qmatsuite/drivers/qe/preflight.py` | ~250 | QEPreflightChecker — 20 deterministic rules |
 | `tests/mcp/test_stage8.py` | ~285 | 18 tests (12 unit + 3 dry_run + 3 integration) |
 
 ### Modified Files (4)
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/core/driver_protocol.py` | Added `PreflightIssue` frozen dataclass (7 fields) + `get_preflight_checker()` on `BaseEngineDriver` |
-| `src/quantumvitas/drivers/qe/driver.py` | Added `get_preflight_checker()` override (lazy import) |
-| `src/quantumvitas/mcp/tools/inspect_calculation.py` | Added `dry_run` param + preflight integration |
-| `src/quantumvitas/mcp/tools/preview_compilation.py` | Added preflight integration after compilation |
+| `src/qmatsuite/core/driver_protocol.py` | Added `PreflightIssue` frozen dataclass (7 fields) + `get_preflight_checker()` on `BaseEngineDriver` |
+| `src/qmatsuite/drivers/qe/driver.py` | Added `get_preflight_checker()` override (lazy import) |
+| `src/qmatsuite/mcp/tools/inspect_calculation.py` | Added `dry_run` param + preflight integration |
+| `src/qmatsuite/mcp/tools/preview_compilation.py` | Added preflight integration after compilation |
 
 ## Preflight Rules (20)
 

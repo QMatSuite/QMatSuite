@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { EnvironmentInfo, JobCounts } from '../../types/qv';
+import type { EnvironmentInfo, JobCounts } from '../../types/qms';
 import './StatusBar.css';
 
 interface StatusBarProps {
@@ -31,10 +31,10 @@ export function StatusBar({
   // Fetch environment info
   useEffect(() => {
     const fetchEnvInfo = async () => {
-      if (!window.qv || !daemonConnected) return;
+      if (!window.qms || !daemonConnected) return;
       
       try {
-        const response = await window.qv.request<EnvironmentInfo>('get_environment_info', {});
+        const response = await window.qms.request<EnvironmentInfo>('get_environment_info', {});
         if (response.ok && response.data) {
           setEnvInfo(response.data);
         }
@@ -52,10 +52,10 @@ export function StatusBar({
   // NOTE: This is for StatusBar display only. JobsPanel uses useJobs hook which also polls.
   useEffect(() => {
     const fetchJobCounts = async () => {
-      if (!window.qv || !daemonConnected) return;
+      if (!window.qms || !daemonConnected) return;
       
       try {
-        const response = await window.qv.request<JobCounts>('job_counts', {});
+        const response = await window.qms.request<JobCounts>('job_counts', {});
         if (response.ok && response.data) {
           setJobCounts(response.data);
         }

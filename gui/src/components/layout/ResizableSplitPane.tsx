@@ -22,7 +22,7 @@ interface ResizableSplitPaneProps {
 export function ResizableSplitPane({
   top,
   bottom,
-  storageKey = 'qv.splitPane.height',
+  storageKey = 'qms.splitPane.height',
   defaultTopHeight = 260,
   minTopHeight = 180,
   minBottomHeight = 360,

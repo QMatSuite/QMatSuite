@@ -10,22 +10,22 @@ import yaml
 import shutil
 from pathlib import Path
 
-from quantumvitas.api import QVService
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
-from quantumvitas.core.yaml_io import save_yaml_doc
-from quantumvitas.core.yamldoc import CalcDoc
-from quantumvitas.core.models import load_calculation
-from quantumvitas.core.pseudo_provenance import compute_sha256_file
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
+from qmatsuite.core.yaml_io import save_yaml_doc
+from qmatsuite.core.yamldoc import CalcDoc
+from qmatsuite.core.models import load_calculation
+from qmatsuite.core.pseudo_provenance import compute_sha256_file
+from qmatsuite.core.resources import get_resources_dir
 
 
 @pytest.fixture
 def eam_md_project(tmp_path: Path):
     """Create a LAMMPS project with EAM potential for MD."""
-    from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
+    from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin
     from pymatgen.core import Structure, Lattice
     
     # Check LAMMPS availability
@@ -35,7 +35,7 @@ def eam_md_project(tmp_path: Path):
         pytest.skip("LAMMPS not installed")
     
     # Create project
-    project_root = QVService.init_project(
+    project_root = QMSService.init_project(
         target_dir=tmp_path / "eam_md_project",
         name="EAM MD Test"
     )
@@ -53,7 +53,7 @@ def eam_md_project(tmp_path: Path):
     struct_file.write_text(json.dumps(structure.as_dict()))
     
     # Import structure
-    struct_result = QVService(project_root).structure.import_file(struct_file, name="Cu FCC")
+    struct_result = QMSService(project_root).structure.import_file(struct_file, name="Cu FCC")
     structure_ulid = struct_result.meta.ulid
     
     # Copy potential file if available
@@ -72,7 +72,7 @@ def eam_md_project(tmp_path: Path):
         pytest.skip("EAM potential file not found")
     
     # Create calculation
-    calc_resolved = QVService(project_root).project.init_calculation(
+    calc_resolved = QMSService(project_root).project.init_calculation(
         name="eam_md",
         structure_selector=structure_ulid,
     )
@@ -95,7 +95,7 @@ def eam_md_project(tmp_path: Path):
     save_yaml_doc(calc_doc, calc_path)
     
     # Create MD step using domain API
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     step_dto = svc.calculation.add_step(
         calc_selector=calc_id,
         step_type_gen="md",

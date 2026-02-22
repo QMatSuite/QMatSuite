@@ -67,15 +67,15 @@ GEN/SPEC Constitution.
 
 ### Infrastructure (3 files modified)
 
-1. **`src/quantumvitas/demo_store/translator.py`** — Companion engine dispatch in
+1. **`src/qmatsuite/demo_store/translator.py`** — Companion engine dispatch in
    `_translate_multi_step()`. When a step's `step_type_spec` prefix differs from the
    base engine, the companion engine's driver and input_spec are used for parsing.
    Uses `prefix_from()` from `step_type_convert.py` (no manual split).
 
-2. **`src/quantumvitas/workflow/gen_steps.py`** — Added `pw2qmcpack` to
+2. **`src/qmatsuite/workflow/gen_steps.py`** — Added `pw2qmcpack` to
    `GenStepRegistry.GEN_STEPS`.
 
-3. **`src/quantumvitas/drivers/qe/`** — Added `qe_pw2qmcpack` step type:
+3. **`src/qmatsuite/drivers/qe/`** — Added `qe_pw2qmcpack` step type:
    - `step_types.py`: New `StepTypeSpec`
    - `driver.py`: Added to `SUPPORTED_GEN_STEPS`
    - `engine/qe_engine.py`: Added to `EXECUTABLE_MAP`

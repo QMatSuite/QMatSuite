@@ -1,6 +1,6 @@
 # LAMMPS Long Smoke Test Plan
 
-> **Purpose**: Verify LAMMPS execution end-to-end using real LAMMPS binary, via high-level QMatSuite API (QVService/daemon level), covering smoke workflows: LJ, EAM, chain (relax→md), and restart_from.
+> **Purpose**: Verify LAMMPS execution end-to-end using real LAMMPS binary, via high-level QMatSuite API (QMSService/daemon level), covering smoke workflows: LJ, EAM, chain (relax→md), and restart_from.
 
 > **Audience**: Auto (automated execution agent) or developer running manual verification.
 
@@ -18,7 +18,7 @@ source .venv/bin/activate
 python --version  # Expect: Python 3.10+
 
 # Verify QMatSuite import
-python -c "import quantumvitas; print(f'QMatSuite installed at: {quantumvitas.__file__}')"
+python -c "import qmatsuite; print(f'QMatSuite installed at: {qmatsuite.__file__}')"
 ```
 
 ### 1.2 Verify LAMMPS Binary Availability
@@ -41,7 +41,7 @@ ls -la "$(brew --prefix lammps)/bin/"
 
 ```bash
 python -c "
-from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin
+from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin
 path = resolve_lammps_bin()
 print(f'Resolved LAMMPS binary: {path}')
 "
@@ -52,29 +52,29 @@ print(f'Resolved LAMMPS binary: {path}')
 
 ## 2. Execution Entry Point
 
-All workflows use the **QVService API** (high-level project/calculation/step management), NOT direct LAMMPS invocation. This mirrors real GUI/daemon usage.
+All workflows use the **QMSService API** (high-level project/calculation/step management), NOT direct LAMMPS invocation. This mirrors real GUI/daemon usage.
 
 ### API Pattern for Each Workflow:
 
 ```python
-from quantumvitas.api import QVService
-from quantumvitas.calculation.calculation import Calculation
-from quantumvitas.calculation.runner import CalculationRunner
-from quantumvitas.engine.registry import create_default_registry
-from quantumvitas.project.model import Project
+from qmatsuite.api import QMSService
+from qmatsuite.calculation.calculation import Calculation
+from qmatsuite.calculation.runner import CalculationRunner
+from qmatsuite.engine.registry import create_default_registry
+from qmatsuite.project.model import Project
 
 # 1. Create project
-project_root = QVService.init_project(target_dir, name="Test Project")
+project_root = QMSService.init_project(target_dir, name="Test Project")
 
 # 2. Import structure
-struct_result = QVService.import_structure(project_root, struct_file, name="Structure")
+struct_result = QMSService.import_structure(project_root, struct_file, name="Structure")
 
 # 3. Create calculation
-calc_result = QVService.init_calculation(project_root, name="calc", structure_selector=struct_result.meta.id)
+calc_result = QMSService.init_calculation(project_root, name="calc", structure_selector=struct_result.meta.id)
 
 # 4. Create and configure steps
-step = QVService.init_step(project_root, calculation_selector=calc_id, step_type="relax")
-QVService.configure_step(project_root, calculation_selector=calc_id, step_selector=step.meta.id, parameters={...})
+step = QMSService.init_step(project_root, calculation_selector=calc_id, step_type="relax")
+QMSService.configure_step(project_root, calculation_selector=calc_id, step_selector=step.meta.id, parameters={...})
 
 # 5. Run calculation
 project = Project.open(project_root)
@@ -120,7 +120,7 @@ parameters = {
 4. ✅ `raw/<step_ulid>/final.data` exists (minimized structure)
 5. ✅ `raw/<step_ulid>/dump.lammpstrj` exists (trajectory)
 6. ✅ If step_type is relax: `generated_structures/step_<ulid>/current.json` exists
-7. ✅ Parser can read trajectory: `from quantumvitas.parsers.lammps import parse_lammps_log`
+7. ✅ Parser can read trajectory: `from qmatsuite.parsers.lammps import parse_lammps_log`
 
 **Evidence to Collect**:
 - `ls -la raw/<step_ulid>/`
@@ -300,7 +300,7 @@ If any workflow fails, collect:
 ### 5.1 Essential Logs
 ```bash
 # Check resolver path
-python -c "from quantumvitas.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
+python -c "from qmatsuite.core.engines.lammps_resolver import resolve_lammps_bin; print(resolve_lammps_bin())"
 
 # LAMMPS version
 $(brew --prefix lammps)/bin/lmp -h 2>&1 | head -5
@@ -316,7 +316,7 @@ ls -laR raw/
 ```bash
 # List resolver search paths
 python -c "
-from quantumvitas.core.engines.lammps_resolver import LAMMPS_BIN_SEARCH_PATHS
+from qmatsuite.core.engines.lammps_resolver import LAMMPS_BIN_SEARCH_PATHS
 for p in LAMMPS_BIN_SEARCH_PATHS:
     print(p)
 "

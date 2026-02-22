@@ -17,7 +17,7 @@ Integrate GPAW as a new engine driver following the plug-in architecture. GPAW i
 ## 1. Driver Bundle Structure
 
 ```
-src/quantumvitas/drivers/gpaw/
+src/qmatsuite/drivers/gpaw/
 ├── __init__.py          # DriverRegistry.register(GPAWDriver())
 ├── driver.py            # GPAWDriver class (PREFIX + SUPPORTED_GEN_STEPS + 7 MUST items)
 ├── handler.py           # gpaw_step_handler() function
@@ -358,7 +358,7 @@ Reads `dos.json`:
 ### 7.1 Driver Registration (`drivers/gpaw/__init__.py`)
 
 ```python
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import GPAWDriver
 
 DriverRegistry.register(GPAWDriver())
@@ -370,7 +370,7 @@ __all__ = ["GPAWDriver"]
 
 Add one line:
 ```python
-from quantumvitas.drivers import gpaw
+from qmatsuite.drivers import gpaw
 ```
 
 This is the ONLY change outside `drivers/gpaw/`.

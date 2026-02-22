@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from quantumvitas.drivers.gaussian.data.gaussian_metadata import (
+from qmatsuite.drivers.gaussian.data.gaussian_metadata import (
     get_keyword_info,
     get_link0_info,
     get_metadata_file_info,

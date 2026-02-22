@@ -399,7 +399,7 @@ py4vasp (Apache-2.0, VASP Software GmbH) and p4vasp (GPLv2, Orest Dubay) take fu
 All new files follow existing patterns:
 
 ```
-src/quantumvitas/
+src/qmatsuite/
   core/analysis/
     evidence.py               # NEW: EvidenceBundle dataclass
     dos/
@@ -684,7 +684,7 @@ Add to `tests/gates/test_analysis_invariants.py`:
 ```python
 def test_vasp_analysis_capabilities_cover_five_types():
     """Gate: VASP driver must declare capabilities for all 5 types."""
-    from quantumvitas.drivers.vasp.driver import VASPDriver
+    from qmatsuite.drivers.vasp.driver import VASPDriver
     driver = VASPDriver()
     object_types = {cap.object_type for cap in driver.ANALYSIS_CAPABILITIES}
     assert {"bands", "dos", "convergence", "trajectory", "field3d"}.issubset(object_types)

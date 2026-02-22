@@ -30,7 +30,7 @@ This audit examines the complete data flow from step.yaml persistence through in
 
 ### step.yaml Schema (Persisted)
 
-**Location**: `src/quantumvitas/calculation/structure_steps.py:171-202` (`StructureStepSpec.to_dict()`)
+**Location**: `src/qmatsuite/calculation/structure_steps.py:171-202` (`StructureStepSpec.to_dict()`)
 
 **Required Fields**:
 - `meta`: Resource metadata (id, name, slug, path, kind)
@@ -50,7 +50,7 @@ This audit examines the complete data flow from step.yaml persistence through in
 
 **Evidence**:
 ```python
-# src/quantumvitas/calculation/structure_steps.py:171-202
+# src/qmatsuite/calculation/structure_steps.py:171-202
 def to_dict(self) -> Dict[str, Any]:
     data: Dict[str, Any] = {
         "meta": self.meta.to_dict(),
@@ -73,7 +73,7 @@ def to_dict(self) -> Dict[str, Any]:
 
 #### StructureStepSpec (Primary SSOT)
 
-**Location**: `src/quantumvitas/calculation/structure_steps.py:34-53`
+**Location**: `src/qmatsuite/calculation/structure_steps.py:34-53`
 
 **Fields**:
 - `meta: ResourceMeta`
@@ -93,7 +93,7 @@ def to_dict(self) -> Dict[str, Any]:
 
 #### StepDoc (YAML Document Wrapper)
 
-**Location**: `src/quantumvitas/core/yamldoc.py:454-505`
+**Location**: `src/qmatsuite/core/yamldoc.py:454-505`
 
 **Purpose**: YAML persistence with QE-specific normalization (section names uppercase, parameter aliases)
 
@@ -109,7 +109,7 @@ def to_dict(self) -> Dict[str, Any]:
 
 #### QEInput (Runtime Input Model)
 
-**Location**: `src/quantumvitas/io/model.py` (QEInput class)
+**Location**: `src/qmatsuite/io/model.py` (QEInput class)
 
 **Purpose**: In-memory representation of QE input file (namelists, cards, structure)
 
@@ -120,7 +120,7 @@ def to_dict(self) -> Dict[str, Any]:
 
 #### Step (Execution Wrapper)
 
-**Location**: `src/quantumvitas/calculation/step.py:19-32`
+**Location**: `src/qmatsuite/calculation/step.py:19-32`
 
 **Fields**:
 - `meta: ResourceMeta`
@@ -297,7 +297,7 @@ QEInputGenerator.write_file(qe_input, working_dir_input)
 **Source**: `step_defaults.py` (DEFAULT_STEP_PARAMS dict)
 
 **Injection Points**:
-1. `get_default_step_params(step_type)` → `QVService.init_step()` → `create_step_doc(overrides={"cards": defaults.get("cards", {})})`
+1. `get_default_step_params(step_type)` → `QMSService.init_step()` → `create_step_doc(overrides={"cards": defaults.get("cards", {})})`
 2. `_build_step_spec_from_qe_input_data(..., apply_defaults=True)` merges defaults
 
 **Recent Fix**: Removed invalid `K_POINTS: {option: "crystal_b"}` from "bands" defaults (step_defaults.py:83-86)
@@ -619,7 +619,7 @@ if new_option and new_option.lower() in kpath_formats:
 
 ### Q1: step.yaml Fields
 
-**File**: `src/quantumvitas/calculation/structure_steps.py:171-202`
+**File**: `src/qmatsuite/calculation/structure_steps.py:171-202`
 ```python
 def to_dict(self) -> Dict[str, Any]:
     data: Dict[str, Any] = {
@@ -640,8 +640,8 @@ def to_dict(self) -> Dict[str, Any]:
 
 ### Q2: In-Memory SSOT
 
-**File**: `src/quantumvitas/calculation/structure_steps.py:34-53` (StructureStepSpec definition)
-**File**: `src/quantumvitas/core/yamldoc.py:454-505` (StepDoc definition)
+**File**: `src/qmatsuite/calculation/structure_steps.py:34-53` (StructureStepSpec definition)
+**File**: `src/qmatsuite/core/yamldoc.py:454-505` (StepDoc definition)
 
 ### Q3: Override Channels
 
@@ -676,13 +676,13 @@ def to_dict(self) -> Dict[str, Any]:
 
 ### Q6: Step.run() card_overrides Forwarding
 
-**File**: `src/quantumvitas/calculation/step.py:100-123`
+**File**: `src/qmatsuite/calculation/step.py:100-123`
 ```python
 # Load cards from step.yaml if available
 card_overrides = None
 if self.meta.path:
     try:
-        from quantumvitas.calculation.structure_steps import StructureStepSpec
+        from qmatsuite.calculation.structure_steps import StructureStepSpec
         step_yaml_path = (project_root / self.meta.path).resolve()
         if step_yaml_path.exists():
             spec = StructureStepSpec.from_yaml(step_yaml_path)
@@ -701,7 +701,7 @@ result, _ = run_input_step(
 
 ### Q7: Configuration Error Location
 
-**File**: `src/quantumvitas/core/pseudo.py` (placeholder detection)
+**File**: `src/qmatsuite/core/pseudo.py` (placeholder detection)
 **File**: Test framework (skip conversion)
 
 **Check**: `is_missing_pseudo_placeholder(filename)` detects `<filename>` pattern

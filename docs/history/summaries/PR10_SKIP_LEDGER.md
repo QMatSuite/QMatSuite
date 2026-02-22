@@ -10,12 +10,12 @@
 ## Changes Made
 
 ### API Additions (Backwards-Compatibility Wrappers)
-1. `QVService.run_step()` - static wrapper for running single steps
-2. `QVService.init_step()` - static wrapper for creating steps
-3. `QVService.promote_relax_structure()` - static wrapper for promoting relax structures
+1. `QMSService.run_step()` - static wrapper for running single steps
+2. `QMSService.init_step()` - static wrapper for creating steps
+3. `QMSService.promote_relax_structure()` - static wrapper for promoting relax structures
 
 ### API Utils Re-exports
-Added to `quantumvitas.api.utils`:
+Added to `qmatsuite.api.utils`:
 - `calculations_using_structure()` - find calculations using a structure
 - `load_calculation()` - load calculation model
 - `save_calculation()` - save calculation model
@@ -27,8 +27,8 @@ Added to `quantumvitas.api.utils`:
 ### Test Fixes (Phase 1 - Migration Gaps)
 - `test_project_and_cli.py`: 5 tests unskipped - CLI tests work with domain API
 - `test_qe_runtime_keys_warning.py`: 1 test fixed, 3 empty stubs deleted
-- `test_promote_relax_structure.py`: 4 tests unskipped - uses QVService.promote_relax_structure
-- `test_relax_e2e.py`: 3 tests unskipped - uses QVService.promote_relax_structure
+- `test_promote_relax_structure.py`: 4 tests unskipped - uses QMSService.promote_relax_structure
+- `test_relax_e2e.py`: 3 tests unskipped - uses QMSService.promote_relax_structure
 - `test_cli_show_command_integration.py`: 1 test unskipped - fixture issue was outdated
 
 ### Engine Skip Elimination (Phase 2)
@@ -58,13 +58,13 @@ Additional tests unskipped by fixing API patterns:
 
 **Relax Promote E2E (4 tests)**
 - `test_relax_promote_e2e.py`: 4 tests - stale skip (promote_relax_structure IS in API)
-- Fixed `QVService.list_structures` -> `QVService.list_structures_data`
+- Fixed `QMSService.list_structures` -> `QMSService.list_structures_data`
 
 **QE Relax Real (3 tests)**
 - `test_qe_relax_real.py`: 3 tests - removed stale skip, added configure_step helper
 
 **Analysis Artifacts (1 test)**
-- `test_analysis_artifacts.py::TestIntegrationWithQVService::test_get_scf_uses_artifact`
+- `test_analysis_artifacts.py::TestIntegrationWithQMSService::test_get_scf_uses_artifact`
 - Fixed to use domain accessor pattern: `svc.analysis.get_scf_convergence_data()`
 - Deleted `test_ensure_calculation_analysis_method_exists` (method doesn't exist)
 

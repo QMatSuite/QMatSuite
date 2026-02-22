@@ -15,7 +15,7 @@ The QE legacy tables pseudopotential search functionality has been recovered fro
 
 ### 1. `search_legacy_pseudos(element)` - Kernel Function
 
-**Location:** `src/quantumvitas/drivers/qe/engine/qe_legacy_tables.py`
+**Location:** `src/qmatsuite/drivers/qe/engine/qe_legacy_tables.py`
 
 **Purpose:** Search for pseudopotentials by element using QE legacy tables website
 
@@ -28,7 +28,7 @@ The QE legacy tables pseudopotential search functionality has been recovered fro
 
 **Example:**
 ```python
-from quantumvitas.drivers.qe.engine.qe_legacy_tables import search_legacy_pseudos
+from qmatsuite.drivers.qe.engine.qe_legacy_tables import search_legacy_pseudos
 
 result = search_legacy_pseudos("Si")
 for candidate in result["candidates"]:
@@ -38,7 +38,7 @@ for candidate in result["candidates"]:
 
 ### 2. `download_pseudo_by_filename(filename, dest_dir)` - Kernel Function
 
-**Location:** `src/quantumvitas/drivers/qe/engine/qe_legacy_tables.py`
+**Location:** `src/qmatsuite/drivers/qe/engine/qe_legacy_tables.py`
 
 **Purpose:** Download individual pseudopotential file with advanced features
 
@@ -51,7 +51,7 @@ for candidate in result["candidates"]:
 **Example:**
 ```python
 from pathlib import Path
-from quantumvitas.drivers.qe.engine.qe_legacy_tables import download_pseudo_by_filename
+from qmatsuite.drivers.qe.engine.qe_legacy_tables import download_pseudo_by_filename
 
 result = download_pseudo_by_filename(
     "Si.pbe-n-rrkjus_psl.1.0.0.UPF",
@@ -143,10 +143,10 @@ else:
 ## Migration Status
 
 ### Source
-- **Original:** `src/quantumvitas/_api_legacy.py` lines 6294-6530 (236 lines)
+- **Original:** `src/qmatsuite/_api_legacy.py` lines 6294-6530 (236 lines)
 
 ### Destination
-- **Kernel Module:** `src/quantumvitas/drivers/qe/engine/qe_legacy_tables.py` (260 lines)
+- **Kernel Module:** `src/qmatsuite/drivers/qe/engine/qe_legacy_tables.py` (260 lines)
 - **Tests:** `tests/unit/test_qe_legacy_tables.py` (394 lines, 12 tests)
 
 ### Changes from Original
@@ -171,7 +171,7 @@ python -m pytest tests/unit/test_qe_legacy_tables.py -v
 python -m pytest tests/unit/test_qe_legacy_tables.py::TestSearchLegacyPseudos::test_search_extracts_upf_links_from_html -v
 
 # Run with coverage
-python -m pytest tests/unit/test_qe_legacy_tables.py --cov=src/quantumvitas/drivers/qe/engine/qe_legacy_tables
+python -m pytest tests/unit/test_qe_legacy_tables.py --cov=src/qmatsuite/drivers/qe/engine/qe_legacy_tables
 ```
 
 ---
@@ -183,7 +183,7 @@ If you need to expose this to the GUI or daemon, add wrapper methods to `api/ser
 
 ```python
 # In api/utils.py or similar
-from quantumvitas.drivers.qe.engine.qe_legacy_tables import (
+from qmatsuite.drivers.qe.engine.qe_legacy_tables import (
     search_legacy_pseudos,
     download_pseudo_by_filename,
 )
@@ -201,7 +201,7 @@ def download_pseudo(filename: str, project_root: Path) -> dict:
 ### For CLI
 Can be called directly from kernel:
 ```python
-from quantumvitas.drivers.qe.engine.qe_legacy_tables import search_legacy_pseudos
+from qmatsuite.drivers.qe.engine.qe_legacy_tables import search_legacy_pseudos
 ```
 
 ---
@@ -220,10 +220,10 @@ from quantumvitas.drivers.qe.engine.qe_legacy_tables import search_legacy_pseudo
 
 ## Related Files
 
-- `src/quantumvitas/drivers/qe/engine/qe_legacy_tables.py` - Kernel module (NEW)
+- `src/qmatsuite/drivers/qe/engine/qe_legacy_tables.py` - Kernel module (NEW)
 - `tests/unit/test_qe_legacy_tables.py` - Unit tests (NEW)
-- `src/quantumvitas/core/pseudo_config.py` - Configuration (existing)
-- `src/quantumvitas/_api_legacy.py` - Original source (kept for reference)
+- `src/qmatsuite/core/pseudo_config.py` - Configuration (existing)
+- `src/qmatsuite/_api_legacy.py` - Original source (kept for reference)
 
 ---
 

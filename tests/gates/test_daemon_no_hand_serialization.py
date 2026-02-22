@@ -284,7 +284,7 @@ def test_daemon_no_hand_serialization():
     are strong indicators of hand-serialization.
     """
     repo_root = Path(__file__).parent.parent.parent
-    daemon_file = repo_root / "src" / "quantumvitas" / "daemon" / "server.py"
+    daemon_file = repo_root / "src" / "qmatsuite" / "daemon" / "server.py"
     
     if not daemon_file.exists():
         pytest.skip(f"Daemon server file not found: {daemon_file}")
@@ -430,7 +430,7 @@ def test_no_dto_leakage_in_responses():
     """
     from io import StringIO
     from tests.contract_crawler.crawler import crawl_all_methods
-    from quantumvitas.api.types.base import BaseDTO
+    from qmatsuite.api.types.base import BaseDTO
 
     def check_for_dto_leakage(obj, path=""):
         """Recursively check for DTO instances."""

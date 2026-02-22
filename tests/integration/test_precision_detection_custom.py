@@ -13,9 +13,9 @@ import shutil
 from pathlib import Path
 import yaml
 
-from quantumvitas.presets.integration import detect_presets_from_calculation
-from quantumvitas.presets.precision import PrecisionAdvisor, PrecisionOption
-from quantumvitas.presets.integration import apply_presets_to_step
+from qmatsuite.presets.integration import detect_presets_from_calculation
+from qmatsuite.presets.precision import PrecisionAdvisor, PrecisionOption
+from qmatsuite.presets.integration import apply_presets_to_step
 
 
 class TestPrecisionDetectionCustom:
@@ -32,9 +32,9 @@ class TestPrecisionDetectionCustom:
         steps_dir = calc_dir / "steps"
         steps_dir.mkdir()
         
-        # Create project.qv.yml
-        project_qv_yml = project_root / "project.qv.yml"
-        project_qv_yml.write_text(yaml.safe_dump({
+        # Create project.qms.yml
+        project_qms_yml = project_root / "project.qms.yml"
+        project_qms_yml.write_text(yaml.safe_dump({
             "name": "Test Project",
             "version": "1.0",
         }))
@@ -50,7 +50,7 @@ class TestPrecisionDetectionCustom:
         )
         structure_file = structures_dir / "test_structure.json"
         import json
-        from quantumvitas.io.structure_io import STRUCTURE_META_KEY
+        from qmatsuite.io.structure_io import STRUCTURE_META_KEY
         struct_dict = structure.as_dict()
         struct_dict[STRUCTURE_META_KEY] = {
             "ulid": "test_structure",
@@ -77,7 +77,7 @@ class TestPrecisionDetectionCustom:
     def test_custom_on_mismatched_cutoffs(self, temp_calc_dir):
         """Apply med precision, then change ecutrho → should detect Custom."""
         from pymatgen.core import Structure, Lattice
-        from quantumvitas.core.models import CalculationModel, ResourceMeta
+        from qmatsuite.core.models import CalculationModel, ResourceMeta
         
         # Create a minimal structure for CalculationModel
         si_lattice = Lattice.cubic(5.43)

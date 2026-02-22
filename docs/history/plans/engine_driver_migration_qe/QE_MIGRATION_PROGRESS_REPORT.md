@@ -13,13 +13,13 @@
 **状态**: 已完成
 
 **完成的工作**:
-- ✅ 创建了 `src/quantumvitas/drivers/qe/` 目录结构
-- ✅ 创建了 `src/quantumvitas/drivers/qe/__init__.py` (不注册，仅导出QEDriver)
-- ✅ 创建了 `src/quantumvitas/drivers/qe/driver.py` (stub，委托给qe_shim)
-- ✅ 创建了 `src/quantumvitas/drivers/qe/step_types.py` (初始为空列表)
+- ✅ 创建了 `src/qmatsuite/drivers/qe/` 目录结构
+- ✅ 创建了 `src/qmatsuite/drivers/qe/__init__.py` (不注册，仅导出QEDriver)
+- ✅ 创建了 `src/qmatsuite/drivers/qe/driver.py` (stub，委托给qe_shim)
+- ✅ 创建了 `src/qmatsuite/drivers/qe/step_types.py` (初始为空列表)
 
 **验证结果**:
-- ✅ `from quantumvitas.drivers.qe import QEDriver` 导入成功
+- ✅ `from qmatsuite.drivers.qe import QEDriver` 导入成功
 - ✅ 所有现有测试通过
 
 ---
@@ -49,8 +49,8 @@
 - ✅ 在 `execution/recipes.py` 中添加了向后兼容的重新导出（通过 `__getattr__`）
 
 **验证结果**:
-- ✅ `from quantumvitas.drivers.qe.recipe import QERecipe` 导入成功
-- ✅ `from quantumvitas.execution.recipes import QERecipe` 向后兼容导入成功
+- ✅ `from qmatsuite.drivers.qe.recipe import QERecipe` 导入成功
+- ✅ `from qmatsuite.execution.recipes import QERecipe` 向后兼容导入成功
 - ✅ 所有现有测试通过
 
 ---
@@ -69,7 +69,7 @@
 - ✅ 在 `execution/handlers.py` 中添加了向后兼容的deprecation wrapper
 
 **验证结果**:
-- ✅ `from quantumvitas.drivers.qe.handler import qe_step_handler` 导入成功
+- ✅ `from qmatsuite.drivers.qe.handler import qe_step_handler` 导入成功
 - ✅ 所有现有测试通过
 
 ---
@@ -79,7 +79,7 @@
 **状态**: 已完成（但存在向后兼容问题）
 
 **完成的工作**:
-- ✅ 创建了 `src/quantumvitas/drivers/qe/engine/` 子目录
+- ✅ 创建了 `src/qmatsuite/drivers/qe/engine/` 子目录
 - ✅ 移动了以下7个文件：
   - `core/engines/qe.py` → `drivers/qe/engine/qe_engine.py`
   - `core/engines/qe_calculation.py` → `drivers/qe/engine/qe_calculation.py`
@@ -98,12 +98,12 @@
   - `core/engines/qe_calculation.py` - 重新导出 `StepResult`, `CalculationResult`, `QECalculationRunner`
   - `core/engines/qe_installation.py` - 重新导出 `QEInstallation`, `get_qe_home`, `set_qe_home`, `reset_qe_home`
   - `core/engines/qe_resolver.py` - 重新导出 `resolve_qe_bin_dir`, `find_internal_qe_bin_dir`, `validate_qe_bin_dir`
-  - `core/engines/qe_pseudopotentials.py` - 重新导出 `download_pseudopotential`, `PseudoManager`, `_find_quantumvitas_root`
+  - `core/engines/qe_pseudopotentials.py` - 重新导出 `download_pseudopotential`, `PseudoManager`, `_find_qmatsuite_root`
 - ✅ 更新了 `core/engines/__init__.py` 使用 `__getattr__` 进行延迟导入
 
 **验证结果**:
-- ✅ `from quantumvitas.drivers.qe.engine import QuantumEspressoEngine` 导入成功
-- ✅ `from quantumvitas.core.engines import QuantumEspressoEngine` 向后兼容导入成功
+- ✅ `from qmatsuite.drivers.qe.engine import QuantumEspressoEngine` 导入成功
+- ✅ `from qmatsuite.core.engines import QuantumEspressoEngine` 向后兼容导入成功
 - ⚠️ 部分测试失败（见下方分析）
 
 ---
@@ -130,7 +130,7 @@
 
 **错误信息**:
 ```
-AttributeError: module 'quantumvitas.core.engines.qe_resolver' has no attribute 'home_qe_engines_dir'
+AttributeError: module 'qmatsuite.core.engines.qe_resolver' has no attribute 'home_qe_engines_dir'
 ```
 
 **根本原因分析**:
@@ -138,8 +138,8 @@ AttributeError: module 'quantumvitas.core.engines.qe_resolver' has no attribute 
 1. **测试代码的monkey patch模式**:
    测试代码 (`tests/core/test_qe_resolver.py:58-67`) 使用monkey patch来替换 `home_qe_engines_dir` 函数：
    ```python
-   from quantumvitas.core.engines import qe_resolver
-   from quantumvitas.core.paths import home_qe_engines_dir
+   from qmatsuite.core.engines import qe_resolver
+   from qmatsuite.core.paths import home_qe_engines_dir
    original_func = qe_resolver.home_qe_engines_dir  # ❌ 这里访问模块属性
    qe_resolver.home_qe_engines_dir = lambda: engines_dir  # ❌ 尝试设置模块属性
    ```
@@ -152,7 +152,7 @@ AttributeError: module 'quantumvitas.core.engines.qe_resolver' has no attribute 
 2. **向后兼容模块问题**:
    `core/engines/qe_resolver.py` 是一个重新导出模块，只导出了3个函数：
    ```python
-   from quantumvitas.drivers.qe.engine.qe_resolver import (
+   from qmatsuite.drivers.qe.engine.qe_resolver import (
        resolve_qe_bin_dir,
        find_internal_qe_bin_dir,
        validate_qe_bin_dir,
@@ -164,8 +164,8 @@ AttributeError: module 'quantumvitas.core.engines.qe_resolver' has no attribute 
    在迁移前，`core/engines/qe_resolver.py` 直接导入并使用 `home_qe_engines_dir`，但测试代码通过monkey patch `qe_resolver.home_qe_engines_dir` 来替换它。迁移后，这个属性不再存在于模块中。
 
 **证据**:
-- `home_qe_engines_dir` 定义在 `src/quantumvitas/core/paths.py:127`
-- `drivers/qe/engine/qe_resolver.py:17` 使用 `from quantumvitas.core.paths import home_qe_engines_dir`
+- `home_qe_engines_dir` 定义在 `src/qmatsuite/core/paths.py:127`
+- `drivers/qe/engine/qe_resolver.py:17` 使用 `from qmatsuite.core.paths import home_qe_engines_dir`
 - `core/engines/qe_resolver.py` 重新导出模块不包含 `home_qe_engines_dir`
 - 测试代码在5个地方尝试访问 `qe_resolver.home_qe_engines_dir` (lines 60, 92, 131, 185, 201)
 
@@ -175,29 +175,29 @@ AttributeError: module 'quantumvitas.core.engines.qe_resolver' has no attribute 
 
 ```python
 # 修改前 (错误的方式)
-from quantumvitas.core.engines import qe_resolver
+from qmatsuite.core.engines import qe_resolver
 original_func = qe_resolver.home_qe_engines_dir  # ❌ 属性不存在
 qe_resolver.home_qe_engines_dir = lambda: engines_dir
 
 # 修改后 (正确的方式)
-from quantumvitas.core.paths import home_qe_engines_dir
+from qmatsuite.core.paths import home_qe_engines_dir
 import unittest.mock
-with unittest.mock.patch('quantumvitas.core.paths.home_qe_engines_dir', return_value=engines_dir):
+with unittest.mock.patch('qmatsuite.core.paths.home_qe_engines_dir', return_value=engines_dir):
     result = find_internal_qe_bin_dir()
 ```
 
 或者使用 `pytest monkeypatch`:
 ```python
 def test_find_internal_qe_bin_dir_empty(monkeypatch):
-    from quantumvitas.core.paths import home_qe_engines_dir
+    from qmatsuite.core.paths import home_qe_engines_dir
     engines_dir = Path(tmpdir) / ".qmatsuite" / "engines" / "qe"
-    monkeypatch.setattr('quantumvitas.core.paths.home_qe_engines_dir', lambda: engines_dir)
+    monkeypatch.setattr('qmatsuite.core.paths.home_qe_engines_dir', lambda: engines_dir)
     result = find_internal_qe_bin_dir()
 ```
 
 **选项B**: 在 `core/engines/qe_resolver.py` 中添加 `home_qe_engines_dir` 的重新导出（不推荐，因为这不是模块的职责）：
 ```python
-from quantumvitas.core.paths import home_qe_engines_dir
+from qmatsuite.core.paths import home_qe_engines_dir
 __all__ = [..., "home_qe_engines_dir"]
 ```
 
@@ -221,7 +221,7 @@ ImportError while importing test module 'tests/test_qe_resolution_diagnostics.py
 
 测试文件 (`tests/test_qe_resolution_diagnostics.py:12-17`) 尝试导入：
 ```python
-from quantumvitas.core.engines.qe_diagnostics import (
+from qmatsuite.core.engines.qe_diagnostics import (
     diagnose_qe_resolution,
     check_settings_for_external_engines,
     check_environment_variables,
@@ -238,11 +238,11 @@ from quantumvitas.core.engines.qe_diagnostics import (
 
 **建议修复方法**:
 
-创建 `src/quantumvitas/core/engines/qe_diagnostics.py`:
+创建 `src/qmatsuite/core/engines/qe_diagnostics.py`:
 ```python
 """Backward-compatibility re-export for qe_diagnostics (moved to drivers/qe/engine/)."""
 
-from quantumvitas.drivers.qe.engine.qe_diagnostics import (
+from qmatsuite.drivers.qe.engine.qe_diagnostics import (
     diagnose_qe_resolution,
     check_settings_for_external_engines,
     check_environment_variables,
@@ -274,8 +274,8 @@ ImportError while importing test module 'tests/unit/test_pw2wannier90_stderr_out
 
 测试文件 (`tests/unit/test_pw2wannier90_stderr_output.py:15-16`) 导入：
 ```python
-from quantumvitas.core.engines.qe_calculation import QECalculationRunner
-from quantumvitas.core.engines.qe import QuantumEspressoEngine, EngineConfig
+from qmatsuite.core.engines.qe_calculation import QECalculationRunner
+from qmatsuite.core.engines.qe import QuantumEspressoEngine, EngineConfig
 ```
 
 **问题**: 
@@ -291,14 +291,14 @@ from quantumvitas.core.engines.qe import QuantumEspressoEngine, EngineConfig
 
 **选项A（推荐）**: 修复测试文件的导入：
 ```python
-from quantumvitas.core.engines.qe_calculation import QECalculationRunner
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig  # 从正确的位置导入
+from qmatsuite.core.engines.qe_calculation import QECalculationRunner
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig  # 从正确的位置导入
 ```
 
 **选项B**: 在 `core/engines/qe.py` 中也重新导出 `EngineConfig`（不推荐，因为 `EngineConfig` 不是QE特定的）：
 ```python
-from quantumvitas.core.engines.base import EngineConfig
+from qmatsuite.core.engines.base import EngineConfig
 __all__ = ["QuantumEspressoEngine", "EngineConfig"]
 ```
 
@@ -333,7 +333,7 @@ __all__ = ["QuantumEspressoEngine", "EngineConfig"]
 **问题**: 某些测试文件可能混合使用了不同的导入路径（从 `core.engines` 子模块导入 vs 从 `core.engines` 根模块导入）。
 
 **建议**: 
-1. 统一导入路径：优先使用 `from quantumvitas.core.engines import X`（通过 `__getattr__`）
+1. 统一导入路径：优先使用 `from qmatsuite.core.engines import X`（通过 `__getattr__`）
 2. 如果必须从子模块导入，确保子模块存在向后兼容重新导出
 
 ---
@@ -365,7 +365,7 @@ __all__ = ["QuantumEspressoEngine", "EngineConfig"]
 ### Priority 3: 完善向后兼容性（中等优先级）
 
 4. **检查其他可能缺失的重新导出模块**
-   - 使用grep搜索 `from quantumvitas.core.engines.qe_` 的所有导入
+   - 使用grep搜索 `from qmatsuite.core.engines.qe_` 的所有导入
    - 为所有被导入的模块创建重新导出
    - 影响: 防止未来导入错误
    - 风险: 低

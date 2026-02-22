@@ -2,7 +2,7 @@
 
 **Generated**: 2026-01-31
 **Constitution Reference**: `docs/spec/step_type_gen_spec_constitution.md` v1.0 (IMMUTABLE LAW)
-**Scope**: Full repository audit of `src/quantumvitas/**/*.py`
+**Scope**: Full repository audit of `src/qmatsuite/**/*.py`
 
 ---
 
@@ -90,16 +90,16 @@ rg "step_type[^_]" src/ --type py -c | awk -F: '{sum += $2} END {print sum}'
 
 | File | Count |
 |------|-------|
-| `src/quantumvitas/api/service.py` | 84 |
-| `src/quantumvitas/_vault/_legacy_service.py` | 83 |
-| `src/quantumvitas/_vault/_legacy_facade.py` | 71 |
-| `src/quantumvitas/workflow/registry.py` | 48 |
-| `src/quantumvitas/presets/integration.py` | 46 |
-| `src/quantumvitas/presets/receivers.py` | 37 |
-| `src/quantumvitas/calculation/calculation.py` | 35 |
-| `src/quantumvitas/presets/variants_registry.py` | 34 |
-| `src/quantumvitas/drivers/qe/engine/qe_calculation.py` | 33 |
-| `src/quantumvitas/presets/detector.py` | 29 |
+| `src/qmatsuite/api/service.py` | 84 |
+| `src/qmatsuite/_vault/_legacy_service.py` | 83 |
+| `src/qmatsuite/_vault/_legacy_facade.py` | 71 |
+| `src/qmatsuite/workflow/registry.py` | 48 |
+| `src/qmatsuite/presets/integration.py` | 46 |
+| `src/qmatsuite/presets/receivers.py` | 37 |
+| `src/qmatsuite/calculation/calculation.py` | 35 |
+| `src/qmatsuite/presets/variants_registry.py` | 34 |
+| `src/qmatsuite/drivers/qe/engine/qe_calculation.py` | 33 |
+| `src/qmatsuite/presets/detector.py` | 29 |
 
 ### 1.2 Third Namespace Violations (§10.3)
 
@@ -112,25 +112,25 @@ rg "GEN_[A-Z]" src/ --type py -l
 
 | File | Violation Type |
 |------|---------------|
-| `src/quantumvitas/workflow/generalized_steps.py` | `GeneralizedStep` enum + `GEN_*` usage |
-| `src/quantumvitas/core/driver_registry.py` | `GEN_*` keys in materialization map |
-| `src/quantumvitas/core/driver_protocol.py` | `GEN_*` in protocol |
-| `src/quantumvitas/workflow/registry.py` | Some `GEN_*` references |
-| `src/quantumvitas/workflow/gen_steps.py` | Comments only (may be compliant) |
-| `src/quantumvitas/analysis/kpath.py` | `GEN_*` usage |
-| `src/quantumvitas/drivers/qe/driver.py` | `GEN_*` in materialization |
-| `src/quantumvitas/drivers/vasp/driver.py` | `GEN_*` in materialization |
-| `src/quantumvitas/drivers/pyscf/driver.py` | `GEN_*` in materialization |
-| `src/quantumvitas/drivers/orca/driver.py` | `GEN_*` in materialization |
-| `src/quantumvitas/drivers/cp2k/driver.py` | `GEN_*` in materialization |
-| `src/quantumvitas/drivers/lammps/driver.py` | `GEN_*` in materialization |
-| `src/quantumvitas/drivers/w90/driver.py` | `GEN_*` in materialization |
+| `src/qmatsuite/workflow/generalized_steps.py` | `GeneralizedStep` enum + `GEN_*` usage |
+| `src/qmatsuite/core/driver_registry.py` | `GEN_*` keys in materialization map |
+| `src/qmatsuite/core/driver_protocol.py` | `GEN_*` in protocol |
+| `src/qmatsuite/workflow/registry.py` | Some `GEN_*` references |
+| `src/qmatsuite/workflow/gen_steps.py` | Comments only (may be compliant) |
+| `src/qmatsuite/analysis/kpath.py` | `GEN_*` usage |
+| `src/qmatsuite/drivers/qe/driver.py` | `GEN_*` in materialization |
+| `src/qmatsuite/drivers/vasp/driver.py` | `GEN_*` in materialization |
+| `src/qmatsuite/drivers/pyscf/driver.py` | `GEN_*` in materialization |
+| `src/qmatsuite/drivers/orca/driver.py` | `GEN_*` in materialization |
+| `src/qmatsuite/drivers/cp2k/driver.py` | `GEN_*` in materialization |
+| `src/qmatsuite/drivers/lammps/driver.py` | `GEN_*` in materialization |
+| `src/qmatsuite/drivers/w90/driver.py` | `GEN_*` in materialization |
 
 **GeneralizedStep**:
 ```bash
 rg "GeneralizedStep" src/ --type py -l
 ```
-**Result**: **1 file** (`src/quantumvitas/workflow/generalized_steps.py`)
+**Result**: **1 file** (`src/qmatsuite/workflow/generalized_steps.py`)
 
 ### 1.3 Non-Derived Mapping Violations (§10.3)
 
@@ -139,7 +139,7 @@ rg "GeneralizedStep" src/ --type py -l
 rg "_apply_special_case_overrides" src/ --type py -l
 ```
 
-**Result**: **1 file** (`src/quantumvitas/core/driver_registry.py`)
+**Result**: **1 file** (`src/qmatsuite/core/driver_registry.py`)
 
 **All overrides are illegal**. Must delete and fix GEN names to make pure derivation work.
 

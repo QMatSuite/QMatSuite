@@ -24,10 +24,10 @@ All phases are complete with comprehensive test coverage.
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/presets/__init__.py` | Module exports |
-| `src/quantumvitas/presets/dimensions.py` | Enum definitions (SpinOption, SOCOption, MaterialOption, CUSTOM) |
-| `src/quantumvitas/presets/detector.py` | Detection logic (tolerant, supports implicit defaults) |
-| `src/quantumvitas/presets/compiler.py` | Compilation logic (strict, canonical encoding) |
+| `src/qmatsuite/presets/__init__.py` | Module exports |
+| `src/qmatsuite/presets/dimensions.py` | Enum definitions (SpinOption, SOCOption, MaterialOption, CUSTOM) |
+| `src/qmatsuite/presets/detector.py` | Detection logic (tolerant, supports implicit defaults) |
+| `src/qmatsuite/presets/compiler.py` | Compilation logic (strict, canonical encoding) |
 | `tests/unit/test_detector_b.py` | 70 unit tests |
 
 ### Key Features
@@ -54,8 +54,8 @@ All phases are complete with comprehensive test coverage.
 
 | File | Purpose |
 |------|---------|
-| `src/quantumvitas/presets/integration.py` | Integration with calculation infrastructure |
-| `src/quantumvitas/daemon/server.py` | Daemon handlers added |
+| `src/qmatsuite/presets/integration.py` | Integration with calculation infrastructure |
+| `src/qmatsuite/daemon/server.py` | Daemon handlers added |
 | `tests/unit/test_preset_integration.py` | 26 integration tests |
 
 ### Key Features
@@ -110,7 +110,7 @@ All phases are complete with comprehensive test coverage.
 ### Detection API
 
 ```python
-from quantumvitas.presets import (
+from qmatsuite.presets import (
     detect_spin, detect_soc, detect_material,
     detect_all_presets,
     SpinOption, SOCOption, MaterialOption, CUSTOM,
@@ -128,7 +128,7 @@ detected = detect_all_presets([params1, params2, params3])
 ### Compilation API
 
 ```python
-from quantumvitas.presets import (
+from qmatsuite.presets import (
     compile_spin, compile_soc, compile_material,
     compile_presets,
 )
@@ -146,7 +146,7 @@ params = compile_presets(options)
 ### Integration API
 
 ```python
-from quantumvitas.presets import (
+from qmatsuite.presets import (
     detect_presets_from_calculation,
     apply_presets_to_step,
     detect_workflow_type,

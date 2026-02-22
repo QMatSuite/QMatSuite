@@ -42,7 +42,7 @@ test.describe('Demo Store Integrity Sweep', () => {
 
   test('all demos can be materialized via backend RPC', async ({ appPage }) => {
     // Wait for the app to be ready
-    await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible({ timeout: 30000 });
+    await expect(appPage.getByTestId('qms-welcome-title')).toBeVisible({ timeout: 30000 });
 
     const repoRoot = getRepoRoot();
     const e2eRoot = ensureE2EProjectsRoot();
@@ -56,14 +56,14 @@ test.describe('Demo Store Integrity Sweep', () => {
       fs.mkdirSync(projectParent, { recursive: true });
 
       try {
-        // Call backend RPC to create demo project via preload API (qv.request)
+        // Call backend RPC to create demo project via preload API (qms.request)
         const result = await appPage.evaluate(async ({ targetDir, demoId }) => {
-          const qv = (window as any).qv;
-          if (!qv?.request) {
-            return { ok: false, error: 'qv.request not available' };
+          const qms = (window as any).qms;
+          if (!qms?.request) {
+            return { ok: false, error: 'qms.request not available' };
           }
           try {
-            const response = await qv.request('create_demo_project', {
+            const response = await qms.request('create_demo_project', {
               target_dir: targetDir,
               name: demoId,
               demo_id: demoId,
@@ -90,10 +90,10 @@ test.describe('Demo Store Integrity Sweep', () => {
           continue;
         }
 
-        // Check project.qv.yml exists
-        const projectYml = path.join(projectRoot, 'project.qv.yml');
+        // Check project.qms.yml exists
+        const projectYml = path.join(projectRoot, 'project.qms.yml');
         if (!fs.existsSync(projectYml)) {
-          results.push({ slug, status: 'FAIL', error: 'project.qv.yml missing' });
+          results.push({ slug, status: 'FAIL', error: 'project.qms.yml missing' });
           continue;
         }
 
@@ -119,10 +119,10 @@ test.describe('Demo Store Integrity Sweep', () => {
           continue;
         }
 
-        // Check demo_source in project.qv.yml
+        // Check demo_source in project.qms.yml
         const projectContent = fs.readFileSync(projectYml, 'utf-8');
         if (!projectContent.includes('demo_source')) {
-          results.push({ slug, status: 'FAIL', error: 'demo_source missing from project.qv.yml' });
+          results.push({ slug, status: 'FAIL', error: 'demo_source missing from project.qms.yml' });
           continue;
         }
 

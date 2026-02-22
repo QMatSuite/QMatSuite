@@ -30,7 +30,7 @@ Studied `plotext` source at `/repo_research/plotext/plotext/`.  Key takeaways:
 
 ### Step 1 — Worklog created
 
-### Step 2 — `src/quantumvitas/mcp/renderers/terminal_chart.py` created
+### Step 2 — `src/qmatsuite/mcp/renderers/terminal_chart.py` created
 - `TerminalChart` class: add_series, add_hline, add_vline, set_xlabel, set_ylabel, render
 - `_compute_ticks`, `_format_ticks`, `_to_col`, `_to_row`, `_draw_line` helpers
 - Dense data handling: envelope when n_pts > 2×plot_w

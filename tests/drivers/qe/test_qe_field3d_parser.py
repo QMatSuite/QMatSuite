@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
-from quantumvitas.core.analysis.evidence import EvidenceBundle
-from quantumvitas.core.analysis.field3d import Field3D
-from quantumvitas.drivers.qe.parsers.field3d import QEField3DProvider
+from qmatsuite.core.analysis.bundles import CanonicalPrimitiveBundle, compute_canonical_sha
+from qmatsuite.core.analysis.evidence import EvidenceBundle
+from qmatsuite.core.analysis.field3d import Field3D
+from qmatsuite.drivers.qe.parsers.field3d import QEField3DProvider
 
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "data" / "analysis_qe_field3d"
 

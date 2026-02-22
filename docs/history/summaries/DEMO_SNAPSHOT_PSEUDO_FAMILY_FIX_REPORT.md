@@ -15,17 +15,17 @@
    - **运行方式**: `python tools/generate_demo_snapshots.py`
    - **用途**: 从 `tests/data/project_examples/` 导出多个 demo 项目到 `resources/demo_projects/`
    - **生成的 demo**: `si_bands_demo.yml`, `si_dos_demo.yml`
-   - **调用**: `export_project_to_snapshot()` (来自 `src/quantumvitas/project/snapshot.py`)
+   - **调用**: `export_project_to_snapshot()` (来自 `src/qmatsuite/project/snapshot.py`)
 
 2. **`tools/regenerate_si_bands_demo.py`**
    - **入口**: `main()` 函数
    - **运行方式**: `python tools/regenerate_si_bands_demo.py`
    - **用途**: 仅重新生成 `si_bands_demo.yml`
-   - **调用**: `export_project_to_snapshot()` (来自 `src/quantumvitas/project/snapshot.py`)
+   - **调用**: `export_project_to_snapshot()` (来自 `src/qmatsuite/project/snapshot.py`)
 
 ### 核心函数
 
-两个脚本都调用 `export_project_to_snapshot()` 函数（位于 `src/quantumvitas/project/snapshot.py`），这是真正写入 `species_map` 的地方。
+两个脚本都调用 `export_project_to_snapshot()` 函数（位于 `src/qmatsuite/project/snapshot.py`），这是真正写入 `species_map` 的地方。
 
 ---
 
@@ -66,7 +66,7 @@ species_map:
 
 ### 修改的文件
 
-1. **`src/quantumvitas/project/snapshot.py`**
+1. **`src/qmatsuite/project/snapshot.py`**
 
    **修改位置**: `export_project_to_snapshot()` 函数（第 393-428 行）
 
@@ -79,15 +79,15 @@ species_map:
    ```python
    # Enhance species_map with sha256 and sha_family if missing (migration from legacy format)
    if calc_species_map:
-       from quantumvitas.core.pseudo_provenance import compute_sha256_file
-       from quantumvitas.core.pseudo_libinfo import compute_sha_family_file
+       from qmatsuite.core.pseudo_provenance import compute_sha256_file
+       from qmatsuite.core.pseudo_libinfo import compute_sha_family_file
        
        project_pseudo_dir = project_root / "pseudo"
        for element, entry in calc_species_map.items():
            # ... compute sha256 and sha_family from file if missing ...
    ```
 
-2. **`src/quantumvitas/project/snapshot.py`**
+2. **`src/qmatsuite/project/snapshot.py`**
 
    **修改位置**: `materialize_project_from_snapshot()` 函数（第 682-693 行）
 
@@ -185,7 +185,7 @@ $ grep "pseudo_sha_family" resources/demo_projects/si_dos_demo.yml
 
 ### 修改的文件
 
-1. **`src/quantumvitas/project/snapshot.py`**
+1. **`src/qmatsuite/project/snapshot.py`**
    - **行 393-428**: 在 `export_project_to_snapshot()` 中添加增强逻辑，计算并填充 `pseudo_sha256` 和 `pseudo_sha_family`
    - **行 682-693**: 在 `materialize_project_from_snapshot()` 中添加清理逻辑，移除遗留的 `pseudo_sha_token` 字段
 

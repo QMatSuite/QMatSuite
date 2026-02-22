@@ -26,8 +26,8 @@ class TestExecutableResolution:
         This was the original bug: EXECUTABLE_MAP.get("qe_bands", "pw.x") returned
         "pw.x" because "qe_bands" was not a key (only "bands" was).
         """
-        from quantumvitas.core.engines.qe import QuantumEspressoEngine
-        from quantumvitas.workflow.registry import normalize_step_type_to_gen
+        from qmatsuite.core.engines.qe import QuantumEspressoEngine
+        from qmatsuite.workflow.registry import normalize_step_type_to_gen
         
         # Test normalization
         assert normalize_step_type_to_gen("qe_bands") == "bands"
@@ -43,8 +43,8 @@ class TestExecutableResolution:
     
     def test_qe_dos_machine_type_resolves_to_dos_x(self):
         """Verify qe_dos (machine_type) resolves to dos.x."""
-        from quantumvitas.core.engines.qe import QuantumEspressoEngine
-        from quantumvitas.workflow.registry import normalize_step_type_to_gen
+        from qmatsuite.core.engines.qe import QuantumEspressoEngine
+        from qmatsuite.workflow.registry import normalize_step_type_to_gen
         
         step_type_public = normalize_step_type_to_gen("qe_dos")
         executable = QuantumEspressoEngine.EXECUTABLE_MAP.get(step_type_public, "pw.x")
@@ -53,8 +53,8 @@ class TestExecutableResolution:
     
     def test_qe_scf_machine_type_resolves_to_pw_x(self):
         """Verify qe_scf (machine_type) resolves to pw.x (as expected)."""
-        from quantumvitas.core.engines.qe import QuantumEspressoEngine
-        from quantumvitas.workflow.registry import normalize_step_type_to_gen
+        from qmatsuite.core.engines.qe import QuantumEspressoEngine
+        from qmatsuite.workflow.registry import normalize_step_type_to_gen
         
         step_type_public = normalize_step_type_to_gen("qe_scf")
         executable = QuantumEspressoEngine.EXECUTABLE_MAP.get(step_type_public, "pw.x")
@@ -72,11 +72,11 @@ class TestBandsInputGeneration:
         bands.x only uses &BANDS namelist. Adding &CONTROL causes QE to fail with:
         "bad line in namelist &control"
         """
-        from quantumvitas.calculation.structure_steps import (
+        from qmatsuite.calculation.structure_steps import (
             _generate_postprocessing_input,
             StructureStepSpec,
         )
-        from quantumvitas.core.resources import ResourceMeta, generate_resource_id, slugify
+        from qmatsuite.core.resources import ResourceMeta, generate_resource_id, slugify
         
         # Create minimal metadata
         meta = ResourceMeta(ulid=generate_resource_id(),
@@ -115,7 +115,7 @@ class TestBandsInputGeneration:
         assert bands_namelist is not None, "bands.x input must contain &BANDS namelist"
         
         # Verify module is BANDS
-        from quantumvitas.io.model import QEModule
+        from qmatsuite.io.model import QEModule
         assert qe_input.module == QEModule.BANDS
 
 
@@ -124,7 +124,7 @@ class TestNormalizationSSOT:
     
     def test_normalize_function_exists_in_registry(self):
         """Verify normalize_step_type_to_gen is the SSOT in registry module."""
-        from quantumvitas.workflow.registry import normalize_step_type_to_gen
+        from qmatsuite.workflow.registry import normalize_step_type_to_gen
         
         # Basic functionality test
         assert normalize_step_type_to_gen("qe_bands") == "bands"
@@ -133,8 +133,8 @@ class TestNormalizationSSOT:
     
     def test_structure_steps_uses_registry_normalize(self):
         """Verify structure_steps imports from registry, not local copy."""
-        from quantumvitas.calculation import structure_steps
-        from quantumvitas.workflow import registry
+        from qmatsuite.calculation import structure_steps
+        from qmatsuite.workflow import registry
         
         # The local _normalize_step_type_to_gen should be the registry's function
         # (imported with alias)

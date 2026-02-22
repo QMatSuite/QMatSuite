@@ -2,20 +2,20 @@
 
 ## 函数分类分析
 
-### 1. 应该移到 `src/quantumvitas/core/engines/` 的函数
+### 1. 应该移到 `src/qmatsuite/core/engines/` 的函数
 
 这些是核心功能，应该作为主程序的一部分：
 
-#### `ensure_pseudopotentials()` → `src/quantumvitas/core/engines/qe_pseudopotentials.py`
+#### `ensure_pseudopotentials()` → `src/qmatsuite/core/engines/qe_pseudopotentials.py`
 - **功能**: 确保所有需要的赝势文件可用（下载、查找、复制）
 - **理由**: 这是通用的 QE 功能，不仅测试需要，用户也可能需要
-- **新位置**: `src/quantumvitas/core/engines/qe_pseudopotentials.py`
+- **新位置**: `src/qmatsuite/core/engines/qe_pseudopotentials.py`
 - **新名称**: `ensure_pseudopotentials()` (保持不变)
 
-#### `download_pseudopotential()` → `src/quantumvitas/core/engines/qe_pseudopotentials.py`
+#### `download_pseudopotential()` → `src/qmatsuite/core/engines/qe_pseudopotentials.py`
 - **功能**: 从网络下载赝势文件
 - **理由**: 赝势管理是核心功能
-- **新位置**: `src/quantumvitas/core/engines/qe_pseudopotentials.py`
+- **新位置**: `src/qmatsuite/core/engines/qe_pseudopotentials.py`
 - **新名称**: `download_pseudopotential()` (保持不变)
 
 ### 2. 应该移到 `tests/core/` 的函数
@@ -53,20 +53,20 @@
   - 更新所有调用者使用新函数
   - 最终移除
 
-### 4. 应该移到 `src/quantumvitas/core/engines/` 的新功能
+### 4. 应该移到 `src/qmatsuite/core/engines/` 的新功能
 
-#### Roundtrip 功能 → `quantumvitas.io`
+#### Roundtrip 功能 → `qmatsuite.io`
 - **功能**: 解析 -> 生成的基本 roundtrip
 - **实现**: 
   ```python
-  from quantumvitas.io import QEInputParser
+  from qmatsuite.io import QEInputParser
   qe_input = QEInputParser.roundtrip_file(input_file, output_file)
   ```
 - **理由**: 这是核心功能，用户可能需要
 
 ## 重构步骤
 
-### 步骤 1: 创建 `src/quantumvitas/core/engines/qe_pseudopotentials.py`
+### 步骤 1: 创建 `src/qmatsuite/core/engines/qe_pseudopotentials.py`
 - 移动 `download_pseudopotential()`
 - 移动 `ensure_pseudopotentials()`
 - 更新导入
@@ -75,7 +75,7 @@
 - 添加 `run_command_with_timeout()`
 - 从 `test_qe_roundtrip_execution.py` 移动代码
 
-### 步骤 3: 更新 `src/quantumvitas/core/engines/qe_input.py`
+### 步骤 3: 更新 `src/qmatsuite/core/engines/qe_input.py`
 - 添加 `roundtrip_file()` 方法（如果需要）
 
 ### 步骤 4: 更新所有调用者
@@ -93,7 +93,7 @@
 ### 新的文件结构
 
 ```
-src/quantumvitas/core/engines/
+src/qmatsuite/core/engines/
 ├── qe_input.py          # 已有：解析和生成
 ├── qe_pseudopotentials.py  # 新建：赝势管理
 ├── qe_calculation.py       # 已有：calculation 执行

@@ -11,33 +11,33 @@ Phase 3C implements PySCF runner semantics and UI behavior alignment for PySCF e
 
 ### Core Implementation
 
-1. **src/quantumvitas/calculation/runner.py**
+1. **src/qmatsuite/calculation/runner.py**
    - Added run_mode injection into step.options before execution
    - Added per-step artifact directory creation and clearing
    - Passes step_artifacts_dir to engine via step.options
 
-2. **src/quantumvitas/engine/pyscf_engine.py**
+2. **src/qmatsuite/engine/pyscf_engine.py**
    - Added run_mode reading from step.options
    - Added allow_chkfile_init_guess control based on run_mode
    - Added per-step artifact directory support
    - Added `run_step_with_chain()` method for one-session chain execution
 
-3. **src/quantumvitas/engines/pyscf/runner.py**
+3. **src/qmatsuite/engines/pyscf/runner.py**
    - Added `run_job_chain()` function for chain execution
    - Updated `run_job()` to read allow_chkfile_init_guess from job.json
    - Passes allow_chkfile_init_guess to run_scf()
 
-4. **src/quantumvitas/engines/pyscf/chain_execution.py** (NEW)
+4. **src/qmatsuite/engines/pyscf/chain_execution.py** (NEW)
    - Implements one-session chain execution
    - Maintains in-memory state objects (mol, mf) between steps
    - Handles step artifacts directory clearing
    - Implements init_guess control per step (target vs prerequisite)
 
-5. **src/quantumvitas/engines/pyscf/__main__.py**
+5. **src/qmatsuite/engines/pyscf/__main__.py**
    - Updated to detect chain execution vs single step
    - Routes to run_job_chain() or run_job() accordingly
 
-6. **src/quantumvitas/api.py**
+6. **src/qmatsuite/api.py**
    - Updated `run_step()` to detect PySCF engine
    - Added dependency chain resolution for PySCF steps
    - Routes PySCF steps to run_step_with_chain()
@@ -45,7 +45,7 @@ Phase 3C implements PySCF runner semantics and UI behavior alignment for PySCF e
 
 ### Supporting Code
 
-7. **src/quantumvitas/engines/pyscf/chain.py**
+7. **src/qmatsuite/engines/pyscf/chain.py**
    - Already had resolve_dependency_chain() implementation
    - Fixed recursive resolution logic to properly build chains
 
@@ -80,7 +80,7 @@ Phase 3C implements PySCF runner semantics and UI behavior alignment for PySCF e
 ## Architecture Decisions (As Implemented)
 
 1. **Run mode plumbing**: Uses step.options dict (no signature changes, backward compatible)
-2. **Run Step entry point**: PySCF-specific path in QVService.run_step() (QE/W90 unchanged)
+2. **Run Step entry point**: PySCF-specific path in QMSService.run_step() (QE/W90 unchanged)
 3. **PySCF execution model**: New run_job_chain() function (clear separation from single-step execution)
 4. **Artifact directories**: Per-step dirs at `raw/step_artifacts/{step_ulid}` (matches spec)
 5. **Chkfile control**: Wired through job.json allow_chkfile_init_guess parameter (explicit, clear)

@@ -46,7 +46,7 @@ This audit reviewed **9 distinct information channels** through which QMatSuite 
 
 ### 3.1 Registration Mechanism
 
-All tools are registered via the `@mcp.tool` decorator from `quantumvitas.mcp.app`. The server (`server.py`) organizes registration into 11 functional stages via side-effect imports. The knowledge store (`search_knowledge`) uses lazy initialization via `_get_store()` — it's registered eagerly but the SQLite database is opened only on first call.
+All tools are registered via the `@mcp.tool` decorator from `qmatsuite.mcp.app`. The server (`server.py`) organizes registration into 11 functional stages via side-effect imports. The knowledge store (`search_knowledge`) uses lazy initialization via `_get_store()` — it's registered eagerly but the SQLite database is opened only on first call.
 
 ### 3.2 Complete Tool Inventory
 
@@ -191,7 +191,7 @@ Both return `context_hint` as a string field in the JSON envelope. The agent can
 | `download_pseudo_library` | download failed | `"Check network connectivity."` |
 | `cleanup_project` | no orphans | `"No orphaned references found. Project is clean."` |
 | `cleanup_project` | dry run found orphans | `"Found {n} orphaned reference(s). Run cleanup_project(dry_run=False) to remove them."` |
-| `cleanup_project` | cleaned | `"Removed {n} orphaned reference(s) from project.qv.yml."` |
+| `cleanup_project` | cleaned | `"Removed {n} orphaned reference(s) from project.qms.yml."` |
 | `list_analyses` | no capabilities | `"Engine '{engine}' has no declared analysis capabilities."` |
 | `list_analyses` | default | `"Use plot_analysis(calc_ulid='{calc_ulid}', object_type='<type>') to parse and render an analysis."` |
 | `plot_analysis` | analysis not found | `"Use list_analyses(calc_ulid='{calc_ulid}', step={step}) to see available types."` |
@@ -415,7 +415,7 @@ The design doc §5.6 `SuggestedFix` dataclass specifies: `action`, `parameter`, 
 
 ### 7.1 Implementation
 
-**File**: `src/quantumvitas/drivers/qe/preflight.py` (393 lines)
+**File**: `src/qmatsuite/drivers/qe/preflight.py` (393 lines)
 **Only QE has a preflight implementation.** All other 14 engines return `None` from `get_preflight_checker()`.
 
 ### 7.2 Complete Rule Inventory (20 Rules)
@@ -486,7 +486,7 @@ Priority preflight additions:
 
 **Algorithm**: Okapi BM25 (k1=1.5, b=0.75)
 **Corpus**: ~1,000 parameter documents from 11 engines
-**Source file**: `src/quantumvitas/mcp/search_index.py`
+**Source file**: `src/qmatsuite/mcp/search_index.py`
 
 Tokenization: regex `[a-z0-9_]+` on lowercased combined field `{tag_name} {description} {category}`.
 
@@ -646,7 +646,7 @@ The design specifies:
     "qmatsuite": {
       "type": "stdio",
       "command": ".venv/bin/python",
-      "args": ["-m", "quantumvitas.mcp.server"]
+      "args": ["-m", "qmatsuite.mcp.server"]
     }
   }
 }
@@ -662,8 +662,8 @@ The server performs auto-detection of project context at startup:
 # server.py lines 67-82
 _project_dir = _Path(_os.environ.get("QMATSUITE_PROJECT", ".")).resolve()
 try:
-    from quantumvitas.core.project_utils import find_project_root as _find_project_root
-    from quantumvitas.mcp.project import set_project_root as _set_project_root
+    from qmatsuite.core.project_utils import find_project_root as _find_project_root
+    from qmatsuite.mcp.project import set_project_root as _set_project_root
     _found = _find_project_root(start=_project_dir) if _project_dir.exists() else None
     if _found is not None:
         _set_project_root(_found)

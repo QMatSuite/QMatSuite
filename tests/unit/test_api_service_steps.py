@@ -1,5 +1,5 @@
 """
-Unit tests for QVService step-related methods.
+Unit tests for QMSService step-related methods.
 
 Tests that verify step creation through the API layer works correctly,
 especially ensuring that executable is not part of the step spec.
@@ -11,8 +11,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantumvitas.api import QVService, get_service
-from quantumvitas.calculation.structure_steps import StructureStepSpec
+from qmatsuite.api import QMSService, get_service
+from qmatsuite.calculation.structure_steps import StructureStepSpec
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def temp_project():
         structures_dir.mkdir()
         structure_file = structures_dir / "si.json"
         structure_file.write_text("""{
-  "__qv_meta__": {
+  "__qms_meta__": {
     "ulid": "01TESTSTRUCTUREID123456789",
     "name": "Si",
     "slug": "si",
@@ -45,8 +45,8 @@ def temp_project():
   ]
 }""")
 
-        # Create project.qv.yml with structure and calculation entries (ID-only)
-        (project_root / "project.qv.yml").write_text("""name: Test Project
+        # Create project.qms.yml with structure and calculation entries (ID-only)
+        (project_root / "project.qms.yml").write_text("""name: Test Project
 structures:
   - ulid: 01TESTSTRUCTUREID123456789
     file: structures/si.json
@@ -189,7 +189,7 @@ def test_add_step_to_calculation_no_executable_in_spec(temp_project):
 
 def test_configure_step_species_overrides(temp_project):
     """Test that update_step_params handles species_overrides correctly using apply_patch."""
-    from quantumvitas.core.yamldoc import StepDoc
+    from qmatsuite.core.yamldoc import StepDoc
 
     svc = get_service(temp_project)
 

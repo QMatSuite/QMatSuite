@@ -98,7 +98,7 @@ dpkg -L lammps 2>&1 | head -20
 **Evidence to Collect**:
 ```python
 # Capture current Engine base class
-from quantumvitas.engine.base import Engine
+from qmatsuite.engine.base import Engine
 import inspect
 
 print("Engine methods:")
@@ -115,7 +115,7 @@ for name, method in inspect.getmembers(Engine, predicate=inspect.isfunction):
 
 **Evidence to Collect**:
 ```python
-from quantumvitas.engine.registry import EngineRegistry, create_default_registry
+from qmatsuite.engine.registry import EngineRegistry, create_default_registry
 import inspect
 
 print("EngineRegistry methods:")
@@ -133,7 +133,7 @@ print(inspect.getsource(create_default_registry))
 
 **Evidence to Collect**:
 ```python
-from quantumvitas.workflow.registry import StepTypeSpec
+from qmatsuite.workflow.registry import StepTypeSpec
 from dataclasses import fields
 
 print("StepTypeSpec fields:")
@@ -570,10 +570,10 @@ def collect_evidence(context: str) -> dict:
     
     # Package versions
     try:
-        import quantumvitas
-        evidence["quantumvitas_version"] = getattr(quantumvitas, "__version__", "unknown")
+        import qmatsuite
+        evidence["qmatsuite_version"] = getattr(qmatsuite, "__version__", "unknown")
     except ImportError:
-        evidence["quantumvitas_version"] = "not installed"
+        evidence["qmatsuite_version"] = "not installed"
     
     return evidence
 

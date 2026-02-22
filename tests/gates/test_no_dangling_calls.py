@@ -1,7 +1,7 @@
 """
 Gate 0.3: Dangling Call Detector
 
-Ensures all QVService calls resolve to existing methods on canonical QVService.
+Ensures all QMSService calls resolve to existing methods on canonical QMSService.
 """
 
 import json
@@ -26,7 +26,7 @@ REPO_ROOT = _find_repo_root()
 
 
 def test_no_dangling_calls():
-    """Ensure all QVService calls resolve to existing methods."""
+    """Ensure all QMSService calls resolve to existing methods."""
     scanner_path = REPO_ROOT / "tools/api_dangling_calls_scanner.py"
 
     if not scanner_path.exists():
@@ -55,8 +55,8 @@ def test_no_dangling_calls():
         error_msg = "ERROR: Dangling API call detected:\n"
         for call in dangling[:20]:  # Limit to first 20 for readability
             error_msg += f"  - {call['file']}:{call['line']}: {call['method']}\n"
-            error_msg += f"    Method '{call['method_name']}' not found on quantumvitas.api.service.QVService\n"
-            error_msg += f"    Suggestion: Method exists on quantumvitas._vault._legacy_service.QVService - needs migration\n"
+            error_msg += f"    Method '{call['method_name']}' not found on qmatsuite.api.service.QMSService\n"
+            error_msg += f"    Suggestion: Method exists on qmatsuite._vault._legacy_service.QMSService - needs migration\n"
         if len(dangling) > 20:
             error_msg += f"\n  ... and {len(dangling) - 20} more dangling calls\n"
         assert False, error_msg

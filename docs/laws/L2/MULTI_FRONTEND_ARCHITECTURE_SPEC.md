@@ -30,13 +30,13 @@ This refactor does NOT redesign the SSOT philosophy, history system, or introduc
 ### 1.1 Python Package Structure
 
 ```
-src/quantumvitas/
-├── __init__.py              # Public exports: QVService, ErrorSpec, key models
+src/qmatsuite/
+├── __init__.py              # Public exports: QMSService, ErrorSpec, key models
 │
 ├── api/                     # PUBLIC API LAYER (single entry point to kernel)
-│   ├── __init__.py          # Exports QVService, ErrorSpec, all public operations
-│   ├── service.py           # QVService class implementation
-│   ├── errors.py            # ErrorSpec, QVServiceError, error codes
+│   ├── __init__.py          # Exports QMSService, ErrorSpec, all public operations
+│   ├── service.py           # QMSService class implementation
+│   ├── errors.py            # ErrorSpec, QMSServiceError, error codes
 │   ├── types.py             # Public return types (Result wrappers, digests)
 │   └── resolution.py        # Selector resolution (moved FROM cli)
 │
@@ -116,7 +116,7 @@ src/quantumvitas/
 
 ```
 QMatSuite/
-├── src/quantumvitas/        # Python package (as above)
+├── src/qmatsuite/        # Python package (as above)
 ├── gui/                     # Electron GUI (calls daemon)
 ├── tests/                   # pytest test suite
 │   ├── gates/               # Architecture enforcement tests
@@ -133,7 +133,7 @@ QMatSuite/
 └── pyproject.toml           # Package configuration
 ```
 
-**CRITICAL**: The repo-level `tools/` directory MUST be renamed to `scripts/` to avoid conflict with the Python-package `quantumvitas/tools/` module.
+**CRITICAL**: The repo-level `tools/` directory MUST be renamed to `scripts/` to avoid conflict with the Python-package `qmatsuite/tools/` module.
 
 ---
 
@@ -164,33 +164,33 @@ QMatSuite/
 **PROHIBITION 1: Frontends cannot import kernel modules**
 ```python
 # FORBIDDEN in frontends/*
-from quantumvitas.core.resolution import resolve_calculation  # NO
-from quantumvitas.calculation.runner import CalculationRunner  # NO
-from quantumvitas.drivers.qe import QEDriver  # NO
-from quantumvitas.analysis.parsers import parse_bands  # NO
+from qmatsuite.core.resolution import resolve_calculation  # NO
+from qmatsuite.calculation.runner import CalculationRunner  # NO
+from qmatsuite.drivers.qe import QEDriver  # NO
+from qmatsuite.analysis.parsers import parse_bands  # NO
 ```
 
 **PROHIBITION 2: CLI cannot do selector resolution**
 ```python
 # FORBIDDEN in frontends/cli/*
-from quantumvitas.core.resolution import resolve_calculation  # NO
+from qmatsuite.core.resolution import resolve_calculation  # NO
 calc = resolve_calculation(project_root, selector)  # NO
 
 # REQUIRED: Use api layer
-from quantumvitas.api import QVService
-svc = QVService(project_root)
+from qmatsuite.api import QMSService
+svc = QMSService(project_root)
 calc = svc.resolve_calculation(selector)  # YES
 ```
 
 **PROHIBITION 3: tools/* cannot import core directly**
 ```python
 # FORBIDDEN in tools/*
-from quantumvitas.core.models import Calculation  # NO
-from quantumvitas.core.locking import calc_run_lock  # NO
+from qmatsuite.core.models import Calculation  # NO
+from qmatsuite.core.locking import calc_run_lock  # NO
 
 # REQUIRED: Use api layer
-from quantumvitas.api import QVService
-svc = QVService(project_root)
+from qmatsuite.api import QMSService
+svc = QMSService(project_root)
 result = svc.run_step(selector)  # YES
 ```
 
@@ -222,7 +222,7 @@ result = svc.configure_step(selector, params)  # api validates
 │   ┌─────────────────────────────────────────────────────────────────┐  │
 │   │                    api/ + tools/                                 │  │
 │   │           (Public API Surface - SINGLE GATEWAY)                  │  │
-│   │   • api/: QVService, ErrorSpec, selector resolution              │  │
+│   │   • api/: QMSService, ErrorSpec, selector resolution              │  │
 │   │   • tools/: Structured primitives for agents                     │  │
 │   └──────────────────────────┬──────────────────────────────────────┘  │
 │                              │                                          │
@@ -243,7 +243,7 @@ result = svc.configure_step(selector, params)  # api validates
 
 1. **Parse command-line arguments** (Typer handles this)
 2. **Adapt parameters** (CLI flags → Python dict/kwargs)
-3. **Call `api.QVService` methods** (all business operations)
+3. **Call `api.QMSService` methods** (all business operations)
 4. **Format output** (print, table, JSON, etc.)
 5. **Handle user interaction** (prompts, confirmations)
 6. **Detect path context** (find project root from cwd) - BUT context detection only, not resolution
@@ -262,9 +262,9 @@ result = svc.configure_step(selector, params)  # api validates
 **BEFORE (Violation)**:
 ```python
 # cli/main.py - WRONG
-from quantumvitas.core.resolution import resolve_calculation, resolve_step
-from quantumvitas.core.project_utils import load_project_config
-from quantumvitas.calculation.runner import CalculationRunner
+from qmatsuite.core.resolution import resolve_calculation, resolve_step
+from qmatsuite.core.project_utils import load_project_config
+from qmatsuite.calculation.runner import CalculationRunner
 
 @app.command()
 def run(calc_selector: str):
@@ -277,32 +277,32 @@ def run(calc_selector: str):
 **AFTER (Compliant)**:
 ```python
 # frontends/cli/app.py - CORRECT
-from quantumvitas.api import QVService, QVServiceError
+from qmatsuite.api import QMSService, QMSServiceError
 
 @app.command()
 def run(calc_selector: str):
-    svc = QVService(project_root)
+    svc = QMSService(project_root)
     try:
         result = svc.run_calculation(calc_selector)  # Api handles everything
         display_run_result(result)  # CLI only formats output
-    except QVServiceError as e:
+    except QMSServiceError as e:
         display_error(e.error_spec)  # Structured error handling
 ```
 
 ### 3.4 API Methods Required for CLI
 
-The following methods must exist in `QVService` to support CLI operations:
+The following methods must exist in `QMSService` to support CLI operations:
 
 | CLI Command | Required API Method |
 |-------------|---------------------|
-| `qv run <calc>` | `svc.run_calculation(selector)` |
-| `qv run <calc>/<step>` | `svc.run_step(selector)` |
-| `qv list calcs` | `svc.list_calculations()` |
-| `qv list steps <calc>` | `svc.list_steps(calc_selector)` |
-| `qv show <calc>` | `svc.get_calculation(selector)` |
-| `qv config <step> --set ...` | `svc.configure_step(selector, params)` |
-| `qv import <file>` | `svc.import_structure(path)` |
-| `qv resolve <selector>` | `svc.resolve_selector(selector)` |
+| `qms run <calc>` | `svc.run_calculation(selector)` |
+| `qms run <calc>/<step>` | `svc.run_step(selector)` |
+| `qms list calcs` | `svc.list_calculations()` |
+| `qms list steps <calc>` | `svc.list_steps(calc_selector)` |
+| `qms show <calc>` | `svc.get_calculation(selector)` |
+| `qms config <step> --set ...` | `svc.configure_step(selector, params)` |
+| `qms import <file>` | `svc.import_structure(path)` |
+| `qms resolve <selector>` | `svc.resolve_selector(selector)` |
 | Context detection | `svc.detect_context(cwd)` → returns dict |
 
 ---
@@ -314,7 +314,7 @@ The following methods must exist in `QVService` to support CLI operations:
 The daemon is the only long-lived process (for GUI). It may cache:
 
 1. **ResourceIndex** - Mapping of IDs/selectors to paths (derived from YAML)
-2. **Project metadata** - Name, structure count, etc. (derived from project.qv.yml)
+2. **Project metadata** - Name, structure count, etc. (derived from project.qms.yml)
 3. **Step status** - Done/pending/running (derived from step.done.yaml)
 4. **File watchers** - Track changes to invalidate cache
 
@@ -366,17 +366,17 @@ if '/' in selector:  # NO - api resolves
 
 ```python
 # In Jupyter notebook - NO DAEMON NEEDED
-from quantumvitas import QVService
+from qmatsuite import QMSService
 
 # Initialize with explicit project path
-svc = QVService(project_root="/home/user/my_project")
+svc = QMSService(project_root="/home/user/my_project")
 
 # All operations through api
 structures = svc.list_structures()
 result = svc.run_calculation("si_dos")
 
 # Display helpers (optional)
-from quantumvitas.frontends.notebook import display_bands
+from qmatsuite.frontends.notebook import display_bands
 display_bands(result.artifacts['bands'])
 ```
 
@@ -395,14 +395,14 @@ display_bands(result.artifacts['bands'])
 
 ### 5.3 Project-Level Lock (NEW)
 
-The current codebase lacks locking for `project.qv.yml` writes. This must be added:
+The current codebase lacks locking for `project.qms.yml` writes. This must be added:
 
 ```python
 # core/locking.py (NEW)
 @contextmanager
 def project_edit_lock(project_root: Path):
-    """Acquire exclusive lock for project.qv.yml writes."""
-    lock_file = project_root / ".qv_project.lock"
+    """Acquire exclusive lock for project.qms.yml writes."""
+    lock_file = project_root / ".qms_project.lock"
     with portalocker.Lock(lock_file, timeout=5):
         yield
 ```
@@ -413,7 +413,7 @@ def project_edit_lock(project_root: Path):
 
 ### 6.1 Location and Rules
 
-All agent-callable primitives live in `quantumvitas/tools/`. These modules:
+All agent-callable primitives live in `qmatsuite/tools/`. These modules:
 
 - **MUST** import only from `api/*`
 - **MUST** return structured dicts (JSON-serializable)
@@ -425,10 +425,10 @@ All agent-callable primitives live in `quantumvitas/tools/`. These modules:
 #### `schema.discover`
 
 ```python
-# quantumvitas/tools/schema.py
+# qmatsuite/tools/schema.py
 
-from quantumvitas.api import QVService
-from quantumvitas.api.types import Result
+from qmatsuite.api import QMSService
+from qmatsuite.api.types import Result
 
 def discover(
     *,
@@ -450,7 +450,7 @@ def discover(
 #### `calc.get_summary`
 
 ```python
-# quantumvitas/tools/calc.py
+# qmatsuite/tools/calc.py
 
 def get_summary(
     project_root: str,
@@ -466,7 +466,7 @@ def get_summary(
 #### `params.validate_patch` / `params.apply_patch`
 
 ```python
-# quantumvitas/tools/params.py
+# qmatsuite/tools/params.py
 
 def validate_patch(
     project_root: str,
@@ -501,7 +501,7 @@ def apply_patch(
 #### `run.step` / `run.calc`
 
 ```python
-# quantumvitas/tools/run.py
+# qmatsuite/tools/run.py
 
 def run_step(
     project_root: str,
@@ -531,7 +531,7 @@ def run_calc(
 #### `results.extract`
 
 ```python
-# quantumvitas/tools/results.py
+# qmatsuite/tools/results.py
 
 def extract(
     project_root: str,
@@ -548,13 +548,13 @@ def extract(
 ### 6.3 Future MCP Adapter Pattern
 
 ```python
-# quantumvitas/frontends/agent/adapter.py (reserved)
+# qmatsuite/frontends/agent/adapter.py (reserved)
 
 # When implementing MCP, the adapter translates MCP requests to tools/ calls:
 #
-# MCP Request: {"tool": "quantumvitas.params.validate_patch", "params": {...}}
+# MCP Request: {"tool": "qmatsuite.params.validate_patch", "params": {...}}
 #     ↓
-# from quantumvitas.tools.params import validate_patch
+# from qmatsuite.tools.params import validate_patch
 # result = validate_patch(**params)
 #     ↓
 # MCP Response: {"result": result.to_dict()}
@@ -567,7 +567,7 @@ def extract(
 ### 7.1 ErrorSpec Definition
 
 ```python
-# quantumvitas/api/errors.py
+# qmatsuite/api/errors.py
 
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -608,10 +608,10 @@ class ErrorSpec:
         }
 ```
 
-### 7.2 QVServiceError
+### 7.2 QMSServiceError
 
 ```python
-class QVServiceError(Exception):
+class QMSServiceError(Exception):
     """API-level exception carrying structured error."""
 
     def __init__(self, error_spec: ErrorSpec):
@@ -625,7 +625,7 @@ class QVServiceError(Exception):
 ### 7.3 Result Wrapper for tools/
 
 ```python
-# quantumvitas/api/types.py
+# qmatsuite/api/types.py
 
 from dataclasses import dataclass
 from typing import Generic, TypeVar
@@ -682,34 +682,34 @@ This refactor is complete when ALL of the following are true:
 
 ```bash
 # MUST return 0 matches
-rg "from quantumvitas\.core" src/quantumvitas/frontends/
-rg "from quantumvitas\.calculation" src/quantumvitas/frontends/
-rg "from quantumvitas\.drivers" src/quantumvitas/frontends/
-rg "from quantumvitas\.analysis" src/quantumvitas/frontends/
-rg "from quantumvitas\.io" src/quantumvitas/frontends/
+rg "from qmatsuite\.core" src/qmatsuite/frontends/
+rg "from qmatsuite\.calculation" src/qmatsuite/frontends/
+rg "from qmatsuite\.drivers" src/qmatsuite/frontends/
+rg "from qmatsuite\.analysis" src/qmatsuite/frontends/
+rg "from qmatsuite\.io" src/qmatsuite/frontends/
 
 # MUST return 0 matches
-rg "from quantumvitas\.core" src/quantumvitas/tools/
-rg "from quantumvitas\.calculation" src/quantumvitas/tools/
+rg "from qmatsuite\.core" src/qmatsuite/tools/
+rg "from qmatsuite\.calculation" src/qmatsuite/tools/
 
 # MUST return 0 matches (api cannot import frontends)
-rg "from quantumvitas\.frontends" src/quantumvitas/api/
+rg "from qmatsuite\.frontends" src/qmatsuite/api/
 ```
 
 ### 8.2 CLI Thin Check
 
 ```bash
 # MUST return 0 matches (CLI does not resolve selectors)
-rg "resolve_calculation|resolve_step|resolve_structure" src/quantumvitas/frontends/cli/
+rg "resolve_calculation|resolve_step|resolve_structure" src/qmatsuite/frontends/cli/
 
 # MUST return 0 matches (CLI does not use core exceptions directly)
-rg "except.*Error.*from quantumvitas\.core" src/quantumvitas/frontends/cli/
+rg "except.*Error.*from qmatsuite\.core" src/qmatsuite/frontends/cli/
 ```
 
 ### 8.3 Functional Tests
 
 1. ✅ All existing tests pass
-2. ✅ Jupyter can `import quantumvitas; svc = QVService(...)` without daemon
+2. ✅ Jupyter can `import qmatsuite; svc = QMSService(...)` without daemon
 3. ✅ CLI commands work via api layer
 4. ✅ Daemon serves GUI via api layer
 5. ✅ `scripts/` contains maintenance utilities (renamed from `tools/`)
@@ -739,23 +739,23 @@ The following are NOT part of this refactor:
 During migration, provide temporary re-exports:
 
 ```python
-# src/quantumvitas/cli/__init__.py (TEMPORARY - remove after deprecation)
-"""DEPRECATED: Use quantumvitas.frontends.cli instead."""
+# src/qmatsuite/cli/__init__.py (TEMPORARY - remove after deprecation)
+"""DEPRECATED: Use qmatsuite.frontends.cli instead."""
 import warnings
 warnings.warn(
-    "quantumvitas.cli is deprecated. Use quantumvitas.frontends.cli.",
+    "qmatsuite.cli is deprecated. Use qmatsuite.frontends.cli.",
     DeprecationWarning, stacklevel=2
 )
-from quantumvitas.frontends.cli import app
+from qmatsuite.frontends.cli import app
 
-# src/quantumvitas/daemon/__init__.py (TEMPORARY - remove after deprecation)
-"""DEPRECATED: Use quantumvitas.frontends.daemon instead."""
+# src/qmatsuite/daemon/__init__.py (TEMPORARY - remove after deprecation)
+"""DEPRECATED: Use qmatsuite.frontends.daemon instead."""
 import warnings
 warnings.warn(
-    "quantumvitas.daemon is deprecated. Use quantumvitas.frontends.daemon.",
+    "qmatsuite.daemon is deprecated. Use qmatsuite.frontends.daemon.",
     DeprecationWarning, stacklevel=2
 )
-from quantumvitas.frontends.daemon import QVDaemon
+from qmatsuite.frontends.daemon import QMSDaemon
 ```
 
 ---
@@ -764,13 +764,13 @@ from quantumvitas.frontends.daemon import QVDaemon
 
 | Old Path | New Path |
 |----------|----------|
-| `quantumvitas.cli` | `quantumvitas.frontends.cli` |
-| `quantumvitas.cli.main` | `quantumvitas.frontends.cli.app` |
-| `quantumvitas.daemon` | `quantumvitas.frontends.daemon` |
-| `quantumvitas.api` (file) | `quantumvitas.api` (package) |
+| `qmatsuite.cli` | `qmatsuite.frontends.cli` |
+| `qmatsuite.cli.main` | `qmatsuite.frontends.cli.app` |
+| `qmatsuite.daemon` | `qmatsuite.frontends.daemon` |
+| `qmatsuite.api` (file) | `qmatsuite.api` (package) |
 | `tools/*` (repo level) | `scripts/*` (repo level) |
-| (new) | `quantumvitas.tools` |
-| (new) | `quantumvitas.frontends.notebook` |
+| (new) | `qmatsuite.tools` |
+| (new) | `qmatsuite.frontends.notebook` |
 
 ---
 
@@ -779,8 +779,8 @@ from quantumvitas.frontends.daemon import QVDaemon
 ```toml
 # pyproject.toml
 [project.scripts]
-qv = "quantumvitas.frontends.cli:app"
-qv-daemon = "quantumvitas.frontends.daemon:main"
+qms = "qmatsuite.frontends.cli:app"
+qms-daemon = "qmatsuite.frontends.daemon:main"
 ```
 
 ---

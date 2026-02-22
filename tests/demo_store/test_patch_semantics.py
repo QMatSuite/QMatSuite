@@ -14,7 +14,7 @@ from pathlib import Path
 
 def _make_step_doc(data: dict):
     """Create a StepDoc from a dict."""
-    from quantumvitas.core.yamldoc import StepDoc
+    from qmatsuite.core.yamldoc import StepDoc
     return StepDoc(data)
 
 

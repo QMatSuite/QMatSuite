@@ -12,7 +12,7 @@
 
 ## 1. Objective
 
-Extract all CP2K-specific code from kernel files into a self-contained driver bundle at `src/quantumvitas/drivers/cp2k/`. After this migration:
+Extract all CP2K-specific code from kernel files into a self-contained driver bundle at `src/qmatsuite/drivers/cp2k/`. After this migration:
 
 1. All CP2K code lives in `drivers/cp2k/`
 2. CP2K is registered via DriverRegistry
@@ -25,7 +25,7 @@ Extract all CP2K-specific code from kernel files into a self-contained driver bu
 
 ### 2.1 Handler Code
 
-**Source**: `src/quantumvitas/execution/handlers.py`
+**Source**: `src/qmatsuite/execution/handlers.py`
 
 | Function | Lines | Description |
 |----------|-------|-------------|
@@ -33,7 +33,7 @@ Extract all CP2K-specific code from kernel files into a self-contained driver bu
 
 ### 2.2 Recipe Code
 
-**Source**: `src/quantumvitas/execution/recipes.py`
+**Source**: `src/qmatsuite/execution/recipes.py`
 
 | Class | Lines | Description |
 |-------|-------|-------------|
@@ -58,7 +58,7 @@ cp2k_geo_opt, cp2k_cell_opt, cp2k_vibrational
 ### 2.5 Additional CP2K Logic
 
 **Locations**:
-- `src/quantumvitas/calculation/structure_steps.py` - CP2K_STEP_TYPES
+- `src/qmatsuite/calculation/structure_steps.py` - CP2K_STEP_TYPES
 
 ### 2.6 Special Considerations
 
@@ -73,7 +73,7 @@ cp2k_geo_opt, cp2k_cell_opt, cp2k_vibrational
 ## 3. Target Structure
 
 ```
-src/quantumvitas/drivers/cp2k/
+src/qmatsuite/drivers/cp2k/
 ├── __init__.py          # Registration (15 lines)
 ├── driver.py            # CP2KDriver class (80 lines)
 ├── handler.py           # cp2k_step_handler (213 lines, moved)
@@ -90,17 +90,17 @@ src/quantumvitas/drivers/cp2k/
 ### Step 1: Create Directory Structure
 
 ```bash
-mkdir -p src/quantumvitas/drivers/cp2k
-touch src/quantumvitas/drivers/cp2k/__init__.py
-touch src/quantumvitas/drivers/cp2k/driver.py
-touch src/quantumvitas/drivers/cp2k/handler.py
-touch src/quantumvitas/drivers/cp2k/recipe.py
-touch src/quantumvitas/drivers/cp2k/input_writer.py
+mkdir -p src/qmatsuite/drivers/cp2k
+touch src/qmatsuite/drivers/cp2k/__init__.py
+touch src/qmatsuite/drivers/cp2k/driver.py
+touch src/qmatsuite/drivers/cp2k/handler.py
+touch src/qmatsuite/drivers/cp2k/recipe.py
+touch src/qmatsuite/drivers/cp2k/input_writer.py
 ```
 
 ### Step 2: Create driver.py
 
-**Create file**: `src/quantumvitas/drivers/cp2k/driver.py`
+**Create file**: `src/qmatsuite/drivers/cp2k/driver.py`
 
 ```python
 """CP2K engine driver.
@@ -114,7 +114,7 @@ This driver handles all CP2K calculations including:
 
 from pathlib import Path
 
-from quantumvitas.core.driver_protocol import (
+from qmatsuite.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
     WorkdirPolicy,
@@ -320,7 +320,7 @@ class CP2KDriver(BaseEngineDriver):
 
 ### Step 3: Move Handler to handler.py
 
-**Create file**: `src/quantumvitas/drivers/cp2k/handler.py`
+**Create file**: `src/qmatsuite/drivers/cp2k/handler.py`
 
 **Copy** the `cp2k_step_handler` function from `handlers.py` (lines 1097-1310).
 
@@ -335,9 +335,9 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from quantumvitas.core.job import Job
-from quantumvitas.core.step_context import StepContext
-from quantumvitas.core.job_result import JobResult
+from qmatsuite.core.job import Job
+from qmatsuite.core.step_context import StepContext
+from qmatsuite.core.job_result import JobResult
 
 if TYPE_CHECKING:
     pass
@@ -369,7 +369,7 @@ def cp2k_step_handler(job: Job, context: StepContext) -> JobResult:
 
 ### Step 4: Move Recipe to recipe.py
 
-**Create file**: `src/quantumvitas/drivers/cp2k/recipe.py`
+**Create file**: `src/qmatsuite/drivers/cp2k/recipe.py`
 
 **Copy** the `CP2KRecipe` class from `recipes.py` (lines 694-798).
 
@@ -383,7 +383,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from quantumvitas.execution.recipes import BaseRecipe
+from qmatsuite.execution.recipes import BaseRecipe
 
 logger = logging.getLogger(__name__)
 
@@ -405,7 +405,7 @@ class CP2KRecipe(BaseRecipe):
 
 ### Step 5: Create input_writer.py (Optional)
 
-**Create file**: `src/quantumvitas/drivers/cp2k/input_writer.py`
+**Create file**: `src/qmatsuite/drivers/cp2k/input_writer.py`
 
 ```python
 """CP2K input file writer utilities.
@@ -461,17 +461,17 @@ def write_section(
 
 ### Step 6: Create __init__.py
 
-**Create file**: `src/quantumvitas/drivers/cp2k/__init__.py`
+**Create file**: `src/qmatsuite/drivers/cp2k/__init__.py`
 
 ```python
 """CP2K driver bundle.
 
-This package provides the CP2K engine driver for QuantumVitas.
+This package provides the CP2K engine driver for QMatSuite.
 It handles all CP2K calculations including DFT, MD, and
 property calculations.
 """
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import CP2KDriver
 
 # Register driver at import time
@@ -482,17 +482,17 @@ __all__ = ["CP2KDriver"]
 
 ### Step 7: Update drivers/__init__.py
 
-**File**: `src/quantumvitas/drivers/__init__.py`
+**File**: `src/qmatsuite/drivers/__init__.py`
 
 **Add** CP2K import:
 
 ```python
-from quantumvitas.drivers import qe_shim
-from quantumvitas.drivers import vasp
-from quantumvitas.drivers import orca
-from quantumvitas.drivers import pyscf
-from quantumvitas.drivers import lammps
-from quantumvitas.drivers import cp2k  # ADD THIS LINE
+from qmatsuite.drivers import qe_shim
+from qmatsuite.drivers import vasp
+from qmatsuite.drivers import orca
+from qmatsuite.drivers import pyscf
+from qmatsuite.drivers import lammps
+from qmatsuite.drivers import cp2k  # ADD THIS LINE
 ```
 
 ### Step 8: Remove CP2K from Kernel Files
@@ -511,9 +511,9 @@ from quantumvitas.drivers import cp2k  # ADD THIS LINE
 """Tests for CP2K driver bundle."""
 
 import pytest
-from quantumvitas.drivers.cp2k import CP2KDriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.cp2k import CP2KDriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestCP2KDriver:
@@ -571,7 +571,7 @@ class TestCP2KRegistration:
 
     def test_cp2k_registered(self):
         """CP2K should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("cp2k")
         driver = DriverRegistry.get_driver("cp2k")
@@ -579,7 +579,7 @@ class TestCP2KRegistration:
 
     def test_cp2k_step_types_registered(self):
         """CP2K step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("cp2k_scf")
         assert DriverRegistry.is_step_type_registered("cp2k_relax")
@@ -591,14 +591,14 @@ class TestCP2KIsolation:
     def test_handlers_no_cp2k_handler(self):
         """handlers.py should not contain cp2k_step_handler."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/handlers.py").read_text()
+        source = Path("src/qmatsuite/execution/handlers.py").read_text()
 
         assert "def cp2k_step_handler" not in source
 
     def test_recipes_no_cp2k_recipe(self):
         """recipes.py should not contain CP2KRecipe."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/recipes.py").read_text()
+        source = Path("src/qmatsuite/execution/recipes.py").read_text()
 
         assert "class CP2KRecipe" not in source
 ```

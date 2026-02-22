@@ -14,7 +14,7 @@
 
 ## 1. Cross-Resource References Audit
 
-### ✅ Project → Calculation/Structure (project.qv.yml)
+### ✅ Project → Calculation/Structure (project.qms.yml)
 
 **Status**: ✅ **Clean**
 
@@ -135,20 +135,20 @@
 
 ---
 
-## 3. QVService Resolution Verification
+## 3. QMSService Resolution Verification
 
-### ✅ QVService Uses resolve_* Helpers
+### ✅ QMSService Uses resolve_* Helpers
 
 **Status**: ✅ **Clean**
 
 **Evidence**:
-- `QVService.get_structure()` (api.py:392): Uses `resolve_structure(project_root, selector)`
-- `QVService.get_calculation()` (api.py:550): Uses `resolve_calculation(project_root, selector)`
-- `QVService.init_calculation()` (api.py:456): Uses `resolve_structure()` to get `structure_id`
-- `QVService.add_step_to_calculation()` (api.py:2320): Uses `resolve_structure()` to get `structure_id`
+- `QMSService.get_structure()` (api.py:392): Uses `resolve_structure(project_root, selector)`
+- `QMSService.get_calculation()` (api.py:550): Uses `resolve_calculation(project_root, selector)`
+- `QMSService.init_calculation()` (api.py:456): Uses `resolve_structure()` to get `structure_id`
+- `QMSService.add_step_to_calculation()` (api.py:2320): Uses `resolve_structure()` to get `structure_id`
 - All `resolve_*` functions use ResourceIndex (resolution.py:323-477)
 
-**Verification**: ✅ QVService methods use ResourceIndex via resolve_* helpers
+**Verification**: ✅ QMSService methods use ResourceIndex via resolve_* helpers
 
 ---
 
@@ -274,7 +274,7 @@
 ### ✅ All Cross-Resource References Are ID-Only
 
 **Confirmed**:
-- ✅ `project.qv.yml` → calculations/structures: ID-only
+- ✅ `project.qms.yml` → calculations/structures: ID-only
 - ✅ `calculation.yaml` → structure/steps: ID-only
 - ✅ `*.step.yaml` → calculation/structure: ID-only
 - ✅ Snapshots: ID-only references

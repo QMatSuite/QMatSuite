@@ -76,7 +76,7 @@ export function IsosurfaceMesh({
         stats,
       );
 
-      const debugMc = typeof localStorage !== 'undefined' && localStorage.getItem('qv_mc_debug') === '1';
+      const debugMc = typeof localStorage !== 'undefined' && localStorage.getItem('qms_mc_debug') === '1';
       if (process.env.NODE_ENV === 'development') {
         if (debugMc && stats.current.nActiveCubes > 0) {
           console.debug(`[MC] seq=${compileSeq} iso=${isovalue.toFixed(4)} triangles=${result.indices.length / 3} activeCubes=${stats.current.nActiveCubes}`);

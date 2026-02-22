@@ -1,5 +1,5 @@
 """
-Unit tests for the QVDaemon and JobManager.
+Unit tests for the QMSDaemon and JobManager.
 """
 
 import json
@@ -10,8 +10,8 @@ from pathlib import Path
 from threading import Event
 from unittest.mock import MagicMock, patch
 
-from quantumvitas.daemon.server import QVDaemon, RPCRequest, RPCResponse
-from quantumvitas.daemon.jobs import JobManager, JobStatus, Job
+from qmatsuite.daemon.server import QMSDaemon, RPCRequest, RPCResponse
+from qmatsuite.daemon.jobs import JobManager, JobStatus, Job
 
 
 # =============================================================================
@@ -175,18 +175,18 @@ class TestJobManager:
 
 
 # =============================================================================
-# QVDaemon Tests
+# QMSDaemon Tests
 # =============================================================================
 
-class TestQVDaemonProtocol:
-    """Tests for QVDaemon JSON-RPC protocol."""
+class TestQMSDaemonProtocol:
+    """Tests for QMSDaemon JSON-RPC protocol."""
     
     def test_ping_command(self):
         """Test ping command returns pong."""
         stdin = StringIO("")
         stdout = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         response = daemon.handle_request(RPCRequest(
             id="test-1",
@@ -203,7 +203,7 @@ class TestQVDaemonProtocol:
         stdin = StringIO("")
         stdout = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         response = daemon.handle_request(RPCRequest(
             id="test-1",
@@ -220,7 +220,7 @@ class TestQVDaemonProtocol:
         stdin = StringIO("")
         stdout = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         response = daemon.handle_line("not valid json")
         
@@ -232,7 +232,7 @@ class TestQVDaemonProtocol:
         stdin = StringIO("")
         stdout = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         response = daemon.handle_line('{"ulid": "1", "payload": {}}')
         
@@ -272,19 +272,19 @@ class TestQVDaemonProtocol:
         assert parsed["error"]["code"] == "test_error"
 
 
-class TestQVDaemonHandlers:
-    """Tests for QVDaemon handler methods."""
+class TestQMSDaemonHandlers:
+    """Tests for QMSDaemon handler methods."""
     
     def test_get_project_summary_handler(self, tmp_path):
         """Test get_project_summary handler."""
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         
         # Create project
-        project_root = QVService.init_project(tmp_path / "test_proj", name="Test")
+        project_root = QMSService.init_project(tmp_path / "test_proj", name="Test")
         
         stdin = StringIO("")
         stdout = StringIO()
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         response = daemon.handle_request(RPCRequest(
             id="1",
@@ -298,13 +298,13 @@ class TestQVDaemonHandlers:
     
     def test_list_structures_handler(self, tmp_path):
         """Test list_structures handler."""
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         
-        project_root = QVService.init_project(tmp_path / "test_proj")
+        project_root = QMSService.init_project(tmp_path / "test_proj")
         
         stdin = StringIO("")
         stdout = StringIO()
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         response = daemon.handle_request(RPCRequest(
             id="1",
@@ -319,14 +319,14 @@ class TestQVDaemonHandlers:
     
     def test_list_calculations_handler(self, tmp_path):
         """Test list_calculations handler."""
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         
-        project_root = QVService.init_project(tmp_path / "test_proj")
-        QVService(project_root).project.init_calculation("wf1")
+        project_root = QMSService.init_project(tmp_path / "test_proj")
+        QMSService(project_root).project.init_calculation("wf1")
         
         stdin = StringIO("")
         stdout = StringIO()
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         response = daemon.handle_request(RPCRequest(
             id="1",
@@ -339,13 +339,13 @@ class TestQVDaemonHandlers:
     
     def test_missing_required_field_error(self, tmp_path):
         """Test that missing required fields return error."""
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         
-        project_root = QVService.init_project(tmp_path / "test_proj")
+        project_root = QMSService.init_project(tmp_path / "test_proj")
         
         stdin = StringIO("")
         stdout = StringIO()
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         response = daemon.handle_request(RPCRequest(
             id="1",
@@ -358,14 +358,14 @@ class TestQVDaemonHandlers:
     
     def test_run_calculation_returns_job_id(self, tmp_path):
         """Test that run_calculation returns a job ID."""
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         
-        project_root = QVService.init_project(tmp_path / "test_proj")
-        QVService(project_root).project.init_calculation("test-wf")
+        project_root = QMSService.init_project(tmp_path / "test_proj")
+        QMSService(project_root).project.init_calculation("test-wf")
         
         stdin = StringIO("")
         stdout = StringIO()
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         response = daemon.handle_request(RPCRequest(
             id="1",
@@ -384,14 +384,14 @@ class TestQVDaemonHandlers:
     
     def test_get_job_status_handler(self, tmp_path):
         """Test get_job_status handler."""
-        from quantumvitas.api import QVService
+        from qmatsuite.api import QMSService
         
-        project_root = QVService.init_project(tmp_path / "test_proj")
-        QVService(project_root).project.init_calculation("test-wf")
+        project_root = QMSService.init_project(tmp_path / "test_proj")
+        QMSService(project_root).project.init_calculation("test-wf")
         
         stdin = StringIO("")
         stdout = StringIO()
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         # Submit a job
         submit_response = daemon.handle_request(RPCRequest(
@@ -421,7 +421,7 @@ class TestQVDaemonHandlers:
         """Test list_workflow_templates handler returns correct schema (no widening)."""
         stdin = StringIO("")
         stdout = StringIO()
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         response = daemon.handle_request(RPCRequest(
             id="1",
@@ -462,7 +462,7 @@ class TestQVDaemonHandlers:
         """Test detect_workflow handler returns correct schema (JSON-serializable, no unexpected keys)."""
         stdin = StringIO("")
         stdout = StringIO()
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         # Create a minimal calculation directory structure
         calc_dir = tmp_path / "calc"
@@ -499,12 +499,12 @@ class TestQVDaemonHandlers:
         """Test detect_workflow_for_calculation handler returns correct schema (JSON-serializable, no unexpected keys)."""
         stdin = StringIO("")
         stdout = StringIO()
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         # Create minimal project structure
         project_dir = tmp_path / "project"
         project_dir.mkdir()
-        (project_dir / "project.qv.yml").write_text("name: test\n")
+        (project_dir / "project.qms.yml").write_text("name: test\n")
         
         # This handler may return error if calculation not found, but schema should still be valid
         response = daemon.handle_request(RPCRequest(
@@ -536,7 +536,7 @@ class TestQVDaemonHandlers:
         """Test instantiate_workflow handler returns correct schema (JSON-serializable, no unexpected keys)."""
         stdin = StringIO("")
         stdout = StringIO()
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         # Create minimal calculation directory
         calc_dir = tmp_path / "calc"
@@ -574,8 +574,8 @@ class TestQVDaemonHandlers:
             assert all(isinstance(p, str) for p in step_paths)
 
 
-class TestQVDaemonMainLoop:
-    """Tests for QVDaemon main loop behavior."""
+class TestQMSDaemonMainLoop:
+    """Tests for QMSDaemon main loop behavior."""
     
     def test_processes_multiple_requests(self):
         """Test that daemon processes multiple requests."""
@@ -586,7 +586,7 @@ class TestQVDaemonMainLoop:
         stdin = StringIO("\n".join(requests) + "\n")
         stdout = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=StringIO())
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout, stderr=StringIO())
         daemon.run()
         
         # Check output
@@ -610,7 +610,7 @@ class TestQVDaemonMainLoop:
         stdin = StringIO("\n".join(requests) + "\n")
         stdout = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=StringIO())
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout, stderr=StringIO())
         daemon.run()
         
         stdout.seek(0)
@@ -620,8 +620,8 @@ class TestQVDaemonMainLoop:
         assert len(lines) == 2
 
 
-class TestQVDaemonLogging:
-    """Tests for QVDaemon logging behavior."""
+class TestQMSDaemonLogging:
+    """Tests for QMSDaemon logging behavior."""
     
     def test_polling_rpc_logs_at_debug(self):
         """Test that polling RPC endpoints (job_counts, list_jobs) log at DEBUG level."""
@@ -629,7 +629,7 @@ class TestQVDaemonLogging:
         stdout = StringIO()
         stderr = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
         
         # Test job_counts
         response = daemon.handle_request(RPCRequest(
@@ -657,7 +657,7 @@ class TestQVDaemonLogging:
         stdout = StringIO()
         stderr = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
         
         # Test ping (non-polling endpoint)
         response = daemon.handle_request(RPCRequest(
@@ -685,7 +685,7 @@ class TestQVDaemonLogging:
         stdout = StringIO()
         stderr = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
         
         # Test list_jobs
         response = daemon.handle_request(RPCRequest(
@@ -713,7 +713,7 @@ class TestQVDaemonLogging:
         stdout = StringIO()
         stderr = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
         
         # First, verify default behavior (non-polling RPC logs at INFO)
         response1 = daemon.handle_request(RPCRequest(
@@ -761,7 +761,7 @@ class TestQVDaemonLogging:
         stdout = StringIO()
         stderr = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
         
         # Set to DEBUG first
         response1 = daemon.handle_request(RPCRequest(
@@ -808,7 +808,7 @@ class TestQVDaemonLogging:
         stdout = StringIO()
         stderr = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout, stderr=stderr)
         
         response = daemon.handle_request(RPCRequest(
             id="test-1",
@@ -825,7 +825,7 @@ class TestQVDaemonLogging:
         stdin = StringIO("")
         stdout = StringIO()
         
-        daemon = QVDaemon(stdin=stdin, stdout=stdout)
+        daemon = QMSDaemon(stdin=stdin, stdout=stdout)
         
         # Default: polling endpoints return DEBUG, others return INFO
         assert daemon._rpc_log_level_for("job_counts") == "DEBUG"

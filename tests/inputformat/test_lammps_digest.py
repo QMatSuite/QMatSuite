@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.lammps.parsers.output import (
+from qmatsuite.drivers.lammps.parsers.output import (
     LAMMPSDigest,
     LAMMPSOutputParser,
     parse_lammps_log_text,
@@ -186,7 +186,7 @@ class TestOutputParserClass:
         assert "No log.lammps" in d.error_message
 
     def test_parser_registration(self):
-        from quantumvitas.parsers.registry import get_parser
+        from qmatsuite.parsers.registry import get_parser
         parser_cls = get_parser("lammps", "scf_digest")
         assert parser_cls is not None
         assert parser_cls is LAMMPSOutputParser

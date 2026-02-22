@@ -110,7 +110,7 @@ This plan has been updated to incorporate the Constitution above and align with:
 
 ### P1.1: Verify Registry Mapping Completeness ✅
 
-- [x] Review `src/quantumvitas/workflow/registry.py`:
+- [x] Review `src/qmatsuite/workflow/registry.py`:
   - [x] Confirm all entries in `_STEP_TYPES` use SPEC keys (e.g., `qe_scf`, not `scf`)
   - [x] Confirm each `StepTypeSpec` has non-empty `engine` field
   - [x] Confirm `StepTypeSpec.machine_type` matches the dict key
@@ -131,9 +131,9 @@ This plan has been updated to incorporate the Constitution above and align with:
 
 ### P1.3: Verify Step YAML Persistence Uses SPEC ✅
 
-- [x] Check `src/quantumvitas/workflow/step_factory.py`:
+- [x] Check `src/qmatsuite/workflow/step_factory.py`:
   - [x] Confirm `step_type` field in created YAML uses SPEC (machine_type) - line 73
-- [x] Check `src/quantumvitas/calculation/manifest.py`:
+- [x] Check `src/qmatsuite/calculation/manifest.py`:
   - [x] Manifest `kind` derives from step.step_type which comes from YAML (SPEC)
 
 ### P1.4: Run Focused Tests ✅
@@ -152,8 +152,8 @@ pytest tests/unit -k "registry" -q  # 35 passed total
 
 ### P2.1: Create JobGraph Module ✅
 
-- [x] Create `src/quantumvitas/execution/__init__.py`
-- [x] Create `src/quantumvitas/execution/job_graph.py`:
+- [x] Create `src/qmatsuite/execution/__init__.py`
+- [x] Create `src/qmatsuite/execution/job_graph.py`:
   - [x] Define `Job` dataclass with all specified fields
   - [x] Define `JobGraph` dataclass with helper methods
   - [x] Add `SelectionMode` enum (ALL, TARGET)
@@ -161,7 +161,7 @@ pytest tests/unit -k "registry" -q  # 35 passed total
 
 ### P2.2: Create Recipe Protocol and Implementations ✅
 
-- [x] Create `src/quantumvitas/execution/recipes.py`:
+- [x] Create `src/qmatsuite/execution/recipes.py`:
   - [x] Define `Recipe` protocol with `materialize()` method
   - [x] Define `BaseRecipe` abstract class
   - [x] Implement `QERecipe`:
@@ -214,7 +214,7 @@ pytest tests/unit/execution/ -v  # 56 passed
 
 ### P3.1: Create JobGraph Executor ✅
 
-- [x] Create `src/quantumvitas/execution/executor.py`:
+- [x] Create `src/qmatsuite/execution/executor.py`:
   - [x] Define `JobResult` and `ExecutionResult` dataclasses
   - [x] Define `JobExecutor` class with `execute()` method
   - [x] Implement job loop with ALL and TARGET selection modes
@@ -235,7 +235,7 @@ pytest tests/unit/execution/ -v  # 56 passed
 
 #### P3.2.1: Create Engine Handler Bridge ✅
 
-- [x] Create `src/quantumvitas/execution/handlers.py`:
+- [x] Create `src/qmatsuite/execution/handlers.py`:
   - [x] Define handler signature: `(job: Job, calculation: Calculation, engine_registry, context) -> JobResult`
   - [x] Implement `qe_step_handler()`: Wraps existing `step.run()` for QE/Wannier steps
   - [x] Implement `pyscf_chain_handler()`: Wraps PySCF chain execution
@@ -247,7 +247,7 @@ pytest tests/unit/execution/ -v  # 56 passed
 
 #### P3.2.2: Wire Executor into Runner ✅
 
-- [x] Modify `src/quantumvitas/calculation/runner.py`:
+- [x] Modify `src/qmatsuite/calculation/runner.py`:
   - [x] Add `target_step_id: Optional[str] = None` parameter to `run()` signature
   - [x] Add import for execution module
   - [x] After manifest reconciliation, detect engine family from first step
@@ -275,7 +275,7 @@ pytest tests/unit/execution/ -v  # 56 passed
 
 ### P3.3: Unify Run Step into Same Pipeline ✅
 
-- [x] Update `src/quantumvitas/api.py` `QVService.run_step()`:
+- [x] Update `src/qmatsuite/api.py` `QMSService.run_step()`:
   - [x] Call `CalculationRunner.run(calc, target_step_id=step_id)`
   - [x] Remove separate run_step logic (moved to `run_step_legacy()` for reference)
 
@@ -333,11 +333,11 @@ pytest tests/unit/execution/ -v  # 72 passed (including executor tests)
 
 **New Files Created:**
 
-1. `src/quantumvitas/execution/__init__.py` - Module exports
-2. `src/quantumvitas/execution/job_graph.py` - Job, JobGraph, SelectionMode, compute_job_fingerprint
-3. `src/quantumvitas/execution/recipes.py` - QERecipe, ORCARecipe, PySCFRecipe, get_recipe_for_engine
-4. `src/quantumvitas/execution/executor.py` - JobExecutor, JobResult, ExecutionResult
-5. `src/quantumvitas/execution/handlers.py` - Engine handlers (qe_step_handler, pyscf_chain_handler, orca_chain_handler)
+1. `src/qmatsuite/execution/__init__.py` - Module exports
+2. `src/qmatsuite/execution/job_graph.py` - Job, JobGraph, SelectionMode, compute_job_fingerprint
+3. `src/qmatsuite/execution/recipes.py` - QERecipe, ORCARecipe, PySCFRecipe, get_recipe_for_engine
+4. `src/qmatsuite/execution/executor.py` - JobExecutor, JobResult, ExecutionResult
+5. `src/qmatsuite/execution/handlers.py` - Engine handlers (qe_step_handler, pyscf_chain_handler, orca_chain_handler)
 6. `tests/unit/test_step_type_mapping.py` - 10 dispatch mapping completeness tests
 7. `tests/unit/execution/__init__.py` - Test module
 8. `tests/unit/execution/test_job_graph.py` - 26 JobGraph tests
@@ -347,8 +347,8 @@ pytest tests/unit/execution/ -v  # 72 passed (including executor tests)
 **Files Modified:**
 
 1. `docs/plans/engine_recipes_jobgraph_plan.md` - Updated with Constitution and progress
-2. `src/quantumvitas/calculation/runner.py` - Added `_execute_with_jobgraph()`, `target_step_id` parameter
-3. `src/quantumvitas/api.py` - Unified `run_step()` to use CalculationRunner pipeline
+2. `src/qmatsuite/calculation/runner.py` - Added `_execute_with_jobgraph()`, `target_step_id` parameter
+3. `src/qmatsuite/api.py` - Unified `run_step()` to use CalculationRunner pipeline
 4. `tests/integration/test_pyscf_phase3c.py` - Updated test_t5 to check result dict instead of exception
 
 ### Tests Executed
@@ -383,14 +383,14 @@ pytest tests/integration/test_incremental_run.py -v  # 15 passed
 - Legacy step loop kept as fallback (will be removed once fully validated)
 
 **Run Step Unification:**
-- `QVService.run_step()` now calls `CalculationRunner.run(calc, target_step_id=step_id)`
+- `QMSService.run_step()` now calls `CalculationRunner.run(calc, target_step_id=step_id)`
 - Same pipeline for Run Calc (selection=ALL) and Run Step (selection=TARGET)
 - Target step always runs (never skipped even if incrementally eligible)
 
 ### Known Follow-ups
 
 3. **normalize_step_type_to_public Cleanup**: Remove backwards compat shim
-   - Location: `src/quantumvitas/calculation/structure_steps.py:105-106`
+   - Location: `src/qmatsuite/calculation/structure_steps.py:105-106`
    - Change StructureStepSpec to use SPEC step types internally
    - Update tests that depend on GEN step types in specs
 
@@ -408,7 +408,7 @@ pytest tests/integration/test_incremental_run.py -v  # 15 passed
 
 ### Current Execution Flow
 
-**File**: `src/quantumvitas/calculation/runner.py`
+**File**: `src/qmatsuite/calculation/runner.py`
 - **Class**: `CalculationRunner`
 - **Method**: `run(calculation, skip_history, run_id, run_mode)`
 - **Flow**:
@@ -427,7 +427,7 @@ pytest tests/integration/test_incremental_run.py -v  # 15 passed
 
 ### Current Lock Implementation
 
-**File**: `src/quantumvitas/core/locking.py`
+**File**: `src/qmatsuite/core/locking.py`
 - **Two Locks**:
   1. `calc_run_lock(calc_dir)` - Long-held during calculation run
   2. `calc_edit_lock(calc_dir)` - Short-held during YAML writes
@@ -444,7 +444,7 @@ pytest tests/integration/test_incremental_run.py -v  # 15 passed
 
 ### Stable Token Registry
 
-From `src/quantumvitas/workflow/registry.py`:
+From `src/qmatsuite/workflow/registry.py`:
 
 ```python
 PUBLIC_TYPE_TOKENS: Dict[str, str] = {
@@ -511,8 +511,8 @@ PUBLIC_TYPE_TOKENS: Dict[str, str] = {
 ### AF-1: Remove normalize_step_type_to_public() from Production Paths (BLOCKER) ✅
 
 **Audit Evidence**:
-- `src/quantumvitas/calculation/structure_steps.py:105-106` normalizes SPEC → GEN when loading
-- `src/quantumvitas/calculation/hash_utils.py:187-188` normalizes SPEC → GEN before hashing
+- `src/qmatsuite/calculation/structure_steps.py:105-106` normalizes SPEC → GEN when loading
+- `src/qmatsuite/calculation/hash_utils.py:187-188` normalizes SPEC → GEN before hashing
 
 **Fixes**:
 - [x] AF-1.1: Remove SPEC→GEN normalization from `StructureStepSpec` loading path
@@ -525,7 +525,7 @@ PUBLIC_TYPE_TOKENS: Dict[str, str] = {
 ### AF-2: Replace Prefix Inference with Registry Lookup (HIGH) ✅
 
 **Audit Evidence**:
-- `src/quantumvitas/calculation/runner.py:854-859` infers engine_family via string prefix
+- `src/qmatsuite/calculation/runner.py:854-859` infers engine_family via string prefix
 
 **Fixes**:
 - [x] AF-2.1: Delete prefix inference code from runner recipe selection
@@ -590,11 +590,11 @@ PUBLIC_TYPE_TOKENS: Dict[str, str] = {
 - Step type mapping tests: 19 passed (including 2 legacy code removal safety tests)
 
 **Files Modified**:
-- `src/quantumvitas/calculation/structure_steps.py` - Removed SPEC→GEN normalization
-- `src/quantumvitas/calculation/hash_utils.py` - Removed normalization from SHA computation
-- `src/quantumvitas/calculation/runner.py` - Replaced prefix inference with registry lookup, removed legacy loop
-- `src/quantumvitas/calculation/calculation.py` - Updated _coerce_step_type for SPEC handling
-- `src/quantumvitas/api.py` - Removed run_step_legacy()
+- `src/qmatsuite/calculation/structure_steps.py` - Removed SPEC→GEN normalization
+- `src/qmatsuite/calculation/hash_utils.py` - Removed normalization from SHA computation
+- `src/qmatsuite/calculation/runner.py` - Replaced prefix inference with registry lookup, removed legacy loop
+- `src/qmatsuite/calculation/calculation.py` - Updated _coerce_step_type for SPEC handling
+- `src/qmatsuite/api.py` - Removed run_step_legacy()
 - `tests/unit/test_step_type_mapping.py` - Added 9 new tests for Constitution compliance
 - `tests/integration/orca/test_orca_project_level.py` - NEW: Level-3 project integration tests
 - `tools/generate_orca_demos.py` - Updated to use SPEC step types

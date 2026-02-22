@@ -29,8 +29,8 @@ class TestORCAInputCompiler:
 
     def test_scf_only_input(self):
         """Generate input for SCF-only chain."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -53,8 +53,8 @@ class TestORCAInputCompiler:
 
     def test_scf_td_fusion(self):
         """Generate fused input for SCF + TD chain."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -86,8 +86,8 @@ class TestORCAInputCompiler:
 
     def test_hf_input(self):
         """Generate input for HF calculation."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         hf_step = MockStep(
             ulid="s1",
@@ -108,8 +108,8 @@ class TestORCAInputCompiler:
 
     def test_tightscf_added(self):
         """TightSCF should be added when macro is 'tightscf'."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -137,8 +137,8 @@ class TestORCAInputCompiler:
 
     def test_noautostart_when_fresh(self):
         """NoAutoStart keyword added when fresh=True."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -156,8 +156,8 @@ class TestORCAInputCompiler:
 
     def test_pal_block_with_nprocs(self):
         """Parallelism block added when nprocs specified."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -175,8 +175,8 @@ class TestORCAInputCompiler:
 
     def test_chain_comment_header(self):
         """Input should have chain key in comment."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -194,8 +194,8 @@ class TestORCAInputCompiler:
 
     def test_td_triplets(self):
         """TDDFT with triplet states."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -222,8 +222,8 @@ class TestORCAInputCompiler:
 
     def test_molecule_charge_multiplicity(self):
         """Molecule charge and multiplicity are respected."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -244,8 +244,8 @@ class TestORCAInputCompiler:
 
     def test_ri_approximation(self):
         """RI approximation keywords added."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -263,8 +263,8 @@ class TestORCAInputCompiler:
 
     def test_custom_grid(self):
         """Custom grid settings."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -286,8 +286,8 @@ class TestMOReadFunctionality:
 
     def test_moread_adds_keyword(self):
         """MORead keyword added when moread_file is provided."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -305,8 +305,8 @@ class TestMOReadFunctionality:
 
     def test_moread_adds_moinp_block(self):
         """Correct %moinp block added with moread_file."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -324,8 +324,8 @@ class TestMOReadFunctionality:
 
     def test_moread_with_custom_path(self):
         """MORead with custom path works."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -346,8 +346,8 @@ class TestMOReadFunctionality:
 
     def test_no_moread_by_default(self):
         """No MORead when moread_file not provided."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -366,8 +366,8 @@ class TestMOReadFunctionality:
 
     def test_moread_with_fresh_false(self):
         """MORead can be combined with fresh=False."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -388,8 +388,8 @@ class TestMOReadFunctionality:
 
     def test_moread_with_fresh_true(self):
         """MORead can be combined with fresh=True."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -411,8 +411,8 @@ class TestMOReadFunctionality:
 
     def test_moread_with_tddft(self):
         """MORead with TDDFT chain."""
-        from quantumvitas.engines.orca.input_compiler import ORCAInputCompiler
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",
@@ -440,7 +440,7 @@ class TestMOReadFunctionality:
 
     def test_canonical_gbw_constant(self):
         """CANONICAL_GBW_FILE constant is defined."""
-        from quantumvitas.engines.orca.input_compiler import CANONICAL_GBW_FILE
+        from qmatsuite.engines.orca.input_compiler import CANONICAL_GBW_FILE
 
         assert CANONICAL_GBW_FILE == "scf.gbw"
 
@@ -450,8 +450,8 @@ class TestConvenienceFunction:
 
     def test_convenience_function_moread(self):
         """Convenience function supports moread_file."""
-        from quantumvitas.engines.orca.input_compiler import compile_chain_input
-        from quantumvitas.engine.qc_engine_base import QCChain
+        from qmatsuite.engines.orca.input_compiler import compile_chain_input
+        from qmatsuite.engine.qc_engine_base import QCChain
 
         scf_step = MockStep(
             ulid="s1",

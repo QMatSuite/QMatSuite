@@ -9,7 +9,7 @@
 - Documented run flow and Step0 insertion point
 
 **Phase 1: Core Step0 Module** ✓
-- Created `src/quantumvitas/core/pseudo_runtime.py`
+- Created `src/qmatsuite/core/pseudo_runtime.py`
 - Implemented `analyze_project_pseudo_effects()` (read-only analyzer)
 - Implemented `prepare_project_pseudos_for_run()` (Step0 executor)
 - Implemented collision rules (noop/overwrite/rename_existing)

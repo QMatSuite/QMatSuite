@@ -6,9 +6,9 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import type { StepDetail, JobSubmitResult, CalculationDetailResult, QVError } from '../../types/qv';
+import type { StepDetail, JobSubmitResult, CalculationDetailResult, QMSError } from '../../types/qms';
 import { normalizeProjectRoot } from '../../utils/pathUtils';
-import { useQVClient } from '../../hooks/useQVClient';
+import { useQMSClient } from '../../hooks/useQMSClient';
 import { useEngineParameterMetadata, type QEParameterMeta } from '../../hooks/useEngineParameterMetadata';
 import { ActiveParametersPanel } from '../step_parameters/ActiveParametersPanel';
 import { AddParameterPalette } from '../step_parameters/AddParameterPalette';
@@ -60,7 +60,7 @@ export function StepDetailPanel({
   onParametersUpdated,
   onStepDeleted,
 }: StepDetailPanelProps) {
-  const qv = useQVClient();
+  const qms = useQMSClient();
 
   // Get calculation-level engine family and resolve per-step effective engine.
   // Companion steps (e.g., w90_* in QE calculations) should use their own engine metadata.
@@ -80,10 +80,10 @@ export function StepDetailPanel({
     return (calculationEngineFamily || 'qe').toLowerCase();
   }, [selectedStepSummary?.step_type_spec, calculationEngineFamily]);
 
-  // Store stable reference to listEngineUiParameters to avoid including qv object in dependencies
-  // The function is memoized in useQVClient, so this ref will be stable across renders
-  const listEngineUiParametersRef = useRef(qv.listEngineUiParameters);
-  listEngineUiParametersRef.current = qv.listEngineUiParameters;
+  // Store stable reference to listEngineUiParameters to avoid including qms object in dependencies
+  // The function is memoized in useQMSClient, so this ref will be stable across renders
+  const listEngineUiParametersRef = useRef(qms.listEngineUiParameters);
+  listEngineUiParametersRef.current = qms.listEngineUiParameters;
 
   // Engine parameter metadata hook (shared with Resources view)
   const qeMetadata = useEngineParameterMetadata(effectiveEngineFamily || 'qe');
@@ -108,7 +108,7 @@ export function StepDetailPanel({
   const [stepDetail, setStepDetail] = useState<StepDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [errorDetails, setErrorDetails] = useState<QVError['details'] | null>(null);
+  const [errorDetails, setErrorDetails] = useState<QMSError['details'] | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -240,9 +240,9 @@ export function StepDetailPanel({
       });
       
       // Early return checks - these should NOT set isLoading=true
-      if (!window.qv || !stepSelector) {
+      if (!window.qms || !stepSelector) {
         // Don't fetch if stepSelector is missing, but still render the panel
-        console.log('[StepDetailPanel] Early return: missing stepSelector or window.qv');
+        console.log('[StepDetailPanel] Early return: missing stepSelector or window.qms');
         setIsLoading(false);
         setStepDetail(null);
         setError(null);
@@ -308,7 +308,7 @@ export function StepDetailPanel({
           step: stepSelector, // ULID from calculation.yaml - the only supported step selector steps array
         });
         
-        const response = await window.qv.request<StepDetail>('get_step_detail', {
+        const response = await window.qms.request<StepDetail>('get_step_detail', {
           project_root: normalizedProjectRoot,
           calculation: calculationSelector, // slug
           step: stepSelector, // ULID - the only supported step selector
@@ -336,7 +336,7 @@ export function StepDetailPanel({
           // Load common cards view model
           if (projectRoot && calculationSelector && stepSelector) {
             setIsLoadingCommonCards(true);
-            qv.getCommonCards(projectRoot, calculationSelector, stepSelector)
+            qms.getCommonCards(projectRoot, calculationSelector, stepSelector)
               .then(cardsResponse => {
                 if (cardsResponse.ok && cardsResponse.data) {
                   setCommonCards(cardsResponse.data);
@@ -351,7 +351,7 @@ export function StepDetailPanel({
             
             // Load pseudopotential mapping (calculation-level, read-only reference)
             setIsLoadingPseudoMapping(true);
-            qv.getCalculationPseudoMapping(projectRoot, calculationSelector)
+            qms.getCalculationPseudoMapping(projectRoot, calculationSelector)
               .then(mappingResponse => {
                 if (mappingResponse.ok && mappingResponse.data) {
                   setPseudoMapping(mappingResponse.data);
@@ -370,7 +370,7 @@ export function StepDetailPanel({
           if ((stepType === 'relax' || stepType === 'vc-relax') && projectRoot && calculationSelector && stepSelector) {
             setIsLoadingRelaxPreview(true);
             setRelaxPreviewError(null);
-            qv.getRelaxFinalStructurePreview(projectRoot, calculationSelector, stepSelector)
+            qms.getRelaxFinalStructurePreview(projectRoot, calculationSelector, stepSelector)
               .then(previewResponse => {
                 if (previewResponse.ok && previewResponse.data) {
                   setRelaxPreview(previewResponse.data);
@@ -409,7 +409,7 @@ export function StepDetailPanel({
         } else {
           // Error response: set error message and clear step detail
           // Handle structured errors from daemon (resource_not_found, registry_out_of_sync, etc.)
-          const errorData = response.error as QVError | undefined;
+          const errorData = response.error as QMSError | undefined;
           let errorMsg = 'Failed to load step details';
           
           if (errorData) {
@@ -476,10 +476,10 @@ export function StepDetailPanel({
   
   // Fetch UI parameters when stepDetail changes
   // Generic engine UI params are fetched via list_engine_ui_parameters RPC.
-  // CRITICAL: Do not include `qv` in dependencies - it's a new object reference on every render.
+  // CRITICAL: Do not include `qms` in dependencies - it's a new object reference on every render.
   // Instead, extract effectiveEngineFamily and stepType as primitive values and depend only on those.
   useEffect(() => {
-    if (!stepDetail || !window.qv || !effectiveEngineFamily) {
+    if (!stepDetail || !window.qms || !effectiveEngineFamily) {
       setUiParams([]);
       return;
     }
@@ -490,7 +490,7 @@ export function StepDetailPanel({
     let cancelled = false;
     
     // Fetch UI parameters (static metadata, no need to refetch on every render)
-    // Use ref to avoid including qv object in dependencies
+    // Use ref to avoid including qms object in dependencies
     listEngineUiParametersRef.current(effectiveEngineFamily, stepTypeGen)
       .then(response => {
         // Only update state if component is still mounted
@@ -531,7 +531,7 @@ export function StepDetailPanel({
   
   // Handle running the step
   const handleRunStep = useCallback(async () => {
-    if (!window.qv || !stepDetail) return;
+    if (!window.qms || !stepDetail) return;
     
     setIsRunning(true);
     setError(null);
@@ -543,7 +543,7 @@ export function StepDetailPanel({
         throw new Error('Project root is required');
       }
       
-      const response = await window.qv.request<JobSubmitResult>('run_step', {
+      const response = await window.qms.request<JobSubmitResult>('run_step', {
         project_root: normalizedProjectRoot,
         calculation: calculationSelector,
         step: stepSelector,
@@ -666,7 +666,7 @@ export function StepDetailPanel({
   
   // Save parameter changes
   const handleSaveParams = useCallback(async () => {
-    if (!window.qv || !stepDetail) return;
+    if (!window.qms || !stepDetail) return;
     
     setIsSaving(true);
     setError(null);
@@ -781,7 +781,7 @@ export function StepDetailPanel({
         stepHadScans,
       });
       
-      const response = await window.qv.request<StepDetail>('update_step_params', {
+      const response = await window.qms.request<StepDetail>('update_step_params', {
         project_root: normalizedProjectRoot,
         calculation: calculationSelector,
         step: stepSelector,
@@ -818,7 +818,7 @@ export function StepDetailPanel({
   
   // Reset parameters
   const handleResetParams = useCallback(async () => {
-    if (!window.qv || !stepDetail) return;
+    if (!window.qms || !stepDetail) return;
     
     setIsSaving(true);
     setError(null);
@@ -830,7 +830,7 @@ export function StepDetailPanel({
         throw new Error('Project root is required');
       }
       
-      const response = await window.qv.request<StepDetail>('reset_step_params', {
+      const response = await window.qms.request<StepDetail>('reset_step_params', {
         project_root: normalizedProjectRoot,
         calculation: calculationSelector,
         step: stepSelector,
@@ -1012,7 +1012,7 @@ export function StepDetailPanel({
   
   // Handle deleting the step
   const handleDeleteStep = useCallback(async () => {
-    if (!window.qv || !selectedCalculation || !selectedStepId || isDeletingStep) return;
+    if (!window.qms || !selectedCalculation || !selectedStepId || isDeletingStep) return;
     
     // Show confirmation dialog
     const stepType = stepDetail?.step_type_gen || 'step';
@@ -1033,7 +1033,7 @@ export function StepDetailPanel({
         throw new Error('Project root is required');
       }
       
-      const response = await window.qv.request('delete_step', {
+      const response = await window.qms.request('delete_step', {
         project_root: normalizedProjectRoot,
         calculation: calculationSelector,
         step: stepSelector, // ULID from calculation.yaml - the only supported step selector
@@ -1065,7 +1065,7 @@ export function StepDetailPanel({
     } finally {
       setIsDeletingStep(false);
     }
-  }, [window.qv, selectedCalculation, selectedStepId, stepDetail, calculationSelector, stepSelector, projectRoot, isDeletingStep, onStepDeleted, onClose]);
+  }, [window.qms, selectedCalculation, selectedStepId, stepDetail, calculationSelector, stepSelector, projectRoot, isDeletingStep, onStepDeleted, onClose]);
   
   // STATE MACHINE RENDER LOGIC:
   // 1. No step selected → show "No step selected"
@@ -1077,7 +1077,7 @@ export function StepDetailPanel({
   if (!selectedStepId) {
     // No step selected
     return (
-      <div className="step-detail-panel" data-testid="qv-step-detail">
+      <div className="step-detail-panel" data-testid="qms-step-detail">
         <div className="panel-header">
           <h2 className="panel-title">Step Detail</h2>
           {onClose && (
@@ -1094,7 +1094,7 @@ export function StepDetailPanel({
   if (isLoading) {
     // Loading state: show spinner (do NOT show error while loading)
     return (
-      <div className="step-detail-panel step-detail-panel--loading" data-testid="qv-step-detail">
+      <div className="step-detail-panel step-detail-panel--loading" data-testid="qms-step-detail">
         <div className="loading-spinner" />
         <p>Loading step details...</p>
       </div>
@@ -1107,7 +1107,7 @@ export function StepDetailPanel({
     // CRITICAL: isLoading must be false at this point (ensured by finally block)
     // Users can click another step to recover from this error state
     return (
-      <div className="step-detail-panel step-detail-panel--error" data-testid="qv-step-detail">
+      <div className="step-detail-panel step-detail-panel--error" data-testid="qms-step-detail">
         <div className="panel-header">
           <h2 className="panel-title">Step Detail</h2>
           {onClose && (
@@ -1169,7 +1169,7 @@ export function StepDetailPanel({
     // No step detail but not loading and no error → fallback message
     // This should rarely happen, but handle it gracefully
     return (
-      <div className="step-detail-panel" data-testid="qv-step-detail">
+      <div className="step-detail-panel" data-testid="qms-step-detail">
         <div className="panel-header">
           <h2 className="panel-title">Step Detail</h2>
           {onClose && (
@@ -1215,7 +1215,7 @@ export function StepDetailPanel({
   const showBreadcrumb = calculationName && stepIndex != null && stepIndex >= 0 && stepCount != null && stepCount > 0;
   
   return (
-    <div className={`step-detail-panel ${isFocusMode ? 'step-detail-panel--focus' : ''}`} data-testid="qv-step-detail">
+    <div className={`step-detail-panel ${isFocusMode ? 'step-detail-panel--focus' : ''}`} data-testid="qms-step-detail">
       {/* Focus mode header: breadcrumb + run button */}
       {isFocusMode && showBreadcrumb && (
         <div className="step-detail-panel__focus-header">
@@ -1235,19 +1235,19 @@ export function StepDetailPanel({
       )}
       
       <div className="panel-header panel-header--sticky">
-        <div className="qv-step-header-content">
+        <div className="qms-step-header-content">
           {!isFocusMode && showBreadcrumb && (
-            <div className="qv-step-breadcrumb">
+            <div className="qms-step-breadcrumb">
               {calculationName} · Step {stepIndex + 1} of {stepCount}
             </div>
           )}
-          <div className="qv-step-header-main">
-            <h2 className="panel-title qv-step-title">
+          <div className="qms-step-header-main">
+            <h2 className="panel-title qms-step-title">
               <span className="panel-icon">📋</span>
               {stepDetail.name || stepDetail.ulid}
             </h2>
             {!isFocusMode && stepDetail.step_type_gen && (
-              <div className="qv-step-type-chip">
+              <div className="qms-step-type-chip">
                 {stepDetail.step_type_gen.toUpperCase()}
               </div>
             )}
@@ -1260,7 +1260,7 @@ export function StepDetailPanel({
               className="panel-action-btn"
               onClick={() => setIsEditing(true)}
               title="Edit step parameters"
-              data-testid="qv-btn-edit-step-params"
+              data-testid="qms-btn-edit-step-params"
             >
               ✏️ Edit
             </button>
@@ -1284,7 +1284,7 @@ export function StepDetailPanel({
                 className="panel-action-btn panel-action-btn--primary"
                 onClick={handleSaveParams}
                 disabled={!hasChanges || isSaving || kPointsApplying}
-                data-testid="qv-btn-apply-step-params"
+                data-testid="qms-btn-apply-step-params"
               >
                 {isSaving || kPointsApplying ? 'Saving...' : 'Apply'}
               </button>
@@ -1295,7 +1295,7 @@ export function StepDetailPanel({
             onClick={handleDeleteStep}
             disabled={isDeletingStep}
             title="Delete this step"
-            data-testid="qv-delete-step-btn"
+            data-testid="qms-delete-step-btn"
           >
             {isDeletingStep ? 'Deleting...' : '🗑️ Delete'}
           </button>
@@ -1321,13 +1321,13 @@ export function StepDetailPanel({
           <div className="detail-grid">
             <div className="detail-item">
               <span className="detail-label">Type</span>
-              <span className="detail-value step-type-badge" data-testid="qv-step-type-value">
+              <span className="detail-value step-type-badge" data-testid="qms-step-type-value">
                 {stepDetail.step_type_gen}
               </span>
             </div>
             <div className="detail-item">
               <span className="detail-label">ID</span>
-              <code className="detail-value detail-value--id" data-testid="qv-step-id">{stepDetail.ulid}</code>
+              <code className="detail-value detail-value--id" data-testid="qms-step-id">{stepDetail.ulid}</code>
             </div>
             {stepDetail.structure && (
               <div className="detail-item">
@@ -1409,11 +1409,11 @@ export function StepDetailPanel({
             {/* K_POINTS editor (inline with Common Parameters) */}
             {canEditKPoints && (
               isLoadingCommonCards ? (
-                <div className="common-cards-loading" data-testid="qv-kpoints-loading">
+                <div className="common-cards-loading" data-testid="qms-kpoints-loading">
                   <p>Loading K_POINTS...</p>
                 </div>
               ) : (
-                <div data-testid="qv-kpoints-editor">
+                <div data-testid="qms-kpoints-editor">
                   <CommonCardKPoints
                     ref={kPointsRef}
                     viewModel={commonCards?.k_points || null}
@@ -1424,7 +1424,7 @@ export function StepDetailPanel({
                     onUpdate={async (viewModel) => {
                       if (!projectRoot || !calculationSelector || !stepSelector) return;
                       
-                      const response = await qv.setCommonCard(
+                      const response = await qms.setCommonCard(
                         projectRoot,
                         calculationSelector,
                         stepSelector,
@@ -1434,7 +1434,7 @@ export function StepDetailPanel({
                       
                       if (response.ok && response.data) {
                         setStepDetail(response.data);
-                        const cardsResponse = await qv.getCommonCards(
+                        const cardsResponse = await qms.getCommonCards(
                           projectRoot,
                           calculationSelector,
                           stepSelector
@@ -1605,7 +1605,7 @@ export function StepDetailPanel({
                       setRelaxSaveMessage(null);
                       
                       try {
-                        const response = await qv.saveRelaxFinalStructure(
+                        const response = await qms.saveRelaxFinalStructure(
                           projectRoot,
                           calculationSelector,
                           stepSelector,
@@ -1686,12 +1686,12 @@ export function StepDetailPanel({
         <div className="detail-section">
           <h3>File Location</h3>
           <div className="file-location">
-            <code className="file-location__path" title={stepDetail.absolute_path} data-testid="qv-step-file-path">
+            <code className="file-location__path" title={stepDetail.absolute_path} data-testid="qms-step-file-path">
               {stepDetail.absolute_path}
             </code>
             <button 
               className="file-location__reveal-btn"
-              onClick={() => window.qv?.revealPath?.(stepDetail.absolute_path)}
+              onClick={() => window.qms?.revealPath?.(stepDetail.absolute_path)}
               title="Reveal in Finder"
             >
               📂 Reveal
@@ -1718,7 +1718,7 @@ export function StepDetailPanel({
         <div className="step-detail-panel__focus-footer">
           <button
             className="step-detail-panel__focus-reveal-btn"
-            onClick={() => window.qv?.revealPath?.(stepYamlAbsolutePath || calculationAbsolutePath!)}
+            onClick={() => window.qms?.revealPath?.(stepYamlAbsolutePath || calculationAbsolutePath!)}
             title={stepYamlAbsolutePath ? "Reveal step YAML folder in Finder/Explorer" : "Reveal calculation folder in Finder/Explorer"}
           >
             📂

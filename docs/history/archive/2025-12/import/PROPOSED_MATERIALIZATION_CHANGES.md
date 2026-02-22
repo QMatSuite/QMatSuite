@@ -2,7 +2,7 @@
 
 ## Summary
 
-Update `materialize_project_from_snapshot()` in `src/quantumvitas/project/snapshot.py` to handle pseudopotential files during demo expansion.
+Update `materialize_project_from_snapshot()` in `src/qmatsuite/project/snapshot.py` to handle pseudopotential files during demo expansion.
 
 ## Current Behavior
 
@@ -11,7 +11,7 @@ Currently, `materialize_project_from_snapshot()` only creates an empty `pseudo/`
 ## Proposed Changes
 
 ### Location
-`src/quantumvitas/project/snapshot.py`, function `materialize_project_from_snapshot()`, around line 688-693.
+`src/qmatsuite/project/snapshot.py`, function `materialize_project_from_snapshot()`, around line 688-693.
 
 ### Current Code
 ```python
@@ -35,11 +35,11 @@ if snapshot.pseudo:
     
     if required_pseudos:
         # Find repo root to check repo/pseudo
-        from quantumvitas.core.pseudo_config import _find_quantumvitas_root
-        from quantumvitas.api import QVService
+        from qmatsuite.core.pseudo_config import _find_qmatsuite_root
+        from qmatsuite.api import QMSService
         import shutil
         
-        repo_root = _find_quantumvitas_root()
+        repo_root = _find_qmatsuite_root()
         repo_pseudo_dir = repo_root / "pseudo" if repo_root else None
         
         for pseudo_filename in required_pseudos:
@@ -58,7 +58,7 @@ if snapshot.pseudo:
             
             # If not in repo/pseudo, try to download
             try:
-                result = QVService.download_pseudo_by_filename(
+                result = QMSService.download_pseudo_by_filename(
                     project_root=project_dir,
                     filename=pseudo_filename,
                     dest_dir=pseudo_dir,

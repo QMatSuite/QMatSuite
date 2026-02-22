@@ -4,7 +4,7 @@
 
 ## Summary
 
-3 new MCP tools (search_demos, get_demo_results, load_demo) + 1 new QVService method (load_demo_as_calculation). 52 demo snapshots across 13 engines loadable into any project.
+3 new MCP tools (search_demos, get_demo_results, load_demo) + 1 new QMSService method (load_demo_as_calculation). 52 demo snapshots across 13 engines loadable into any project.
 
 ## Design Decisions
 
@@ -20,10 +20,10 @@
 **What Path B does**:
 1. Load demo YAML (same as `create_demo_project`)
 2. Generate new ULIDs for structure, calculation, and each step
-3. Write structure JSON with `__qv_meta__` wrapper to `structures/`
+3. Write structure JSON with `__qms_meta__` wrapper to `structures/`
 4. Create calculation directory with `calculation.yaml` via `CalculationModel` + `save_calculation()`
 5. Write each step YAML via `StructureStepSpec.from_dict()` → `StepDoc` → `save_yaml_doc()`
-6. Register both structure and calculation in `project.qv.yml` via `save_project()`
+6. Register both structure and calculation in `project.qms.yml` via `save_project()`
 7. Create empty `pseudo/` dir if snapshot has pseudo data (resolved at run time)
 
 ### Slug Dedup
@@ -40,15 +40,15 @@ Both structure and calculation slugs are deduped against existing project resour
 
 | File | Description |
 |------|-------------|
-| `src/quantumvitas/mcp/tools/demo_store.py` | 3 MCP tools: search_demos, get_demo_results, load_demo |
+| `src/qmatsuite/mcp/tools/demo_store.py` | 3 MCP tools: search_demos, get_demo_results, load_demo |
 | `tests/mcp/test_stage10.py` | ~190 tests (7 search + 4 ref_pack + 156 all-engine parametrized + 12 basic + 7 meta/repeat + 2 integration) |
 
 ### Files Modified (2)
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/api/service.py` | Added `load_demo_as_calculation()` instance method after `list_demo_projects()` |
-| `src/quantumvitas/mcp/server.py` | Added Stage 10 import: `import quantumvitas.mcp.tools.demo_store` |
+| `src/qmatsuite/api/service.py` | Added `load_demo_as_calculation()` instance method after `list_demo_projects()` |
+| `src/qmatsuite/mcp/server.py` | Added Stage 10 import: `import qmatsuite.mcp.tools.demo_store` |
 
 ## Tool Inventory (Stage 10)
 
@@ -73,8 +73,8 @@ Every demo snapshot tested for:
 
 ### Meta Consistency Tests
 
-- `test_meta_ulids_consistent` — calc_ulid in project.qv.yml matches calculation.yaml meta
-- `test_structure_meta_consistent` — struct_ulid in project.qv.yml matches structure JSON file
+- `test_meta_ulids_consistent` — calc_ulid in project.qms.yml matches calculation.yaml meta
+- `test_structure_meta_consistent` — struct_ulid in project.qms.yml matches structure JSON file
 - `test_step_ulids_in_calculation_yaml` — step ULIDs in calculation.yaml match returned ULIDs
 - `test_step_yaml_files_exist_on_disk` — each step has a .step.yaml file
 - `test_calc_structure_ulid_points_to_loaded_structure` — calculation's structure_ulid matches

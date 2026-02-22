@@ -12,7 +12,7 @@ import sys
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from quantumvitas.io import (
+from qmatsuite.io import (
     QEInputParser, QEInputGenerator, QEInput, QENamelist, QECard, QECardType
 )
 

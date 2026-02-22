@@ -22,7 +22,7 @@ def test_project_loadable_without_provenance(tmp_path):
 
     The SSOT is YAML files, not provenance database.
     """
-    from quantumvitas.core.yamldoc import CalcDoc, StepDoc
+    from qmatsuite.core.yamldoc import CalcDoc, StepDoc
 
     # Create a minimal project structure
     calc_dir = tmp_path / "calculations" / "TEST_CALC_123"
@@ -68,17 +68,17 @@ def test_save_works_without_existing_provenance(tmp_path):
 
     Provenance is lazily initialized on first write with opctx.
     """
-    from quantumvitas.core.yamldoc import StepDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.provenance import (
+    from qmatsuite.core.yamldoc import StepDoc
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.provenance import (
         OperationContext,
         OperationType,
         ActorType,
         ScopeType,
     )
 
-    # Create a project.qv.yml to mark as project root
-    project_file = tmp_path / "project.qv.yml"
+    # Create a project.qms.yml to mark as project root
+    project_file = tmp_path / "project.qms.yml"
     project_file.write_text("project:\n  meta:\n    ulid: PROJ123\n")
 
     step_path = tmp_path / "step.yaml"
@@ -107,9 +107,9 @@ def test_delete_provenance_then_save(tmp_path):
 
     Provenance is re-initialized automatically.
     """
-    from quantumvitas.core.yamldoc import StepDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc
-    from quantumvitas.provenance import (
+    from qmatsuite.core.yamldoc import StepDoc
+    from qmatsuite.core.yaml_io import save_yaml_doc
+    from qmatsuite.provenance import (
         OperationContext,
         OperationType,
         ActorType,
@@ -117,8 +117,8 @@ def test_delete_provenance_then_save(tmp_path):
         ensure_provenance_initialized,
     )
 
-    # Create a project.qv.yml to mark as project root
-    project_file = tmp_path / "project.qv.yml"
+    # Create a project.qms.yml to mark as project root
+    project_file = tmp_path / "project.qms.yml"
     project_file.write_text("project:\n  meta:\n    ulid: PROJ123\n")
 
     step_path = tmp_path / "step.yaml"
@@ -161,8 +161,8 @@ def test_runtime_does_not_depend_on_provenance():
     This verifies the import structure doesn't create runtime dependencies.
     """
     # These imports should work without any provenance initialization
-    from quantumvitas.core.yamldoc import YamlDoc, StepDoc, CalcDoc, ProjectDoc
-    from quantumvitas.core.yaml_io import save_yaml_doc, load_yaml_doc
+    from qmatsuite.core.yamldoc import YamlDoc, StepDoc, CalcDoc, ProjectDoc
+    from qmatsuite.core.yaml_io import save_yaml_doc, load_yaml_doc
 
     # Creating documents doesn't require provenance
     doc = YamlDoc({"key": "value"})
@@ -178,7 +178,7 @@ def test_manifest_independent_of_provenance(tmp_path):
     """
     # Just verify manifest can be imported and used without provenance
     try:
-        from quantumvitas.calculation.manifest import ManifestStepEntry
+        from qmatsuite.calculation.manifest import ManifestStepEntry
 
         entry = ManifestStepEntry(
             kind="scf",

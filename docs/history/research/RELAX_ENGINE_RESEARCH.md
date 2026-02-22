@@ -81,7 +81,7 @@ Si   0.250000000   0.144337567   0.204124145
 
 ### 2.3 现有代码落点
 
-**已实现的解析器**: `src/quantumvitas/calculation/geometry.py`
+**已实现的解析器**: `src/qmatsuite/calculation/geometry.py`
 
 ```python
 # 已有函数
@@ -196,7 +196,7 @@ H    -0.757160     0.000000    -0.468000
 
 ### 3.3 现有代码落点
 
-**ORCA Engine**: `src/quantumvitas/engine/orca_engine.py`
+**ORCA Engine**: `src/qmatsuite/engine/orca_engine.py`
 - `ORCAEngine.run_chain()` - 执行 ORCA 作业
 - `ORCAInputCompiler.compile()` - 生成输入文件
 
@@ -323,8 +323,8 @@ def mol_eq_to_pmg_molecule(mol_eq) -> Molecule:
 
 ### 4.4 现有代码落点
 
-**PySCF Engine**: `src/quantumvitas/engine/pyscf_engine.py`
-**PySCF Runner**: `src/quantumvitas/engines/pyscf/runner.py`
+**PySCF Engine**: `src/qmatsuite/engine/pyscf_engine.py`
+**PySCF Runner**: `src/qmatsuite/engines/pyscf/runner.py`
 
 **需新增**:
 - 在 runner 中添加 `pyscf_geomopt` step type 处理
@@ -383,7 +383,7 @@ def run_pyscf_relax(params: dict, mol: Molecule) -> Molecule:
 
 ### 5.1 现有入口点
 
-**唯一入口**: `src/quantumvitas/analysis/structure_viz.py`
+**唯一入口**: `src/qmatsuite/analysis/structure_viz.py`
 
 ```python
 def canonicalize_structure_in_place(structure: Structure) -> None:
@@ -393,7 +393,7 @@ def canonicalize_structure_in_place(structure: Structure) -> None:
     """
 ```
 
-**SHA 入口**: `src/quantumvitas/core/structure_fingerprint.py`
+**SHA 入口**: `src/qmatsuite/core/structure_fingerprint.py`
 
 ```python
 def structure_fingerprint(structure: Structure, tol: float = 1e-5) -> str:
@@ -460,5 +460,5 @@ PySCF:  mol_eq_to_pmg_molecule()
 2. [ORCA 6.0 Manual - Geometry Optimizations](https://www.faccts.de/docs/orca/6.0/manual/contents/detailed/geomopt.html)
 3. [PySCF Geometry Optimization User Guide](https://pyscf.org/user/geomopt.html)
 4. [AiiDA Common Relax Workflows](https://aiida-common-workflows.readthedocs.io/en/latest/workflows/base/relax/)
-5. QMatSuite 现有代码: `src/quantumvitas/calculation/geometry.py`
+5. QMatSuite 现有代码: `src/qmatsuite/calculation/geometry.py`
 

@@ -673,7 +673,7 @@ def parse_vasp_outputs(working_dir: Path) -> VaspStepDigest:
 # tests/integration/vasp/conftest.py
 
 import pytest
-from quantumvitas.core.engines.vasp_resolver import is_vasp_available
+from qmatsuite.core.engines.vasp_resolver import is_vasp_available
 
 @pytest.fixture(scope="session")
 def vasp_available():
@@ -685,7 +685,7 @@ def vasp_available():
 def is_vasp_available() -> bool:
     """Check if VASP can be run."""
     try:
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
         vasp_bin = resolve_vasp_bin()
         return vasp_bin.exists()
     except RuntimeError:
@@ -790,7 +790,7 @@ def test_vasp_scf_parsing(tmp_path):
     assert exit_code == 0
     
     # Test parsing
-    from quantumvitas.engines.vasp.output_parser import parse_vasp_outputs
+    from qmatsuite.engines.vasp.output_parser import parse_vasp_outputs
     digest = parse_vasp_outputs(tmp_path)
     
     assert digest.success
@@ -820,7 +820,7 @@ class TestVaspRealExecution:
         calc_id = vasp_project_with_si["calc_id"]
         step_id = vasp_project_with_si["step_id"]
         
-        result = QVService.run_step(project_root, calc_id, step_id)
+        result = QMSService.run_step(project_root, calc_id, step_id)
         
         assert result.get("success") is True
         assert "final_energy" in result

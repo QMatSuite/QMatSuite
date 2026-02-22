@@ -6,7 +6,7 @@ PR2: Tests for deduplication across multiple providers.
 
 import pytest
 
-from quantumvitas.io.providers.optimade import (
+from qmatsuite.io.providers.optimade import (
     ProviderResult,
     Candidate,
     AggregatedCandidate,

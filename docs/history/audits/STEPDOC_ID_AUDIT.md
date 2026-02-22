@@ -22,7 +22,7 @@ There is **semantic confusion** between:
 
 ### 1.1 StepDoc (YAML Document Wrapper)
 
-**Location**: `src/quantumvitas/core/yamldoc.py:454`
+**Location**: `src/qmatsuite/core/yamldoc.py:454`
 
 ```python
 class StepDoc(YamlDoc):
@@ -53,7 +53,7 @@ step_ulid = meta.get("id")
 
 ### 1.2 Step (Calculation Step Object)
 
-**Location**: `src/quantumvitas/calculation/step.py:34`
+**Location**: `src/qmatsuite/calculation/step.py:34`
 
 ```python
 @dataclass(slots=True)
@@ -82,7 +82,7 @@ class Step:
 
 ### 1.3 ResourceMeta.id
 
-**Location**: `src/quantumvitas/core/resources.py:82`
+**Location**: `src/qmatsuite/core/resources.py:82`
 
 ```python
 @dataclass(slots=True)
@@ -105,7 +105,7 @@ class ResourceMeta:
 
 ### 2.1 Manifest Reconciliation (FIXED)
 
-**Location**: `src/quantumvitas/calculation/manifest_reconcile.py:75`
+**Location**: `src/qmatsuite/calculation/manifest_reconcile.py:75`
 
 ```python
 # CORRECT: Uses step.meta.id (ULID)
@@ -119,7 +119,7 @@ step_resolved = require_step(project_root, calculation_id, step_ulid, config=con
 
 ### 2.2 Runner (PARTIALLY DANGEROUS)
 
-**Location**: `src/quantumvitas/calculation/runner.py`
+**Location**: `src/qmatsuite/calculation/runner.py`
 
 **Dangerous usages** (using `step.id` where ULID may be needed):
 
@@ -168,7 +168,7 @@ logger.info(f"Step {step.id} ...")  # ✅ OK: Display only (slug is fine)
 
 ### 2.3 Resolution Functions
 
-**Location**: `src/quantumvitas/core/resolution.py:1254`
+**Location**: `src/qmatsuite/core/resolution.py:1254`
 
 ```python
 def resolve_step(
@@ -198,7 +198,7 @@ require_step(project_root, calc_id, step.id, ...)  # Uses slug - may fail
 
 ### 2.4 UI/Daemon Boundaries
 
-**Location**: `gui/src/types/qv.ts` and `src/quantumvitas/daemon/server.py`
+**Location**: `gui/src/types/qms.ts` and `src/qmatsuite/daemon/server.py`
 
 **Current State**:
 - RPC accepts step selectors (can be ULID or slug)
@@ -213,7 +213,7 @@ require_step(project_root, calc_id, step.id, ...)  # Uses slug - may fail
 
 ### 3.1 Runner: require_step with step.id
 
-**Files**: `src/quantumvitas/calculation/runner.py`
+**Files**: `src/qmatsuite/calculation/runner.py`
 
 **Locations**:
 - Line 305-306: `require_step(..., step.id, ...)`
@@ -232,7 +232,7 @@ require_step(project_root, calc_id, step.id, ...)  # Uses slug - may fail
 
 ### 3.2 Runner: Manifest entries using step.id
 
-**Files**: `src/quantumvitas/calculation/runner.py`
+**Files**: `src/qmatsuite/calculation/runner.py`
 
 **Locations**:
 - Line 424: `step_ulid=step.id`
@@ -348,7 +348,7 @@ step_ulid = meta.get("id")
 ## 5. Code Citations
 
 ### Step.id definition
-- **File**: `src/quantumvitas/calculation/step.py:34-39`
+- **File**: `src/qmatsuite/calculation/step.py:34-39`
 - **Code**:
   ```python
   @property
@@ -358,11 +358,11 @@ step_ulid = meta.get("id")
   ```
 
 ### Step.meta.id (ULID)
-- **File**: `src/quantumvitas/core/resources.py:82-94`
+- **File**: `src/qmatsuite/core/resources.py:82-94`
 - **Type**: `ResourceMeta.id: str` (ULID)
 
 ### StepDoc structure
-- **File**: `src/quantumvitas/core/yamldoc.py:454-595`
+- **File**: `src/qmatsuite/core/yamldoc.py:454-595`
 - **Inheritance**: `StepDoc(YamlDoc)` - no id property
 
 ### Dangerous usages in runner.py
@@ -370,7 +370,7 @@ step_ulid = meta.get("id")
 - **Issue**: Uses `step.id` where ULID is needed
 
 ### Correct usage in manifest_reconcile.py
-- **File**: `src/quantumvitas/calculation/manifest_reconcile.py:75-76`
+- **File**: `src/qmatsuite/calculation/manifest_reconcile.py:75-76`
 - **Code**:
   ```python
   step_ulid = step.meta.id  # ✅ CORRECT

@@ -1,14 +1,14 @@
 /**
  * RunDetailDrawer - Slide-out drawer showing run revision details.
  *
- * Uses get_run_revision RPC (same endpoint as CLI `qv history show`).
+ * Uses get_run_revision RPC (same endpoint as CLI `qms history show`).
  */
 
 import { useState, useEffect } from 'react';
-import type { QVResult } from '../../types/qv';
+import type { QMSResult } from '../../types/qms';
 import './RunDetailDrawer.css';
 
-type RunRevision = NonNullable<QVResult<'get_run_revision'>['revision']>;
+type RunRevision = NonNullable<QMSResult<'get_run_revision'>['revision']>;
 
 interface RunDetailDrawerProps {
   projectRoot: string;
@@ -23,7 +23,7 @@ export function RunDetailDrawer({ projectRoot, runUlid, onClose }: RunDetailDraw
   const [showSnapshot, setShowSnapshot] = useState(false);
 
   useEffect(() => {
-    if (!projectRoot || !runUlid || !window.qv) return;
+    if (!projectRoot || !runUlid || !window.qms) return;
 
     let cancelled = false;
 
@@ -32,7 +32,7 @@ export function RunDetailDrawer({ projectRoot, runUlid, onClose }: RunDetailDraw
       setError(null);
 
       try {
-        const response = await window.qv.request<QVResult<'get_run_revision'>>(
+        const response = await window.qms.request<QMSResult<'get_run_revision'>>(
           'get_run_revision',
           { project_root: projectRoot, run_ulid: runUlid },
         );

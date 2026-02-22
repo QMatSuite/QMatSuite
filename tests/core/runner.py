@@ -146,7 +146,7 @@ class TestRunner:
     @classmethod
     def create_cli(cls) -> argparse.ArgumentParser:
         """Create CLI argument parser."""
-        parser = argparse.ArgumentParser(description="QuantumVITAS Test Runner")
+        parser = argparse.ArgumentParser(description="QMatSuite Test Runner")
         parser.add_argument(
             "--suite",
             type=str,

@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.vasp.io.incar import parse_incar_text
-from quantumvitas.drivers.vasp.inputspec import _write_incar_text
+from qmatsuite.drivers.vasp.io.incar import parse_incar_text
+from qmatsuite.drivers.vasp.inputspec import _write_incar_text
 
 
 SAMPLES_DIR = Path(__file__).parent / "samples" / "vasp"
@@ -208,12 +208,12 @@ class TestVASPFullRoundtrip:
     }
 
     def _get_vasp_spec(self):
-        from quantumvitas.drivers.vasp.inputspec import get_vasp_input_spec
+        from qmatsuite.drivers.vasp.inputspec import get_vasp_input_spec
         return get_vasp_input_spec()
 
     def test_full_write_parse_roundtrip(self, tmp_path):
         """Write VASP files -> parse -> verify params and structure."""
-        from quantumvitas.inputformat import write_engine_inputs, parse_engine_inputs
+        from qmatsuite.inputformat import write_engine_inputs, parse_engine_inputs
 
         spec = self._get_vasp_spec()
 
@@ -260,7 +260,7 @@ class TestVASPFullRoundtrip:
 
     def test_curated_sample_full_roundtrip(self, tmp_path):
         """Copy curated samples -> parse -> write -> parse -> compare."""
-        from quantumvitas.inputformat import write_engine_inputs, parse_engine_inputs
+        from qmatsuite.inputformat import write_engine_inputs, parse_engine_inputs
         import shutil
 
         spec = self._get_vasp_spec()

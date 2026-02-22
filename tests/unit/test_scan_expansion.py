@@ -4,7 +4,7 @@ Tests for scan expansion and variant_key computation.
 
 import pytest
 
-from quantumvitas.execution.scan_expansion import (
+from qmatsuite.execution.scan_expansion import (
     ScanDimension,
     VariantAssignment,
     collect_scan_dimensions,

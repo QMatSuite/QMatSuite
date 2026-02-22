@@ -57,25 +57,25 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     await waitForHomeWelcome(appPage);
 
     // Click "Create New Project" on the welcome screen
-    const createProjectBtn = appPage.getByTestId('qv-welcome-btn-create-new-project');
+    const createProjectBtn = appPage.getByTestId('qms-welcome-btn-create-new-project');
     await expect(createProjectBtn).toBeVisible({ timeout: 5000 });
     await createProjectBtn.click();
 
     // Fill the Create Project dialog
-    const parentDirInput = appPage.getByTestId('qv-input-parent-dir');
+    const parentDirInput = appPage.getByTestId('qms-input-parent-dir');
     await expect(parentDirInput).toBeVisible({ timeout: 5000 });
     await parentDirInput.fill(projectDir);
 
-    const projectNameInput = appPage.getByTestId('qv-input-project-name');
+    const projectNameInput = appPage.getByTestId('qms-input-project-name');
     await projectNameInput.fill('si-scf-e2e');
 
     // Click "Create Project"
-    const confirmCreateBtn = appPage.getByTestId('qv-btn-confirm-create');
+    const confirmCreateBtn = appPage.getByTestId('qms-btn-confirm-create');
     await expect(confirmCreateBtn).toBeEnabled();
     await confirmCreateBtn.click();
 
     // Wait for project to load
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 15000 });
+    await expect(appPage.getByTestId('qms-home-project')).toBeVisible({ timeout: 15000 });
 
     // =========================================
     // STEP 2: Import Si structure
@@ -84,21 +84,21 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     await navigateToView(appPage, 'structures');
 
     // Click "Import Structure" button
-    const importStructureBtn = appPage.getByTestId('qv-btn-import-structure');
+    const importStructureBtn = appPage.getByTestId('qms-btn-import-structure');
     await expect(importStructureBtn).toBeVisible({ timeout: 5000 });
     await importStructureBtn.click();
 
     // Fill the Import Structure dialog
     // Type the file path directly into the input (bypass native file picker)
-    const fileInput = appPage.getByTestId('qv-import-structure-file');
+    const fileInput = appPage.getByTestId('qms-import-structure-file');
     await expect(fileInput).toBeVisible({ timeout: 5000 });
     await fileInput.fill(siCifFile);
 
-    const structureNameInput = appPage.getByTestId('qv-import-structure-name');
+    const structureNameInput = appPage.getByTestId('qms-import-structure-name');
     await structureNameInput.fill('Si');
 
     // Click "Import"
-    const confirmImportBtn = appPage.getByTestId('qv-btn-confirm-import-structure');
+    const confirmImportBtn = appPage.getByTestId('qms-btn-confirm-import-structure');
     await expect(confirmImportBtn).toBeEnabled();
     await confirmImportBtn.click();
 
@@ -110,20 +110,20 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     // =========================================
     // Navigate to Calculations view
     await navigateToView(appPage, 'calculations');
-    await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
+    await expect(appPage.getByTestId('qms-calculations-view')).toBeVisible({ timeout: 10000 });
 
     // Click "New Calculation" button
-    const newCalcBtn = appPage.getByTestId('qv-btn-new-calculation');
+    const newCalcBtn = appPage.getByTestId('qms-btn-new-calculation');
     await expect(newCalcBtn).toBeVisible({ timeout: 5000 });
     await newCalcBtn.click();
 
     // Fill the Create Calculation dialog
-    const calcNameInput = appPage.getByTestId('qv-create-calc-name');
+    const calcNameInput = appPage.getByTestId('qms-create-calc-name');
     await expect(calcNameInput).toBeVisible({ timeout: 5000 });
     await calcNameInput.fill('Si SCF Test');
 
     // Select structure (choose the imported Si structure)
-    const structureSelect = appPage.getByTestId('qv-create-calc-structure');
+    const structureSelect = appPage.getByTestId('qms-create-calc-structure');
     await expect(structureSelect).toBeVisible();
     // Select the first non-empty option (our imported Si structure)
     const structureOptions = structureSelect.locator('option');
@@ -138,13 +138,13 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     }
 
     // Select engine family = qe
-    const engineSelect = appPage.getByTestId('qv-create-calc-engine');
+    const engineSelect = appPage.getByTestId('qms-create-calc-engine');
     await expect(engineSelect).toBeVisible();
     // Select QE by finding an option whose value is "qe"
     await engineSelect.selectOption({ value: 'qe' });
 
     // Click "Create Calculation"
-    const confirmCreateCalcBtn = appPage.getByTestId('qv-btn-confirm-create-calc');
+    const confirmCreateCalcBtn = appPage.getByTestId('qms-btn-confirm-create-calc');
     await expect(confirmCreateCalcBtn).toBeEnabled();
     await confirmCreateCalcBtn.click();
 
@@ -154,17 +154,17 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     // =========================================
     // STEP 4: Select the calculation
     // =========================================
-    const calcRow = appPage.getByTestId('qv-calculation-row').first();
+    const calcRow = appPage.getByTestId('qms-calculation-row').first();
     await expect(calcRow).toBeVisible({ timeout: 5000 });
     await calcRow.click();
 
     // Wait for Overview & Steps tab to be active
-    const overviewTab = appPage.getByTestId('qv-calc-tab-overview');
+    const overviewTab = appPage.getByTestId('qms-calc-tab-overview');
     await expect(overviewTab).toBeVisible({ timeout: 5000 });
     await expect(overviewTab).toHaveClass(/calculations-workspace-tab--active/);
 
     // Wait for overview panel to be fully loaded
-    const overviewPanel = appPage.getByTestId('qv-calc-overview-panel');
+    const overviewPanel = appPage.getByTestId('qms-calc-overview-panel');
     await expect(overviewPanel).toBeVisible({ timeout: 5000 });
     await appPage.waitForTimeout(2000);
 
@@ -172,13 +172,13 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     // STEP 5: Configure pseudopotential for Si
     // =========================================
     // Click "Edit" button on the pseudo section
-    const editPseudoBtn = appPage.getByTestId('qv-btn-edit-pseudos');
+    const editPseudoBtn = appPage.getByTestId('qms-btn-edit-pseudos');
     // Wait for pseudos section to load (may take a moment)
     await expect(editPseudoBtn).toBeVisible({ timeout: 10000 });
     await editPseudoBtn.click();
 
     // The pseudo edit modal should appear with Si element dropdown
-    const pseudoSelectSi = appPage.getByTestId('qv-pseudo-select-Si');
+    const pseudoSelectSi = appPage.getByTestId('qms-pseudo-select-Si');
     await expect(pseudoSelectSi).toBeVisible({ timeout: 10000 });
 
     // Select a pseudo for Si
@@ -204,7 +204,7 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     // 1) modal stays open until user clicks Apply
     // 2) selection auto-persists and modal closes/re-renders immediately
     if (await pseudoOverlay.isVisible().catch(() => false)) {
-      const pseudoApplyBtn = appPage.getByTestId('qv-pseudo-apply');
+      const pseudoApplyBtn = appPage.getByTestId('qms-pseudo-apply');
       if (await pseudoApplyBtn.isVisible().catch(() => false)) {
         await pseudoApplyBtn.click({ timeout: 3000 }).catch(() => {
           // Ignore stale-click races; we'll confirm closure below.
@@ -231,19 +231,19 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     // STEP 6: Add SCF step
     // =========================================
     try {
-      const addStepBtn = appPage.getByTestId('qv-add-step-btn');
+      const addStepBtn = appPage.getByTestId('qms-add-step-btn');
       await expect(addStepBtn).toBeVisible({ timeout: 5000 });
       await addStepBtn.scrollIntoViewIfNeeded();
       console.log('[realrun_si_scf] clicking add step');
       await addStepBtn.click({ timeout: 5000 });
 
       // Wait for add step form
-      const addStepForm = appPage.getByTestId('qv-add-step-form');
+      const addStepForm = appPage.getByTestId('qms-add-step-form');
       await expect(addStepForm).toBeVisible({ timeout: 5000 });
       console.log('[realrun_si_scf] add step form visible');
 
       // Select "scf" step type
-      const stepTypeSelect = appPage.getByTestId('qv-add-step-type-select');
+      const stepTypeSelect = appPage.getByTestId('qms-add-step-type-select');
       await expect(stepTypeSelect).toBeVisible();
 
       // Fail fast if step palette is empty, instead of hanging on selectOption()
@@ -265,13 +265,13 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
       await stepTypeSelect.selectOption({ value: 'scf' });
 
       // Click "Add Step"
-      const confirmAddStepBtn = appPage.getByTestId('qv-confirm-add-step');
+      const confirmAddStepBtn = appPage.getByTestId('qms-confirm-add-step');
       await expect(confirmAddStepBtn).toBeEnabled();
       await confirmAddStepBtn.click({ timeout: 5000 });
       console.log('[realrun_si_scf] add step submitted');
 
       // Wait for step to appear in the list (fail fast if add-step did not actually apply)
-      const stepRows = appPage.locator('[data-testid^="qv-step-row-"]');
+      const stepRows = appPage.locator('[data-testid^="qms-step-row-"]');
       await expect
         .poll(async () => stepRows.count(), {
           timeout: 15000,
@@ -288,23 +288,23 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     // STEP 7: Click on the step to view details
     // =========================================
     // The step row should appear in the steps list
-    const stepsContainer = appPage.getByTestId('qv-steps-list');
+    const stepsContainer = appPage.getByTestId('qms-steps-list');
     await expect(stepsContainer).toBeVisible({ timeout: 5000 });
 
     // Click the first step button to view its details
-    const stepButton = stepsContainer.locator('[data-testid^="qv-step-button-"]').first();
+    const stepButton = stepsContainer.locator('[data-testid^="qms-step-button-"]').first();
     await expect(stepButton).toBeVisible({ timeout: 5000 });
     await stepButton.click();
 
     // Wait for step detail panel to load
-    const stepDetail = appPage.getByTestId('qv-step-detail');
+    const stepDetail = appPage.getByTestId('qms-step-detail');
     await expect(stepDetail).toBeVisible({ timeout: 10000 });
 
     // =========================================
     // STEP 8: Set ecutwfc=20.0 (matching RPC test)
     // =========================================
     // Click "Edit" to enter editing mode
-    const editParamsBtn = appPage.getByTestId('qv-btn-edit-step-params');
+    const editParamsBtn = appPage.getByTestId('qms-btn-edit-step-params');
     await expect(editParamsBtn).toBeVisible({ timeout: 5000 });
     await editParamsBtn.click();
 
@@ -312,13 +312,13 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     await appPage.waitForTimeout(1000);
 
     // Find the ecutwfc parameter input and set it to 20.0
-    const ecutwfcInput = appPage.getByTestId('qv-param-input-system-ecutwfc');
+    const ecutwfcInput = appPage.getByTestId('qms-param-input-system-ecutwfc');
     await expect(ecutwfcInput).toBeVisible({ timeout: 5000 });
     await ecutwfcInput.fill('20.0');
     await ecutwfcInput.press('Tab');
 
     // Click "Apply" to save parameters
-    const applyParamsBtn = appPage.getByTestId('qv-btn-apply-step-params');
+    const applyParamsBtn = appPage.getByTestId('qms-btn-apply-step-params');
     await expect(applyParamsBtn).toBeVisible({ timeout: 5000 });
     await applyParamsBtn.click();
 
@@ -330,8 +330,8 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     // =========================================
     // In Step Focus mode, the run button is rendered in the compact step list.
     // In Overview mode, use the standard calculation header run button.
-    const runButtonFocus = appPage.getByTestId('qv-btn-run-calculation-focus');
-    const runButtonOverview = appPage.getByTestId('qv-btn-run-calculation');
+    const runButtonFocus = appPage.getByTestId('qms-btn-run-calculation-focus');
+    const runButtonOverview = appPage.getByTestId('qms-btn-run-calculation');
     if (await runButtonFocus.isVisible().catch(() => false)) {
       await expect(runButtonFocus).toBeEnabled();
       await runButtonFocus.click();
@@ -342,15 +342,15 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     }
 
     // Verify auto-switch to Run & Logs tab
-    const runLogsTab = appPage.getByTestId('qv-calc-tab-run');
+    const runLogsTab = appPage.getByTestId('qms-calc-tab-run');
     await expect(runLogsTab).toHaveClass(/calculations-workspace-tab--active/, { timeout: 5000 });
-    const runLogsPanel = appPage.getByTestId('qv-calc-run-logs-panel');
+    const runLogsPanel = appPage.getByTestId('qms-calc-run-logs-panel');
     await expect(runLogsPanel).toBeVisible({ timeout: 10000 });
 
     // =========================================
     // STEP 10: Wait for job completion
     // =========================================
-    const statusBadge = runLogsPanel.getByTestId('qv-job-status');
+    const statusBadge = runLogsPanel.getByTestId('qms-job-status');
     await expect(statusBadge).toBeVisible({ timeout: 30000 });
 
     const startTime = Date.now();
@@ -383,18 +383,18 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     }
 
     // Verify logs are visible
-    const jobLogs = runLogsPanel.getByTestId('qv-calc-job-logs');
+    const jobLogs = runLogsPanel.getByTestId('qms-calc-job-logs');
     await expect(jobLogs).toBeVisible();
 
     // =========================================
     // STEP 11: Switch to Analysis tab
     // =========================================
-    const analysisTab = appPage.getByTestId('qv-calc-tab-analysis');
+    const analysisTab = appPage.getByTestId('qms-calc-tab-analysis');
     await expect(analysisTab).toBeVisible({ timeout: 5000 });
     await analysisTab.click();
     await expect(analysisTab).toHaveClass(/calculations-workspace-tab--active/, { timeout: 5000 });
 
-    const analysisPanel = appPage.getByTestId('qv-calc-analysis-panel');
+    const analysisPanel = appPage.getByTestId('qms-calc-analysis-panel');
     await expect(analysisPanel).toBeVisible({ timeout: 5000 });
     await appPage.waitForTimeout(2000);
 
@@ -402,7 +402,7 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     // STEP 12: Verify convergence analysis
     // =========================================
     // Select SCF step chip explicitly
-    const scfStepChip = analysisPanel.locator('[data-testid="qv-analysis-step-tab-scf"]');
+    const scfStepChip = analysisPanel.locator('[data-testid="qms-analysis-step-tab-scf"]');
     await expect(scfStepChip).toBeVisible({ timeout: 5000 });
     await scfStepChip.click();
 
@@ -413,18 +413,18 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
     await expect(plotTab).toHaveClass(/--active/, { timeout: 5000 });
 
     // Ensure we're validating run output (not reference overlay)
-    const referenceToggle = appPage.getByTestId('qv-analysis-reference-toggle');
+    const referenceToggle = appPage.getByTestId('qms-analysis-reference-toggle');
     if (await referenceToggle.isVisible().catch(() => false)) {
       if (await referenceToggle.isChecked()) {
         await referenceToggle.uncheck();
       }
       await expect(referenceToggle).not.toBeChecked();
     }
-    await expect(appPage.getByTestId('qv-analysis-reference-banner')).toHaveCount(0);
+    await expect(appPage.getByTestId('qms-analysis-reference-banner')).toHaveCount(0);
 
     // Wait for loading to finish
-    const loadingIndicator = appPage.getByTestId('qv-analysis-loading');
-    const convergenceChart = appPage.getByTestId('qv-analysis-convergence-chart');
+    const loadingIndicator = appPage.getByTestId('qms-analysis-loading');
+    const convergenceChart = appPage.getByTestId('qms-analysis-convergence-chart');
 
     await expect(async () => {
       const isLoading = await loadingIndicator.isVisible().catch(() => false);
@@ -468,7 +468,7 @@ test.describe('Pair 1 E2E: Si SCF Real-Run (from scratch)', () => {
       .toBeGreaterThan(1);
 
     // Verify convergence info bar
-    const convergenceInfo = appPage.getByTestId('qv-analysis-convergence-info');
+    const convergenceInfo = appPage.getByTestId('qms-analysis-convergence-info');
     await expect(convergenceInfo).toBeVisible({ timeout: 5000 });
 
     // Convergence badge should show "Converged"

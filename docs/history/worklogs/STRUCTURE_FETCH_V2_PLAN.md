@@ -53,7 +53,7 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
 - All provider-specific logic must live in I/O layer (below API) (R4: clarified as I/O layer, not kernel-core)
 
 **B) Layering/Import Laws:**
-- CLI MUST NOT import kernel (`quantumvitas.io.*`, `quantumvitas.core.*`, etc.)
+- CLI MUST NOT import kernel (`qmatsuite.io.*`, `qmatsuite.core.*`, etc.)
 - Daemon MUST NOT import kernel
 - Follow all existing "no import" gate tests; plan must include new/updated gate tests if needed
 - Gate tests: `tests/gates/test_import_gate.py`, `tests/gates/test_daemon_kernel_ban.py`, `tests/gates/test_import_rules.py`
@@ -76,7 +76,7 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
 
 ### 2.1 Existing Implementation
 
-**Location:** `src/quantumvitas/io/online_search.py`
+**Location:** `src/qmatsuite/io/online_search.py`
 
 **Current Flow:**
 1. `search_online_structures(query, max_results)` → tries OPTIMADE first, COD fallback
@@ -87,21 +87,21 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
    - `https://optimade.materialscloud.org/main/mc3d-pbesol-v1` (fallback)
 3. COD: Uses `pymatgen.ext.cod.COD()` (MySQL dependency, broken for most users)
 4. 2-step fetch: OPTIMADE search returns metadata only; full structure fetched on demand
-5. Cache: SQLite with msgpack-serialized structures, 30-day TTL (`src/quantumvitas/io/online_cache.py`)
+5. Cache: SQLite with msgpack-serialized structures, 30-day TTL (`src/qmatsuite/io/online_cache.py`)
 
 **Current API Surface:**
-- `search_online_structures()` in `quantumvitas.io.online_search` (kernel)
-- Re-exported in `quantumvitas.api.utils` (violates Law H3 per `API_CONSTITUTION.md`)
-- Daemon handler: `_handle_structure_search_online()` in `src/quantumvitas/daemon/server.py` (line 2146)
-- Daemon calls `search_online_structures()` directly (violates layering - imports from `quantumvitas.io.online_search`)
+- `search_online_structures()` in `qmatsuite.io.online_search` (kernel)
+- Re-exported in `qmatsuite.api.utils` (violates Law H3 per `API_CONSTITUTION.md`)
+- Daemon handler: `_handle_structure_search_online()` in `src/qmatsuite/daemon/server.py` (line 2146)
+- Daemon calls `search_online_structures()` directly (violates layering - imports from `qmatsuite.io.online_search`)
 
 **Current Cache (R3: To Migrate to Global Cache):**
-- `OnlineStructureCache` in `src/quantumvitas/io/online_cache.py`
+- `OnlineStructureCache` in `src/qmatsuite/io/online_cache.py`
 - Current location: `structures/cache/structure_fetch_cache.sqlite3` (project-specific, violates resolver laws)
 - **New location:** `~/.qmatsuite/cache/online_structures/structure_fetch_cache.sqlite3` (global user cache)
 - TTL: 30 days
 - Stores: sessions, candidates, structures (msgpack blobs)
-- Migration: Update cache path to use `quantumvitas.core.paths.get_qmatsuite_home_root() / "cache" / "online_structures"`
+- Migration: Update cache path to use `qmatsuite.core.paths.get_qmatsuite_home_root() / "cache" / "online_structures"`
 
 **Current GUI Integration:**
 - `gui/src/components/panels/OnlineImportPanel.tsx`
@@ -110,15 +110,15 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
 - Response: `{session_id: str, candidates: OnlineCandidate[]}`
 
 **Current Settings:**
-- Global settings: `src/quantumvitas/core/settings.py` → `QMatSuiteSettings`
+- Global settings: `src/qmatsuite/core/settings.py` → `QMatSuiteSettings`
 - Settings file: `.qmatsuite/config/settings.json`
 - No online structure provider configuration exists today
 
 ### 2.2 Import Violations (To Fix)
 
 **Current Violations:**
-1. `src/quantumvitas/daemon/server.py:58` imports `search_online_structures` from `quantumvitas.io.online_search` (kernel)
-2. `src/quantumvitas/api/utils.py:1698` re-exports `search_online_structures` (violates Law H3)
+1. `src/qmatsuite/daemon/server.py:58` imports `search_online_structures` from `qmatsuite.io.online_search` (kernel)
+2. `src/qmatsuite/api/utils.py:1698` re-exports `search_online_structures` (violates Law H3)
 
 **Gate Tests to Update:**
 - `tests/gates/test_import_gate.py` - already enforces CLI/daemon no kernel imports
@@ -131,11 +131,11 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
 - Crystals: pymatgen `Structure` with lattice (3x3 matrix) and `pbc=[True,True,True]`
 - Molecules: Not currently supported (no `cell=None` or `pbc=False` in current schema)
 - Structure files: JSON with pymatgen dict format
-- Structure DTO: `quantumvitas.api.types.structure.StructureDTO` (summary only, no positions)
+- Structure DTO: `qmatsuite.api.types.structure.StructureDTO` (summary only, no positions)
 
 **Molecular Structure Support:**
 - PySCF integration spec (`docs/architecture/PYSCF_INTEGRATION_SPEC.md`) shows molecular structures use `atoms` array with Cartesian coordinates, no lattice
-- Demo store (`src/quantumvitas/demo_store/translator.py`) shows molecular structures can omit lattice
+- Demo store (`src/qmatsuite/demo_store/translator.py`) shows molecular structures can omit lattice
 - Need to support `cell=None` and `pbc=False` (or equivalent) for molecules
 
 ---
@@ -145,41 +145,41 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
 ### 3.1 Module Layout and Ownership (R4: Clarify I/O Layer)
 
 **Existing Modules:**
-- **API Layer:** `src/quantumvitas/api/service.py` (QVService class)
-- **CLI:** `src/quantumvitas/cli/main.py` (Typer commands)
-- **Daemon:** `src/quantumvitas/daemon/server.py` (JSON-RPC handlers)
-- **GUI RPC Client:** `gui/src/types/qv.ts` (TypeScript RPC definitions)
-- **I/O Layer (Network):** `src/quantumvitas/io/online_search.py` (current implementation)
-- **I/O Layer (Cache):** `src/quantumvitas/io/online_cache.py` (SQLite cache)
+- **API Layer:** `src/qmatsuite/api/service.py` (QMSService class)
+- **CLI:** `src/qmatsuite/cli/main.py` (Typer commands)
+- **Daemon:** `src/qmatsuite/daemon/server.py` (JSON-RPC handlers)
+- **GUI RPC Client:** `gui/src/types/qms.ts` (TypeScript RPC definitions)
+- **I/O Layer (Network):** `src/qmatsuite/io/online_search.py` (current implementation)
+- **I/O Layer (Cache):** `src/qmatsuite/io/online_cache.py` (SQLite cache)
 
 **New Modules to Create (I/O Layer - Network/Providers):**
 
 **Note (R4):** Providers are I/O layer (network I/O), not kernel-core. They perform HTTP requests and parse responses. They MUST NOT import API types (use provider-local models or primitives).
 
-1. **`src/quantumvitas/io/providers/optimade.py`**
+1. **`src/qmatsuite/io/providers/optimade.py`**
    - OPTIMADE provider registry fetching (HTTP)
    - Provider configuration management (local models, not API DTOs)
    - Parallel query orchestration (HTTP requests)
    - Deduplication and aggregation logic (pure functions)
 
-2. **`src/quantumvitas/io/providers/pubchem.py`**
+2. **`src/qmatsuite/io/providers/pubchem.py`**
    - PubChem name/formula search (HTTP)
    - SDF fetching and parsing (HTTP + text parsing)
    - Molecule structure conversion (pymatgen, no API types)
 
-3. **`src/quantumvitas/io/providers/materials_project.py`**
+3. **`src/qmatsuite/io/providers/materials_project.py`**
    - MP native API client (mp-api wrapper, HTTP)
    - API key handling (from settings, not API DTOs)
    - Rich metadata extraction (local models)
 
-4. **`src/quantumvitas/io/providers/__init__.py`**
+4. **`src/qmatsuite/io/providers/__init__.py`**
    - Provider registry (local models)
    - Provider factory (returns provider instances)
    - Unified search interface (returns local Candidate models, not API DTOs)
 
 **New Modules to Create (API Layer):**
 
-1. **`src/quantumvitas/api/types/online_search.py`**
+1. **`src/qmatsuite/api/types/online_search.py`**
    - DTOs for online search:
      - `SearchRequestDTO`
      - `SearchResultDTO`
@@ -188,9 +188,9 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
      - `ProviderListDTO`
 
 **Settings Extension (R1: Settings Write Pathway):**
-- Extend `src/quantumvitas/core/settings.py` → `QMatSuiteSettings` with `online_structures` field
+- Extend `src/qmatsuite/core/settings.py` → `QMatSuiteSettings` with `online_structures` field
 - Settings storage location: `.qmatsuite/config/settings.json` (global, not project-specific)
-- Settings file path: Uses `quantumvitas.core.paths.get_settings_json_path()` (same as existing settings)
+- Settings file path: Uses `qmatsuite.core.paths.get_settings_json_path()` (same as existing settings)
 - Settings schema:
   ```python
   @dataclass
@@ -202,8 +202,8 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
       max_results_per_provider: int = 10
       max_total_results: int = 50
   ```
-- Settings update: `QVService.OnlineSearch.update_online_sources()` calls `set_settings()` from `api.utils` (reuses existing capability)
-- Settings persistence: `set_settings()` calls `quantumvitas.core.settings.save_settings()` (existing infrastructure)
+- Settings update: `QMSService.OnlineSearch.update_online_sources()` calls `set_settings()` from `api.utils` (reuses existing capability)
+- Settings persistence: `set_settings()` calls `qmatsuite.core.settings.save_settings()` (existing infrastructure)
 
 ### 3.2 Architecture Diagram (Text, R4: I/O Layer Clarification)
 
@@ -211,19 +211,19 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
 ┌─────────────────────────────────────────────────────────────┐
 │ Frontend Layer (CLI/Daemon/GUI)                            │
 │                                                             │
-│  CLI: qv search-structure <query>                          │
+│  CLI: qms search-structure <query>                          │
 │  Daemon: structure_search_online RPC                        │
 │  GUI: OnlineImportPanel.tsx → RPC call                     │
 └────────────────────┬───────────────────────────────────────┘
                      │ (imports allowed)
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ API Facade Layer (quantumvitas.api)                        │
+│ API Facade Layer (qmatsuite.api)                        │
 │                                                             │
-│  QVService.OnlineSearch.search(...) → SearchResultDTO       │
-│  QVService.OnlineSearch.fetch(...) → StructureDocDTO        │
-│  QVService.OnlineSearch.list_providers() → ProviderListDTO │
-│  QVService.OnlineSearch.update_online_sources() → Settings │
+│  QMSService.OnlineSearch.search(...) → SearchResultDTO       │
+│  QMSService.OnlineSearch.fetch(...) → StructureDocDTO        │
+│  QMSService.OnlineSearch.list_providers() → ProviderListDTO │
+│  QMSService.OnlineSearch.update_online_sources() → Settings │
 │                                                             │
 │  DTOs: SearchRequestDTO, CandidateDTO, ProviderConfigDTO   │
 │  Model→DTO conversion: Provider Candidate → CandidateDTO    │
@@ -231,7 +231,7 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
                      │ (imports allowed)
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ I/O Layer (quantumvitas.io.providers) - Network I/O        │
+│ I/O Layer (qmatsuite.io.providers) - Network I/O        │
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐ │
 │  │ ProviderRegistry                                      │ │
@@ -271,11 +271,11 @@ Implement "Structure Fetch v2" that expands online structure search capabilities
                      │ (imports allowed)
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Core/Kernel Layer (quantumvitas.core.*)                    │
+│ Core/Kernel Layer (qmatsuite.core.*)                    │
 │                                                             │
-│  - Settings: quantumvitas.core.settings                    │
-│  - Paths: quantumvitas.core.paths                          │
-│  - Models: quantumvitas.core.models                        │
+│  - Settings: qmatsuite.core.settings                    │
+│  - Paths: qmatsuite.core.paths                          │
+│  - Models: qmatsuite.core.models                        │
 └─────────────────────────────────────────────────────────────┘
 
 IMPORT RULES (R4):
@@ -290,24 +290,24 @@ IMPORT RULES (R4):
 ```
 Frontend (CLI/Daemon/GUI)
     ↓ (imports allowed)
-API Facade (quantumvitas.api)
+API Facade (qmatsuite.api)
     ↓ (imports allowed)
-I/O Layer (quantumvitas.io.providers.*, quantumvitas.io.online_cache.*)
+I/O Layer (qmatsuite.io.providers.*, qmatsuite.io.online_cache.*)
     ↓ (imports allowed)
-Core/Kernel (quantumvitas.core.*, etc.)
+Core/Kernel (qmatsuite.core.*, etc.)
 ```
 
 **Allowed Imports:**
-- CLI/Daemon → `quantumvitas.api.*` only
-- API → I/O Layer (`quantumvitas.io.providers.*`, `quantumvitas.io.online_cache.*`)
+- CLI/Daemon → `qmatsuite.api.*` only
+- API → I/O Layer (`qmatsuite.io.providers.*`, `qmatsuite.io.online_cache.*`)
 - API → Core/Kernel (for settings, paths, etc.)
 - I/O Layer → Core/Kernel (for settings, paths, pymatgen, etc.)
 - I/O Layer → Standard library + third-party (requests, pymatgen, etc.)
 
 **Forbidden Imports (Enforced by Gates):**
-- CLI/Daemon → `quantumvitas.io.*` (I/O layer)
-- CLI/Daemon → `quantumvitas.core.*` (kernel)
-- I/O Layer → `quantumvitas.api.*` (NO reverse imports to API)
+- CLI/Daemon → `qmatsuite.io.*` (I/O layer)
+- CLI/Daemon → `qmatsuite.core.*` (kernel)
+- I/O Layer → `qmatsuite.api.*` (NO reverse imports to API)
 - I/O Layer → API DTOs (providers use local models, not API types)
 
 **Provider Local Models:**
@@ -321,7 +321,7 @@ Core/Kernel (quantumvitas.core.*, etc.)
 
 ### 4.1 Proposed API Methods
 
-**Location:** `src/quantumvitas/api/service.py` → `QVService.OnlineSearch` nested class
+**Location:** `src/qmatsuite/api/service.py` → `QMSService.OnlineSearch` nested class
 
 **Method 1: `search_structures()`**
 ```python
@@ -427,7 +427,7 @@ def update_online_sources(
 
 ### 4.2 DTO Definitions
 
-**Location:** `src/quantumvitas/api/types/online_search.py`
+**Location:** `src/qmatsuite/api/types/online_search.py`
 
 ```python
 @dataclass
@@ -561,7 +561,7 @@ class MaterialsProjectConfigDTO(BaseDTO):
 - Supports both session-based refs (from search) and direct refs (for programmatic access)
 - Returns full structure document (atoms, lattice if crystal)
 - Uses global cache: `~/.qmatsuite/cache/online_structures/` (not project-specific)
-- No resolver needed: cache location determined by `quantumvitas.core.paths.get_qmatsuite_home_root()`
+- No resolver needed: cache location determined by `qmatsuite.core.paths.get_qmatsuite_home_root()`
 - Cache key computation: `f"{provider_id}:{source_id}:{registry_version}"` (no project path in key)
 
 **`list_providers()`:**
@@ -587,7 +587,7 @@ class MaterialsProjectConfigDTO(BaseDTO):
 
 ### 5.1 Registry Fetching
 
-**Location:** `src/quantumvitas/io/providers/optimade.py`
+**Location:** `src/qmatsuite/io/providers/optimade.py`
 
 **Registry URL:**
 - Primary: `https://providers.optimade.org/v1/links`
@@ -595,7 +595,7 @@ class MaterialsProjectConfigDTO(BaseDTO):
 
 **Registry Cache (R3: Global Cache Location, R6: Registry Storage):**
 - Cache location: `~/.qmatsuite/cache/online_structures/registry_cache.json` (global user cache, not project-specific)
-- Cache directory: Uses `quantumvitas.core.paths.get_qmatsuite_home_root() / "cache" / "online_structures"`
+- Cache directory: Uses `qmatsuite.core.paths.get_qmatsuite_home_root() / "cache" / "online_structures"`
 - Cache key: `registry_v1_links` (or include registry URL in key)
 - TTL: 24 hours (configurable, default 24h)
 - Cache invalidation: On `refresh_registry=True` or TTL expiry
@@ -643,7 +643,7 @@ class ProviderConfig:
 
 ### 5.2 Curated Default List
 
-**Location:** `src/quantumvitas/io/providers/optimade.py` → `CURATED_DEFAULT_PROVIDERS`
+**Location:** `src/qmatsuite/io/providers/optimade.py` → `CURATED_DEFAULT_PROVIDERS`
 
 **Default Providers (R6: Curated Allowlist Enabled by Default):**
 ```python
@@ -720,7 +720,7 @@ CURATED_DEFAULT_PROVIDERS = [
 - Registry version: Timestamp of last successful registry fetch (or "default" if using curated list)
 - **No project path in cache key** (global cache, not project-specific)
 - Cache location: `~/.qmatsuite/cache/online_structures/structure_fetch_cache.sqlite3`
-- Cache directory: `quantumvitas.core.paths.get_qmatsuite_home_root() / "cache" / "online_structures"`
+- Cache directory: `qmatsuite.core.paths.get_qmatsuite_home_root() / "cache" / "online_structures"`
 
 **Rationale:**
 - If registry updates (new providers added), old cached results should be invalidated
@@ -733,7 +733,7 @@ CURATED_DEFAULT_PROVIDERS = [
 
 ### 6.1 Parallel Query Strategy
 
-**Location:** `src/quantumvitas/io/providers/optimade.py` → `OPTIMADEProvider.search_parallel()`
+**Location:** `src/qmatsuite/io/providers/optimade.py` → `OPTIMADEProvider.search_parallel()`
 
 **Implementation:**
 ```python
@@ -762,7 +762,7 @@ def search_parallel(
 
 **Threading Model:**
 - Use `concurrent.futures.ThreadPoolExecutor` (not asyncio)
-- Reason: Keep API synchronous (no async/await in QVService)
+- Reason: Keep API synchronous (no async/await in QMSService)
 - Max workers: `min(len(providers), 10)` (don't spawn too many threads)
 
 **Timeout Handling:**
@@ -779,7 +779,7 @@ def search_parallel(
 
 ### 6.2 Deduplication Strategy
 
-**Location:** `src/quantumvitas/io/providers/optimade.py` → `deduplicate_candidates()`
+**Location:** `src/qmatsuite/io/providers/optimade.py` → `deduplicate_candidates()`
 
 **Deduplication Key:**
 ```python
@@ -825,7 +825,7 @@ def deduplicate_candidates(
 
 ### 6.3 Ranking/Scoring
 
-**Location:** `src/quantumvitas/io/providers/optimade.py` → `rank_candidates()`
+**Location:** `src/qmatsuite/io/providers/optimade.py` → `rank_candidates()`
 
 **Scoring Function:**
 ```python
@@ -906,7 +906,7 @@ PROVIDER_TRUST_WEIGHTS = {
 
 **Migration Steps:**
 1. Add COD OPTIMADE to curated defaults (already in list above)
-2. Remove `search_cod()` from `src/quantumvitas/io/online_search.py`
+2. Remove `search_cod()` from `src/qmatsuite/io/online_search.py`
 3. Remove `COD_AVAILABLE` check and `pymatgen.ext.cod` import
 4. Update tests to mock COD OPTIMADE endpoint (not MySQL)
 
@@ -916,7 +916,7 @@ PROVIDER_TRUST_WEIGHTS = {
 
 ### 7.1 Search Implementation
 
-**Location:** `src/quantumvitas/io/providers/pubchem.py`
+**Location:** `src/qmatsuite/io/providers/pubchem.py`
 
 **Search Strategy:**
 ```python
@@ -954,7 +954,7 @@ def search_pubchem(
 
 ### 7.2 SDF Parsing
 
-**Location:** `src/quantumvitas/io/providers/pubchem.py` → `parse_sdf_to_structure()`
+**Location:** `src/qmatsuite/io/providers/pubchem.py` → `parse_sdf_to_structure()`
 
 **SDF Format:**
 - SDF (Structure Data File) is text format
@@ -1006,7 +1006,7 @@ def parse_sdf_to_structure(
 
 ### 7.3 Auto-Detection Heuristic
 
-**Location:** `src/quantumvitas/io/providers/__init__.py` → `detect_search_mode()`
+**Location:** `src/qmatsuite/io/providers/__init__.py` → `detect_search_mode()`
 
 **Heuristic:**
 ```python
@@ -1038,7 +1038,7 @@ def detect_search_mode(query: str) -> Literal["crystal", "molecule", "auto"]:
 ```
 
 **Implementation:**
-- Called by `QVService.OnlineSearch.search()` if `mode="auto"`
+- Called by `QMSService.OnlineSearch.search()` if `mode="auto"`
 - If `mode="auto"`, search both OPTIMADE and PubChem, merge results
 - Merge strategy: Sort by score (crystals and molecules can be interleaved)
 
@@ -1048,7 +1048,7 @@ def detect_search_mode(query: str) -> Literal["crystal", "molecule", "auto"]:
 
 ### 8.1 API Key Handling
 
-**Location:** `src/quantumvitas/core/settings.py` → `MaterialsProjectConfig`
+**Location:** `src/qmatsuite/core/settings.py` → `MaterialsProjectConfig`
 
 **Settings Schema:**
 ```python
@@ -1073,7 +1073,7 @@ class MaterialsProjectConfig:
 
 ### 8.2 MP Native Search
 
-**Location:** `src/quantumvitas/io/providers/materials_project.py`
+**Location:** `src/qmatsuite/io/providers/materials_project.py`
 
 **Implementation:**
 ```python
@@ -1119,7 +1119,7 @@ def search_materials_project(
 
 ### 8.3 Integration with Search
 
-**Location:** `src/quantumvitas/io/providers/__init__.py` → `UnifiedSearch.search()`
+**Location:** `src/qmatsuite/io/providers/__init__.py` → `UnifiedSearch.search()`
 
 **Integration:**
 - If MP native enabled and has key, include in parallel search
@@ -1135,7 +1135,7 @@ def search_materials_project(
 
 **Current Files:**
 - `gui/src/components/panels/OnlineImportPanel.tsx` (search UI)
-- `gui/src/types/qv.ts` (RPC type definitions)
+- `gui/src/types/qms.ts` (RPC type definitions)
 - `gui/src/App.tsx` (main app, may have structure import logic)
 
 **Current RPC:**
@@ -1145,11 +1145,11 @@ def search_materials_project(
 
 ### 9.2 Proposed GUI Changes
 
-**File 1: `gui/src/types/qv.ts`**
+**File 1: `gui/src/types/qms.ts`**
 
 **Add RPC Type Definitions:**
 ```typescript
-// Add to qv.ts RPC method definitions
+// Add to qms.ts RPC method definitions
 structure_search_online: {
   request: {
     query: string;
@@ -1263,7 +1263,7 @@ const [mode, setMode] = useState<"crystal" | "molecule" | "auto">("auto");
 
 **Update Search Call (F1: No project_root):**
 ```typescript
-const response = await qv.call('structure_search_online', {
+const response = await qms.call('structure_search_online', {
   query: query.trim(),
   mode: mode,
   limit: 10,
@@ -1302,7 +1302,7 @@ const [providers, setProviders] = useState<ProviderList | null>(null);
 
 useEffect(() => {
   // Load providers on mount
-  qv.call('structure_list_providers', {}).then(response => {
+  qms.call('structure_list_providers', {}).then(response => {
     if (response.ok) {
       setProviders(response.data);
     }
@@ -1313,10 +1313,10 @@ const handleProviderToggle = async (providerId: string, enabled: boolean) => {
   const patch = {
     optimade_providers: [{id: providerId, enabled}],
   };
-  const response = await qv.call('structure_update_online_sources', {patch});
+  const response = await qms.call('structure_update_online_sources', {patch});
   if (response.ok) {
     // Reload providers to get updated state
-    const reloadResponse = await qv.call('structure_list_providers', {});
+    const reloadResponse = await qms.call('structure_list_providers', {});
     if (reloadResponse.ok) {
       setProviders(reloadResponse.data);
     }
@@ -1350,12 +1350,12 @@ const handleProviderToggle = async (providerId: string, enabled: boolean) => {
         type="checkbox"
         checked={providers?.pubchem_enabled || false}
         onChange={(e) => {
-          qv.call('structure_update_online_sources', {
+          qms.call('structure_update_online_sources', {
             patch: {pubchem_enabled: e.target.checked}
           }).then(response => {
             if (response.ok) {
               // Reload providers
-              qv.call('structure_list_providers', {}).then(reloadResponse => {
+              qms.call('structure_list_providers', {}).then(reloadResponse => {
                 if (reloadResponse.ok) {
                   setProviders(reloadResponse.data);
                 }
@@ -1382,12 +1382,12 @@ const handleProviderToggle = async (providerId: string, enabled: boolean) => {
         onBlur={() => {
           // Save API key on blur (even if checkbox not enabled yet)
           if (mpApiKey.trim()) {
-            qv.call('structure_update_online_sources', {
+            qms.call('structure_update_online_sources', {
               patch: {materials_project: {api_key: mpApiKey.trim()}}
             }).then(response => {
               if (response.ok) {
                 // Reload providers to update has_key status
-                qv.call('structure_list_providers', {}).then(reloadResponse => {
+                qms.call('structure_list_providers', {}).then(reloadResponse => {
                   if (reloadResponse.ok) {
                     setProviders(reloadResponse.data);
                   }
@@ -1410,12 +1410,12 @@ const handleProviderToggle = async (providerId: string, enabled: boolean) => {
         type="checkbox"
         checked={providers?.materials_project_enabled || false}
         onChange={(e) => {
-          qv.call('structure_update_online_sources', {
+          qms.call('structure_update_online_sources', {
             patch: {materials_project: {enabled: e.target.checked}}
           }).then(response => {
             if (response.ok) {
               // Reload providers
-              qv.call('structure_list_providers', {}).then(reloadResponse => {
+              qms.call('structure_list_providers', {}).then(reloadResponse => {
                 if (reloadResponse.ok) {
                   setProviders(reloadResponse.data);
                 }
@@ -1472,7 +1472,7 @@ const handleProviderToggle = async (providerId: string, enabled: boolean) => {
 - **No `pytest-httpserver` found** - plan must use `unittest.mock.patch` for HTTP mocking
 
 **Concurrency Utilities:**
-- `concurrent.futures.ThreadPoolExecutor` - available in standard library (used in `src/quantumvitas/api/service.py:5107`)
+- `concurrent.futures.ThreadPoolExecutor` - available in standard library (used in `src/qmatsuite/api/service.py:5107`)
 - No `asyncio` usage found in existing codebase - keep synchronous API
 
 **Existing Online Search Tests:**
@@ -1646,7 +1646,7 @@ const handleProviderToggle = async (providerId: string, enabled: boolean) => {
 
 2. `test_optimade_search_mp_live_si()`
    - **Purpose:** Verify MP OPTIMADE endpoint is accessible and returns Si structures
-   - **Implementation:** Call `QVService.OnlineSearch.search_structures(query="Si", mode="crystal")` or equivalent
+   - **Implementation:** Call `QMSService.OnlineSearch.search_structures(query="Si", mode="crystal")` or equivalent
    - **Assertions:**
      - Search succeeds (no exception)
      - Returns candidates (non-empty list)
@@ -1657,7 +1657,7 @@ const handleProviderToggle = async (providerId: string, enabled: boolean) => {
 
 3. `test_optimade_search_cod_live_salt_or_si()`
    - **Purpose:** Verify COD OPTIMADE endpoint is accessible (replaces MySQL fallback)
-   - **Implementation:** Call `QVService.OnlineSearch.search_structures(query="Si", mode="crystal")` or search for common salt (NaCl)
+   - **Implementation:** Call `QMSService.OnlineSearch.search_structures(query="Si", mode="crystal")` or search for common salt (NaCl)
    - **Assertions:**
      - Search succeeds (no exception)
      - Returns candidates (non-empty list)
@@ -1669,9 +1669,9 @@ const handleProviderToggle = async (providerId: string, enabled: boolean) => {
 4. `test_fetch_structure_live_roundtrip()`
    - **Purpose:** Verify full roundtrip: search → fetch structure → verify structure data
    - **Implementation:**
-     - Step 1: Call `QVService.OnlineSearch.search_structures(query="Si", mode="crystal", limit=1)`
+     - Step 1: Call `QMSService.OnlineSearch.search_structures(query="Si", mode="crystal", limit=1)`
      - Step 2: Extract first candidate's `candidate_id` and `session_id`
-     - Step 3: Call `QVService.OnlineSearch.fetch_structure(ref=StructureRefDTO(session_id=..., candidate_id=...))`
+     - Step 3: Call `QMSService.OnlineSearch.fetch_structure(ref=StructureRefDTO(session_id=..., candidate_id=...))`
    - **Assertions:**
      - Fetch succeeds (no exception)
      - Returns `StructureDocDTO` with required fields
@@ -1682,7 +1682,7 @@ const handleProviderToggle = async (providerId: string, enabled: boolean) => {
 
 5. `test_pubchem_search_live_caffeine()` (OPTIONAL - only if stable)
    - **Purpose:** Verify PubChem molecule search is accessible (optional, may be fragile)
-   - **Implementation:** Call `QVService.OnlineSearch.search_structures(query="caffeine", mode="molecule")`
+   - **Implementation:** Call `QMSService.OnlineSearch.search_structures(query="caffeine", mode="molecule")`
    - **Assertions (non-fragile):**
      - Search succeeds (no exception) OR gracefully handles PubChem unavailability
      - If succeeds: Returns candidates with `structure_type="molecule"`
@@ -1717,13 +1717,13 @@ pytest tests/integration/test_optimade_online.py -v
 **Test File 6: `tests/integration/test_online_search_api.py`**
 
 **Test Cases:**
-1. `test_search_structures_crystal_mode()` - Call `QVService.OnlineSearch.search(mode="crystal")`, verify OPTIMADE only
-2. `test_search_structures_molecule_mode()` - Call `QVService.OnlineSearch.search(mode="molecule")`, verify PubChem only
-3. `test_search_structures_auto_mode()` - Call `QVService.OnlineSearch.search(mode="auto")`, verify both OPTIMADE and PubChem
-4. `test_fetch_structure_optimade()` - Call `QVService.OnlineSearch.fetch()` for OPTIMADE candidate, verify structure (R3: no project_root)
-5. `test_fetch_structure_pubchem()` - Call `QVService.OnlineSearch.fetch()` for PubChem candidate, verify molecule (R3: no project_root)
-6. `test_list_providers()` - Call `QVService.OnlineSearch.list_providers()`, verify provider list
-7. `test_update_online_sources()` - Call `QVService.OnlineSearch.update_online_sources()`, verify settings updated (R1)
+1. `test_search_structures_crystal_mode()` - Call `QMSService.OnlineSearch.search(mode="crystal")`, verify OPTIMADE only
+2. `test_search_structures_molecule_mode()` - Call `QMSService.OnlineSearch.search(mode="molecule")`, verify PubChem only
+3. `test_search_structures_auto_mode()` - Call `QMSService.OnlineSearch.search(mode="auto")`, verify both OPTIMADE and PubChem
+4. `test_fetch_structure_optimade()` - Call `QMSService.OnlineSearch.fetch()` for OPTIMADE candidate, verify structure (R3: no project_root)
+5. `test_fetch_structure_pubchem()` - Call `QMSService.OnlineSearch.fetch()` for PubChem candidate, verify molecule (R3: no project_root)
+6. `test_list_providers()` - Call `QMSService.OnlineSearch.list_providers()`, verify provider list
+7. `test_update_online_sources()` - Call `QMSService.OnlineSearch.update_online_sources()`, verify settings updated (R1)
 8. `test_fetch_structure_uses_global_cache()` - Verify fetch uses global cache location, not project cache (R3)
 
 **Fixtures/Mocks (R5: Use unittest.mock):**
@@ -1757,14 +1757,14 @@ pytest tests/integration/test_optimade_online.py -v
 **Test File 8: `tests/integration/test_online_search_cli.py`**
 
 **Test Cases:**
-1. `test_cli_search_structure_command()` - Run `qv search-structure Si`, verify output
-2. `test_cli_search_structure_molecule()` - Run `qv search-structure caffeine --mode molecule`, verify PubChem
-3. `test_cli_update_online_sources()` - Run `qv configure online-sources --enable-provider aflow`, verify settings updated (R1)
+1. `test_cli_search_structure_command()` - Run `qms search-structure Si`, verify output
+2. `test_cli_search_structure_molecule()` - Run `qms search-structure caffeine --mode molecule`, verify PubChem
+3. `test_cli_update_online_sources()` - Run `qms configure online-sources --enable-provider aflow`, verify settings updated (R1)
 4. `test_cli_no_kernel_imports()` - Verify CLI doesn't import kernel (gate test)
 
 **CLI Command Wiring (F1: Concrete CLI Steps):**
 
-**File: `src/quantumvitas/cli/main.py`**
+**File: `src/qmatsuite/cli/main.py`**
 
 **Add new Typer command group (if needed) or add to existing `configure_app`:**
 
@@ -1783,7 +1783,7 @@ def search_structure_command(
     """
     Search online structures (OPTIMADE crystals + PubChem molecules).
     """
-    from quantumvitas.api import QVService
+    from qmatsuite.api import QMSService
     
     svc = _svc_from_cwd()
     
@@ -1812,7 +1812,7 @@ def configure_online_sources_command(
     """
     Configure online structure sources (providers, API keys).
     """
-    from quantumvitas.api import QVService
+    from qmatsuite.api import QMSService
     
     svc = _svc_from_cwd()
     
@@ -1834,10 +1834,10 @@ def configure_online_sources_command(
 ```
 
 **Command Examples:**
-- `qv online search Si` - Search for Si (auto mode)
-- `qv online search caffeine --mode molecule` - Search for caffeine (molecule mode)
-- `qv online configure --enable-provider aflow` - Enable AFLOW provider
-- `qv online configure --mp-api-key YOUR_KEY` - Set MP API key
+- `qms online search Si` - Search for Si (auto mode)
+- `qms online search caffeine --mode molecule` - Search for caffeine (molecule mode)
+- `qms online configure --enable-provider aflow` - Enable AFLOW provider
+- `qms online configure --mp-api-key YOUR_KEY` - Set MP API key
 
 **Fixtures:**
 - Mock network calls
@@ -1865,7 +1865,7 @@ def configure_online_sources_command(
 **Test File 11: `tests/gates/test_api_utils_online_search_removed.py` (New)**
 
 **Purpose:**
-- Verify `search_online_structures` removed from `quantumvitas.api.utils`
+- Verify `search_online_structures` removed from `qmatsuite.api.utils`
 - Enforce Law H3: Online search is domain capability, not utility
 
 **Test Cases:**
@@ -1873,8 +1873,8 @@ def configure_online_sources_command(
 2. `test_utils_no_fetch_structure_reexports()` - Verify no `fetch_structure_from_optimade` in `api.utils`
 
 **Assertions:**
-- `quantumvitas.api.utils` doesn't export online search functions
-- All online search via `QVService.OnlineSearch.*` only
+- `qmatsuite.api.utils` doesn't export online search functions
+- All online search via `QMSService.OnlineSearch.*` only
 
 ### 10.5 Mocking Strategy (R5: Non-Flaky, Deterministic, Pitfall 2: URL-keyed side_effect)
 
@@ -1940,25 +1940,25 @@ def configure_online_sources_command(
 **Goal:** Create minimal API capability port and migrate daemon/CLI to use it (stop layering violations early).
 
 **Files to Create:**
-- `src/quantumvitas/api/types/online_search.py` (DTOs: SearchRequestDTO, CandidateDTO, etc.)
+- `src/qmatsuite/api/types/online_search.py` (DTOs: SearchRequestDTO, CandidateDTO, etc.)
 
 **Files to Modify:**
-- `src/quantumvitas/api/service.py` (add `QVService.OnlineSearch` nested class with 4 methods: search, fetch, list_providers, update_online_sources)
-- `src/quantumvitas/api/utils.py` (remove `search_online_structures`, `fetch_structure_from_optimade` re-exports)
-- `src/quantumvitas/daemon/server.py` (update `_handle_structure_search_online` to call `QVService.OnlineSearch.search()`)
-- `src/quantumvitas/io/online_cache.py` (migrate cache location to global: `~/.qmatsuite/cache/online_structures/`)
+- `src/qmatsuite/api/service.py` (add `QMSService.OnlineSearch` nested class with 4 methods: search, fetch, list_providers, update_online_sources)
+- `src/qmatsuite/api/utils.py` (remove `search_online_structures`, `fetch_structure_from_optimade` re-exports)
+- `src/qmatsuite/daemon/server.py` (update `_handle_structure_search_online` to call `QMSService.OnlineSearch.search()`)
+- `src/qmatsuite/io/online_cache.py` (migrate cache location to global: `~/.qmatsuite/cache/online_structures/`)
 - `tests/integration/test_online_search_api.py` (add API integration tests)
 - `tests/gates/test_api_utils_online_search_removed.py` (new gate test)
 
 **Changes:**
 1. Create DTOs: `SearchRequestDTO`, `SearchResultDTO`, `CandidateDTO`, `ProviderListDTO`, `OnlineSourcesPatchDTO`, etc.
-2. Implement `QVService.OnlineSearch.search_structures()` → calls existing `search_online_structures()` (temporary passthrough)
-3. Implement `QVService.OnlineSearch.fetch_structure()` → calls existing `fetch_structure_from_optimade()` (temporary passthrough, no project_root)
-4. Implement `QVService.OnlineSearch.list_providers()` → returns minimal provider list (temporary stub)
-5. Implement `QVService.OnlineSearch.update_online_sources()` → calls `set_settings()` from `api.utils` (R1)
+2. Implement `QMSService.OnlineSearch.search_structures()` → calls existing `search_online_structures()` (temporary passthrough)
+3. Implement `QMSService.OnlineSearch.fetch_structure()` → calls existing `fetch_structure_from_optimade()` (temporary passthrough, no project_root)
+4. Implement `QMSService.OnlineSearch.list_providers()` → returns minimal provider list (temporary stub)
+5. Implement `QMSService.OnlineSearch.update_online_sources()` → calls `set_settings()` from `api.utils` (R1)
 6. Remove `search_online_structures` from `api.utils` (Law H3)
 7. Remove `fetch_structure_from_optimade` from `api.utils` (Law H3)
-8. Update daemon to call `QVService.OnlineSearch.*` (not kernel directly)
+8. Update daemon to call `QMSService.OnlineSearch.*` (not kernel directly)
 9. Migrate cache to global location: `~/.qmatsuite/cache/online_structures/` (R3)
 10. Add integration tests for API methods (mocked)
 11. Add gate test to enforce no utils re-exports
@@ -1991,13 +1991,13 @@ pytest tests/integration/test_optimade_online.py -v
 **Goal:** Implement OPTIMADE provider registry fetching with curated defaults and caching.
 
 **Files to Create:**
-- `src/quantumvitas/io/providers/__init__.py` (provider registry module)
-- `src/quantumvitas/io/providers/optimade.py` (registry fetching, curated defaults)
+- `src/qmatsuite/io/providers/__init__.py` (provider registry module)
+- `src/qmatsuite/io/providers/optimade.py` (registry fetching, curated defaults)
 - `tests/unit/test_optimade_provider_registry.py`
 
 **Files to Modify:**
-- `src/quantumvitas/core/settings.py` (add `OnlineStructuresConfig` to `QMatSuiteSettings`)
-- `src/quantumvitas/io/online_cache.py` (extend cache key to include registry version, migrate to global cache location)
+- `src/qmatsuite/core/settings.py` (add `OnlineStructuresConfig` to `QMatSuiteSettings`)
+- `src/qmatsuite/io/online_cache.py` (extend cache key to include registry version, migrate to global cache location)
 
 **Changes:**
 1. Create `ProviderConfig` dataclass (local model, not API DTO)
@@ -2033,13 +2033,13 @@ pytest tests/integration/test_optimade_online.py -v
 **Goal:** Implement parallel OPTIMADE search with deduplication and ranking.
 
 **Files to Create:**
-- `src/quantumvitas/io/providers/optimade.py` (parallel search, dedup, ranking)
+- `src/qmatsuite/io/providers/optimade.py` (parallel search, dedup, ranking)
 - `tests/unit/test_optimade_parallel_search.py`
 - `tests/unit/test_deduplication.py`
 - `tests/unit/test_ranking.py`
 
 **Files to Modify:**
-- `src/quantumvitas/io/online_search.py` (refactor to use new provider system, remove old sequential search)
+- `src/qmatsuite/io/online_search.py` (refactor to use new provider system, remove old sequential search)
 
 **Changes:**
 1. Implement `OPTIMADEProvider.search_parallel()` with `ThreadPoolExecutor`
@@ -2073,8 +2073,8 @@ python -m pytest tests/gates/test_import_gate.py -v --tb=short
 **Goal:** Replace broken COD MySQL fallback with COD OPTIMADE HTTP endpoint.
 
 **Files to Modify:**
-- `src/quantumvitas/io/online_search.py` (remove `search_cod()` that uses MySQL)
-- `src/quantumvitas/io/providers/optimade.py` (ensure COD OPTIMADE in curated defaults)
+- `src/qmatsuite/io/online_search.py` (remove `search_cod()` that uses MySQL)
+- `src/qmatsuite/io/providers/optimade.py` (ensure COD OPTIMADE in curated defaults)
 - `tests/integration/test_optimade_online.py` (update to mock COD OPTIMADE, not MySQL)
 
 **Changes:**
@@ -2108,13 +2108,13 @@ pytest tests/integration/test_optimade_online.py -v
 **Goal:** Add PubChem molecule search and support molecular structures (no lattice).
 
 **Files to Create:**
-- `src/quantumvitas/io/providers/pubchem.py` (PubChem search, SDF parsing)
+- `src/qmatsuite/io/providers/pubchem.py` (PubChem search, SDF parsing)
 - `tests/unit/test_pubchem_provider.py`
 
 **Files to Modify:**
-- `src/quantumvitas/io/providers/__init__.py` (add PubChem to unified search)
-- `src/quantumvitas/core/models.py` (ensure StructureModel supports molecules: `lattice=None`, `pbc=[False,False,False]`)
-- `src/quantumvitas/demo_store/translator.py` (verify molecule support)
+- `src/qmatsuite/io/providers/__init__.py` (add PubChem to unified search)
+- `src/qmatsuite/core/models.py` (ensure StructureModel supports molecules: `lattice=None`, `pbc=[False,False,False]`)
+- `src/qmatsuite/demo_store/translator.py` (verify molecule support)
 
 **Changes:**
 1. Implement `PubChemProvider.search_by_name()` and `search_by_formula()`
@@ -2146,12 +2146,12 @@ python -m pytest tests/gates/test_import_gate.py -v --tb=short
 **Goal:** Add Materials Project native API support (optional, requires API key).
 
 **Files to Create:**
-- `src/quantumvitas/io/providers/materials_project.py` (MP native API client)
+- `src/qmatsuite/io/providers/materials_project.py` (MP native API client)
 - `tests/unit/test_materials_project_provider.py`
 
 **Files to Modify:**
-- `src/quantumvitas/core/settings.py` (add `MaterialsProjectConfig` with API key)
-- `src/quantumvitas/io/providers/__init__.py` (add MP native to unified search)
+- `src/qmatsuite/core/settings.py` (add `MaterialsProjectConfig` with API key)
+- `src/qmatsuite/io/providers/__init__.py` (add MP native to unified search)
 - `pyproject.toml` (add `mp-api` as optional dependency)
 
 **Changes:**
@@ -2183,14 +2183,14 @@ python -m pytest tests/gates/test_import_gate.py -v --tb=short
 **Goal:** Replace temporary API passthrough (PR0) with actual provider system calls.
 
 **Files to Modify:**
-- `src/quantumvitas/api/service.py` (update `QVService.OnlineSearch.*` methods to call provider system instead of passthrough)
-- `src/quantumvitas/io/providers/__init__.py` (ensure unified search interface returns local models)
-- `src/quantumvitas/api/service.py` (add conversion: provider models → DTOs)
+- `src/qmatsuite/api/service.py` (update `QMSService.OnlineSearch.*` methods to call provider system instead of passthrough)
+- `src/qmatsuite/io/providers/__init__.py` (ensure unified search interface returns local models)
+- `src/qmatsuite/api/service.py` (add conversion: provider models → DTOs)
 
 **Changes:**
-1. Update `QVService.OnlineSearch.search_structures()` → calls `UnifiedSearch.search()` from providers
-2. Update `QVService.OnlineSearch.fetch_structure()` → calls provider fetch methods
-3. Update `QVService.OnlineSearch.list_providers()` → calls provider registry
+1. Update `QMSService.OnlineSearch.search_structures()` → calls `UnifiedSearch.search()` from providers
+2. Update `QMSService.OnlineSearch.fetch_structure()` → calls provider fetch methods
+3. Update `QMSService.OnlineSearch.list_providers()` → calls provider registry
 4. Add model-to-DTO conversion layer (provider Candidate → CandidateDTO)
 5. Remove old `search_online_structures()` passthrough code
 
@@ -2237,7 +2237,7 @@ grep -r "useState.*settings\|useSettings\|SettingsContext" gui/src --include="*.
 - Note the routing mechanism (React Router, tabs, modals, etc.)
 
 **Files to Modify:**
-- `gui/src/types/qv.ts` (add RPC type definitions: `structure_search_online`, `structure_fetch_online`, `structure_list_providers`)
+- `gui/src/types/qms.ts` (add RPC type definitions: `structure_search_online`, `structure_fetch_online`, `structure_list_providers`)
 - `gui/src/components/panels/OnlineImportPanel.tsx` (add mode selection, provider badges, structure type indicators)
 - **Settings Panel (Pitfall 4: Exact mounting location):**
   - **If `gui/src/components/panels/SettingsPanel.tsx` exists:** Add online structures settings section to this file
@@ -2249,7 +2249,7 @@ grep -r "useState.*settings\|useSettings\|SettingsContext" gui/src --include="*.
 
 **Changes:**
 1. **Repo audit:** Run grep commands above, document findings
-2. Add RPC type definitions to `qv.ts`
+2. Add RPC type definitions to `qms.ts`
 3. Add mode selection UI (Crystals/Molecules/All tabs) to `OnlineImportPanel.tsx`
 4. Add provider badges to candidate list in `OnlineImportPanel.tsx`
 5. Add structure type indicators (crystal vs molecule icons) to `OnlineImportPanel.tsx`
@@ -2403,8 +2403,8 @@ grep -r "useState.*settings\|useSettings\|SettingsContext" gui/src --include="*.
 **Risk:** New code may violate import gates (CLI/daemon importing kernel).
 
 **Mitigation:**
-- All provider logic in I/O layer (`quantumvitas.io.providers.*`) - providers are network I/O, not kernel-core
-- API facade only (`QVService.OnlineSearch.*`)
+- All provider logic in I/O layer (`qmatsuite.io.providers.*`) - providers are network I/O, not kernel-core
+- API facade only (`QMSService.OnlineSearch.*`)
 - Run gate tests after each PR
 - Code review: check imports
 

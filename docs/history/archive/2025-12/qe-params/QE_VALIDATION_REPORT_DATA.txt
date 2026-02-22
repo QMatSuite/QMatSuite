@@ -3,8 +3,8 @@ QE PARAMETER VALIDATION REPORT DATA
 ================================================================================
 
 Generated from:
-  V1 (legacy): <HOME>/quantumVITAS/src/quantumvitas/data/qe_module_parameters.legacy.json
-  V2 (new): <HOME>/quantumVITAS/src/quantumvitas/data/qe_module_parameters.json
+  V1 (legacy): <HOME>/QMatSuite/src/qmatsuite/data/qe_module_parameters.legacy.json
+  V2 (new): <HOME>/QMatSuite/src/qmatsuite/data/qe_module_parameters.json
 
 ## OVERALL SUMMARY
 

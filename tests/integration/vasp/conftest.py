@@ -9,7 +9,7 @@ from typing import Optional
 def get_vasp_path() -> Optional[Path]:
     """Get VASP path using the resolver."""
     try:
-        from quantumvitas.core.engines.vasp_resolver import resolve_vasp_bin
+        from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
         return resolve_vasp_bin()
     except RuntimeError:
         return None
@@ -63,17 +63,17 @@ def use_fake_vasp(monkeypatch, tmp_path):
         return potcar_dir
     
     # Mock in resolver module (source of truth)
-    import quantumvitas.core.engines.vasp_resolver
+    import qmatsuite.core.engines.vasp_resolver
     monkeypatch.setattr(
-        quantumvitas.core.engines.vasp_resolver,
+        qmatsuite.core.engines.vasp_resolver,
         "get_potcar_dir",
         mock_get_potcar_dir
     )
     
     # Mock in writer module (where it's imported)
-    import quantumvitas.engine.vasp_writer
+    import qmatsuite.engine.vasp_writer
     monkeypatch.setattr(
-        quantumvitas.engine.vasp_writer,
+        qmatsuite.engine.vasp_writer,
         "get_potcar_dir",
         mock_get_potcar_dir
     )
@@ -99,6 +99,6 @@ def vasp_available():
 @pytest.fixture
 def vasp_engine(use_fake_vasp):
     """Get VASP engine (using fake_vasp if real VASP not available)."""
-    from quantumvitas.engine.vasp_engine import VaspEngine
+    from qmatsuite.engine.vasp_engine import VaspEngine
     return VaspEngine()
 

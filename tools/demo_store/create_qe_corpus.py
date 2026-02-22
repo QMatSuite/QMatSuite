@@ -18,24 +18,24 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CORPUS_ROOT = REPO_ROOT / "tests" / "inputformat" / "samples"
-RESOURCES_DIR = REPO_ROOT / "src" / "quantumvitas" / "resources"
+RESOURCES_DIR = REPO_ROOT / "src" / "qmatsuite" / "resources"
 DEMO_DIR = RESOURCES_DIR / "demo_projects"
 
 # Map demo filename -> (corpus_dir_name, demo_slug, is_multi_step)
 QE_DEMO_MAP = {
-    "00_Si_scf.yml": ("si_scf", "qe_si_scf", False),
-    "03_Si_vc_relax.yml": ("si_vc_relax", "qe_si_vc_relax", False),
+    "qe_si_scf.yml": ("si_scf", "qe_si_scf", False),
+    "qe_si_vc_relax.yml": ("si_vc_relax", "qe_si_vc_relax", False),
     "si_dos_demo.yml": ("si_dos", "si_dos_demo", True),
-    "04_Si_DOS.yml": ("si_dos_alt", "qe_si_dos_alt", True),
-    "06_Al_DOS.yml": ("al_dos", "qe_al_dos", True),
+    "qe_si_dos_alt.yml": ("si_dos_alt", "qe_si_dos_alt", True),
+    "qe_al_dos.yml": ("al_dos", "qe_al_dos", True),
     "si_bands_demo.yml": ("si_bands", "si_bands_demo", True),
-    "07_Si_bandStructure.yml": ("si_bands_alt", "qe_si_bands_alt", True),
-    "08_Fe_DOS.yml": ("fe_dos", "qe_fe_dos", True),
-    "09_Si_phonon.yml": ("si_phonon", "qe_si_phonon", True),
-    "12_NMR_gipaw.yml": ("nmr_gipaw", "qe_nmr_gipaw", True),
-    "13_graphene.yml": ("graphene_bands", "qe_graphene_bands", True),
-    "15_bulk_modulus_Si.yml": ("si_bulk_modulus", "qe_si_bulk_modulus", False),
-    "19_Si_CPMD.yml": ("si_cpmd", "qe_si_cpmd", False),
+    "qe_si_bands_alt.yml": ("si_bands_alt", "qe_si_bands_alt", True),
+    "qe_fe_scf.yml": ("fe_dos", "qe_fe_scf", True),
+    "qe_si_phonon.yml": ("si_phonon", "qe_si_phonon", True),
+    "qe_nmr_gipaw.yml": ("nmr_gipaw", "qe_nmr_gipaw", True),
+    "qe_graphene_bands.yml": ("graphene_bands", "qe_graphene_bands", True),
+    "qe_si_bulk_modulus.yml": ("si_bulk_modulus", "qe_si_bulk_modulus", False),
+    "qe_si_cpmd.yml": ("si_cpmd", "qe_si_cpmd", False),
 }
 
 # step_type_spec -> step_type_gen
@@ -66,7 +66,7 @@ DEMO_ANALYSIS = {
     "qe_al_dos": ("dos", ["dos", "Al", "PW", "metal", "tutorial"]),
     "si_bands_demo": ("bands", ["bands", "Si", "PW", "tutorial", "beginner"]),
     "qe_si_bands_alt": ("bands", ["bands", "Si", "PW", "tutorial"]),
-    "qe_fe_dos": ("dos", ["dos", "Fe", "PW", "magnetic", "tutorial"]),
+    "qe_fe_scf": ("dos", ["dos", "Fe", "PW", "magnetic", "tutorial"]),
     "qe_si_phonon": ("scf", ["phonon", "Si", "PW", "DFPT", "tutorial"]),
     "qe_nmr_gipaw": ("scf", ["NMR", "GIPAW", "PW", "advanced"]),
     "qe_graphene_bands": ("bands", ["bands", "graphene", "2D", "PW", "tutorial"]),
@@ -221,7 +221,7 @@ def create_qe_corpus_entry(demo_file: str, dir_name: str, demo_slug: str, multi_
     asset_requirements = {}
     if pseudo_files:
         asset_requirements["pseudopotentials"] = [
-            {"file": pf, "element": pf.split(".")[0], "source": "src/quantumvitas/resources/pseudo"}
+            {"file": pf, "element": pf.split(".")[0], "source": "src/qmatsuite/resources/pseudo"}
             for pf in pseudo_files
         ]
 

@@ -38,8 +38,8 @@ Fixed 36 failing tests after variants migration. All fixes maintain the new vari
 **Fixed**: Precision context requirement now depends on variant keys
 
 **Files Modified**:
-- `src/quantumvitas/presets/variants_registry.py`: `_compile_precision_patch_for_step()`
-- `src/quantumvitas/presets/integration.py`: `apply_presets_to_step()`
+- `src/qmatsuite/presets/variants_registry.py`: `_compile_precision_patch_for_step()`
+- `src/qmatsuite/presets/integration.py`: `apply_presets_to_step()`
 
 **Changes**:
 - If variant includes `K_POINTS` key → `lattice_matrix` is required
@@ -50,7 +50,7 @@ Fixed 36 failing tests after variants migration. All fixes maintain the new vari
 **Fixed**: 12 tests that didn't provide `step_type` parameter
 
 **Files Modified**:
-- `src/quantumvitas/presets/detector.py`: Updated `detect_magnetism()` and `detect_occupations_scheme()` to accept `step_type` parameter (default "scf")
+- `src/qmatsuite/presets/detector.py`: Updated `detect_magnetism()` and `detect_occupations_scheme()` to accept `step_type` parameter (default "scf")
 - `tests/unit/test_detector_b.py`: Added `step_type="scf"` to all roundtrip tests
 - `tests/unit/test_magnetism_paramspace_contract.py`: Added `step_type="scf"` to roundtrip tests
 - `tests/unit/test_paramspace_contract.py`: Added `step_type="scf"` to roundtrip tests
@@ -64,7 +64,7 @@ Fixed 36 failing tests after variants migration. All fixes maintain the new vari
 **Fixed**: 2 tests expecting default values for empty steps
 
 **Files Modified**:
-- `src/quantumvitas/presets/detector.py`: `detect_dimension_from_steps()`
+- `src/qmatsuite/presets/detector.py`: `detect_dimension_from_steps()`
 
 **Changes**:
 - Empty steps now return defaults:
@@ -76,8 +76,8 @@ Fixed 36 failing tests after variants migration. All fixes maintain the new vari
 **Fixed**: 4 precision detection tests failing due to context resolution
 
 **Files Modified**:
-- `src/quantumvitas/presets/detector.py`: Fixed precision context building to compute `base_ecutwfc` and `base_ecutrho` from `aggregate_cutoffs()`
-- `src/quantumvitas/presets/variants_registry.py`: Fixed circular import in `_match_precision_without_kpoints()`
+- `src/qmatsuite/presets/detector.py`: Fixed precision context building to compute `base_ecutwfc` and `base_ecutrho` from `aggregate_cutoffs()`
+- `src/qmatsuite/presets/variants_registry.py`: Fixed circular import in `_match_precision_without_kpoints()`
 - `tests/integration/test_precision_integration.py`: Added `precision_lattice_matrix` parameter
 - `tests/integration/test_precision_roundtrip.py`: Added `precision_lattice_matrix` parameter (conditional for bands_pw)
 

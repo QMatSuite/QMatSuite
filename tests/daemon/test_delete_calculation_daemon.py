@@ -9,9 +9,9 @@ import pytest
 from pathlib import Path
 import yaml
 
-from quantumvitas.core.resources import generate_resource_id
-from quantumvitas.daemon.server import QVDaemon
-from quantumvitas.api import QVService
+from qmatsuite.core.resources import generate_resource_id
+from qmatsuite.daemon.server import QMSDaemon
+from qmatsuite.api import QMSService
 
 
 class TestDeleteCalculationDaemon:
@@ -22,26 +22,26 @@ class TestDeleteCalculationDaemon:
         # Create minimal project
         project_root = tmp_path / "project"
         project_root.mkdir()
-        (project_root / "project.qv.yml").write_text(
+        (project_root / "project.qms.yml").write_text(
             yaml.safe_dump({"project": {"name": "Test", "ulid": generate_resource_id()}}, sort_keys=False)
         )
         
         # Create calculation (this registers it in project config)
-        calc_resource = QVService(project_root).project.init_calculation(name="To Delete")
+        calc_resource = QMSService(project_root).project.init_calculation(name="To Delete")
         calculation_ulid = calc_resource.ulid
         calculation_slug = calc_resource.meta.slug
         
         # Rebuild index to ensure calculation is discoverable
-        from quantumvitas.core.resolution import build_resource_index
+        from qmatsuite.core.resolution import build_resource_index
         index = build_resource_index(project_root)
         
         # Verify calculation exists
-        from quantumvitas.core.resolution import resolve_calculation
+        from qmatsuite.core.resolution import resolve_calculation
         resolved = resolve_calculation(project_root, calculation_ulid, index=index)
         assert resolved.ulid == calculation_ulid
         
         # Create daemon instance
-        daemon = QVDaemon()
+        daemon = QMSDaemon()
         
         # Call daemon handler with slug (should resolve to ULID at boundary)
         payload = {
@@ -55,9 +55,9 @@ class TestDeleteCalculationDaemon:
         assert result is None or (isinstance(result, dict) and result.get("ok") is not False)
         
         # Verify calculation is deleted
-        from quantumvitas.core.resolution import SelectorNotFoundError, build_resource_index
+        from qmatsuite.core.resolution import SelectorNotFoundError, build_resource_index
         index = build_resource_index(project_root)
         with pytest.raises(SelectorNotFoundError):
-            from quantumvitas.core.resolution import resolve_calculation
+            from qmatsuite.core.resolution import resolve_calculation
             resolve_calculation(project_root, calculation_ulid, index=index)
 

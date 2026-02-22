@@ -148,4 +148,4 @@ When adding new curated samples:
 
 - Gaussian User's Reference: https://gaussian.com/man/
 - Gaussian Keywords: https://gaussian.com/keywords/
-- Metadata catalog: `src/quantumvitas/drivers/gaussian/data/gaussian_route_keywords.json`
+- Metadata catalog: `src/qmatsuite/drivers/gaussian/data/gaussian_route_keywords.json`

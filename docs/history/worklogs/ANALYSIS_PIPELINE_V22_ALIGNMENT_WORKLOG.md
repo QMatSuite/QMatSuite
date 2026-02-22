@@ -44,7 +44,7 @@
 - `_derive_canonical_for_run_object` scans all memo entries for the (run_ulid, object_type) pair
 
 ### Step 6: Domain B API
-- `get_analysis_instances_for_step()` in QVService.Analysis inner class
+- `get_analysis_instances_for_step()` in QMSService.Analysis inner class
 - Builds ordered_gen_steps from ALL calc steps (not just DONE), filters to instances containing selected step
 - Best-effort parse: attempts parse, falls through to MISSING_EVIDENCE or PARSER_ERROR
 - Server handler: `_handle_get_analysis_instances_for_step` registered in `_handlers` dict
@@ -82,12 +82,12 @@ New result type tests (3):
 
 | File | Changes |
 |------|---------|
-| `src/quantumvitas/core/analysis/capability.py` | +ResultState, +MissingReason, +AnalysisResult, +enumerate_all_matches, +validation |
-| `src/quantumvitas/core/analysis/orchestrator.py` | Full rewrite: multi-match + result states |
-| `src/quantumvitas/core/analysis/cas_writer.py` | ON CONFLICT target updated |
-| `src/quantumvitas/provenance/schema.py` | UNIQUE constraint updated (main DDL + migration) |
-| `src/quantumvitas/api/service.py` | Memo 3-tuple key, persist loop, Domain B method |
-| `src/quantumvitas/daemon/server.py` | +get_analysis_instances_for_step handler |
+| `src/qmatsuite/core/analysis/capability.py` | +ResultState, +MissingReason, +AnalysisResult, +enumerate_all_matches, +validation |
+| `src/qmatsuite/core/analysis/orchestrator.py` | Full rewrite: multi-match + result states |
+| `src/qmatsuite/core/analysis/cas_writer.py` | ON CONFLICT target updated |
+| `src/qmatsuite/provenance/schema.py` | UNIQUE constraint updated (main DDL + migration) |
+| `src/qmatsuite/api/service.py` | Memo 3-tuple key, persist loop, Domain B method |
+| `src/qmatsuite/daemon/server.py` | +get_analysis_instances_for_step handler |
 | `tests/core/analysis/test_capability.py` | +14 new tests |
 | `tests/core/analysis/test_orchestrator.py` | Adapted to AnalysisResult, +4 new tests |
 | `tests/core/analysis/test_qe_bands_e2e.py` | Adapted to AnalysisResult |

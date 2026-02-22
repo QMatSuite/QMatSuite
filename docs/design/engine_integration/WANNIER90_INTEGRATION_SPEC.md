@@ -291,15 +291,15 @@ File: `resources/demo_projects/diamond_wannier90_demo.yml`
 ## 9. Implementation Files
 
 ### 9.1 New Files
-- `src/quantumvitas/io/wannier90_input.py` - .win file parser/generator
-- `src/quantumvitas/io/pw2wannier90_input.py` - .pw2wan file generator
+- `src/qmatsuite/io/wannier90_input.py` - .win file parser/generator
+- `src/qmatsuite/io/pw2wannier90_input.py` - .pw2wan file generator
 - `tools/generate_wannier90_demo.py` - Demo generator script
 
 ### 9.2 Modified Files
-- `src/quantumvitas/calculation/types.py` - Add W90 step types
-- `src/quantumvitas/workflow/registry.py` - Register W90 step specs
-- `src/quantumvitas/core/engines/qe.py` - Add W90 executable map
-- `src/quantumvitas/cli/main.py` - Add W90 to known step types
+- `src/qmatsuite/calculation/types.py` - Add W90 step types
+- `src/qmatsuite/workflow/registry.py` - Register W90 step specs
+- `src/qmatsuite/core/engines/qe.py` - Add W90 executable map
+- `src/qmatsuite/cli/main.py` - Add W90 to known step types
 
 ---
 

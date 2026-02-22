@@ -174,7 +174,7 @@ This step produces a **structure artifact** at `generated_structures/step_<ulid>
 
 ### 3.1 MATERIALIZATION_MAP Entries
 
-Add to `src/quantumvitas/workflow/generalized_steps.py`:
+Add to `src/qmatsuite/workflow/generalized_steps.py`:
 
 ```python
 # CP2K family mappings
@@ -595,10 +595,10 @@ def parse_cp2k_trajectory(
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/workflow/registry.py` | Add `cp2k_scf`, `cp2k_relax`, `cp2k_md` to `_STEP_TYPES` |
-| `src/quantumvitas/workflow/generalized_steps.py` | Add `("cp2k", ...)` entries to `MATERIALIZATION_MAP` |
-| `src/quantumvitas/execution/recipes.py` | Add `CP2KRecipe` class, update `get_recipe_for_engine()` |
-| `src/quantumvitas/execution/handlers.py` | Add `cp2k_step_handler()`, update `create_handler_map()` |
+| `src/qmatsuite/workflow/registry.py` | Add `cp2k_scf`, `cp2k_relax`, `cp2k_md` to `_STEP_TYPES` |
+| `src/qmatsuite/workflow/generalized_steps.py` | Add `("cp2k", ...)` entries to `MATERIALIZATION_MAP` |
+| `src/qmatsuite/execution/recipes.py` | Add `CP2KRecipe` class, update `get_recipe_for_engine()` |
+| `src/qmatsuite/execution/handlers.py` | Add `cp2k_step_handler()`, update `create_handler_map()` |
 
 ### 7.2 Preflight Requirements by Step Type
 

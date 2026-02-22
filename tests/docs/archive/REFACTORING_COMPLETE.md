@@ -73,7 +73,7 @@
 pytest tests/ -m quick
 
 # Run with coverage
-pytest tests/ --cov=src/quantumvitas --cov-report=html
+pytest tests/ --cov=src/qmatsuite --cov-report=html
 
 # Using Makefile
 make quick-test

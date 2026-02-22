@@ -138,5 +138,5 @@ When adding new curated samples:
 
 - ABINIT documentation: https://docs.abinit.org/
 - ABINIT variables reference: https://docs.abinit.org/variables/
-- Metadata catalog: `src/quantumvitas/drivers/abinit/data/abinit_tags.json`
+- Metadata catalog: `src/qmatsuite/drivers/abinit/data/abinit_tags.json`
 - Golden refs: `docs/engines/abinit/golden_refs/`

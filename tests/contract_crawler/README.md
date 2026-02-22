@@ -69,7 +69,7 @@ python gui/tests/e2e/tools/scan_gui_rpc_methods.py
 pytest tests/contract_crawler/test_gui_methods_covered.py::test_gui_methods_covered_soft
 
 # Enforced mode (fails if missing)
-QV_ENFORCE_GUI_RPC_COVERAGE=1 pytest tests/contract_crawler/test_gui_methods_covered.py::test_gui_methods_covered
+QMS_ENFORCE_GUI_RPC_COVERAGE=1 pytest tests/contract_crawler/test_gui_methods_covered.py::test_gui_methods_covered
 ```
 
 ## Workflow

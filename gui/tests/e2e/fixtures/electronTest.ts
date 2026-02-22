@@ -49,7 +49,7 @@ function isBenignConsoleMessage(text: string): boolean {
  *   import { electronTest as test, expect } from './fixtures/electronTest';
  *   
  *   test('my test', async ({ appPage }) => {
- *     await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible();
+ *     await expect(appPage.getByTestId('qms-welcome-title')).toBeVisible();
  *   });
  * 
  * The fixture ensures:

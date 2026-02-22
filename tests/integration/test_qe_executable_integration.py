@@ -9,9 +9,9 @@ from pathlib import Path
 import os
 import stat
 
-from quantumvitas.core.engines.qe import QuantumEspressoEngine
-from quantumvitas.core.engines.base import EngineConfig
-from quantumvitas.core.engines.qe_installation import get_qe_home, set_qe_home, reset_qe_home
+from qmatsuite.core.engines.qe import QuantumEspressoEngine
+from qmatsuite.core.engines.base import EngineConfig
+from qmatsuite.core.engines.qe_installation import get_qe_home, set_qe_home, reset_qe_home
 
 
 @pytest.fixture(autouse=True)

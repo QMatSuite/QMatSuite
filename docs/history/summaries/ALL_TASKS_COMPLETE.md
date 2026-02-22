@@ -17,18 +17,18 @@ All tasks from Steps 0-7 have been successfully completed.
 - Fixed K_POINTS extraction (cards, not parameters)
 - Removed step-level prefix/outdir
 - Removed step-level pseudopot fields from exported demos
-- Files: `tools/generate_wannier90_demos.py`, `tools/generate_wannier90_demo.py`, `src/quantumvitas/project/snapshot.py`
+- Files: `tools/generate_wannier90_demos.py`, `tools/generate_wannier90_demo.py`, `src/qmatsuite/project/snapshot.py`
 
 ### ✅ Step 3: Backend Conflict Metadata
-- Implemented `QVService._detect_prefix_outdir_injection()`
+- Implemented `QMSService._detect_prefix_outdir_injection()`
 - Integrated into `get_step_detail()` response
-- File: `src/quantumvitas/api.py`
+- File: `src/qmatsuite/api.py`
 
 ### ✅ Step 4: UI Visualization
 - Added `prefix_outdir_injection` field to `StepDetail` TypeScript interface
 - Implemented display in `ActiveParametersPanel.tsx`
 - Added CSS styles for injection info
-- Files: `gui/src/types/qv.ts`, `gui/src/components/step_parameters/ActiveParametersPanel.tsx`, `gui/src/components/step_parameters/ActiveParametersPanel.css`
+- Files: `gui/src/types/qms.ts`, `gui/src/components/step_parameters/ActiveParametersPanel.tsx`, `gui/src/components/step_parameters/ActiveParametersPanel.css`
 
 ### ✅ Step 5: Regenerate Demos
 - Fixed `export_project_to_snapshot()` execution order (migrate before clean)
@@ -75,13 +75,13 @@ python tools/verify_demos.py
 ## Files Modified/Created
 
 ### Core Backend
-- `src/quantumvitas/api.py`: Injection detection
-- `src/quantumvitas/project/snapshot.py`: Schema cleaning
-- `src/quantumvitas/core/engines/qe.py`: None checks
-- `src/quantumvitas/core/engines/qe_calculation.py`: None checks
+- `src/qmatsuite/api.py`: Injection detection
+- `src/qmatsuite/project/snapshot.py`: Schema cleaning
+- `src/qmatsuite/core/engines/qe.py`: None checks
+- `src/qmatsuite/core/engines/qe_calculation.py`: None checks
 
 ### UI
-- `gui/src/types/qv.ts`: Type definitions
+- `gui/src/types/qms.ts`: Type definitions
 - `gui/src/components/step_parameters/ActiveParametersPanel.tsx`: Display logic
 - `gui/src/components/step_parameters/ActiveParametersPanel.css`: Styles
 

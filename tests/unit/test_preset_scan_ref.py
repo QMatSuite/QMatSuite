@@ -7,7 +7,7 @@ when encountering ScanRef dicts, without crashing.
 
 import pytest
 
-from quantumvitas.presets.paramspace import (
+from qmatsuite.presets.paramspace import (
     ParamSpace,
     ParamKey,
     Cell,

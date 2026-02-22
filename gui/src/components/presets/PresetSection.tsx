@@ -15,7 +15,7 @@
 import { useCallback, useState, useMemo } from 'react';
 import { usePresets, ApplyResult } from '../../hooks/usePresets';
 import { usePresetCatalog, PresetCatalogDimension } from '../../hooks/usePresetCatalog';
-import type { WorkflowType } from '../../types/qv';
+import type { WorkflowType } from '../../types/qms';
 import './PresetSection.css';
 
 interface PresetSectionProps {
@@ -394,7 +394,7 @@ export function PresetSection({
   const customTooltip = "Steps disagree on this dimension. Check step rows for details.";
   
   return (
-    <div className="preset-section" data-testid="qv-preset-section">
+    <div className="preset-section" data-testid="qms-preset-section">
       <div className="preset-section__header">
         <h3>
           Presets

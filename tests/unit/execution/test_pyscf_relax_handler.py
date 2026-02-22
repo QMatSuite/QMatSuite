@@ -6,8 +6,8 @@ import json
 import pytest
 from pathlib import Path
 
-from quantumvitas.execution.pyscf_relax_handler import handle_pyscf_relax_output
-from quantumvitas.execution.relax_artifacts import get_generated_structure_path
+from qmatsuite.execution.pyscf_relax_handler import handle_pyscf_relax_output
+from qmatsuite.execution.relax_artifacts import get_generated_structure_path
 from pymatgen.core import Molecule
 
 
@@ -56,15 +56,15 @@ class TestHandlePySCFRelaxOutput:
         
         # Verify content
         data = json.loads(artifact_path.read_text())
-        assert "__qv_meta__" in data
-        assert data["__qv_meta__"]["source_step_ulid"] == step_ulid
-        assert data["__qv_meta__"]["provenance"]["method"] == step_type_spec
-        assert data["__qv_meta__"]["provenance"]["calculation_ulid"] == calculation_ulid
-        assert data["__qv_meta__"]["provenance"]["input_structure_ulid"] == input_structure_ulid
+        assert "__qms_meta__" in data
+        assert data["__qms_meta__"]["source_step_ulid"] == step_ulid
+        assert data["__qms_meta__"]["provenance"]["method"] == step_type_spec
+        assert data["__qms_meta__"]["provenance"]["calculation_ulid"] == calculation_ulid
+        assert data["__qms_meta__"]["provenance"]["input_structure_ulid"] == input_structure_ulid
         
         # Verify structure can be read
         structure_dict = data.copy()
-        structure_dict.pop("__qv_meta__", None)
+        structure_dict.pop("__qms_meta__", None)
         loaded = Molecule.from_dict(structure_dict)
         assert loaded is not None
         assert len(loaded) == 2  # 2 H atoms

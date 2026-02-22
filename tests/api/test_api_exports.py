@@ -18,7 +18,7 @@ def test_api_export_count_frozen():
     This test automatically computes the baseline on first run and records it.
     Subsequent runs will fail if the count exceeds the baseline.
     """
-    import quantumvitas.api as api
+    import qmatsuite.api as api
     
     # Count non-private exports
     exports = [x for x in dir(api) if not x.startswith('_')]
@@ -51,7 +51,7 @@ def test_no_new_kernel_reexports():
     These symbols should NOT be in the API namespace.
     They will be replaced with DTOs in subsequent PRs.
     """
-    import quantumvitas.api as api
+    import qmatsuite.api as api
     
     FORBIDDEN = [
         'Step',

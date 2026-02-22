@@ -4,8 +4,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from quantumvitas.core.analysis.base import AnalysisObjectMeta
-from quantumvitas.core.analysis.dos.model import DOS
+from qmatsuite.core.analysis.base import AnalysisObjectMeta
+from qmatsuite.core.analysis.dos.model import DOS
 
 
 def _make_meta(**overrides):

@@ -27,14 +27,14 @@
 ### 2) Profiled daemon import to isolate startup bottleneck
 
 - Ran:
-  - `PYTHONPROFILEIMPORTTIME=1 python -c "from quantumvitas.daemon.server import main"`
+  - `PYTHONPROFILEIMPORTTIME=1 python -c "from qmatsuite.daemon.server import main"`
 - Findings:
-  - `quantumvitas.io.structure_io` was a major import hotspot (historically pulled pymatgen stack early).
+  - `qmatsuite.io.structure_io` was a major import hotspot (historically pulled pymatgen stack early).
   - `pymatgen/scipy` still entered via LAMMPS path during daemon import chain.
 
 ### 3) Lazy-import fixes applied
 
-#### File: `src/quantumvitas/io/structure_io.py`
+#### File: `src/qmatsuite/io/structure_io.py`
 
 - Problem:
   - Module-level `pymatgen` imports caused heavyweight dependency loading during daemon import.
@@ -44,9 +44,9 @@
   - Moved `from pymatgen.core import Structure as PMGStructure, Molecule as PMGMolecule` into `read_structure()`.
   - Removed unused `Element`/`Lattice` module-level imports.
 - Result:
-  - `quantumvitas.io.structure_io` import footprint dropped substantially in profile output.
+  - `qmatsuite.io.structure_io` import footprint dropped substantially in profile output.
 
-#### File: `src/quantumvitas/io/lammps_data.py`
+#### File: `src/qmatsuite/io/lammps_data.py`
 
 - Problem:
   - Module-level `from pymatgen.core import Structure, Molecule` caused early pymatgen load via LAMMPS import path.
@@ -61,21 +61,21 @@
 ### 4) Startup measurements before/after
 
 - Before these final lazy-import edits (from session state):
-  - `time python -c "from quantumvitas.daemon.server import main"` around `0.65-0.70s`.
+  - `time python -c "from qmatsuite.daemon.server import main"` around `0.65-0.70s`.
 - After edits:
-  - `/usr/bin/time -p python -c "from quantumvitas.daemon.server import main"`
+  - `/usr/bin/time -p python -c "from qmatsuite.daemon.server import main"`
   - Observed: `real 0.29` (below target 0.50s).
 
 ### 5) Package-data audit and fix
 
 - Audited runtime resources:
-  - `src/quantumvitas/resources` does not exist in current tree.
+  - `src/qmatsuite/resources` does not exist in current tree.
   - Runtime data files found in:
-    - `src/quantumvitas/data/*.json`
-    - `src/quantumvitas/drivers/*/data/*.json`
+    - `src/qmatsuite/data/*.json`
+    - `src/qmatsuite/drivers/*/data/*.json`
 - Problem:
   - `pyproject.toml` had only:
-    - `"quantumvitas" = ["data/*.json"]`
+    - `"qmatsuite" = ["data/*.json"]`
 - Change:
   - Updated `pyproject.toml` package-data to:
     - `data/*.json`
@@ -120,9 +120,9 @@
 
 ## Files changed in this segment
 
-- `src/quantumvitas/io/structure_io.py`
+- `src/qmatsuite/io/structure_io.py`
   - Converted pymatgen imports to function-local + TYPE_CHECKING.
-- `src/quantumvitas/io/lammps_data.py`
+- `src/qmatsuite/io/lammps_data.py`
   - Converted pymatgen imports to function-local + TYPE_CHECKING.
 - `pyproject.toml`
   - Expanded package-data patterns to include nested driver JSON.
@@ -144,13 +144,13 @@
 - Wait for the full run to finish before proceeding.
 - Keep a detailed retrospective-quality worklog in `docs/history/worklogs` with failures, attempted approaches, and decision rationale.
 - `fastmcp` must remain in core dependencies; no optional behavior-gating for MCP availability.
-- Resource single source of truth must be `src/quantumvitas/resources/` only.
+- Resource single source of truth must be `src/qmatsuite/resources/` only.
 - Top-level `<repo_root>/resources/` must be removed only after content parity + callsite migration verification.
 
 ### State found at resume
 - The tree already contained both:
   - `<repo_root>/resources/`
-  - `<repo_root>/src/quantumvitas/resources/`
+  - `<repo_root>/src/qmatsuite/resources/`
 - Parity check from prior step:
   - root_count=316
   - pkg_count=314
@@ -161,19 +161,19 @@
 ### Deep search completed before edits
 - Scanned runtime source and tests for repo-style resource resolution.
 - Runtime callsites requiring migration were confirmed in:
-  - `src/quantumvitas/core/resources.py`
-  - `src/quantumvitas/demo_store/translator.py`
-  - `src/quantumvitas/project/snapshot.py`
-  - `src/quantumvitas/calculation/structure_steps.py`
-  - `src/quantumvitas/pseudo/registry.py`
+  - `src/qmatsuite/core/resources.py`
+  - `src/qmatsuite/demo_store/translator.py`
+  - `src/qmatsuite/project/snapshot.py`
+  - `src/qmatsuite/calculation/structure_steps.py`
+  - `src/qmatsuite/pseudo/registry.py`
 - Additional dual-mode helpers reviewed:
-  - `src/quantumvitas/core/pseudo_config.py`
-  - `src/quantumvitas/drivers/qe/engine/qe_pseudopotentials.py`
+  - `src/qmatsuite/core/pseudo_config.py`
+  - `src/qmatsuite/drivers/qe/engine/qe_pseudopotentials.py`
 - Test files with hardcoded `.../resources/...` paths identified (37 files). These will be migrated to package-resource resolution (`get_resources_dir`) to avoid reliance on deleted top-level resources.
 
 ### Decision rationale
 - Do **not** preserve repo-root `resources/` fallback in runtime path resolution because it creates split-brain resource authority and sync burden.
-- Keep dev/install dual-mode by resolving resources through the package location (`src/quantumvitas/resources` in editable dev; site-packages in wheel install).
+- Keep dev/install dual-mode by resolving resources through the package location (`src/qmatsuite/resources` in editable dev; site-packages in wheel install).
 - Migrate tests to the same resolver so test assumptions match distribution behavior.
 
 ### Execution plan from this point
@@ -186,21 +186,21 @@
 ### Runtime and test migration (resources SSOT execution)
 
 #### Runtime source changes applied
-- `src/quantumvitas/core/resources.py`
+- `src/qmatsuite/core/resources.py`
   - Removed repo-root-first resolution; resources now resolve from package location only.
-- `src/quantumvitas/demo_store/translator.py`
+- `src/qmatsuite/demo_store/translator.py`
   - `_resolve_pseudo_info()` now reads pseudos from `get_resources_dir()/pseudo`.
-- `src/quantumvitas/project/snapshot.py`
+- `src/qmatsuite/project/snapshot.py`
   - Removed manual upward repo search for `resources/pseudo`; uses `get_resources_dir()`.
-- `src/quantumvitas/calculation/structure_steps.py`
+- `src/qmatsuite/calculation/structure_steps.py`
   - Removed `project_root/resources/pseudo` candidates; kept `project/pseudo` + bundled package pseudo.
-- `src/quantumvitas/pseudo/registry.py`
+- `src/qmatsuite/pseudo/registry.py`
   - Manifest/index lookup now uses `get_resources_dir()/pseudo_libinfo` directly.
-- `src/quantumvitas/core/pseudo_config.py`
-  - `_find_quantumvitas_root()` simplified to derive from package resources root.
-- `src/quantumvitas/drivers/qe/engine/qe_pseudopotentials.py`
-  - `_find_quantumvitas_root()` aligned to package resources root.
-- `src/quantumvitas/core/pseudo_libinfo.py`
+- `src/qmatsuite/core/pseudo_config.py`
+  - `_find_qmatsuite_root()` simplified to derive from package resources root.
+- `src/qmatsuite/drivers/qe/engine/qe_pseudopotentials.py`
+  - `_find_qmatsuite_root()` aligned to package resources root.
+- `src/qmatsuite/core/pseudo_libinfo.py`
   - `load_pseudo_libinfo_bundle()` now supports both legacy repo-root and new package-root candidate shapes when explicit `repo_root` is provided, defaulting to package resources.
 
 #### Test migration (hardcoded repo `resources/` path removal)
@@ -292,23 +292,23 @@ Patched to use `get_resources_dir()` where resources are read:
   4. `tests/unit/test_pseudopotential_resolution.py::TestPseudopotentialResolutionEdgeCases::test_pp_resolution_missing_element_reports_clear_error`
   5. `tests/gates/test_no_deep_domain_import.py::test_no_cross_domain_deep_imports`
 
-### Critical forensic finding: why `src/quantumvitas/pseudo/` was repeatedly deleted
+### Critical forensic finding: why `src/qmatsuite/pseudo/` was repeatedly deleted
 - Symptom observed:
-  - `ModuleNotFoundError: No module named 'quantumvitas.pseudo'`
-  - Coverage warnings at report time: `No source for code: src/quantumvitas/pseudo/*.py`
-  - `git status` showed `D src/quantumvitas/pseudo/__init__.py` and siblings.
+  - `ModuleNotFoundError: No module named 'qmatsuite.pseudo'`
+  - Coverage warnings at report time: `No source for code: src/qmatsuite/pseudo/*.py`
+  - `git status` showed `D src/qmatsuite/pseudo/__init__.py` and siblings.
 - Root cause:
-  - Earlier change made `_find_quantumvitas_root()` return `get_resources_dir().parent`, i.e. `src/quantumvitas` in editable dev mode.
-  - Test `tests/unit/test_pseudo_no_repo_root.py` uses `_find_quantumvitas_root()` and deletes `<root>/pseudo` as cleanup of forbidden `repo_root/pseudo`.
-  - With the changed root semantics, that cleanup path became `src/quantumvitas/pseudo`, i.e. the runtime package itself.
+  - Earlier change made `_find_qmatsuite_root()` return `get_resources_dir().parent`, i.e. `src/qmatsuite` in editable dev mode.
+  - Test `tests/unit/test_pseudo_no_repo_root.py` uses `_find_qmatsuite_root()` and deletes `<root>/pseudo` as cleanup of forbidden `repo_root/pseudo`.
+  - With the changed root semantics, that cleanup path became `src/qmatsuite/pseudo`, i.e. the runtime package itself.
 - Fix strategy:
-  - Restore `_find_quantumvitas_root()` semantics to return actual repo root in dev checkout.
+  - Restore `_find_qmatsuite_root()` semantics to return actual repo root in dev checkout.
   - Keep installed-mode fallback to package root only when repo root cannot be found.
 
 ### Code fixes applied
 
 1. **Bundled engine discovery determinism**
-- File: `src/quantumvitas/core/engines/discovery.py`
+- File: `src/qmatsuite/core/engines/discovery.py`
 - Change:
   - `_search_bundled()` now searches only `<project_root>/.qmatsuite/engines` when `project_root` is explicitly provided.
   - Managed app-data fallback is used only when `project_root is None`.
@@ -316,36 +316,36 @@ Patched to use `get_resources_dir()` where resources are read:
   - Prevents unit tests with tmp project roots from being polluted by developer-local global engines.
 
 2. **Root resolver semantics corrected (dev vs installed)**
-- File: `src/quantumvitas/core/pseudo_config.py`
+- File: `src/qmatsuite/core/pseudo_config.py`
 - Change:
-  - `_find_quantumvitas_root()` now:
-    - First detects repo root via `pyproject.toml + src/quantumvitas` upward walk.
+  - `_find_qmatsuite_root()` now:
+    - First detects repo root via `pyproject.toml + src/qmatsuite` upward walk.
     - Falls back to package root (`get_resources_dir().parent`) only when repo root is absent.
 - Why:
-  - Prevents accidental targeting of `src/quantumvitas/pseudo` as “repo pseudo”.
+  - Prevents accidental targeting of `src/qmatsuite/pseudo` as “repo pseudo”.
 
 3. **Driver-side root resolver unified**
-- File: `src/quantumvitas/drivers/qe/engine/qe_pseudopotentials.py`
+- File: `src/qmatsuite/drivers/qe/engine/qe_pseudopotentials.py`
 - Change:
-  - Local `_find_quantumvitas_root()` now delegates to canonical `core.pseudo_config._find_quantumvitas_root()`.
+  - Local `_find_qmatsuite_root()` now delegates to canonical `core.pseudo_config._find_qmatsuite_root()`.
 - Why:
   - Eliminates resolver divergence and duplicate semantics.
 
 4. **Pseudo strict-mode testability restored without breaking distribution mode**
-- File: `src/quantumvitas/core/pseudo.py`
+- File: `src/qmatsuite/core/pseudo.py`
 - Changes:
   - In `ensure_qe_pseudos()`, default `system_pseudo_dir` resolution now uses `get_system_pseudo_dir()`.
-  - `get_system_pseudo_dir()` now gates on `_find_quantumvitas_root()` and returns `None` when root resolver is unavailable.
+  - `get_system_pseudo_dir()` now gates on `_find_qmatsuite_root()` and returns `None` when root resolver is unavailable.
 - Why:
-  - Restores ability for tests to monkeypatch `_find_quantumvitas_root` to force “no bundled pseudo” edge cases.
+  - Restores ability for tests to monkeypatch `_find_qmatsuite_root` to force “no bundled pseudo” edge cases.
   - Still supports distribution mode via installed-package fallback root behavior.
 
 5. **Gate compliance: no deep cross-domain imports**
 - Files:
-  - `src/quantumvitas/engine/lammps_engine.py`
-  - `src/quantumvitas/engine/lammps_writer.py`
+  - `src/qmatsuite/engine/lammps_engine.py`
+  - `src/qmatsuite/engine/lammps_writer.py`
 - Change:
-  - Replaced direct deep import `quantumvitas.core.resources.get_resources_dir` with `quantumvitas.core.public.get_resources_dir`.
+  - Replaced direct deep import `qmatsuite.core.resources.get_resources_dir` with `qmatsuite.core.public.get_resources_dir`.
 - Why:
   - Satisfies `test_no_deep_domain_import` contract.
 
@@ -358,7 +358,7 @@ Patched to use `get_resources_dir()` where resources are read:
 
 7. **Recovered deleted pseudo package files**
 - Action:
-  - Restored `src/quantumvitas/pseudo/` from `HEAD` after root-resolver fix.
+  - Restored `src/qmatsuite/pseudo/` from `HEAD` after root-resolver fix.
 - Verification:
   - Directory exists post-tests with all expected files.
 
@@ -376,7 +376,7 @@ Patched to use `get_resources_dir()` where resources are read:
 ### User directive focus for this segment
 - Treat pseudo/demo/metadata pipelines as special-critical and validate deeply.
 - Migrate all remaining dev tooling to the SSOT resource root:
-  - `src/quantumvitas/resources/`
+  - `src/qmatsuite/resources/`
 - Verify no remaining runtime/tool callsites rely on top-level repo `resources/`.
 - Delete `<repo_root>/resources` after migration verification.
 - Run required full pytest command and commit milestone if green.
@@ -385,12 +385,12 @@ Patched to use `get_resources_dir()` where resources are read:
 
 #### Runtime callsite sweep (pseudo/demo/metadata)
 Commands run:
-- `rg -n "root\s*/\s*\"resources\"|repo_root\s*/\s*\"resources\"|REPO_ROOT\s*/\s*\"resources\"|project_root\s*/\s*\"resources\"|Path\(__file__\).*\"resources\"" src/quantumvitas --glob '*.py'`
-- `rg -n "get_resources_dir\(|pseudo_libinfo|demo_projects|resources/pseudo|resources/demo_projects" src/quantumvitas/core src/quantumvitas/pseudo src/quantumvitas/demo_store src/quantumvitas/project src/quantumvitas/drivers --glob '*.py'`
+- `rg -n "root\s*/\s*\"resources\"|repo_root\s*/\s*\"resources\"|REPO_ROOT\s*/\s*\"resources\"|project_root\s*/\s*\"resources\"|Path\(__file__\).*\"resources\"" src/qmatsuite --glob '*.py'`
+- `rg -n "get_resources_dir\(|pseudo_libinfo|demo_projects|resources/pseudo|resources/demo_projects" src/qmatsuite/core src/qmatsuite/pseudo src/qmatsuite/demo_store src/qmatsuite/project src/qmatsuite/drivers --glob '*.py'`
 
 Findings:
-- Functional pseudo registry lookup still had an upward walk pattern via `current / "resources" / "pseudo_libinfo"` in `src/quantumvitas/pseudo/registry.py`.
-- Pseudo libinfo loader (`src/quantumvitas/core/pseudo_libinfo.py`) had multi-candidate root handling that could include `root/resources/pseudo_libinfo` when `repo_root` is explicitly passed.
+- Functional pseudo registry lookup still had an upward walk pattern via `current / "resources" / "pseudo_libinfo"` in `src/qmatsuite/pseudo/registry.py`.
+- Pseudo libinfo loader (`src/qmatsuite/core/pseudo_libinfo.py`) had multi-candidate root handling that could include `root/resources/pseudo_libinfo` when `repo_root` is explicitly passed.
 - Demo/ref-pack runtime loading already uses `get_resources_dir()` and is distribution-safe.
 
 #### Tools callsite sweep
@@ -399,53 +399,53 @@ Command run:
 
 Findings:
 - Multiple dev scripts/docs still pointed to old top-level `resources/` paths.
-- These were migrated to `src/quantumvitas/resources` (details below).
+- These were migrated to `src/qmatsuite/resources` (details below).
 
 ### Changes applied (with rationale)
 
 #### Runtime pseudo/demo/metadata
-1. `src/quantumvitas/pseudo/registry.py`
+1. `src/qmatsuite/pseudo/registry.py`
 - Replaced upward repo/resource search with package-resource resolution:
   - now loads from `get_resources_dir() / "pseudo_libinfo"`
 - Why:
   - eliminates dependence on top-level repo `resources/` layout
   - aligns runtime resolution with installed package behavior.
 
-2. `src/quantumvitas/core/pseudo_libinfo.py`
+2. `src/qmatsuite/core/pseudo_libinfo.py`
 - Tightened `repo_root` handling:
-  - repo-root case prefers `root/src/quantumvitas/resources/pseudo_libinfo`
+  - repo-root case prefers `root/src/qmatsuite/resources/pseudo_libinfo`
   - non-repo roots still support package/test layouts (`root/resources/pseudo_libinfo`, etc.)
 - Why:
   - avoids accidental fallback to deprecated repo-top-level `resources/` when a real repo root is passed,
   - preserves package-root/test-root compatibility required by existing callsites/tests.
 
-3. `src/quantumvitas/demo_store/manifest.py`
-- Updated generated metadata `output_file` to `src/quantumvitas/resources/demo_projects/...`.
+3. `src/qmatsuite/demo_store/manifest.py`
+- Updated generated metadata `output_file` to `src/qmatsuite/resources/demo_projects/...`.
 
 4. Documentation/comment accuracy updates to reduce operator confusion:
-- `src/quantumvitas/demo_store/__init__.py`
-- `src/quantumvitas/demo_store/ref_packs.py`
-- `src/quantumvitas/core/pseudo_runtime.py`
-- `src/quantumvitas/core/pseudo_libinfo.py`
+- `src/qmatsuite/demo_store/__init__.py`
+- `src/qmatsuite/demo_store/ref_packs.py`
+- `src/qmatsuite/core/pseudo_runtime.py`
+- `src/qmatsuite/core/pseudo_libinfo.py`
 
 #### Dev tools/scripts migration to SSOT resources
 5. `tools/purge_demos.sh`
-- switched to `src/quantumvitas/resources/demo_projects` and added missing-dir guard.
+- switched to `src/qmatsuite/resources/demo_projects` and added missing-dir guard.
 
 6. `tools/snapshot_qe_docs.py`
-- default output now `src/quantumvitas/resources/qe_docs_raw`.
+- default output now `src/qmatsuite/resources/qe_docs_raw`.
 
 7. `tools/build_pseudo_libinfo_bundle.py`
-- installation target moved to `src/quantumvitas/resources/pseudo_libinfo/<tag>/`.
+- installation target moved to `src/qmatsuite/resources/pseudo_libinfo/<tag>/`.
 
 8. `tools/import_tutorial_datasets.py`
 - introduced `get_resources_root(repo_root)` and replaced old `repo_root/resources/...` usage.
-- output/pseudo directories now under `src/quantumvitas/resources/...`.
+- output/pseudo directories now under `src/qmatsuite/resources/...`.
 - updated internal comments/docs accordingly.
 
 9. `tools/run_lammps_long_smoke.py`
 - centralized constants for repo/resources/test-data roots.
-- potential file lookup now from `src/quantumvitas/resources/lammps/potentials`.
+- potential file lookup now from `src/qmatsuite/resources/lammps/potentials`.
 
 10. `tools/test_silicon_wannier90_demo_logging.py`
 - demo lookup now uses `get_resources_dir()/demo_projects`.
@@ -502,7 +502,7 @@ Result:
   - new files: 314
   - differences only:
     - old-only: `.DS_Store` files
-    - new-only: `src/quantumvitas/resources/__init__.py`
+    - new-only: `src/qmatsuite/resources/__init__.py`
 - Deleted old top-level resources folder:
   - `rm -rf <repo_root>/resources`
   - verified absent (`resources_missing`).
@@ -531,7 +531,7 @@ Result:
 
 Notes:
 - Confirms both previously failing gates are fixed after:
-  - corpus source path migration to `src/quantumvitas/resources/pseudo`
+  - corpus source path migration to `src/qmatsuite/resources/pseudo`
   - sensitive-path sanitization in active worklogs
 - Next action: rerun the required full suite command and wait for completion before further edits.
 
@@ -552,14 +552,14 @@ Notes:
 
 Checks:
 - `if [ -d resources ]; then echo resources_exists; else echo resources_missing; fi` -> `resources_missing`
-- `rg -n "repo_root\\s*/\\s*['\" ]resources|REPO_ROOT\\s*/\\s*['\" ]resources|get_repo_root\\(\\)\\s*/\\s*['\" ]resources" src/quantumvitas --glob '*.py'` -> no matches
-- Broad `resources/` grep in `src/quantumvitas`, `tools`, `tests` shows remaining occurrences are either:
-  - explicit new SSOT path strings (`src/quantumvitas/resources/...`), or
+- `rg -n "repo_root\\s*/\\s*['\" ]resources|REPO_ROOT\\s*/\\s*['\" ]resources|get_repo_root\\(\\)\\s*/\\s*['\" ]resources" src/qmatsuite --glob '*.py'` -> no matches
+- Broad `resources/` grep in `src/qmatsuite`, `tools`, `tests` shows remaining occurrences are either:
+  - explicit new SSOT path strings (`src/qmatsuite/resources/...`), or
   - human-facing comments/docstrings/messages (no repo-top-level path resolution code).
 
 Conclusion:
 - No active runtime/tool code path depends on deleted top-level `<repo_root>/resources`.
-- Runtime SSOT for bundled assets is `src/quantumvitas/resources/`.
+- Runtime SSOT for bundled assets is `src/qmatsuite/resources/`.
 
 ### Wording cleanup (clarify migrated resource layout)
 
@@ -569,7 +569,7 @@ Updated comments/docstrings to remove old top-level `resources/` wording ambigui
 - `tests/mcp/test_stage10.py`
 - `tests/unit/test_pseudo_no_repo_root.py`
 - `tests/gates/test_no_legacy_identity_fields.py`
-- `src/quantumvitas/api/service.py`
+- `src/qmatsuite/api/service.py`
 
 ### Sanity tests after wording updates
 
@@ -606,15 +606,15 @@ Out of scope (explicitly not touched): engine registry (`engines.json` implement
   - §4.5 Electron + Embedded Python Integration
   - Appendix B Dependency Inventory
 - Read current implementation:
-  - `src/quantumvitas/core/paths.py`
+  - `src/qmatsuite/core/paths.py`
   - `pyproject.toml`
 - Read test/CI setup:
   - `pytest --co -q` (baseline run)
   - `.github/workflows/tests.yml`
 
 ## Initial Plan
-1. Map all path helper callers in `src/quantumvitas` and `tests` before edits.
-2. Implement 4-level resolution chain in `src/quantumvitas/core/paths.py` with dev-mode compatibility preserved.
+1. Map all path helper callers in `src/qmatsuite` and `tests` before edits.
+2. Implement 4-level resolution chain in `src/qmatsuite/core/paths.py` with dev-mode compatibility preserved.
 3. Migrate direct callers that still anchor on `get_repo_root() / ".qmatsuite"` to `get_app_data_dir()`.
 4. Add/adjust tests for env overrides, dev mode, electron mode, pip fallback, cache resolution, and derived directories.
 5. Run `pytest` after Task 1.
@@ -642,30 +642,30 @@ Out of scope (explicitly not touched): engine registry (`engines.json` implement
 
 ## Task 1a: Caller Blast Radius Map (pre-change)
 
-### Direct path helper usage in `src/quantumvitas/`
-- `src/quantumvitas/core/paths.py`
+### Direct path helper usage in `src/qmatsuite/`
+- `src/qmatsuite/core/paths.py`
   - Defines and uses: `get_repo_root`, home helpers, tmp helpers
-- `src/quantumvitas/drivers/vasp/engine/vasp_potcar.py`
+- `src/qmatsuite/drivers/vasp/engine/vasp_potcar.py`
   - Uses `get_repo_root` as fallback to locate bundled POTCAR resources
-- `src/quantumvitas/drivers/qe/engine/qe_resolver.py`
+- `src/qmatsuite/drivers/qe/engine/qe_resolver.py`
   - Imports and calls `get_repo_root` for internal QE engine directory discovery
-- `src/quantumvitas/core/engines/vasp_resolver.py`
+- `src/qmatsuite/core/engines/vasp_resolver.py`
   - Defines local `_get_repo_root()` and depends on repo-root anchored defaults
-- `src/quantumvitas/core/pseudo_options.py`
+- `src/qmatsuite/core/pseudo_options.py`
   - Uses `home_pseudo_libraries_dir`
-- `src/quantumvitas/core/library_manager.py`
+- `src/qmatsuite/core/library_manager.py`
   - Uses `home_pseudo_libraries_dir`
-- `src/quantumvitas/core/pseudo_runtime.py`
+- `src/qmatsuite/core/pseudo_runtime.py`
   - Uses `home_pseudo_libraries_dir`
-- `src/quantumvitas/core/pseudo_config.py`
+- `src/qmatsuite/core/pseudo_config.py`
   - Uses `home_pseudo_libraries_dir`
-- `src/quantumvitas/core/pseudo_materialization.py`
+- `src/qmatsuite/core/pseudo_materialization.py`
   - Imports `home_pseudo_libraries_dir` lazily inside function
-- `src/quantumvitas/pseudo/pipeline.py`
+- `src/qmatsuite/pseudo/pipeline.py`
   - Uses `home_pseudo_libraries_dir`
-- `src/quantumvitas/mcp/tools/list_resources.py`
+- `src/qmatsuite/mcp/tools/list_resources.py`
   - Imports/uses `home_pseudo_libraries_dir` lazily
-- `src/quantumvitas/api/service.py`
+- `src/qmatsuite/api/service.py`
   - Imports/uses `home_pseudo_libraries_dir` lazily in service handlers
 
 ### Path helper usage in tests
@@ -692,13 +692,13 @@ Out of scope (explicitly not touched): engine registry (`engines.json` implement
 - Full suite after `paths.py` refactor:
   - Command (per user rule): `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
   - Result: `6445 passed, 4 skipped, 979 warnings` in `393.47s`.
-  - No regressions from `src/quantumvitas/core/paths.py` change.
+  - No regressions from `src/qmatsuite/core/paths.py` change.
 - User rule captured for all full suite runs: always use `.venv` + parallel pytest command above.
 
 ## 2026-02-22 (Resources SSOT follow-up)
 - Continuing detailed log in:
   - `docs/history/worklogs/DISTRIBUTION_STEP1_FOUNDATION_2026-02-22_WORKLOG.md`
-- Goal: remove top-level `resources/` and keep only `src/quantumvitas/resources/` after migrating all source/test callsites.
+- Goal: remove top-level `resources/` and keep only `src/qmatsuite/resources/` after migrating all source/test callsites.
 
 ## 2026-02-22 update (full-suite triage)
 - Added detailed forensic and fix notes to:

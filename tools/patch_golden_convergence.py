@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Add src to path for registry import
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from quantumvitas.workflow.registry import normalize_step_type_to_public
+from qmatsuite.workflow.registry import normalize_step_type_to_public
 
 GOLDEN_DIR = Path("tests/fixtures/golden_0873ebf/daemon")
 

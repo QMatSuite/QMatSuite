@@ -33,7 +33,7 @@ REQUIRED_FIELDS = {"name", "type", "default", "category", "description", "status
 @pytest.fixture(scope="module")
 def raw_catalog() -> dict:
     """Load the raw JSON catalog."""
-    data_path = resources.files("quantumvitas.drivers.vasp.data").joinpath(
+    data_path = resources.files("qmatsuite.drivers.vasp.data").joinpath(
         "vasp_incar_tags.json"
     )
     with resources.as_file(data_path) as path:
@@ -91,45 +91,45 @@ class TestMetadataAccessLayer:
     """Test vasp_metadata.py API."""
 
     def test_safe_load_metadata(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import safe_load_metadata
+        from qmatsuite.drivers.vasp.data.vasp_metadata import safe_load_metadata
         data = safe_load_metadata()
         assert "tags" in data
         assert len(data["tags"]) >= 200
 
     def test_get_tag_info_encut(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import get_tag_info
+        from qmatsuite.drivers.vasp.data.vasp_metadata import get_tag_info
         info = get_tag_info("ENCUT")
         assert info is not None
         assert info["type"] == "REAL"
         assert info["category"] == "electronic"
 
     def test_get_tag_info_case_insensitive(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import get_tag_info
+        from qmatsuite.drivers.vasp.data.vasp_metadata import get_tag_info
         info = get_tag_info("encut")
         assert info is not None
         assert info["name"] == "ENCUT"
 
     def test_get_tag_info_missing(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import get_tag_info
+        from qmatsuite.drivers.vasp.data.vasp_metadata import get_tag_info
         info = get_tag_info("NONEXISTENT_TAG_XYZ")
         assert info is None
 
     def test_list_tags_all(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import list_tags
+        from qmatsuite.drivers.vasp.data.vasp_metadata import list_tags
         tags = list_tags()
         assert len(tags) >= 200
         assert "ENCUT" in tags
         assert "NSW" in tags
 
     def test_list_tags_by_category(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import list_tags
+        from qmatsuite.drivers.vasp.data.vasp_metadata import list_tags
         electronic_tags = list_tags(category="electronic")
         assert len(electronic_tags) >= 20
         assert "ENCUT" in electronic_tags
         assert "NSW" not in electronic_tags  # ionic
 
     def test_list_categories(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import list_categories
+        from qmatsuite.drivers.vasp.data.vasp_metadata import list_categories
         cats = list_categories()
         assert len(cats) >= 10
         assert "electronic" in cats
@@ -137,18 +137,18 @@ class TestMetadataAccessLayer:
         assert "gw" in cats
 
     def test_validate_incar_all_valid(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import validate_incar_params
+        from qmatsuite.drivers.vasp.data.vasp_metadata import validate_incar_params
         unknowns = validate_incar_params({"ENCUT": 300, "NSW": 0, "ISMEAR": 0})
         assert unknowns == []
 
     def test_validate_incar_unknown_flagged(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import validate_incar_params
+        from qmatsuite.drivers.vasp.data.vasp_metadata import validate_incar_params
         unknowns = validate_incar_params({"ENCUT": 300, "FAKEPARAM": 42})
         assert "FAKEPARAM" in unknowns
         assert "ENCUT" not in unknowns
 
     def test_reload_metadata(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import (
+        from qmatsuite.drivers.vasp.data.vasp_metadata import (
             reload_metadata, safe_load_metadata,
         )
         reload_metadata()
@@ -156,19 +156,19 @@ class TestMetadataAccessLayer:
         assert len(data["tags"]) >= 200
 
     def test_metadata_debug_info(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import get_metadata_file_info
+        from qmatsuite.drivers.vasp.data.vasp_metadata import get_metadata_file_info
         info = get_metadata_file_info()
         assert "metadata_path_abs" in info
         assert "schema_version" in info
 
     def test_get_tag_type(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import get_tag_type
+        from qmatsuite.drivers.vasp.data.vasp_metadata import get_tag_type
         assert get_tag_type("ENCUT") == "REAL"
         assert get_tag_type("NSW") == "INTEGER"
         assert get_tag_type("LCHARG") == "LOGICAL"
         assert get_tag_type("NONEXISTENT") is None
 
     def test_get_tag_default(self):
-        from quantumvitas.drivers.vasp.data.vasp_metadata import get_tag_default
+        from qmatsuite.drivers.vasp.data.vasp_metadata import get_tag_default
         assert get_tag_default("ISMEAR") == "1"
         assert get_tag_default("NONEXISTENT") is None

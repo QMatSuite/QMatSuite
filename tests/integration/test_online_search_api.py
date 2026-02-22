@@ -1,13 +1,13 @@
 """
 Integration tests for online structure search API.
 
-PR0: Tests for QVService.OnlineSearch API methods.
+PR0: Tests for QMSService.OnlineSearch API methods.
 """
 
 import pytest
 from unittest.mock import patch, Mock, MagicMock
-from quantumvitas.api import QVService
-from quantumvitas.api.types.online_search import (
+from qmatsuite.api import QMSService
+from qmatsuite.api.types.online_search import (
     SearchResultDTO,
     CandidateDTO,
     StructureRefDTO,
@@ -19,13 +19,13 @@ from quantumvitas.api.types.online_search import (
 
 
 class TestOnlineSearchAPI:
-    """Test QVService.OnlineSearch API methods."""
+    """Test QMSService.OnlineSearch API methods."""
     
     def test_search_structures_crystal_mode(self):
         """Test search_structures with crystal mode."""
         # Mock the unified search function
-        from quantumvitas.io.providers.optimade import Candidate as OptimadeCandidate
-        from quantumvitas.io.providers import UnifiedSearchResult
+        from qmatsuite.io.providers.optimade import Candidate as OptimadeCandidate
+        from qmatsuite.io.providers import UnifiedSearchResult
         
         mock_candidate = OptimadeCandidate(
             entry_id="mp-123",
@@ -45,10 +45,10 @@ class TestOnlineSearchAPI:
             errors={},
         )
         
-        with patch('quantumvitas.io.providers.unified_search') as mock_search:
+        with patch('qmatsuite.io.providers.unified_search') as mock_search:
             mock_search.return_value = mock_result
             
-            result = QVService.OnlineSearch.search_structures(
+            result = QMSService.OnlineSearch.search_structures(
                 query="Si",
                 mode="crystal",
                 limit=10,
@@ -64,8 +64,8 @@ class TestOnlineSearchAPI:
     
     def test_search_structures_molecule_mode(self):
         """Test search_structures with molecule mode (PR4)."""
-        from quantumvitas.io.providers.pubchem import PubChemCandidate
-        from quantumvitas.io.providers import UnifiedSearchResult
+        from qmatsuite.io.providers.pubchem import PubChemCandidate
+        from qmatsuite.io.providers import UnifiedSearchResult
         from pymatgen.core import Molecule
         
         # Create mock molecule
@@ -86,10 +86,10 @@ class TestOnlineSearchAPI:
             errors={},
         )
         
-        with patch('quantumvitas.io.providers.unified_search') as mock_search:
+        with patch('qmatsuite.io.providers.unified_search') as mock_search:
             mock_search.return_value = mock_result
             
-            result = QVService.OnlineSearch.search_structures(
+            result = QMSService.OnlineSearch.search_structures(
                 query="caffeine",
                 mode="molecule",
                 limit=10,
@@ -105,8 +105,8 @@ class TestOnlineSearchAPI:
     
     def test_search_structures_auto_mode(self):
         """Test search_structures with auto mode."""
-        from quantumvitas.io.providers.optimade import Candidate as OptimadeCandidate
-        from quantumvitas.io.providers import UnifiedSearchResult
+        from qmatsuite.io.providers.optimade import Candidate as OptimadeCandidate
+        from qmatsuite.io.providers import UnifiedSearchResult
         
         mock_candidate = OptimadeCandidate(
             entry_id="mp-123",
@@ -126,10 +126,10 @@ class TestOnlineSearchAPI:
             errors={},
         )
         
-        with patch('quantumvitas.io.providers.unified_search') as mock_search:
+        with patch('qmatsuite.io.providers.unified_search') as mock_search:
             mock_search.return_value = mock_result
             
-            result = QVService.OnlineSearch.search_structures(
+            result = QMSService.OnlineSearch.search_structures(
                 query="H2O",
                 mode="auto",
                 limit=10,
@@ -141,7 +141,7 @@ class TestOnlineSearchAPI:
     
     def test_fetch_structure_optimade(self):
         """Test fetch_structure for OPTIMADE candidate."""
-        from quantumvitas.io.online_cache import CandidateSummary, SessionInfo
+        from qmatsuite.io.online_cache import CandidateSummary, SessionInfo
         from pymatgen.core import Structure, Lattice
         
         # Create mock structure
@@ -149,7 +149,7 @@ class TestOnlineSearchAPI:
         structure = Structure(lattice, ["Si", "Si"], [[0, 0, 0], [0.25, 0.25, 0.25]])
         
         # Mock cache methods
-        with patch('quantumvitas.io.online_cache.OnlineStructureCache') as MockCache:
+        with patch('qmatsuite.io.online_cache.OnlineStructureCache') as MockCache:
             mock_cache = MockCache.return_value
             # get_candidates returns a list
             mock_cache.get_candidates.return_value = [
@@ -170,16 +170,16 @@ class TestOnlineSearchAPI:
             )
             
             # Mock fetch_structure_from_optimade
-            with patch('quantumvitas.io.online_search.fetch_structure_from_optimade') as mock_fetch:
+            with patch('qmatsuite.io.online_search.fetch_structure_from_optimade') as mock_fetch:
                 mock_fetch.return_value = (structure, {"data": {"id": "mp-123"}})
                 
-                from quantumvitas.api.types.online_search import StructureRefDTO
+                from qmatsuite.api.types.online_search import StructureRefDTO
                 ref = StructureRefDTO(
                     session_id="test-session",
                     candidate_id="opt_mp-123",
                 )
                 
-                result = QVService.OnlineSearch.fetch_structure(ref)
+                result = QMSService.OnlineSearch.fetch_structure(ref)
                 
                 assert isinstance(result, StructureDocDTO)
                 assert result.structure_type == "crystal"
@@ -190,8 +190,8 @@ class TestOnlineSearchAPI:
     
     def test_fetch_structure_uses_global_cache(self):
         """Test that fetch_structure uses global cache location."""
-        from quantumvitas.core.paths import get_qmatsuite_home_root
-        from quantumvitas.io.online_cache import OnlineStructureCache
+        from qmatsuite.core.paths import get_qmatsuite_home_root
+        from qmatsuite.io.online_cache import OnlineStructureCache
         
         # Verify cache uses global location
         cache = OnlineStructureCache()
@@ -200,7 +200,7 @@ class TestOnlineSearchAPI:
     
     def test_list_providers(self):
         """Test list_providers (stub for PR0)."""
-        result = QVService.OnlineSearch.list_providers()
+        result = QMSService.OnlineSearch.list_providers()
         
         assert isinstance(result, ProviderListDTO)
         assert len(result.optimade_providers) > 0
@@ -214,7 +214,7 @@ class TestOnlineSearchAPI:
             pubchem_enabled=True,
         )
         
-        result = QVService.OnlineSearch.update_online_sources(patch_dto)
+        result = QMSService.OnlineSearch.update_online_sources(patch_dto)
         
         assert isinstance(result, OnlineSourcesSettingsDTO)
         assert result.timeout_seconds == 8.0

@@ -52,9 +52,9 @@
 ### North Star Public Surface
 
 **Core Service**:
-- `QVService` (class) - Primary service interface
+- `QMSService` (class) - Primary service interface
 
-**Capability Groups** (instance methods on `QVService`):
+**Capability Groups** (instance methods on `QMSService`):
 - `svc.project.*` - Project management (init, config, snapshot)
 - `svc.structure.*` - Structure operations (import, export, list, get)
 - `svc.calculation.*` - Calculation CRUD (create, configure, list, get, delete)
@@ -65,7 +65,7 @@
 - `svc.workflow.*` - Workflow operations (detect, validate, instantiate)
 
 **Core Types** (API-owned, not re-exported):
-- `QVServiceError` (exception) - Base exception
+- `QMSServiceError` (exception) - Base exception
 - `ResourceNotFoundError`, `AmbiguousSelectorError`, `SelectorNotFoundError` (exceptions)
 - `ResourceMeta` (dataclass) - Resource metadata DTO
 - `StepMode`, `StepStatus` (Enum) - Execution state enums
@@ -82,23 +82,23 @@
 
 ### Evidence-Based Compliance Check
 
-**Command**: `rg -n "^from quantumvitas\.api import|^import quantumvitas\.api" src/quantumvitas/cli`
+**Command**: `rg -n "^from qmatsuite\.api import|^import qmatsuite\.api" src/qmatsuite/cli`
 **Result**: 8 matches ✅
-**Evidence**: CLI imports only from `quantumvitas.api`
+**Evidence**: CLI imports only from `qmatsuite.api`
 
-**Command**: `rg -n "^from quantumvitas\.api import|^import quantumvitas\.api" src/quantumvitas/daemon`
+**Command**: `rg -n "^from qmatsuite\.api import|^import qmatsuite\.api" src/qmatsuite/daemon`
 **Result**: 1 match ✅
-**Evidence**: Daemon imports only from `quantumvitas.api`
+**Evidence**: Daemon imports only from `qmatsuite.api`
 
-**Command**: `rg -n "^from quantumvitas\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/quantumvitas/cli`
+**Command**: `rg -n "^from qmatsuite\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/qmatsuite/cli`
 **Result**: 0 matches ✅
 **Evidence**: CLI has no direct kernel imports
 
-**Command**: `rg -n "^from quantumvitas\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/quantumvitas/daemon`
+**Command**: `rg -n "^from qmatsuite\.(core|calculation|drivers|analysis|io|engine|workflow|presets)\b" src/qmatsuite/daemon`
 **Result**: 0 matches ✅
 **Evidence**: Daemon has no direct kernel imports
 
-**Command**: `rg -n "^from quantumvitas\.(core|calculation|drivers|analysis|io|engine|workflow|presets) import" src/quantumvitas/api.py`
+**Command**: `rg -n "^from qmatsuite\.(core|calculation|drivers|analysis|io|engine|workflow|presets) import" src/qmatsuite/api.py`
 **Result**: 26 matches ⚠️
 **Evidence**: API imports from kernel (allowed by spec), but see "Backdoors" below
 
@@ -109,16 +109,16 @@
 **Evidence**:
 ```bash
 # Top 10 modules by re-export count (from audit script):
-quantumvitas.core.resolution: 115 symbols
-quantumvitas.core.project_utils: 63 symbols
-quantumvitas.core.pseudo_config: 51 symbols
-quantumvitas.core.models: 45 symbols
-quantumvitas.core.resources: 25 symbols
-quantumvitas.analysis.structure_viz: 23 symbols
-quantumvitas.calculation.structure_steps: 19 symbols
-quantumvitas.calculation.naming: 18 symbols
-quantumvitas.core.yamldoc: 15 symbols
-quantumvitas.io: 13 symbols
+qmatsuite.core.resolution: 115 symbols
+qmatsuite.core.project_utils: 63 symbols
+qmatsuite.core.pseudo_config: 51 symbols
+qmatsuite.core.models: 45 symbols
+qmatsuite.core.resources: 25 symbols
+qmatsuite.analysis.structure_viz: 23 symbols
+qmatsuite.calculation.structure_steps: 19 symbols
+qmatsuite.calculation.naming: 18 symbols
+qmatsuite.core.yamldoc: 15 symbols
+qmatsuite.io: 13 symbols
 ```
 
 **Why This Violates the Spirit**:
@@ -164,7 +164,7 @@ But the current implementation treats "entry point" as "re-export everything", n
 **`__all__` Exports**:
 ```python
 __all__ = [
-    "QVService", "QVServiceError",
+    "QMSService", "QMSServiceError",
     "ResourceNotFoundError", "RegistryOutOfSyncError", "AmbiguousSelectorError",
     "SelectorNotFoundError", "ContextNotFoundError", "VolumeParserError",
     "DisplayModeParams", "ResourceContext", "ProjectConfigError", "ResourceMeta",
@@ -192,16 +192,16 @@ __all__ = [
 
 | Module | Re-Export Count | Top Symbols | Rationale for Removal |
 |--------|----------------|-------------|----------------------|
-| `quantumvitas.core.resolution` | 115 | `resolve_calculation`, `build_resource_index`, `ResourceIndex`, `ResolvedResource` | Functions should be internal; types should be DTOs |
-| `quantumvitas.core.project_utils` | 63 | `load_project_config`, `save_project_config`, `find_structure_entry` | Functions should be internal; use via capabilities |
-| `quantumvitas.core.pseudo_config` | 51 | `PseudoConfig`, `load_pseudo_config`, `get_ssl_context` | Types should be DTOs; functions internal |
-| `quantumvitas.core.models` | 45 | `CalculationModel`, `load_calculation`, `save_calculation` | Heavy dataclasses - replace with DTOs |
-| `quantumvitas.core.resources` | 25 | `ResourceMeta`, `generate_resource_id`, `slugify` | `ResourceMeta` → DTO; utilities → internal |
-| `quantumvitas.analysis.structure_viz` | 23 | `visualize_structure`, `DisplayModeParams`, `build_display_atoms` | Capability endpoint; types → DTOs |
-| `quantumvitas.calculation.structure_steps` | 19 | `StructureStepSpec`, `STEP_TYPE_MODULE_MAP` | Types → DTOs; constants → internal |
-| `quantumvitas.calculation.naming` | 18 | `find_calculation_raw_dir`, `BandAnalysisFiles` | Functions → internal; types → DTOs |
-| `quantumvitas.core.yamldoc` | 15 | `StepDoc`, `PathNotFoundError` | Types → DTOs; exceptions → minimal set |
-| `quantumvitas.io` | 13 | `read_structure`, `write_structure` | Functions → capability endpoints |
+| `qmatsuite.core.resolution` | 115 | `resolve_calculation`, `build_resource_index`, `ResourceIndex`, `ResolvedResource` | Functions should be internal; types should be DTOs |
+| `qmatsuite.core.project_utils` | 63 | `load_project_config`, `save_project_config`, `find_structure_entry` | Functions should be internal; use via capabilities |
+| `qmatsuite.core.pseudo_config` | 51 | `PseudoConfig`, `load_pseudo_config`, `get_ssl_context` | Types should be DTOs; functions internal |
+| `qmatsuite.core.models` | 45 | `CalculationModel`, `load_calculation`, `save_calculation` | Heavy dataclasses - replace with DTOs |
+| `qmatsuite.core.resources` | 25 | `ResourceMeta`, `generate_resource_id`, `slugify` | `ResourceMeta` → DTO; utilities → internal |
+| `qmatsuite.analysis.structure_viz` | 23 | `visualize_structure`, `DisplayModeParams`, `build_display_atoms` | Capability endpoint; types → DTOs |
+| `qmatsuite.calculation.structure_steps` | 19 | `StructureStepSpec`, `STEP_TYPE_MODULE_MAP` | Types → DTOs; constants → internal |
+| `qmatsuite.calculation.naming` | 18 | `find_calculation_raw_dir`, `BandAnalysisFiles` | Functions → internal; types → DTOs |
+| `qmatsuite.core.yamldoc` | 15 | `StepDoc`, `PathNotFoundError` | Types → DTOs; exceptions → minimal set |
+| `qmatsuite.io` | 13 | `read_structure`, `write_structure` | Functions → capability endpoints |
 
 **Total from top 10**: ~387 re-exports (60% of total)
 
@@ -520,14 +520,14 @@ svc.workflow.instantiate(
 
 **Current Problem**: Frontends import kernel types from API:
 ```python
-from quantumvitas.api import Calculation, Step, ResourceMeta
+from qmatsuite.api import Calculation, Step, ResourceMeta
 calc = Calculation.from_yaml(...)  # Direct kernel type usage
 ```
 
 **Target State**: Frontends call capabilities, get DTOs:
 ```python
-from quantumvitas.api import QVService
-svc = QVService(project_root)
+from qmatsuite.api import QMSService
+svc = QMSService(project_root)
 calc_info = svc.calculation.get(selector)  # Returns CalculationInfo DTO
 ```
 
@@ -544,7 +544,7 @@ calc_info = svc.calculation.get(selector)  # Returns CalculationInfo DTO
 
 **Phase 2: Replace with API-Owned DTOs**
 
-**Create**: `quantumvitas.api.types` module:
+**Create**: `qmatsuite.api.types` module:
 ```python
 # api/types.py
 @dataclass
@@ -579,7 +579,7 @@ class StepStatus(Enum):
 
 **Phase 3: Internalize Function Re-exports**
 
-**Current**: `from quantumvitas.api import resolve_calculation, load_project_config`
+**Current**: `from qmatsuite.api import resolve_calculation, load_project_config`
 **Target**: These become internal; frontends use capabilities:
 - `resolve_calculation()` → `svc.calculation.get()` (internal resolution)
 - `load_project_config()` → `svc.project.get_config()` (returns DTO)
@@ -601,17 +601,17 @@ class StepStatus(Enum):
 **Current** (5 wrappers + 1 re-export):
 ```python
 # Current API surface
-QVService.parse_scf_output(scf_file: Path) -> dict
-QVService.plot_scf_convergence(data: dict, output_path: Path) -> None
-QVService.save_figure(fig, path: Path) -> None
-QVService.parse_dos_data(dos_file: Path) -> DOSData  # re-exported
-QVService.plot_dos(data: DOSData, output_path: Path) -> None
-QVService.analyze_scf(...) -> dict  # High-level but still uses above
+QMSService.parse_scf_output(scf_file: Path) -> dict
+QMSService.plot_scf_convergence(data: dict, output_path: Path) -> None
+QMSService.save_figure(fig, path: Path) -> None
+QMSService.parse_dos_data(dos_file: Path) -> DOSData  # re-exported
+QMSService.plot_dos(data: DOSData, output_path: Path) -> None
+QMSService.analyze_scf(...) -> dict  # High-level but still uses above
 
 # Frontend code
-dos_data = QVService.parse_dos_data(dos_file)
-QVService.plot_dos(dos_data, output_path)
-QVService.save_figure(fig, output_path)
+dos_data = QMSService.parse_dos_data(dos_file)
+QMSService.plot_dos(dos_data, output_path)
+QMSService.save_figure(fig, output_path)
 ```
 
 **Proposed** (1 capability endpoint):
@@ -660,17 +660,17 @@ result = svc.analysis.analyze_output(
 **Current** (4 wrappers + 1 re-export):
 ```python
 # Current API surface
-QVService.visualize_structure(project_root, structure_selector, ...) -> dict
-QVService.visualize_structure_direct(structure, ...) -> StructureVisualizationResult  # re-exported
-QVService.get_structure_vis_data(structure, ...) -> dict
-QVService.build_display_atoms(structure) -> List[AtomInfo]
-QVService.build_bonds(structure) -> List[BondInfo]
+QMSService.visualize_structure(project_root, structure_selector, ...) -> dict
+QMSService.visualize_structure_direct(structure, ...) -> StructureVisualizationResult  # re-exported
+QMSService.get_structure_vis_data(structure, ...) -> dict
+QMSService.build_display_atoms(structure) -> List[AtomInfo]
+QMSService.build_bonds(structure) -> List[BondInfo]
 
 # Frontend code
-vis_data = QVService.get_structure_vis_data(structure)
-atoms = QVService.build_display_atoms(structure)
-bonds = QVService.build_bonds(structure)
-result = QVService.visualize_structure_direct(structure, ...)
+vis_data = QMSService.get_structure_vis_data(structure)
+atoms = QMSService.build_display_atoms(structure)
+bonds = QMSService.build_bonds(structure)
+result = QMSService.visualize_structure_direct(structure, ...)
 ```
 
 **Proposed** (1 capability endpoint):
@@ -715,19 +715,19 @@ result = svc.structure.visualize(
 **Current** (8 wrappers + 2 re-exports):
 ```python
 # Current API surface
-QVService.init_calculation(project_root, structure_selector, name) -> Calculation  # re-exported
-QVService.configure_calculation(project_root, selector, updates) -> Calculation
-QVService.get_calculation(project_root, selector) -> Calculation
-QVService.list_calculations(project_root) -> List[Calculation]
-QVService.delete_calculation(project_root, selector) -> None
-QVService.rename_calculation(project_root, selector, new_name) -> Calculation
-QVService.change_calculation_structure(project_root, selector, structure_selector) -> Calculation
-QVService.copy_calculation_template(project_root, template_id, ...) -> Calculation
+QMSService.init_calculation(project_root, structure_selector, name) -> Calculation  # re-exported
+QMSService.configure_calculation(project_root, selector, updates) -> Calculation
+QMSService.get_calculation(project_root, selector) -> Calculation
+QMSService.list_calculations(project_root) -> List[Calculation]
+QMSService.delete_calculation(project_root, selector) -> None
+QMSService.rename_calculation(project_root, selector, new_name) -> Calculation
+QMSService.change_calculation_structure(project_root, selector, structure_selector) -> Calculation
+QMSService.copy_calculation_template(project_root, template_id, ...) -> Calculation
 
 # Frontend code
-calc = QVService.init_calculation(project_root, "si", "si_dos")
-calc = QVService.configure_calculation(project_root, "si_dos", {"mode": "strict"})
-calc = QVService.get_calculation(project_root, "si_dos")
+calc = QMSService.init_calculation(project_root, "si", "si_dos")
+calc = QMSService.configure_calculation(project_root, "si_dos", {"mode": "strict"})
+calc = QMSService.get_calculation(project_root, "si_dos")
 ```
 
 **Proposed** (8 capability endpoints, but organized):
@@ -807,11 +807,11 @@ calc_detail = svc.calculation.get("si_dos")
 
 **These require a smarter planner to resolve**:
 
-1. **API-Owned DTOs Module**: Should we create `quantumvitas.api.types` for DTOs, or keep them in `api/__init__.py`? Trade-off: separate module is cleaner, but adds import path.
+1. **API-Owned DTOs Module**: Should we create `qmatsuite.api.types` for DTOs, or keep them in `api/__init__.py`? Trade-off: separate module is cleaner, but adds import path.
 
 2. **API Versioning**: How do we version the API surface? Semantic versioning for capability endpoints? Breaking change policy?
 
-3. **Exception Strategy**: One base `QVServiceError` with error codes, or typed exceptions (`ResourceNotFoundError`, `ValidationError`, etc.)? Current mix of both is inconsistent.
+3. **Exception Strategy**: One base `QMSServiceError` with error codes, or typed exceptions (`ResourceNotFoundError`, `ValidationError`, etc.)? Current mix of both is inconsistent.
 
 4. **Capability Group Implementation**: Should capability groups be:
    - Sub-objects (`svc.calculation.get()`)
@@ -847,19 +847,19 @@ python scripts/audit_api_surface.py
 python -c "import ast; ..."  # (see design doc for full script)
 
 # Verify frontend imports
-rg -n "^from quantumvitas\.api import" src/quantumvitas/cli
-rg -n "^from quantumvitas\.api import" src/quantumvitas/daemon
+rg -n "^from qmatsuite\.api import" src/qmatsuite/cli
+rg -n "^from qmatsuite\.api import" src/qmatsuite/daemon
 
 # Verify no kernel imports in frontends
-rg -n "^from quantumvitas\.(core|calculation|...)\b" src/quantumvitas/cli
-rg -n "^from quantumvitas\.(core|calculation|...)\b" src/quantumvitas/daemon
+rg -n "^from qmatsuite\.(core|calculation|...)\b" src/qmatsuite/cli
+rg -n "^from qmatsuite\.(core|calculation|...)\b" src/qmatsuite/daemon
 
 # Count methods
-rg -n "@staticmethod|@classmethod" src/quantumvitas/api.py | wc -l
-rg -n "^    def " src/quantumvitas/api.py | wc -l
+rg -n "@staticmethod|@classmethod" src/qmatsuite/api.py | wc -l
+rg -n "^    def " src/qmatsuite/api.py | wc -l
 
 # File size
-wc -l src/quantumvitas/api.py
+wc -l src/qmatsuite/api.py
 ```
 
 ### Audit Artifacts

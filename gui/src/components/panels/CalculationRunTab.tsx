@@ -7,7 +7,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useJobs, useJobDetail } from '../../hooks/useJobs';
-import type { CalculationInfo, CalculationDetailResult, JobSummary } from '../../types/qv';
+import type { CalculationInfo, CalculationDetailResult, JobSummary } from '../../types/qms';
 import './CalculationRunTab.css';
 
 interface CalculationRunTabProps {
@@ -33,7 +33,7 @@ function StatusBadge({ status, size = 'medium' }: StatusBadgeProps) {
   return (
     <span 
       className={`status-badge status-badge--${status} status-badge--${size}`}
-      data-testid="qv-job-status"
+      data-testid="qms-job-status"
     >
       <span className="status-badge__icon">{icon}</span>
       <span className="status-badge__label">{status}</span>
@@ -182,7 +182,7 @@ export function CalculationRunTab({ projectRoot, calculation }: CalculationRunTa
   };
   
   return (
-    <div className="calculation-run-tab" data-testid="qv-calc-run-logs-panel">
+    <div className="calculation-run-tab" data-testid="qms-calc-run-logs-panel">
       <div className="calculation-run-tab__header">
         <div className="calculation-run-tab__title">
           <h3>Latest Run: {calculation.name}</h3>
@@ -196,7 +196,7 @@ export function CalculationRunTab({ projectRoot, calculation }: CalculationRunTa
       
       <div className="calculation-run-tab__content">
         {/* Job Info */}
-        <div className="calculation-run-tab__section" data-testid="qv-calc-job-summary">
+        <div className="calculation-run-tab__section" data-testid="qms-calc-job-summary">
           <h4>Job Info</h4>
           <div className="calculation-run-tab__grid">
             <div className="calculation-run-tab__item">
@@ -259,7 +259,7 @@ export function CalculationRunTab({ projectRoot, calculation }: CalculationRunTa
               <code title={job.io_dir}>{job.io_dir}</code>
               <button
                 className="calculation-run-tab__reveal"
-                onClick={() => window.qv?.revealPath?.(job.io_dir!)}
+                onClick={() => window.qms?.revealPath?.(job.io_dir!)}
                 title={`Reveal: ${job.io_dir}`}
               >
                 📂 Reveal
@@ -298,7 +298,7 @@ export function CalculationRunTab({ projectRoot, calculation }: CalculationRunTa
               </button>
             </div>
           </div>
-          <div className="calculation-run-tab__logs" data-testid="qv-calc-job-logs">
+          <div className="calculation-run-tab__logs" data-testid="qms-calc-job-logs">
             {logs?.output_file && (
               <div className="calculation-run-tab__logs-file">
                 <code>{logs.output_file}</code>

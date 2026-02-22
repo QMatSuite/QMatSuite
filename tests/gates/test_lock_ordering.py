@@ -23,7 +23,7 @@ def test_save_yaml_doc_sequential_locking():
 
     Verifies the code structure shows sequential lock pattern.
     """
-    from quantumvitas.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yaml_io import save_yaml_doc
 
     source = inspect.getsource(save_yaml_doc)
 
@@ -49,8 +49,8 @@ def test_provenance_lock_detects_reentrancy():
 
     This prevents accidental nested locking.
     """
-    from quantumvitas.provenance.locks import provenance_lock
-    from quantumvitas.provenance.errors import LockReentrancyError
+    from qmatsuite.provenance.locks import provenance_lock
+    from qmatsuite.provenance.errors import LockReentrancyError
 
     # Create a temp directory to use as project root
     import tempfile
@@ -75,7 +75,7 @@ def test_no_provenance_lock_inside_edit_lock_pattern():
     - edit.lock block contains only YAML writing
     - provenance recording is after the block
     """
-    from quantumvitas.core.yaml_io import save_yaml_doc
+    from qmatsuite.core.yaml_io import save_yaml_doc
 
     source = inspect.getsource(save_yaml_doc)
     lines = source.split("\n")
@@ -110,7 +110,7 @@ def test_provenance_lock_independent():
 
     Verifies the lock works as a standalone context manager.
     """
-    from quantumvitas.provenance.locks import provenance_lock
+    from qmatsuite.provenance.locks import provenance_lock
 
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
@@ -128,7 +128,7 @@ def test_provenance_lock_independent():
 
 def test_gc_lock_available():
     """CAS garbage collection lock is available."""
-    from quantumvitas.provenance.locks import gc_lock
+    from qmatsuite.provenance.locks import gc_lock
 
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:

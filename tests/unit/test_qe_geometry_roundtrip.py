@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.calculation.geometry import (
+from qmatsuite.calculation.geometry import (
     read_geometry_from_input,
     read_geometry_from_output,
     compare_geometries,
 )
-from quantumvitas.calculation import build_step_spec_from_qe_input, materialize_step_spec
+from qmatsuite.calculation import build_step_spec_from_qe_input, materialize_step_spec
 
 
 pytestmark = pytest.mark.quick

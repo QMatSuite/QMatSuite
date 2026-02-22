@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from quantumvitas.execution.post_job import (
+from qmatsuite.execution.post_job import (
     ArchiveToSlotAction,
     PostJobContext,
     compute_snapshot_diff,

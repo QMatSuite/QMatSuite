@@ -1,6 +1,6 @@
 # Frontend RPC Patterns and Call Count Management
 
-This document describes the patterns used in the QuantumVITAS GUI for making RPC calls to the daemon, with a focus on preventing infinite loops and controlling call frequency. It is essential reading for anyone working on GUI components that interact with the daemon.
+This document describes the patterns used in the QMatSuite GUI for making RPC calls to the daemon, with a focus on preventing infinite loops and controlling call frequency. It is essential reading for anyone working on GUI components that interact with the daemon.
 
 ## Table of Contents
 
@@ -16,18 +16,18 @@ This document describes the patterns used in the QuantumVITAS GUI for making RPC
 
 ### The Problem
 
-React's `useEffect` hooks re-run whenever their dependencies change. If a component depends on the `qv` client object from `useQVClient()`, and that object is recreated on every render, the effect will run continuously, causing infinite RPC call loops.
+React's `useEffect` hooks re-run whenever their dependencies change. If a component depends on the `qms` client object from `useQMSClient()`, and that object is recreated on every render, the effect will run continuously, causing infinite RPC call loops.
 
 ### The Solution
 
-The `useQVClient()` hook returns a **stable client reference** that does not change between renders, even though its internal state is updated.
+The `useQMSClient()` hook returns a **stable client reference** that does not change between renders, even though its internal state is updated.
 
-**Implementation in `useQVClient.ts`:**
+**Implementation in `useQMSClient.ts`:**
 
 ```typescript
 // Use ref to maintain stable client object reference
-// This prevents infinite loops in effects that depend on qv
-const clientRef = useRef<QVClient | null>(null);
+// This prevents infinite loops in effects that depend on qms
+const clientRef = useRef<QMSClient | null>(null);
 
 if (!clientRef.current) {
   clientRef.current = {
@@ -51,8 +51,8 @@ return clientRef.current;
 ```typescript
 useEffect(() => {
   // Load modules once on mount
-  qv.call('list_modules', {});
-}, [qv]); // qv is stable, so this runs once
+  qms.call('list_modules', {});
+}, [qms]); // qms is stable, so this runs once
 ```
 
 **✅ Good Pattern:**
@@ -60,8 +60,8 @@ useEffect(() => {
 useEffect(() => {
   if (!selectedModule) return;
   // Load sections when module changes
-  qv.call('list_sections', { module: selectedModule });
-}, [qv, selectedModule]); // Both are stable/primitives
+  qms.call('list_sections', { module: selectedModule });
+}, [qms, selectedModule]); // Both are stable/primitives
 ```
 
 **❌ Bad Pattern:**
@@ -72,8 +72,8 @@ const modulesCache = useMemo(() => {
 
 useEffect(() => {
   // BAD: cache object changes identity, causing loop
-  qv.call('list_modules', {});
-}, [qv, modulesCache]); // modulesCache is a new object each render
+  qms.call('list_modules', {});
+}, [qms, modulesCache]); // modulesCache is a new object each render
 ```
 
 **❌ Bad Pattern:**
@@ -83,7 +83,7 @@ useEffect(() => {
   if (modules.length > 0 && !selectedModule) {
     setSelectedModule(modules[0].id); // This triggers the effect again!
   }
-}, [qv, modules, selectedModule]); // Creates a loop
+}, [qms, modules, selectedModule]); // Creates a loop
 ```
 
 ### Memoization Guidelines
@@ -92,7 +92,7 @@ useEffect(() => {
 - **Do NOT** put memoized values into effect dependency arrays if those effects trigger RPC calls.
 - **Do** use memoized values only for rendering (e.g., `sortedModules.map(...)`).
 - **Do** keep effect dependencies limited to:
-  - Stable client references (`qv`)
+  - Stable client references (`qms`)
   - Primitive values (strings, numbers, booleans)
   - Stable function references (from `useCallback`)
 
@@ -164,7 +164,7 @@ This is safe because:
 
 Common causes:
 1. An effect depends on a state value that is updated inside that effect.
-2. The `qv` client reference is not stable (should not happen with current `useQVClient` implementation).
+2. The `qms` client reference is not stable (should not happen with current `useQMSClient` implementation).
 3. A memoized value (e.g., `useMemo` result) is in an effect dependency array.
 
 ---
@@ -195,7 +195,7 @@ The QE Parameter Browser uses a single RPC endpoint with different operations:
 - `handleSearch` - Explicit search trigger (button/Enter only).
 
 **Effects:**
-- **Only one effect**: Loads modules on mount, depends on `[qv, handleModuleChange]`.
+- **Only one effect**: Loads modules on mount, depends on `[qms, handleModuleChange]`.
 - All other data loading is event-driven via handlers.
 
 ### Parameter Table UX
@@ -229,7 +229,7 @@ useEffect(() => {
   if (sectionsCache.has('CONTROL')) {
     // ...
   }
-}, [qv, sectionsCache]);
+}, [qms, sectionsCache]);
 ```
 
 **Fix**: Don't put cache objects in effect dependencies. Use them only for rendering or in event handlers.
@@ -244,7 +244,7 @@ useEffect(() => {
   if (modules.length > 0 && !selectedModule) {
     setSelectedModule(modules[0].id); // Triggers effect again!
   }
-}, [qv, modules, selectedModule]);
+}, [qms, modules, selectedModule]);
 ```
 
 **Fix**: Use event handlers for auto-selection, or use a ref to track if auto-selection has already happened.
@@ -256,19 +256,19 @@ useEffect(() => {
 **Example:**
 ```typescript
 const handleLoad = () => {
-  qv.call('list_modules', {});
+  qms.call('list_modules', {});
 };
 
 useEffect(() => {
   handleLoad();
-}, [qv, handleLoad]); // handleLoad is recreated each render
+}, [qms, handleLoad]); // handleLoad is recreated each render
 ```
 
 **Fix**: Use `useCallback` to memoize the handler:
 ```typescript
 const handleLoad = useCallback(() => {
-  qv.call('list_modules', {});
-}, [qv]);
+  qms.call('list_modules', {});
+}, [qms]);
 ```
 
 ### Pitfall 4: Search Triggers on Every Keystroke
@@ -279,17 +279,17 @@ const handleLoad = useCallback(() => {
 ```typescript
 useEffect(() => {
   if (searchQuery.trim()) {
-    qv.call('search', { query: searchQuery }); // BAD: runs on every keystroke
+    qms.call('search', { query: searchQuery }); // BAD: runs on every keystroke
   }
-}, [qv, searchQuery]);
+}, [qms, searchQuery]);
 ```
 
 **Fix**: Only trigger search on explicit user action (button click, Enter key):
 ```typescript
 const handleSearch = useCallback(async () => {
   if (!searchQuery.trim()) return;
-  await qv.call('search', { query: searchQuery.trim() });
-}, [qv, searchQuery]);
+  await qms.call('search', { query: searchQuery.trim() });
+}, [qms, searchQuery]);
 
 // In JSX:
 <input onChange={(e) => setSearchQuery(e.target.value)} />
@@ -302,7 +302,7 @@ const handleSearch = useCallback(async () => {
 
 When working on components that use "list" RPCs, verify:
 
-- [ ] `useQVClient()` returns a stable client reference; effects do not re-run due to client identity changes.
+- [ ] `useQMSClient()` returns a stable client reference; effects do not re-run due to client identity changes.
 - [ ] "List" RPC effects depend only on stable, primitive inputs (ids / filter values), not on caches or derived objects.
 - [ ] Each view that uses `list_*` RPCs has clearly defined expected call counts on mount and per user action.
 - [ ] No `useEffect` both depends on and mutates the same state in a way that would cause a loop.
@@ -315,7 +315,7 @@ When working on components that use "list" RPCs, verify:
 
 ## Cross-References
 
-- **GUI Architecture**: See `docs/GUI_ARCHITECTURE.md` for overall GUI structure and `useQVClient` hook overview.
+- **GUI Architecture**: See `docs/GUI_ARCHITECTURE.md` for overall GUI structure and `useQMSClient` hook overview.
 - **Daemon API**: See `docs/DAEMON_API_REFERENCE.md` for RPC endpoint documentation.
 - **Registry / ResourceIndex**: See `docs/ARCHITECTURE.md` (to be written) for details on how registry rebuilds and caching are handled. The same philosophy applies: explicit rebuilds on project load or user-triggered refresh, but no automatic loops on read.
 
@@ -325,7 +325,7 @@ When working on components that use "list" RPCs, verify:
 
 For implementation examples, see:
 
-- **Stable Client Pattern**: `gui/src/hooks/useQVClient.ts` (lines 308-336)
+- **Stable Client Pattern**: `gui/src/hooks/useQMSClient.ts` (lines 308-336)
 - **QE Parameter Browser**: `gui/src/components/panels/QEParameterBrowserPanel.tsx`
   - See comments in the file for expected call counts and effect dependencies.
 

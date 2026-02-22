@@ -394,7 +394,7 @@ The separate right-hand actions column was enforcing a large minimum width for t
 ### Files Modified
 
 - `gui/src/components/panels/CalculationListPanel.tsx` - Updated button classes and structure
-- `gui/src/components/panels/CalculationListPanel.css` - Added `.qv-icon-button--ghost` and `.qv-button--primary--large` styles
+- `gui/src/components/panels/CalculationListPanel.css` - Added `.qms-icon-button--ghost` and `.qms-button--primary--large` styles
 
 ## Hierarchy Clarification Refactor
 
@@ -426,10 +426,10 @@ The separate right-hand actions column was enforcing a large minimum width for t
 ### Files Modified
 
 - `gui/src/components/panels/CalculationListPanel.tsx` - Changed "Calculations" to "All Calculations", added subtitle structure
-- `gui/src/components/panels/CalculationListPanel.css` - Added `.qv-calc-header-subtitle` styles
+- `gui/src/components/panels/CalculationListPanel.css` - Added `.qms-calc-header-subtitle` styles
 - `gui/src/components/panels/CalculationOverviewTab.tsx` - Compute step index/count and pass to StepDetailPanel
 - `gui/src/components/panels/StepDetailPanel.tsx` - Added breadcrumb props and rendering
-- `gui/src/components/panels/StepDetailPanel.css` - Added `.qv-step-breadcrumb` and `.qv-step-type-chip` styles
+- `gui/src/components/panels/StepDetailPanel.css` - Added `.qms-step-breadcrumb` and `.qms-step-type-chip` styles
 
 ## Step Focus Mode
 

@@ -22,11 +22,11 @@
 ### Core Terms
 
 - **`species_map`**: Calculation-level mapping `Dict[str, Dict[str, Any]]` where key is element symbol (e.g., "Si") and value contains `{pseudopot: str, mass: float?, pseudo_sha256: str?, ...}`. Stored in `calculation.yaml`.
-  - **Location:** `src/quantumvitas/core/models.py:238-243`
+  - **Location:** `src/qmatsuite/core/models.py:238-243`
   - **Documentation:** "This is the authoritative source of truth for pseudo mapping. Step-level species_overrides are deprecated (used only for backwards compat on load)."
 
 - **`species_overrides`**: Step-level mapping with same structure as `species_map`, stored in `step.yaml`.
-  - **Location:** `src/quantumvitas/calculation/structure_steps.py:51`
+  - **Location:** `src/qmatsuite/calculation/structure_steps.py:51`
   - **Status:** Legacy field, marked for deprecation but still used in many projects.
 
 - **`ATOMIC_SPECIES`**: QE input card containing element, mass, pseudopotential filename. Format: `Si  28.0855  Si.pbe-n-rrkjus_psl.1.0.0.UPF`
@@ -34,7 +34,7 @@
 - **`pseudo_dir`**: Directory path where QE looks for pseudopotential files. Runtime-managed (set to `project_root/pseudo`).
 
 - **`ensure_qe_pseudos()`**: Canonical function for pseudopotential resolution. Handles copying pseudos to `project_pseudo_dir` and returns resolution result.
-  - **Location:** `src/quantumvitas/core/pseudo.py:67-107`
+  - **Location:** `src/qmatsuite/core/pseudo.py:67-107`
 
 ---
 
@@ -42,7 +42,7 @@
 
 ### 2.1 calculation.yaml
 
-**Schema Location:** `src/quantumvitas/core/models.py:208-243`
+**Schema Location:** `src/qmatsuite/core/models.py:208-243`
 
 **Fields:**
 - `species_map: Optional[Dict[str, Dict[str, Any]]]` (lines 238-243)
@@ -61,7 +61,7 @@
 
 ### 2.2 step.yaml
 
-**Schema Location:** `src/quantumvitas/calculation/structure_steps.py:34-51`
+**Schema Location:** `src/qmatsuite/calculation/structure_steps.py:34-51`
 
 **Fields:**
 - `species_overrides: Dict[str, Dict[str, Any]] = field(default_factory=dict)` (line 51)
@@ -105,7 +105,7 @@ Si  28.0855  Si.pbe-n-rrkjus_psl.1.0.0.UPF
 
 ### 3.1 Primary Runtime Path: `materialize_step_spec()`
 
-**Location:** `src/quantumvitas/calculation/structure_steps.py:648-1187`
+**Location:** `src/qmatsuite/calculation/structure_steps.py:648-1187`
 
 **Flow:**
 1. **Load calculation context** (lines 1070-1102):
@@ -134,7 +134,7 @@ Si  28.0855  Si.pbe-n-rrkjus_psl.1.0.0.UPF
 
 ### 3.2 Input Generation: `generate_qe_input_from_spec()`
 
-**Location:** `src/quantumvitas/calculation/structure_steps.py:487-578`
+**Location:** `src/qmatsuite/calculation/structure_steps.py:487-578`
 
 **Precedence Logic** (lines 573-576):
 ```python
@@ -150,7 +150,7 @@ apply_species_overrides_to_qe_input(qe_input, effective_species_overrides)
 
 ### 3.3 Pseudopotential Resolution: `ensure_qe_pseudos()`
 
-**Location:** `src/quantumvitas/core/pseudo.py:67-392`
+**Location:** `src/qmatsuite/core/pseudo.py:67-392`
 
 **Precedence Logic** (lines 173-212):
 ```python
@@ -181,7 +181,7 @@ else:
 
 ### 3.4 Calculation Runner: Step0 Pseudo Preparation
 
-**Location:** `src/quantumvitas/calculation/runner.py:180-228`
+**Location:** `src/qmatsuite/calculation/runner.py:180-228`
 
 **Flow** (lines 183-195):
 ```python
@@ -200,7 +200,7 @@ if calculation.species_map:
 
 ### 3.5 Compat Executor (Legacy Playback)
 
-**Location:** `src/quantumvitas/calculation/compat_executor.py:80-91`
+**Location:** `src/qmatsuite/calculation/compat_executor.py:80-91`
 
 **Flow:**
 - Parses `ATOMIC_SPECIES` from raw `.in` file (line 86)
@@ -215,7 +215,7 @@ if calculation.species_map:
 
 ### 4.1 Step Import: `build_step_spec_from_qe_input()`
 
-**Location:** `src/quantumvitas/calculation/importers.py:95-266`
+**Location:** `src/qmatsuite/calculation/importers.py:95-266`
 
 **Flow** (lines 198-223):
 ```python
@@ -234,7 +234,7 @@ if atomic_species_card and atomic_species_card.data:
 
 ### 4.2 Calculation Import: `build_calculation_from_qe_inputs()`
 
-**Location:** `src/quantumvitas/calculation/importers.py:267-436`
+**Location:** `src/qmatsuite/calculation/importers.py:267-436`
 
 **Flow** (lines 393-420):
 ```python
@@ -265,7 +265,7 @@ if calc_species_map:
 
 ### 4.3 Folder Import: `materialize_project_from_qe_input_folder()`
 
-**Location:** `src/quantumvitas/calculation/folder_import.py:155-461`
+**Location:** `src/qmatsuite/calculation/folder_import.py:155-461`
 
 **Flow** (lines 393-443):
 ```python
@@ -320,7 +320,7 @@ if species_overrides:
 
 ### 4.5 Update Step from Existing Input: `update_step_from_existing_qe_input()`
 
-**Location:** `src/quantumvitas/calculation/calculation.py:670-695`
+**Location:** `src/qmatsuite/calculation/calculation.py:670-695`
 
 **Flow** (lines 674-695):
 ```python
@@ -412,7 +412,7 @@ if not calc_model.species_map:
 
 ### 6.1 Intended Design (Per Code Documentation)
 
-**Source:** `src/quantumvitas/core/models.py:238-242`
+**Source:** `src/qmatsuite/core/models.py:238-242`
 > "Calculation-level pseudopotential mapping: element -> {pseudopot, mass, pseudo_sha256, pseudo_sha_family, pseudo_basename}
 > This is the authoritative source of truth for pseudo mapping.
 > Step-level species_overrides are deprecated (used only for backwards compat on load)."
@@ -460,8 +460,8 @@ if not calc_model.species_map:
 ### Conflict #1: Import Writes to Step-Level, Runtime Prefers Calc-Level
 
 **Location:**
-- Import: `src/quantumvitas/calculation/importers.py:198-223` (writes `species_overrides` to step.yaml)
-- Runtime: `src/quantumvitas/calculation/structure_steps.py:573-576` (prefers `species_map` from calculation.yaml)
+- Import: `src/qmatsuite/calculation/importers.py:198-223` (writes `species_overrides` to step.yaml)
+- Runtime: `src/qmatsuite/calculation/structure_steps.py:573-576` (prefers `species_map` from calculation.yaml)
 
 **Problem:**
 - When importing a single step via `build_step_spec_from_qe_input()`, pseudo info is written to `step.yaml` → `species_overrides`
@@ -491,7 +491,7 @@ if not calc_model.species_map:
 
 ### Conflict #3: Folder Import Writes to Both Locations
 
-**Location:** `src/quantumvitas/calculation/folder_import.py:393-443`
+**Location:** `src/qmatsuite/calculation/folder_import.py:393-443`
 
 **Problem:**
 - Folder import writes `species_map` to calculation.yaml (lines 437-443)
@@ -506,7 +506,7 @@ if not calc_model.species_map:
 
 ### Conflict #4: Compat Executor Bypasses YAML Entirely
 
-**Location:** `src/quantumvitas/calculation/compat_executor.py:80-91`
+**Location:** `src/qmatsuite/calculation/compat_executor.py:80-91`
 
 **Problem:**
 - Compat executor parses `ATOMIC_SPECIES` from raw `.in` file
@@ -521,7 +521,7 @@ if not calc_model.species_map:
 
 ### Conflict #5: Update Step Writes Step-Level Only
 
-**Location:** `src/quantumvitas/calculation/calculation.py:670-695`
+**Location:** `src/qmatsuite/calculation/calculation.py:670-695`
 
 **Problem:**
 - `update_step_from_existing_qe_input()` extracts pseudo info and writes to `step.species_overrides`
@@ -548,7 +548,7 @@ if not calc_model.species_map:
 
 **Minimal Path:**
 1. After step creation, collect all `species_overrides` from steps
-2. Call `migrate_species_overrides_to_calc()` (already exists in `src/quantumvitas/core/models.py:534-607`)
+2. Call `migrate_species_overrides_to_calc()` (already exists in `src/qmatsuite/core/models.py:534-607`)
 3. Save `species_map` to calculation.yaml
 4. Optionally remove `species_overrides` from step.yaml (or leave for backwards compat)
 
@@ -586,7 +586,7 @@ if not calc_model.species_map:
 - Save migrated `species_map` to calculation.yaml
 - Mark step-level `species_overrides` as deprecated (but keep for backwards compat)
 
-**Note:** Migration function already exists: `migrate_species_overrides_to_calc()` in `src/quantumvitas/core/models.py:534-607`
+**Note:** Migration function already exists: `migrate_species_overrides_to_calc()` in `src/qmatsuite/core/models.py:534-607`
 
 ### Recommendation #5: Clarify Compat Executor Behavior
 
@@ -612,22 +612,22 @@ if not calc_model.species_map:
 ## 9. Evidence Summary (File + Line References)
 
 ### Data Models
-- `src/quantumvitas/core/models.py:238-243` - `CalculationModel.species_map` field definition
-- `src/quantumvitas/calculation/structure_steps.py:51` - `StructureStepSpec.species_overrides` field definition
+- `src/qmatsuite/core/models.py:238-243` - `CalculationModel.species_map` field definition
+- `src/qmatsuite/calculation/structure_steps.py:51` - `StructureStepSpec.species_overrides` field definition
 - `docs/SCHEMA.md:52-104` - Schema documentation (calc-level SSOT, step-level deprecated)
 
 ### Runtime Consumption
-- `src/quantumvitas/calculation/structure_steps.py:1070-1112` - `materialize_step_spec()` loads calc-level `species_map`
-- `src/quantumvitas/calculation/structure_steps.py:573-576` - `generate_qe_input_from_spec()` precedence (calc-level > step-level)
-- `src/quantumvitas/core/pseudo.py:173-212` - `ensure_qe_pseudos()` precedence (species_map parameter > QE input parsing)
-- `src/quantumvitas/calculation/runner.py:183-195` - Runner uses `calculation.species_map` exclusively
+- `src/qmatsuite/calculation/structure_steps.py:1070-1112` - `materialize_step_spec()` loads calc-level `species_map`
+- `src/qmatsuite/calculation/structure_steps.py:573-576` - `generate_qe_input_from_spec()` precedence (calc-level > step-level)
+- `src/qmatsuite/core/pseudo.py:173-212` - `ensure_qe_pseudos()` precedence (species_map parameter > QE input parsing)
+- `src/qmatsuite/calculation/runner.py:183-195` - Runner uses `calculation.species_map` exclusively
 
 ### Import Consumption
-- `src/quantumvitas/calculation/importers.py:198-223` - `build_step_spec_from_qe_input()` writes step-level
-- `src/quantumvitas/calculation/importers.py:393-420` - `build_calculation_from_qe_inputs()` writes calc-level
-- `src/quantumvitas/calculation/folder_import.py:393-443` - `materialize_project_from_qe_input_folder()` writes both
+- `src/qmatsuite/calculation/importers.py:198-223` - `build_step_spec_from_qe_input()` writes step-level
+- `src/qmatsuite/calculation/importers.py:393-420` - `build_calculation_from_qe_inputs()` writes calc-level
+- `src/qmatsuite/calculation/folder_import.py:393-443` - `materialize_project_from_qe_input_folder()` writes both
 - `tests/utils/calculation_projects.py:153-197` - Test utility writes step-level only
-- `src/quantumvitas/calculation/calculation.py:670-695` - Update step writes step-level only
+- `src/qmatsuite/calculation/calculation.py:670-695` - Update step writes step-level only
 
 ### Example Files
 - `tests/data/project_examples/project1/calculations/si-dos/calculation.yaml` - No `species_map`
@@ -658,5 +658,5 @@ if not calc_model.species_map:
 4. Document migration path for legacy projects
 5. Eventually enforce single SSOT in runtime (remove fallback)
 
-**Migration Function Already Exists:** `migrate_species_overrides_to_calc()` in `src/quantumvitas/core/models.py:534-607` can be used to migrate legacy projects.
+**Migration Function Already Exists:** `migrate_species_overrides_to_calc()` in `src/qmatsuite/core/models.py:534-607` can be used to migrate legacy projects.
 

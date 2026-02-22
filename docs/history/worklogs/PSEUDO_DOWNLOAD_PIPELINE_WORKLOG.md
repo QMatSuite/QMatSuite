@@ -17,7 +17,7 @@ Complete rewrite of the pseudo library download system. Previously SSSP-only wit
 
 ## What Changed
 
-### New Package: `src/quantumvitas/pseudo/`
+### New Package: `src/qmatsuite/pseudo/`
 
 | File | Lines | Purpose |
 |------|-------|---------|
@@ -29,9 +29,9 @@ Complete rewrite of the pseudo library download system. Previously SSSP-only wit
 
 | File | Change |
 |------|--------|
-| `src/quantumvitas/mcp/tools/download_pseudo_library.py` | Complete rewrite — new API (library, variant, version) |
-| `src/quantumvitas/core/pseudo_config.py` | Added step 3b: new library layout search via head.json |
-| `src/quantumvitas/mcp/tools/list_resources.py` | Added library-aware discovery scanning head.json |
+| `src/qmatsuite/mcp/tools/download_pseudo_library.py` | Complete rewrite — new API (library, variant, version) |
+| `src/qmatsuite/core/pseudo_config.py` | Added step 3b: new library layout search via head.json |
+| `src/qmatsuite/mcp/tools/list_resources.py` | Added library-aware discovery scanning head.json |
 | `tests/mcp/test_stage_p4.py` | Updated tests for new API |
 
 ### New Test File

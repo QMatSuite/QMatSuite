@@ -1,6 +1,6 @@
 # ParamSpace Git 考古报告
 
-**文件**: `src/quantumvitas/presets/paramspace.py`  
+**文件**: `src/qmatsuite/presets/paramspace.py`  
 **报告日期**: 2026-01-10  
 **考古范围**: 仅限 `paramspace.py` 文件本身，不涉及其他文件
 
@@ -166,7 +166,7 @@
 **结果**: **未发现任何 merge commits**。
 
 ```bash
-git log --merges --oneline -- src/quantumvitas/presets/paramspace.py
+git log --merges --oneline -- src/qmatsuite/presets/paramspace.py
 # 输出为空
 ```
 
@@ -236,14 +236,14 @@ git log --merges --oneline -- src/quantumvitas/presets/paramspace.py
 - **Step 适用域**在此文件中不可见（应在 `variants_registry.py` 中）
 
 **下一步必须检查的文件/线索**（最多 5 条）:
-1. **`src/quantumvitas/presets/variants_registry.py`**:
+1. **`src/qmatsuite/presets/variants_registry.py`**:
    - 检查 `(step_type, dimension)` 单归属的 enforce 逻辑
    - 检查编译顺序（dimension 遍历顺序）
    - 检查 key 归属的全局约束（如果存在）
-2. **`src/quantumvitas/presets/integration.py`**:
+2. **`src/qmatsuite/presets/integration.py`**:
    - 检查 `apply_presets_to_step()` 的编译顺序
    - 检查 `DIMENSION_OWNED_KEYS` 的维护历史（是否被废弃）
-3. **`src/quantumvitas/presets/spaces_registry.py`**（如果存在）:
+3. **`src/qmatsuite/presets/spaces_registry.py`**（如果存在）:
    - 检查 ParamSpace 的注册逻辑
    - 检查是否有 key 归属的全局注册表
 4. **测试文件**（如 `tests/unit/test_presets*.py`）:
@@ -265,7 +265,7 @@ git log --merges --oneline -- src/quantumvitas/presets/paramspace.py
 
 ### 文件历史
 ```bash
-git log --follow --date=short --pretty=format:"%h %ad %an %s" -- src/quantumvitas/presets/paramspace.py
+git log --follow --date=short --pretty=format:"%h %ad %an %s" -- src/qmatsuite/presets/paramspace.py
 ```
 输出：
 ```
@@ -276,13 +276,13 @@ git log --follow --date=short --pretty=format:"%h %ad %an %s" -- src/quantumvita
 
 ### Merge Commits 检查
 ```bash
-git log --merges --oneline -- src/quantumvitas/presets/paramspace.py
+git log --merges --oneline -- src/qmatsuite/presets/paramspace.py
 ```
 输出：**空**（无 merge commits）
 
 ### 文件创建检查
 ```bash
-git log --all --diff-filter=A --oneline -- src/quantumvitas/presets/paramspace.py
+git log --all --diff-filter=A --oneline -- src/qmatsuite/presets/paramspace.py
 ```
 输出：
 ```
@@ -291,12 +291,12 @@ git log --all --diff-filter=A --oneline -- src/quantumvitas/presets/paramspace.p
 
 ### 关键函数 Blame
 ```bash
-git blame -L 241,310 -n src/quantumvitas/presets/paramspace.py
+git blame -L 241,310 -n src/qmatsuite/presets/paramspace.py
 ```
 结果：`match_profile()` 函数的所有行都来自 `616d837`（初始创建）
 
 ```bash
-git blame -L 316,377 -n src/quantumvitas/presets/paramspace.py
+git blame -L 316,377 -n src/qmatsuite/presets/paramspace.py
 ```
 结果：`compile_profile_patch()` 函数的所有行都来自 `616d837`（初始创建）
 

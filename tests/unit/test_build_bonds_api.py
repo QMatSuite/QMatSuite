@@ -4,7 +4,7 @@ Unit tests for build_bonds public API.
 
 import pytest
 import numpy as np
-from quantumvitas.analysis.structure_viz import build_bonds
+from qmatsuite.analysis.structure_viz import build_bonds
 from pymatgen.core import Structure, Lattice
 
 
@@ -28,7 +28,7 @@ def test_build_bonds_does_not_require_radii_map():
 
 def test_build_bonds_with_display_atoms():
     """Test build_bonds with DisplayAtom-like objects."""
-    from quantumvitas.analysis.structure_viz import DisplayAtom
+    from qmatsuite.analysis.structure_viz import DisplayAtom
     
     # Create mock DisplayAtom objects
     display_atoms = [

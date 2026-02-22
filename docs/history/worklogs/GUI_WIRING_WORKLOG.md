@@ -18,13 +18,13 @@
 
 | File | Status | Notes |
 |------|--------|-------|
-| gui/src/types/qv.ts | DONE | All legacy fields renamed |
+| gui/src/types/qms.ts | DONE | All legacy fields renamed |
 
 ### Type Changes Applied
 
 | Old Field | New Field | Types Affected |
 |-----------|-----------|----------------|
-| `step_id` | `step_ulid` | QVError, JobStepInfo, HistoryTimelineEntry, etc. |
+| `step_id` | `step_ulid` | QMSError, JobStepInfo, HistoryTimelineEntry, etc. |
 | `step_type` | `step_type_gen` | JobStepInfo, payload types, HistoryTimelineEntry |
 | `id` (job) | `run_ulid` | JobInfo, JobSummary |
 | `id` (calc) | `calc_ulid` | CalculationInfo, CalculationDetailResult |
@@ -54,7 +54,7 @@
 | CalculationAnalysisPanel.tsx | DONE | Fixed step.id/type, run_id payloads |
 | CalculationOverviewTab.tsx | DONE | Fixed step.id/type, CompactStepListProps |
 | CalculationListPanel.tsx | DONE | Fixed calc.id, step.id/type |
-| hooks/useQVClient.ts | DONE | Fixed step_type → step_type_gen |
+| hooks/useQMSClient.ts | DONE | Fixed step_type → step_type_gen |
 | PresetSection.tsx | DONE | (No changes needed - uses new fields) |
 
 ---
@@ -75,7 +75,7 @@
 | Phase | Error Count | Notes |
 |-------|-------------|-------|
 | Initial | ~140 | Before any changes |
-| After types | ~35 | After qv.ts updates |
+| After types | ~35 | After qms.ts updates |
 | After panels | 2 | Minor dependency refs |
 | Final | 0 | Build succeeds |
 
@@ -119,7 +119,7 @@
 ## Files Changed Summary
 
 ### Type Definitions (1 file)
-- `gui/src/types/qv.ts` - ~20 type definition updates
+- `gui/src/types/qms.ts` - ~20 type definition updates
 
 ### React Components (11 files)
 - `gui/src/App.tsx`
@@ -135,7 +135,7 @@
 - `gui/src/components/panels/CalculationListPanel.tsx`
 
 ### Hooks (1 file)
-- `gui/src/hooks/useQVClient.ts`
+- `gui/src/hooks/useQMSClient.ts`
 
 ---
 
@@ -150,7 +150,7 @@
 ## Batch 3: Demo Gallery Fix - COMPLETE
 
 ### Issue
-E2E tests failed at `qv-demo-gallery-loading` stage - demos couldn't load.
+E2E tests failed at `qms-demo-gallery-loading` stage - demos couldn't load.
 
 ### Root Cause
 - Backend `list_demo_projects` returns `ulid` field (line 7737 in service.py)
@@ -160,7 +160,7 @@ E2E tests failed at `qv-demo-gallery-loading` stage - demos couldn't load.
 ### Fix Applied
 | File | Change |
 |------|--------|
-| gui/src/types/qv.ts | `DemoProjectInfo.id` → `DemoProjectInfo.ulid` |
+| gui/src/types/qms.ts | `DemoProjectInfo.id` → `DemoProjectInfo.ulid` |
 | gui/src/components/panels/DemoGalleryPanel.tsx | All `demo.id` → `demo.ulid` |
 
 ### Demo Projects Verified
@@ -183,7 +183,7 @@ E2E tests still failed - daemon returned responses with `ulid` instead of `id` f
 ### Fix Applied
 | File | Change |
 |------|--------|
-| src/quantumvitas/daemon/server.py | `RPCResponse.to_json()`: `{"ulid": ...}` → `{"id": ...}` |
+| src/qmatsuite/daemon/server.py | `RPCResponse.to_json()`: `{"ulid": ...}` → `{"id": ...}` |
 
 **Note**: This `id` is a request correlation ID (e.g., "req-1770018076619-4"), NOT a resource ULID. Request correlation IDs should remain `id` since they're not entity identifiers.
 
@@ -202,8 +202,8 @@ GUI expected `run_ulid` for job identity, but daemon sends `ulid` (the job entit
 ### Fix Applied
 | File | Change |
 |------|--------|
-| gui/src/types/qv.ts | `JobInfo.run_ulid` → `JobInfo.ulid` |
-| gui/src/types/qv.ts | `JobSummary.run_ulid` → `JobSummary.ulid` |
+| gui/src/types/qms.ts | `JobInfo.run_ulid` → `JobInfo.ulid` |
+| gui/src/types/qms.ts | `JobSummary.run_ulid` → `JobSummary.ulid` |
 | gui/src/components/panels/JobsPanel.tsx | All `job.run_ulid` → `job.ulid` |
 | gui/src/components/panels/CalculationRunTab.tsx | `latestJob?.run_ulid` → `latestJob?.ulid` |
 | gui/src/components/panels/CalculationRunPanel.tsx | All `job.run_ulid` → `job.ulid` |
@@ -270,7 +270,7 @@ E2E tests failing with `TypeError: Cannot read properties of undefined (reading 
 ### Fix Applied
 | File | Change |
 |------|--------|
-| src/quantumvitas/daemon/compat.py | Read `step_type_spec` and convert to `step_type_gen` via `normalize_step_type_to_gen()` |
+| src/qmatsuite/daemon/compat.py | Read `step_type_spec` and convert to `step_type_gen` via `normalize_step_type_to_gen()` |
 
 ---
 
@@ -295,7 +295,7 @@ E2E tests used legacy field names and value formats.
 | File | Changes |
 |------|---------|
 | gui/tests/e2e/demo_calculation.spec.ts | `step_type:` → `step_type_spec:`, `meta.id` → `meta.ulid` |
-| gui/tests/e2e/demo_calculation_run.spec.ts | `qv-analysis-step-tab-qe_bands` → `qv-analysis-step-tab-bands`, `data-step-type` → `data-step-type-gen` |
+| gui/tests/e2e/demo_calculation_run.spec.ts | `qms-analysis-step-tab-qe_bands` → `qms-analysis-step-tab-bands`, `data-step-type` → `data-step-type-gen` |
 | gui/tests/e2e/step_defaults.spec.ts | `qe_scf` → `scf` in step type expectations |
 
 ---

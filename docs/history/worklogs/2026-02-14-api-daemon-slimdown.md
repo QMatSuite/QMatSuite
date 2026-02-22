@@ -7,7 +7,7 @@
 
 | Metric | Before |
 |--------|--------|
-| API methods total (QVService, all depths) | 117 |
+| API methods total (QMSService, all depths) | 117 |
 | API methods at depth 0 | 23 |
 | RPC endpoint count | 120 (118 unique) |
 | Daemon business logic lines (misplaced) | ~770 |
@@ -154,20 +154,20 @@
 
 ### Task 5.2: Update all daemon handler call sites
 - Updated 14 call sites in `daemon/server.py`:
-  - `QVService.init_pseudo_dirs()` → `QVService.Pseudo.init_dirs()`
-  - `QVService.list_pseudo_libraries()` → `QVService.Pseudo.list_libraries()`
-  - `QVService.get_library_status(...)` → `QVService.Pseudo.get_library_status(...)`
-  - `QVService.install_pseudo_library(...)` → `QVService.Pseudo.install_library(...)`
-  - `QVService.remove_pseudo_library(...)` → `QVService.Pseudo.remove_library(...)`
-  - `QVService.repair_pseudo_library(...)` → `QVService.Pseudo.repair_library(...)`
-  - `QVService.compute_store_size()` → `QVService.Pseudo.compute_store_size()`
-  - `QVService.is_pseudo_archive_installed(...)` → `QVService.Pseudo.is_archive_installed(...)`
-  - `QVService.install_pseudo_archive(...)` → `QVService.Pseudo.install_archive(...)`
-  - `QVService.install_sssp_from_seed(...)` → `QVService.Pseudo.install_sssp_from_seed(...)`
-  - `QVService.install_all_sssp_from_seed(...)` → `QVService.Pseudo.install_all_sssp_from_seed(...)`
-  - `QVService.download_sssp_library(...)` → `QVService.Pseudo.download_sssp_library(...)`
-  - `QVService.download_all_sssp(...)` → `QVService.Pseudo.download_all_sssp(...)`
-  - `QVService.import_seed_archives(...)` → `QVService.Pseudo.import_seed_archives(...)`
+  - `QMSService.init_pseudo_dirs()` → `QMSService.Pseudo.init_dirs()`
+  - `QMSService.list_pseudo_libraries()` → `QMSService.Pseudo.list_libraries()`
+  - `QMSService.get_library_status(...)` → `QMSService.Pseudo.get_library_status(...)`
+  - `QMSService.install_pseudo_library(...)` → `QMSService.Pseudo.install_library(...)`
+  - `QMSService.remove_pseudo_library(...)` → `QMSService.Pseudo.remove_library(...)`
+  - `QMSService.repair_pseudo_library(...)` → `QMSService.Pseudo.repair_library(...)`
+  - `QMSService.compute_store_size()` → `QMSService.Pseudo.compute_store_size()`
+  - `QMSService.is_pseudo_archive_installed(...)` → `QMSService.Pseudo.is_archive_installed(...)`
+  - `QMSService.install_pseudo_archive(...)` → `QMSService.Pseudo.install_archive(...)`
+  - `QMSService.install_sssp_from_seed(...)` → `QMSService.Pseudo.install_sssp_from_seed(...)`
+  - `QMSService.install_all_sssp_from_seed(...)` → `QMSService.Pseudo.install_all_sssp_from_seed(...)`
+  - `QMSService.download_sssp_library(...)` → `QMSService.Pseudo.download_sssp_library(...)`
+  - `QMSService.download_all_sssp(...)` → `QMSService.Pseudo.download_all_sssp(...)`
+  - `QMSService.import_seed_archives(...)` → `QMSService.Pseudo.import_seed_archives(...)`
 - Confirmed: no CLI or test callers of old names exist
 
 ### Task 5.3: Depth-0 cleanup verified
@@ -220,7 +220,7 @@
 |--------|--------|-------|-------|
 | API methods total | 117 | 116 | -1 |
 | API methods added (capability gaps) | 0 | 2 | +2 |
-| Depth-0 methods on QVService | 23 | 9 | -14 (moved to Pseudo) |
+| Depth-0 methods on QMSService | 23 | 9 | -14 (moved to Pseudo) |
 | Daemon business logic lines | ~770 | ~0 | -770 |
 | Dead code removed | 0 | ~80 lines | -80 |
 | Constitutional violations fixed | 0 | 3 | +3 (prefix inference, double ULID, raw YAML read) |

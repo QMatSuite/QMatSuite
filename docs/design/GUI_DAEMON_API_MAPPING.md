@@ -7,16 +7,16 @@ This document maps the GUI components to daemon endpoints and backend functions,
 ### Flow: GUI → Daemon → Backend
 
 1. **GUI**: `handleRunWorkflow()` in `App.tsx`
-   - Calls: `qv.call('run_calculation', { project_root: projectRoot, calculation: calculation.slug })`
+   - Calls: `qms.call('run_calculation', { project_root: projectRoot, calculation: calculation.slug })`
    - Uses: `calculation.slug` (not ULID) for calculation selector
    - Uses: `projectRoot` (string from state)
 
 2. **Daemon**: `_handle_run_calculation()` in `server.py`
    - Normalizes: `project_root` to `Path(project_root).resolve()`
    - Stores: `project_root_display=str(project_root.resolve())` in job
-   - Calls: `QVService.run_calculation()` with normalized paths
+   - Calls: `QMSService.run_calculation()` with normalized paths
 
-3. **Backend**: `QVService.run_calculation()`
+3. **Backend**: `QMSService.run_calculation()`
    - Resolves calculation via registry using selector
    - Executes calculation via `CalculationRunner`
 
@@ -55,9 +55,9 @@ This document maps the GUI components to daemon endpoints and backend functions,
 
 2. **Daemon**: `_handle_get_step_detail()` in `server.py`
    - Resolves step via registry with cache fallback
-   - Calls: `QVService.get_step_detail()`
+   - Calls: `QMSService.get_step_detail()`
 
-3. **Backend**: `QVService.get_step_detail()` in `api.py`
+3. **Backend**: `QMSService.get_step_detail()` in `api.py`
    - Resolves step via `resolve_step()` (handles ULID, slug, name, path)
    - Loads step spec from YAML
    - Returns step metadata, parameters, cards
@@ -67,7 +67,7 @@ This document maps the GUI components to daemon endpoints and backend functions,
 **Problem**: Step detail panel was stuck in loading state because test ID was only set when `stepDetail` existed.
 
 **Solution**: 
-- Added `data-testid="qv-step-detail"` to loading, error, and empty states
+- Added `data-testid="qms-step-detail"` to loading, error, and empty states
 - Panel is now always visible to tests, even during loading/errors
 
 ## Selector Format Summary
@@ -102,5 +102,5 @@ This document maps the GUI components to daemon endpoints and backend functions,
 ### Cross-Resource References
 - All references use ULIDs (26-char alphanumeric)
 - Resolution via `ResourceIndex` (built from resource file meta blocks)
-- `project.qv.yml` stores only IDs, not duplicated name/slug/path
+- `project.qms.yml` stores only IDs, not duplicated name/slug/path
 

@@ -8,8 +8,8 @@ They will be unskipped as renames are completed.
 """
 
 import pytest
-from quantumvitas.workflow.gen_steps import GenStepRegistry
-from quantumvitas.workflow.step_type_convert import (
+from qmatsuite.workflow.gen_steps import GenStepRegistry
+from qmatsuite.workflow.step_type_convert import (
     spec_from, gen_from, prefix_from, is_spec, is_gen, ENGINE_PREFIXES
 )
 
@@ -112,7 +112,7 @@ class TestWannier90EngineOwnership:
 
     def test_wannierprep_owned_by_w90(self):
         """wannierprep must be owned by w90 engine."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
         # get() expects GEN type, not SPEC type
         spec = registry.get("wannierprep")
@@ -122,7 +122,7 @@ class TestWannier90EngineOwnership:
 
     def test_wannier_owned_by_w90(self):
         """wannier must be owned by w90 engine."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
         # get() expects GEN type, not SPEC type
         spec = registry.get("wannier")
@@ -132,7 +132,7 @@ class TestWannier90EngineOwnership:
 
     def test_pw2wannier_owned_by_qe(self):
         """pw2wannier must be owned by qe engine (not w90)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
         # get() expects GEN type, not SPEC type
         spec = registry.get("pw2wannier")

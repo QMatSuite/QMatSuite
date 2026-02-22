@@ -59,27 +59,27 @@
 
 | Action | File | Lines changed |
 |--------|------|---------------|
-| MODIFY | `src/quantumvitas/core/analysis/capability.py` | +30 (effective_sequence, match_key, canonical_match_key) |
-| MODIFY | `src/quantumvitas/core/analysis/orchestrator.py` | +20 (wire effective_sequence + match_key) |
-| MODIFY | `src/quantumvitas/api/service.py` | 2 lines replaced (ad-hoc -> row.match_key) |
-| CREATE | `src/quantumvitas/drivers/orca/parsers/convergence.py` | 176 lines |
-| MODIFY | `src/quantumvitas/drivers/orca/driver.py` | +8 (capabilities) |
-| MODIFY | `src/quantumvitas/drivers/orca/parsers/__init__.py` | +2 |
-| CREATE | `src/quantumvitas/drivers/gaussian/parsers/convergence.py` | 161 lines |
-| MODIFY | `src/quantumvitas/drivers/gaussian/driver.py` | +8 (capabilities) |
-| MODIFY | `src/quantumvitas/drivers/gaussian/parsers/__init__.py` | +2 |
-| CREATE | `src/quantumvitas/drivers/gpaw/parsers/convergence.py` | 137 lines |
-| MODIFY | `src/quantumvitas/drivers/gpaw/driver.py` | +8 (capabilities) |
-| MODIFY | `src/quantumvitas/drivers/gpaw/parsers/__init__.py` | +2 |
-| CREATE | `src/quantumvitas/drivers/psi4/parsers/convergence.py` | 143 lines |
-| MODIFY | `src/quantumvitas/drivers/psi4/driver.py` | +8 (capabilities) |
-| MODIFY | `src/quantumvitas/drivers/psi4/parsers/__init__.py` | +2 |
-| CREATE | `src/quantumvitas/drivers/pyscf/parsers/convergence.py` | 131 lines |
-| MODIFY | `src/quantumvitas/drivers/pyscf/driver.py` | +8 (capabilities) |
-| MODIFY | `src/quantumvitas/drivers/pyscf/parsers/__init__.py` | +2 |
-| CREATE | `src/quantumvitas/drivers/qmcpack/parsers/convergence.py` | 137 lines |
-| MODIFY | `src/quantumvitas/drivers/qmcpack/driver.py` | +12 (import + capabilities) |
-| MODIFY | `src/quantumvitas/drivers/qmcpack/parsers/__init__.py` | +2 |
+| MODIFY | `src/qmatsuite/core/analysis/capability.py` | +30 (effective_sequence, match_key, canonical_match_key) |
+| MODIFY | `src/qmatsuite/core/analysis/orchestrator.py` | +20 (wire effective_sequence + match_key) |
+| MODIFY | `src/qmatsuite/api/service.py` | 2 lines replaced (ad-hoc -> row.match_key) |
+| CREATE | `src/qmatsuite/drivers/orca/parsers/convergence.py` | 176 lines |
+| MODIFY | `src/qmatsuite/drivers/orca/driver.py` | +8 (capabilities) |
+| MODIFY | `src/qmatsuite/drivers/orca/parsers/__init__.py` | +2 |
+| CREATE | `src/qmatsuite/drivers/gaussian/parsers/convergence.py` | 161 lines |
+| MODIFY | `src/qmatsuite/drivers/gaussian/driver.py` | +8 (capabilities) |
+| MODIFY | `src/qmatsuite/drivers/gaussian/parsers/__init__.py` | +2 |
+| CREATE | `src/qmatsuite/drivers/gpaw/parsers/convergence.py` | 137 lines |
+| MODIFY | `src/qmatsuite/drivers/gpaw/driver.py` | +8 (capabilities) |
+| MODIFY | `src/qmatsuite/drivers/gpaw/parsers/__init__.py` | +2 |
+| CREATE | `src/qmatsuite/drivers/psi4/parsers/convergence.py` | 143 lines |
+| MODIFY | `src/qmatsuite/drivers/psi4/driver.py` | +8 (capabilities) |
+| MODIFY | `src/qmatsuite/drivers/psi4/parsers/__init__.py` | +2 |
+| CREATE | `src/qmatsuite/drivers/pyscf/parsers/convergence.py` | 131 lines |
+| MODIFY | `src/qmatsuite/drivers/pyscf/driver.py` | +8 (capabilities) |
+| MODIFY | `src/qmatsuite/drivers/pyscf/parsers/__init__.py` | +2 |
+| CREATE | `src/qmatsuite/drivers/qmcpack/parsers/convergence.py` | 137 lines |
+| MODIFY | `src/qmatsuite/drivers/qmcpack/driver.py` | +12 (import + capabilities) |
+| MODIFY | `src/qmatsuite/drivers/qmcpack/parsers/__init__.py` | +2 |
 | MODIFY | `tools/demo_store/generate_ref_packs_realrun.py` | ~20 (dynamic derivation) |
 | CREATE | `tools/demo_store/analysis_resweep.py` | 170 lines |
 | CREATE | 6 test files (convergence parsers) | ~400 lines total |
@@ -118,7 +118,7 @@
   2. **ISOLATED with ULID** (VASP): `raw/<step_ulid>/`
   3. **step_artifacts** (Psi4, PySCF, GPAW): `raw/step_artifacts/<step_ulid>/`
   4. **Recipe-created** (ORCA, Gaussian): `raw/<gen_step>_<ulid_suffix>/`
-- Created `_find_step_evidence_dir()` static method in QVService:
+- Created `_find_step_evidence_dir()` static method in QMSService:
   - Checks all 4 patterns in priority order
   - Skips empty dirs (QE creates empty step_artifacts dirs)
   - Used by all 3 evidence resolution paths (post-run, get_analysis, Domain B)
@@ -147,10 +147,10 @@
 
 | Action | File | Change |
 |--------|------|--------|
-| MODIFY | `src/quantumvitas/api/service.py` | +30 lines: `_find_step_evidence_dir()`, 3-path evidence resolution |
-| MODIFY | `src/quantumvitas/drivers/qmcpack/__init__.py` | +1 line: parser import |
-| MODIFY | `src/quantumvitas/drivers/psi4/parsers/convergence.py` | Case-insensitive can_parse, 8KB sniff |
-| MODIFY | `src/quantumvitas/drivers/pyscf/parsers/convergence.py` | Added *.log patterns |
-| MODIFY | `src/quantumvitas/drivers/gaussian/driver.py` | +4 convergence capabilities (hf, td, mp2, freq) |
-| MODIFY | `src/quantumvitas/drivers/gpaw/driver.py` | +1 convergence capability (bandspw) |
+| MODIFY | `src/qmatsuite/api/service.py` | +30 lines: `_find_step_evidence_dir()`, 3-path evidence resolution |
+| MODIFY | `src/qmatsuite/drivers/qmcpack/__init__.py` | +1 line: parser import |
+| MODIFY | `src/qmatsuite/drivers/psi4/parsers/convergence.py` | Case-insensitive can_parse, 8KB sniff |
+| MODIFY | `src/qmatsuite/drivers/pyscf/parsers/convergence.py` | Added *.log patterns |
+| MODIFY | `src/qmatsuite/drivers/gaussian/driver.py` | +4 convergence capabilities (hf, td, mp2, freq) |
+| MODIFY | `src/qmatsuite/drivers/gpaw/driver.py` | +1 convergence capability (bandspw) |
 | REWRITE | `tools/demo_store/analysis_resweep.py` | Shows expected vs actual counts per demo |

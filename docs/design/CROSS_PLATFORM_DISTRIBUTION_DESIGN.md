@@ -24,37 +24,37 @@ Three distribution channels serve different user profiles:
 
 | Channel | Target User | Contents | Platform |
 |---------|------------|----------|----------|
-| `pip install quantumvitas` | Jupyter / API / Agent users | Python backend only | All (Mac, Win, Linux) |
+| `pip install qmatsuite` | Jupyter / API / Agent users | Python backend only | All (Mac, Win, Linux) |
 | GitHub Release: **qmatsuite-lite** | Users who want selective engine install | Electron app + Python backend + micromamba engine manager | Mac, Windows |
 | GitHub Release: **qmatsuite-full** | Zero-friction QE users | lite + QE binary (OpenMP) + SSSP libraries | Mac, Windows |
 
-### 1.1 `pip install quantumvitas`
+### 1.1 `pip install qmatsuite`
 
 **What's included:**
-- `quantumvitas` Python package (CLI `qv`, daemon, MCP server, all 15 engine drivers)
+- `qmatsuite` Python package (CLI `qms`, daemon, MCP server, all 15 engine drivers)
 - All Python dependencies (pymatgen, numpy, scipy, etc.)
 - Bundled demo pseudopotentials in `resources/pseudo/`
 - No GUI, no Electron, no bundled engines
 
 **Installation:**
 ```bash
-pip install quantumvitas           # Core
-pip install quantumvitas[mcp]      # + MCP server (fastmcp)
-pip install quantumvitas[all]      # + Materials Project API + MCP
+pip install qmatsuite           # Core
+pip install qmatsuite[mcp]      # + MCP server (fastmcp)
+pip install qmatsuite[all]      # + Materials Project API + MCP
 ```
 
 **First-launch experience:**
 1. User activates their conda/venv environment
-2. `qv init project myproject` creates a project directory
-3. `qv run calculation` uses engines from system PATH or `.qmatsuite/engines/`
-4. MCP: `python -m quantumvitas.mcp.server` starts the MCP server for AI agent integration
+2. `qms init project myproject` creates a project directory
+3. `qms run calculation` uses engines from system PATH or `.qmatsuite/engines/`
+4. MCP: `python -m qmatsuite.mcp.server` starts the MCP server for AI agent integration
 
 **Platform support:**
 - macOS (Intel + Apple Silicon): Full support
 - Linux (x86_64): Full support — primary path for HPC users
 - Windows: Full support via pip in a conda environment
 
-**Current state:** `pyproject.toml` exists with `qv` entry point. Package installs from source with `pip install -e '.[dev,mcp]'`. Not yet published to PyPI.
+**Current state:** `pyproject.toml` exists with `qms` entry point. Package installs from source with `pip install -e '.[dev,mcp]'`. Not yet published to PyPI.
 
 ### 1.2 GitHub Release: qmatsuite-lite
 
@@ -68,7 +68,7 @@ Lite = Electron app + Python backend + micromamba binary. Full = lite + QE + SSS
 **What's included:**
 - Electron desktop application (React + Three.js GUI)
 - Embedded Python environment (via micromamba, see §4)
-- `quantumvitas` package pre-installed in the embedded Python
+- `qmatsuite` package pre-installed in the embedded Python
 - Micromamba binary for one-click engine installation
 - No engines pre-installed (user installs via built-in engine manager or configures their own)
 
@@ -144,13 +144,13 @@ Download size is what users see first. All estimates use LZMA2 / zstd compressio
 | Electron shell (Chromium + asar) | ~200 MB | ~70 MB | Standard Electron overhead |
 | micromamba binary | ~5 MB | ~5 MB | Already statically linked |
 | Python 3.12 interpreter | ~40 MB | ~15 MB | In conda env tarball |
-| quantumvitas + all deps | 348 MB | ~100 MB | Scientific Python stack compresses well |
+| qmatsuite + all deps | 348 MB | ~100 MB | Scientific Python stack compresses well |
 | QE 7.5 OpenMP binary | ~150 MB | ~50 MB | Single-variant, no MPI |
 | SSSP efficiency v1.3.0 | ~80 MB | ~30 MB | UPF pseudopotentials |
 
 | Channel | Download Size | Installed Size |
 |---------|--------------|---------------|
-| **pip install quantumvitas** | ~45 MB (wheel) | ~348 MB |
+| **pip install qmatsuite** | ~45 MB (wheel) | ~348 MB |
 | **qmatsuite-lite** | **~190 MB** | ~590 MB |
 | **qmatsuite-full** | **~290 MB** | ~820 MB |
 
@@ -174,7 +174,7 @@ The full release at ~290 MB is comparable to VS Code (~100 MB download) + a mode
 ├── runtime\                       # Pre-created conda env (compressed tarball expanded at install)
 │   ├── python.exe
 │   ├── Lib\site-packages\
-│   │   ├── quantumvitas\
+│   │   ├── qmatsuite\
 │   │   ├── numpy\
 │   │   └── ...
 │   └── Scripts\
@@ -227,7 +227,7 @@ QMatSuite.dmg (~190 MB)
 2. On first launch, Electron detects no expanded runtime
 3. Shows "Setting up QMatSuite..." with progress bar
 4. Expands `runtime.tar.zst` to `~/Library/Application Support/QMatSuite/runtime/` (~30 seconds)
-5. Verifies: `runtime/bin/python -c "import quantumvitas"`
+5. Verifies: `runtime/bin/python -c "import qmatsuite"`
 6. Starts daemon from the expanded runtime
 
 **Post-setup directory layout:**
@@ -275,7 +275,7 @@ A DMG can only drag one `.app` to Applications. A `.pkg` installer can atomicall
 
 #### 1.6.4 Linux
 
-**Primary path**: `pip install quantumvitas` — Linux users typically have Python and conda/pip experience. No Electron distribution planned initially.
+**Primary path**: `pip install qmatsuite` — Linux users typically have Python and conda/pip experience. No Electron distribution planned initially.
 
 **AppImage** (deferred, lower priority): Self-contained single-file distribution. Would bundle Electron + Python runtime. ~200 MB. Deferred because most Linux HPC users prefer pip + their own Python environment.
 
@@ -285,7 +285,7 @@ A DMG can only drag one `.app` to Applications. A `.pkg` installer can atomicall
 
 ### 2.1 Current State
 
-All paths are anchored to the repository root via `src/quantumvitas/core/paths.py`:
+All paths are anchored to the repository root via `src/qmatsuite/core/paths.py`:
 
 ```
 <REPO_ROOT>/
@@ -304,9 +304,9 @@ All paths are anchored to the repository root via `src/quantumvitas/core/paths.p
 └── <user-projects>/               # User project directories (anywhere)
 ```
 
-**Root discovery** (`paths.py:22-52`): Walks up from `__file__` looking for `pyproject.toml` + `src/quantumvitas/`. This only works when running from a git checkout or editable install.
+**Root discovery** (`paths.py:22-52`): Walks up from `__file__` looking for `pyproject.toml` + `src/qmatsuite/`. This only works when running from a git checkout or editable install.
 
-**Problem**: After `pip install quantumvitas`, there is no `pyproject.toml` in the installed package — `get_repo_root()` raises `RuntimeError`. This must be solved for any distribution channel.
+**Problem**: After `pip install qmatsuite`, there is no `pyproject.toml` in the installed package — `get_repo_root()` raises `RuntimeError`. This must be solved for any distribution channel.
 
 ### 2.2 Target State
 
@@ -334,7 +334,7 @@ Separate three concerns:
 Replace the current `get_repo_root()`-based approach with an environment-aware resolution chain:
 
 ```python
-# src/quantumvitas/core/paths.py — proposed design
+# src/qmatsuite/core/paths.py — proposed design
 
 import os
 import sys
@@ -346,7 +346,7 @@ def get_app_data_dir() -> Path:
 
     Resolution order:
     1. QMATSUITE_HOME environment variable (explicit override)
-    2. Dev mode: <repo_root>/.qmatsuite/ (if pyproject.toml + src/quantumvitas/ found)
+    2. Dev mode: <repo_root>/.qmatsuite/ (if pyproject.toml + src/qmatsuite/ found)
     3. Electron mode: platform-appropriate Application Support / LOCALAPPDATA
     4. pip mode: ~/.qmatsuite/
     """
@@ -410,10 +410,10 @@ def get_config_file() -> Path:
 
 
 def _try_find_repo_root() -> Path | None:
-    """Walk up from __file__ looking for pyproject.toml + src/quantumvitas/."""
+    """Walk up from __file__ looking for pyproject.toml + src/qmatsuite/."""
     current = Path(__file__).parent
     for _ in range(10):  # Max 10 levels
-        if (current / "pyproject.toml").exists() and (current / "src" / "quantumvitas").exists():
+        if (current / "pyproject.toml").exists() and (current / "src" / "qmatsuite").exists():
             return current.resolve()
         parent = current.parent
         if parent == current:
@@ -621,7 +621,7 @@ Each engine needs metadata for discovery and verification. Binary names verified
 #### Binary Engine Metadata
 
 ```python
-# src/quantumvitas/engine/engine_meta.py — proposed
+# src/qmatsuite/engine/engine_meta.py — proposed
 
 ENGINE_META = {
     # --- Binary engines (subprocess calls to compiled executables) ---
@@ -919,7 +919,7 @@ When the engine manager runs discovery (on app launch or user request):
 | Psi4 | `psi4` | ~200MB | Molecular quantum chemistry |
 | GPAW | `gpaw` | ~150MB | DFT with PAW / real-space grids |
 
-Python engines are NOT dependencies of the main `quantumvitas` package. They each get their own micromamba environment (see §3.8 for details). Users can also point to an existing venv that has the package installed.
+Python engines are NOT dependencies of the main `qmatsuite` package. They each get their own micromamba environment (see §3.8 for details). Users can also point to an existing venv that has the package installed.
 
 **Non-conda engines** (user must provide):
 | Engine | Why | How to configure |
@@ -954,7 +954,7 @@ QE is the primary bundled engine. Multiple versions can coexist:
 
 ### 3.8 Python Engine Management (PySCF, Psi4, GPAW)
 
-Python engines are NOT pip dependencies of `quantumvitas`. They are full engines managed by micromamba, each in their own conda environment or user-provided venv. The daemon process never imports them directly — all execution happens via subprocess.
+Python engines are NOT pip dependencies of `qmatsuite`. They are full engines managed by micromamba, each in their own conda environment or user-provided venv. The daemon process never imports them directly — all execution happens via subprocess.
 
 **Architecture** (already implemented, verified from source code):
 
@@ -968,24 +968,24 @@ Daemon process (qmatsuite-runtime env)    Runner subprocess (engine env)
 |   - Reads results.json            | <-- |                           |
 +-----------------------------------+     +---------------------------+
      sys.executable ≠ engine python
-     PYTHONPATH injected for quantumvitas
+     PYTHONPATH injected for qmatsuite
 ```
 
 **How subprocess isolation works** (from `engine/psi4_engine.py:131-142`):
 
 ```python
 def _get_runner_env(self) -> Dict[str, str]:
-    """Inject PYTHONPATH so the engine's Python can import quantumvitas."""
-    import quantumvitas
+    """Inject PYTHONPATH so the engine's Python can import qmatsuite."""
+    import qmatsuite
     env = os.environ.copy()
-    # Add quantumvitas's site-packages to PYTHONPATH
-    src_dir = str(Path(quantumvitas.__file__).parent.parent)
+    # Add qmatsuite's site-packages to PYTHONPATH
+    src_dir = str(Path(qmatsuite.__file__).parent.parent)
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = f"{src_dir}:{existing}" if existing else src_dir
     return env
 ```
 
-The runner subprocess uses the engine's Python interpreter (which has pyscf/psi4/gpaw) but gets `quantumvitas` via PYTHONPATH injection from the daemon's environment. This works for both dev mode and distribution.
+The runner subprocess uses the engine's Python interpreter (which has pyscf/psi4/gpaw) but gets `qmatsuite` via PYTHONPATH injection from the daemon's environment. This works for both dev mode and distribution.
 
 **Three source types for Python engines:**
 
@@ -1024,11 +1024,11 @@ The runner subprocess uses the engine's Python interpreter (which has pyscf/psi4
 
 **Dev mode compatibility:**
 
-In dev mode, the developer's active venv typically has PySCF/Psi4 installed alongside quantumvitas. The engine adapters (`pyscf_engine.py`, `psi4_engine.py`) use `discover_engine()` which checks engines.json first, then falls back to `sys.executable`. This means:
+In dev mode, the developer's active venv typically has PySCF/Psi4 installed alongside qmatsuite. The engine adapters (`pyscf_engine.py`, `psi4_engine.py`) use `discover_engine()` which checks engines.json first, then falls back to `sys.executable`. This means:
 
 1. **No engines.json**: Falls back to `sys.executable` (developer's venv) — existing behavior, no changes needed
 2. **With engines.json**: Uses registered Python executable — production behavior
-3. **PYTHONPATH injection**: Works in both modes because `quantumvitas.__file__` resolves correctly whether installed via `pip install -e .` (dev) or via pip in micromamba (production)
+3. **PYTHONPATH injection**: Works in both modes because `qmatsuite.__file__` resolves correctly whether installed via `pip install -e .` (dev) or via pip in micromamba (production)
 
 **Installation flow** (user clicks "Install PySCF" in GUI):
 
@@ -1138,7 +1138,7 @@ The `qe_resolver.py` two-state model becomes a specialization of the general reg
 The Electron app (qmatsuite-lite and qmatsuite-full) bundles a GUI that communicates with a Python daemon over JSON-RPC stdio. Currently, the daemon requires:
 
 1. A Python 3.9+ interpreter
-2. The `quantumvitas` package installed with all dependencies
+2. The `qmatsuite` package installed with all dependencies
 
 Users of the `pip install` channel already have Python. But Electron GUI users should not need to install Python, pip, or manage virtual environments.
 
@@ -1166,11 +1166,11 @@ Investigation of the actual daemon import tree reveals:
 | PyYAML | 0.8 MB | SSOT parsing |
 | typer | 0.4 MB | CLI |
 | fastmcp | 3.2 MB | MCP server |
-| quantumvitas | 17.5 MB | Source |
+| qmatsuite | 17.5 MB | Source |
 | msgpack, ulid-py, requests, certifi, portalocker | ~1.5 MB | Small deps |
 | **Total** | **~43 MB** | vs 348 MB current |
 
-**Dead dependencies** (NOT imported anywhere in `src/quantumvitas/`):
+**Dead dependencies** (NOT imported anywhere in `src/qmatsuite/`):
 | Package | Size | Status |
 |---------|------|--------|
 | ase | 11.3 MB | Zero imports. Remove from `pyproject.toml`. |
@@ -1186,7 +1186,7 @@ Investigation of the actual daemon import tree reveals:
 - Micromamba is already needed for engine management (xTB, LAMMPS, PySCF, etc.)
 - One packaging system, not two — simpler build pipeline, simpler debugging
 - Full Python environment: extensible (user can `pip install mp-api` into it)
-- Clean update path: `pip install --upgrade quantumvitas` into existing env
+- Clean update path: `pip install --upgrade qmatsuite` into existing env
 - No anti-virus false positives (common with PyInstaller on Windows)
 - No bundling complexity — conda packages handle all native dependencies (BLAS, LAPACK, etc.)
 - Fast startup (~1s, native CPython)
@@ -1197,7 +1197,7 @@ Investigation of the actual daemon import tree reveals:
 ├── bin/python3.12                     # Python interpreter
 ├── lib/python3.12/
 │   └── site-packages/
-│       ├── quantumvitas/              # Our package
+│       ├── qmatsuite/              # Our package
 │       ├── numpy/
 │       ├── pymatgen/
 │       └── ...
@@ -1206,7 +1206,7 @@ Investigation of the actual daemon import tree reveals:
 
 **Build pipeline** (CI):
 1. Create a clean micromamba environment with pinned deps
-2. `pip install quantumvitas[mcp]` into the environment
+2. `pip install qmatsuite[mcp]` into the environment
 3. Compress with `tar --zstd` → `runtime.tar.zst` (~115 MB)
 4. Ship as part of the installer (NSIS / .pkg / .dmg app bundle)
 
@@ -1218,11 +1218,11 @@ These alternatives were evaluated and are documented for future reference. They 
 
 #### PyInstaller (Feasibility: Medium)
 
-Bundle `quantumvitas.daemon.server` into a single directory. Achieves ~250 MB bundle (vs ~350 MB conda env, both compressed to ~100-115 MB). All heavy deps (numpy, scipy, pymatgen, matplotlib) have well-maintained hooks. Main risks: anti-virus false positives on Windows, tight coupling (every Python update requires rebuild), no extensibility (can't `pip install` into a frozen bundle).
+Bundle `qmatsuite.daemon.server` into a single directory. Achieves ~250 MB bundle (vs ~350 MB conda env, both compressed to ~100-115 MB). All heavy deps (numpy, scipy, pymatgen, matplotlib) have well-maintained hooks. Main risks: anti-virus false positives on Windows, tight coupling (every Python update requires rebuild), no extensibility (can't `pip install` into a frozen bundle).
 
 #### Nuitka Compiled Binary (Feasibility: Medium, Future Priority)
 
-Compile Python to C and produce a native executable. If Nuitka matures sufficiently for the scientific Python stack, a compiled `quantumvitas-daemon` binary would be the ideal long-term solution: smallest size, fastest startup, no Python env needed. A priority 3 slot is reserved in `findPythonPath()` for this (see §4.5).
+Compile Python to C and produce a native executable. If Nuitka matures sufficiently for the scientific Python stack, a compiled `qmatsuite-daemon` binary would be the ideal long-term solution: smallest size, fastest startup, no Python env needed. A priority 3 slot is reserved in `findPythonPath()` for this (see §4.5).
 
 **Nuitka upgrade path** (non-breaking):
 1. Build a Nuitka-compiled daemon binary in CI
@@ -1238,8 +1238,8 @@ Compile Python to C and produce a native executable. If Nuitka matures sufficien
 2. Detects compressed `runtime.tar.zst` in app bundle (macOS) or install dir (Windows)
 3. Shows "Setting up QMatSuite..." with progress bar
 4. Expands tarball to `<app_data>/runtime/` (~30 seconds)
-5. Verifies: `<runtime>/bin/python -c "import quantumvitas; print(quantumvitas.__version__)"`
-6. Starts daemon: `<runtime>/bin/python -m quantumvitas.daemon.server`
+5. Verifies: `<runtime>/bin/python -c "import qmatsuite; print(qmatsuite.__version__)"`
+6. Starts daemon: `<runtime>/bin/python -m qmatsuite.daemon.server`
 
 **First launch (qmatsuite-full):**
 Runtime is already expanded by the installer (NSIS / .pkg). No first-launch delay.
@@ -1251,10 +1251,10 @@ Runtime is already expanded by the installer (NSIS / .pkg). No first-launch dela
 
 ```typescript
 function findPythonPath(): { path: string; found: boolean; source: string } {
-  // Priority 1: QV_DAEMON_PYTHON override (explicit user/CI override)
+  // Priority 1: QMS_DAEMON_PYTHON override (explicit user/CI override)
   // Priority 2: .venv/bin/python (dev mode — repo checkout detected)
   // Priority 3: Nuitka compiled binary (future — reserved slot)
-  //   Check <app_data>/bin/quantumvitas-daemon[.exe]
+  //   Check <app_data>/bin/qmatsuite-daemon[.exe]
   // Priority 4: Micromamba runtime environment (production)
   const appDataDir = getAppDataDir();
   const runtimePython = isWindows
@@ -1263,7 +1263,7 @@ function findPythonPath(): { path: string; found: boolean; source: string } {
   if (fs.existsSync(runtimePython)) {
     return { path: runtimePython, found: true, source: 'runtime env' };
   }
-  // Priority 5: system python fallback (pip-installed quantumvitas)
+  // Priority 5: system python fallback (pip-installed qmatsuite)
 }
 ```
 
@@ -1273,14 +1273,14 @@ Three independent update dimensions:
 
 | Dimension | Mechanism | Frequency | Affects |
 |-----------|----------|-----------|---------|
-| **quantumvitas package** | `pip install --upgrade quantumvitas` in runtime env | Per release | Python code only |
+| **qmatsuite package** | `pip install --upgrade qmatsuite` in runtime env | Per release | Python code only |
 | **Python version** | New runtime tarball in Electron update | Yearly | Runtime env |
 | **Electron shell** | `electron-updater` auto-update from GitHub Releases | Per release | GUI only |
 
-**Updating `quantumvitas` package** (most common):
+**Updating `qmatsuite` package** (most common):
 ```bash
 # Electron triggers this on update check:
-<runtime>/bin/pip install --upgrade quantumvitas
+<runtime>/bin/pip install --upgrade qmatsuite
 # Or: download .whl from GitHub Release, pip install locally
 ```
 This is the lightest update — only the Python package changes. No runtime rebuild, no Electron update needed.
@@ -1302,7 +1302,7 @@ Standard `electron-updater` with GitHub Releases. Downloads differential update,
 | **Engine discovery** | QE-only two-state resolver (`qe_resolver.py`). Other engines rely on system PATH. | Unified `engines.json` registry with 4 source types (bundled, micromamba, system_path, user_path) for all 15 engines | **Large** — new module, new data model, integration with all engine handlers |
 | **Path management** | `paths.py` hardcodes `repo_root/.qmatsuite/` via `get_repo_root()` walk-up. Fails for pip-installed packages. | Platform-aware resolution chain (`QMATSUITE_HOME` → repo_root → Electron → `~/.qmatsuite/`) | **Medium** — refactor `paths.py`, add env var support, add Electron detection |
 | **Micromamba** | Not integrated. xTB handler suggests `conda install` in error message but doesn't automate it. | Built-in conda manager: download micromamba, create envs, install engines, GUI integration | **Large** — new module, download + verify logic, GUI components |
-| **pip install** | `pyproject.toml` exists with `qv` entry point. Installs from source. Not published to PyPI. `get_repo_root()` fails in installed mode. | Working `pip install quantumvitas` from PyPI. `paths.py` handles installed mode. | **Medium** — fix `paths.py`, add `package_data` for resources, publish to PyPI |
+| **pip install** | `pyproject.toml` exists with `qms` entry point. Installs from source. Not published to PyPI. `get_repo_root()` fails in installed mode. | Working `pip install qmatsuite` from PyPI. `paths.py` handles installed mode. | **Medium** — fix `paths.py`, add `package_data` for resources, publish to PyPI |
 | **Electron packaging** | `electron-builder.json5` exists with placeholder values (`YourAppID`, `YourAppName`). No code signing, no auto-update. Builds `.dmg`/`.exe`/`.AppImage`. | Production Electron builds with proper appId, code signing, auto-update, QMatSuite branding | **Medium** — configuration + CI workflow, no architectural change |
 | **Python bundling** | Not done. Electron assumes Python venv at `<project_root>/.venv/`. | Embedded Python via pre-built conda env. Electron finds `<app_data>/runtime/bin/python` | **Large** — first-launch setup flow, micromamba integration, Electron Python resolution |
 | **QE binary (Windows)** | CI builds QE 7.5 in [qmatsuite-toolchain](https://github.com/QMatSuite/qmatsuite-toolchain). Releases distributed via [quantum-espresso-windows-exe](https://github.com/QMatSuite/quantum-espresso-windows-exe) (~400MB zip). | Bundled in qmatsuite-full Windows installer at `<app_data>/engines/qe/bundled-7.5/bin/` | **Small** — download + stage in installer; binary already exists |
@@ -1322,7 +1322,7 @@ Standard `electron-updater` with GitHub Releases. Downloads differential update,
 | 1.1 | Refactor `paths.py` to support `QMATSUITE_HOME` + platform-aware resolution | **M** | — |
 | 1.2 | Fix `get_repo_root()` fallback for pip-installed packages (no `pyproject.toml`) | **S** | 1.1 |
 | 1.3 | Add `package_data` for all non-`.json` resources (pseudo, demo YAMLs, knowledge .db) to `pyproject.toml` | **S** | — |
-| 1.4 | Publish `quantumvitas` to PyPI (test → production) | **S** | 1.2, 1.3 |
+| 1.4 | Publish `qmatsuite` to PyPI (test → production) | **S** | 1.2, 1.3 |
 
 ### Phase 2: Engine Management (enables lite distribution)
 

@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 
-from quantumvitas.engine.lammps_parser import (
+from qmatsuite.engine.lammps_parser import (
     parse_lammps_log,
     parse_lammps_dump,
     build_trajectory_from_parsed,

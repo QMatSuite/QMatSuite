@@ -43,27 +43,27 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
 
     // 1) Create project
     await waitForHomeWelcome(appPage);
-    await appPage.getByTestId('qv-welcome-btn-create-new-project').click();
-    await appPage.getByTestId('qv-input-parent-dir').fill(projectDir);
-    await appPage.getByTestId('qv-input-project-name').fill('qe-wannier-e2e');
-    await appPage.getByTestId('qv-btn-confirm-create').click();
-    await expect(appPage.getByTestId('qv-home-project')).toBeVisible({ timeout: 15000 });
+    await appPage.getByTestId('qms-welcome-btn-create-new-project').click();
+    await appPage.getByTestId('qms-input-parent-dir').fill(projectDir);
+    await appPage.getByTestId('qms-input-project-name').fill('qe-wannier-e2e');
+    await appPage.getByTestId('qms-btn-confirm-create').click();
+    await expect(appPage.getByTestId('qms-home-project')).toBeVisible({ timeout: 15000 });
 
     // 2) Import Si structure (local CIF)
     await navigateToView(appPage, 'structures');
-    await appPage.getByTestId('qv-btn-import-structure').click();
-    await appPage.getByTestId('qv-import-structure-file').fill(siCif);
-    await appPage.getByTestId('qv-import-structure-name').fill('Si');
-    await appPage.getByTestId('qv-btn-confirm-import-structure').click();
+    await appPage.getByTestId('qms-btn-import-structure').click();
+    await appPage.getByTestId('qms-import-structure-file').fill(siCif);
+    await appPage.getByTestId('qms-import-structure-name').fill('Si');
+    await appPage.getByTestId('qms-btn-confirm-import-structure').click();
     await appPage.waitForTimeout(2000);
 
     // 3) Create QE calculation
     await navigateToView(appPage, 'calculations');
-    await expect(appPage.getByTestId('qv-calculations-view')).toBeVisible({ timeout: 10000 });
-    await appPage.getByTestId('qv-btn-new-calculation').click();
-    await appPage.getByTestId('qv-create-calc-name').fill('Si Wannier Test');
+    await expect(appPage.getByTestId('qms-calculations-view')).toBeVisible({ timeout: 10000 });
+    await appPage.getByTestId('qms-btn-new-calculation').click();
+    await appPage.getByTestId('qms-create-calc-name').fill('Si Wannier Test');
 
-    const structureSelect = appPage.getByTestId('qv-create-calc-structure');
+    const structureSelect = appPage.getByTestId('qms-create-calc-structure');
     const structureOptions = structureSelect.locator('option');
     const structureCount = await structureOptions.count();
     let selectedStructure = false;
@@ -77,24 +77,24 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     }
     expect(selectedStructure).toBeTruthy();
 
-    await appPage.getByTestId('qv-create-calc-engine').selectOption({ value: 'qe' });
-    await appPage.getByTestId('qv-btn-confirm-create-calc').click();
+    await appPage.getByTestId('qms-create-calc-engine').selectOption({ value: 'qe' });
+    await appPage.getByTestId('qms-btn-confirm-create-calc').click();
     await appPage.waitForTimeout(2000);
 
     // 4) Select calculation
-    const calcRow = appPage.getByTestId('qv-calculation-row').first();
+    const calcRow = appPage.getByTestId('qms-calculation-row').first();
     await expect(calcRow).toBeVisible({ timeout: 5000 });
     await calcRow.click();
-    await expect(appPage.getByTestId('qv-calc-tab-overview')).toHaveClass(/calculations-workspace-tab--active/);
-    await expect(appPage.getByTestId('qv-calc-overview-panel')).toBeVisible({ timeout: 5000 });
+    await expect(appPage.getByTestId('qms-calc-tab-overview')).toHaveClass(/calculations-workspace-tab--active/);
+    await expect(appPage.getByTestId('qms-calc-overview-panel')).toBeVisible({ timeout: 5000 });
     await appPage.waitForTimeout(1000);
 
     // 5) Configure pseudo mapping
-    const editPseudoBtn = appPage.getByTestId('qv-btn-edit-pseudos');
+    const editPseudoBtn = appPage.getByTestId('qms-btn-edit-pseudos');
     await expect(editPseudoBtn).toBeVisible({ timeout: 10000 });
     await editPseudoBtn.click();
 
-    const pseudoSelectSi = appPage.getByTestId('qv-pseudo-select-Si');
+    const pseudoSelectSi = appPage.getByTestId('qms-pseudo-select-Si');
     await expect(pseudoSelectSi).toBeVisible({ timeout: 10000 });
     const pseudoOptions = pseudoSelectSi.locator('option');
     await expect
@@ -111,7 +111,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
 
     const pseudoOverlay = appPage.locator('.pseudo-edit-modal-overlay');
     if (await pseudoOverlay.isVisible().catch(() => false)) {
-      const pseudoApplyBtn = appPage.getByTestId('qv-pseudo-apply');
+      const pseudoApplyBtn = appPage.getByTestId('qms-pseudo-apply');
       if (await pseudoApplyBtn.isVisible().catch(() => false)) {
         await pseudoApplyBtn.click({ timeout: 3000 }).catch(() => {});
       }
@@ -128,15 +128,15 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       const stepRows = appPage.locator('.step-item-container');
       const beforeCount = await stepRows.count();
 
-      const addStepBtn = appPage.getByTestId('qv-add-step-btn');
+      const addStepBtn = appPage.getByTestId('qms-add-step-btn');
       await expect(addStepBtn).toBeVisible({ timeout: 5000 });
       await addStepBtn.scrollIntoViewIfNeeded();
       await addStepBtn.click({ timeout: 5000 });
 
-      const addStepForm = appPage.getByTestId('qv-add-step-form');
+      const addStepForm = appPage.getByTestId('qms-add-step-form');
       await expect(addStepForm).toBeVisible({ timeout: 5000 });
 
-      const stepTypeSelect = appPage.getByTestId('qv-add-step-type-select');
+      const stepTypeSelect = appPage.getByTestId('qms-add-step-type-select');
       const stepTypeOptions = stepTypeSelect.locator('option');
       await expect
         .poll(async () => stepTypeOptions.count(), {
@@ -151,7 +151,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       expect(stepTypeValues).toContain(stepType);
 
       await stepTypeSelect.selectOption({ value: stepType });
-      const confirmAddStepBtn = appPage.getByTestId('qv-confirm-add-step');
+      const confirmAddStepBtn = appPage.getByTestId('qms-confirm-add-step');
       await expect(confirmAddStepBtn).toBeEnabled();
       await confirmAddStepBtn.click({ timeout: 5000 });
 
@@ -180,13 +180,13 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     const currentStepPanel = () => appPage.locator('.step-detail-panel:visible').first();
 
     const enterFocusModeForStep = async (stepType: string) => {
-      const focusTab = appPage.getByTestId('qv-calc-overview-tab-focus');
+      const focusTab = appPage.getByTestId('qms-calc-overview-tab-focus');
       if (await focusTab.isVisible().catch(() => false)) {
         return;
       }
 
       const targetPattern = buildStepRegex(stepType);
-      const overviewStepButtons = appPage.locator('[data-testid^="qv-step-button-"]');
+      const overviewStepButtons = appPage.locator('[data-testid^="qms-step-button-"]');
       await expect
         .poll(async () => overviewStepButtons.count(), {
           timeout: 15000,
@@ -227,7 +227,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
           const expected = normalizeStepType(expectedStepType);
           await expect
             .poll(async () => {
-              const stepTypeValue = currentStepPanel().getByTestId('qv-step-type-value');
+              const stepTypeValue = currentStepPanel().getByTestId('qms-step-type-value');
               if (!(await stepTypeValue.isVisible().catch(() => false))) {
                 return '';
               }
@@ -243,11 +243,11 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       await enterFocusModeForStep(stepType);
 
       for (let attempt = 0; attempt < 6; attempt += 1) {
-        if (!(await appPage.getByTestId('qv-calc-overview-tab-focus').isVisible().catch(() => false))) {
+        if (!(await appPage.getByTestId('qms-calc-overview-tab-focus').isVisible().catch(() => false))) {
           await enterFocusModeForStep(stepType);
         }
 
-        const focusContainer = appPage.getByTestId('qv-calc-overview-tab-focus');
+        const focusContainer = appPage.getByTestId('qms-calc-overview-tab-focus');
         await expect(focusContainer).toBeVisible({ timeout: 15000 });
         const focusSteps = focusContainer.locator('.compact-step-list__step-item');
         await expect
@@ -302,7 +302,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     };
 
     const applyStepParams = async () => {
-      const applyParamsBtn = currentStepPanel().getByTestId('qv-btn-apply-step-params');
+      const applyParamsBtn = currentStepPanel().getByTestId('qms-btn-apply-step-params');
       await expect(applyParamsBtn).toBeVisible({ timeout: 5000 });
       await expect
         .poll(async () => ((await applyParamsBtn.textContent()) || '').toLowerCase(), {
@@ -317,11 +317,11 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     };
 
     const ensureEditMode = async () => {
-      const applyParamsBtn = currentStepPanel().getByTestId('qv-btn-apply-step-params');
+      const applyParamsBtn = currentStepPanel().getByTestId('qms-btn-apply-step-params');
       if (await applyParamsBtn.isVisible().catch(() => false)) {
         return;
       }
-      const editParamsBtn = currentStepPanel().getByTestId('qv-btn-edit-step-params');
+      const editParamsBtn = currentStepPanel().getByTestId('qms-btn-edit-step-params');
       await expect(editParamsBtn).toBeVisible({ timeout: 10000 });
       await editParamsBtn.click();
       await expect(applyParamsBtn).toBeVisible({ timeout: 10000 });
@@ -330,9 +330,9 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     const ensureKPointsEditorVisible = async () => {
       const panel = currentStepPanel();
       const panelContent = panel.locator('.panel-content').first();
-      const kPointsEditor = panel.getByTestId('qv-kpoints-editor');
-      const kPointsLoading = panel.getByTestId('qv-kpoints-loading');
-      const stepTypeValue = panel.getByTestId('qv-step-type-value');
+      const kPointsEditor = panel.getByTestId('qms-kpoints-editor');
+      const kPointsLoading = panel.getByTestId('qms-kpoints-loading');
+      const stepTypeValue = panel.getByTestId('qms-step-type-value');
 
       const start = Date.now();
       const mountTimeoutMs = 15000;
@@ -380,13 +380,13 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       const panel = currentStepPanel();
       await ensureKPointsEditorVisible();
 
-      const modeSelect = panel.getByTestId('qv-kpoints-mode-select');
+      const modeSelect = panel.getByTestId('qms-kpoints-mode-select');
       await expect(modeSelect).toBeVisible({ timeout: 5000 });
       await modeSelect.selectOption('automatic');
 
-      const nk1Input = panel.getByTestId('qv-kpoints-auto-nk1');
-      const nk2Input = panel.getByTestId('qv-kpoints-auto-nk2');
-      const nk3Input = panel.getByTestId('qv-kpoints-auto-nk3');
+      const nk1Input = panel.getByTestId('qms-kpoints-auto-nk1');
+      const nk2Input = panel.getByTestId('qms-kpoints-auto-nk2');
+      const nk3Input = panel.getByTestId('qms-kpoints-auto-nk3');
       await nk1Input.fill(String(nk1));
       await nk2Input.fill(String(nk2));
       await nk3Input.fill(String(nk3));
@@ -398,7 +398,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
 
     const applyKPointsCardIfDirty = async () => {
       const panel = currentStepPanel();
-      const cardApplyBtn = panel.getByTestId('qv-kpoints-apply');
+      const cardApplyBtn = panel.getByTestId('qms-kpoints-apply');
       if (await cardApplyBtn.isVisible().catch(() => false)) {
         await expect(cardApplyBtn).toBeEnabled({ timeout: 5000 });
         await cardApplyBtn.click();
@@ -412,15 +412,15 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       const panel = currentStepPanel();
       await ensureKPointsEditorVisible();
 
-      const modeSelect = panel.getByTestId('qv-kpoints-mode-select');
+      const modeSelect = panel.getByTestId('qms-kpoints-mode-select');
       await expect(modeSelect).toBeVisible({ timeout: 5000 });
       await modeSelect.selectOption('crystal');
 
-      const rawModeBtn = panel.getByTestId('qv-kpoints-editor-raw');
+      const rawModeBtn = panel.getByTestId('qms-kpoints-editor-raw');
       await expect(rawModeBtn).toBeVisible({ timeout: 5000 });
       await rawModeBtn.click();
 
-      const rawBody = panel.getByTestId('qv-kpoints-raw-body');
+      const rawBody = panel.getByTestId('qms-kpoints-raw-body');
       await expect(rawBody).toBeEditable({ timeout: 5000 });
       const body = [
         String(points.length),
@@ -433,40 +433,40 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       await expect(preview).toContainText('K_POINTS crystal', { timeout: 5000 });
       await expect(preview).toContainText(`${points.length}\n`, { timeout: 5000 });
 
-      const structuredModeBtn = panel.getByTestId('qv-kpoints-editor-structured');
+      const structuredModeBtn = panel.getByTestId('qms-kpoints-editor-structured');
       await expect(structuredModeBtn).toBeVisible({ timeout: 5000 });
       await structuredModeBtn.click();
-      await expect(panel.getByTestId(`qv-kpoints-point-${points.length - 1}-x`)).toBeVisible({ timeout: 10000 });
+      await expect(panel.getByTestId(`qms-kpoints-point-${points.length - 1}-x`)).toBeVisible({ timeout: 10000 });
       for (let row = 0; row < points.length; row += 1) {
         const pt = points[row];
-        await expect(panel.getByTestId(`qv-kpoints-point-${row}-x`)).toHaveValue(String(pt.x), { timeout: 5000 });
-        await expect(panel.getByTestId(`qv-kpoints-point-${row}-y`)).toHaveValue(String(pt.y), { timeout: 5000 });
-        await expect(panel.getByTestId(`qv-kpoints-point-${row}-z`)).toHaveValue(String(pt.z), { timeout: 5000 });
-        await expect(panel.getByTestId(`qv-kpoints-point-${row}-w`)).toHaveValue(String(pt.w), { timeout: 5000 });
+        await expect(panel.getByTestId(`qms-kpoints-point-${row}-x`)).toHaveValue(String(pt.x), { timeout: 5000 });
+        await expect(panel.getByTestId(`qms-kpoints-point-${row}-y`)).toHaveValue(String(pt.y), { timeout: 5000 });
+        await expect(panel.getByTestId(`qms-kpoints-point-${row}-z`)).toHaveValue(String(pt.z), { timeout: 5000 });
+        await expect(panel.getByTestId(`qms-kpoints-point-${row}-w`)).toHaveValue(String(pt.w), { timeout: 5000 });
       }
     };
 
     const ensureSystemParam = async (paramName: string) => {
       const panel = currentStepPanel();
       const lower = paramName.toLowerCase();
-      const existingRow = panel.getByTestId(`qv-param-row-system-${lower}`);
+      const existingRow = panel.getByTestId(`qms-param-row-system-${lower}`);
       if ((await existingRow.count()) > 0) {
         return existingRow.first();
       }
 
-      const addParamBtn = panel.getByTestId('qv-add-parameter-trigger');
+      const addParamBtn = panel.getByTestId('qms-add-parameter-trigger');
       await expect(addParamBtn).toBeVisible({ timeout: 10000 });
       await addParamBtn.click();
 
-      const searchInput = panel.getByTestId('qv-add-parameter-search');
+      const searchInput = panel.getByTestId('qms-add-parameter-search');
       await expect(searchInput).toBeVisible({ timeout: 10000 });
       await searchInput.fill(lower);
 
-      const result = panel.getByTestId(`qv-add-parameter-result-${lower}`).first();
+      const result = panel.getByTestId(`qms-add-parameter-result-${lower}`).first();
       await expect(result).toBeVisible({ timeout: 10000 });
       await result.click();
 
-      const addedRow = panel.getByTestId(`qv-param-row-system-${lower}`).first();
+      const addedRow = panel.getByTestId(`qms-param-row-system-${lower}`).first();
       await expect(addedRow).toBeVisible({ timeout: 10000 });
       return addedRow;
     };
@@ -474,10 +474,10 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     const setSystemRealParam = async (paramName: string, value: string) => {
       const panel = currentStepPanel();
       const lower = paramName.toLowerCase();
-      let input = panel.getByTestId(`qv-param-input-system-${lower}`);
+      let input = panel.getByTestId(`qms-param-input-system-${lower}`);
       if ((await input.count()) === 0) {
         await ensureSystemParam(lower);
-        input = panel.getByTestId(`qv-param-input-system-${lower}`);
+        input = panel.getByTestId(`qms-param-input-system-${lower}`);
       }
       await expect(input.first()).toBeVisible({ timeout: 10000 });
       await input.first().fill(value);
@@ -495,10 +495,10 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     const setSystemIntegerParam = async (paramName: string, value: string) => {
       const panel = currentStepPanel();
       const lower = paramName.toLowerCase();
-      let input = panel.getByTestId(`qv-param-input-system-${lower}`);
+      let input = panel.getByTestId(`qms-param-input-system-${lower}`);
       if ((await input.count()) === 0) {
         await ensureSystemParam(lower);
-        input = panel.getByTestId(`qv-param-input-system-${lower}`);
+        input = panel.getByTestId(`qms-param-input-system-${lower}`);
       }
       await expect(input.first()).toBeVisible({ timeout: 10000 });
       await input.first().fill(value);
@@ -509,10 +509,10 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     const setSystemLogicalParam = async (paramName: string, enabled: boolean) => {
       const panel = currentStepPanel();
       const lower = paramName.toLowerCase();
-      let row = panel.getByTestId(`qv-param-row-system-${lower}`);
+      let row = panel.getByTestId(`qms-param-row-system-${lower}`);
       if ((await row.count()) === 0) {
         await ensureSystemParam(lower);
-        row = panel.getByTestId(`qv-param-row-system-${lower}`);
+        row = panel.getByTestId(`qms-param-row-system-${lower}`);
       }
       await expect(row.first()).toBeVisible({ timeout: 10000 });
       const logicalSelect = row.first().locator('select.parameter-value-editor--logical');
@@ -526,9 +526,9 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       const lower = paramName.toLowerCase();
 
       const candidateRows = [
-        panel.getByTestId(`qv-param-row-system-${lower}`),
-        panel.getByTestId(`qv-param-row-parameters-${lower}`),
-        panel.getByTestId(`qv-param-row-wannier90-${lower}`),
+        panel.getByTestId(`qms-param-row-system-${lower}`),
+        panel.getByTestId(`qms-param-row-parameters-${lower}`),
+        panel.getByTestId(`qms-param-row-wannier90-${lower}`),
       ];
 
       for (const row of candidateRows) {
@@ -537,15 +537,15 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
         }
       }
 
-      const addParamBtn = panel.getByTestId('qv-add-parameter-trigger');
+      const addParamBtn = panel.getByTestId('qms-add-parameter-trigger');
       await expect(addParamBtn).toBeVisible({ timeout: 10000 });
       await addParamBtn.click();
 
-      const searchInput = panel.getByTestId('qv-add-parameter-search');
+      const searchInput = panel.getByTestId('qms-add-parameter-search');
       await expect(searchInput).toBeVisible({ timeout: 10000 });
       await searchInput.fill(lower);
 
-      const result = panel.getByTestId(`qv-add-parameter-result-${lower}`).first();
+      const result = panel.getByTestId(`qms-add-parameter-result-${lower}`).first();
       await expect(result).toBeVisible({ timeout: 10000 });
       await result.click();
 
@@ -565,9 +565,9 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       await ensureParameterViaPalette(lower);
 
       const candidates = [
-        panel.getByTestId(`qv-param-input-system-${lower}`),
-        panel.getByTestId(`qv-param-input-parameters-${lower}`),
-        panel.getByTestId(`qv-param-input-wannier90-${lower}`),
+        panel.getByTestId(`qms-param-input-system-${lower}`),
+        panel.getByTestId(`qms-param-input-parameters-${lower}`),
+        panel.getByTestId(`qms-param-input-wannier90-${lower}`),
       ];
 
       let input = candidates[0];
@@ -589,9 +589,9 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       await ensureParameterViaPalette(lower);
 
       const candidates = [
-        panel.getByTestId(`qv-param-input-system-${lower}`),
-        panel.getByTestId(`qv-param-input-parameters-${lower}`),
-        panel.getByTestId(`qv-param-input-wannier90-${lower}`),
+        panel.getByTestId(`qms-param-input-system-${lower}`),
+        panel.getByTestId(`qms-param-input-parameters-${lower}`),
+        panel.getByTestId(`qms-param-input-wannier90-${lower}`),
       ];
 
       let input = candidates[0];
@@ -652,8 +652,8 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     await applyStepParams();
 
     // 8) Run full chain
-    const runButtonFocus = appPage.getByTestId('qv-btn-run-calculation-focus');
-    const runButtonOverview = appPage.getByTestId('qv-btn-run-calculation');
+    const runButtonFocus = appPage.getByTestId('qms-btn-run-calculation-focus');
+    const runButtonOverview = appPage.getByTestId('qms-btn-run-calculation');
     if (await runButtonFocus.isVisible().catch(() => false)) {
       await expect(runButtonFocus).toBeEnabled();
       await runButtonFocus.click();
@@ -663,10 +663,10 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       await runButtonOverview.click();
     }
 
-    const runLogsPanel = appPage.getByTestId('qv-calc-run-logs-panel');
+    const runLogsPanel = appPage.getByTestId('qms-calc-run-logs-panel');
     await expect(runLogsPanel).toBeVisible({ timeout: 10000 });
 
-    const statusBadge = runLogsPanel.getByTestId('qv-job-status');
+    const statusBadge = runLogsPanel.getByTestId('qms-job-status');
     await expect(statusBadge).toBeVisible({ timeout: 30000 });
 
     const parseJobStatus = (raw: string | null): string => {
@@ -721,15 +721,15 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     }
 
     // 9) Analysis tab + raw artifact checks
-    const analysisTab = appPage.getByTestId('qv-calc-tab-analysis');
+    const analysisTab = appPage.getByTestId('qms-calc-tab-analysis');
     await analysisTab.click();
     await expect(analysisTab).toHaveClass(/calculations-workspace-tab--active/, { timeout: 5000 });
 
-    const analysisPanel = appPage.getByTestId('qv-calc-analysis-panel');
+    const analysisPanel = appPage.getByTestId('qms-calc-analysis-panel');
     await expect(analysisPanel).toBeVisible({ timeout: 5000 });
 
     const ensureReferenceOff = async () => {
-      const referenceToggle = appPage.getByTestId('qv-analysis-reference-toggle');
+      const referenceToggle = appPage.getByTestId('qms-analysis-reference-toggle');
       if ((await referenceToggle.count()) > 0) {
         await expect(referenceToggle).toBeVisible({ timeout: 10000 });
         if (await referenceToggle.isChecked()) {
@@ -737,12 +737,12 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
         }
         await expect(referenceToggle).not.toBeChecked({ timeout: 10000 });
       }
-      await expect(appPage.getByTestId('qv-analysis-reference-banner')).toHaveCount(0, { timeout: 10000 });
+      await expect(appPage.getByTestId('qms-analysis-reference-banner')).toHaveCount(0, { timeout: 10000 });
     };
     await ensureReferenceOff();
 
     const selectStepInAnalysis = async (step: string) => {
-      const stepChip = analysisPanel.locator(`[data-testid="qv-analysis-step-tab-${step}"]`);
+      const stepChip = analysisPanel.locator(`[data-testid="qms-analysis-step-tab-${step}"]`);
       await expect(stepChip).toBeVisible({ timeout: 10000 });
       await stepChip.click();
       await expect(stepChip).toHaveClass(/--active/, { timeout: 5000 });
@@ -837,7 +837,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
       const start = Date.now();
       let noObjectsSince: number | null = null;
       while (Date.now() - start < timeoutMs) {
-        const loadingVisible = await analysisPanel.getByTestId('qv-analysis-loading').isVisible().catch(() => false);
+        const loadingVisible = await analysisPanel.getByTestId('qms-analysis-loading').isVisible().catch(() => false);
         const digestLoading = await analysisPanel
           .locator('.analysis-digest.analysis-surface__placeholder')
           .filter({ hasText: /Loading step digest/i })
@@ -849,7 +849,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
           continue;
         }
 
-        const chartVisible = await analysisPanel.getByTestId('qv-analysis-convergence-chart').isVisible().catch(() => false);
+        const chartVisible = await analysisPanel.getByTestId('qms-analysis-convergence-chart').isVisible().catch(() => false);
         if (chartVisible) {
           return 'chart';
         }
@@ -862,7 +862,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
         if (tileVisible) {
           return 'tile';
         }
-        const noneVisible = await analysisPanel.getByTestId('qv-analysis-no-objects').isVisible().catch(() => false);
+        const noneVisible = await analysisPanel.getByTestId('qms-analysis-no-objects').isVisible().catch(() => false);
         if (noneVisible) {
           if (noObjectsSince === null) {
             noObjectsSince = Date.now();
@@ -888,7 +888,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
 
     expect(convergenceState, 'SCF convergence chart was not available').toBe('chart');
 
-    const convergenceChart = analysisPanel.getByTestId('qv-analysis-convergence-chart');
+    const convergenceChart = analysisPanel.getByTestId('qms-analysis-convergence-chart');
     await expect(convergenceChart).toBeVisible({ timeout: 10000 });
     await convergenceChart.scrollIntoViewIfNeeded();
 

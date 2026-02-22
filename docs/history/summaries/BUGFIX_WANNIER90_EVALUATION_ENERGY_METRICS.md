@@ -22,7 +22,7 @@
 
 ### A. Evaluation 分流（优先修复）
 
-**修复**（`src/quantumvitas/calculation/verification.py`）：
+**修复**（`src/qmatsuite/calculation/verification.py`）：
 ```python
 def evaluate_step_result(...):
     # A. Wannier90 steps should NOT extract energy metrics (no QE output format)
@@ -58,7 +58,7 @@ def evaluate_step_result(...):
 
 **修复策略**：拆分函数，明确输入类型
 
-#### B1. 新增函数（`src/quantumvitas/analysis/parsers.py`）
+#### B1. 新增函数（`src/qmatsuite/analysis/parsers.py`）
 
 **`parse_scf_output_text(text: str) -> SCFResult`**：
 ```python
@@ -142,7 +142,7 @@ def parse_scf_output(path_or_text: Path | str) -> SCFResult:
 
 #### B2. 更新调用点
 
-**`extract_energy_metrics_from_text()`**（`src/quantumvitas/analysis/energy.py`）：
+**`extract_energy_metrics_from_text()`**（`src/qmatsuite/analysis/energy.py`）：
 ```python
 def extract_energy_metrics_from_text(text: str) -> Dict[str, float | None]:
     """
@@ -218,15 +218,15 @@ result = parse_scf_output_path(output_path)
 ## 修改文件列表
 
 ### 核心修改
-1. **`src/quantumvitas/calculation/verification.py`**
+1. **`src/qmatsuite/calculation/verification.py`**
    - A. 添加 Wannier90 步骤类型分流，在调用 `extract_energy_metrics_from_text()` 之前返回
 
-2. **`src/quantumvitas/analysis/parsers.py`**
+2. **`src/qmatsuite/analysis/parsers.py`**
    - B. 拆分 `parse_scf_output` 为 `parse_scf_output_text()` 和 `parse_scf_output_path()`
    - B. 重构 `parse_scf_output()` 为 wrapper，改进路径/文本判断逻辑
    - B. `parse_scf_output_path()` 明确拒绝目录输入
 
-3. **`src/quantumvitas/analysis/energy.py`**
+3. **`src/qmatsuite/analysis/energy.py`**
    - B. 更新 `extract_energy_metrics_from_text()` 使用 `parse_scf_output_text()`
    - B. 更新 `analyze_energies()` 和 `analyze_scf_detailed()` 使用 `parse_scf_output_path()`
 

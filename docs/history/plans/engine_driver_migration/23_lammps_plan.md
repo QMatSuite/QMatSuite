@@ -12,7 +12,7 @@
 
 ## 1. Objective
 
-Extract all LAMMPS-specific code from kernel files into a self-contained driver bundle at `src/quantumvitas/drivers/lammps/`. After this migration:
+Extract all LAMMPS-specific code from kernel files into a self-contained driver bundle at `src/qmatsuite/drivers/lammps/`. After this migration:
 
 1. All LAMMPS code lives in `drivers/lammps/`
 2. LAMMPS is registered via DriverRegistry
@@ -26,7 +26,7 @@ Extract all LAMMPS-specific code from kernel files into a self-contained driver 
 
 ### 2.1 Handler Code
 
-**Source**: `src/quantumvitas/execution/handlers.py`
+**Source**: `src/qmatsuite/execution/handlers.py`
 
 | Function | Lines | Description |
 |----------|-------|-------------|
@@ -35,7 +35,7 @@ Extract all LAMMPS-specific code from kernel files into a self-contained driver 
 
 ### 2.2 Recipe Code
 
-**Source**: `src/quantumvitas/execution/recipes.py`
+**Source**: `src/qmatsuite/execution/recipes.py`
 
 | Class | Lines | Description |
 |-------|-------|-------------|
@@ -59,8 +59,8 @@ lammps_relax, lammps_equilibrate, lammps_deform
 ### 2.5 Additional LAMMPS Logic
 
 **Locations**:
-- `src/quantumvitas/calculation/step_done.py` - LAMMPS_STEP_TYPES, done detection
-- `src/quantumvitas/calculation/structure_steps.py` - LAMMPS_STEP_TYPES
+- `src/qmatsuite/calculation/step_done.py` - LAMMPS_STEP_TYPES, done detection
+- `src/qmatsuite/calculation/structure_steps.py` - LAMMPS_STEP_TYPES
 
 ### 2.6 Special Considerations
 
@@ -75,7 +75,7 @@ lammps_relax, lammps_equilibrate, lammps_deform
 ## 3. Target Structure
 
 ```
-src/quantumvitas/drivers/lammps/
+src/qmatsuite/drivers/lammps/
 ├── __init__.py          # Registration (15 lines)
 ├── driver.py            # LAMMPSDriver class (90 lines)
 ├── handler.py           # lammps_step_handler (296 lines, moved)
@@ -93,18 +93,18 @@ src/quantumvitas/drivers/lammps/
 ### Step 1: Create Directory Structure
 
 ```bash
-mkdir -p src/quantumvitas/drivers/lammps
-touch src/quantumvitas/drivers/lammps/__init__.py
-touch src/quantumvitas/drivers/lammps/driver.py
-touch src/quantumvitas/drivers/lammps/handler.py
-touch src/quantumvitas/drivers/lammps/recipe.py
-touch src/quantumvitas/drivers/lammps/restart.py
-touch src/quantumvitas/drivers/lammps/data_file.py
+mkdir -p src/qmatsuite/drivers/lammps
+touch src/qmatsuite/drivers/lammps/__init__.py
+touch src/qmatsuite/drivers/lammps/driver.py
+touch src/qmatsuite/drivers/lammps/handler.py
+touch src/qmatsuite/drivers/lammps/recipe.py
+touch src/qmatsuite/drivers/lammps/restart.py
+touch src/qmatsuite/drivers/lammps/data_file.py
 ```
 
 ### Step 2: Create driver.py
 
-**Create file**: `src/quantumvitas/drivers/lammps/driver.py`
+**Create file**: `src/qmatsuite/drivers/lammps/driver.py`
 
 ```python
 """LAMMPS engine driver.
@@ -122,7 +122,7 @@ handled by this driver.
 from pathlib import Path
 from typing import Any
 
-from quantumvitas.core.driver_protocol import (
+from qmatsuite.core.driver_protocol import (
     BaseEngineDriver,
     StepTypeSpec,
     WorkdirPolicy,
@@ -342,7 +342,7 @@ class LAMMPSDriver(BaseEngineDriver):
 
 ### Step 3: Move Handler to handler.py
 
-**Create file**: `src/quantumvitas/drivers/lammps/handler.py`
+**Create file**: `src/qmatsuite/drivers/lammps/handler.py`
 
 **Copy** the `lammps_step_handler` function from `handlers.py` (lines 459-755).
 
@@ -361,9 +361,9 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from quantumvitas.core.job import Job
-from quantumvitas.core.step_context import StepContext
-from quantumvitas.core.job_result import JobResult
+from qmatsuite.core.job import Job
+from qmatsuite.core.step_context import StepContext
+from qmatsuite.core.job_result import JobResult
 
 from .restart import find_restart_file, stage_restart_file
 
@@ -398,7 +398,7 @@ def lammps_step_handler(job: Job, context: StepContext) -> JobResult:
 
 ### Step 4: Move Recipe to recipe.py
 
-**Create file**: `src/quantumvitas/drivers/lammps/recipe.py`
+**Create file**: `src/qmatsuite/drivers/lammps/recipe.py`
 
 **Copy** the `LAMMPSRecipe` class from `recipes.py` (lines 336-469).
 
@@ -412,7 +412,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from quantumvitas.execution.recipes import BaseRecipe
+from qmatsuite.execution.recipes import BaseRecipe
 
 logger = logging.getLogger(__name__)
 
@@ -434,7 +434,7 @@ class LAMMPSRecipe(BaseRecipe):
 
 ### Step 5: Create restart.py
 
-**Create file**: `src/quantumvitas/drivers/lammps/restart.py`
+**Create file**: `src/qmatsuite/drivers/lammps/restart.py`
 
 **Extract** restart handling logic from handler if applicable.
 
@@ -450,7 +450,7 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from quantumvitas.core.step_context import StepContext
+    from qmatsuite.core.step_context import StepContext
 
 logger = logging.getLogger(__name__)
 
@@ -540,7 +540,7 @@ def resolve_restart_source(
 
 ### Step 6: Create data_file.py
 
-**Create file**: `src/quantumvitas/drivers/lammps/data_file.py`
+**Create file**: `src/qmatsuite/drivers/lammps/data_file.py`
 
 ```python
 """LAMMPS data file utilities.
@@ -553,7 +553,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from quantumvitas.core.structure import Structure
+    from qmatsuite.core.structure import Structure
 
 logger = logging.getLogger(__name__)
 
@@ -578,17 +578,17 @@ def write_data_file(
 
 ### Step 7: Create __init__.py
 
-**Create file**: `src/quantumvitas/drivers/lammps/__init__.py`
+**Create file**: `src/qmatsuite/drivers/lammps/__init__.py`
 
 ```python
 """LAMMPS driver bundle.
 
-This package provides the LAMMPS engine driver for QuantumVitas.
+This package provides the LAMMPS engine driver for QMatSuite.
 It handles all LAMMPS molecular dynamics simulations including
 energy minimization, various ensembles, and restart handling.
 """
 
-from quantumvitas.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_registry import DriverRegistry
 from .driver import LAMMPSDriver
 
 # Register driver at import time
@@ -599,16 +599,16 @@ __all__ = ["LAMMPSDriver"]
 
 ### Step 8: Update drivers/__init__.py
 
-**File**: `src/quantumvitas/drivers/__init__.py`
+**File**: `src/qmatsuite/drivers/__init__.py`
 
 **Add** LAMMPS import:
 
 ```python
-from quantumvitas.drivers import qe_shim
-from quantumvitas.drivers import vasp
-from quantumvitas.drivers import orca
-from quantumvitas.drivers import pyscf
-from quantumvitas.drivers import lammps  # ADD THIS LINE
+from qmatsuite.drivers import qe_shim
+from qmatsuite.drivers import vasp
+from qmatsuite.drivers import orca
+from qmatsuite.drivers import pyscf
+from qmatsuite.drivers import lammps  # ADD THIS LINE
 ```
 
 ### Step 9: Remove LAMMPS from Kernel Files
@@ -629,9 +629,9 @@ from quantumvitas.drivers import lammps  # ADD THIS LINE
 """Tests for LAMMPS driver bundle."""
 
 import pytest
-from quantumvitas.drivers.lammps import LAMMPSDriver
-from quantumvitas.core.driver_registry import DriverRegistry
-from quantumvitas.core.driver_protocol import WorkdirPolicy
+from qmatsuite.drivers.lammps import LAMMPSDriver
+from qmatsuite.core.driver_registry import DriverRegistry
+from qmatsuite.core.driver_protocol import WorkdirPolicy
 
 
 class TestLAMMPSDriver:
@@ -695,7 +695,7 @@ class TestLAMMPSRegistration:
 
     def test_lammps_registered(self):
         """LAMMPS should be registered in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_engine_registered("lammps")
         driver = DriverRegistry.get_driver("lammps")
@@ -703,7 +703,7 @@ class TestLAMMPSRegistration:
 
     def test_lammps_step_types_registered(self):
         """LAMMPS step types should be in registry."""
-        import quantumvitas.drivers
+        import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("lammps_minimize")
         assert DriverRegistry.is_step_type_registered("lammps_md")
@@ -715,14 +715,14 @@ class TestLAMMPSIsolation:
     def test_handlers_no_lammps_handler(self):
         """handlers.py should not contain lammps_step_handler."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/handlers.py").read_text()
+        source = Path("src/qmatsuite/execution/handlers.py").read_text()
 
         assert "def lammps_step_handler" not in source
 
     def test_recipes_no_lammps_recipe(self):
         """recipes.py should not contain LAMMPSRecipe."""
         from pathlib import Path
-        source = Path("src/quantumvitas/execution/recipes.py").read_text()
+        source = Path("src/qmatsuite/execution/recipes.py").read_text()
 
         assert "class LAMMPSRecipe" not in source
 
@@ -732,7 +732,7 @@ class TestLAMMPSRestart:
 
     def test_find_restart_file(self, tmp_path):
         """Test finding latest restart file."""
-        from quantumvitas.drivers.lammps.restart import find_restart_file
+        from qmatsuite.drivers.lammps.restart import find_restart_file
         import time
 
         # Create mock restart files
@@ -746,7 +746,7 @@ class TestLAMMPSRestart:
 
     def test_find_restart_file_none(self, tmp_path):
         """Test no restart file found."""
-        from quantumvitas.drivers.lammps.restart import find_restart_file
+        from qmatsuite.drivers.lammps.restart import find_restart_file
 
         result = find_restart_file(tmp_path)
         assert result is None

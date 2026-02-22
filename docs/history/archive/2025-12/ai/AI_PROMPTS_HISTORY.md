@@ -12,7 +12,7 @@ Typer CLI
 1. Project
 表示一个物理计算项目，存储在磁盘：
 project_dir/
-    project.qv.yml
+    project.qms.yml
     calculations/
     inputs/
     outputs/
@@ -65,43 +65,43 @@ Engine 自动：
 返回结果
 CLI 和 GUI 都通过 engine 调用，不重复逻辑。
 🚀 Typer CLI（Cursor 按此生成）
-主命令：qv
-qv init
+主命令：qms
+qms init
 创建一个新 project：
-qv init myproj
+qms init myproj
 生成：
 myproj/
-    project.qv.yml
+    project.qms.yml
     calculations/
     inputs/
     outputs/
     results/
-qv detect-qe
+qms detect-qe
 检测 QE 安装：
-qv detect-qe
+qms detect-qe
 输出 pw.x, ph.x 的路径。
-qv run step
+qms run step
 直接运行一个单独的 QE 输入：
-qv run step inputs/scf.in --workdir tmp/
+qms run step inputs/scf.in --workdir tmp/
 选项：
 --workdir
 --prefix
 --engine=qespresso
-qv run calculation
+qms run calculation
 直接运行 YAML 定义的 calculation：
-qv run calculation calculations/scf_band.yml
-qv analyze
+qms run calculation calculations/scf_band.yml
+qms analyze
 简单的 post-processing：
-qv analyze energy outputs/scf.out
-qv analyze band outputs/bands.out
-qv analyze dos results/dos.dat
+qms analyze energy outputs/scf.out
+qms analyze band outputs/bands.out
+qms analyze dos results/dos.dat
 analysis API 先做 minimal：
 total energy
 Fermi energy
 band eigenvalues（不画图）
 DOS 读取
 📦 目录布局（Cursor 用此生成文件结构）
-quantumvitas/
+qmatsuite/
     core/
         project.py
         calculation.py
@@ -125,7 +125,7 @@ quantumvitas/
     utils/
 🧩 Cursor 具体任务（你可以直接给它）
 请基于以上架构：
-创建 quantumvitas/cli/app.py，使用 Typer 注册以下命令：
+创建 qmatsuite/cli/app.py，使用 Typer 注册以下命令：
 init
 detect-qe
 run step
@@ -138,13 +138,13 @@ Step
 StepResult / CalculationResult
 让 CLI 完整调用 core，避免重复 subprocess 逻辑。
 确保 CLI → Calculation → Step → Engine 的调用链稳定。
-所有命令必须能从任何目录运行（基于 project.qv.yml 定位 project 根目录）。
+所有命令必须能从任何目录运行（基于 project.qms.yml 定位 project 根目录）。
 👍 最终效果（Cursor 按这个实现）
-qv init graphene
-qv detect-qe
-qv run step inputs/scf.in
-qv run calculation calculations/scf_band.yml
-qv analyze energy outputs/scf.out
+qms init graphene
+qms detect-qe
+qms run step inputs/scf.in
+qms run calculation calculations/scf_band.yml
+qms analyze energy outputs/scf.out
 这是一个完整、清晰、可扩展到 GUI 和 AI 的架构。
 
 
@@ -287,15 +287,15 @@ For CLI, implement the following (remember separation of concerns: cli should on
 2. For structure: put meta into beginning ofpymatgen generated json file. Ensure pymatgen to and from_dict() works and all other functions reading it works.
 3. Add ci commands to change name/slug/path simultaneously (id never change). Only execute the change if os changes folder name successfully. Such ci commands will call internal utility functions (like workflow.set_name()) to change the name/slug/path of the object SEPARATELY (one function for each, to have internal flexibility).
 4. Usually one need to specify --name to initialize a resource (project/workflow/step/structure). If not specified, then design a default name (project: project 1, workflow: workflow 1, step: scf (actual step type to string, if exists in current workflow, then add number to the end), structure: Si (structure name from pymatgen or cif file name, however is convenient. Also, if exists, add number to the end. If this does not work, just fall back to Structure 1))). Then name -> slug-> path automatically.
-5. qv init: if no path specified, then new project in pwd with default project name from above. Maybe at this point you have already implemented this.
+5. qms init: if no path specified, then new project in pwd with default project name from above. Maybe at this point you have already implemented this.
 6. Delete resource: either from id, or from path/file.
-7. qv list: list all resources in the project nicely formatted as tree.
-8. qv detect-qe [--project PATH]: why do you need to specify --project PATH? detect-qe is independent of project.
-9. qv run-workflow: how to compare with reference output?
+7. qms list: list all resources in the project nicely formatted as tree.
+8. qms detect-qe [--project PATH]: why do you need to specify --project PATH? detect-qe is independent of project.
+9. qms run-workflow: how to compare with reference output?
 10. Add more information (and --verbose) when running a workflow and steps.
 11. ValueError: Parameter 'k_points' is not defined for module 'pw'. Provide the section explicitly via 
 --SECTION.parameter=value.
-12. Why "qv run-structure silicon1 --mass_x=28.0855 --pseudopot_x='Si.pbe-n-rrkjus_psl.1.0.0.UPF'
+12. Why "qms run-structure silicon1 --mass_x=28.0855 --pseudopot_x='Si.pbe-n-rrkjus_psl.1.0.0.UPF'
 Applying overrides: mass_x=28.0855, pseudopot_x=Si.pbe-n-rrkjus_psl.1.0.0.UPF
   Downloading Si.upf... (attempt 1/3)
   Warning: Attempt 1 failed: HTTP Error 404: Not Found, retrying...
@@ -303,28 +303,28 @@ Applying overrides: mass_x=28.0855, pseudopot_x=Si.pbe-n-rrkjus_psl.1.0.0.UPF
   Warning: Attempt 2 failed: HTTP Error 404: Not Found, retrying...
   Downloading Si.upf... (attempt 3/3)
   Error: Failed to download Si.upf after 3 attempts: HTTP Error 404: Not Found
-  Error: Pseudopotential Si.upf not found and download failed"? While qv run-workflow works.
-13. Write qv init workflow and step (generate skeleton yaml file). And then function to modify yaml files to add/modify parameters using qv step configure --type=scf --ecutwfc = 60)
+  Error: Pseudopotential Si.upf not found and download failed"? While qms run-workflow works.
+13. Write qms init workflow and step (generate skeleton yaml file). And then function to modify yaml files to add/modify parameters using qms step configure --type=scf --ecutwfc = 60)
 14. Unify run-step (can take either .in file or .yaml file, or step id, or path to step, then prefer .yaml there) into one command.
 15. Also unify run-workflow (can take either .yaml file, or workflow id, or path to workflow) into one command.
 
 After implementing the above, update the documentation to reflect the new commands and features.
 
-qv get_command <input_file>: parse the input file and generate a example qv command with all parameters to write yaml file.
+qms get_command <input_file>: parse the input file and generate a example qms command with all parameters to write yaml file.
 
 
 2025.11.28-1:
 For CLI, implement the following (remember separation of concerns: cli should only call core functions, and cli is just a thin wrapper):
-1. qv init --name project6 does not set name to project6 (starts still with project1). Let's fix this: path should be passed as --path; if both path and name are provided, then mkdir path/slugified_name; if only path, then mkdir path; if only name, then pwd/slugified_name. Is this logic good?
-   [--workflow-id NAME] for qv init project is not necessary: id is generated automatically, and don't add workflow when initialize project.
-2. make "qv init" work for workflow and step as well (previous qv init -> qv init project). Previous qv step-creat -> qv init step.
-3. make all rename functions also as "qv rename": qv rename project, qv rename workflow, qv rename step, qv rename structure.
-4. qv delete: one command to delete project, workflow, step, structure (same logic as init, rename, make it unified). One unified command to delete all resources in the project. But: this calls core api functions for each resource type. Also: when the user delets a resource, move it to ./trash (for project, mkdir ./trash at the parent folder of project. for others, mkdir ./trash in the project folder). Then qv delete the trash folder will clean them up.
+1. qms init --name project6 does not set name to project6 (starts still with project1). Let's fix this: path should be passed as --path; if both path and name are provided, then mkdir path/slugified_name; if only path, then mkdir path; if only name, then pwd/slugified_name. Is this logic good?
+   [--workflow-id NAME] for qms init project is not necessary: id is generated automatically, and don't add workflow when initialize project.
+2. make "qms init" work for workflow and step as well (previous qms init -> qms init project). Previous qms step-creat -> qms init step.
+3. make all rename functions also as "qms rename": qms rename project, qms rename workflow, qms rename step, qms rename structure.
+4. qms delete: one command to delete project, workflow, step, structure (same logic as init, rename, make it unified). One unified command to delete all resources in the project. But: this calls core api functions for each resource type. Also: when the user delets a resource, move it to ./trash (for project, mkdir ./trash at the parent folder of project. for others, mkdir ./trash in the project folder). Then qms delete the trash folder will clean them up.
    Delete structure has to be careful: go through all workflows and refuse to delete if the structure is used. Offer --force to delete anyway and leave broken references and --cascade to delete all related workflows.
    This also applies to delete workflow: in meta of workflow, allow it to have parent workflow ids (last workflows that need to be executed before current workflow e.g. A->B->C->now, then write down C; A->B, A->C, BC->now, then write down BC).
-5. change qv step-set-params to qv configure step. Add qv configure other source commands as well, but for the moment just pass them.
-6. Also unify all qv run. Offer two possibilities: qv run step, qv run calculation, qv run structure, or qv run and automatically determine according to the input (either file or id).
-7. For all qv commands related to project, workflow, step, structure, offer --project PATH to specify the project path (but by default it is the project that is related to pwd, not necessarily the same as pwd, but could be parent folder which contains the project yml)
+5. change qms step-set-params to qms configure step. Add qms configure other source commands as well, but for the moment just pass them.
+6. Also unify all qms run. Offer two possibilities: qms run step, qms run calculation, qms run structure, or qms run and automatically determine according to the input (either file or id).
+7. For all qms commands related to project, workflow, step, structure, offer --project PATH to specify the project path (but by default it is the project that is related to pwd, not necessarily the same as pwd, but could be parent folder which contains the project yml)
 
 2025.11.28-2:
 1. Do not need --force to delete project.
@@ -335,24 +335,24 @@ For CLI, implement the following (remember separation of concerns: cli should on
 3. when renaming project/workflow, also change the name of the project folder. When renaming structure/step, also change filename.
 4. in doc CLI_API_REFERENCE.md, be careful about inputs of commands: we never input ID (ID is ULID, never change, never input), but only name/path. I hope in the implementation it is the same.
 5. when init step, set input_file to be none, do not guess scf.pw.in. When init workflow, make it clean, do not add step.
-6. when calling qv list, show all the way to steps.
+6. when calling qms list, show all the way to steps.
 7. when init step, if no workflow is provided: if pwd is below a workflow, then use the workflow id of the parent workflow. Otherwise just put step.yaml in pwd as you have implemented.
-8. when init step, --step-type is the same as --type? just keep one. When init resources encounters existing resource, show error, and advice user to use qv configure to modify existing resource.
+8. when init step, --step-type is the same as --type? just keep one. When init resources encounters existing resource, show error, and advice user to use qms configure to modify existing resource.
 9. when init step, remove "--output si.1_scf.step.yaml". determine filenameautomatically based on step type, as said before.
 10. Update accordingly show-command and get-command.
 11. write a unit test for show-command using scf inputs in tests/integration/ci_test_data/. Run the shown cli command and see whether it generates correct input (first init structure using the same input file, then init workflow, then init step using the generated structure and proposed command from show-command) (parse original input and generated input and compare. Does the calculation type matches? Parameters match?)?
 
 2025.11.28-3:
 1. delete project: update doc and implementation, not only path but also name/slug.
-2. delete project within the project folder: "Working directory switched to <HOME>/quantumVITAS/manual_tests" is wrong. Cannot change pwd. Change output to something like we are in trash.
+2. delete project within the project folder: "Working directory switched to <HOME>/QMatSuite/manual_tests" is wrong. Cannot change pwd. Change output to something like we are in trash.
 3. init workflow <id> in doc is wrong: never id, always name. In doc --step, but reality: No such option: --step
-4. qv list: show which structure applies to which workflow.
-5. for init step: add reference to parent workflow id in step .yaml. Also, make structure id optional: If there is parent workflow, then <structure-id> is simply copied from parent workflow. if no parent workflow, then error if not input structure id.  Remove [--name NAME] because step name is automatically from step type with possible number if not only one of same type exists. Make --type required so it is just next paramater after qv init step.
-6. qv configure step: can use not only path-to-yaml, but also step id. Robust way to find yaml given step id is to go through all steps in the project.
-7. why qv run step outputs 4 input files:pw_modified.in, pw_original.in, pw_work.in, pw.in? You only need one input file that is the last one for the calculation (if it is regenerated using yaml). If it is generated using .in, then put that .in in the folder as original.in for debugging purposes.
-8. Generally: qv delete something, do not need to specify parent (step->workflow, workflow->project). Just by default search from currennt folder up to find the parent (if none and not specified, then error). Of course one can optionally specify parent.
+4. qms list: show which structure applies to which workflow.
+5. for init step: add reference to parent workflow id in step .yaml. Also, make structure id optional: If there is parent workflow, then <structure-id> is simply copied from parent workflow. if no parent workflow, then error if not input structure id.  Remove [--name NAME] because step name is automatically from step type with possible number if not only one of same type exists. Make --type required so it is just next paramater after qms init step.
+6. qms configure step: can use not only path-to-yaml, but also step id. Robust way to find yaml given step id is to go through all steps in the project.
+7. why qms run step outputs 4 input files:pw_modified.in, pw_original.in, pw_work.in, pw.in? You only need one input file that is the last one for the calculation (if it is regenerated using yaml). If it is generated using .in, then put that .in in the folder as original.in for debugging purposes.
+8. Generally: qms delete something, do not need to specify parent (step->workflow, workflow->project). Just by default search from currennt folder up to find the parent (if none and not specified, then error). Of course one can optionally specify parent.
 9. Generally, you can always delete/configure something just by id/path (in this way no parent is needed at all). By name/slug, you need to search from current folder up to find the parent, unless specified by user.
-10. Need a way to rearrange steps in a workflow (just need to modify .yaml file). Use qv configure workflow.
+10. Need a way to rearrange steps in a workflow (just need to modify .yaml file). Use qms configure workflow.
 11. run calculation: do not need to specify object. By default it is current folder or up, if one can find a workflow. Or use id/name/slug/path.
 Think and do: generalize how to by find a resource by id/name/slug/path, and how to find default object of resouce from pwd (may not find it).
 Update doc accordingly.
@@ -360,7 +360,7 @@ Update doc accordingly.
 
 
 12. Also keep in mind that workflow reference to structures (one workflow refer to one structure). This has been dealt with when deleting structures already.
-13. we keep structure information in step .yaml still. Then we need to add method to qv configure which structure the workflow use (in which it automatically updates all steps.yaml), and also qv configure step to change the structure refenreced by the step .yaml (check whether consistent with parent workflow, if exists, and refuse to modify if not consistent, unless --force). 
+13. we keep structure information in step .yaml still. Then we need to add method to qms configure which structure the workflow use (in which it automatically updates all steps.yaml), and also qms configure step to change the structure refenreced by the step .yaml (check whether consistent with parent workflow, if exists, and refuse to modify if not consistent, unless --force). 
 14. When run calculation, you always use the structure in calculation.yaml. When run step, use the structure in step.yaml, but give error if the step has parent workflow but structure is different. This is to be compatible with the case where we simply run step without project-workflow structure.
 
 
@@ -370,21 +370,21 @@ Review AI_understanding.md to catch up with the ideas of the project. Optionally
 Above: Done.
 
 2025.11.29-1:
-1. Implement --template for all qv init (project, workflow, step). Also qv import-structure can take .json file! See templates in templates folder (basically resources categorized into different categories). Need to make sure how to copy them to current folder (same ulidcorrect tree structure and references). Eg, if copy workflow or step, then also copy related structure if exists in template/structure.
-1. for show-command, qv init step <step-type> rather than scf, remove --structure <structure-id> (add simple explanation)
+1. Implement --template for all qms init (project, workflow, step). Also qms import-structure can take .json file! See templates in templates folder (basically resources categorized into different categories). Need to make sure how to copy them to current folder (same ulidcorrect tree structure and references). Eg, if copy workflow or step, then also copy related structure if exists in template/structure.
+1. for show-command, qms init step <step-type> rather than scf, remove --structure <structure-id> (add simple explanation)
 2. for init step, not only if pwd is in a workflow, but also if parent workflow is specified, then use workflow structure.
-3. when qv run calculation, you need to find suitable executable from qe depending on the step type. For example in manual_tests/project1/calculations/Si-dos, the third step should be dos.x. Right now it gives error: ValueError: Section 'DOS' is not valid for module 'pw'.
+3. when qms run calculation, you need to find suitable executable from qe depending on the step type. For example in manual_tests/project1/calculations/Si-dos, the third step should be dos.x. Right now it gives error: ValueError: Section 'DOS' is not valid for module 'pw'.
 
 Run tests to make sure everything works. Update doc and AI_understanding.md accordingly.
 
-Done. Now need to check qv init with template. Especially how ULID and related structures are handled.
+Done. Now need to check qms init with template. Especially how ULID and related structures are handled.
 Again, QE_HOME should be detected automatically. You already put that internally in api, never rely on os.env when running because it is prone to error.
 
 
-Done. Still need to test qv init with template.
+Done. Still need to test qms init with template.
 
 Refactor according to suggestion of ChatGPT:
-QuantumVITAS Resource Resolution Summary (for refactoring)
+QMatSuite Resource Resolution Summary (for refactoring)
 1. Resource Identity Model
 Each resource (project / calculation / step / structure) has:
 ULID — internal unique ID (never shown to users)
@@ -436,9 +436,9 @@ YAML file path (if any)
 selector (slug or inferred name)
 CLI uses this helper for “auto-detect parent”,
 API never uses PWD.
-5. API Layer (quantumvitas/api.py)
+5. API Layer (qmatsuite/api.py)
 A clean service layer between CLI and core:
-class QVService:
+class QMSService:
     init_project(...)
     configure_project(...)
     delete_project(...)
@@ -467,7 +467,7 @@ operate on dataclasses → save back to YAML
 CLI is now thin:
 Use find_path_context_from_pwd() to infer project/workflow/step when the user does not specify them.
 Parse user parameters.
-Pass project_root + selector strings into QVService.
+Pass project_root + selector strings into QMSService.
 Print human-readable messages.
 CLI no longer performs:
 YAML parsing
@@ -492,10 +492,10 @@ Done.
 1. set a limit for upward search of resource to 20. 
 2. make sure all .yaml file (also in structure.json) contains all four selectors ULID, name, slug, relative path to project_root. Seems that right now calculation.yaml does not have it. How do you get ULID of workflow then? 
 3. Conceptual requirement:
-In QuantumVITAS, a “resource” (project / calculation / step / structure) should be modeled as a Python dataclass/object in memory. The .yaml / .yml files are just the persistence format for these objects, not the primary representation.
+In QMatSuite, a “resource” (project / calculation / step / structure) should be modeled as a Python dataclass/object in memory. The .yaml / .yml files are just the persistence format for these objects, not the primary representation.
 There should be clear load_* and save_* functions that convert between YAML files and the corresponding dataclasses (e.g. ProjectModel, WorkflowModel, StructureStepSpec).
 Core logic (init/configure/run) should work with these objects, not with raw YAML dicts.
-CLI and the new QVService API should call the loaders/savers instead of manually doing yaml.safe_load / yaml.safe_dump everywhere.
+CLI and the new QMSService API should call the loaders/savers instead of manually doing yaml.safe_load / yaml.safe_dump everywhere.
 It’s OK to refactor this gradually. The key goal is:
 Centralize YAML I/O in a few well-defined modules.
 Keep business logic object-centric, not file-centric.
@@ -527,7 +527,7 @@ model = loa
 Question: implementation complete? (to be checked later)
 
 
-You’re working in a Python codebase called QuantumVITAS (QV) — a workflow/CLI framework around Quantum ESPRESSO.
+You’re working in a Python codebase called QMatSuite (QMS) — a workflow/CLI framework around Quantum ESPRESSO.
 Before doing anything else, follow this order:
 0. Read the “AI_understanding.md” first
 There is a file:
@@ -569,7 +569,7 @@ Treats them conceptually as “1D curves + metadata” (x vs y1, y2, …)
 Is easy to plug into:
 The existing CLI (for matplotlib plots and textual summaries)
 A future Electron GUI (by converting the data to JSON)
-An explicit --auto-kpath option for qv init step bands that:
+An explicit --auto-kpath option for qms init step bands that:
 Uses the step’s structure (pymatgen Structure)
 Automatically generates a reasonable high-symmetry k-path using a standard API (e.g. pymatgen.symmetry.bandstructure.HighSymmKpath)
 Fills in the step spec with a QE-ready K_POINTS configuration
@@ -602,9 +602,9 @@ Not your job to implement now, but:
 The analysis outputs should be easy to turn into JSON and consumed by a JS frontend.
 Try not to bake CLI/TTY concerns into the analysis data structures.
 4. Auto k-path (--auto-kpath) for band steps
-There is already a qv init step command, and one valid step_type is bands.
+There is already a qms init step command, and one valid step_type is bands.
 I want:
-qv init step bands --structure si --auto-kpath
+qms init step bands --structure si --auto-kpath
 to mean:
 We have a structure for this step (explicit --structure, or inherited from workflow).
 We use a standard Python API (e.g. pymatgen.HighSymmKpath) to:
@@ -630,16 +630,16 @@ You don’t have to build a full 3D viewer now, but if you touch structure-relat
 6. What I expect from you
 Read first, then design.
 Read AI_understanding.md.
-Inspect relevant QV code (core models, CLI, step/workflow handling).
+Inspect relevant QMS code (core models, CLI, step/workflow handling).
 Look at example files under temp_files_ai/ (SCF, DOS, bands outputs + old band plot script).
 Then propose (implicitly through code) a clean design that:
 Fits the existing architecture.
 Provides a small, coherent analysis layer.
 Makes it easy to extend to more analysis types later.
-Integrates an explicit --auto-kpath option for qv init step bands.
+Integrates an explicit --auto-kpath option for qms init step bands.
 You are allowed to refactor:
 The old band plotting script into separate “parse” and “plot” pieces.
-Any small parts of QV as needed, as long as:
+Any small parts of QMS as needed, as long as:
 You don’t break the documented behavior in AI_understanding.md.
 You keep the CLI UX stable (or meaningfully improved).
 If, after inspecting the repo, you see a simpler or more robust pattern than what I described, use your judgement — as long as everything stays consistent with the spirit of the existing design.
@@ -664,7 +664,7 @@ Prefer storing in step YAML meta, not sidecar files.
 Ensure precedence rules:
 If user manually provides K_POINTS → never auto-generate.
 --auto-kpath requires structure; otherwise error.
-Ensure qv analyze band uses this metadata cleanly.
+Ensure qms analyze band uses this metadata cleanly.
 Keep it consistent and intuitive.
 3. Write real-data tests using temp_files_ai (but keep tests independent)
 Using the QE output examples in temp_files_ai:
@@ -702,7 +702,7 @@ Test data locations
 This is for future AI runs — be explicit and precise.
 6 Update user-facing docs (if any)
 Minimal but important:
-Clarify qv analyze usage
+Clarify qms analyze usage
 Document --auto-kpath with a short example
 Nothing more unless obviously missing
 Summary of what you should now do
@@ -715,7 +715,7 @@ This is the entire prompt.
 
 => to be tested manually. It seems that the pngs are fine.
 
-1. qv analyze should generate outputs in the results folder of the workflow bu default. 2. Make a test based on temp_files_ai/workflow_bands (copy relevant data into tests/data): qv init project (in temp/test_project_bands), .in->structure (qv import-structure), qv init workflow, .in->scf step (qv init step with qv show-command), .in->nscf step (qv init step with qv show-command), .in->bands step (qv init step with qv show-command), .in->bandspp step (qv init step with qv show-command), qv run calculation, qv analyze band, generate png files. Two separate workflows ran in the same temporary project: one using kpath as defined in original data, second using auto-kpath as you implemented.
+1. qms analyze should generate outputs in the results folder of the workflow bu default. 2. Make a test based on temp_files_ai/workflow_bands (copy relevant data into tests/data): qms init project (in temp/test_project_bands), .in->structure (qms import-structure), qms init workflow, .in->scf step (qms init step with qms show-command), .in->nscf step (qms init step with qms show-command), .in->bands step (qms init step with qms show-command), .in->bandspp step (qms init step with qms show-command), qms run calculation, qms analyze band, generate png files. Two separate workflows ran in the same temporary project: one using kpath as defined in original data, second using auto-kpath as you implemented.
 
 Card: K_POINTS { tpiba | automatic | crystal | gamma | tpiba_b | crystal_b | tpiba_c | crystal_c }
 
@@ -796,7 +796,7 @@ crystal_c :
 As tpiba_c, but k-points are in crystal coordinates.
 
 
-You’re working in a Python codebase called QuantumVITAS (QV) — a workflow/CLI framework around Quantum ESPRESSO.
+You’re working in a Python codebase called QMatSuite (QMS) — a workflow/CLI framework around Quantum ESPRESSO.
 Before doing anything else, follow this order:
 0. Read the “AI_understanding.md” first
 There is a file:
@@ -817,25 +817,25 @@ Keep in mind, always use core/resolution.py and core/context.py to locate resour
 1. Some auto-generated bug report, might not be correct, decide for yourself:
 Bug 1:
 The `to_qe_kpoints_crystal_b` method sets the last k-point segment's weight to 0, which tells QE to generate zero intermediate points along that final line segment. This produces incomplete band structure data. All segments should have positive weights according to QE's `crystal_b` format specification. The last point should use `n_points` instead of 0.
- @src/quantumvitas/analysis/kpath.py:71-72 
+ @src/qmatsuite/analysis/kpath.py:71-72 
 Bug 2
 Verify this issue exists and fix it:
 The `extract_energy_metrics_from_text` function returns `result.fermi_energy` with a key named `"fermi_energy_ry"`, but `result.fermi_energy` is in eV according to the SCFResult docstring. This unit mismatch causes incorrect comparisons in verification.py where the value is treated as Ry when it's actually eV, leading to wrong tolerance checks and error messages.
-2. qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.3_bands.pp.in
-qv init step bands 
-qv show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.2_bands.in
-qv init step bands_pw
-3. Where do you put pseudo for a project? Actually, it is good to copy/download relevant pseudo to the project/pseudo (if not already there) so the project folder itself is self-consistent. And then really point pseudo to that dir for QE input files (run times). You can first try to find pseudo file in quantumvitas_root/pseudo, if not, download it to both quantumvitas_root/pseudo and project/pseudo.
-4. if user qv run via .in file, then copy the original .in file to the project/raw folder as original file reference, then write and run the new input file. If the user qv run via yaml, only save the final generated input file for QE run. Do not put a lot of input files in raw folder. Right now I see 2-3 input files for each step .in, _run.in, _original.in
+2. qms show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.3_bands.pp.in
+qms init step bands 
+qms show-command $PYTHONSRC/tests/data/7_Si_bandStructure/si.2_bands.in
+qms init step bands_pw
+3. Where do you put pseudo for a project? Actually, it is good to copy/download relevant pseudo to the project/pseudo (if not already there) so the project folder itself is self-consistent. And then really point pseudo to that dir for QE input files (run times). You can first try to find pseudo file in qmatsuite_root/pseudo, if not, download it to both qmatsuite_root/pseudo and project/pseudo.
+4. if user qms run via .in file, then copy the original .in file to the project/raw folder as original file reference, then write and run the new input file. If the user qms run via yaml, only save the final generated input file for QE run. Do not put a lot of input files in raw folder. Right now I see 2-3 input files for each step .in, _run.in, _original.in
 5. for bands step (for bands.x), no need to generate &control namelist, nor do we need pseudo_dir.
-6. qv run step [<selector>] [--workflow <workflow_name>]: first try to resolve project tree and see whether we are under a workflow (already implemented this function). If yes, try to run the step within the workflow (in/out in the standard raw folder) (either from <selector> or if without selector and only one step exists, run that step. Otherwise, error). If not, run the step as standalone (this is what you hae implemented: you must locate the step.yaml file)
-7.1 qv analyze band ../raw/si.bands.pp.dat.gnu --plot --format png --symmetry ../raw/bands.pw_run.out --scf ../raw/nscf.pw_run.out: first, it is not scf but nscf, if you want to extract accurate Fermi energy (although let's be compatible, if no nscf, scf is also good. No need to modify code I assume, but just change -scf to -nscf). Second, in the test "tests/integration/test_si_bands_workflow_comprehensive.py", you wrote "bandspp_out = list(raw_dir.glob("*bandspp*.out")) symmetry_file = bandspp_out[0] if bandspp_out else None", which is not correct: there is no such output in raw folder. You should use ../raw/bands.pw_run.out instead. 
+6. qms run step [<selector>] [--workflow <workflow_name>]: first try to resolve project tree and see whether we are under a workflow (already implemented this function). If yes, try to run the step within the workflow (in/out in the standard raw folder) (either from <selector> or if without selector and only one step exists, run that step. Otherwise, error). If not, run the step as standalone (this is what you hae implemented: you must locate the step.yaml file)
+7.1 qms analyze band ../raw/si.bands.pp.dat.gnu --plot --format png --symmetry ../raw/bands.pw_run.out --scf ../raw/nscf.pw_run.out: first, it is not scf but nscf, if you want to extract accurate Fermi energy (although let's be compatible, if no nscf, scf is also good. No need to modify code I assume, but just change -scf to -nscf). Second, in the test "tests/integration/test_si_bands_workflow_comprehensive.py", you wrote "bandspp_out = list(raw_dir.glob("*bandspp*.out")) symmetry_file = bandspp_out[0] if bandspp_out else None", which is not correct: there is no such output in raw folder. You should use ../raw/bands.pw_run.out instead. 
 7.2 In bands.pw_run.out (output of bands.x), high symmertry k-points are given incartesian coordinates in unit of 2*pi/a. You need to convert that first to crystal_b: look ay --scf/nscf output file (see tests/data/7_Si_bandStructure/reference/si.2_bands.out), extract the 3*3 matrix of reciprocal lattice vectors "reciprocal axes:"b1, b2, b3, then convert the high symmetry k-points to crystal_b format x1*b1+x2*b2+x3*b3 (x1,x2,x3) (alat cancels out). Then ask qmatgen the conventional namke of these k-points.
 7.3 What does pw in bands.pw_run mean? It never calls pw.x. Unify the naming convention of input/output files in raw folder.
 8.1: In calculation.yaml, need to write ULID of the workflow (id should be ULID, not slug!). Actually, for all resources.yaml or structure.json, need to write ULID,name,slug,relative path to project root.
-8.2 Revert last delete command from trash (qv delete --list: show all deleted resources in trash, qv delete --restore path_to_deleted_file: revert deletion (if trash is project folder, then simply move it out of trash. if it is workflow, then move it back to the workflow folder and add reference to parent resource. if it is step, need to find parent workflow according to ULID in the project, move it back to the last step in that workflow, and update all references.)).
-9.1 qv rename step <workflow> <step-id> [--project PATH] [--id NEW_ID] => qv rename step <step-name> <step-new_name> [--workflow <workflow-selector>] [--project PATH] workflow is optional, if not provided, then find parent workflow from current folder up. Rethink about logic and optimal command sequenceof all renaming commands, make them consistent. 
-9.2 Refactor qv rename to qv configure workflow/step/structure <selector> --name <new_name> (still keep alias qv rename for backward compatibility, but when used, shows warning that it is deprecated and give exact example how to use qv configure --name).
+8.2 Revert last delete command from trash (qms delete --list: show all deleted resources in trash, qms delete --restore path_to_deleted_file: revert deletion (if trash is project folder, then simply move it out of trash. if it is workflow, then move it back to the workflow folder and add reference to parent resource. if it is step, need to find parent workflow according to ULID in the project, move it back to the last step in that workflow, and update all references.)).
+9.1 qms rename step <workflow> <step-id> [--project PATH] [--id NEW_ID] => qms rename step <step-name> <step-new_name> [--workflow <workflow-selector>] [--project PATH] workflow is optional, if not provided, then find parent workflow from current folder up. Rethink about logic and optimal command sequenceof all renaming commands, make them consistent. 
+9.2 Refactor qms rename to qms configure workflow/step/structure <selector> --name <new_name> (still keep alias qms rename for backward compatibility, but when used, shows warning that it is deprecated and give exact example how to use qms configure --name).
 10. Check that between CLI and python, there is always a layer of api.py to separate concerns.
 11. docs/CLI_API_REFERENCE.md needs to be updated thoroughly! Consider readability and ease of use.
 12. Update AI_understanding.md (in detail) and other docs accordingly.
@@ -845,57 +845,57 @@ qv init step bands_pw
 Done.
 1. Why do you have all pseudo files of irrelevant elements in project/pseudo when running workflow tests? If do manually run calculation, no problem. 
 2 Again: In temp/test_si_bands_workflow/si_bands_test/calculations/bands_auto/raw/bandspp.bands.out (output of bands.x), high symmertry k-points (line37-48) are given in cartesian coordinates in unit of 2*pi/a. You need to convert that first to crystal_b (look at the doc in this file, line 720-796): look at any pw.x output file before that (e.g. temp/test_si_bands_workflow/si_bands_test/calculations/bands_auto/raw/bands.out line 65-68), extract the 3 reciprocal lattice vectors "reciprocal axes:"b1, b2, b3 (same unit, 2pi/a), then convert the high symmetry k-points to crystal_b format x1*b1+x2*b2+x3*b3 (x1,x2,x3) (alat cancels out). Then ask qmatgen the conventional name of these k-points and plot as xticklabels. Right now you just pass the k-points as is to pymatgen and as xticklabel, which is wrong.
-3. Refactor and resolve the technical debt: CLI bypasses QVService API layer. Add clear instructions in AI_understanding.md and other docs to align future implementations inside this framwork.
-4. For "qv analyze band", keep the previous explicit behavior of passing --symmetry etc, but make it more convenient to use: either --workflow <selector>, or if nothing provided (just "qv analyze band"), then try to go up and find workflow (like many other cli commands) (use current implementation!), if not in workflow, then try finding files in pwd. if found workflow, you can actually locate all relevant output files in raw folder. Goals is to automatically locate all relevant output files in raw folder without having to specify all files manually. Maybe it is good to have a centralized naming convention class, so everything is consistent (naming files during runtime and analysis trying to find them afterwards).
+3. Refactor and resolve the technical debt: CLI bypasses QMSService API layer. Add clear instructions in AI_understanding.md and other docs to align future implementations inside this framwork.
+4. For "qms analyze band", keep the previous explicit behavior of passing --symmetry etc, but make it more convenient to use: either --workflow <selector>, or if nothing provided (just "qms analyze band"), then try to go up and find workflow (like many other cli commands) (use current implementation!), if not in workflow, then try finding files in pwd. if found workflow, you can actually locate all relevant output files in raw folder. Goals is to automatically locate all relevant output files in raw folder without having to specify all files manually. Maybe it is good to have a centralized naming convention class, so everything is consistent (naming files during runtime and analysis trying to find them afterwards).
 
 Done.
-Task: Implement qv analyze structure for 3D crystal visualization (ball-and-stick, supercell, boundary options)
-You’re working inside the QuantumVITAS (QV) Python project.
-QV already has:
+Task: Implement qms analyze structure for 3D crystal visualization (ball-and-stick, supercell, boundary options)
+You’re working inside the QMatSuite (QMS) Python project.
+QMS already has:
 A resource model for structures, workflows, steps, etc., with metadata and YAML.
 Structures stored primarily as pymatgen-compatible files (JSON with _meta, but in principle other formats too).
-A Typer CLI (qv) and a separation between:
+A Typer CLI (qms) and a separation between:
 CLI layer (Typer commands)
-API / service layer (e.g. “QVService”-like logic)
+API / service layer (e.g. “QMSService”-like logic)
 Core utilities (I/O, models, parsing, etc.)
 I want you to implement a new command:
-qv analyze structure <structure-selector> [options]
+qms analyze structure <structure-selector> [options]
 that 3D-plots the crystal structure as a ball-and-stick model, using matplotlib, with support for:
-Loading structures from QV’s project (any pymatgen-supported format, not only JSON).
+Loading structures from QMS’s project (any pymatgen-supported format, not only JSON).
 Supercell visualization.
 Ball-and-stick (atoms + bonds using covalent radii).
 A toggle to show/hide periodic images of atoms on the cell boundaries (standard crystallographic visualization behavior).
-Please integrate with the existing QV architecture and style rather than bolting on a random script.
+Please integrate with the existing QMS architecture and style rather than bolting on a random script.
 1. User-facing behavior
 From the user’s perspective, I’d like something like:
-# Basic: plot a single unit cell of structure "si" in the current QV project
-qv analyze structure si
+# Basic: plot a single unit cell of structure "si" in the current QMS project
+qms analyze structure si
 
 # Explicit output file
-qv analyze structure si --output si.png
+qms analyze structure si --output si.png
 
 # Supercell (e.g. 2×2×2)
-qv analyze structure si --supercell 2 2 2
+qms analyze structure si --supercell 2 2 2
 
 # Control boundary repetition of atoms (see below)
-qv analyze structure si --supercell 2 2 2 --repeat-boundary
-qv analyze structure si --no-repeat-boundary
+qms analyze structure si --supercell 2 2 2 --repeat-boundary
+qms analyze structure si --no-repeat-boundary
 
 # Optionally show interactive window (if supported)
-qv analyze structure si --show
+qms analyze structure si --show
 You can adjust the exact option names if needed, but the semantics should be:
-<structure-selector>: resolved via QV’s existing resource/selector logic.
+<structure-selector>: resolved via QMS’s existing resource/selector logic.
 --output: PNG path, default to something reasonable (e.g. structure.png in CWD or a project subdir).
 --supercell a b c: integers (default 1 1 1).
 --repeat-boundary / --no-repeat-boundary: boolean flag controlling whether to display periodic images on the boundaries.
 --show: optionally call plt.show() in addition to saving the PNG.
 2. Structure loading
 Please:
-Reuse QV’s existing logic to locate a structure resource from a selector and project root.
+Reuse QMS’s existing logic to locate a structure resource from a selector and project root.
 Once you have the file path, load it with pymatgen:
-Prefer Structure.from_file(path), so it can handle .json, .cif, .poscar, etc., not only QV’s JSON.
-QV’s JSON has extra _meta fields; pymatgen should ignore them, but handle gracefully.
-The CLI must work from inside a QV project (using whatever “find project root from cwd” logic already exists).
+Prefer Structure.from_file(path), so it can handle .json, .cif, .poscar, etc., not only QMS’s JSON.
+QMS’s JSON has extra _meta fields; pymatgen should ignore them, but handle gracefully.
+The CLI must work from inside a QMS project (using whatever “find project root from cwd” logic already exists).
 3. Supercell support
 Add a --supercell a b c option (integers, default 1 1 1):
 Before plotting, expand the structure to an a×b×c supercell.
@@ -969,48 +969,48 @@ In headless mode, it’s fine if --show effectively does nothing or logs a warni
 7. Program structure guidelines (important)
 Please respect and extend the existing architecture instead of bypassing it:
 Core plotting/analysis code:
-Lives in a dedicated module (e.g. something under quantumvitas/analysis/ or a similar place that makes sense in the current repo layout).
+Lives in a dedicated module (e.g. something under qmatsuite/analysis/ or a similar place that makes sense in the current repo layout).
 Functions like “load structure”, “expand supercell”, “detect bonds”, “create 3D plot” should be reusable from elsewhere (future GUI, notebooks).
 Service/API layer:
 A function (or methods on an existing service class) that:
 Resolves the structure from a selector and project root.
 Calls the core plotting function with the right parameters (supercell, repeat-boundary, output path, show flag).
 Handles errors from resource resolution appropriately.
-CLI (qv analyze structure):
+CLI (qms analyze structure):
 A Typer command that:
 Parses arguments and options.
-Uses existing project/root discovery helpers (whatever QV already uses).
+Uses existing project/root discovery helpers (whatever QMS already uses).
 Calls the service/API layer.
 Prints a short success message (e.g. “Saved 3D structure plot to …”).
 Try to keep CLI code thin and keep the heavy logic in the reusable modules.
-You are free to choose exact function names and module paths as long as they feel idiomatic for the existing QV codebase and are reasonably documented.
+You are free to choose exact function names and module paths as long as they feel idiomatic for the existing QMS codebase and are reasonably documented.
 8. Flexibility & expectations
 I’ve described what I want conceptually and what the UX should look like, but:
-You’re encouraged to read the existing QV code (CLI, project model, structure handling) and adapt to its patterns.
+You’re encouraged to read the existing QMS code (CLI, project model, structure handling) and adapt to its patterns.
 If you see a cleaner or more natural way to structure the code (e.g. how to organize an analysis or visualization package), please do so, as long as:
 The CLI behavior matches the overall description.
 The implementation is clean, documented, and consistent with the rest of the project.
 The plotting code remains reusable (not tightly bound to Typer).
-Please implement the full qv analyze structure pipeline as described, then summarize what you did (modules changed, new functions, how to use the command) in comments or a short note.
+Please implement the full qms analyze structure pipeline as described, then summarize what you did (modules changed, new functions, how to use the command) in comments or a short note.
 
 
 Done.
 
 
-You will be working on the QuantumVITAS v2 codebase (Python).
+You will be working on the QMatSuite v2 codebase (Python).
 Before doing anything, remember that AI_understanding.md contains the architecture, conventions, models, resolution rules, analysis layer, and how CLI/Core/API are separated.
 Assume this document is always correct and authoritative. (you have read this, but feel free to refer to this.)
 High-Level Goal
-Extend QuantumVITAS from a CLI-only tool into a GUI-ready backend, by:
-Strengthening QVService so it becomes the single high-level API surface for both CLI and GUI.
-Implementing a stdio JSON-RPC daemon that calls QVService rather than CLI.
+Extend QMatSuite from a CLI-only tool into a GUI-ready backend, by:
+Strengthening QMSService so it becomes the single high-level API surface for both CLI and GUI.
+Implementing a stdio JSON-RPC daemon that calls QMSService rather than CLI.
 Adding a JobManager + ThreadPoolExecutor(max_workers=1) inside the daemon so that long QE runs execute as background jobs.
 The daemon will later be driven by an Electron front-end, but that is outside this prompt.
 Key Architectural Rules (must follow)
 You must follow these invariants:
 CLI convenience ≠ service logic
 CLI uses core/context.py (cwd-based auto-detection).
-QVService must never use cwd and must require explicit project_root.
+QMSService must never use cwd and must require explicit project_root.
 Resolution & models
 All resource lookup must go through core/resolution.py + core/models.py.
 Selector rules (path → ULID → slug → name) must stay consistent.
@@ -1023,8 +1023,8 @@ Daemon never crashes; all errors are converted into { ok: false, error: {...} }.
 Long QE runs → background jobs
 Sequential (max_workers=1).
 Job results/status live in memory; project/workflow data always lives on disk.
-No CLI invocation from daemon; only call QVService.
-Phase 1 — Strengthen QVService for GUI
+No CLI invocation from daemon; only call QMSService.
+Phase 1 — Strengthen QMSService for GUI
 Implement or refine these high-level methods (names adjustable):
 get_project_summary(project_root) -> dict
 list_structures(project_root) -> list[dict]
@@ -1039,7 +1039,7 @@ Pure data, no matplotlib objects.
 Internally use core/resolution, core/models, analysis/*.
 Add small unit tests for schema stability.
 Phase 2 — Minimal stdio JSON-RPC daemon
-Create qv_daemon.py (or similar):
+Create qms_daemon.py (or similar):
 Read JSON requests from stdin:
 {"id": "req1", "type": "list_structures", "payload": {...}}
 Write JSON responses to stdout:
@@ -1062,7 +1062,7 @@ Add a JobManager with:
 submit_run_workflow(project_root, workflow_selector) -> job_id
 get_job_status(job_id) -> dict
 Background job function:
-Calls QVService.run_workflow(...)
+Calls QMSService.run_workflow(...)
 Catches exceptions, updates job state
 New RPC commands:
 "run_workflow" → return { job_id }
@@ -1074,7 +1074,7 @@ Daemon main loop remains responsive and non-blocking.
 Deliverables
 Produce:
 Updated api.py with GUI-ready methods.
-qv_daemon.py implementing Phases 2 & 3.
+qms_daemon.py implementing Phases 2 & 3.
 Any supporting modules (if clean).
 Unit tests for new logic.
 Reasonable internal documentation.
@@ -1084,9 +1084,9 @@ Think before coding. Optimize for clarity, correctness, and long-term maintainab
 Done. AI summary:
 ll tasks are complete. Let me provide a summary of what was implemented:
 Summary
-I've implemented the GUI-ready backend for QuantumVITAS following all the architectural rules you specified:
-Phase 1 - QVService GUI-Ready Methods
-Added to src/quantumvitas/api.py:
+I've implemented the GUI-ready backend for QMatSuite following all the architectural rules you specified:
+Phase 1 - QMSService GUI-Ready Methods
+Added to src/qmatsuite/api.py:
 Method	Purpose
 get_project_summary(project_root)	High-level project info (name, ID, resource counts)
 list_structures_data(project_root)	Structure metadata with formula, atoms, lattice params
@@ -1097,31 +1097,31 @@ get_dos_data(project_root, workflow, step)	DOS energies and densities
 get_band_structure_data(project_root, workflow, step)	Band energies, k-distances, high-symmetry points
 All methods return pure JSON-serializable dicts (no matplotlib objects).
 Phase 2 - JSON-RPC Daemon
-Created src/quantumvitas/daemon/server.py:
+Created src/qmatsuite/daemon/server.py:
 Protocol: One JSON request/response per line over stdin/stdout
 Dispatcher: Centralized command→handler mapping
 Error handling: All exceptions become {ok: false, error: {...}}
 Never uses cwd: All paths come from request payloads
 Supported commands: ping, shutdown, get_project_summary, list_structures, list_workflows, get_structure_vis, get_scf_convergence, get_dos_data, get_band_structure_data, run_workflow, run_step, get_job_status, list_jobs, cancel_job
 Phase 3 - JobManager for Background Execution
-Created src/quantumvitas/daemon/jobs.py:
+Created src/qmatsuite/daemon/jobs.py:
 ThreadPoolExecutor(max_workers=1) ensures sequential QE execution
 Job states: PENDING → RUNNING → COMPLETED/FAILED/CANCELLED
 Non-blocking: Daemon main loop stays responsive
 Job tracking: Results and errors stored in memory per job
 Tests Added
-tests/unit/test_qvservice_gui.py - Tests for GUI-ready QVService methods
+tests/unit/test_qmsservice_gui.py - Tests for GUI-ready QMSService methods
 tests/unit/test_daemon.py - Tests for daemon protocol and job manager
 Documentation Updated
 Updated AI_understanding.md with new Section 16: "GUI-Ready Backend Architecture"
 Architectural Invariants Followed
-✅ CLI ≠ service logic: CLI uses core/context.py (cwd-based), QVService requires explicit project_root
+✅ CLI ≠ service logic: CLI uses core/context.py (cwd-based), QMSService requires explicit project_root
 ✅ Resolution via core/resolution.py: All selectors follow path → ULID → slug → name order
 ✅ Analysis is read-only: Uses existing analysis/* dataclasses with .to_dict()
 ✅ Pure JSON-RPC over stdio: One request/response per line
 ✅ Daemon never crashes: All exceptions converted to error responses
 ✅ Long QE runs = background jobs: ThreadPoolExecutor(max_workers=1)
-✅ No CLI invocation from daemon: Only calls QVService methods
+✅ No CLI invocation from daemon: Only calls QMSService methods
 Test Results
 239 unit tests: All passing
 28 integration tests: All passing
@@ -1129,23 +1129,23 @@ Test Results
 
 ChatGPT audit:
 Cursor Prompt — “Self-Audit of Critical Backend Components”
-You previously implemented Phase 1–3 of the GUI-ready backend (QVService GUI API, JSON-RPC daemon, JobManager).
+You previously implemented Phase 1–3 of the GUI-ready backend (QMSService GUI API, JSON-RPC daemon, JobManager).
 Now I want you to perform a deep self-audit focusing only on a small set of critical risks.
 Ignore bonding logic — it is fine.
 Instead, thoroughly inspect the following areas of the current implementation:
 1. Ensure daemon never calls CLI or Typer code
-The daemon must only call QVService and lower-level Python modules.
+The daemon must only call QMSService and lower-level Python modules.
 It must not:
-spawn qv subprocesses
+spawn qms subprocesses
 import CLI modules
 call Typer functions
 depend on core/context.py
 Tasks:
 Search for "subprocess" calls inside daemon/server + job code.
-If any subprocess invokes CLI commands, replace them with direct QVService calls.
+If any subprocess invokes CLI commands, replace them with direct QMSService calls.
 Check all imports in the daemon.
 No CLI modules should appear.
-Verify run_step and run_workflow handlers call QVService, not CLI utilities.
+Verify run_step and run_workflow handlers call QMSService, not CLI utilities.
 If you find violations, refactor.
 2. Validate JSON-RPC streaming behavior
 Daemon must send one JSON object per line, and must flush stdout immediately.
@@ -1160,7 +1160,7 @@ Ensure:
 run_step uses the same selector-resolution logic as CLI.
 Daemon does not implement its own lookup.
 Daemon passes explicit project_root, not relying on cwd.
-QVService is the single entry point for executing steps and workflows.
+QMSService is the single entry point for executing steps and workflows.
 If daemon has any duplicate resolution code → eliminate it and use the central resolution layer.
 4. Inspect JobManager for correctness and realistic behavior
 Potential issues:
@@ -1179,7 +1179,7 @@ Ensure FAILED captures exception message.
 Ensure COMPLETED updates properly.
 c. Job result retention
 Ensure we are not storing huge raw logs or QE outputs in memory.
-5. Validate JSON schemas returned by QVService GUI methods
+5. Validate JSON schemas returned by QMSService GUI methods
 Not checking content (bonding is fine); checking schema stability:
 All methods must return pure JSON-serializable structures:
 dict
@@ -1203,7 +1203,7 @@ os.getcwd()
 direct reference to core.context
 implicit resolution based on runtime directory
 Only CLI should use cwd.
-Daemon and QVService must be deterministic based solely on arguments.
+Daemon and QMSService must be deterministic based solely on arguments.
 Your output should include:
 A detailed list of issues found
 The reasoning why each is a problem
@@ -1220,14 +1220,14 @@ Done.
 
 ======================================= warnings summary =======================================
 tests/cli/test_si_bands_workflow_comprehensive.py::TestBandsWorkflowDataModels::test_generate_kpath_for_si
-  <HOME>/src/quantumVITAS/.venv/lib/python3.9/site-packages/pymatgen/symmetry/kpath.py:160: UserWarning: The input structure does not match the expected standard primitive! The path may be incorrect. Use at your own risk.
+  <HOME>/src/QMatSuite/.venv/lib/python3.9/site-packages/pymatgen/symmetry/kpath.py:160: UserWarning: The input structure does not match the expected standard primitive! The path may be incorrect. Use at your own risk.
     warn(
 
 tests/examples/test_cli_usage_examples.py: 7 warnings
 tests/examples/test_structure_io_examples.py: 2 warnings
 tests/unit/test_project_and_cli.py: 5 warnings
 tests/unit/test_structure_roundtrip.py: 1 warning
-  <HOME>/src/quantumVITAS/.venv/lib/python3.9/site-packages/pymatgen/io/cif.py:1721: FutureWarning: We strongly discourage using implicit binary/text `mode`, and this would not be allowed after 2025-06-01. I.e. you should pass t/b in `mode`.
+  <HOME>/src/QMatSuite/.venv/lib/python3.9/site-packages/pymatgen/io/cif.py:1721: FutureWarning: We strongly discourage using implicit binary/text `mode`, and this would not be allowed after 2025-06-01. I.e. you should pass t/b in `mode`.
     with zopen(filename, mode=mode) as file:
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
@@ -1236,20 +1236,20 @@ tests/unit/test_structure_roundtrip.py: 1 warning
 Done.
 
 GUI:
-You are now working on the GUI layer for QuantumVITAS v2, located inside the gui/ directory.
+You are now working on the GUI layer for QMatSuite v2, located inside the gui/ directory.
 The environment uses Electron + React + TypeScript via electron-vite, and npm run dev already opens a working window.
 Your task:
 1. Understand the backend
 Before coding, read and internalize:
 docs/AI_understanding.md
-The Python daemon (qv_daemon.py or api.py + daemon wrapper)
+The Python daemon (qms_daemon.py or api.py + daemon wrapper)
 Core facts you must follow:
 GUI should call Python only via the daemon’s JSON-RPC protocol using stdin/stdout.
 JSON-RPC message schema:
 { "id": "...", "type": "command_name", "payload": {...} }
 Response:
 { "id": "...", "ok": true, "data": {...} }
-The daemon ultimately uses the QVService API (in api.py) — this is the stable backend interface.
+The daemon ultimately uses the QMSService API (in api.py) — this is the stable backend interface.
 2. Plan a clean GUI architecture
 Inside gui/src/, design a small but scalable structure, for example:
 src/
@@ -1264,9 +1264,9 @@ src/
       StructurePanel.tsx
       DebugPanel.tsx
   hooks/
-    useQVClient.ts        // wraps IPC calls
+    useQMSClient.ts        // wraps IPC calls
   types/
-    qv.ts                 // shared RPC/response types
+    qms.ts                 // shared RPC/response types
 You may adjust this design if you have a better idea — but keep it modular and future-proof (we will later add plots, 3D viewer, workflow runner, etc.).
 3. Connect Electron ↔ Python daemon
 Implement:
@@ -1275,17 +1275,17 @@ Spawn the Python daemon using the .venv Python.
 Read daemon stdout line-by-line as JSON.
 Maintain a request map (id → resolve/reject).
 Expose a single IPC endpoint:
-ipcMain.handle("qv-request", async (_event, rpc) => { ... });
+ipcMain.handle("qms-request", async (_event, rpc) => { ... });
 preload.ts
 Expose a safe API:
-contextBridge.exposeInMainWorld("qv", {
-  request: (payload) => ipcRenderer.invoke("qv-request", payload),
+contextBridge.exposeInMainWorld("qms", {
+  request: (payload) => ipcRenderer.invoke("qms-request", payload),
 });
-And add TypeScript global definitions for window.qv.
+And add TypeScript global definitions for window.qms.
 4. React: build the first working UI slice
 Implement:
-useQVClient hook
-A wrapper around window.qv.request that:
+useQMSClient hook
+A wrapper around window.qms.request that:
 Automatically generates unique IDs.
 Sends {id, type, payload}.
 Returns a normalized Promise.
@@ -1315,21 +1315,21 @@ Keep everything clean, typed, and easy to extend.
 If something is ambiguous, make the most reasonable design choice and continue.
 You may refactor any placeholder code created earlier if needed.
 👉 Goal: Establish the full end-to-end pipeline:
-React → preload → IPC → Electron main → Python daemon → QVService → return JSON → display in UI.
+React → preload → IPC → Electron main → Python daemon → QMSService → return JSON → display in UI.
 
 Done. Summary:
 Summary: GUI Layer Implementation Complete ✅
 I've implemented the full end-to-end pipeline:
-React → preload → IPC → Electron main → Python daemon → QVService → return JSON → display in UI
+React → preload → IPC → Electron main → Python daemon → QMSService → return JSON → display in UI
 Files Created/Updated
 Electron (Main Process)
 File	Purpose
 gui/electron/main.ts	Spawns daemon, handles IPC, manages request map
-gui/electron/preload.ts	Exposes window.qv API via contextBridge
+gui/electron/preload.ts	Exposes window.qms API via contextBridge
 React (Renderer)
 File	Purpose
-gui/src/types/qv.ts	TypeScript types matching daemon protocol
-gui/src/hooks/useQVClient.ts	React hook for daemon communication
+gui/src/types/qms.ts	TypeScript types matching daemon protocol
+gui/src/hooks/useQMSClient.ts	React hook for daemon communication
 gui/src/components/layout/AppShell.tsx	Main layout container
 gui/src/components/layout/Sidebar.tsx	Navigation, actions, status
 gui/src/components/panels/ResultPanel.tsx	JSON result viewer with syntax highlighting
@@ -1342,7 +1342,7 @@ File	Purpose
 AI_understanding.md	Added Section 17: GUI Layer Architecture
 docs/GUI_ARCHITECTURE.md	Complete GUI documentation
 Architecture
-gui/├── electron/│   ├── main.ts           # Daemon spawning + IPC│   └── preload.ts        # Safe window.qv API├── src/│   ├── components/│   │   ├── layout/       # AppShell, Sidebar│   │   └── panels/       # ResultPanel, DebugPanel│   ├── hooks/│   │   └── useQVClient.ts│   └── types/│       └── qv.ts
+gui/├── electron/│   ├── main.ts           # Daemon spawning + IPC│   └── preload.ts        # Safe window.qms API├── src/│   ├── components/│   │   ├── layout/       # AppShell, Sidebar│   │   └── panels/       # ResultPanel, DebugPanel│   ├── hooks/│   │   └── useQMSClient.ts│   └── types/│       └── qms.ts
 Key Features
 Daemon Communication
 Spawns Python daemon from .venv/bin/python
@@ -1350,8 +1350,8 @@ Line-delimited JSON over stdio
 Request tracking with timeout (60s)
 Graceful shutdown
 React Integration
-useQVClient hook with typed methods
-useQVLogs for daemon log subscription
+useQMSClient hook with typed methods
+useQMSLogs for daemon log subscription
 State management for loading/error
 UI
 Midnight blue dark theme
@@ -1368,13 +1368,13 @@ The shutdownDaemon() function schedules a timeout to kill the daemon via setTime
 Then (remember to independently think and decide before implementing suggestions below. Goal is still best coding practice) 
 Cursor Prompt: refine GUI API, UI, and daemon spawning
 You’ve already implemented the full GUI pipeline:
-React → preload → IPC → Electron main → Python daemon → QVService → JSON → UI.
+React → preload → IPC → Electron main → Python daemon → QMSService → JSON → UI.
 I’d like you to refine and strengthen this implementation in three areas:
-1. Typed RPC API (types/qv.ts + useQVClient)
+1. Typed RPC API (types/qms.ts + useQMSClient)
 Right now the RPC layer is basically "type": string + payload: any.
 Please:
-In src/types/qv.ts, define a central command map:
-export type QVCommandMap = {
+In src/types/qms.ts, define a central command map:
+export type QMSCommandMap = {
   ping: {
     payload: {};
     result: { pong: boolean };
@@ -1390,12 +1390,12 @@ export type QVCommandMap = {
   // extend with other existing commands as needed
 };
 Add appropriate ProjectSummary, StructureInfo, etc. interfaces based on the daemon’s current JSON output.
-Refactor useQVClient:
-Make it generic over QVCommandMap:
-async function call<K extends keyof QVCommandMap>(
+Refactor useQMSClient:
+Make it generic over QMSCommandMap:
+async function call<K extends keyof QMSCommandMap>(
   type: K,
-  payload: QVCommandMap[K]['payload']
-): Promise<QVCommandMap[K]['result']> { ... }
+  payload: QMSCommandMap[K]['payload']
+): Promise<QMSCommandMap[K]['result']> { ... }
 Ensure all existing call sites are updated to use this typed API.
 This should give us end-to-end type safety for RPC calls.
 2. Improve UI: real panels instead of raw JSON-only
@@ -1420,11 +1420,11 @@ Keep DebugPanel and ResultPanel available as a “debug tab” or section, but t
 In electron/main.ts:
 Extract daemon spawning logic into a small helper (same file or separate module), which:
 Tries to locate the Python interpreter in this order:
-An environment variable (e.g. QV_DAEMON_PYTHON) if set.
+An environment variable (e.g. QMS_DAEMON_PYTHON) if set.
 .venv/bin/python (Unix/macOS)
 .venv/Scripts/python.exe (Windows)
 Fallback to python on PATH.
-Uses a configurable daemon script path (e.g. env var QV_DAEMON_PATH or a sensible default like qv_daemon.py in the repo root).
+Uses a configurable daemon script path (e.g. env var QMS_DAEMON_PATH or a sensible default like qms_daemon.py in the repo root).
 If daemon spawning fails:
 Catch the error.
 Store a “daemonStartupError” string somewhere accessible (e.g., in the main process or send a special error on the first IPC call).
@@ -1445,13 +1445,13 @@ The shutdownDaemon() function schedules a timeout to kill the daemon via setTime
 Then (remember to independently think and decide before implementing suggestions below. Goal is still best coding practice) 
 Cursor Prompt: refine GUI API, UI, and daemon spawning
 You’ve already implemented the full GUI pipeline:
-React → preload → IPC → Electron main → Python daemon → QVService → JSON → UI.
+React → preload → IPC → Electron main → Python daemon → QMSService → JSON → UI.
 I’d like you to refine and strengthen this implementation in three areas:
-1. Typed RPC API (types/qv.ts + useQVClient)
+1. Typed RPC API (types/qms.ts + useQMSClient)
 Right now the RPC layer is basically "type": string + payload: any.
 Please:
-In src/types/qv.ts, define a central command map:
-export type QVCommandMap = {
+In src/types/qms.ts, define a central command map:
+export type QMSCommandMap = {
   ping: {
     payload: {};
     result: { pong: boolean };
@@ -1467,12 +1467,12 @@ export type QVCommandMap = {
   // extend with other existing commands as needed
 };
 Add appropriate ProjectSummary, StructureInfo, etc. interfaces based on the daemon’s current JSON output.
-Refactor useQVClient:
-Make it generic over QVCommandMap:
-async function call<K extends keyof QVCommandMap>(
+Refactor useQMSClient:
+Make it generic over QMSCommandMap:
+async function call<K extends keyof QMSCommandMap>(
   type: K,
-  payload: QVCommandMap[K]['payload']
-): Promise<QVCommandMap[K]['result']> { ... }
+  payload: QMSCommandMap[K]['payload']
+): Promise<QMSCommandMap[K]['result']> { ... }
 Ensure all existing call sites are updated to use this typed API.
 This should give us end-to-end type safety for RPC calls.
 2. Improve UI: real panels instead of raw JSON-only
@@ -1497,11 +1497,11 @@ Keep DebugPanel and ResultPanel available as a “debug tab” or section, but t
 In electron/main.ts:
 Extract daemon spawning logic into a small helper (same file or separate module), which:
 Tries to locate the Python interpreter in this order:
-An environment variable (e.g. QV_DAEMON_PYTHON) if set.
+An environment variable (e.g. QMS_DAEMON_PYTHON) if set.
 .venv/bin/python (Unix/macOS)
 .venv/Scripts/python.exe (Windows)
 Fallback to python on PATH.
-Uses a configurable daemon script path (e.g. env var QV_DAEMON_PATH or a sensible default like qv_daemon.py in the repo root).
+Uses a configurable daemon script path (e.g. env var QMS_DAEMON_PATH or a sensible default like qms_daemon.py in the repo root).
 If daemon spawning fails:
 Catch the error.
 Store a “daemonStartupError” string somewhere accessible (e.g., in the main process or send a special error on the first IPC call).
@@ -1517,12 +1517,12 @@ Afterwards, update the AI_understanding.md and other relevant doc.
 2025/12/05
 
 New prompt:
-You are joining an existing project: QuantumVITAS v2.
+You are joining an existing project: QMatSuite v2.
 The GUI layer is already wired end-to-end:
-React → preload → IPC → Electron main → Python daemon → QVService → JSON → UI
+React → preload → IPC → Electron main → Python daemon → QMSService → JSON → UI
 Implemented files (GUI):
 gui/electron/main.ts, gui/electron/preload.ts
-gui/src/types/qv.ts, gui/src/hooks/useQVClient.ts
+gui/src/types/qms.ts, gui/src/hooks/useQMSClient.ts
 gui/src/components/layout/AppShell.tsx, Sidebar.tsx
 gui/src/components/panels/ResultPanel.tsx, DebugPanel.tsx
 gui/src/App.tsx, gui/src/index.css, gui/index.html
@@ -1530,7 +1530,7 @@ There is also AI_understanding.md and docs/GUI_ARCHITECTURE.md describing the ov
 Before coding, read and internalize:
 AI_understanding.md
 docs/GUI_ARCHITECTURE.md
-The existing GUI code and the Python daemon / QVService API
+The existing GUI code and the Python daemon / QMSService API
 Assume the daemon exposes JSON-RPC commands for listing projects/resources and returning structured analysis data.
 Your next goals (be ambitious, but keep the architecture clean)
 Project & resource browser
@@ -1552,29 +1552,29 @@ Take structure data from the daemon (lattice + fractional coords + species).
 Support orbit/zoom, multiple cells (e.g. 2×2×2), basic bonds.
 Integrate this viewer into the Structure detail panel.
 Analysis panels (DOS / bands / SCF)
-Use existing analysis outputs (from QV’s analysis layer) to build:
+Use existing analysis outputs (from QMS’s analysis layer) to build:
 DOS plot panel (energy vs DOS, energy vs iDOS).
 Band structure panel (k-path with labels, energy vs k).
 SCF convergence panel (iteration vs energy / residual).
 Implement JSON-RPC endpoints if needed, then TypeScript types, then React panels.
 General engineering quality
 Keep IPC messages simple and versionable.
-Extend qv.ts and useQVClient with typed RPC methods.
+Extend qms.ts and useQMSClient with typed RPC methods.
 Factor components cleanly: layout vs panels vs hooks vs types.
 Handle loading/error states in the UI gracefully.
 You are free to refactor small parts of the existing GUI and daemon as long as:
-The overall architecture (React ↔ Electron ↔ daemon ↔ QVService) stays intact.
+The overall architecture (React ↔ Electron ↔ daemon ↔ QMSService) stays intact.
 The design becomes more modular, testable, and easier to extend.
 Start by proposing a short plan of what you will change (files, components, RPC commands), then implement it step by step.
 
 Excellent! All TypeScript errors are fixed. Let me provide a summary of everything that has been implemented:
 Implementation Summary
-I've implemented a comprehensive GUI upgrade for QuantumVITAS v2 with the following features:
+I've implemented a comprehensive GUI upgrade for QMatSuite v2 with the following features:
 1. Project Root Browser with Native Dialog
 Files modified:
-gui/electron/main.ts - Added qv-open-directory IPC handler using Electron's native dialog
+gui/electron/main.ts - Added qms-open-directory IPC handler using Electron's native dialog
 gui/electron/preload.ts - Exposed openDirectory() method via context bridge
-gui/src/types/qv.ts - Extended QVApi interface with openDirectory()
+gui/src/types/qms.ts - Extended QMSApi interface with openDirectory()
 gui/src/components/layout/Sidebar.tsx - Added "Browse" button next to project path input
 gui/src/components/layout/Sidebar.css - Styled the input group with browse button
 2. Calculation Management Panels
@@ -1626,9 +1626,9 @@ Modified:
 gui/src/components/panels/index.ts - Exports all new components
 Architecture Alignment
 The implementation follows the existing architecture:
-React ↔ preload ↔ IPC ↔ Electron main ↔ Python daemon ↔ QVService
-All daemon RPC calls use the existing QVCommandMap type system
-New components use the useQVClient hook for type-safe RPC
+React ↔ preload ↔ IPC ↔ Electron main ↔ Python daemon ↔ QMSService
+All daemon RPC calls use the existing QMSCommandMap type system
+New components use the useQMSClient hook for type-safe RPC
 Analysis data comes from existing daemon endpoints (get_structure_vis, get_scf_convergence, get_dos_data, get_band_structure_data)
 To Test
 cd guinpm install  # Already donenpm run dev  # Start development mode
@@ -1640,7 +1640,7 @@ Analysis tab for DOS/Bands/SCF plots
 Workflow details with step list and run button
 
 
-You are the same AI that just implemented the new QuantumVITAS GUI features (project root browser, workflows panel, 3D structure viewer, analysis charts). Now refine the UX and add the next set of CLI→GUI features.
+You are the same AI that just implemented the new QMatSuite GUI features (project root browser, workflows panel, 3D structure viewer, analysis charts). Now refine the UX and add the next set of CLI→GUI features.
 You already understand the architecture and codebase; do not re-summarize it. Work incrementally and keep the code clean.
 1. Sidebar & view behavior cleanup
 Simplify the sidebar:
@@ -1654,12 +1654,12 @@ Empty states and errors:
 If no project loaded, every non-Summary view (Structures / Workflows / Analysis) should show a friendly “No project loaded. Load or create a project first.” message instead of blank content.
 For Summary when no project:
 Improve the center card: show 2 CTAs: “Browse & Load Project” and “Create New Project”.
-When loading a project fails (invalid path, missing project.qv.yml), show:
+When loading a project fails (invalid path, missing project.qms.yml), show:
 An inline error under the project path input.
 A clear message in the Summary panel.
 Make sure views use loading/error states rather than leaving the user guessing.
 2. Project creation & structure import (map CLI features to GUI)
-Implement GUI equivalents of qv init project and qv import-structure, using existing daemon / QVService capabilities (add RPCs if missing).
+Implement GUI equivalents of qms init project and qms import-structure, using existing daemon / QMSService capabilities (add RPCs if missing).
 Create Project
 Add a “Create Project” action:
 Accessible from the Summary empty state and/or from the sidebar.
@@ -1668,21 +1668,21 @@ Open a dialog (or modal) that asks for:
 Target directory (use the same openDirectory IPC, or a similar one).
 Project name.
 Optional template selection if templates are supported (e.g. project1).
-Call a new daemon RPC, e.g. project.create, that wraps qv init project–equivalent logic.
+Call a new daemon RPC, e.g. project.create, that wraps qms init project–equivalent logic.
 On success:
 Set this new path as current project root.
 Auto-load project summary / structures / workflows.
 Import Structure
 In the Structures view, add an “Import Structure…” button.
 UX:
-Use a file-open dialog to select a structure file (CIF / QE input / QV JSON – whatever the daemon can handle).
+Use a file-open dialog to select a structure file (CIF / QE input / QMS JSON – whatever the daemon can handle).
 Call a daemon RPC (e.g. structure.import) that wraps the existing import logic.
 On success:
 Refresh the structures list.
 Select and show the newly imported structure in the list + 3D viewer.
-Update TypeScript types (qv.ts) and useQVClient for any new RPCs, keeping everything strongly typed.
+Update TypeScript types (qms.ts) and useQMSClient for any new RPCs, keeping everything strongly typed.
 3. Workflow from template
-Implement a GUI equivalent of qv init workflow <name> --structure STRUCT --template TEMPLATE:
+Implement a GUI equivalent of qms init workflow <name> --structure STRUCT --template TEMPLATE:
 In the Workflows view, add “New Workflow from Template…”:
 First, query the daemon for available workflow templates (add an RPC if needed, e.g. workflow.list_templates).
 Dialog fields:
@@ -1695,9 +1695,9 @@ Refresh the workflows list.
 Select and display the newly created workflow in the detail panel.
 4. General guidelines
 Keep React components small and focused; reuse layout components where possible.
-Ensure all RPCs are declared in QVCommandMap and used via useQVClient.
+Ensure all RPCs are declared in QMSCommandMap and used via useQMSClient.
 Don’t break existing working flows (3D viewer, analysis, logs).
-If you need to adjust daemon/QVService APIs, do it in a way that will also be convenient for future job-management features (async runs, job list, etc.).
+If you need to adjust daemon/QMSService APIs, do it in a way that will also be convenient for future job-management features (async runs, job list, etc.).
 Start by outlining the concrete changes (files and functions) you will touch for steps 1–3, then implement them with minimal but clear refactoring.
 
 
@@ -1715,13 +1715,13 @@ gui/src/App.tsx - Completely refactored with auto-fetch on view change, proper e
 gui/src/App.css - Added no-project-message and view-action-btn styles.
 Phase 2: Project Creation & Structure Import
 New Daemon RPCs:
-create_project - Creates a new QV project in a target directory
+create_project - Creates a new QMS project in a target directory
 import_structure - Imports a structure file (CIF, XSF, QE input, etc.)
 Files Modified:
-gui/electron/main.ts - Added qv-open-file IPC handler for file picker
+gui/electron/main.ts - Added qms-open-file IPC handler for file picker
 gui/electron/preload.ts - Exposed openFile method
-gui/src/types/qv.ts - Added types for create_project, import_structure, WorkflowTemplateInfo
-src/quantumvitas/daemon/server.py - Added _handle_create_project, _handle_import_structure handlers
+gui/src/types/qms.ts - Added types for create_project, import_structure, WorkflowTemplateInfo
+src/qmatsuite/daemon/server.py - Added _handle_create_project, _handle_import_structure handlers
 New Components:
 gui/src/components/dialogs/Modal.tsx - Base modal component
 gui/src/components/dialogs/Modal.css - Modal and form styling
@@ -1732,7 +1732,7 @@ New Daemon RPCs:
 list_workflow_templates - Lists available workflow templates with metadata
 create_workflow - Creates a new workflow with optional structure and template
 Files Modified:
-src/quantumvitas/core/templates.py - Added list_workflow_templates() function
+src/qmatsuite/core/templates.py - Added list_workflow_templates() function
 New Components:
 gui/src/components/dialogs/CreateWorkflowDialog.tsx - Dialog for creating workflows from templates
 Key UX Improvements:
@@ -1744,7 +1744,7 @@ View action buttons - "+Import Structure" and "+New Workflow" buttons in their r
 Ping moved to Debug - Connection testing is now in the Debug view, not primary sidebar
 
 
-You are the same AI that just implemented: sidebar cleanup, project creation/import dialogs, workflow-from-template, auto-fetch on view change, and the improved empty/error states. Now we push QuantumVITAS GUI from a viewer into a real “job manager” for QE runs.
+You are the same AI that just implemented: sidebar cleanup, project creation/import dialogs, workflow-from-template, auto-fetch on view change, and the improved empty/error states. Now we push QMatSuite GUI from a viewer into a real “job manager” for QE runs.
 You already understand the architecture and codebase. Work incrementally, keep types tight, avoid breaking existing flows.
 1. Introduce a simple Job system in the daemon
 Goal: running a workflow/step/structure should be asynchronous and observable.
@@ -1756,10 +1756,10 @@ status (queued, running, success, failed, cancelled)
 created_at, started_at, finished_at
 message / error summary, maybe last_log_line
 Maintain an in-memory job registry + a worker thread (or a very small thread pool) that:
-Dequeues jobs and calls existing QVService methods (run_workflow, run_step, etc.).
+Dequeues jobs and calls existing QMSService methods (run_workflow, run_step, etc.).
 Updates job status as it runs.
 Captures basic info from QE output (e.g. “JOB DONE”, exit code, short error).
-Add daemon RPCs, all wired into QVCommandMap and typed on the TS side:
+Add daemon RPCs, all wired into QMSCommandMap and typed on the TS side:
 job.submit_run_workflow (or similar): enqueue a workflow run and return a job_id.
 job.submit_run_step, job.submit_run_structure (if needed now; you can start with workflow only).
 job.list (optionally filtered by project / status).
@@ -1784,7 +1784,7 @@ Status, timestamps, error message (if any),
 Link back to the associated workflow/step/structure,
 A log preview area (see part 3).
 Provide Cancel action when status is queued or running.
-Use useQVClient and new typed commands for all of this.
+Use useQMSClient and new typed commands for all of this.
 3. Wire Workflow “Run” buttons to the Job system + logs
 Update the existing Workflows panel:
 When clicking Run:
@@ -1805,7 +1805,7 @@ In the Analysis view:
 If there are recent successful jobs for a workflow, consider offering a quick selector: “Use last run from Job #…”.
 But this can be minimal for now; don’t overcomplicate.
 5. Constraints / quality bar
-Keep all new RPCs declared and typed in qv.ts, and only call via useQVClient.
+Keep all new RPCs declared and typed in qms.ts, and only call via useQMSClient.
 Aim for a minimal but coherent Job system; don’t prematurely over-design.
 Keep code organized: job-related React logic in a useJobs hook and JobsPanel components; job-related daemon logic in a clear module / section.
 Don’t regress existing features (project creation/import, workflows, 3D viewer, analysis, debug).
@@ -1815,28 +1815,28 @@ Start by sketching the job model and daemon API, then add the TS types and basic
 Implmentation summary:
 Excellent! Let me provide a summary of what was implemented:
 Summary
-I've implemented a complete Job system for QuantumVITAS that transforms the GUI from a viewer into a real "job manager" for QE runs. Here's what was built:
+I've implemented a complete Job system for QMatSuite that transforms the GUI from a viewer into a real "job manager" for QE runs. Here's what was built:
 1. Python Daemon Job Model (Enhanced)
-src/quantumvitas/daemon/jobs.py:
+src/qmatsuite/daemon/jobs.py:
 Added new fields to Job dataclass: target_name, project_root, output_file, last_log_line
 Added to_summary_dict() for lighter list views
 Added get_job_logs() method to read and tail output files
 Added count_by_status() method for sidebar badge
 Updated submit() to accept target_name and project_root_display parameters
-src/quantumvitas/daemon/server.py:
+src/qmatsuite/daemon/server.py:
 Added new RPC handlers:
 get_job_logs - Returns logs from QE output file with optional tail/offset
 job_counts - Returns counts by status for sidebar badge
 Enhanced run_workflow and run_step to return target_name in response
 Updated list_jobs to support project_root filtering and limit parameter
 2. TypeScript Types
-gui/src/types/qv.ts:
+gui/src/types/qms.ts:
 Added JobSummary interface (lighter than JobInfo for list views)
 Added JobLogs interface for log responses
 Added JobCounts interface for sidebar badge
 Updated JobInfo with new fields: target_name, project_root, output_file, last_log_line
 Updated JobSubmitResult to include target_name
-Updated QVCommandMap with new commands: get_job_logs, job_counts
+Updated QMSCommandMap with new commands: get_job_logs, job_counts
 3. React Hooks
 gui/src/hooks/useJobs.ts (New):
 useJobs() - Polls job list with configurable interval, supports filtering
@@ -1881,28 +1881,28 @@ The system is now ready for asynchronous workflow execution with observable prog
 
 
 Implementation summary:
-I've implemented a complete Job system for QuantumVITAS that transforms the GUI from a viewer into a real "job manager" for QE runs. Here's what was built:
+I've implemented a complete Job system for QMatSuite that transforms the GUI from a viewer into a real "job manager" for QE runs. Here's what was built:
 1. Python Daemon Job Model (Enhanced)
-src/quantumvitas/daemon/jobs.py:
+src/qmatsuite/daemon/jobs.py:
 Added new fields to Job dataclass: target_name, project_root, output_file, last_log_line
 Added to_summary_dict() for lighter list views
 Added get_job_logs() method to read and tail output files
 Added count_by_status() method for sidebar badge
 Updated submit() to accept target_name and project_root_display parameters
-src/quantumvitas/daemon/server.py:
+src/qmatsuite/daemon/server.py:
 Added new RPC handlers:
 get_job_logs - Returns logs from QE output file with optional tail/offset
 job_counts - Returns counts by status for sidebar badge
 Enhanced run_workflow and run_step to return target_name in response
 Updated list_jobs to support project_root filtering and limit parameter
 2. TypeScript Types
-gui/src/types/qv.ts:
+gui/src/types/qms.ts:
 Added JobSummary interface (lighter than JobInfo for list views)
 Added JobLogs interface for log responses
 Added JobCounts interface for sidebar badge
 Updated JobInfo with new fields: target_name, project_root, output_file, last_log_line
 Updated JobSubmitResult to include target_name
-Updated QVCommandMap with new commands: get_job_logs, job_counts
+Updated QMSCommandMap with new commands: get_job_logs, job_counts
 3. React Hooks
 gui/src/hooks/useJobs.ts (New):
 useJobs() - Polls job list with configurable interval, supports filtering
@@ -1947,7 +1947,7 @@ The system is now ready for asynchronous workflow execution with observable prog
 
 2025/12/06
 
-You are joining an existing scientific software project: QuantumVITAS v2 (QV) – a workflow engine + CLI + Python API + Electron/React GUI for running and analyzing Quantum ESPRESSO (QE) simulations.
+You are joining an existing scientific software project: QMatSuite v2 (QMS) – a workflow engine + CLI + Python API + Electron/React GUI for running and analyzing Quantum ESPRESSO (QE) simulations.
 
 Your mission in this iteration:
 👉 Design and implement a path for the GUI to reach functional parity with the CLI, while staying user-friendly and production-grade.
@@ -1963,7 +1963,7 @@ docs/GUI_ARCHITECTURE.md — current GUI architecture and design decisions.
 
 Python core (skim, but understand the roles):
 
-api.py (QVService – main programmatic interface).
+api.py (QMSService – main programmatic interface).
 
 core/models.py, core/resolution.py, core/context.py.
 
@@ -1971,17 +1971,17 @@ workflow/, analysis/, core/templates.py.
 
 Daemon:
 
-src/quantumvitas/daemon/server.py
+src/qmatsuite/daemon/server.py
 
-src/quantumvitas/daemon/jobs.py
+src/qmatsuite/daemon/jobs.py
 
 GUI:
 
 gui/electron/main.ts, gui/electron/preload.ts
 
-gui/src/types/qv.ts
+gui/src/types/qms.ts
 
-gui/src/hooks/useQVClient.ts, gui/src/hooks/useJobs.ts
+gui/src/hooks/useQMSClient.ts, gui/src/hooks/useJobs.ts
 
 gui/src/components/layout/*
 
@@ -2001,13 +2001,13 @@ Layering & separation of concerns
 
 Core logic lives in Python (models, workflows, analysis).
 
-QVService is the stable service layer.
+QMSService is the stable service layer.
 
 Daemon is a long-lived JSON-RPC over stdio server.
 
 Electron main only mediates stdio ↔ IPC.
 
-React only talks via window.qv + typed hooks (useQVClient, useJobs).
+React only talks via window.qms + typed hooks (useQMSClient, useJobs).
 
 No “cwd magic” in APIs
 
@@ -2015,13 +2015,13 @@ CLI can infer from cwd; service/daemon/GUI must take explicit project_root and s
 
 Types everywhere
 
-All daemon RPCs must be declared in QVCommandMap in qv.ts.
+All daemon RPCs must be declared in QMSCommandMap in qms.ts.
 
 React must call RPCs only through typed hooks.
 
 CLI is a thin shell
 
-Business logic lives in core + QVService.
+Business logic lives in core + QMSService.
 
 GUI should reuse the same service methods, not re-implement high-level logic.
 
@@ -2035,7 +2035,7 @@ A solid Python core (projects, workflows, steps, structures, templates, analysis
 
 A daemon that:
 
-Exposes QVService via JSON-RPC over stdio.
+Exposes QMSService via JSON-RPC over stdio.
 
 Maintains a Job system:
 
@@ -2073,7 +2073,7 @@ The GUI to offer all core capabilities the CLI offers, in a way a non-expert can
 
 That means:
 
-From “I installed QV + QE” → “I can create a project, import a structure, set up workflows, run, monitor, and analyze—all from the GUI—without touching CLI.”
+From “I installed QMS + QE” → “I can create a project, import a structure, set up workflows, run, monitor, and analyze—all from the GUI—without touching CLI.”
 
 Clean flows, sensible defaults, minimal jargon exposed directly.
 
@@ -2089,21 +2089,21 @@ Phase 1 – Map CLI → GUI capabilities (planning step, no heavy code yet)
 
 Read the existing CLI surface (from AI_understanding.md and CLI code), and produce (in comments or a short doc) a mapping:
 
-qv init project / calculation / step
+qms init project / calculation / step
 
-qv import-structure
+qms import-structure
 
-qv list
+qms list
 
-qv rename, qv delete
+qms rename, qms delete
 
-qv configure workflow / structure / step
+qms configure workflow / structure / step
 
-qv run calculation / step / structure
+qms run calculation / step / structure
 
-qv analyze scf/dos/band
+qms analyze scf/dos/band
 
-qv detect-qe, qv params
+qms detect-qe, qms params
 
 → For each, decide:
 
@@ -2187,11 +2187,11 @@ Reorder steps (up/down buttons or simple drag; map to configure workflow --reord
 
 Optional: duplicate workflow.
 
-Make sure these all go through daemon/QVService and respect existing models.
+Make sure these all go through daemon/QMSService and respect existing models.
 
 Phase 4 – Step-level inspection & parameter editing (at least read-only + simple edits)
 
-Goal: investigate & tweak steps like qv configure step and parameter overrides.
+Goal: investigate & tweak steps like qms configure step and parameter overrides.
 
 Extend workflow detail to have a Step detail view:
 
@@ -2263,11 +2263,11 @@ Make primary flows obvious:
 
 All new RPCs:
 
-Define in QVCommandMap with precise types.
+Define in QMSCommandMap with precise types.
 
 Implement in daemon with clear, small handlers.
 
-Expose via useQVClient / other hooks, not ad-hoc IPC.
+Expose via useQMSClient / other hooks, not ad-hoc IPC.
 
 Keep components focused:
 
@@ -2328,13 +2328,13 @@ gui/src/components/dialogs/DeleteConfirmDialog.tsx + .css
 Updated Files:
 gui/src/App.tsx - Added new state, handlers, and view routing
 gui/src/App.css - Updated layout for step detail in workflows view
-gui/src/types/qv.ts - Added environment info types
+gui/src/types/qms.ts - Added environment info types
 gui/src/components/layout/Sidebar.tsx - Added Settings tab
 gui/src/components/panels/index.ts - Exported new components
 gui/src/components/dialogs/index.ts - Exported new dialogs
 gui/src/components/panels/WorkflowListPanel.css - Added action button styles
-src/quantumvitas/api.py - Added get_environment_info, detect_qe_installation
-src/quantumvitas/daemon/server.py - Added environment handlers
+src/qmatsuite/api.py - Added get_environment_info, detect_qe_installation
+src/qmatsuite/daemon/server.py - Added environment handlers
 AI_understanding.md - Documented all new features
 All TypeScript code compiles successfully. The GUI now has significantly improved CLI parity with the ability to:
 View and manage environment settings
@@ -2404,7 +2404,7 @@ Show current values, allow change, and a Reset to original / “Reset from templ
 
 Backend:
 
-Add a QVService + daemon method that safely updates a step’s parameters:
+Add a QMSService + daemon method that safely updates a step’s parameters:
 
 Works on the structured model, not raw text.
 
@@ -2424,7 +2424,7 @@ Keep the scope reasonable but make the UX feel like a real editor, not just a JS
 
 2. Calculation editing: reorder steps & change structure
 
-We want GUI parity with qv configure workflow --reorder and --structure.
+We want GUI parity with qms configure workflow --reorder and --structure.
 
 Reorder steps:
 
@@ -2436,7 +2436,7 @@ Either drag-and-drop (nice) or ↑/↓ buttons (acceptable).
 
 When order changes:
 
-Call a daemon/QVService method that updates the workflow model (and underlying YAML) to reflect the new step order.
+Call a daemon/QMSService method that updates the workflow model (and underlying YAML) to reflect the new step order.
 
 Refresh the workflow detail and StepDetailPanel accordingly.
 
@@ -2550,9 +2550,9 @@ These make it much easier to test and demo the app without manual project manage
 
 Do not break the existing architecture:
 
-All new daemon capabilities go through QVService.
+All new daemon capabilities go through QMSService.
 
-All new RPCs must be added and typed in src/types/qv.ts and used via useQVClient / useJobs.
+All new RPCs must be added and typed in src/types/qms.ts and used via useQMSClient / useJobs.
 
 Keep React components focused:
 
@@ -2589,7 +2589,7 @@ Implementation summary:
 All tasks completed. Here's a comprehensive summary of what was implemented in this iteration:
 Summary of Implemented Features
 1. Step Parameter Editing (MVP)
-Backend (QVService):
+Backend (QMSService):
 update_step_params() - Safely updates specific parameters in a step
 reset_step_params() - Resets parameters to template defaults
 Type validation for numeric parameters (ecutwfc, ecutrho, conv_thr, degauss)
@@ -2627,10 +2627,10 @@ Click to open, × to remove
 Shows project name and parent directory
 Files Created/Modified
 Python Backend:
-src/quantumvitas/api.py - Added 7 new QVService methods
-src/quantumvitas/daemon/server.py - Added 8 new daemon handlers
+src/qmatsuite/api.py - Added 7 new QMSService methods
+src/qmatsuite/daemon/server.py - Added 8 new daemon handlers
 TypeScript Types:
-gui/src/types/qv.ts - Added new interfaces and QVCommandMap entries
+gui/src/types/qms.ts - Added new interfaces and QMSCommandMap entries
 React Components:
 StepDetailPanel.tsx - Full rewrite with parameter editing
 WorkflowListPanel.tsx - Added reorder controls and structure selector
@@ -2732,18 +2732,18 @@ User testing summary:
 Previous AI agent has implemented the GUI and the backend. Now you are to fix the issues and make the GUI usable. First read AI_understanding.md and GUI_ARCHITECTURE.md (and optionally other docs) to understand the architecture and the implementation. Then, try to address the issues one by one. You are a senior developer and I want you to do things in the best SDE practice. Never quick fix.
 The GUI nearly cannot be used at all. The following are perceived issues right now, but do think and check about the whole implementation and try to fix problems. 
 1. Error "Matplotlib is building the font cache; this may take a moment.
-/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py:127: RuntimeWarning: 'quantumvitas.daemon.server' found in sys.modules after import of package 'quantumvitas.daemon', but prior to execution of 'quantumvitas.daemon.server'; this may result in unpredictable behaviour
+/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py:127: RuntimeWarning: 'qmatsuite.daemon.server' found in sys.modules after import of package 'qmatsuite.daemon', but prior to execution of 'qmatsuite.daemon.server'; this may result in unpredictable behaviour
   warn(RuntimeWarning(msg))
-[qv-daemon] Daemon started, waiting for requests...
-[qv-daemon] Handler error for create_demo_project: cannot import name 'get_workflow_templates' from 'quantumvitas.core.templates' (<HOME>/quantumVITAS/src/quantumvitas/core/templates.py)
+[qms-daemon] Daemon started, waiting for requests...
+[qms-daemon] Handler error for create_demo_project: cannot import name 'get_workflow_templates' from 'qmatsuite.core.templates' (<HOME>/QMatSuite/src/qmatsuite/core/templates.py)
 Traceback (most recent call last):
-  File "<HOME>/quantumVITAS/src/quantumvitas/daemon/server.py", line 275, in handle_request
+  File "<HOME>/QMatSuite/src/qmatsuite/daemon/server.py", line 275, in handle_request
     result = handler(request.payload)
-  File "<HOME>/quantumVITAS/src/quantumvitas/daemon/server.py", line 811, in _handle_create_demo_project
-    return QVService.create_demo_project(
-  File "<HOME>/quantumVITAS/src/quantumvitas/api.py", line 2253, in create_demo_project
-    from quantumvitas.core.templates import (
-ImportError: cannot import name 'get_workflow_templates' from 'quantumvitas.core.templates' (<HOME>/quantumVITAS/src/quantumvitas/core/templates.py" when loading demo project
+  File "<HOME>/QMatSuite/src/qmatsuite/daemon/server.py", line 811, in _handle_create_demo_project
+    return QMSService.create_demo_project(
+  File "<HOME>/QMatSuite/src/qmatsuite/api.py", line 2253, in create_demo_project
+    from qmatsuite.core.templates import (
+ImportError: cannot import name 'get_workflow_templates' from 'qmatsuite.core.templates' (<HOME>/QMatSuite/src/qmatsuite/core/templates.py" when loading demo project
 2. Make test "tests/cli/test_si_bands_workflow_comprehensive.py" (scf->nscf->bands->analyze) the demo project
 3. Structure overview: if not full screen, might be partially visible, but cannot scroll to see.
 4.1 Structure 3D view: do not need to show legend of irrelevant elements.
@@ -2767,13 +2767,13 @@ Backend Fixes (Python)
 Fixed ImportError for get_workflow_templates - Changed import to use list_workflow_templates in api.py
 Fixed workflows_depending_on() signature mismatch - Removed extra project_root argument in the function call
 Fixed QEInstallation.get_executable error - Changed to use find_executable method
-Fixed run_step error (PosixPath has no step_type) - Completely rewrote QVService.run_step() to properly:
+Fixed run_step error (PosixPath has no step_type) - Completely rewrote QMSService.run_step() to properly:
 Resolve structure from the step spec
 Generate QE input file
 Write to working directory
 Call run_input_step with correct parameters
 Created Si-bands workflow template - Added new template files in templates/workflow/si-bands/ for the demo project
-Added add_step_to_workflow functionality - New method in QVService and daemon handler to add steps to workflows
+Added add_step_to_workflow functionality - New method in QMSService and daemon handler to add steps to workflows
 GUI Fixes (React/TypeScript)
 Fixed structure overview scrolling - Updated CSS for StructureListPanel and WorkflowListPanel with proper flex and overflow settings
 Fixed 3D viewer legend - Now only shows elements present in the current structure, not all possible elements
@@ -2818,7 +2818,7 @@ Fixed summary panel not updating on project load - Modified handleCreateProjectS
 Fixed 3D viewer camera reset on supercell/boundary change - Added structureId tracking to CameraController so camera only resets when a different structure is selected, not when visualization settings change
 Made workflow/step separator draggable - Created new VerticalResizablePane component and applied it to the workflow detail panel when step detail is visible
 Implemented log persistence - Added:
-Log file storage in project directory (.qv-daemon.log)
+Log file storage in project directory (.qms-daemon.log)
 setProject and readLogs IPC handlers in Electron main process
 setProject and readLogs methods exposed via preload
 Automatic call to setProject when any project is loaded
@@ -2827,14 +2827,14 @@ gui/src/components/layout/VerticalResizablePane.tsx - Vertical resizable contain
 gui/src/components/layout/VerticalResizablePane.css - Styles for vertical resizable pane
 Files Modified
 Backend:
-src/quantumvitas/api.py - Fixed run_step, add_step_to_workflow, get_workflow_detail, boundary atoms generation
-src/quantumvitas/project/model.py - Added slug search to get_workflow_ref
+src/qmatsuite/api.py - Fixed run_step, add_step_to_workflow, get_workflow_detail, boundary atoms generation
+src/qmatsuite/project/model.py - Added slug search to get_workflow_ref
 templates/workflow/si-dos/calculation.yaml - Added step types
 Frontend:
 gui/src/App.tsx - Added setProject calls, VerticalResizablePane usage, structureId prop
 gui/src/components/panels/StructureViewer3D.tsx - Added structureId prop to prevent camera reset
 gui/src/components/layout/index.ts - Added exports
-gui/src/types/qv.ts - Added setProject and readLogs types
+gui/src/types/qms.ts - Added setProject and readLogs types
 gui/electron/main.ts - Added log persistence logic and IPC handlers
 gui/electron/preload.ts - Added setProject and readLogs methods
 
@@ -2844,7 +2844,7 @@ Updated directory structure to include VerticalResizablePane.tsx
 Updated Feature Status with:
 Workflow/Step detail separator (draggable)
 3D viewer camera state preservation
-Log file persistence (.qv-daemon.log)
+Log file persistence (.qms-daemon.log)
 Added "Load previous logs on project open" to Planned features
 AI_understanding.md
 Updated Section 11.4 GUI Components with new layout components
@@ -2859,12 +2859,12 @@ Updated timestamp to 2025-12-07
 
 Previous AI agent has implemented the GUI and the backend, as well as two rounds of debugging of GUI. Now we debug more GUI. First read AI_understanding.md and GUI_ARCHITECTURE.md (and optionally other docs) to understand the architecture and the implementation. Then, try to address the issues one by one. You are a senior developer and I want you to do things in the best SDE practice. Never quick fix.
 Several GUI issues:
-1. By start-up, warning "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py:127: RuntimeWarning: 'quantumvitas.daemon.server' found in sys.modules after import of package 'quantumvitas.daemon', but prior to execution of 'quantumvitas.daemon.server'; this may result in unpredictable behaviour
+1. By start-up, warning "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py:127: RuntimeWarning: 'qmatsuite.daemon.server' found in sys.modules after import of package 'qmatsuite.daemon', but prior to execution of 'qmatsuite.daemon.server'; this may result in unpredictable behaviour
   warn(RuntimeWarning(msg))"
 2. From project summary panel, can click into structure and workflow panels. If clicking relevant detailed structure or step, also show the specific structure or step (similar to clicking left list pane)
 3. When closing, error "Uncaught Exception:
 TypeError: Object has been destroyed
-at ChildProcess.<anonymous> (file://<HOME>/quantumVITAS/gui/dist-electron/main.js:153:8)
+at ChildProcess.<anonymous> (file://<HOME>/QMatSuite/gui/dist-electron/main.js:153:8)
 at ChildProcess.emit (node:events:519:28)
 at ChildProcess._handle.onexit (node:internal/child_process:293:12)"
 4. Still "Cannot run calculation: Workflow not found: demo-workflow" when running demo workflow (running steps separately works now).
@@ -2872,7 +2872,7 @@ at ChildProcess._handle.onexit (node:internal/child_process:293:12)"
 6. demo project: step bands_pw does actually bands calculation, not bands_pw. Check carefully "tests/cli/test_si_bands_workflow_comprehensive.py".
 7. Analysis: did not plot scf convergence: empty plot.
 Other important refactoring suggestions:
-You are continuing work on the QuantumVITAS v2 Electron + React GUI.
+You are continuing work on the QMatSuite v2 Electron + React GUI.
 The app already has a working daemon, IPC, job system, demo project, structures/calculations/analysis, etc.
 
 Goal (UX)
@@ -2939,12 +2939,12 @@ Open native folder chooser.
 
 After a folder is selected:
 
-If it contains project.qv.yml:
+If it contains project.qms.yml:
 → call the existing load-project flow, set it as current project, navigate to Home (project-loaded state).
 
-If it does not contain project.qv.yml:
+If it does not contain project.qms.yml:
 → show a small dialog:
-“This folder is not a QuantumVITAS project. Create a new project here?”
+“This folder is not a QMatSuite project. Create a new project here?”
 
 Yes: call create_project (or equivalent), then load it and go to Home.
 
@@ -2952,7 +2952,7 @@ No: do nothing to the current project.
 
 Text input behavior:
 
-When user types a path and presses Enter, run the same logic as above (check for project.qv.yml and load or offer to create).
+When user types a path and presses Enter, run the same logic as above (check for project.qms.yml and load or offer to create).
 
 This lets advanced users paste a path and go, while normal users only use the buttons.
 
@@ -2996,7 +2996,7 @@ Clicking the path → “Open in Finder” for that project.
 
 Do not refactor unrelated logic; keep daemon APIs as they are unless a tiny helper is absolutely needed.
 
-Keep types in qv.ts correct.
+Keep types in qms.ts correct.
 
 After coding, briefly summarize:
 
@@ -3009,15 +3009,15 @@ Implementation summary:
 All tasks are complete. Let me provide a summary of all the changes made:
 Summary of Changes
 Bug Fixes
-Python runpy warning at daemon startup (src/quantumvitas/daemon/__init__.py)
-Added explicit imports for QVDaemon, JobManager, and JobStatus to avoid the Python import order warning
+Python runpy warning at daemon startup (src/qmatsuite/daemon/__init__.py)
+Added explicit imports for QMSDaemon, JobManager, and JobStatus to avoid the Python import order warning
 "Object has been destroyed" error on close (gui/electron/main.ts)
 The daemon exit handler already correctly rejects pending requests before notifying the renderer - this was already properly implemented
-"Workflow not found: demo-workflow" (src/quantumvitas/core/templates.py)
+"Workflow not found: demo-workflow" (src/qmatsuite/core/templates.py)
 Fixed _copy_workflow_from_path to correctly handle the new workflow YAML format with meta section
 Now properly reads/writes meta.id, meta.name, meta.slug, and meta.path
 Also handles top-level structure field correctly
-SCF convergence analysis empty plot (src/quantumvitas/api.py)
+SCF convergence analysis empty plot (src/qmatsuite/api.py)
 Added more robust output file patterns: f"{step_selector}.pw.out" and f"{step_selector}_{step_type}.pw.out"
 Camera reset issue - Already correctly implemented! The CameraController in StructureViewer3D.tsx only resets when structureId changes, not when supercell/boundary parameters change.
 bands_pw step type - The naming is actually correct:
@@ -3065,7 +3065,7 @@ Changed the DebugPanel to use CSS hiding (height: 0) instead of returning null w
 This prevents the component from unmounting and losing its log state
 Added .debug-panel--hidden CSS class for proper hiding
 2. "Workflow not found: demo-workflow" bug (Issue #2)
-Files changed: src/quantumvitas/api.py
+Files changed: src/qmatsuite/api.py
 Fixed the preflight_check function which had a broad try/except that caught ALL exceptions and reported "Workflow not found" even when the issue was something else (like parsing calculation.yaml)
 Separated the exception handling so workflow resolution errors are properly distinguished from other errors
 3. bands_pw step editable parameters (Issue #3)
@@ -3074,13 +3074,13 @@ Added bands_pw entry to EDITABLE_PARAMS with ecutwfc, ecutrho, nbnd, and conv_th
 Updated the bands entry to have proper bands.x parameters (filband, lsym)
 4. Search up for project root (Issue #4)
 Files changed:
-src/quantumvitas/api.py - Added find_project_root() method
-src/quantumvitas/daemon/server.py - Added find_project_root daemon handler
-gui/src/types/qv.ts - Added TypeScript type for the new API
+src/qmatsuite/api.py - Added find_project_root() method
+src/qmatsuite/daemon/server.py - Added find_project_root daemon handler
+gui/src/types/qms.ts - Added TypeScript type for the new API
 gui/src/App.tsx - Updated handleBrowseAndLoad and handleLoadProject to search up for project root before prompting to create
 When loading a project (either via browse or text input):
 First tries to load from the selected/entered directory
-If not a project, searches up parent directories for project.qv.yml
+If not a project, searches up parent directories for project.qms.yml
 If found in a parent, loads from there and shows a notification
 If not found, prompts to create a new project
 5. Remove "Load Project" button (Issue #5)
@@ -3125,10 +3125,10 @@ Setting persists in localStorage
 Usage
 Theme: Go to Settings → Appearance → choose Dark or Light
 Auto Analysis: Settings → Analysis → toggle "Automatic Analysis"
-Reveal in Finder: Use window.qv.revealPath(path) - you can wire this to any button/link
+Reveal in Finder: Use window.qms.revealPath(path) - you can wire this to any button/link
 
 2025-12-07_prompt_1:
-You are continuing work on the QuantumVITAS v2 Electron + React GUI.
+You are continuing work on the QMatSuite v2 Electron + React GUI.
 
 Before coding, re-read AI_understanding.md, especially the GUI / daemon / project-loading sections, and quickly scan the existing “Create Project / Create Demo Project / Open Project” flows so you don’t fight the current architecture.
 
@@ -3136,7 +3136,7 @@ Goal
 
 Clean up project creation / opening UX around “parent folder + project root”, and make it consistent and obvious:
 
-Project root = folder containing project.qv.yml.
+Project root = folder containing project.qms.yml.
 
 Users may keep multiple projects under a common “projects folder”, but there is no workspace resource in the model. It’s just a default parent directory.
 
@@ -3171,7 +3171,7 @@ Compute slug from name and final path: <parent>/<slug>.
 
 If <parent>/<slug> already exists:
 
-If it already contains project.qv.yml → treat as existing project: load it and go to Home (project-loaded state).
+If it already contains project.qms.yml → treat as existing project: load it and go to Home (project-loaded state).
 
 Else if directory exists but has other content → show error or “Folder already exists, choose another name or parent”.
 
@@ -3197,7 +3197,7 @@ Add a simple “Default projects directory” setting (do NOT introduce a worksp
 
 In Settings (or a minimal Preferences panel):
 
-Show current default projects directory (initially something like $HOME/QuantumVITAS-projects).
+Show current default projects directory (initially something like $HOME/QMatSuite-projects).
 
 Allow user to change it via folder picker.
 
@@ -3221,7 +3221,7 @@ Use OS folder picker.
 
 After user selects a folder:
 
-If folder contains project.qv.yml → treat it as project root:
+If folder contains project.qms.yml → treat it as project root:
 
 load it via daemon;
 
@@ -3231,11 +3231,11 @@ navigate to Home (project-loaded state);
 
 add to recent projects.
 
-If folder does not contain project.qv.yml:
+If folder does not contain project.qms.yml:
 
 Show a small dialog:
 
-“This folder is not a QuantumVITAS project.
+“This folder is not a QMatSuite project.
 Do you want to create a new project here?”
 
 Options:
@@ -3270,7 +3270,7 @@ Full path (with “Open in Finder/Explorer”);
 
 Do not introduce any new resource type like Workspace. Everything remains scoped to a single project_root.
 
-Keep TypeScript types (qv.ts) and daemon RPCs consistent, but feel free to add minimal helper RPCs if necessary (document them briefly in AI_understanding.md).
+Keep TypeScript types (qms.ts) and daemon RPCs consistent, but feel free to add minimal helper RPCs if necessary (document them briefly in AI_understanding.md).
 Some other problems:
 1. Again, the chart for band analysisdoes not always clip down when chosing narrower upper and lower limits, weird. Then for all text input (both upper and lower limits, and potentially across the GUI), only take and check validity when focus shifted away or press entered. If invalid, roll back to previous value. In this way, the user can clear the input and then input something. Right now, cannot change the ylim from -12 to 8, for example.
 2. Still, hiding and showing logs clear the log. It should persist. Also, I have not seen logs written to file in project root. It should be saved from time to time and also when user close the program or change project.
@@ -3290,9 +3290,9 @@ The daemon already uses ResolvedResource.absolute_path-like information.
 
 Scan:
 
-src/quantumvitas/api.py and daemon/server.py for resource-returning RPCs.
+src/qmatsuite/api.py and daemon/server.py for resource-returning RPCs.
 
-gui/src/types/qv.ts for resource types.
+gui/src/types/qms.ts for resource types.
 
 StructureListPanel, WorkflowListPanel, StepDetailPanel, and Home / status bar components.
 
@@ -3300,7 +3300,7 @@ StructureListPanel, WorkflowListPanel, StepDetailPanel, and Home / status bar co
 
 Ensure the main process has a single generic IPC handler:
 
-Channel: e.g. qv-reveal-in-finder.
+Channel: e.g. qms-reveal-in-finder.
 
 Input: targetPath: string (absolute).
 
@@ -3316,9 +3316,9 @@ Return { ok: true } or { ok: false, error }.
 
 In preload.ts:
 
-Expose revealInFinder(path: string): Promise<{ ok: boolean; error?: string }> on window.qv.
+Expose revealInFinder(path: string): Promise<{ ok: boolean; error?: string }> on window.qms.
 
-Update gui/src/types/qv.ts to include this method in QVApi.
+Update gui/src/types/qms.ts to include this method in QMSApi.
 
 2. Daemon / API: expose absolutePath for resources
 
@@ -3338,11 +3338,11 @@ Include the absolute path to the step YAML file.
 
 Implement this by using the existing project_root + meta.path logic in the daemon layer. Do not recompute paths in React.
 
-Update the TS types in qv.ts (e.g. StructureInfo, WorkflowInfo, StepInfo) with an absolutePath: string field and wire this through the existing RPC responses.
+Update the TS types in qms.ts (e.g. StructureInfo, WorkflowInfo, StepInfo) with an absolutePath: string field and wire this through the existing RPC responses.
 
 3. React UI: add “Reveal in Finder” actions
 
-Use the new absolutePath field and window.qv.revealInFinder() to add small, non-intrusive actions:
+Use the new absolutePath field and window.qms.revealInFinder() to add small, non-intrusive actions:
 
 Home / Current Project card & status bar
 
@@ -3395,12 +3395,12 @@ Implementation summary:
 All the tasks from the todo list have been completed. Let me provide a summary of all the changes made:
 Summary of Changes
 1. Fixed Demo Workflow Step Display Bug (Task 6)
-File: src/quantumvitas/core/resolution.py
+File: src/qmatsuite/core/resolution.py
 Fixed the step resolution logic that was incorrectly matching steps by step_type before checking meta.name
 Reordered the resolution strategies to check meta.name and meta.slug first, then id, then step_type, and finally filename stem
 This fixes the issue where clicking on "bands" step was returning "bands-pp" because "bands" matched the step_type of bands-pp.step.yaml
 2. Added File Location to StepDetailPanel (Task 7)
-Files: src/quantumvitas/api.py, gui/src/types/qv.ts, gui/src/components/panels/StepDetailPanel.tsx, gui/src/components/panels/StepDetailPanel.css
+Files: src/qmatsuite/api.py, gui/src/types/qms.ts, gui/src/components/panels/StepDetailPanel.tsx, gui/src/components/panels/StepDetailPanel.css
 Added absolute_path field to step detail response from backend
 Updated StepDetail TypeScript interface to include absolute_path
 Added "File Location" section to StepDetailPanel with the full path and a "Reveal in Finder" button
@@ -3434,7 +3434,7 @@ All tasks from the user's request have been completed:
 
 
 2025-12-07_prompt_2:
-You are continuing work on QuantumVITAS v2.
+You are continuing work on QMatSuite v2.
 Playwright + Electron deps are already installed.
 
 Before coding:
@@ -3469,69 +3469,69 @@ Go through the relevant React components and add stable data-testid attributes s
 
 Welcome / Home (no project loaded):
 
-Welcome title: data-testid="qv-welcome-title"
+Welcome title: data-testid="qms-welcome-title"
 
 Buttons:
 
-Open Project: data-testid="qv-btn-open-project"
+Open Project: data-testid="qms-btn-open-project"
 
-Create New Project: data-testid="qv-btn-create-new-project"
+Create New Project: data-testid="qms-btn-create-new-project"
 
-Create Demo Project: data-testid="qv-btn-create-demo-project"
+Create Demo Project: data-testid="qms-btn-create-demo-project"
 
 Project-loaded Home / current project:
 
-Container: data-testid="qv-home-project"
+Container: data-testid="qms-home-project"
 
-Project path text: data-testid="qv-project-path"
+Project path text: data-testid="qms-project-path"
 
-“Reveal in Finder” button: data-testid="qv-btn-project-reveal"
+“Reveal in Finder” button: data-testid="qms-btn-project-reveal"
 
 Workflows:
 
-Workflows view root: data-testid="qv-workflows-view"
+Workflows view root: data-testid="qms-workflows-view"
 
-Workflow list container: data-testid="qv-workflows-list"
+Workflow list container: data-testid="qms-workflows-list"
 
-Each workflow row: data-testid="qv-workflow-row" with data-workflow-slug="<slug>" or similar.
+Each workflow row: data-testid="qms-workflow-row" with data-workflow-slug="<slug>" or similar.
 
-Workflow detail panel: data-testid="qv-workflow-detail"
+Workflow detail panel: data-testid="qms-workflow-detail"
 
-Run workflow button: data-testid="qv-btn-run-workflow"
+Run workflow button: data-testid="qms-btn-run-workflow"
 
 Steps:
 
-Steps list: data-testid="qv-steps-list"
+Steps list: data-testid="qms-steps-list"
 
-Each step row: data-testid="qv-step-row" with data-step-id="<id>"
+Each step row: data-testid="qms-step-row" with data-step-id="<id>"
 
-Step detail panel: data-testid="qv-step-detail"
+Step detail panel: data-testid="qms-step-detail"
 
-Step id text: data-testid="qv-step-id"
+Step id text: data-testid="qms-step-id"
 
-Step file path text: data-testid="qv-step-file-path"
+Step file path text: data-testid="qms-step-file-path"
 
 Jobs:
 
-Jobs view: data-testid="qv-jobs-view"
+Jobs view: data-testid="qms-jobs-view"
 
-Jobs list: data-testid="qv-jobs-list"
+Jobs list: data-testid="qms-jobs-list"
 
-Job row: data-testid="qv-job-row" with data-job-id="<id>"
+Job row: data-testid="qms-job-row" with data-job-id="<id>"
 
-Job status badge: data-testid="qv-job-status"
+Job status badge: data-testid="qms-job-status"
 
-Job detail: data-testid="qv-job-detail"
+Job detail: data-testid="qms-job-detail"
 
 Analysis (Bands):
 
-Analysis view: data-testid="qv-analysis-view"
+Analysis view: data-testid="qms-analysis-view"
 
-Bands chart container: data-testid="qv-analysis-bands-chart"
+Bands chart container: data-testid="qms-analysis-bands-chart"
 
-Fermi energy field: data-testid="qv-analysis-fermi"
+Fermi energy field: data-testid="qms-analysis-fermi"
 
-K-path labels container: data-testid="qv-analysis-kpath"
+K-path labels container: data-testid="qms-analysis-kpath"
 
 Use these test IDs consistently; don’t rely on user-facing text for core flows.
 
@@ -3545,10 +3545,10 @@ const page = await app.firstWindow();
 
 Assert:
 
-await expect(page.getByTestId('qv-welcome-title')).toBeVisible();
-await expect(page.getByTestId('qv-btn-open-project')).toBeVisible();
-await expect(page.getByTestId('qv-btn-create-new-project')).toBeVisible();
-await expect(page.getByTestId('qv-btn-create-demo-project')).toBeVisible();
+await expect(page.getByTestId('qms-welcome-title')).toBeVisible();
+await expect(page.getByTestId('qms-btn-open-project')).toBeVisible();
+await expect(page.getByTestId('qms-btn-create-new-project')).toBeVisible();
+await expect(page.getByTestId('qms-btn-create-demo-project')).toBeVisible();
 
 
 Close the app.
@@ -3563,7 +3563,7 @@ Use createUniqueProjectDir('demo') to get a parent directory under temp/e2e_proj
 
 From Welcome screen:
 
-Click qv-btn-create-demo-project.
+Click qms-btn-create-demo-project.
 
 In the demo project dialog:
 
@@ -3577,35 +3577,35 @@ If the dialog currently uses native folder pickers, adjust the UI so there is al
 
 Assert the app is in “project loaded” state:
 
-await expect(page.getByTestId('qv-home-project')).toBeVisible();
+await expect(page.getByTestId('qms-home-project')).toBeVisible();
 
-await expect(page.getByTestId('qv-project-path')).toContainText('e2e-demo');
+await expect(page.getByTestId('qms-project-path')).toContainText('e2e-demo');
 
 Go to Workflows view:
 
 Click the Workflows tab (via test id if available, otherwise role/text).
 
-await expect(page.getByTestId('qv-workflows-view')).toBeVisible();
+await expect(page.getByTestId('qms-workflows-view')).toBeVisible();
 
-Assert there is exactly one workflow row in qv-workflows-list.
+Assert there is exactly one workflow row in qms-workflows-list.
 
-Click that row (e.g. page.getByTestId('qv-workflow-row').first().click()).
+Click that row (e.g. page.getByTestId('qms-workflow-row').first().click()).
 
-Assert qv-workflow-detail visible and qv-btn-run-workflow visible.
+Assert qms-workflow-detail visible and qms-btn-run-workflow visible.
 
 For each step in the workflow:
 
-Iterate over step rows: page.getByTestId('qv-step-row').
+Iterate over step rows: page.getByTestId('qms-step-row').
 
 For each:
 
 Click it.
 
-In qv-step-detail, read:
+In qms-step-detail, read:
 
-Step id text: qv-step-id.
+Step id text: qms-step-id.
 
-Step file path: qv-step-file-path.
+Step file path: qms-step-file-path.
 
 Compute absolute path to step YAML from the file path and project root:
 
@@ -3631,23 +3631,23 @@ Flow:
 
 Create a temp parent dir in temp/e2e_projects/, create a demo project as above.
 
-Go to Workflows, select the only workflow, ensure qv-btn-run-workflow is visible and click it.
+Go to Workflows, select the only workflow, ensure qms-btn-run-workflow is visible and click it.
 
 Go to Jobs view:
 
 Click the Jobs tab.
 
-await expect(page.getByTestId('qv-jobs-view')).toBeVisible();
+await expect(page.getByTestId('qms-jobs-view')).toBeVisible();
 
-Locate the new job row in qv-jobs-list (you can use the latest job, or filter by workflow name if available in DOM).
+Locate the new job row in qms-jobs-list (you can use the latest job, or filter by workflow name if available in DOM).
 
-Assert initial status is “Running” (via qv-job-status text).
+Assert initial status is “Running” (via qms-job-status text).
 
 Wait until job status becomes “Completed”:
 
 Poll using Playwright expect with a timeout up to 5 minutes:
 
-await expect(page.getByTestId('qv-job-status')).toHaveText(/Completed/i, { timeout: 300000 });
+await expect(page.getByTestId('qms-job-status')).toHaveText(/Completed/i, { timeout: 300000 });
 
 
 If the status becomes “Failed” instead, assert with a helpful error message (include any error text from the job detail).
@@ -3656,21 +3656,21 @@ Go to Analysis view:
 
 Click Analysis tab.
 
-await expect(page.getByTestId('qv-analysis-view')).toBeVisible();
+await expect(page.getByTestId('qms-analysis-view')).toBeVisible();
 
 Ensure the workflow corresponding to the demo project is selected (if auto-selection exists, just verify; otherwise explicitly select it).
 
 Assert Bands analysis is non-empty:
 
-await expect(page.getByTestId('qv-analysis-bands-chart')).toBeVisible();
+await expect(page.getByTestId('qms-analysis-bands-chart')).toBeVisible();
 
 Optionally, check that the chart container has some child elements (e.g. band paths).
 
 Assert Fermi energy & k-path:
 
-await expect(page.getByTestId('qv-analysis-fermi')).not.toHaveText(/^\s*$/);
+await expect(page.getByTestId('qms-analysis-fermi')).not.toHaveText(/^\s*$/);
 
-await expect(page.getByTestId('qv-analysis-kpath')).not.toHaveText(/^\s*$/);
+await expect(page.getByTestId('qms-analysis-kpath')).not.toHaveText(/^\s*$/);
 
 You can be stricter if your DOM exposes specific labels (e.g. contains Γ/X/L).
 
@@ -3755,7 +3755,7 @@ The CDP approach works on macOS and completes in seconds. The helper extracts th
 
 
 2025-12-07_prompt_3:
-You’re working in the QuantumVITAS v2 repo, focusing on Playwright E2E tests for the Electron GUI.
+You’re working in the QMatSuite v2 repo, focusing on Playwright E2E tests for the Electron GUI.
 
 Current state (important)
 
@@ -3884,7 +3884,7 @@ Change them to import and use electronTest and the appPage fixture:
 import { electronTest as test, expect } from './fixtures/electronTest';
 
 test('welcome screen shows main CTA', async ({ appPage }) => {
-  await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible();
+  await expect(appPage.getByTestId('qms-welcome-title')).toBeVisible();
   // etc…
 });
 
@@ -3997,7 +3997,7 @@ Updated Section 22 to document the unified fixture approach
 Removed references to platform-specific test files
 Updated running instructions and CI configuration
 Final Shape of the electronTest Fixture API
-import { electronTest as test, expect, navigateToView } from './fixtures/electronTest';test('my test', async ({ appPage }) => {  // appPage is a Playwright Page object that works identically on all platforms  await expect(appPage.getByTestId('qv-welcome-title')).toBeVisible();  await navigateToView(appPage, 'workflows');});
+import { electronTest as test, expect, navigateToView } from './fixtures/electronTest';test('my test', async ({ appPage }) => {  // appPage is a Playwright Page object that works identically on all platforms  await expect(appPage.getByTestId('qms-welcome-title')).toBeVisible();  await navigateToView(appPage, 'workflows');});
 Fixture behavior:
 Linux/Windows: Uses launchApp() → Playwright's _electron.launch()
 macOS: Uses launchElectronViaCDP() → CDP workaround
@@ -4029,28 +4029,28 @@ Run step should be also on top of the step detail panel (like run workflo in wor
 Energy range in analysis panel still not working.
 
 
-You are working in the QuantumVITAS v2 repo.
+You are working in the QMatSuite v2 repo.
 Goal of this task: introduce a project snapshot format (single .yml file) and core Python support for:
 
-Exporting an existing QV project directory → one self-contained YAML file.
+Exporting an existing QMS project directory → one self-contained YAML file.
 
-Creating a new QV project directory from such a YAML file.
+Creating a new QMS project directory from such a YAML file.
 
 CLI entry points:
 
-qv save project → save current project to snapshot .yml.
+qms save project → save current project to snapshot .yml.
 
-qv init project --snapshot <file> → create project from snapshot.
+qms init project --snapshot <file> → create project from snapshot.
 
 Unit tests that exercise bidirectional roundtrip: disk project → snapshot → new project.
 
-Please read AI_understanding.md carefully before coding (especially sections about project model, models layer, QVService, core/resolution/context, templates, analysis).
+Please read AI_understanding.md carefully before coding (especially sections about project model, models layer, QMSService, core/resolution/context, templates, analysis).
 Follow existing architecture and conventions.
 
 High-level design & constraints
 What the snapshot is
 
-We want a single YAML file that fully describes a QV project’s logical content:
+We want a single YAML file that fully describes a QMS project’s logical content:
 
 Project meta (id, name, slug, etc).
 
@@ -4062,7 +4062,7 @@ Step specs (parameters, cards, species overrides, parent_calculation_id, structu
 
 Any relevant metadata that is necessary to regenerate the project directory so that:
 
-qv list, qv run calculation, qv analyze … etc will behave the same.
+qms list, qms run calculation, qms analyze … etc will behave the same.
 
 Pseudopotential filenames are preserved, but file contents are NOT embedded.
 
@@ -4104,27 +4104,27 @@ Where to put things
 
 Please follow existing layering:
 
-Models layer: src/quantumvitas/core/models.py
+Models layer: src/qmatsuite/core/models.py
 
 Contains dataclass models for ProjectModel, WorkflowModel, StructureModel, etc.
 
 Already has load/save helpers for YAML/JSON.
 
-Service layer: src/quantumvitas/api.py (QVService)
+Service layer: src/qmatsuite/api.py (QMSService)
 
 This is the stable interface for CLI and GUI.
 
 New functionality “export project to snapshot YAML” and “create project from snapshot YAML” should be exposed as methods here.
 
-CLI layer: src/quantumvitas/cli/main.py
+CLI layer: src/qmatsuite/cli/main.py
 
-Typer CLI, thin wrapper around QVService.
+Typer CLI, thin wrapper around QMSService.
 
 Handles user-facing options & errors, delegates logic to service.
 
 Important DOs / DON’Ts:
 
-DO keep all actual logic in QVService and/or new helpers under core/ or project/, NOT inside Typer command functions.
+DO keep all actual logic in QMSService and/or new helpers under core/ or project/, NOT inside Typer command functions.
 
 DO keep using Path objects, and avoid Path.cwd() except where the existing context layer (core/context.py) is already used.
 
@@ -4138,7 +4138,7 @@ Step 1: Design snapshot schema & core Python implementation
 
 Create a new module for snapshot logic, e.g.:
 
-src/quantumvitas/project/snapshot.py
+src/qmatsuite/project/snapshot.py
 (or core/snapshot.py if you think it fits better; be consistent with existing layout).
 
 Proposed snapshot structure (YAML)
@@ -4153,7 +4153,7 @@ project:
     slug: "si-demo"
     kind: "project"
   path: "."        # logical root (optional)
-  # any project-level settings from project.qv.yml
+  # any project-level settings from project.qms.yml
   settings:
     # ...
 structures:
@@ -4239,7 +4239,7 @@ Core functions:
 
 def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
     """
-    Read project.qv.yml, all structures, workflows, and step specs
+    Read project.qms.yml, all structures, workflows, and step specs
     under project_root and return a ProjectSnapshot object.
     """
     ...
@@ -4257,7 +4257,7 @@ def materialize_project_from_snapshot(
       - Decide new folder name (e.g. slugified new_project_name or snapshot.project.meta.slug).
       - Generate new ULIDs for project/calculations/structures/steps.
       - Rewrite meta.id and parent_calculation_id using an old→new mapping.
-      - Write out project.qv.yml, structures JSON, workflows, step YAMLs.
+      - Write out project.qms.yml, structures JSON, workflows, step YAMLs.
       - Create pseudo/ directory and populate only filenames (empty files or none at all).
     """
     ...
@@ -4307,13 +4307,13 @@ Up to you; pick whichever you think is safer.
 
 Be explicit in docstrings & AI_understanding about this behavior.
 
-Step 2: Integrate into QVService API
+Step 2: Integrate into QMSService API
 
-In src/quantumvitas/api.py:
+In src/qmatsuite/api.py:
 
-Add methods to QVService:
+Add methods to QMSService:
 
-class QVService:
+class QMSService:
     ...
 
     def export_project_snapshot(
@@ -4358,9 +4358,9 @@ Do NOT call Path.cwd() here; rely on explicit project_root and parent_dir.
 
 Step 3: CLI integration
 
-In src/quantumvitas/cli/main.py:
+In src/qmatsuite/cli/main.py:
 
-Extend qv init project:
+Extend qms init project:
 
 Add an option like:
 
@@ -4383,7 +4383,7 @@ If snapshot is provided:
 
 path is treated as parent directory (the folder where the new project directory will be created), similar to your current “demo project parent folder” idea.
 
-Call QVService.create_project_from_snapshot(parent_dir=path, snapshot_path=snapshot, project_name=name).
+Call QMSService.create_project_from_snapshot(parent_dir=path, snapshot_path=snapshot, project_name=name).
 
 Print where the project was created.
 
@@ -4393,7 +4393,7 @@ Fall back to existing logic (--template, etc.) unchanged.
 
 Be clear in help text: --snapshot uses a single YAML file as project template, not a raw folder copy.
 
-Add qv save project command:
+Add qms save project command:
 
 Under existing CLI layout, define e.g.:
 
@@ -4416,7 +4416,7 @@ def save_project(
 
 Use your existing path context helper (core/context.py) to determine project root if --project is not provided.
 
-Then call QVService.save_project_snapshot(project_root, output, overwrite=overwrite).
+Then call QMSService.save_project_snapshot(project_root, output, overwrite=overwrite).
 
 Error on overwrite unless --overwrite is True.
 
@@ -4424,9 +4424,9 @@ Naming:
 
 Command names are up to you, but something like:
 
-qv save project SNAPSHOT.yml
+qms save project SNAPSHOT.yml
 
-qv init project --snapshot SNAPSHOT.yml --path PARENT_DIR --name "My New Project"
+qms init project --snapshot SNAPSHOT.yml --path PARENT_DIR --name "My New Project"
 
 is intuitive.
 
@@ -4446,7 +4446,7 @@ Use existing CI test data or create a small temporary project directory, e.g. us
 
 Your templates/project/project1/ (if suitable), or
 
-A helper that uses existing QVService to init a project in a temp dir.
+A helper that uses existing QMSService to init a project in a temp dir.
 
 Act:
 
@@ -4460,7 +4460,7 @@ Assert:
 
 New project root exists.
 
-project.qv.yml exists.
+project.qms.yml exists.
 
 Same number of structures / workflows / steps (compare via models).
 
@@ -4484,13 +4484,13 @@ Using CliRunner (or similar CLI test helper, see existing CLI tests):
 
 In temp dir, create a small test project (can use existing template workflows).
 
-Run qv save project snapshot.yml.
+Run qms save project snapshot.yml.
 
 Assert snapshot.yml exists and is non-empty.
 
-Run qv init project --snapshot snapshot.yml --path <parent> --name "copy".
+Run qms init project --snapshot snapshot.yml --path <parent> --name "copy".
 
-Assert new project directory exists, contains project.qv.yml etc.
+Assert new project directory exists, contains project.qms.yml etc.
 
 Check that no exception is raised and exit codes are 0.
 
@@ -4528,9 +4528,9 @@ Behavior on pseudo files (filenames only, no file content).
 
 Document the two CLI flows:
 
-qv save project snapshot.yml
+qms save project snapshot.yml
 
-qv init project --snapshot snapshot.yml --path PARENT_DIR --name NAME
+qms init project --snapshot snapshot.yml --path PARENT_DIR --name NAME
 
 Keep the description concise but precise; this doc is for future AIs and humans.
 
@@ -4547,7 +4547,7 @@ CLI: convert to typer.BadParameter or typer.Exit(1) with clear messages.
 
 Keep using Path consistently.
 
-Don’t break existing behavior for qv init project without snapshot/template.
+Don’t break existing behavior for qms init project without snapshot/template.
 
 At the end, please:
 
@@ -4558,7 +4558,7 @@ Paste the final snapshot schema (as an example from a real test, trimmed).
 Summarize the roundtrip test behavior and what properties are guaranteed to hold after export→import.
 
 
-You are working in the QuantumVITAS v2 repo.
+You are working in the QMatSuite v2 repo.
 
 We are refactoring how templates and built-in resources are organized.
 
@@ -4580,17 +4580,17 @@ templates/
 
 And is actively used by:
 
-src/quantumvitas/core/templates.py
+src/qmatsuite/core/templates.py
 
-QVService.init_project/init_workflow/init_step
+QMSService.init_project/init_workflow/init_step
 
-QVService.create_demo_project
+QMSService.create_demo_project
 
-QVService.import_structure_from_template
+QMSService.import_structure_from_template
 
-QVService.reset_step_params
+QMSService.reset_step_params
 
-CLI: qv init project/workflow/step --template
+CLI: qms init project/workflow/step --template
 
 Daemon: list_workflow_templates for GUI
 
@@ -4628,13 +4628,13 @@ For now: don’t immediately delete templates/step/, but treat it as an internal
 
 Keep layering intact:
 
-Models + core logic in src/quantumvitas/core/* / project/* / analysis/*
+Models + core logic in src/qmatsuite/core/* / project/* / analysis/*
 
-Service in src/quantumvitas/api.py (QVService)
+Service in src/qmatsuite/api.py (QMSService)
 
-CLI (src/quantumvitas/cli/main.py) is a thin wrapper → only handles arguments, printing, errors
+CLI (src/qmatsuite/cli/main.py) is a thin wrapper → only handles arguments, printing, errors
 
-Daemon (src/quantumvitas/daemon/server.py) calls QVService
+Daemon (src/qmatsuite/daemon/server.py) calls QMSService
 
 GUI talks only to daemon via the existing JSON RPC command map
 
@@ -4656,13 +4656,13 @@ models layer (core/models.py)
 
 resource resolution (core/resolution.py)
 
-QVService (api.py)
+QMSService (api.py)
 
 templates layer (core/templates.py)
 
 daemon RPC and GUI usage
 
-Read src/quantumvitas/core/templates.py carefully:
+Read src/qmatsuite/core/templates.py carefully:
 
 Understand how project/workflow/step/structure templates are currently discovered + copied
 
@@ -4680,7 +4680,7 @@ reset_step_params
 
 import_structure_from_template
 
-Skim src/quantumvitas/daemon/server.py to see how list_workflow_templates etc. are wired.
+Skim src/qmatsuite/daemon/server.py to see how list_workflow_templates etc. are wired.
 
 Skim GUI code that consumes list_workflow_templates or template info (documented in AI_understanding.md).
 
@@ -4717,7 +4717,7 @@ We now introduce project snapshots that serialize a full project to a single YAM
 
 2.1 New module: project/snapshot.py
 
-Create src/quantumvitas/project/snapshot.py with:
+Create src/qmatsuite/project/snapshot.py with:
 
 A dataclass model:
 
@@ -4743,7 +4743,7 @@ Functions:
 
 def export_project_to_snapshot(project_root: Path) -> ProjectSnapshot:
     """
-    Read project.qv.yml, all structures, workflows, and steps
+    Read project.qms.yml, all structures, workflows, and steps
     under project_root and return a ProjectSnapshot.
     - Use the models layer (core/models.py) to load project/calculations/structures.
     - Include full pymatgen JSON for each structure.
@@ -4768,7 +4768,7 @@ def materialize_project_from_snapshot(
       - parent_calculation_id in steps.
     - Keep slugs and names identical (unless you need to slugify).
     - Write:
-      - project.qv.yml
+      - project.qms.yml
       - structures JSON
       - calculations/<slug>/calculation.yaml
       - calculations/<slug>/steps/*.step.yaml
@@ -4794,12 +4794,12 @@ Document exact schema in a comment + AI_understanding.md.
 
 You don’t need to copy the full schema into this prompt; just implement a clean, explicit structure.
 
-Phase 3 – Integrate snapshot into QVService + CLI
-3.1 Add methods to QVService (src/quantumvitas/api.py)
+Phase 3 – Integrate snapshot into QMSService + CLI
+3.1 Add methods to QMSService (src/qmatsuite/api.py)
 
 Add new methods:
 
-class QVService:
+class QMSService:
     ...
 
     def export_project_snapshot(self, project_root: Path) -> Dict[str, Any]:
@@ -4838,9 +4838,9 @@ Handle path resolution via expanduser() and resolve().
 
 Do not rely on Path.cwd() here.
 
-3.2 Add CLI command: qv save project
+3.2 Add CLI command: qms save project
 
-In src/quantumvitas/cli/main.py:
+In src/qmatsuite/cli/main.py:
 
 Add a new command, e.g.:
 
@@ -4859,20 +4859,20 @@ def save_project(
     ),
 ):
     """
-    Export a QV project to a snapshot YAML file.
+    Export a QMS project to a snapshot YAML file.
     """
     ...
 
 
 Use the existing context helper from core/context.py to resolve project root if --project is not given.
 
-Delegate to QVService.save_project_snapshot.
+Delegate to QMSService.save_project_snapshot.
 
-3.3 Extend qv init project to accept snapshot
+3.3 Extend qms init project to accept snapshot
 
 Extend existing init project subcommand to support:
 
-qv init project --snapshot <snapshot.yml> --path <parent_dir> --name "My Project"
+qms init project --snapshot <snapshot.yml> --path <parent_dir> --name "My Project"
 
 
 Behavior:
@@ -4881,7 +4881,7 @@ If --snapshot is provided:
 
 Treat --path as a parent directory, not as the project directory itself.
 
-Call QVService.create_project_from_snapshot(parent_dir=path, snapshot_path=snapshot, project_name=name).
+Call QMSService.create_project_from_snapshot(parent_dir=path, snapshot_path=snapshot, project_name=name).
 
 Print the created project root.
 
@@ -4921,9 +4921,9 @@ You can derive this snapshot logically from the existing test data (ci_test_data
 
 Document this file in AI_understanding.md (demo section).
 
-4.2 Refactor QVService.create_demo_project
+4.2 Refactor QMSService.create_demo_project
 
-In src/quantumvitas/api.py:
+In src/qmatsuite/api.py:
 
 Change create_demo_project to stop relying on templates/project/....
 
@@ -5007,7 +5007,7 @@ Refactor:
 
 Add a list_structure_library() helper (in core/templates.py or a new core/resources.py).
 
-Add a QVService method + daemon RPC to list available structures from resources/structure_library/.
+Add a QMSService method + daemon RPC to list available structures from resources/structure_library/.
 
 Keep templates/structure/si.json as a legacy source if necessary, but publicly expose only the new resources/structure_library/ set.
 
@@ -5015,7 +5015,7 @@ Keep templates/structure/si.json as a legacy source if necessary, but publicly e
 
 For now:
 
-Do NOT remove templates/step/ or break qv init step --template / reset_step_params.
+Do NOT remove templates/step/ or break qms init step --template / reset_step_params.
 
 But:
 
@@ -5054,11 +5054,11 @@ CLI save-project + init project --snapshot:
 
 Using CliRunner, create a temp project.
 
-Run qv save project snapshot.yml.
+Run qms save project snapshot.yml.
 
 Assert file exists and is non-empty.
 
-Run qv init project --snapshot snapshot.yml --path <parent> --name "copy".
+Run qms init project --snapshot snapshot.yml --path <parent> --name "copy".
 
 Assert new project root exists, and basic models can be loaded.
 
@@ -5086,7 +5086,7 @@ What it is
 
 Schema outline
 
-CLI usage (qv save project, qv init project --snapshot)
+CLI usage (qms save project, qms init project --snapshot)
 
 Behavior of ULIDs (regenerated on materialization)
 
@@ -5100,13 +5100,13 @@ resources/workflow_templates/ (workflow library)
 
 resources/structure_library/ (structure library)
 
-templates/ as legacy/internal for scaffolding (still used by qv init and some internals)
+templates/ as legacy/internal for scaffolding (still used by qms init and some internals)
 
 General coding style & safety
 
 Do NOT break existing CLI options; new behavior should be additive or behind new flags (except create_demo_project which we explicitly move to snapshots).
 
-Keep all logic in QVService or core modules; CLI and daemon should be thin.
+Keep all logic in QMSService or core modules; CLI and daemon should be thin.
 
 Keep using Path, expanduser(), resolve(), no hidden reliance on cwd in core/service.
 
@@ -5127,13 +5127,13 @@ Summarize how demo creation, workflow templates, and structure library now work 
 Focus on correctness, clear separation of concerns, and minimizing surprise for both CLI and GUI users.
 
 
-You are working in the QuantumVITAS v2 repo.
+You are working in the QMatSuite v2 repo.
 
 Goal of this refactor:
 
 Completely remove the legacy templates/ directory from the codebase.
 
-Remove qv init step --template (and all step-template related functionality).
+Remove qms init step --template (and all step-template related functionality).
 
 Ensure no remaining code depends on templates/ for projects, workflows, steps, or structures.
 
@@ -5147,7 +5147,7 @@ resources/structure_library/ (structure templates)
 
 In-code default parameter dictionaries for steps (instead of step YAML templates).
 
-We accept that this is a breaking change for qv init step --template and any project/workflow --template flags that depended on templates/.
+We accept that this is a breaking change for qms init step --template and any project/workflow --template flags that depended on templates/.
 
 Phase 0 – Get context
 
@@ -5157,13 +5157,13 @@ Re-read AI_understanding.md (latest version).
 
 Search for templates/ in the repo and skim all usages:
 
-src/quantumvitas/core/templates.py
+src/qmatsuite/core/templates.py
 
 Any usage in api.py, daemon/server.py, cli/main.py, analysis, tests, GUI.
 
 Note:
 
-Where qv init step --template is implemented.
+Where qms init step --template is implemented.
 
 Where project/workflow/structure templates still read from templates/.
 
@@ -5179,12 +5179,12 @@ resources/structure_library/
 
 Do NOT change anything yet.
 
-Phase 1 – Remove qv init step --template and step-template concept
+Phase 1 – Remove qms init step --template and step-template concept
 1.1 CLI: remove --template for steps
 
-In src/quantumvitas/cli/main.py:
+In src/qmatsuite/cli/main.py:
 
-Find the qv init step command.
+Find the qms init step command.
 
 Remove the --template option entirely:
 
@@ -5194,17 +5194,17 @@ Remove any template handling logic.
 
 Update the help text to no longer mention templates.
 
-Ensure that qv init step still works with:
+Ensure that qms init step still works with:
 
 Required step type (scf / nscf / dos / bands / …).
 
 Optional --structure or workflow-derived structure (existing behavior).
 
-Now, qv init step should always create a step using code defaults (we’ll refine that below), not disk templates.
+Now, qms init step should always create a step using code defaults (we’ll refine that below), not disk templates.
 
 1.2 API & daemon: remove step template parameters
 
-In src/quantumvitas/api.py:
+In src/qmatsuite/api.py:
 
 Find any init_step(...) / create_step methods that accept a template argument.
 
@@ -5212,7 +5212,7 @@ Remove the template parameter and any logic that reads step template files.
 
 Ensure init_step can create a sensible default step purely from step_type (using existing default logic or new defaults).
 
-In src/quantumvitas/daemon/server.py:
+In src/qmatsuite/daemon/server.py:
 
 Remove any RPC commands or handlers that:
 
@@ -5230,13 +5230,13 @@ step_type
 
 structure selector (if needed)
 
-Update any TypeScript types in gui/src/types/qv.ts that refer to step templates (e.g. step_template_name fields).
+Update any TypeScript types in gui/src/types/qms.ts that refer to step templates (e.g. step_template_name fields).
 
 1.3 reset_step_params – reimplement without templates
 
 Currently, reset_step_params likely uses step templates from templates/step/. We want to keep the UX (“reset step parameters to defaults”) but back it with in-code defaults, not disk files.
 
-In src/quantumvitas/api.py & relevant core modules:
+In src/qmatsuite/api.py & relevant core modules:
 
 Redesign reset_step_params (or equivalent) to:
 
@@ -5282,7 +5282,7 @@ We already have resources/demo_projects/, resources/workflow_templates/, resourc
 
 2.1 Structure templates
 
-In src/quantumvitas/core/templates.py (or core/resources.py):
+In src/qmatsuite/core/templates.py (or core/resources.py):
 
 Confirm that structure import (import_structure_from_template) now uses:
 
@@ -5320,27 +5320,27 @@ GUI “Create Workflow from Template” should still work but only via resources
 
 If there are still raw workflow directories under resources/workflow_templates/ (e.g. si-bands/, si-dos/), it’s OK for now; we’re not changing their internal format in this refactor, just making sure they are the only source.
 
-2.3 Project templates (qv init project --template)
+2.3 Project templates (qms init project --template)
 
 Decide a simple, robust behavior:
 
 We already have a proper demo mechanism via resources/demo_projects/ and create_demo_project(). For simplicity and to avoid adding another “project template” system, we will:
 
-Remove --template for qv init project (like we did for steps):
+Remove --template for qms init project (like we did for steps):
 
 In cli/main.py, drop the template argument from init project.
 
 In api.py, remove project-template-related parameters and directory reads from templates/project/.
 
-qv init project will now only:
+qms init project will now only:
 
 Create an empty project with given --name and --path.
 
 For non-empty examples, create_demo_project is used (GUI does this already).
 
-If there are any tests or docs referring to qv init project --template, update/remove them and adjust docs to recommend:
+If there are any tests or docs referring to qms init project --template, update/remove them and adjust docs to recommend:
 
-Empty project: qv init project
+Empty project: qms init project
 
 Demo project: via create_demo_project / GUI button.
 
@@ -5387,11 +5387,11 @@ Remove unit/CLI/daemon/GUI tests that:
 
 Assert step templates exist.
 
-Assert qv init step --template works.
+Assert qms init step --template works.
 
 Replace with:
 
-Tests that check qv init step with default parameters works correctly for each step_type.
+Tests that check qms init step with default parameters works correctly for each step_type.
 
 Tests that check reset_step_params resets to the in-code defaults.
 
@@ -5422,11 +5422,11 @@ Legacy templates/ directory has been removed. All template-like behavior is now 
 
 Update any CLI / GUI references to --template to reflect:
 
-qv init project: no template option; use demo if you want a pre-populated project.
+qms init project: no template option; use demo if you want a pre-populated project.
 
-qv init step: no template option; uses default parameters based on step type.
+qms init step: no template option; uses default parameters based on step type.
 
-qv init workflow --template: uses resources/workflow_templates/ only.
+qms init workflow --template: uses resources/workflow_templates/ only.
 
 Phase 5 – Sanity checks
 
@@ -5444,7 +5444,7 @@ npm run test:e2e
 
 Manually sanity check (you can describe what you did in your summary):
 
-qv init project → creates empty project.
+qms init project → creates empty project.
 
 GUI “Create Demo Project” → still works (reads from resources/demo_projects).
 
@@ -5456,7 +5456,7 @@ GUI “Reset Step Parameters” → resets to in-code defaults without any file 
 
 Style & safety
 
-Keep layering: core & QVService remain the main logic; CLI/daemon/GUI are thin.
+Keep layering: core & QMSService remain the main logic; CLI/daemon/GUI are thin.
 
 Continue using Path and resolve()/expanduser(); never rely on Path.cwd() in core/service.
 
@@ -5470,24 +5470,24 @@ Files created/modified/deleted.
 
 New behavior of:
 
-qv init project
+qms init project
 
-qv init step
+qms init step
 
-qv init workflow --template
+qms init workflow --template
 
 reset_step_params
 
 Confirm that the templates/ directory is no longer present and no references remain.
 
-You’re continuing work on the QuantumVITAS v2 GUI + daemon.
+You’re continuing work on the QMatSuite v2 GUI + daemon.
 
 Please read / refresh:
 - AI_understanding.md (especially:
   - Step model: StructureStepSpec
-  - QVService APIs for steps/workflows
+  - QMSService APIs for steps/workflows
   - “step defaults vs import” semantics: apply_defaults / --no-defaults
-  - GUI ↔ Electron ↔ daemon ↔ QVService architecture)
+  - GUI ↔ Electron ↔ daemon ↔ QMSService architecture)
 - gui/tests/e2e/fixtures/electronTest.ts (unified Electron fixture)
 
 There are THREE goals in this task:
@@ -5503,40 +5503,40 @@ Current bug (daemon logs):
   TypeError: __init__() got an unexpected keyword argument 'executable'
 
 - Stack trace: daemon/server.py → _handle_add_step_to_workflow →
-  QVService.add_step_to_workflow → StructureStepSpec(..., executable=...).
+  QMSService.add_step_to_workflow → StructureStepSpec(..., executable=...).
 
 Intent / architecture:
 
 - StructureStepSpec **should NOT** have an `executable` field.
 - Which QE binary to run (pw.x / dos.x / bands.x …) is derived from step_type
   / QE module by the engine layer (already used by CLI).
-- CLI path for `qv init step` and workflow execution is **green**; GUI should
+- CLI path for `qms init step` and workflow execution is **green**; GUI should
   reuse that logic, not invent its own variant.
 
 Please do:
 
 1. Inspect models
-   - Open src/quantumvitas/workflow/structure_steps.py and confirm the fields of
+   - Open src/qmatsuite/workflow/structure_steps.py and confirm the fields of
      StructureStepSpec. DO NOT add `executable` there unless you can strongly
      justify it against the existing design (binary is an engine concern, not
      a spec concern).
 
 2. Find all `executable` uses in the add-step path
    - Grep “executable” in:
-     - src/quantumvitas/api.py (add_step_to_workflow)
-     - src/quantumvitas/daemon/server.py (_handle_add_step_to_workflow)
-     - gui/src/types/qv.ts (step-related payloads / responses)
+     - src/qmatsuite/api.py (add_step_to_workflow)
+     - src/qmatsuite/daemon/server.py (_handle_add_step_to_workflow)
+     - gui/src/types/qms.ts (step-related payloads / responses)
      - gui/src/components/panels/WorkflowDetailPanel.tsx (Add Step UI)
      - any tests that expect an `executable` field.
    - Map how `executable` travels from the GUI request payload to
      StructureStepSpec(...).
 
-3. Align GUI add-step with CLI `qv init step` (from-scratch mode)
+3. Align GUI add-step with CLI `qms init step` (from-scratch mode)
    - Find the helper(s) used by the CLI to build a step spec:
      - Functions like build_step_spec_from_qe_input_data / build_default_step_spec
        in workflow/importers.py (and any wrappers).
      - Note how apply_defaults=True is used for “from scratch” steps.
-   - Refactor QVService.add_step_to_workflow so that it:
+   - Refactor QMSService.add_step_to_workflow so that it:
      - Reuses the SAME helper(s) as CLI `init_step_command` for from-scratch steps.
      - Does NOT accept / pass through `executable`.
      - Sets only:
@@ -5549,9 +5549,9 @@ Please do:
      method and no longer deals with `executable`.
 
 4. Clean up GUI types & payloads
-   - In gui/src/types/qv.ts:
+   - In gui/src/types/qms.ts:
      - Remove `executable?: string` from any step-related payloads.
-     - Keep the types in sync with the daemon handler / QVService API.
+     - Keep the types in sync with the daemon handler / QMSService API.
    - In WorkflowDetailPanel.tsx:
      - Update the “Add Step” dialog so the payload only includes:
        - step_type (required)
@@ -5563,7 +5563,7 @@ Please do:
 5. Tests for A
    - Add/adjust a focused unit test (e.g. tests/unit/test_api_service_steps.py):
      - Create a small temporary project + workflow (can reuse existing fixtures).
-     - Call QVService.add_step_to_workflow with a payload matching what the GUI
+     - Call QMSService.add_step_to_workflow with a payload matching what the GUI
        now sends (no executable).
      - Assert:
        - No TypeError is raised.
@@ -5581,34 +5581,34 @@ B. Enforce architecture: GUI must only call the daemon API
 Design rule:
 
 - The GUI (React + Electron main + preload) must talk ONLY to the daemon over
-  the typed RPC protocol (window.qv / QVCommandMap).
-- It must NOT import Python core modules or directly manipulate QV internals.
-- Python daemon handlers should normally go through QVService; avoid direct
+  the typed RPC protocol (window.qms / QMSCommandMap).
+- It must NOT import Python core modules or directly manipulate QMS internals.
+- Python daemon handlers should normally go through QMSService; avoid direct
   imports from low-level core modules inside handlers.
 
 Please check:
 
 1. In gui/ (TS/TSX):
    - Ensure there are NO imports like:
-     - import ... from '../../../src/quantumvitas/...'
+     - import ... from '../../../src/qmatsuite/...'
    - All interactions with the backend must go through:
-     - window.qv.* (typed in gui/src/types/qv.ts)
-     - The useQVClient hook and related hooks/useJobs.ts etc.
+     - window.qms.* (typed in gui/src/types/qms.ts)
+     - The useQMSClient hook and related hooks/useJobs.ts etc.
    - If you find any direct imports from core Python modules, remove them and
      replace with appropriate RPC calls.
 
-2. In src/quantumvitas/daemon/server.py:
-   - Handlers should talk to the single QVService instance instead of importing
+2. In src/qmatsuite/daemon/server.py:
+   - Handlers should talk to the single QMSService instance instead of importing
      and calling core functions directly (unless there is a very strong and
      documented reason).
-   - If you see handler logic bypassing QVService, consider moving that logic
-     into QVService and calling it there, to keep the layering clean.
+   - If you see handler logic bypassing QMSService, consider moving that logic
+     into QMSService and calling it there, to keep the layering clean.
 
 3. Update AI_understanding.md:
    - Add a short “Layering rules” subsection:
-     - GUI → Electron main → daemon RPC → QVService → core
+     - GUI → Electron main → daemon RPC → QMSService → core
      - No GUI → core or GUI → core via direct imports.
-     - Handlers should be thin wrappers around QVService methods.
+     - Handlers should be thin wrappers around QMSService methods.
 
 ────────────────────────────────
 C. Strengthen E2E tests: fail on frontend console errors
@@ -5686,7 +5686,7 @@ Please extend the fixture so that:
 General guidelines:
 
 - Keep changes focused and consistent with the existing architecture.
-- Prefer reusing helper functions and QVService methods instead of duplicating
+- Prefer reusing helper functions and QMSService methods instead of duplicating
   logic in daemon handlers or GUI code.
 - Do NOT reintroduce app-specific fields (like `executable`) into the step
   spec unless there is a clear architectural rationale documented in
@@ -5700,11 +5700,11 @@ General guidelines:
 Summary
 Completed all three goals:
 A. Fixed GUI "Add Step" using stray executable argument
-Problem: QVService.add_step_to_workflow was passing executable to StructureStepSpec, which doesn't accept it.
+Problem: QMSService.add_step_to_workflow was passing executable to StructureStepSpec, which doesn't accept it.
 Solution:
 Removed executable from add_step_to_workflow — now uses get_default_step_params() like the CLI
 Updated daemon handler — already correct, no changes needed
-Added add_step_to_workflow to GUI types — added missing type definition in gui/src/types/qv.ts
+Added add_step_to_workflow to GUI types — added missing type definition in gui/src/types/qms.ts
 Verified GUI doesn't send executable — confirmed WorkflowListPanel.tsx only sends step_type and step_name
 Added unit tests — created tests/unit/test_api_service_steps.py with 3 tests verifying:
 Step spec creation without executable
@@ -5712,13 +5712,13 @@ Default parameters are applied
 No executable field in any step files
 B. Enforced architecture: GUI must only call the daemon API
 Findings:
-GUI has no direct Python imports — all communication goes through window.qv.* RPC
+GUI has no direct Python imports — all communication goes through window.qms.* RPC
 Daemon handlers are mostly correct — two handlers use core modules directly but are documented exceptions:
-find_project_root uses quantumvitas.core.context (utility function)
-list_workflow_templates uses quantumvitas.core.templates (read-only listing)
+find_project_root uses qmatsuite.core.context (utility function)
+list_workflow_templates uses qmatsuite.core.templates (read-only listing)
 Documentation: Added "Layering Rules" section to AI_understanding.md (section 16.5) documenting:
-Allowed paths: GUI → Electron → Daemon → QVService → core
-Forbidden paths: GUI → core, Daemon → core (bypassing QVService)
+Allowed paths: GUI → Electron → Daemon → QMSService → core
+Forbidden paths: GUI → core, Daemon → core (bypassing QMSService)
 Documented exceptions with rationale
 C. Strengthened E2E tests: fail on frontend console errors
 Implementation:
@@ -5736,11 +5736,11 @@ All unit tests pass (including new test_api_service_steps.py)
 No console errors detected during test runs
 Files Changed
 Python:
-src/quantumvitas/api.py — Fixed add_step_to_workflow to use defaults and remove executable
-src/quantumvitas/daemon/server.py — No changes needed (already correct)
+src/qmatsuite/api.py — Fixed add_step_to_workflow to use defaults and remove executable
+src/qmatsuite/daemon/server.py — No changes needed (already correct)
 tests/unit/test_api_service_steps.py — New test file
 TypeScript:
-gui/src/types/qv.ts — Added add_step_to_workflow command type
+gui/src/types/qms.ts — Added add_step_to_workflow command type
 gui/tests/e2e/fixtures/electronTest.ts — Enhanced with automatic console error detection
 gui/tests/e2e/step_defaults.spec.ts — Removed manual error checking (now automatic)
 Documentation:
@@ -5751,7 +5751,7 @@ All tests pass and the architecture is now properly enforced.
 
 
 
-You are working in the QuantumVITAS v2 repo (Python core + Typer CLI + Python daemon + Electron/React GUI + Playwright E2E).
+You are working in the QMatSuite v2 repo (Python core + Typer CLI + Python daemon + Electron/React GUI + Playwright E2E).
 
 0. Get Context First
 
@@ -5759,9 +5759,9 @@ Open and read AI_understanding.md carefully, at least these sections:
 
 Project & resource model
 
-QVService API / daemon RPC layer
+QMSService API / daemon RPC layer
 
-GUI architecture (Electron main ↔ preload ↔ window.qv ↔ React)
+GUI architecture (Electron main ↔ preload ↔ window.qms ↔ React)
 
 Resources vs templates refactor (demo projects, workflow templates, structure library)
 
@@ -5769,27 +5769,27 @@ E2E test setup (gui/tests/e2e, electronTest fixture)
 
 Architecture rules (must respect):
 
-GUI (React) → talks ONLY to window.qv.* (preload/IPC).
+GUI (React) → talks ONLY to window.qms.* (preload/IPC).
 
 Electron main → talks ONLY to Python daemon via stdio JSON.
 
-Python daemon → calls QVService methods (in src/quantumvitas/api.py).
+Python daemon → calls QMSService methods (in src/qmatsuite/api.py).
 
-Only QVService talks to core modules (core/*, workflow/* etc.).
+Only QMSService talks to core modules (core/*, workflow/* etc.).
 
 Don’t introduce new GUI → core or daemon → core shortcuts.
 
 Task A – Prevent creating project/demo inside an existing project
 
-Goal: If the user is “inside” an existing QV project (i.e. the chosen folder is itself a project, or under one), do not allow “Create Project” or “Create Demo Project”. Show a clear error message instead.
+Goal: If the user is “inside” an existing QMS project (i.e. the chosen folder is itself a project, or under one), do not allow “Create Project” or “Create Demo Project”. Show a clear error message instead.
 
 A1. Backend helper
 
-In src/quantumvitas/core/context.py (or a suitable existing module there), add a pure helper:
+In src/qmatsuite/core/context.py (or a suitable existing module there), add a pure helper:
 
 def detect_enclosing_project(path: Path) -> Optional[Path]:
     """
-    Walk upward from `path` looking for `project.qv.yml`.
+    Walk upward from `path` looking for `project.qms.yml`.
     Return the project root if found, otherwise None.
     Does NOT look at cwd, only the given path.
     """
@@ -5797,11 +5797,11 @@ def detect_enclosing_project(path: Path) -> Optional[Path]:
 
 Use the same rules as the existing PWD context detection (just parameterized by path).
 
-In src/quantumvitas/api.py, before actually creating anything:
+In src/qmatsuite/api.py, before actually creating anything:
 
-In QVService.create_project(...)
+In QMSService.create_project(...)
 
-In QVService.create_demo_project(...) (we’ll extend this in Task C)
+In QMSService.create_demo_project(...) (we’ll extend this in Task C)
 
 Call detect_enclosing_project on the target directory the GUI passes in (the “parent folder” or “workspace” folder – see existing code).
 
@@ -5809,11 +5809,11 @@ If detect_enclosing_project(...) returns a project root:
 
 Raise a ValueError with a clear message, e.g.:
 
-"The selected folder is inside an existing QuantumVITAS project at: <path>. Please choose a parent workspace folder, not a project folder."
+"The selected folder is inside an existing QMatSuite project at: <path>. Please choose a parent workspace folder, not a project folder."
 
 A2. Daemon + GUI error handling
 
-In src/quantumvitas/daemon/server.py, make sure the handlers for:
+In src/qmatsuite/daemon/server.py, make sure the handlers for:
 
 create_project
 
@@ -5893,7 +5893,7 @@ Asserts basic invariants: at least 1 structure, at least 1 workflow, no pseudo c
 
 Task C – Ensure GUI “Create Demo Project” uses si_bands_demo.yml
 
-At the moment, QVService.create_demo_project may already default to a particular snapshot. We want:
+At the moment, QMSService.create_demo_project may already default to a particular snapshot. We want:
 
 create_demo_project() with no explicit demo ID to use si_bands_demo.yml.
 
@@ -5901,13 +5901,13 @@ GUI’s “Create Demo Project” button to call this default (no change to GUI 
 
 Steps:
 
-In src/quantumvitas/api.py:
+In src/qmatsuite/api.py:
 
-Ensure QVService.create_demo_project(...) uses resources/demo_projects/si_bands_demo.yml as its default snapshot.
+Ensure QMSService.create_demo_project(...) uses resources/demo_projects/si_bands_demo.yml as its default snapshot.
 
 Internally, it can accept an optional demo_id: str | None (for future gallery), but if demo_id is None, use "si_bands_demo".
 
-In src/quantumvitas/daemon/server.py:
+In src/qmatsuite/daemon/server.py:
 
 Keep the current RPC shape for create_demo_project for GUI compatibility.
 
@@ -5923,7 +5923,7 @@ We want a more “discoverable” demo experience than a single hard-coded butto
 
 D1. Backend: list_demo_projects
 
-In src/quantumvitas/api.py, add a new method:
+In src/qmatsuite/api.py, add a new method:
 
 @dataclass
 class DemoProjectInfo:
@@ -5935,7 +5935,7 @@ class DemoProjectInfo:
     # you can add tags/complexity if you like
 
 
-Implement QVService.list_demo_projects():
+Implement QMSService.list_demo_projects():
 
 Scan resources/demo_projects/*.yml.
 
@@ -5951,13 +5951,13 @@ Derive id from filename stem.
 
 Return a list of DemoProjectInfo dicts (JSON-serializable).
 
-In src/quantumvitas/daemon/server.py:
+In src/qmatsuite/daemon/server.py:
 
 Add RPC command list_demo_projects.
 
 Handler calls list_demo_projects() and returns the list.
 
-Also extend create_demo_project handler to accept an optional demo_id from the GUI payload and pass it to QVService.create_demo_project(demo_id=...).
+Also extend create_demo_project handler to accept an optional demo_id from the GUI payload and pass it to QMSService.create_demo_project(demo_id=...).
 
 Add unit tests in tests/unit/test_api_service_project.py:
 
@@ -5969,15 +5969,15 @@ D2. GUI: Demo Gallery UI
 
 Types:
 
-In gui/src/types/qv.ts:
+In gui/src/types/qms.ts:
 
 Add DemoProjectInfo interface mirroring the Python type.
 
-Add list_demo_projects and extended create_demo_project commands to QVCommandMap.
+Add list_demo_projects and extended create_demo_project commands to QMSCommandMap.
 
 Hook:
 
-Either extend useQVClient or create a small useDemoProjects hook to:
+Either extend useQMSClient or create a small useDemoProjects hook to:
 
 Fetch list_demo_projects when needed.
 
@@ -6011,7 +6011,7 @@ Tag chips like “Bands”, “DOS”, “Silicon”, “Beginner”
 
 When user clicks a card:
 
-Ask for workspace folder via existing window.qv.openDirectory.
+Ask for workspace folder via existing window.qms.openDirectory.
 
 Call create_demo_project with demoId and workspace path.
 
@@ -6057,7 +6057,7 @@ python -m pytest tests/unit -v
 
 cd gui && npm run build:e2e && npm run test:e2e
 
-Don’t break existing CLI behavior (qv init project, qv init workflow, etc.).
+Don’t break existing CLI behavior (qms init project, qms init workflow, etc.).
 
 Keep naming and architecture consistent with what’s already in AI_understanding.md.
 
@@ -6110,7 +6110,7 @@ Does it return {ok: false, error: ...} on error, or does it throw and break the 
 
 In the React component:
 
-Where do we call window.qv.* / useQVClient() for the gallery?
+Where do we call window.qms.* / useQMSClient() for the gallery?
 
 How do we handle ok: false vs network / JSON errors?
 
@@ -6150,11 +6150,11 @@ Use getByTestId instead of pure text to avoid fragile selectors.
 
 Respect our architectural rules:
 
-GUI ↔ preload ↔ Electron main ↔ daemon ↔ QVService ↔ core.
+GUI ↔ preload ↔ Electron main ↔ daemon ↔ QMSService ↔ core.
 
 No direct imports from core modules in the GUI.
 
-Demo gallery must use the same window.qv RPC mechanism as everything else.
+Demo gallery must use the same window.qms RPC mechanism as everything else.
 
 
 
@@ -6214,7 +6214,7 @@ Running 4 tests using 1 worker
       122 |         }
       123 |         
       124 |         // Close step detail to go back
-        at /home/runner/work/quantumVITAS/quantumVITAS/gui/tests/e2e/demo_workflow.spec.ts:121:31
+        at /home/runner/work/QMatSuite/QMatSuite/gui/tests/e2e/demo_workflow.spec.ts:121:31
 
     attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
     test-results/demo_workflow-E2E-Test-2-C-25f0d-t-and-verify-workflow-steps-electron/test-failed-1.png
@@ -6272,7 +6272,7 @@ Running 4 tests using 1 worker
       122 |         }
       123 |         
       124 |         // Close step detail to go back
-        at /home/runner/work/quantumVITAS/quantumVITAS/gui/tests/e2e/demo_workflow.spec.ts:121:31
+        at /home/runner/work/QMatSuite/QMatSuite/gui/tests/e2e/demo_workflow.spec.ts:121:31
 
     attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
     test-results/demo_workflow-E2E-Test-2-C-25f0d-t-and-verify-workflow-steps-electron-retry1/test-failed-1.png
@@ -6340,7 +6340,7 @@ Error:   1) [electron] › tests/e2e/demo_workflow.spec.ts:39:3 › E2E Test 2: 
       122 |         }
       123 |         
       124 |         // Close step detail to go back
-        at /home/runner/work/quantumVITAS/quantumVITAS/gui/tests/e2e/demo_workflow.spec.ts:121:31
+        at /home/runner/work/QMatSuite/QMatSuite/gui/tests/e2e/demo_workflow.spec.ts:121:31
 Error:   1) [electron] › tests/e2e/demo_workflow.spec.ts:39:3 › E2E Test 2: Create Demo Project → Workflow & Steps › create demo project and verify workflow steps 
 
     Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
@@ -6392,7 +6392,7 @@ Error:   1) [electron] › tests/e2e/demo_workflow.spec.ts:39:3 › E2E Test 2: 
       122 |         }
       123 |         
       124 |         // Close step detail to go back
-        at /home/runner/work/quantumVITAS/quantumVITAS/gui/tests/e2e/demo_workflow.spec.ts:121:31
+        at /home/runner/work/QMatSuite/QMatSuite/gui/tests/e2e/demo_workflow.spec.ts:121:31
 Notice:   1 failed
     [electron] › tests/e2e/demo_workflow.spec.ts:39:3 › E2E Test 2: Create Demo Project → Workflow & Steps › create demo project and verify workflow steps 
   3 passed (1.0m)
@@ -6403,7 +6403,7 @@ Error: Process completed with exit code 1.
 Summary
 Task A: Prevent creating project/demo inside an existing project
 Added detect_enclosing_project() helper in core/context.py
-Integrated validation in QVService.init_project() and QVService.create_demo_project()
+Integrated validation in QMSService.init_project() and QMSService.create_demo_project()
 Updated daemon handlers to return proper error responses
 Updated GUI to show errors and keep dialogs open
 Added unit tests for validation
@@ -6415,7 +6415,7 @@ Task C: Ensure GUI uses si_bands_demo.yml by default
 Updated create_demo_project() to default to si_bands_demo when demo_id is not specified
 Added unit tests for default behavior
 Task D: Implement Demo Gallery
-Added QVService.list_demo_projects() API method
+Added QMSService.list_demo_projects() API method
 Added daemon RPC handler list_demo_projects
 Created DemoGalleryDialog React component with error handling
 Updated GUI to show "Demo Gallery" button and "Quick Demo" shortcut
@@ -6427,15 +6427,15 @@ Added error state UI with retry button
 Added test IDs for E2E testing
 Improved error handling in daemon handler to always return valid responses
 Files modified/created
-src/quantumvitas/core/context.py - Added detect_enclosing_project()
-src/quantumvitas/api.py - Added validation, list_demo_projects(), updated create_demo_project()
-src/quantumvitas/daemon/server.py - Added list_demo_projects handler, improved error handling
+src/qmatsuite/core/context.py - Added detect_enclosing_project()
+src/qmatsuite/api.py - Added validation, list_demo_projects(), updated create_demo_project()
+src/qmatsuite/daemon/server.py - Added list_demo_projects handler, improved error handling
 scripts/generate_demo_snapshots.py - New script for generating demo snapshots
 resources/demo_projects/si_bands_demo.yml - Generated snapshot
 resources/demo_projects/si_dos_demo.yml - Generated snapshot
 gui/src/components/dialogs/DemoGalleryDialog.tsx - New component
 gui/src/components/dialogs/DemoGalleryDialog.css - New styles
-gui/src/types/qv.ts - Added DemoProjectInfo interface and RPC types
+gui/src/types/qms.ts - Added DemoProjectInfo interface and RPC types
 gui/src/App.tsx - Integrated Demo Gallery
 gui/src/components/panels/ProjectSummaryPanel.tsx - Updated buttons
 gui/tests/e2e/demo_gallery.spec.ts - New E2E test
@@ -6445,11 +6445,11 @@ AI_understanding.md - Updated documentation
 All unit tests pass. The E2E test should now work with the loading state fix. The Demo Gallery no longer hangs because isLoading is set to false in all code paths, including error cases.
 
 
-You are working in the QuantumVITAS v2 repo (Python core + Typer CLI + Python daemon + Electron/React GUI + Playwright E2E).
+You are working in the QMatSuite v2 repo (Python core + Typer CLI + Python daemon + Electron/React GUI + Playwright E2E).
 
 We’ve already implemented:
 
-Validation to disallow creating a project / demo inside an existing project via detect_enclosing_project() in core/context.py, wired through QVService.init_project() and QVService.create_demo_project(), and exposed via daemon RPC + GUI error states.
+Validation to disallow creating a project / demo inside an existing project via detect_enclosing_project() in core/context.py, wired through QMSService.init_project() and QMSService.create_demo_project(), and exposed via daemon RPC + GUI error states.
 
 Demo snapshots in resources/demo_projects/ generated from test projects:
 
@@ -6457,7 +6457,7 @@ si_bands_demo.yml (from project2_bands)
 
 si_dos_demo.yml (from project1)
 
-QVService.list_demo_projects() + daemon handler list_demo_projects
+QMSService.list_demo_projects() + daemon handler list_demo_projects
 
 A Demo Gallery dialog (DemoGalleryDialog.tsx) that uses the above API, plus an E2E test demo_gallery.spec.ts.
 
@@ -6469,7 +6469,7 @@ Before coding, skim:
 
 AI_understanding.md — especially:
 
-GUI architecture (React ↔ preload ↔ Electron main ↔ daemon ↔ QVService)
+GUI architecture (React ↔ preload ↔ Electron main ↔ daemon ↔ QMSService)
 
 Resources vs templates (demo snapshots, workflow templates, structure library)
 
@@ -6477,11 +6477,11 @@ E2E testing section and electronTest fixture.
 
 Python:
 
-src/quantumvitas/api.py — init_project, create_demo_project, list_demo_projects
+src/qmatsuite/api.py — init_project, create_demo_project, list_demo_projects
 
-src/quantumvitas/daemon/server.py — demo-related handlers, RPC protocol
+src/qmatsuite/daemon/server.py — demo-related handlers, RPC protocol
 
-src/quantumvitas/core/context.py — detect_enclosing_project
+src/qmatsuite/core/context.py — detect_enclosing_project
 
 GUI:
 
@@ -6491,7 +6491,7 @@ gui/src/components/panels/ProjectSummaryPanel.tsx
 
 gui/src/components/dialogs/DemoGalleryDialog.tsx (+ CSS)
 
-gui/src/types/qv.ts — demo types & RPCs
+gui/src/types/qms.ts — demo types & RPCs
 
 Tests:
 
@@ -6499,7 +6499,7 @@ gui/tests/e2e/demo_gallery.spec.ts
 
 tests/unit/test_api_service.py, tests/unit/test_project_snapshot.py
 
-Respect the layering: GUI → window.qv RPC → daemon → QVService → core, no direct GUI→core imports.
+Respect the layering: GUI → window.qms RPC → daemon → QMSService → core, no direct GUI→core imports.
 
 1. Keep the backend contract, but make sure behavior is right
 
@@ -6509,13 +6509,13 @@ Confirm that:
 
 create_demo_project() defaults to si_bands_demo.yml if no demo_id is provided.
 
-QVService.list_demo_projects() reads from resources/demo_projects/*.yml and returns useful metadata (title, description, tags, supported analyses, etc.).
+QMSService.list_demo_projects() reads from resources/demo_projects/*.yml and returns useful metadata (title, description, tags, supported analyses, etc.).
 
 Both init_project() and create_demo_project() reject paths inside an existing project (using detect_enclosing_project) and return a user-friendly error string.
 
 If any messages are cryptic, improve them, e.g.:
 
-“Cannot create a new project inside an existing QuantumVITAS project. Please choose a parent folder above your current project directory.”
+“Cannot create a new project inside an existing QMatSuite project. Please choose a parent folder above your current project directory.”
 
 Make sure errors propagate through the daemon and the GUI (toast / inline error), and dialogs stay open so the user can correct the folder.
 
@@ -6575,7 +6575,7 @@ Delete the old Modal usage for Demo Gallery and remove dead code & CSS.
 
 Inside the Demo Gallery view:
 
-Use the existing daemon RPC (list_demo_projects) via window.qv / useQVClient.
+Use the existing daemon RPC (list_demo_projects) via window.qms / useQMSClient.
 
 Three clear states (with data-testid):
 
@@ -6583,7 +6583,7 @@ Loading
 
 Show a centered spinner + “Loading demo projects…”
 
-data-testid="qv-demo-gallery-loading"
+data-testid="qms-demo-gallery-loading"
 
 Error
 
@@ -6595,7 +6595,7 @@ Show the error message from daemon
 
 “Retry” button that re-calls list_demo_projects
 
-data-testid="qv-demo-gallery-error"
+data-testid="qms-demo-gallery-error"
 
 Success
 
@@ -6617,11 +6617,11 @@ Tags / badges (e.g. “SCF + NSCF + BANDS”, “Analysis: Bands” / “DOS”)
 
 Use stable test IDs like:
 
-data-testid="qv-demo-card-si-bands"
+data-testid="qms-demo-card-si-bands"
 
-data-testid="qv-demo-card-si-dos"
+data-testid="qms-demo-card-si-dos"
 
-data-testid="qv-demo-card-btn-create-si-bands" etc.
+data-testid="qms-demo-card-btn-create-si-bands" etc.
 
 Reuse the metadata from the snapshot (or add a small schema in DemoProjectInfo if needed: title, description, default_name, recommended_analysis).
 
@@ -6683,17 +6683,17 @@ Refactor gui/tests/e2e/demo_gallery.spec.ts to the new behavior. Using the exist
 
 From fresh startup:
 
-Assert the Welcome view is visible (e.g. data-testid="qv-home-welcome").
+Assert the Welcome view is visible (e.g. data-testid="qms-home-welcome").
 
-Find and click the Demo Gallery button (data-testid="qv-btn-demo-gallery").
+Find and click the Demo Gallery button (data-testid="qms-btn-demo-gallery").
 
 Assert:
 
-The main content switches to gallery view (data-testid="qv-demo-gallery-view").
+The main content switches to gallery view (data-testid="qms-demo-gallery-view").
 
 Loading state appears then disappears.
 
-At least the Si Bands card is visible (qv-demo-card-si-bands).
+At least the Si Bands card is visible (qms-demo-card-si-bands).
 
 Optionally also check Si DOS card.
 
@@ -6735,8 +6735,8 @@ Demo Gallery as a Home sub-view.
 Summary
 Refactored the Demo Gallery from a modal dialog to an inline Home sub-view. Changes:
 1. Backend improvements
-Updated error messages in QVService.init_project() and QVService.create_demo_project() to be clearer when creating a project inside an existing project.
-Error message: "Cannot create a new project inside an existing QuantumVITAS project. The selected folder is inside a project at: <path>. Please choose a parent folder above your current project directory."
+Updated error messages in QMSService.init_project() and QMSService.create_demo_project() to be clearer when creating a project inside an existing project.
+Error message: "Cannot create a new project inside an existing QMatSuite project. The selected folder is inside a project at: <path>. Please choose a parent folder above your current project directory."
 2. UI refactoring
 Converted DemoGalleryDialog (modal) to DemoGalleryPanel (inline panel component).
 Added HomeMode state ('welcome' | 'demo-gallery') to ProjectSummaryPanel.
@@ -6751,7 +6751,7 @@ Title (e.g., "Silicon band structure")
 Description
 Tags/badges
 "Create Project" button per card
-Stable test IDs: qv-demo-card-si-bands-demo, qv-demo-card-si-dos-demo, etc.
+Stable test IDs: qms-demo-card-si-bands-demo, qms-demo-card-si-dos-demo, etc.
 4. Create project flow
 Clicking "Create Project" on a demo card opens the file picker for workspace folder selection.
 On success: project is created, loaded, and view switches back to welcome (with project loaded).
@@ -6770,7 +6770,7 @@ Deleted DemoGalleryDialog.tsx and DemoGalleryDialog.css.
 Removed DemoGalleryDialog export from components/dialogs/index.ts.
 Updated AI_understanding.md to document the new architecture.
 Files changed
-src/quantumvitas/api.py - Improved error messages
+src/qmatsuite/api.py - Improved error messages
 gui/src/components/panels/DemoGalleryPanel.tsx - New inline panel component
 gui/src/components/panels/DemoGalleryPanel.css - New styles
 gui/src/components/panels/ProjectSummaryPanel.tsx - Added HomeMode state
@@ -6780,13 +6780,13 @@ AI_understanding.md - Updated documentation
 All unit tests pass, and the E2E build completes successfully. The Demo Gallery is now integrated into the Home view as a sub-view rather than a modal.
 
 
-You are working in the QuantumVITAS v2 repo (Python core + Typer CLI + Python daemon + Electron/React GUI + Playwright E2E).
+You are working in the QMatSuite v2 repo (Python core + Typer CLI + Python daemon + Electron/React GUI + Playwright E2E).
 
 Context
 - The Demo Gallery has already been refactored from a modal to an inline “Home” sub-view.
 - Demo snapshots live in `resources/demo_projects/` (e.g. `si_bands_demo.yml`, `si_dos_demo.yml`) and are exposed via:
-  - `QVService.list_demo_projects()`
-  - `QVService.create_demo_project(parent_dir, demo_id)`
+  - `QMSService.list_demo_projects()`
+  - `QMSService.create_demo_project(parent_dir, demo_id)`
 - Creating a project inside an existing project is forbidden and already validated via `detect_enclosing_project()`. GUI shows the backend error and keeps dialogs open.
 - The Home view is implemented in `gui/src/components/panels/ProjectSummaryPanel.tsx` with a `HomeMode` state (`'welcome' | 'demo-gallery'`).
 - E2E tests exist in `gui/tests/e2e/demo_gallery.spec.ts` and use the unified `electronTest` fixture.
@@ -6798,17 +6798,17 @@ Please:
      - Resources vs demo snapshots
      - E2E tests and electronTest fixture
    - Scan:
-     - `src/quantumvitas/api.py` (init_project, create_demo_project, list_demo_projects)
-     - `src/quantumvitas/daemon/server.py` (demo RPC handlers)
-     - `src/quantumvitas/core/context.py` (detect_enclosing_project)
+     - `src/qmatsuite/api.py` (init_project, create_demo_project, list_demo_projects)
+     - `src/qmatsuite/daemon/server.py` (demo RPC handlers)
+     - `src/qmatsuite/core/context.py` (detect_enclosing_project)
      - `gui/src/App.tsx`
      - `gui/src/components/panels/ProjectSummaryPanel.tsx`
      - `gui/src/components/panels/DemoGalleryPanel.tsx`
-     - `gui/src/types/qv.ts`
+     - `gui/src/types/qms.ts`
      - `gui/tests/e2e/demo_gallery.spec.ts`
 
    Maintain the layering:
-   - GUI → `window.qv.*` → daemon → `QVService` → core.
+   - GUI → `window.qms.*` → daemon → `QMSService` → core.
    - No direct GUI → core imports.
 
 2. Unify the Home + Demo Gallery entry
@@ -6900,7 +6900,7 @@ tags: List of tags (e.g., ["bands", "Si", "PW", "tutorial"])
 recommended_analysis: Default analysis type ("bands", "dos")
 difficulty: Difficulty level ("beginner", "intermediate", "advanced")
 Updated si_bands_demo.yml and si_dos_demo.yml with metadata
-Backend (QVService.list_demo_projects()) reads metadata from snapshots with fallback to defaults for backward compatibility
+Backend (QMSService.list_demo_projects()) reads metadata from snapshots with fallback to defaults for backward compatibility
 3. Updated TypeScript types
 Extended DemoProjectInfo interface with title, subtitle, tags, recommended_analysis, difficulty
 4. Improved Demo Gallery UI
@@ -6930,11 +6930,11 @@ Snapshot metadata schema
 Workspace/project context display
 Recommended analysis flow
 Files changed
-src/quantumvitas/project/snapshot.py - Added meta field to ProjectSnapshot
-src/quantumvitas/api.py - Updated list_demo_projects() to read metadata from snapshots
+src/qmatsuite/project/snapshot.py - Added meta field to ProjectSnapshot
+src/qmatsuite/api.py - Updated list_demo_projects() to read metadata from snapshots
 resources/demo_projects/si_bands_demo.yml - Added metadata section
 resources/demo_projects/si_dos_demo.yml - Added metadata section
-gui/src/types/qv.ts - Extended DemoProjectInfo interface
+gui/src/types/qms.ts - Extended DemoProjectInfo interface
 gui/src/components/panels/ProjectSummaryPanel.tsx - Removed Quick Demo, added workspace context
 gui/src/components/panels/DemoGalleryPanel.tsx - Enhanced UI with metadata display
 gui/src/components/panels/DemoGalleryPanel.css - Updated styles for new layout
@@ -6946,7 +6946,7 @@ AI_understanding.md - Updated documentation
 All TypeScript builds pass, and the code is ready for testing. The Demo Gallery is now the single entry point with enriched metadata and improved UX.
 
 
-You are debugging my Electron + Playwright E2E tests for QuantumVITAS GUI.
+You are debugging my Electron + Playwright E2E tests for QMatSuite GUI.
 
 Context (please read these first)
 
@@ -6997,7 +6997,7 @@ Step 1 — Inspect current tests vs current UI
 
 Open all the E2E specs listed above and very carefully note where they still assume:
 
-A button with test ID qv-btn-create-demo-project exists on the welcome screen, or
+A button with test ID qms-btn-create-demo-project exists on the welcome screen, or
 
 A demo is created directly without going through Demo Gallery, or
 
@@ -7027,7 +7027,7 @@ The Demo Gallery test IDs for:
 
 The gallery root panel
 
-The Si Bands demo card (id is something like qv-demo-card-si-bands-demo)
+The Si Bands demo card (id is something like qms-demo-card-si-bands-demo)
 
 The Si DOS demo card
 
@@ -7068,7 +7068,7 @@ Click "Browse Demo Gallery"
 
 Wait for gallery panel
 
-Locate the correct demo card by data-testid (e.g. qv-demo-card-si-bands-demo)
+Locate the correct demo card by data-testid (e.g. qms-demo-card-si-bands-demo)
 
 Click its “Create Project” button
 
@@ -7123,7 +7123,7 @@ Before any long waitFor or polling
 
 If a test is waiting for an element that never appears, fix the selector or wait condition to match the current UI:
 
-e.g. old qv-btn-create-demo-project → new qv-btn-demo-gallery
+e.g. old qms-btn-create-demo-project → new qms-btn-demo-gallery
 
 old modal testId → new inline panel testId
 
@@ -7147,7 +7147,7 @@ navigateToWorkflows(appPage) / navigateToJobs(appPage) / navigateToAnalysis(appP
 
 Prefer getByTestId over text-based selectors.
 
-Never hard-code texts that might change in translation or copy tweaks (e.g., use test IDs like data-testid="qv-btn-demo-gallery").
+Never hard-code texts that might change in translation or copy tweaks (e.g., use test IDs like data-testid="qms-btn-demo-gallery").
 
 Step 5 — Make sure CI stays green
 
@@ -7178,7 +7178,7 @@ If something in the UX or code structure blocks you (e.g., missing test IDs, unc
 
 
 2025-12-08_prompt_1 (analysis):
-You’re working in the QuantumVITAS v2 repo (Python core + Electron/React GUI).
+You’re working in the QMatSuite v2 repo (Python core + Electron/React GUI).
 
 I’m using you as a new AI, so:
 
@@ -7188,26 +7188,26 @@ Please read these before coding:
 
 AI_understanding.md
 
-Focus on: core architecture (QVService, daemon, CLI), analysis layer (SCF/DOS/Bands), GUI architecture, E2E tests, layering rules.
+Focus on: core architecture (QMSService, daemon, CLI), analysis layer (SCF/DOS/Bands), GUI architecture, E2E tests, layering rules.
 
 docs/GUI_ARCHITECTURE.md (if present)
 
 Key code:
 
-src/quantumvitas/analysis/*
+src/qmatsuite/analysis/*
 
-src/quantumvitas/api.py
+src/qmatsuite/api.py
 
-src/quantumvitas/daemon/server.py
+src/qmatsuite/daemon/server.py
 
 gui/src/components/panels/AnalysisPanel.tsx
 
-gui/src/types/qv.ts
+gui/src/types/qms.ts
 
 E2E helpers/tests under gui/tests/e2e
 
 Respect the layering:
-React → window.qv.* → Electron → daemon → QVService → core.
+React → window.qms.* → Electron → daemon → QMSService → core.
 No GUI → core imports.
 
 Goal
@@ -7246,7 +7246,7 @@ JSON should be the primary source for GUI plotting.
 
 2. Backend API: “ensure analysis” per workflow
 
-In src/quantumvitas/api.py add something like:
+In src/qmatsuite/api.py add something like:
 
 def ensure_workflow_analysis(
     self,
@@ -7277,9 +7277,9 @@ If outputs missing/broken: return a structured error, not a raw traceback.
 
 Wire this via daemon:
 
-Add RPC handler in src/quantumvitas/daemon/server.py (e.g. ensure_workflow_analysis).
+Add RPC handler in src/qmatsuite/daemon/server.py (e.g. ensure_workflow_analysis).
 
-Add types to gui/src/types/qv.ts for request/response.
+Add types to gui/src/types/qms.ts for request/response.
 
 Try to centralize mapping analysis_type → what to parse in a small helper instead of scattering it.
 
@@ -7346,7 +7346,7 @@ Parsing already occurs in Python; from the UI side it’s just async RPC with go
 
 5. Cache invalidation when workflow is run
 
-Update workflow execution logic (QVService.run_workflow and/or daemon wrapper):
+Update workflow execution logic (QMSService.run_workflow and/or daemon wrapper):
 
 When a workflow is (re)run, invalidate old analysis for that workflow.
 
@@ -7421,20 +7421,20 @@ Think through the design first (you can leave yourself short comments in the cod
 
 Implement in small steps, running unit tests and E2E tests as you go.
 
-Keep the architecture (GUI ↔ daemon ↔ QVService ↔ core) clean and consistent.
+Keep the architecture (GUI ↔ daemon ↔ QMSService ↔ core) clean and consistent.
 
 
 
 All tasks are now complete. Let me provide a summary of what was implemented:
 Summary: Analysis Pipeline Implementation Complete ✅
-I've implemented the complete analysis pipeline for QuantumVITAS v2. Here's what was done:
-1. Analysis Artifacts Module (src/quantumvitas/analysis/artifacts.py)
+I've implemented the complete analysis pipeline for QMatSuite v2. Here's what was done:
+1. Analysis Artifacts Module (src/qmatsuite/analysis/artifacts.py)
 AnalysisArtifacts class with methods for:
 get_artifact_path() - standardized path convention
 write_artifact() - serialize dataclass to JSON
 read_artifact() - deserialize JSON to dataclass
 clear_artifacts() - delete all JSON for a workflow
-2. Backend API (src/quantumvitas/api.py)
+2. Backend API (src/qmatsuite/api.py)
 Added ensure_workflow_analysis() method with:
 Support for scf, dos, bands analysis types
 force parameter to re-parse even if JSON exists
@@ -7443,11 +7443,11 @@ Refactored get_scf_convergence_data(), get_dos_data(), get_band_structure_data()
 First check for JSON artifacts
 Fall back to parsing raw QE outputs (and save JSON on-the-fly)
 Modified run_workflow() to clear analysis artifacts on re-run
-3. Daemon RPC (src/quantumvitas/daemon/server.py)
+3. Daemon RPC (src/qmatsuite/daemon/server.py)
 Added ensure_workflow_analysis RPC handler
-4. GUI TypeScript Types (gui/src/types/qv.ts)
+4. GUI TypeScript Types (gui/src/types/qms.ts)
 Added AnalysisStatus interface
-Added ensure_workflow_analysis to QVCommandMap
+Added ensure_workflow_analysis to QMSCommandMap
 5. GUI Components
 AnalysisPanel.tsx: Now calls ensure_workflow_analysis before loading data, with proper loading/error states
 App.tsx: Added handleEnsureAnalysis callback and passes projectRoot to AnalysisPanel
@@ -7512,7 +7512,7 @@ meta:
     scf: si_bands_demo.scf.json
 
 
-When create_demo_project materializes a project, ensure project.qv.yml has something like:
+When create_demo_project materializes a project, ensure project.qms.yml has something like:
 
 origin:
   kind: demo
@@ -7521,7 +7521,7 @@ origin:
 
 API: get_reference_analysis
 
-In QVService (api.py), add something like:
+In QMSService (api.py), add something like:
 
 def get_reference_analysis(
     self,
@@ -7540,7 +7540,7 @@ Map demo_id + analysis_type → JSON path from snapshot meta.
 
 Load the JSON and return a dict compatible with existing get_*_data() outputs.
 
-Expose this as a daemon RPC and wire types in gui/src/types/qv.ts.
+Expose this as a daemon RPC and wire types in gui/src/types/qms.ts.
 
 Frontend tasks (React GUI)
 
@@ -7629,14 +7629,14 @@ si_dos_demo.dos.json - Reference DOS data
 si_dos_demo.scf.json - Reference SCF data
 Extended Demo Snapshot Schema:
 meta:  reference_artifacts:    bands: si_bands_demo.bands.json    scf: si_bands_demo.scf.json
-New API Method (src/quantumvitas/api.py):
-QVService.get_reference_analysis() - Returns reference data if project is from a demo
-RPC Handler (src/quantumvitas/daemon/server.py):
+New API Method (src/qmatsuite/api.py):
+QMSService.get_reference_analysis() - Returns reference data if project is from a demo
+RPC Handler (src/qmatsuite/daemon/server.py):
 get_reference_analysis handler for GUI access
 Demo Project Origin Tracking:
 create_demo_project() now stores origin.kind=demo and reference_artifacts in project settings
 Frontend (TypeScript/React)
-New TypeScript Types (gui/src/types/qv.ts):
+New TypeScript Types (gui/src/types/qms.ts):
 get_reference_analysis command type
 AnalysisPanel Enhancements (gui/src/components/panels/AnalysisPanel.tsx):
 Fetches reference data alongside current data
@@ -7657,7 +7657,7 @@ Section 24.13: Reference Analysis for Demo Projects
 JSON file locations, schema, API usage, and GUI behavior
 
 
-You are working in the QuantumVITAS v2 repo (Python core + Typer CLI + Python daemon + Electron/React GUI + Playwright E2E).
+You are working in the QMatSuite v2 repo (Python core + Typer CLI + Python daemon + Electron/React GUI + Playwright E2E).
 You already know the architecture; if needed, briefly refresh GUI + analysis + demo sections in AI_understanding.md.
 We’re now in polish phase. Please think about UX/consistency first, then implement. I’ll outline requirements, not exact code.
 
@@ -7738,13 +7738,13 @@ Project actions always visible
 Under the read-only path, add three small buttons that are always visible regardless of current view:
 
 
-“Open Project…” (data-testid="qv-btn-open-project")
+“Open Project…” (data-testid="qms-btn-open-project")
 
 
-“Create New Project…” (data-testid="qv-btn-create-new-project")
+“Create New Project…” (data-testid="qms-btn-create-new-project")
 
 
-“Browse Demo Gallery…” (data-testid="qv-btn-demo-gallery")
+“Browse Demo Gallery…” (data-testid="qms-btn-demo-gallery")
 
 
 
@@ -8216,7 +8216,7 @@ All 28 tests passing
 Step 4: ResourceIndex everywhere ✅
 Updated find_structure_entry() and find_workflow_entry() to use ResourceIndex when available
 Updated CLI init_step_command to resolve structure_id and use step_id
-Updated QVService methods to use ResourceIndex via resolve_* functions
+Updated QMSService methods to use ResourceIndex via resolve_* functions
 All resolution now goes through ResourceIndex as the canonical source
 Step 5: Cleanup + documentation ✅
 Added section 28 to AI_understanding.md documenting:
@@ -8229,19 +8229,19 @@ Added test_resource_rename_safety.py with 4 tests verifying rename-safety
 Removed audit document (no longer needed)
 All 30 tests passing
 Key achievements
-No duplication: project.qv.yml stores only IDs for calculations/structures
+No duplication: project.qms.yml stores only IDs for calculations/structures
 Rename-safe: Renaming a resource only updates its own meta; all ID-based references remain valid
 Backwards compatible: Legacy YAML files are automatically migrated when loaded
 Single source of truth: ResourceIndex built from filesystem is authoritative for selector resolution
 Consistent: All cross-references use ULIDs, ensuring consistency across the codebase
 Files modified
-src/quantumvitas/core/models.py: ID-only serialization for entries and models
-src/quantumvitas/core/resolution.py: ResourceIndex implementation
-src/quantumvitas/core/project_utils.py: Updated find_*_entry to use ResourceIndex
-src/quantumvitas/workflow/structure_steps.py: ID-only structure references
-src/quantumvitas/api.py: Step creation uses step_id from meta
-src/quantumvitas/cli/main.py: Step creation resolves structure_id and uses step_id
-src/quantumvitas/project/snapshot.py: ID-only references in snapshots
+src/qmatsuite/core/models.py: ID-only serialization for entries and models
+src/qmatsuite/core/resolution.py: ResourceIndex implementation
+src/qmatsuite/core/project_utils.py: Updated find_*_entry to use ResourceIndex
+src/qmatsuite/workflow/structure_steps.py: ID-only structure references
+src/qmatsuite/api.py: Step creation uses step_id from meta
+src/qmatsuite/cli/main.py: Step creation resolves structure_id and uses step_id
+src/qmatsuite/project/snapshot.py: ID-only references in snapshots
 tests/unit/test_id_based_references.py: Updated for ID-only model
 tests/unit/test_project_snapshot.py: Updated for ID-only model
 tests/cli/test_graphene_workflow_setup.py: Updated for ID-only model
@@ -8254,13 +8254,13 @@ All tests pass. The codebase now uses ID-only cross-references with full backwar
 
 
 
-You just finished implementing ID-only cross-resource references in QuantumVITAS v2.
+You just finished implementing ID-only cross-resource references in QMatSuite v2.
 
 Recap of the intended invariants (do NOT change them, just check):
 
-- Each resource file (project.qv.yml, structures/*.json, calculations/**/calculation.yaml, steps/*.step.yaml) keeps its own full meta: { id (ULID), name, slug, path }.
+- Each resource file (project.qms.yml, structures/*.json, calculations/**/calculation.yaml, steps/*.step.yaml) keeps its own full meta: { id (ULID), name, slug, path }.
 - All cross-resource references must be ID-only:
-  - project.qv.yml only stores structure_ids and workflow_ids.
+  - project.qms.yml only stores structure_ids and workflow_ids.
   - calculation.yaml only stores structure_id and step_ids.
   - step YAML only stores structure_id and parent_calculation_id.
 - ResourceIndex is the canonical way to resolve selectors (user-facing name/slug/path) → IDs/files.
@@ -8280,7 +8280,7 @@ Please do a focused consistency sweep (no big refactors, just checks):
 
 2. Verify that:
    - All CLI resolution of --workflow / --structure selectors uses ResourceIndex or helper functions built on top of it.
-   - All QVService methods that resolve calculations/structures/steps use resolve_* helpers that go through ResourceIndex.
+   - All QMSService methods that resolve calculations/structures/steps use resolve_* helpers that go through ResourceIndex.
 
 3. Verify legacy migration:
    - Find all places that load old YAML formats (with name/slug/path references).

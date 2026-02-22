@@ -30,7 +30,7 @@ All quick adds, Phase 2 (K_POINTS Common Card), and Phase 3 (PSEUDO Common Card)
 
 ### Backend (Python)
 
-1. **K_POINTS View Model Module** (`src/quantumvitas/calculation/k_points_view.py`)
+1. **K_POINTS View Model Module** (`src/qmatsuite/calculation/k_points_view.py`)
    - `KPointsViewModel` dataclass with mode, automatic, points, warnings
    - `parse_k_points(raw: str)` - Parses raw QE text to view model
    - `format_k_points(view_model)` - Formats view model to canonical QE text
@@ -38,25 +38,25 @@ All quick adds, Phase 2 (K_POINTS Common Card), and Phase 3 (PSEUDO Common Card)
    - `k_points_to_card_data()` - Converts raw text to YAML card data
    - Supports: gamma, automatic, tpiba, crystal, tpiba_b, crystal_b, tpiba_c, crystal_c, custom
 
-2. **QVService Methods** (`src/quantumvitas/api.py`)
+2. **QMSService Methods** (`src/qmatsuite/api.py`)
    - `get_common_cards()` - Returns view models for all common cards
    - `set_common_card()` - Updates card from view model, writes YAML as string
 
-3. **RPC Handlers** (`src/quantumvitas/daemon/server.py`)
+3. **RPC Handlers** (`src/qmatsuite/daemon/server.py`)
    - `get_common_cards` RPC handler
    - `set_common_card` RPC handler
    - Registered in `_handlers` dict
 
 ### Frontend (TypeScript/React)
 
-1. **TypeScript Types** (`gui/src/types/qv.ts`)
-   - Added `get_common_cards` and `set_common_card` to QVCommandMap
+1. **TypeScript Types** (`gui/src/types/qms.ts`)
+   - Added `get_common_cards` and `set_common_card` to QMSCommandMap
    - Type-safe view model types
 
-2. **RPC Client** (`gui/src/hooks/useQVClient.ts`)
+2. **RPC Client** (`gui/src/hooks/useQMSClient.ts`)
    - Added `getCommonCards()` method
    - Added `setCommonCard()` method
-   - Added to QVClient interface
+   - Added to QMSClient interface
 
 3. **CommonCardKPoints Component** (`gui/src/components/common_cards/CommonCardKPoints.tsx`)
    - Mode dropdown (gamma, automatic, tpiba, crystal, etc.)
@@ -76,25 +76,25 @@ All quick adds, Phase 2 (K_POINTS Common Card), and Phase 3 (PSEUDO Common Card)
 
 ### Backend (Python)
 
-1. **QVService Methods** (`src/quantumvitas/api.py`)
+1. **QMSService Methods** (`src/qmatsuite/api.py`)
    - `get_pseudo_mapping()` - Returns species list, current mapping, pseudo_dir, available pseudos, warnings
    - `set_pseudo_mapping()` - Updates species_overrides and CONTROL.pseudo_dir, writes YAML as string
 
-2. **RPC Handlers** (`src/quantumvitas/daemon/server.py`)
+2. **RPC Handlers** (`src/qmatsuite/daemon/server.py`)
    - `get_pseudo_mapping` RPC handler
    - `set_pseudo_mapping` RPC handler
    - Registered in `_handlers` dict
 
 ### Frontend (TypeScript/React)
 
-1. **TypeScript Types** (`gui/src/types/qv.ts`)
-   - Added `get_pseudo_mapping` and `set_pseudo_mapping` to QVCommandMap
+1. **TypeScript Types** (`gui/src/types/qms.ts`)
+   - Added `get_pseudo_mapping` and `set_pseudo_mapping` to QMSCommandMap
    - Type-safe mapping types
 
-2. **RPC Client** (`gui/src/hooks/useQVClient.ts`)
+2. **RPC Client** (`gui/src/hooks/useQMSClient.ts`)
    - Added `getPseudoMapping()` method
    - Added `setPseudoMapping()` method
-   - Added to QVClient interface
+   - Added to QMSClient interface
 
 3. **CommonCardPseudo Component** (`gui/src/components/common_cards/CommonCardPseudo.tsx`)
    - Species → pseudopotential file mapping table
@@ -112,13 +112,13 @@ All quick adds, Phase 2 (K_POINTS Common Card), and Phase 3 (PSEUDO Common Card)
 ## Files Created/Modified
 
 ### Backend
-- `src/quantumvitas/calculation/k_points_view.py` (NEW)
-- `src/quantumvitas/api.py` (MODIFIED - added get_common_cards, set_common_card, get_pseudo_mapping, set_pseudo_mapping)
-- `src/quantumvitas/daemon/server.py` (MODIFIED - added RPC handlers)
+- `src/qmatsuite/calculation/k_points_view.py` (NEW)
+- `src/qmatsuite/api.py` (MODIFIED - added get_common_cards, set_common_card, get_pseudo_mapping, set_pseudo_mapping)
+- `src/qmatsuite/daemon/server.py` (MODIFIED - added RPC handlers)
 
 ### Frontend
-- `gui/src/types/qv.ts` (MODIFIED - added command types)
-- `gui/src/hooks/useQVClient.ts` (MODIFIED - added RPC methods)
+- `gui/src/types/qms.ts` (MODIFIED - added command types)
+- `gui/src/hooks/useQMSClient.ts` (MODIFIED - added RPC methods)
 - `gui/src/utils/qeStringUtils.ts` (MODIFIED - added displayScalar, storeEnumSelection, canonicalLogicalSelection)
 - `gui/src/hooks/useQEParameterMetadata.ts` (MODIFIED - added refresh method)
 - `gui/src/components/common_cards/CommonCardKPoints.tsx` (NEW)

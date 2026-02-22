@@ -10,13 +10,13 @@ import pytest
 import numpy as np
 from pymatgen.core import Structure, Lattice
 
-from quantumvitas.analysis.structure_viz import (
+from qmatsuite.analysis.structure_viz import (
     build_display_atoms,
     build_bonds,
     DisplayModeParams,
     canonicalize_structure_in_place,
 )
-from quantumvitas.analysis.atomic_radii import get_radii_map
+from qmatsuite.analysis.atomic_radii import get_radii_map
 
 
 def test_optimade_mos2_supercell_expansion():
@@ -400,7 +400,7 @@ def test_online_project_shared_pipeline():
     - build_display_atoms (unified)
     - build_bonds (from display atoms cart coords)
     """
-    from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
+    from qmatsuite.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
 
     # Build a test structure (simulating online structure)
     lattice_vectors = [
@@ -534,13 +534,13 @@ def test_online_vs_project_pipeline_identical():
     - Max bond length identical within tolerance
     - No long-bond spikes: maxBond < 6 Å AND maxDegree not exploding
     """
-    from quantumvitas.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
-    from quantumvitas.io.online_search import (
+    from qmatsuite.analysis.structure_viz import build_structure_vis_payload, DisplayModeParams
+    from qmatsuite.io.online_search import (
         OPTIMADE_BASES,
         fetch_structure_from_optimade,
         search_optimade,
     )
-    from quantumvitas.io.structure_io import write_structure, read_structure
+    from qmatsuite.io.structure_io import write_structure, read_structure
     import tempfile
     import numpy as np
     

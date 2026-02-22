@@ -61,7 +61,7 @@ This plan addresses two critical correctness issues in the preset system:
 
 ### Files Modified
 
-**1. `src/quantumvitas/presets/integration.py`**
+**1. `src/qmatsuite/presets/integration.py`**
 - Added `DIMENSION_OWNED_KEYS` mapping defining key ownership per dimension
 - Refactored `apply_presets_to_step`:
   - Compiles each dimension separately (not all at once)
@@ -70,7 +70,7 @@ This plan addresses two critical correctness issues in the preset system:
   - Preserves all other keys untouched
 - Added project root check before enabling precision detection (for test compatibility)
 
-**2. `src/quantumvitas/presets/detector.py`**
+**2. `src/qmatsuite/presets/detector.py`**
 - Updated `detect_dimension_from_steps`:
   - Removed silent CUSTOM fallback for precision detection errors
   - Added fallback to CUSTOM when precision context resolution fails (for test compatibility)
@@ -79,12 +79,12 @@ This plan addresses two critical correctness issues in the preset system:
   - Returns CUSTOM for precision when step_types/calculation_dir not provided
 - Updated type annotations: `List` → `list`, `Dict` → `dict`, `Tuple` → `tuple`
 
-**3. `src/quantumvitas/daemon/server.py`**
+**3. `src/qmatsuite/daemon/server.py`**
 - Updated `_handle_detect_presets`:
   - Catches `PrecisionContextError` and returns structured error response
   - No longer silently returns CUSTOM
 
-**4. `src/quantumvitas/presets/compiler.py`**
+**4. `src/qmatsuite/presets/compiler.py`**
 - Verified compiler functions return minimal dicts (already correct)
 - `compile_spin`: returns only `{"nspin": ..., "noncolin": ...}`
 - `compile_soc`: returns only `{"lspinorb": ...}`
@@ -138,9 +138,9 @@ except Exception:
 
 ### Import Sanity ✅
 ```bash
-python -c "import quantumvitas.presets"  # ✅ OK
-python -c "import quantumvitas.presets.detector"  # ✅ OK
-python -c "import quantumvitas.presets.integration"  # ✅ OK
+python -c "import qmatsuite.presets"  # ✅ OK
+python -c "import qmatsuite.presets.detector"  # ✅ OK
+python -c "import qmatsuite.presets.integration"  # ✅ OK
 ```
 
 ### Test Results ✅
@@ -168,6 +168,6 @@ python -m pytest tests/ -q --tb=no
 
 ## Notes
 
-- **Test Compatibility**: Tests without full project structure (no `project.qv.yml`) will return CUSTOM for precision instead of raising errors. This is intentional for test compatibility.
+- **Test Compatibility**: Tests without full project structure (no `project.qms.yml`) will return CUSTOM for precision instead of raising errors. This is intentional for test compatibility.
 - **Production Behavior**: In production (daemon handler), missing structure returns structured error response, not CUSTOM.
 - **Dimension Ownership**: The `DIMENSION_OWNED_KEYS` mapping is the single source of truth for which keys belong to which dimension.

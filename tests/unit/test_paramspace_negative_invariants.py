@@ -9,7 +9,7 @@ CUSTOM detection, ensuring strict reversibility.
 
 import pytest
 
-from quantumvitas.presets.dimensions import (
+from qmatsuite.presets.dimensions import (
     MagnetismOption,
     OccupationsSchemeOption,
     PrecisionOption,
@@ -44,7 +44,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("magnetism", "scf", modified_yaml)
         assert detected == MagnetismOption.COLLINEAR_LSDA
         
@@ -72,7 +72,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("magnetism", "scf", modified_yaml)
         assert detected == MagnetismOption.NONCOLLINEAR
         
@@ -101,7 +101,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("magnetism", "scf", modified_yaml)
         assert detected == MagnetismOption.NONCOLLINEAR_SOC
         
@@ -132,7 +132,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("occupations_scheme", "scf", modified_yaml)
         assert detected == OccupationsSchemeOption.FIXED
         
@@ -160,7 +160,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("occupations_scheme", "scf", modified_yaml)
         assert detected == OccupationsSchemeOption.SMEARING_GAUSSIAN
         
@@ -198,7 +198,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("precision", "scf", modified_yaml, precision_context=precision_context)
         assert detected == PrecisionOption.MED
         
@@ -236,7 +236,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("precision", "scf", modified_yaml, precision_context=precision_context)
         assert detected == PrecisionOption.MED
         
@@ -274,7 +274,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("precision", "scf", modified_yaml, precision_context=precision_context)
         assert detected == PrecisionOption.MED
         
@@ -311,7 +311,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("precision", "scf", modified_yaml, precision_context=precision_context)
         assert detected == PrecisionOption.MED
         
@@ -344,7 +344,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("convergence", "scf", modified_yaml)
         assert detected == ConvergenceOption.NORMAL
         
@@ -372,7 +372,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("convergence", "scf", modified_yaml)
         assert detected == ConvergenceOption.NORMAL
         
@@ -400,7 +400,7 @@ class TestNegativeInvariants:
         )
         
         # Verify initial detection
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         detected = detect_dimension_for_step("convergence", "scf", modified_yaml)
         assert detected == ConvergenceOption.NORMAL
         
@@ -421,9 +421,9 @@ class TestNegativeInvariants:
     def test_negative_qc_precision_mutate_conv_tol(self):
         """Mutate scf.conv_tol from MED (expects 1e-8) to 1e-7 → CUSTOM."""
         # For qc_precision, use full patch (includes all keys)
-        from quantumvitas.presets.qc_precision import get_qc_precision_paramspace
-        from quantumvitas.presets.paramspace import compile_profile_patch
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.qc_precision import get_qc_precision_paramspace
+        from qmatsuite.presets.paramspace import compile_profile_patch
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         from tests.utils.preset_helpers import _apply_patch_to_yaml
         
         space = get_qc_precision_paramspace()
@@ -450,9 +450,9 @@ class TestNegativeInvariants:
     def test_negative_qc_precision_mutate_max_cycle(self):
         """Mutate scf.max_cycle from MED (expects 100) to 150 → CUSTOM."""
         # For qc_precision, use full patch (includes all keys)
-        from quantumvitas.presets.qc_precision import get_qc_precision_paramspace
-        from quantumvitas.presets.paramspace import compile_profile_patch
-        from quantumvitas.presets.variants_registry import detect_dimension_for_step
+        from qmatsuite.presets.qc_precision import get_qc_precision_paramspace
+        from qmatsuite.presets.paramspace import compile_profile_patch
+        from qmatsuite.presets.variants_registry import detect_dimension_for_step
         from tests.utils.preset_helpers import _apply_patch_to_yaml
         
         space = get_qc_precision_paramspace()

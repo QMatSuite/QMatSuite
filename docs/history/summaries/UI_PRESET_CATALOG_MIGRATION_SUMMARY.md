@@ -2,13 +2,13 @@
 
 ## Overview
 
-Successfully migrated QuantumVITAS UI Presets Panel from hardcoded dimensions/options to a backend-driven catalog system. UI now derives all preset information from the backend variants registry, eliminating duplicate truth sources.
+Successfully migrated QMatSuite UI Presets Panel from hardcoded dimensions/options to a backend-driven catalog system. UI now derives all preset information from the backend variants registry, eliminating duplicate truth sources.
 
 ## Changes Made
 
 ### Part A — Backend RPC: `get_preset_catalog`
 
-**File**: `src/quantumvitas/presets/catalog.py` (NEW)
+**File**: `src/qmatsuite/presets/catalog.py` (NEW)
 - Created `get_preset_catalog()` function that generates catalog from variants registry
 - Catalog includes:
   - Dimensions with labels, descriptions, order
@@ -16,7 +16,7 @@ Successfully migrated QuantumVITAS UI Presets Panel from hardcoded dimensions/op
   - Default values
   - Scope information (variant step types or variant details)
 
-**File**: `src/quantumvitas/daemon/server.py`
+**File**: `src/qmatsuite/daemon/server.py`
 - Added `_handle_get_preset_catalog()` RPC handler
 - Updated `_handle_detect_presets()` to return `dimension_states` instead of `presets`
 - Updated `_handle_apply_presets_to_calculation()` to return `dimension_states` instead of `presets`
@@ -45,7 +45,7 @@ Successfully migrated QuantumVITAS UI Presets Panel from hardcoded dimensions/op
 - Updated `applyPreset` to accept any dimension string
 - Updated to use `dimension_states` from backend responses
 
-**File**: `gui/src/types/qv.ts`
+**File**: `gui/src/types/qms.ts`
 - Added `get_preset_catalog` RPC type definition
 - Updated `PresetDetectionResult` to return `dimension_states`
 - Updated `ApplyPresetsToCalcResult` to return `dimension_states`
@@ -148,14 +148,14 @@ Successfully migrated QuantumVITAS UI Presets Panel from hardcoded dimensions/op
 ## Files Modified
 
 ### Backend
-1. `src/quantumvitas/presets/catalog.py` (NEW)
-2. `src/quantumvitas/daemon/server.py`
+1. `src/qmatsuite/presets/catalog.py` (NEW)
+2. `src/qmatsuite/daemon/server.py`
 
 ### Frontend
 1. `gui/src/hooks/usePresetCatalog.ts` (NEW)
 2. `gui/src/components/presets/PresetSection.tsx` (REWRITTEN)
 3. `gui/src/hooks/usePresets.ts`
-4. `gui/src/types/qv.ts`
+4. `gui/src/types/qms.ts`
 
 ## RPC Protocol Changes
 

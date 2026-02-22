@@ -13,31 +13,31 @@
 
 ```bash
 # Check for forbidden kernel imports in CLI
-rg -n "^from quantumvitas\.(core|calculation|analysis|engine|project|execution|presets|workflow|ir|drivers|io|parsers|viz|legacy|data|history)" src/quantumvitas/cli/ src/quantumvitas/daemon/
+rg -n "^from qmatsuite\.(core|calculation|analysis|engine|project|execution|presets|workflow|ir|drivers|io|parsers|viz|legacy|data|history)" src/qmatsuite/cli/ src/qmatsuite/daemon/
 
 # Check for forbidden kernel imports (import statement style)
-rg -n "^import quantumvitas\.(core|calculation|analysis|engine|project|execution|presets|workflow|ir|drivers|io|parsers|viz|legacy|data|history)" src/quantumvitas/cli/ src/quantumvitas/daemon/
+rg -n "^import qmatsuite\.(core|calculation|analysis|engine|project|execution|presets|workflow|ir|drivers|io|parsers|viz|legacy|data|history)" src/qmatsuite/cli/ src/qmatsuite/daemon/
 ```
 
 ### Results
 
-**CLI (`src/quantumvitas/cli/main.py`)**:
+**CLI (`src/qmatsuite/cli/main.py`)**:
 - ✅ **PASS**: Zero forbidden imports found
-- All imports are from `quantumvitas.api.*` or `quantumvitas.api.utils.*` or `quantumvitas.api.qe_io.*`
-- Lines 26-33: Imports from `quantumvitas.api` only
-- Lines 34-54: Imports from `quantumvitas.api.utils` only
-- Line 63: Imports from `quantumvitas.api.qe_io` only
+- All imports are from `qmatsuite.api.*` or `qmatsuite.api.utils.*` or `qmatsuite.api.qe_io.*`
+- Lines 26-33: Imports from `qmatsuite.api` only
+- Lines 34-54: Imports from `qmatsuite.api.utils` only
+- Line 63: Imports from `qmatsuite.api.qe_io` only
 
-**Daemon (`src/quantumvitas/daemon/server.py`)**:
+**Daemon (`src/qmatsuite/daemon/server.py`)**:
 - ✅ **PASS**: Zero forbidden imports found
-- All imports are from `quantumvitas.api.*` or `quantumvitas.api.utils.*` or `quantumvitas.daemon.jobs.*`
-- Line 31: `from quantumvitas.api import QVService, APIError, get_service`
-- Lines 32-78: Imports from `quantumvitas.api.utils` only
-- Line 79: `from quantumvitas.daemon.jobs import JobManager, JobStatus`
+- All imports are from `qmatsuite.api.*` or `qmatsuite.api.utils.*` or `qmatsuite.daemon.jobs.*`
+- Line 31: `from qmatsuite.api import QMSService, APIError, get_service`
+- Lines 32-78: Imports from `qmatsuite.api.utils` only
+- Line 79: `from qmatsuite.daemon.jobs import JobManager, JobStatus`
 
 ### Conclusion
 
-**✅ GOAL 1 PASS**: CLI and daemon do NOT import any kernel modules directly. They import ONLY from `quantumvitas.api.*` (plus stdlib/third-party).
+**✅ GOAL 1 PASS**: CLI and daemon do NOT import any kernel modules directly. They import ONLY from `qmatsuite.api.*` (plus stdlib/third-party).
 
 ---
 
@@ -49,11 +49,11 @@ rg -n "^import quantumvitas\.(core|calculation|analysis|engine|project|execution
 
 | File:Line | Call | Classification | Analysis |
 |-----------|------|----------------|----------|
-| `cli/main.py:1257` | `QVService.generate_kpath(...)` | **GLOBAL OK** | Pure utility, no project_root needed |
-| `cli/main.py:1276` | `QVService.get_default_step_params(step_type)` | **GLOBAL OK** | Pure utility, no project_root needed |
-| `cli/main.py:1753` | `QVService.run_step(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes `project_root`, has logic, calls kernel directly |
-| `cli/main.py:3656` | `QVService.configure_species_map(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes `project_root`, delegates to kernel but not to instance method |
-| `cli/main.py:4010` | `QVService.run_calculation(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes `project_root`, has logic, calls kernel directly |
+| `cli/main.py:1257` | `QMSService.generate_kpath(...)` | **GLOBAL OK** | Pure utility, no project_root needed |
+| `cli/main.py:1276` | `QMSService.get_default_step_params(step_type)` | **GLOBAL OK** | Pure utility, no project_root needed |
+| `cli/main.py:1753` | `QMSService.run_step(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes `project_root`, has logic, calls kernel directly |
+| `cli/main.py:3656` | `QMSService.configure_species_map(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes `project_root`, delegates to kernel but not to instance method |
+| `cli/main.py:4010` | `QMSService.run_calculation(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes `project_root`, has logic, calls kernel directly |
 | `cli/main.py:57` | Comment only | N/A | Documentation reference |
 
 **CLI Violations**: 3 project-scoped static calls that should use instance methods.
@@ -62,47 +62,47 @@ rg -n "^import quantumvitas\.(core|calculation|analysis|engine|project|execution
 
 | File:Line | Call | Classification | Analysis |
 |-----------|------|----------------|----------|
-| `daemon/server.py:237` | `QVService.get_settings()` | **GLOBAL OK** | Global user settings, no project_root |
-| `daemon/server.py:1424` | `QVService.get_settings()` | **GLOBAL OK** | Global user settings |
-| `daemon/server.py:3046` | `QVService.get_settings()` | **GLOBAL OK** | Global user settings |
-| `daemon/server.py:4347` | `QVService.get_settings()` | **GLOBAL OK** | Global user settings |
-| `daemon/server.py:845` | `QVService.init_pseudo_dirs()` | **GLOBAL OK** | Global pseudo config, no project_root |
-| `daemon/server.py:1073` | `QVService.list_pseudo_libraries()` | **GLOBAL OK** | Global pseudo libraries |
-| `daemon/server.py:1096` | `QVService.get_library_status(...)` | **GLOBAL OK** | Global pseudo library status |
-| `daemon/server.py:1135` | `QVService.install_pseudo_library(...)` | **GLOBAL OK** | Global pseudo library install |
-| `daemon/server.py:1164` | `QVService.remove_pseudo_library(...)` | **GLOBAL OK** | Global pseudo library removal |
-| `daemon/server.py:1187` | `QVService.repair_pseudo_library(...)` | **GLOBAL OK** | Global pseudo library repair |
-| `daemon/server.py:1198` | `QVService.compute_store_size()` | **GLOBAL OK** | Global pseudo store size |
-| `daemon/server.py:1331` | `QVService.is_pseudo_archive_installed(...)` | **GLOBAL OK** | Global pseudo archive check |
-| `daemon/server.py:1354` | `QVService.install_pseudo_archive(...)` | **GLOBAL OK** | Global pseudo archive install |
-| `daemon/server.py:889` | `QVService.install_sssp_from_seed(...)` | **GLOBAL OK** | Global SSSP install |
-| `daemon/server.py:893` | `QVService.install_all_sssp_from_seed(...)` | **GLOBAL OK** | Global SSSP install |
-| `daemon/server.py:974` | `QVService.download_sssp_library(...)` | **GLOBAL OK** | Global SSSP download |
-| `daemon/server.py:1018` | `QVService.download_all_sssp(...)` | **GLOBAL OK** | Global SSSP download |
-| `daemon/server.py:1062` | `QVService.import_seed_archives(...)` | **GLOBAL OK** | Global seed import |
-| `daemon/server.py:2077` | `QVService.init_project(...)` | **GLOBAL OK** | Creates new project (no project_root yet) |
-| `daemon/server.py:4634` | `QVService.create_demo_project(...)` | **GLOBAL OK** | Creates new project |
-| `daemon/server.py:4657` | `QVService.list_demo_projects()` | **GLOBAL OK** | Lists demos (no project_root needed) |
-| `daemon/server.py:6300` | `QVService.get_workflow_service()` | **GLOBAL OK** | Returns service object |
-| `daemon/server.py:6334` | `QVService.get_workflow_service()` | **GLOBAL OK** | Returns service object |
-| `daemon/server.py:6417` | `QVService.get_workflow_service()` | **GLOBAL OK** | Returns service object |
-| `daemon/server.py:6488` | `QVService.get_workflow_service()` | **GLOBAL OK** | Returns service object |
-| `daemon/server.py:1998` | `QVService.get_project_summary(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:2089` | `QVService.get_project_summary(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic |
-| `daemon/server.py:2010` | `QVService.list_structures_data(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:2124` | `QVService.list_structures_data(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic |
-| `daemon/server.py:2023` | `QVService.list_calculations_data(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:2776` | `QVService.list_calculations_data(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic |
-| `daemon/server.py:2116` | `QVService.import_structure(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:2766` | `QVService.init_calculation(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:3209` | `QVService.promote_relax_structure(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:3600` | `QVService.save_relax_final_structure(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:4461` | `QVService.analyze_project_pseudo_effects(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:4486` | `QVService.materialize_pseudo_file(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:4576` | `QVService.get_pseudo_options_for_elements(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:5320` | `func=QVService.run_calculation` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:5391` | `func=QVService.run_step` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
-| `daemon/server.py:5446` | `func=QVService.run_single_step` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:237` | `QMSService.get_settings()` | **GLOBAL OK** | Global user settings, no project_root |
+| `daemon/server.py:1424` | `QMSService.get_settings()` | **GLOBAL OK** | Global user settings |
+| `daemon/server.py:3046` | `QMSService.get_settings()` | **GLOBAL OK** | Global user settings |
+| `daemon/server.py:4347` | `QMSService.get_settings()` | **GLOBAL OK** | Global user settings |
+| `daemon/server.py:845` | `QMSService.init_pseudo_dirs()` | **GLOBAL OK** | Global pseudo config, no project_root |
+| `daemon/server.py:1073` | `QMSService.list_pseudo_libraries()` | **GLOBAL OK** | Global pseudo libraries |
+| `daemon/server.py:1096` | `QMSService.get_library_status(...)` | **GLOBAL OK** | Global pseudo library status |
+| `daemon/server.py:1135` | `QMSService.install_pseudo_library(...)` | **GLOBAL OK** | Global pseudo library install |
+| `daemon/server.py:1164` | `QMSService.remove_pseudo_library(...)` | **GLOBAL OK** | Global pseudo library removal |
+| `daemon/server.py:1187` | `QMSService.repair_pseudo_library(...)` | **GLOBAL OK** | Global pseudo library repair |
+| `daemon/server.py:1198` | `QMSService.compute_store_size()` | **GLOBAL OK** | Global pseudo store size |
+| `daemon/server.py:1331` | `QMSService.is_pseudo_archive_installed(...)` | **GLOBAL OK** | Global pseudo archive check |
+| `daemon/server.py:1354` | `QMSService.install_pseudo_archive(...)` | **GLOBAL OK** | Global pseudo archive install |
+| `daemon/server.py:889` | `QMSService.install_sssp_from_seed(...)` | **GLOBAL OK** | Global SSSP install |
+| `daemon/server.py:893` | `QMSService.install_all_sssp_from_seed(...)` | **GLOBAL OK** | Global SSSP install |
+| `daemon/server.py:974` | `QMSService.download_sssp_library(...)` | **GLOBAL OK** | Global SSSP download |
+| `daemon/server.py:1018` | `QMSService.download_all_sssp(...)` | **GLOBAL OK** | Global SSSP download |
+| `daemon/server.py:1062` | `QMSService.import_seed_archives(...)` | **GLOBAL OK** | Global seed import |
+| `daemon/server.py:2077` | `QMSService.init_project(...)` | **GLOBAL OK** | Creates new project (no project_root yet) |
+| `daemon/server.py:4634` | `QMSService.create_demo_project(...)` | **GLOBAL OK** | Creates new project |
+| `daemon/server.py:4657` | `QMSService.list_demo_projects()` | **GLOBAL OK** | Lists demos (no project_root needed) |
+| `daemon/server.py:6300` | `QMSService.get_workflow_service()` | **GLOBAL OK** | Returns service object |
+| `daemon/server.py:6334` | `QMSService.get_workflow_service()` | **GLOBAL OK** | Returns service object |
+| `daemon/server.py:6417` | `QMSService.get_workflow_service()` | **GLOBAL OK** | Returns service object |
+| `daemon/server.py:6488` | `QMSService.get_workflow_service()` | **GLOBAL OK** | Returns service object |
+| `daemon/server.py:1998` | `QMSService.get_project_summary(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:2089` | `QMSService.get_project_summary(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic |
+| `daemon/server.py:2010` | `QMSService.list_structures_data(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:2124` | `QMSService.list_structures_data(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic |
+| `daemon/server.py:2023` | `QMSService.list_calculations_data(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:2776` | `QMSService.list_calculations_data(project_root)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic |
+| `daemon/server.py:2116` | `QMSService.import_structure(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:2766` | `QMSService.init_calculation(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:3209` | `QMSService.promote_relax_structure(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:3600` | `QMSService.save_relax_final_structure(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:4461` | `QMSService.analyze_project_pseudo_effects(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:4486` | `QMSService.materialize_pseudo_file(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:4576` | `QMSService.get_pseudo_options_for_elements(...)` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:5320` | `func=QMSService.run_calculation` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:5391` | `func=QMSService.run_step` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
+| `daemon/server.py:5446` | `func=QMSService.run_single_step` | **PROJECT-SCOPED (VIOLATION)** | Takes project_root, has logic, calls kernel directly |
 
 **Daemon Violations**: 15 project-scoped static calls that should use instance methods.
 
@@ -122,7 +122,7 @@ rg -n "^import quantumvitas\.(core|calculation|analysis|engine|project|execution
 | `import_structure(project_root, ...)` | `api/service.py:6779` | ❌ **NO** | Has logic: calls kernel modules directly, creates files |
 | `promote_relax_structure(project_root, ...)` | `api/service.py:6898` | ❌ **NO** | Has logic: calls kernel modules directly |
 | `save_relax_final_structure(project_root, ...)` | `api/service.py:7206` | ❌ **NO** | Has logic: calls kernel modules directly, creates files |
-| `configure_species_map(project_root, ...)` | `api/service.py:6977` | ⚠️ **PARTIAL** | Delegates to `quantumvitas.calculation.species_config.configure_species_map` but not to instance method |
+| `configure_species_map(project_root, ...)` | `api/service.py:6977` | ⚠️ **PARTIAL** | Delegates to `qmatsuite.calculation.species_config.configure_species_map` but not to instance method |
 | `analyze_project_pseudo_effects(project_root, ...)` | `api/service.py:7693` | ❌ **NO** | Has logic: calls kernel modules directly |
 | `materialize_pseudo_file(project_root, ...)` | `api/service.py:7748` | ❌ **NO** | Has logic: calls kernel modules directly |
 | `get_pseudo_options_for_elements(project_root, ...)` | `api/service.py:7775` | ❌ **NO** | Has logic: calls kernel modules directly |
@@ -346,19 +346,19 @@ See Section B for detailed analysis. Summary:
 
 | Handler | Current Implementation | Should Use | Status |
 |---------|----------------------|------------|--------|
-| `_handle_get_project_summary` | `QVService.get_project_summary(project_root)` | `get_service(project_root).project.get_summary()` | ❌ VIOLATION |
-| `_handle_list_structures` | `QVService.list_structures_data(project_root)` | `get_service(project_root).structure.list()` | ❌ VIOLATION |
-| `_handle_list_calculations` | `QVService.list_calculations_data(project_root)` | `get_service(project_root).calculation.list()` | ❌ VIOLATION |
-| `_handle_import_structure` | `QVService.import_structure(...)` | `get_service(project_root).structure.import_file(...)` | ❌ VIOLATION |
-| `_handle_init_calculation` | `QVService.init_calculation(...)` | `get_service(project_root).calculation.init(...)` | ❌ VIOLATION |
-| `_handle_run_calculation` | `func=QVService.run_calculation` | `get_service(project_root).run.calculation(...)` | ❌ VIOLATION |
-| `_handle_run_step` | `func=QVService.run_step` | `get_service(project_root).run.step(...)` | ❌ VIOLATION |
-| `_handle_run_single_step` | `func=QVService.run_single_step` | Instance method (TBD) | ❌ VIOLATION |
-| `_handle_promote_relax_structure` | `QVService.promote_relax_structure(...)` | Instance method (TBD) | ❌ VIOLATION |
-| `_handle_save_relax_final_structure` | `QVService.save_relax_final_structure(...)` | Instance method (TBD) | ❌ VIOLATION |
-| `_handle_analyze_project_pseudo_effects` | `QVService.analyze_project_pseudo_effects(...)` | Instance method (TBD) | ❌ VIOLATION |
-| `_handle_materialize_pseudo_file` | `QVService.materialize_pseudo_file(...)` | Instance method (TBD) | ❌ VIOLATION |
-| `_handle_get_pseudo_options_for_elements` | `QVService.get_pseudo_options_for_elements(...)` | Instance method (TBD) | ❌ VIOLATION |
+| `_handle_get_project_summary` | `QMSService.get_project_summary(project_root)` | `get_service(project_root).project.get_summary()` | ❌ VIOLATION |
+| `_handle_list_structures` | `QMSService.list_structures_data(project_root)` | `get_service(project_root).structure.list()` | ❌ VIOLATION |
+| `_handle_list_calculations` | `QMSService.list_calculations_data(project_root)` | `get_service(project_root).calculation.list()` | ❌ VIOLATION |
+| `_handle_import_structure` | `QMSService.import_structure(...)` | `get_service(project_root).structure.import_file(...)` | ❌ VIOLATION |
+| `_handle_init_calculation` | `QMSService.init_calculation(...)` | `get_service(project_root).calculation.init(...)` | ❌ VIOLATION |
+| `_handle_run_calculation` | `func=QMSService.run_calculation` | `get_service(project_root).run.calculation(...)` | ❌ VIOLATION |
+| `_handle_run_step` | `func=QMSService.run_step` | `get_service(project_root).run.step(...)` | ❌ VIOLATION |
+| `_handle_run_single_step` | `func=QMSService.run_single_step` | Instance method (TBD) | ❌ VIOLATION |
+| `_handle_promote_relax_structure` | `QMSService.promote_relax_structure(...)` | Instance method (TBD) | ❌ VIOLATION |
+| `_handle_save_relax_final_structure` | `QMSService.save_relax_final_structure(...)` | Instance method (TBD) | ❌ VIOLATION |
+| `_handle_analyze_project_pseudo_effects` | `QMSService.analyze_project_pseudo_effects(...)` | Instance method (TBD) | ❌ VIOLATION |
+| `_handle_materialize_pseudo_file` | `QMSService.materialize_pseudo_file(...)` | Instance method (TBD) | ❌ VIOLATION |
+| `_handle_get_pseudo_options_for_elements` | `QMSService.get_pseudo_options_for_elements(...)` | Instance method (TBD) | ❌ VIOLATION |
 
 **Count**: 13 handlers use static methods (violations).
 
@@ -408,32 +408,32 @@ See Section B for detailed analysis. Summary:
 **Changes**:
 
 1. **`get_project_summary(project_root)`** → Delegate to `get_service(project_root).project.get_summary()`
-   - **File**: `src/quantumvitas/api/service.py:6104`
+   - **File**: `src/qmatsuite/api/service.py:6104`
    - **Action**: Add `get_summary()` to `Project` subservice, make static delegate to it
    - **Test**: `pytest tests/unit/test_api_service.py::test_project_get_summary`
 
 2. **`list_structures_data(project_root)`** → Delegate to `get_service(project_root).structure.list()`
-   - **File**: `src/quantumvitas/api/service.py:6167`
+   - **File**: `src/qmatsuite/api/service.py:6167`
    - **Action**: Make static delegate to `svc.structure.list()` (method already exists)
    - **Test**: `pytest tests/unit/test_api_service.py::test_structure_list`
 
 3. **`list_calculations_data(project_root)`** → Delegate to `get_service(project_root).calculation.list()`
-   - **File**: `src/quantumvitas/api/service.py:6227`
+   - **File**: `src/qmatsuite/api/service.py:6227`
    - **Action**: Make static delegate to `svc.calculation.list()` (method already exists)
    - **Test**: `pytest tests/unit/test_api_service.py::test_calculation_list`
 
 4. **`import_structure(project_root, ...)`** → Delegate to `get_service(project_root).structure.import_file(...)`
-   - **File**: `src/quantumvitas/api/service.py:6779`
+   - **File**: `src/qmatsuite/api/service.py:6779`
    - **Action**: Make static delegate to `svc.structure.import_file()` (method already exists)
    - **Test**: `pytest tests/unit/test_api_service.py::test_structure_import_file`
 
 5. **`run_calculation(project_root, ...)`** → Delegate to `get_service(project_root).run.calculation(...)`
-   - **File**: `src/quantumvitas/api/service.py:6552`
+   - **File**: `src/qmatsuite/api/service.py:6552`
    - **Action**: Make static delegate to `svc.run.calculation()` (method already exists, may need signature adjustment)
    - **Test**: `pytest tests/unit/test_api_service.py::test_run_calculation`
 
 6. **`run_step(project_root, ...)`** → Delegate to `get_service(project_root).run.step(...)`
-   - **File**: `src/quantumvitas/api/service.py:6649`
+   - **File**: `src/qmatsuite/api/service.py:6649`
    - **Action**: Make static delegate to `svc.run.step()` (method already exists, may need signature adjustment)
    - **Test**: `pytest tests/unit/test_api_service.py::test_run_step`
 
@@ -447,37 +447,37 @@ See Section B for detailed analysis. Summary:
 **Changes**:
 
 1. **Add `project.init_calculation(...)`** → Instance method for `init_calculation()`
-   - **File**: `src/quantumvitas/api/service.py:5011` (Project subservice)
+   - **File**: `src/qmatsuite/api/service.py:5011` (Project subservice)
    - **Action**: Add `init_calculation(name, structure_selector, template)` method
    - **Test**: `pytest tests/unit/test_api_service.py::test_project_init_calculation`
 
 2. **Add `structure.promote_relax_structure(...)`** → Instance method for `promote_relax_structure()`
-   - **File**: `src/quantumvitas/api/service.py:1571` (Structure subservice)
+   - **File**: `src/qmatsuite/api/service.py:1571` (Structure subservice)
    - **Action**: Add method that wraps static logic
    - **Test**: `pytest tests/unit/test_api_service.py::test_structure_promote_relax`
 
 3. **Add `structure.save_relax_final_structure(...)`** → Instance method for `save_relax_final_structure()`
-   - **File**: `src/quantumvitas/api/service.py:1571` (Structure subservice)
+   - **File**: `src/qmatsuite/api/service.py:1571` (Structure subservice)
    - **Action**: Add method that wraps static logic
    - **Test**: `pytest tests/unit/test_api_service.py::test_structure_save_relax_final`
 
 4. **Add `project.analyze_pseudo_effects(...)`** → Instance method for `analyze_project_pseudo_effects()`
-   - **File**: `src/quantumvitas/api/service.py:5011` (Project subservice)
+   - **File**: `src/qmatsuite/api/service.py:5011` (Project subservice)
    - **Action**: Add method that wraps static logic
    - **Test**: `pytest tests/unit/test_api_service.py::test_project_analyze_pseudo_effects`
 
 5. **Add `project.materialize_pseudo_file(...)`** → Instance method for `materialize_pseudo_file()`
-   - **File**: `src/quantumvitas/api/service.py:5011` (Project subservice)
+   - **File**: `src/qmatsuite/api/service.py:5011` (Project subservice)
    - **Action**: Add method that wraps static logic
    - **Test**: `pytest tests/unit/test_api_service.py::test_project_materialize_pseudo_file`
 
 6. **Add `project.get_pseudo_options(...)`** → Instance method for `get_pseudo_options_for_elements()`
-   - **File**: `src/quantumvitas/api/service.py:5011` (Project subservice)
+   - **File**: `src/qmatsuite/api/service.py:5011` (Project subservice)
    - **Action**: Add method that wraps static logic
    - **Test**: `pytest tests/unit/test_api_service.py::test_project_get_pseudo_options`
 
 7. **Add `run.run_single_step(...)`** → Instance method for `run_single_step()`
-   - **File**: `src/quantumvitas/api/service.py:4322` (Run subservice)
+   - **File**: `src/qmatsuite/api/service.py:4322` (Run subservice)
    - **Action**: Add method (may be same as `run_step()`)
    - **Test**: `pytest tests/unit/test_api_service.py::test_run_single_step`
 
@@ -491,38 +491,38 @@ See Section B for detailed analysis. Summary:
 **Changes**:
 
 1. **`_handle_get_project_summary`** → Use `svc.project.get_summary()`
-   - **File**: `src/quantumvitas/daemon/server.py:1998, 2089`
-   - **Action**: Replace `QVService.get_project_summary(project_root)` with `get_service(project_root).project.get_summary()`
+   - **File**: `src/qmatsuite/daemon/server.py:1998, 2089`
+   - **Action**: Replace `QMSService.get_project_summary(project_root)` with `get_service(project_root).project.get_summary()`
    - **Test**: `pytest tests/integration/test_daemon.py::test_get_project_summary`
 
 2. **`_handle_list_structures`** → Use `svc.structure.list()`
-   - **File**: `src/quantumvitas/daemon/server.py:2010, 2124`
-   - **Action**: Replace `QVService.list_structures_data(project_root)` with `get_service(project_root).structure.list()`
+   - **File**: `src/qmatsuite/daemon/server.py:2010, 2124`
+   - **Action**: Replace `QMSService.list_structures_data(project_root)` with `get_service(project_root).structure.list()`
    - **Test**: `pytest tests/integration/test_daemon.py::test_list_structures`
 
 3. **`_handle_list_calculations`** → Use `svc.calculation.list()`
-   - **File**: `src/quantumvitas/daemon/server.py:2023, 2776`
-   - **Action**: Replace `QVService.list_calculations_data(project_root)` with `get_service(project_root).calculation.list()`
+   - **File**: `src/qmatsuite/daemon/server.py:2023, 2776`
+   - **Action**: Replace `QMSService.list_calculations_data(project_root)` with `get_service(project_root).calculation.list()`
    - **Test**: `pytest tests/integration/test_daemon.py::test_list_calculations`
 
 4. **`_handle_import_structure`** → Use `svc.structure.import_file()`
-   - **File**: `src/quantumvitas/daemon/server.py:2116`
-   - **Action**: Replace `QVService.import_structure(...)` with `get_service(project_root).structure.import_file(...)`
+   - **File**: `src/qmatsuite/daemon/server.py:2116`
+   - **Action**: Replace `QMSService.import_structure(...)` with `get_service(project_root).structure.import_file(...)`
    - **Test**: `pytest tests/integration/test_daemon.py::test_import_structure`
 
 5. **`_handle_init_calculation`** → Use `svc.project.init_calculation()` (after Batch 2)
-   - **File**: `src/quantumvitas/daemon/server.py:2766`
-   - **Action**: Replace `QVService.init_calculation(...)` with `get_service(project_root).project.init_calculation(...)`
+   - **File**: `src/qmatsuite/daemon/server.py:2766`
+   - **Action**: Replace `QMSService.init_calculation(...)` with `get_service(project_root).project.init_calculation(...)`
    - **Test**: `pytest tests/integration/test_daemon.py::test_init_calculation`
 
 6. **`_handle_run_calculation`** → Use `svc.run.calculation()` (after Batch 1)
-   - **File**: `src/quantumvitas/daemon/server.py:5320`
-   - **Action**: Replace `func=QVService.run_calculation` with `get_service(project_root).run.calculation(...)`
+   - **File**: `src/qmatsuite/daemon/server.py:5320`
+   - **Action**: Replace `func=QMSService.run_calculation` with `get_service(project_root).run.calculation(...)`
    - **Test**: `pytest tests/integration/test_daemon.py::test_run_calculation`
 
 7. **`_handle_run_step`** → Use `svc.run.step()` (after Batch 1)
-   - **File**: `src/quantumvitas/daemon/server.py:5391`
-   - **Action**: Replace `func=QVService.run_step` with `get_service(project_root).run.step(...)`
+   - **File**: `src/qmatsuite/daemon/server.py:5391`
+   - **Action**: Replace `func=QMSService.run_step` with `get_service(project_root).run.step(...)`
    - **Test**: `pytest tests/integration/test_daemon.py::test_run_step`
 
 8. **Remaining 6 handlers** → Migrate after Batch 2 adds missing instance methods
@@ -539,18 +539,18 @@ See Section B for detailed analysis. Summary:
 **Changes**:
 
 1. **`run_step` command** → Use `svc.run.step()` (after Batch 1)
-   - **File**: `src/quantumvitas/cli/main.py:1753`
-   - **Action**: Replace `QVService.run_step(...)` with `get_service(project_root).run.step(...)`
+   - **File**: `src/qmatsuite/cli/main.py:1753`
+   - **Action**: Replace `QMSService.run_step(...)` with `get_service(project_root).run.step(...)`
    - **Test**: `pytest tests/integration/test_cli.py::test_run_step`
 
 2. **`configure_species_map` command** → Use instance method (after adding to Calculation subservice)
-   - **File**: `src/quantumvitas/cli/main.py:3656`
-   - **Action**: Replace `QVService.configure_species_map(...)` with `get_service(project_root).calculation.configure_species_map(...)`
+   - **File**: `src/qmatsuite/cli/main.py:3656`
+   - **Action**: Replace `QMSService.configure_species_map(...)` with `get_service(project_root).calculation.configure_species_map(...)`
    - **Test**: `pytest tests/integration/test_cli.py::test_configure_species_map`
 
 3. **`run_calculation` command** → Use `svc.run.calculation()` (after Batch 1)
-   - **File**: `src/quantumvitas/cli/main.py:4010`
-   - **Action**: Replace `QVService.run_calculation(...)` with `get_service(project_root).run.calculation(...)`
+   - **File**: `src/qmatsuite/cli/main.py:4010`
+   - **Action**: Replace `QMSService.run_calculation(...)` with `get_service(project_root).run.calculation(...)`
    - **Test**: `pytest tests/integration/test_cli.py::test_run_calculation`
 
 **Estimated Effort**: 3 handlers × 20 min = 1 hour  

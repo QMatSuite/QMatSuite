@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-This document defines the Data Transfer Objects (DTOs) for `quantumvitas.api`. All DTOs MUST follow these rules.
+This document defines the Data Transfer Objects (DTOs) for `qmatsuite.api`. All DTOs MUST follow these rules.
 
 ---
 
@@ -515,7 +515,7 @@ class AnalysisSummaryDTO(BaseDTO):
 All mapping MUST be centralized in `_mapping/dto_mapping.py`:
 
 ```python
-# quantumvitas/api/_mapping/dto_mapping.py
+# qmatsuite/api/_mapping/dto_mapping.py
 
 def calculation_to_dto(calc: "Calculation") -> CalculationDTO:
     """Map kernel Calculation to DTO. SINGLE SOURCE OF TRUTH."""

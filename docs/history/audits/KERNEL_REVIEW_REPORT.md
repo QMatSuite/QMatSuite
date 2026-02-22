@@ -9,7 +9,7 @@
 - [IMPLEMENTATION_PLAN_KERNEL.md](./IMPLEMENTATION_PLAN_KERNEL.md) (kernel-only implementation plan)
 - `CONSTITUTION_ZH.md` (repo-root, parent law)
 
-**Scope Boundary**: This report audits the **kernel layer only** (`quantumvitas.core`, `quantumvitas.calculation`, `quantumvitas.execution`, `quantumvitas.engine`, `quantumvitas.workflow`, `quantumvitas.analysis`, `quantumvitas.io`, `quantumvitas.presets`, `quantumvitas.parsers`, `quantumvitas.history`, `quantumvitas.project`, `quantumvitas.data`, `quantumvitas.drivers`, `quantumvitas.ir`, `quantumvitas.viz`, `quantumvitas.legacy`). Facade API refactoring (splitting `api/service.py`, utils cleanup, etc.) is **out-of-scope** and governed by the API Constitution.
+**Scope Boundary**: This report audits the **kernel layer only** (`qmatsuite.core`, `qmatsuite.calculation`, `qmatsuite.execution`, `qmatsuite.engine`, `qmatsuite.workflow`, `qmatsuite.analysis`, `qmatsuite.io`, `qmatsuite.presets`, `qmatsuite.parsers`, `qmatsuite.history`, `qmatsuite.project`, `qmatsuite.data`, `qmatsuite.drivers`, `qmatsuite.ir`, `qmatsuite.viz`, `qmatsuite.legacy`). Facade API refactoring (splitting `api/service.py`, utils cleanup, etc.) is **out-of-scope** and governed by the API Constitution.
 
 ---
 
@@ -42,12 +42,12 @@
 
 | Domain | Current Entry Pattern | Example |
 |--------|-----------------------|---------|
-| SSOT | `from quantumvitas.core.yaml_io import save_yaml_doc` | Direct module import |
-| Resources | `from quantumvitas.core.resolution import require_calculation` | Direct module import |
-| Models | `from quantumvitas.calculation.calculation import Calculation` | Direct class import |
-| Runtime | `from quantumvitas.calculation.runner import CalculationRunner` | Direct class import |
-| Engines | `from quantumvitas.engine.registry import create_default_registry` | Via registry |
-| Workflow | `from quantumvitas.workflow.registry import get_registry` | Via registry |
+| SSOT | `from qmatsuite.core.yaml_io import save_yaml_doc` | Direct module import |
+| Resources | `from qmatsuite.core.resolution import require_calculation` | Direct module import |
+| Models | `from qmatsuite.calculation.calculation import Calculation` | Direct class import |
+| Runtime | `from qmatsuite.calculation.runner import CalculationRunner` | Direct class import |
+| Engines | `from qmatsuite.engine.registry import create_default_registry` | Via registry |
+| Workflow | `from qmatsuite.workflow.registry import get_registry` | Via registry |
 
 **Finding**: 169 deep imports migrated to public.py (PR-K6). 15 not-in-public exemptions + 63 DAG violations remain (allowlisted).
 
@@ -113,7 +113,7 @@ The `resources` domain (`core/resolution.py`) implements ULID-first resolution:
 |----------------|---------------|--------|
 | S2.1 ULID-only reference | `resolution.py` resolve order: ULID > slug > name > path | COMPLIANT |
 | S2.2 Index/cache from root scan | `build_resource_index()` scans from project root | COMPLIANT |
-| S2.3 Project root = `project.qv.yml` marker | `resolution.py` walks up to find `project.qv.yml` | COMPLIANT |
+| S2.3 Project root = `project.qms.yml` marker | `resolution.py` walks up to find `project.qms.yml` | COMPLIANT |
 | S2.4 Rename/move ≠ identity change | ULID is immutable, stored in `meta.ulid` | COMPLIANT |
 
 ### 3.2 YAML Access Rules
@@ -221,7 +221,7 @@ def run_step(self, engine_input: EngineInput) -> StepResult
 
 | File | Line(s) | Import | Remedy |
 |------|---------|--------|--------|
-| `engine/pyscf_engine.py` | 385, 515, 544 | `from quantumvitas.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
+| `engine/pyscf_engine.py` | 385, 515, 544 | `from qmatsuite.api import get_step_type_gen` | Use `workflow.step_type_convert.gen_from()` |
 
 **Verdict**: Law K6 **COMPLIANT** (fixed in PR-K1 + PR-K4). All 6 engines accept `EngineInput`. PySCF/ORCA refactored with dual-signature `run_step()`. No SSOT imports in engine/. Gate G-K6 passes.
 
@@ -250,20 +250,20 @@ project <-- core
 
 ### 5.2 Kernel → API Reverse Import Violations (Law K0)
 
-**Critical finding**: 10 kernel files import from `quantumvitas.api`, violating the fundamental dependency direction.
+**Critical finding**: 10 kernel files import from `qmatsuite.api`, violating the fundamental dependency direction.
 
 | File | Line(s) | Import | Remedy |
 |------|---------|--------|--------|
-| `engine/pyscf_engine.py` | 385, 515, 544 | `from quantumvitas.api import get_step_type_gen` | `workflow.step_type_convert.gen_from()` |
-| `workflow/registry.py` | 930 | `from quantumvitas.api import get_step_type_gen` | `workflow.step_type_convert.gen_from()` |
-| `workflow/templates.py` | 516 | `from quantumvitas.api import get_step_type_gen` | `workflow.step_type_convert.gen_from()` |
-| `presets/integration.py` | 314, 379 | `from quantumvitas.api import get_step_type_gen` | `workflow.step_type_convert.gen_from()` |
-| `drivers/qe/handler.py` | 168 | `from quantumvitas.api import get_step_type_gen` | `workflow.step_type_convert.gen_from()` |
-| `calculation/folder_import.py` | 15 | `from quantumvitas.api import QVService` | Refactor to kernel-level functions |
+| `engine/pyscf_engine.py` | 385, 515, 544 | `from qmatsuite.api import get_step_type_gen` | `workflow.step_type_convert.gen_from()` |
+| `workflow/registry.py` | 930 | `from qmatsuite.api import get_step_type_gen` | `workflow.step_type_convert.gen_from()` |
+| `workflow/templates.py` | 516 | `from qmatsuite.api import get_step_type_gen` | `workflow.step_type_convert.gen_from()` |
+| `presets/integration.py` | 314, 379 | `from qmatsuite.api import get_step_type_gen` | `workflow.step_type_convert.gen_from()` |
+| `drivers/qe/handler.py` | 168 | `from qmatsuite.api import get_step_type_gen` | `workflow.step_type_convert.gen_from()` |
+| `calculation/folder_import.py` | 15 | `from qmatsuite.api import QMSService` | Refactor to kernel-level functions |
 
-**Root cause**: `get_step_type_gen()` was added to `quantumvitas.api` as a convenience, and kernel code started importing it instead of using the kernel-internal `workflow.step_type_convert.gen_from()`. This is a classic upward dependency leak.
+**Root cause**: `get_step_type_gen()` was added to `qmatsuite.api` as a convenience, and kernel code started importing it instead of using the kernel-internal `workflow.step_type_convert.gen_from()`. This is a classic upward dependency leak.
 
-**Remedy**: All 9 `get_step_type_gen` imports → use `gen_from()` from `workflow.step_type_convert`. The `folder_import.py` QVService import (line 15) requires deeper refactoring: it calls `QVService.init_project()` (line 332), `QVService.init_calculation()` (line 377), and `QVService.import_step_from_qe_input()` (lines 416-433). These are facade API orchestration methods. The kernel module should not call the facade — the underlying kernel functions that `QVService` delegates to must be called directly instead, or `folder_import.py` must be moved to the facade layer.
+**Remedy**: All 9 `get_step_type_gen` imports → use `gen_from()` from `workflow.step_type_convert`. The `folder_import.py` QMSService import (line 15) requires deeper refactoring: it calls `QMSService.init_project()` (line 332), `QMSService.init_calculation()` (line 377), and `QMSService.import_step_from_qe_input()` (lines 416-433). These are facade API orchestration methods. The kernel module should not call the facade — the underlying kernel functions that `QMSService` delegates to must be called directly instead, or `folder_import.py` must be moved to the facade layer.
 
 ### 5.3 Cycle Analysis
 
@@ -283,12 +283,12 @@ project <-- core
 
 | From | To | Pattern | Severity | Law |
 |------|----|---------|----------|-----|
-| `engine/pyscf_engine.py` | `quantumvitas.api` | `get_step_type_gen` import | **HIGH** | K0 |
-| `workflow/registry.py` | `quantumvitas.api` | `get_step_type_gen` import | **HIGH** | K0 |
-| `workflow/templates.py` | `quantumvitas.api` | `get_step_type_gen` import | **HIGH** | K0 |
-| `presets/integration.py` | `quantumvitas.api` | `get_step_type_gen` import | **HIGH** | K0 |
-| `drivers/qe/handler.py` | `quantumvitas.api` | `get_step_type_gen` import | **HIGH** | K0 |
-| `calculation/folder_import.py` | `quantumvitas.api` | `QVService` import | **HIGH** | K0 |
+| `engine/pyscf_engine.py` | `qmatsuite.api` | `get_step_type_gen` import | **HIGH** | K0 |
+| `workflow/registry.py` | `qmatsuite.api` | `get_step_type_gen` import | **HIGH** | K0 |
+| `workflow/templates.py` | `qmatsuite.api` | `get_step_type_gen` import | **HIGH** | K0 |
+| `presets/integration.py` | `qmatsuite.api` | `get_step_type_gen` import | **HIGH** | K0 |
+| `drivers/qe/handler.py` | `qmatsuite.api` | `get_step_type_gen` import | **HIGH** | K0 |
+| `calculation/folder_import.py` | `qmatsuite.api` | `QMSService` import | **HIGH** | K0 |
 | `engine/pyscf_engine.py` | SSOT YAML | Direct `yaml.safe_load` on step.yaml | **HIGH** | K6 |
 | `engine/orca_engine.py` | SSOT YAML | Direct `yaml.safe_load` on step.yaml | **HIGH** | K6 |
 | `workflow.registry` | `engine.registry` | Capability query | LOW | EXC-001 |
@@ -326,7 +326,7 @@ project <-- core
 | 6 | `presets/integration.py:314` | `get_step_type_gen` | `gen_from()` |
 | 7 | `presets/integration.py:379` | `get_step_type_gen` | `gen_from()` |
 | 8 | `drivers/qe/handler.py:168` | `get_step_type_gen` | `gen_from()` |
-| 9 | `calculation/folder_import.py:15` | `QVService` | Extract kernel function |
+| 9 | `calculation/folder_import.py:15` | `QMSService` | Extract kernel function |
 
 #### K3 Violations (YAML Write Bypass)
 
@@ -408,7 +408,7 @@ tests/gates/
 ├── test_no_third_namespace.py
 ├── test_registry_routing.py
 ├── test_schema_self_consistency.py
-├── test_single_qvservice_definition.py
+├── test_single_qmsservice_definition.py
 ├── test_single_ssot_mapping.py
 ├── test_step_type_constitution.py
 ├── test_step_type_cross_assignment.py
@@ -440,8 +440,8 @@ tests/gates/
 
 | Gate | Test File | Checks | Priority |
 |------|-----------|--------|----------|
-| G-K0 | `test_kernel_no_api_import.py` | No `from quantumvitas.api` in kernel | P0 |
-| G-K1 | `test_kernel_no_frontend_import.py` | No `from quantumvitas.cli/daemon` in kernel | P0 |
+| G-K0 | `test_kernel_no_api_import.py` | No `from qmatsuite.api` in kernel | P0 |
+| G-K1 | `test_kernel_no_frontend_import.py` | No `from qmatsuite.cli/daemon` in kernel | P0 |
 | G-K3 | `test_yaml_write_single_entry.py` | `yaml.safe_dump` only in `yaml_io.py` + EXC-004 whitelist zones | P0 |
 | G-K6 | `test_engine_no_ssot_import.py` | engine/ MUST NOT `yaml.safe_load` on SSOT files; MUST NOT import `core.yaml_io`/`core.yamldoc`/`core.locking`/`core.journal` | P1 |
 | G-K7 | `test_no_import_cycles.py` | Kernel import graph is DAG | P1 |
@@ -461,8 +461,8 @@ tests/gates/
 2. Finalize kernel architecture documentation
 
 **Tasks**:
-- [x] Add `test_kernel_no_api_import.py` (G-K0) — AST scan of kernel packages for `from quantumvitas.api`; allowlist current 10 violations
-- [x] Add `test_kernel_no_frontend_import.py` (G-K1) — AST scan for `from quantumvitas.cli` / `from quantumvitas.daemon`
+- [x] Add `test_kernel_no_api_import.py` (G-K0) — AST scan of kernel packages for `from qmatsuite.api`; allowlist current 10 violations
+- [x] Add `test_kernel_no_frontend_import.py` (G-K1) — AST scan for `from qmatsuite.cli` / `from qmatsuite.daemon`
 - [x] Add `test_yaml_write_single_entry.py` (G-K3) — grep `yaml.safe_dump` in kernel; allowlist known violations; enforce EXC-004 whitelist zone checks
 - [x] Add `test_engine_no_ssot_import.py` (G-K6) — verify engine/ has no `yaml.safe_load` on `.yaml` paths and no imports from `core.yaml_io`/`core.yamldoc`/`core.locking`/`core.journal`
 - [x] Finalize `KERNEL_DEPENDENCY_SPEC.md`, `KERNEL_REVIEW_REPORT.md`, `KERNEL_EXCEPTIONS.md`
@@ -475,7 +475,7 @@ tests/gates/
 
 ### PR-K1: Fix Kernel → API Reverse Imports (Law K0)
 
-**Goals**: Eliminate all `from quantumvitas.api` imports inside kernel.
+**Goals**: Eliminate all `from qmatsuite.api` imports inside kernel.
 
 **Tasks**:
 - [x] Replace `get_step_type_gen` → `gen_from()` from `workflow.step_type_convert` in:
@@ -484,7 +484,7 @@ tests/gates/
   - `workflow/templates.py` (1 site: line 516)
   - `presets/integration.py` (2 sites: lines 314, 379)
   - `drivers/qe/handler.py` (1 site: line 168)
-- [x] Refactor `calculation/folder_import.py:15` to remove `QVService` dependency
+- [x] Refactor `calculation/folder_import.py:15` to remove `QMSService` dependency
 - [x] Remove all entries from G-K0 allowlist
 - [x] Verify G-K0 passes with empty allowlist
 
@@ -560,12 +560,12 @@ tests/gates/
 **Goals**: Create public entry points for each domain; begin migration.
 
 **Tasks**:
-- [x] Create `quantumvitas/core/public.py` — re-export ssot + resources domain surfaces
-- [x] Create `quantumvitas/calculation/public.py` — re-export `Calculation`, `Step`, `CalculationRunner`
-- [x] Create `quantumvitas/execution/public.py` — re-export `JobExecutor`, `JobGraph`, `get_recipe_for_engine`
-- [x] Create `quantumvitas/engine/public.py` — re-export `EngineRegistry`, `create_default_registry`, `Engine`, `EngineInput`, `ChainStepEntry`
-- [x] Create `quantumvitas/workflow/public.py` — re-export `get_registry`, `StepTypeRegistry`, `spec_from`, `gen_from`, `prefix_from`
-- [x] Create `quantumvitas/analysis/public.py` — re-export `read_artifact`, `artifact_exists`, `AnalysisType`
+- [x] Create `qmatsuite/core/public.py` — re-export ssot + resources domain surfaces
+- [x] Create `qmatsuite/calculation/public.py` — re-export `Calculation`, `Step`, `CalculationRunner`
+- [x] Create `qmatsuite/execution/public.py` — re-export `JobExecutor`, `JobGraph`, `get_recipe_for_engine`
+- [x] Create `qmatsuite/engine/public.py` — re-export `EngineRegistry`, `create_default_registry`, `Engine`, `EngineInput`, `ChainStepEntry`
+- [x] Create `qmatsuite/workflow/public.py` — re-export `get_registry`, `StepTypeRegistry`, `spec_from`, `gen_from`, `prefix_from`
+- [x] Create `qmatsuite/analysis/public.py` — re-export `read_artifact`, `artifact_exists`, `AnalysisType`
 
 **Done criteria**: All `public.py` files exist. Existing code still works (no breakage — stubs are additive).
 
@@ -630,8 +630,8 @@ The following are explicitly **not covered** by this kernel audit. They are gove
 
 - Splitting `api/service.py` (7800 LOC god module)
 - Utils cleanup and docstring justification
-- Online search → QVService capability migration
-- Static method reduction in QVService
+- Online search → QMSService capability migration
+- Static method reduction in QMSService
 - DTO boundary enforcement
 - Frontend YAML write violations (`api/service.py`, `cli/main.py` export writes — governed by API Constitution H9.3)
 

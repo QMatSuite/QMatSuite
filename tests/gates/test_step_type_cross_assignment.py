@@ -46,7 +46,7 @@ SKIP_PATTERNS = [
     # This gate file itself (contains intentional bad examples for testing)
     "tests/gates/test_step_type_cross_assignment.py",
     # Legacy vault
-    "src/quantumvitas/_vault/*",
+    "src/qmatsuite/_vault/*",
     # Build artifacts
     "**/build/*",
     "**/.venv/*",

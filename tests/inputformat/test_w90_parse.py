@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.drivers.w90.inputspec import (
+from qmatsuite.drivers.w90.inputspec import (
     _parse_win_text,
     _write_win_text,
     get_w90_input_spec,
@@ -775,7 +775,7 @@ class TestW90Orchestrator:
         assert spec.input_files[0].content_role == "combined"
 
     def test_write_parse_basic(self, tmp_path):
-        from quantumvitas.inputformat import parse_engine_inputs, write_engine_inputs
+        from qmatsuite.inputformat import parse_engine_inputs, write_engine_inputs
 
         spec = get_w90_input_spec()
         params = {
@@ -802,7 +802,7 @@ class TestW90Orchestrator:
         assert result.structure["species"] == ["Ga", "As"]
 
     def test_write_parse_with_kpoint_path(self, tmp_path):
-        from quantumvitas.inputformat import parse_engine_inputs, write_engine_inputs
+        from qmatsuite.inputformat import parse_engine_inputs, write_engine_inputs
 
         spec = get_w90_input_spec()
         params = {
@@ -822,7 +822,7 @@ class TestW90Orchestrator:
     def test_parse_sample_dir(self, tmp_path):
         """Parse a sample .win file through the orchestrator."""
         import shutil
-        from quantumvitas.inputformat import parse_engine_inputs
+        from qmatsuite.inputformat import parse_engine_inputs
 
         src = SAMPLES_DIR / "gaas_basic" / "wannier90.win"
         shutil.copy(src, tmp_path / "wannier90.win")
@@ -861,7 +861,7 @@ class TestW90InputSpec:
         assert "wannier90.win" in spec.ssot_mapping.kpoints_in
 
     def test_driver_returns_spec(self):
-        from quantumvitas.drivers.w90.driver import W90Driver
+        from qmatsuite.drivers.w90.driver import W90Driver
         driver = W90Driver()
         spec = driver.get_input_spec()
         assert spec is not None

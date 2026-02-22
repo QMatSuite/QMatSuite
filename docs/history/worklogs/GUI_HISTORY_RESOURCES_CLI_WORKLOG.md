@@ -5,9 +5,9 @@
 Three gaps closed in a single pass:
 1. **History timeline** only showed runs/pins; operation events (edits, presets, structure imports) now merged.
 2. **Resources UI** was hardcoded to `engineFamily="qe"`; now self-initializing with engine dropdown.
-3. **CLI has no `qv history`**; four commands added (`list`, `show`, `storage`, `clear`).
+3. **CLI has no `qms history`**; four commands added (`list`, `show`, `storage`, `clear`).
 
-**Non-negotiable rule**: CLI and daemon call only `QVService` / `quantumvitas.api.*`. No direct provenance/kernel imports.
+**Non-negotiable rule**: CLI and daemon call only `QMSService` / `qmatsuite.api.*`. No direct provenance/kernel imports.
 
 ## Phase 1 — Quick Wins
 
@@ -16,7 +16,7 @@ Three gaps closed in a single pass:
 - Changed `<code>.history</code>` -> `<code>.provenance</code>`
 
 ### 1.2 Wire missing engine metadata modules
-- **File**: `src/quantumvitas/api/utils.py` — `_get_engine_metadata_module()`
+- **File**: `src/qmatsuite/api/utils.py` — `_get_engine_metadata_module()`
 - Added `elif` branches for `yambo`, `w90`, `xtb`
 
 ### 1.3 Remove QE hardcode — panel owns its engine state
@@ -38,23 +38,23 @@ Three gaps closed in a single pass:
 ## Phase 2 — Operation Events in Timeline
 
 ### 2.1 Fix `build_timeline_entry()` — canonical formatter
-- **File**: `src/quantumvitas/provenance/query.py`
+- **File**: `src/qmatsuite/provenance/query.py`
 - Fixed all comparisons to lowercase enum values
 - Removed dead `RUN_START`/`RUN_COMPLETE` branches
 - Added catch-all for unmapped op types -> `event_type: "operation"`
 - Added `op_type` and `kind` fields to all entries
 
 ### 2.2 Drive-by fix: pins.py case-sensitivity
-- **File**: `src/quantumvitas/provenance/pins.py` lines 273, 354
+- **File**: `src/qmatsuite/provenance/pins.py` lines 273, 354
 - `'PIN_CREATE'` -> `'pin_create'` (SQLite = is case-sensitive)
 
 ### 2.3 Merge operations into `get_timeline()`
-- **File**: `src/quantumvitas/api/service.py`
+- **File**: `src/qmatsuite/api/service.py`
 - Fetches `limit` runs + `limit` operations, merges, sorts DESC, truncates to `limit`
 - Tags run entries with `kind: "run"`, op entries with `kind` from builder
 
 ### 2.4 Frontend: render operation events
-- **File**: `gui/src/types/qv.ts` — Added `op_type`, `kind`, `scope` to `HistoryTimelineEntry`
+- **File**: `gui/src/types/qms.ts` — Added `op_type`, `kind`, `scope` to `HistoryTimelineEntry`
 - **File**: `gui/src/components/panels/HistoryPanel.tsx`
   - Added `renderOperationEvent()` with icon map
   - Added `case 'operation'` in switch
@@ -68,19 +68,19 @@ Three gaps closed in a single pass:
 ## Phase 3 — Run Detail Drawer + Storage Summary
 
 ### 3.1 Backend: `get_storage_summary()`
-- **File**: `src/quantumvitas/api/service.py`
+- **File**: `src/qmatsuite/api/service.py`
 - Queries `cas_objects`, `runs`, `operations` tables
 - Returns `{tiers, total_objects, total_bytes, run_count, operation_count}`
 - Graceful: returns zeros if `.provenance/` doesn't exist
 
 ### 3.2 Daemon handler
-- **File**: `src/quantumvitas/daemon/server.py`
+- **File**: `src/qmatsuite/daemon/server.py`
 - Added `get_storage_summary` to dispatch table + handler
 - Fixed `.history` -> `.provenance` in docstrings
 
 ### 3.3 Frontend types
-- **File**: `gui/src/types/qv.ts`
-- Added `get_run_revision` and `get_storage_summary` to `QVCommandMap`
+- **File**: `gui/src/types/qms.ts`
+- Added `get_run_revision` and `get_storage_summary` to `QMSCommandMap`
 
 ### 3.4 RunDetailDrawer component
 - **New file**: `gui/src/components/panels/RunDetailDrawer.tsx`
@@ -101,18 +101,18 @@ Three gaps closed in a single pass:
   - `test_storage_summary_empty`, `test_storage_summary_with_data`
   - `test_get_run_revision_includes_snapshot`
 
-## Phase 4 — CLI `qv history` Commands
+## Phase 4 — CLI `qms history` Commands
 
 ### 4.1 History subcommand group
-- **File**: `src/quantumvitas/cli/main.py`
+- **File**: `src/qmatsuite/cli/main.py`
 - Added `history_app = typer.Typer(...)` with `no_args_is_help=True`
 - Registered via `app.add_typer(history_app, name="history")`
 
 ### 4.2 Commands (all use `svc.history.*` only)
-- `qv history list` — timeline with icons, timestamps, summaries
-- `qv history show <run_ulid>` — run metadata, steps, snapshot SHA
-- `qv history storage` — tier breakdown, counts, sizes
-- `qv history clear` — with `--force` flag, uses `typer.confirm()`
+- `qms history list` — timeline with icons, timestamps, summaries
+- `qms history show <run_ulid>` — run metadata, steps, snapshot SHA
+- `qms history storage` — tier breakdown, counts, sizes
+- `qms history clear` — with `--force` flag, uses `typer.confirm()`
 
 ### 4.3 Tests
 - **New file**: `tests/cli/test_history_commands.py`
@@ -130,12 +130,12 @@ Three gaps closed in a single pass:
 | `gui/src/components/panels/RunDetailDrawer.css` | **New** |
 | `gui/src/App.tsx` | Remove QE hardcode |
 | `gui/src/components/layout/Sidebar.tsx` | Update tooltip |
-| `gui/src/types/qv.ts` | Add fields + command types |
-| `src/quantumvitas/api/utils.py` | Wire yambo/w90/xtb metadata |
-| `src/quantumvitas/api/service.py` | Merge timeline + storage summary |
-| `src/quantumvitas/provenance/query.py` | Fix build_timeline_entry |
-| `src/quantumvitas/provenance/pins.py` | Fix case-sensitivity |
-| `src/quantumvitas/daemon/server.py` | Storage summary handler + docstring fix |
-| `src/quantumvitas/cli/main.py` | History subcommands |
+| `gui/src/types/qms.ts` | Add fields + command types |
+| `src/qmatsuite/api/utils.py` | Wire yambo/w90/xtb metadata |
+| `src/qmatsuite/api/service.py` | Merge timeline + storage summary |
+| `src/qmatsuite/provenance/query.py` | Fix build_timeline_entry |
+| `src/qmatsuite/provenance/pins.py` | Fix case-sensitivity |
+| `src/qmatsuite/daemon/server.py` | Storage summary handler + docstring fix |
+| `src/qmatsuite/cli/main.py` | History subcommands |
 | `tests/api/test_history_timeline.py` | **New** |
 | `tests/cli/test_history_commands.py` | **New** |

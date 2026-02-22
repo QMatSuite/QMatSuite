@@ -16,8 +16,8 @@ Repo: <repo_root>
 3. Current workflows listing: `.github/workflows/`
 4. Packaging config: `pyproject.toml`
 5. Step 3 install stack:
-   - `src/quantumvitas/core/engines/micromamba.py`
-   - `src/quantumvitas/core/engines/engine_installer.py`
+   - `src/qmatsuite/core/engines/micromamba.py`
+   - `src/qmatsuite/core/engines/engine_installer.py`
 6. Current package version check in `pyproject.toml`:
    - `version = "1.0.1"`
 
@@ -49,7 +49,7 @@ Repo: <repo_root>
    - local build + clean install checks
    - local runtime tarball prototype build and size measurement
    - real micromamba download (`ensure_micromamba`) with evidence
-   - real `qv engine install xtb` + detection + verify
+   - real `qms engine install xtb` + detection + verify
    - run at least one real xTB integration test if available
    - optionally test lammps install/verify
 4. Run strict full pytest once and wait to completion.
@@ -67,24 +67,24 @@ Command run:
 - `source .venv/bin/activate`
 - `python -m pip install --upgrade pip build twine`
 - `rm -rf dist build && python -m build`
-- `python -m venv /tmp/qv-verify-step4`
-- `/tmp/qv-verify-step4/bin/pip install dist/*.whl`
-- `/tmp/qv-verify-step4/bin/python -c "import quantumvitas"`
-- `/tmp/qv-verify-step4/bin/python -c "from quantumvitas.daemon.server import main"`
-- `/tmp/qv-verify-step4/bin/qv --help`
-- `/tmp/qv-verify-step4/bin/python -c "from quantumvitas.mcp.server import create_server"`
+- `python -m venv /tmp/qms-verify-step4`
+- `/tmp/qms-verify-step4/bin/pip install dist/*.whl`
+- `/tmp/qms-verify-step4/bin/python -c "import qmatsuite"`
+- `/tmp/qms-verify-step4/bin/python -c "from qmatsuite.daemon.server import main"`
+- `/tmp/qms-verify-step4/bin/qms --help`
+- `/tmp/qms-verify-step4/bin/python -c "from qmatsuite.mcp.server import create_server"`
 
 Observed results:
 - Build succeeded:
-  - `dist/quantumvitas-1.0.1.tar.gz`
-  - `dist/quantumvitas-1.0.1-py3-none-any.whl`
+  - `dist/qmatsuite-1.0.1.tar.gz`
+  - `dist/qmatsuite-1.0.1-py3-none-any.whl`
 - Clean-venv install succeeded from wheel.
 - Smoke checks passed:
-  - `quantumvitas import OK`
+  - `qmatsuite import OK`
   - `version: 1.0.1`
   - `daemon OK`
   - `MCP OK`
-  - `qv --help` rendered expected CLI help header.
+  - `qms --help` rendered expected CLI help header.
 
 Noted warning (non-blocking for Step 4):
 - setuptools deprecation warning on `project.license` TOML table form.
@@ -119,7 +119,7 @@ Implemented behavior:
 
 Implemented behavior:
 - Manual dispatch input:
-  - `quantumvitas_version` (defaults to `local`)
+  - `qmatsuite_version` (defaults to `local`)
 - Matrix:
   - `macos-14` (`macos-arm64`)
   - `windows-latest` (`windows-x64`)
@@ -128,12 +128,12 @@ Implemented behavior:
   - create runtime env with python 3.12
 - Install source:
   - `local` -> install from checkout (`.[mcp]`)
-  - non-local -> install `quantumvitas[mcp]==<version>` from PyPI
+  - non-local -> install `qmatsuite[mcp]==<version>` from PyPI
 - Verification:
   - import/version
   - daemon import
   - MCP import
-  - `qv --help`
+  - `qms --help`
 - Packaging:
   - cross-platform `.tar.zst` creation via Python + `zstandard`
   - prints uncompressed + compressed byte sizes
@@ -147,7 +147,7 @@ Implemented behavior:
 
 ### 3a) Real micromamba download/setup via Step 3 API
 Command:
-- `python -c "from quantumvitas.core.engines.micromamba import ensure_micromamba ..."`
+- `python -c "from qmatsuite.core.engines.micromamba import ensure_micromamba ..."`
 
 Observed:
 - `app_data`: `<repo_root>/.qmatsuite`
@@ -170,7 +170,7 @@ SHA256 note:
 
 #### Initial failure discovery (important)
 Command:
-- `qv engine install xtb`
+- `qms engine install xtb`
 
 Result:
 - failed with `CalledProcessError` from micromamba subprocess.
@@ -190,9 +190,9 @@ Validation workaround (without changing core code in Step 4):
 
 #### Clean-cycle xTB pipeline test
 Commands:
-- `qv engine uninstall xtb`
-- `MAMBA_NO_RC=true qv engine install xtb`
-- `qv engine verify xtb`
+- `qms engine uninstall xtb`
+- `MAMBA_NO_RC=true qms engine install xtb`
+- `qms engine verify xtb`
 
 Observed:
 - uninstall: success (`real 0.41s`)
@@ -222,8 +222,8 @@ Interpretation:
 
 ### 3d) Optional second engine test — LAMMPS
 Commands:
-- `MAMBA_NO_RC=true qv engine install lammps`
-- `qv engine verify lammps`
+- `MAMBA_NO_RC=true qms engine install lammps`
+- `qms engine verify lammps`
 
 Result:
 - install success (`real 37.30s`)
@@ -236,7 +236,7 @@ Installed env size:
 
 ### Engine inventory after real installs
 Command:
-- `qv engine list --installed-only`
+- `qms engine list --installed-only`
 
 Observed relevant entries:
 - `xtb        installed  source=micromamba  active=conda-6.7.1`
@@ -247,14 +247,14 @@ Observed relevant entries:
 ### Local runtime build flow executed
 Commands (local prototype):
 1. create env:
-   - `micromamba create -y -p /tmp/qv-step4-runtime -c conda-forge python=3.12 pip`
+   - `micromamba create -y -p /tmp/qms-step4-runtime -c conda-forge python=3.12 pip`
 2. install package from local checkout:
-   - `micromamba run -p /tmp/qv-step4-runtime python -m pip install '<repo_root>/.[mcp]'`
+   - `micromamba run -p /tmp/qms-step4-runtime python -m pip install '<repo_root>/.[mcp]'`
 3. verify:
    - import/version
    - daemon import
    - MCP import
-   - `qv --help`
+   - `qms --help`
 4. compress to zstd tarball using Python `zstandard`
 
 Timed observations:
@@ -266,17 +266,17 @@ Verification outputs:
 - `runtime version: 1.0.1`
 - `runtime daemon OK`
 - `runtime MCP OK`
-- `qv --help` rendered as expected
+- `qms --help` rendered as expected
 
 Size metrics:
-- uncompressed (`du -sh /tmp/qv-step4-runtime`): `801M`
+- uncompressed (`du -sh /tmp/qms-step4-runtime`): `801M`
 - uncompressed (byte count): `872,179,131`
 - compressed tarball bytes: `152,569,839`
-- compressed file: `/tmp/qv-step4-runtime.tar.zst` (`146M`)
+- compressed file: `/tmp/qms-step4-runtime.tar.zst` (`146M`)
 
 Self-contained extraction test:
-- extracted archive to `/tmp/qv-step4-runtime-extract`
-- ran `/tmp/qv-step4-runtime-extract/bin/python -c "import quantumvitas ..."`
+- extracted archive to `/tmp/qms-step4-runtime-extract`
+- ran `/tmp/qms-step4-runtime-extract/bin/python -c "import qmatsuite ..."`
 - result: `extracted runtime version: 1.0.1` (`real 5.40s`)
 
 Size note vs design expectation:
@@ -321,19 +321,19 @@ Size note vs design expectation:
 4. Select `target = testpypi` and run.
 5. After test publish succeeds, run again with `target = pypi`.
 6. Verify from a clean environment:
-   - `pip install quantumvitas`
-   - `qv --help`
+   - `pip install qmatsuite`
+   - `qms --help`
 
 ### How to build runtime tarball artifacts
 1. Go to GitHub → Actions → **Build Runtime Tarball**.
 2. Click **Run workflow**.
-3. Input `quantumvitas_version`:
+3. Input `qmatsuite_version`:
    - `local` to build from checked-out source on workflow runner, or
    - concrete version (e.g. `1.0.1`) to pull from PyPI.
 4. Download artifacts:
    - `runtime-macos-arm64`
    - `runtime-windows-x64`
-5. Validate artifact by extraction and running `<extracted>/bin/python -c "import quantumvitas"` (platform path variant on Windows).
+5. Validate artifact by extraction and running `<extracted>/bin/python -c "import qmatsuite"` (platform path variant on Windows).
 
 ## Task 4 — Mandatory full-suite verification (strict)
 

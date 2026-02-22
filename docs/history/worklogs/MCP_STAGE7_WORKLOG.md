@@ -7,7 +7,7 @@ Implement 3 structure tools (`list_structures`, `import_structure`, `get_structu
 ### Tasks
 1. Review structure data model (how QMatSuite stores structures)
 2. Review structure import path (how tests/GUI import structures)
-3. Review structure listing mechanism (QVService API)
+3. Review structure listing mechanism (QMSService API)
 4. Review structure detail format (lattice, species, positions)
 5. Review structure → calculation link
 6. Implement `list_structures.py`

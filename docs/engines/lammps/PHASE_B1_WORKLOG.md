@@ -31,7 +31,7 @@
 - Raw corpora remain in `.tmp/engine_research/lammps/`
 
 ### Stage 5: Output Digest
-- Created `src/quantumvitas/drivers/lammps/parsers/__init__.py` and `output.py`
+- Created `src/qmatsuite/drivers/lammps/parsers/__init__.py` and `output.py`
 - LAMMPSDigest: 16 fields (success, energy, temp, pressure, atoms, steps, wall_time, minimize stats, etc.)
 - LAMMPSOutputParser registered as ("lammps", "scf_digest")
 - Parses: thermo blocks (dynamic column detection), Loop time, minimize stats, Total wall time, errors
@@ -39,7 +39,7 @@
 - Verified digest against 3 existing logs: melt_lj_nve, minimize_2d_lj, tersoff_sic — all correct
 
 ### Stage 4: Parser/Writer Enhancement
-- Complete rewrite of `src/quantumvitas/drivers/lammps/inputspec.py` (~806 lines)
+- Complete rewrite of `src/qmatsuite/drivers/lammps/inputspec.py` (~806 lines)
 - **4A Script parser** (`_parse_lammps_script_text`):
   - Join continuation lines (`&` at EOL)
   - Strip comments, tokenize line-by-line
@@ -119,26 +119,26 @@
 - Status: DONE
 
 ### Fix 2: Parameter Metadata Catalog (Phase 1)
-- Created `src/quantumvitas/drivers/lammps/data/__init__.py`
-- Created `src/quantumvitas/drivers/lammps/data/lammps_commands.json`
+- Created `src/qmatsuite/drivers/lammps/data/__init__.py`
+- Created `src/qmatsuite/drivers/lammps/data/lammps_commands.json`
   - 114 commands (playbook minimum: 100+ for classical MD)
   - Schema v1, 13 categories, all required fields present
   - Converted 79 seed commands + added 35 new commands
 - Status: DONE
 
 ### Fix 3: Metadata Access Layer (Phase 2)
-- Created `src/quantumvitas/drivers/lammps/data/lammps_metadata.py`
+- Created `src/qmatsuite/drivers/lammps/data/lammps_metadata.py`
   - Full API: safe_load_metadata, get_tag_info (case-insensitive), list_tags, list_categories, validate_params, get_tag_type, get_tag_default, reload_metadata, get_metadata_file_info
-  - Module-level cache with QV_LAMMPS_METADATA_HOT_RELOAD support
+  - Module-level cache with QMS_LAMMPS_METADATA_HOT_RELOAD support
   - importlib.resources-based loading, stdlib only
 - Status: DONE
 
 ### Fix 4: Extract Parser/Writer to io/ Module (Phase 4)
-- Created `src/quantumvitas/drivers/lammps/io/__init__.py`
-- Created `src/quantumvitas/drivers/lammps/io/script.py`
+- Created `src/qmatsuite/drivers/lammps/io/__init__.py`
+- Created `src/qmatsuite/drivers/lammps/io/script.py`
   - Extracted: parse_lammps_script_text, write_lammps_script_text, join_continuation_lines
   - Public names (no underscore prefix)
-- Created `src/quantumvitas/drivers/lammps/io/data.py`
+- Created `src/qmatsuite/drivers/lammps/io/data.py`
   - Extracted: parse_lammps_data_text, write_lammps_data_text, cart_to_frac
 - Rewrote `inputspec.py` to delegate: 806 → 63 lines (imports + get_lammps_input_spec only)
 - Updated `tests/inputformat/test_lammps_parse.py` imports to use io/ modules
@@ -146,8 +146,8 @@
 - Status: DONE
 
 ### Fix 5: Resource Staging (Phase 5)
-- Created `src/quantumvitas/drivers/lammps/engine/__init__.py`
-- Created `src/quantumvitas/drivers/lammps/engine/lammps_potential.py`
+- Created `src/qmatsuite/drivers/lammps/engine/__init__.py`
+- Created `src/qmatsuite/drivers/lammps/engine/lammps_potential.py`
   - get_default_potential_root(): env var + QMatSuite default + Homebrew
   - extract_potential_refs(): scans pair_coeff and _commands for potential files
   - stage_potentials(): copies referenced potentials, raises FileNotFoundError if missing

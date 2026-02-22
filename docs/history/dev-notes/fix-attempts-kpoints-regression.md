@@ -34,8 +34,8 @@ cards={
 ## 尝试1: 添加调试日志
 
 ### 修改文件
-- `src/quantumvitas/calculation/structure_steps.py`
-- `src/quantumvitas/calculation/input_runner.py`
+- `src/qmatsuite/calculation/structure_steps.py`
+- `src/qmatsuite/calculation/input_runner.py`
 
 ### 修改内容
 在 `generate_qe_input_from_spec` 和 `apply_card_overrides_to_qe_input` 中添加了调试日志。
@@ -64,7 +64,7 @@ cards={
 ## 尝试3: 检查 existing_input_file 合并逻辑
 
 ### 修改文件
-- `src/quantumvitas/calculation/calculation.py`
+- `src/qmatsuite/calculation/calculation.py`
 
 ### 修改内容
 在 `_build_step_from_spec` 中添加了逻辑，当 existing_input_file 存在且提取的 cards 缺少 `data` 时，保留 step.yaml 中的 `data`。
@@ -153,7 +153,7 @@ payload = {'option': 'crystal_b'} ❌ (data 丢失)
 ## 回滚状态
 
 所有修改已回滚：
-- ✅ `src/quantumvitas/calculation/structure_steps.py`
-- ✅ `src/quantumvitas/calculation/input_runner.py`
-- ✅ `src/quantumvitas/calculation/calculation.py`
+- ✅ `src/qmatsuite/calculation/structure_steps.py`
+- ✅ `src/qmatsuite/calculation/input_runner.py`
+- ✅ `src/qmatsuite/calculation/calculation.py`
 

@@ -42,7 +42,7 @@ This plan migrates the codebase from explicit mapping tables to the pure naming-
 
 **Goal**: Establish single source of truth for all valid GEN step names.
 
-**Files to create**: `src/quantumvitas/workflow/gen_steps.py`
+**Files to create**: `src/qmatsuite/workflow/gen_steps.py`
 
 **Content**:
 ```python
@@ -115,7 +115,7 @@ class GenStepRegistry:
 ```bash
 # Create the file (manually or via editor)
 # Then verify import works:
-.venv/bin/python -c "from quantumvitas.workflow.gen_steps import GenStepRegistry; print(GenStepRegistry.is_valid('scf'))"
+.venv/bin/python -c "from qmatsuite.workflow.gen_steps import GenStepRegistry; print(GenStepRegistry.is_valid('scf'))"
 ```
 
 **Expected outcome**: Prints `True`
@@ -128,7 +128,7 @@ class GenStepRegistry:
 
 **Goal**: Provide pure functions for SPEC↔GEN conversion.
 
-**Files to create**: `src/quantumvitas/workflow/step_type_convert.py`
+**Files to create**: `src/qmatsuite/workflow/step_type_convert.py`
 
 **Content**:
 ```python
@@ -236,7 +236,7 @@ def normalize_to_gen(step_type: str) -> str:
 **Commands to run**:
 ```bash
 .venv/bin/python -c "
-from quantumvitas.workflow.step_type_convert import spec_from, gen_from, is_spec, is_gen
+from qmatsuite.workflow.step_type_convert import spec_from, gen_from, is_spec, is_gen
 print(spec_from('qe', 'scf'))       # qe_scf
 print(spec_from('w90', 'wannier'))  # w90_wannier
 print(gen_from('qe_scf'))           # scf
@@ -269,8 +269,8 @@ They will be unskipped as renames are completed.
 """
 
 import pytest
-from quantumvitas.workflow.gen_steps import GenStepRegistry
-from quantumvitas.workflow.step_type_convert import (
+from qmatsuite.workflow.gen_steps import GenStepRegistry
+from qmatsuite.workflow.step_type_convert import (
     spec_from, gen_from, prefix_from, is_spec, is_gen, ENGINE_PREFIXES
 )
 
@@ -446,25 +446,25 @@ echo "bands_pw: $(wc -l < /tmp/bands_pw_audit.txt)"
 
 | File | What to change |
 |------|----------------|
-| `src/quantumvitas/workflow/gen_steps.py` | Change `"w90_preproc"` to `"wannierprep"` in GEN_STEPS |
-| `src/quantumvitas/workflow/registry.py:321-330` | Change `step_type_gen="w90_preproc"` → `"wannierprep"`, `step_type_spec="w90_preproc"` → `"w90_wannierprep"`, `engine="qe"` → `"w90"` |
-| `src/quantumvitas/drivers/qe/step_types.py:121-128` | **DELETE** this entry (W90 step, not QE) |
-| `src/quantumvitas/drivers/qe/engine/qe_engine.py:62` | Change key `"w90_preproc"` → `"wannierprep"` |
-| `src/quantumvitas/drivers/qe/engine/qe_engine.py:379` | Change `step_gen_type == "w90_preproc"` → `"wannierprep"` |
-| `src/quantumvitas/drivers/qe/engine/qe_engine.py:442` | Change `"w90_preproc"` → `"wannierprep"` in no_stdin_steps |
-| `src/quantumvitas/drivers/qe/engine/qe_calculation.py:304,399,528,589,603` | Change all `"w90_preproc"` → `"wannierprep"` |
-| `src/quantumvitas/calculation/structure_steps.py:784` | Change `"w90_preproc"` → `"wannierprep"` in WANNIER90_STEP_TYPES |
-| `src/quantumvitas/calculation/structure_steps.py:842` | Change `step_type_gen == "w90_preproc"` → `"wannierprep"` |
-| `src/quantumvitas/calculation/step_done.py:18` | Change `"w90_preproc"` → `"wannierprep"` |
-| `src/quantumvitas/calculation/verification.py:97` | Change `"w90_preproc"` → `"wannierprep"` |
-| `src/quantumvitas/calculation/step_artifacts.py:50,119` | Rename function and dict key |
-| `src/quantumvitas/calculation/input_runner.py:239` | Change `"w90_preproc"` → `"wannierprep"` |
-| `src/quantumvitas/cli/main.py:957` | Change `"w90_preproc"` → `"w90_wannierprep"` (SPEC) |
-| `src/quantumvitas/frontends/cli/app.py:883` | Change `"w90_preproc"` → `"w90_wannierprep"` (SPEC) |
-| `src/quantumvitas/core/driver_protocol.py:67` | Change or remove `"w90_preproc"` |
-| `src/quantumvitas/drivers/w90/driver.py:6-8` | Fix comment |
-| `src/quantumvitas/drivers/w90/artifact_resolver.py:25,52,74` | Update references |
-| `src/quantumvitas/drivers/w90/handler.py:43,94` | Update references |
+| `src/qmatsuite/workflow/gen_steps.py` | Change `"w90_preproc"` to `"wannierprep"` in GEN_STEPS |
+| `src/qmatsuite/workflow/registry.py:321-330` | Change `step_type_gen="w90_preproc"` → `"wannierprep"`, `step_type_spec="w90_preproc"` → `"w90_wannierprep"`, `engine="qe"` → `"w90"` |
+| `src/qmatsuite/drivers/qe/step_types.py:121-128` | **DELETE** this entry (W90 step, not QE) |
+| `src/qmatsuite/drivers/qe/engine/qe_engine.py:62` | Change key `"w90_preproc"` → `"wannierprep"` |
+| `src/qmatsuite/drivers/qe/engine/qe_engine.py:379` | Change `step_gen_type == "w90_preproc"` → `"wannierprep"` |
+| `src/qmatsuite/drivers/qe/engine/qe_engine.py:442` | Change `"w90_preproc"` → `"wannierprep"` in no_stdin_steps |
+| `src/qmatsuite/drivers/qe/engine/qe_calculation.py:304,399,528,589,603` | Change all `"w90_preproc"` → `"wannierprep"` |
+| `src/qmatsuite/calculation/structure_steps.py:784` | Change `"w90_preproc"` → `"wannierprep"` in WANNIER90_STEP_TYPES |
+| `src/qmatsuite/calculation/structure_steps.py:842` | Change `step_type_gen == "w90_preproc"` → `"wannierprep"` |
+| `src/qmatsuite/calculation/step_done.py:18` | Change `"w90_preproc"` → `"wannierprep"` |
+| `src/qmatsuite/calculation/verification.py:97` | Change `"w90_preproc"` → `"wannierprep"` |
+| `src/qmatsuite/calculation/step_artifacts.py:50,119` | Rename function and dict key |
+| `src/qmatsuite/calculation/input_runner.py:239` | Change `"w90_preproc"` → `"wannierprep"` |
+| `src/qmatsuite/cli/main.py:957` | Change `"w90_preproc"` → `"w90_wannierprep"` (SPEC) |
+| `src/qmatsuite/frontends/cli/app.py:883` | Change `"w90_preproc"` → `"w90_wannierprep"` (SPEC) |
+| `src/qmatsuite/core/driver_protocol.py:67` | Change or remove `"w90_preproc"` |
+| `src/qmatsuite/drivers/w90/driver.py:6-8` | Fix comment |
+| `src/qmatsuite/drivers/w90/artifact_resolver.py:25,52,74` | Update references |
+| `src/qmatsuite/drivers/w90/handler.py:43,94` | Update references |
 
 **Demo projects to update**:
 | File | What to change |
@@ -500,24 +500,24 @@ rg "w90_preproc" src/
 
 | File | What to change |
 |------|----------------|
-| `src/quantumvitas/workflow/gen_steps.py` | Change `"w90_run"` to `"wannier"` in GEN_STEPS |
-| `src/quantumvitas/workflow/registry.py:341-350` | Change `step_type_gen="w90_run"` → `"wannier"`, `step_type_spec="w90_run"` → `"w90_wannier"`, `engine="qe"` → `"w90"` |
-| `src/quantumvitas/drivers/w90/driver.py:61` | Change `step_type_spec="w90_run"` → `"w90_wannier"` |
-| `src/quantumvitas/drivers/w90/driver.py:86` | **DELETE** the get_materialization_map method |
-| `src/quantumvitas/drivers/qe/engine/qe_engine.py:64` | Change key `"w90_run"` → `"wannier"` |
-| `src/quantumvitas/drivers/qe/engine/qe_engine.py:385` | Change `step_gen_type == "w90_run"` → `"wannier"` |
-| `src/quantumvitas/drivers/qe/engine/qe_engine.py:442` | Change `"w90_run"` → `"wannier"` in no_stdin_steps |
-| `src/quantumvitas/drivers/qe/engine/qe_calculation.py:304,400,546,556,559,589,603` | Change all `"w90_run"` → `"wannier"` |
-| `src/quantumvitas/calculation/structure_steps.py:784` | Change `"w90_run"` → `"wannier"` in WANNIER90_STEP_TYPES |
-| `src/quantumvitas/calculation/structure_steps.py:842` | Change `step_type_gen == "w90_run"` → `"wannier"` |
-| `src/quantumvitas/calculation/step_done.py:18` | Change `"w90_run"` → `"wannier"` |
-| `src/quantumvitas/calculation/verification.py:97` | Change `"w90_run"` → `"wannier"` |
-| `src/quantumvitas/calculation/step_artifacts.py:78,121` | Rename function and dict key |
-| `src/quantumvitas/calculation/input_runner.py:239` | Change `"w90_run"` → `"wannier"` |
-| `src/quantumvitas/workflow/templates.py:119` | Change `"w90_run"` → `"wannier"` |
-| `src/quantumvitas/cli/main.py:957` | Change `"w90_run"` → `"w90_wannier"` (SPEC) |
-| `src/quantumvitas/frontends/cli/app.py:883` | Change `"w90_run"` → `"w90_wannier"` (SPEC) |
-| `src/quantumvitas/core/driver_protocol.py:67` | Change or remove `"w90_run"` |
+| `src/qmatsuite/workflow/gen_steps.py` | Change `"w90_run"` to `"wannier"` in GEN_STEPS |
+| `src/qmatsuite/workflow/registry.py:341-350` | Change `step_type_gen="w90_run"` → `"wannier"`, `step_type_spec="w90_run"` → `"w90_wannier"`, `engine="qe"` → `"w90"` |
+| `src/qmatsuite/drivers/w90/driver.py:61` | Change `step_type_spec="w90_run"` → `"w90_wannier"` |
+| `src/qmatsuite/drivers/w90/driver.py:86` | **DELETE** the get_materialization_map method |
+| `src/qmatsuite/drivers/qe/engine/qe_engine.py:64` | Change key `"w90_run"` → `"wannier"` |
+| `src/qmatsuite/drivers/qe/engine/qe_engine.py:385` | Change `step_gen_type == "w90_run"` → `"wannier"` |
+| `src/qmatsuite/drivers/qe/engine/qe_engine.py:442` | Change `"w90_run"` → `"wannier"` in no_stdin_steps |
+| `src/qmatsuite/drivers/qe/engine/qe_calculation.py:304,400,546,556,559,589,603` | Change all `"w90_run"` → `"wannier"` |
+| `src/qmatsuite/calculation/structure_steps.py:784` | Change `"w90_run"` → `"wannier"` in WANNIER90_STEP_TYPES |
+| `src/qmatsuite/calculation/structure_steps.py:842` | Change `step_type_gen == "w90_run"` → `"wannier"` |
+| `src/qmatsuite/calculation/step_done.py:18` | Change `"w90_run"` → `"wannier"` |
+| `src/qmatsuite/calculation/verification.py:97` | Change `"w90_run"` → `"wannier"` |
+| `src/qmatsuite/calculation/step_artifacts.py:78,121` | Rename function and dict key |
+| `src/qmatsuite/calculation/input_runner.py:239` | Change `"w90_run"` → `"wannier"` |
+| `src/qmatsuite/workflow/templates.py:119` | Change `"w90_run"` → `"wannier"` |
+| `src/qmatsuite/cli/main.py:957` | Change `"w90_run"` → `"w90_wannier"` (SPEC) |
+| `src/qmatsuite/frontends/cli/app.py:883` | Change `"w90_run"` → `"w90_wannier"` (SPEC) |
+| `src/qmatsuite/core/driver_protocol.py:67` | Change or remove `"w90_run"` |
 
 **Demo projects to update**:
 | File | What to change |
@@ -551,22 +551,22 @@ rg "w90_run" src/
 
 | File | What to change |
 |------|----------------|
-| `src/quantumvitas/workflow/gen_steps.py` | Change `"pw2wannier90"` to `"pw2wannier"` in GEN_STEPS |
-| `src/quantumvitas/workflow/registry.py:331-340` | Change `step_type_gen="pw2wannier90"` → `"pw2wannier"`, `step_type_spec="qe_pw2wannier90"` → `"qe_pw2wannier"` |
-| `src/quantumvitas/drivers/qe/step_types.py:110-114` | Change `step_type_spec="qe_pw2wannier90"` → `"qe_pw2wannier"` |
-| `src/quantumvitas/drivers/qe/engine/qe_engine.py:63` | Change key `"pw2wannier90"` → `"pw2wannier"` |
-| `src/quantumvitas/drivers/qe/engine/qe_engine.py:389-398` | Change `step_gen_type == "pw2wannier90"` → `"pw2wannier"` |
-| `src/quantumvitas/drivers/qe/engine/qe_engine.py:442` | Change `"pw2wannier90"` → `"pw2wannier"` in no_stdin_steps |
-| `src/quantumvitas/drivers/qe/engine/qe_calculation.py:309,401-452,564-576,607-608` | Change all `"pw2wannier90"` → `"pw2wannier"` |
-| `src/quantumvitas/calculation/structure_steps.py:270,283,302,784,1004` | Change all `"pw2wannier90"` → `"pw2wannier"` |
-| `src/quantumvitas/calculation/step_done.py:18` | Change `"pw2wannier90"` → `"pw2wannier"` |
-| `src/quantumvitas/calculation/verification.py:97` | Change `"pw2wannier90"` → `"pw2wannier"` |
-| `src/quantumvitas/calculation/step_artifacts.py:60,120` | Rename function and dict key |
-| `src/quantumvitas/calculation/input_runner.py:239,431` | Change `"pw2wannier90"` → `"pw2wannier"` |
-| `src/quantumvitas/calculation/naming.py:45,63-75,97-98` | Change all `"pw2wannier90"` → `"pw2wannier"` |
-| `src/quantumvitas/workflow/templates.py:119` | Change `"pw2wannier90"` → `"pw2wannier"` |
-| `src/quantumvitas/cli/main.py:956,964` | Change `"qe_pw2wannier90"` → `"qe_pw2wannier"`, `"pw2wannier90"` → `"pw2wannier"` |
-| `src/quantumvitas/frontends/cli/app.py:882,890` | Change SPEC and GEN names |
+| `src/qmatsuite/workflow/gen_steps.py` | Change `"pw2wannier90"` to `"pw2wannier"` in GEN_STEPS |
+| `src/qmatsuite/workflow/registry.py:331-340` | Change `step_type_gen="pw2wannier90"` → `"pw2wannier"`, `step_type_spec="qe_pw2wannier90"` → `"qe_pw2wannier"` |
+| `src/qmatsuite/drivers/qe/step_types.py:110-114` | Change `step_type_spec="qe_pw2wannier90"` → `"qe_pw2wannier"` |
+| `src/qmatsuite/drivers/qe/engine/qe_engine.py:63` | Change key `"pw2wannier90"` → `"pw2wannier"` |
+| `src/qmatsuite/drivers/qe/engine/qe_engine.py:389-398` | Change `step_gen_type == "pw2wannier90"` → `"pw2wannier"` |
+| `src/qmatsuite/drivers/qe/engine/qe_engine.py:442` | Change `"pw2wannier90"` → `"pw2wannier"` in no_stdin_steps |
+| `src/qmatsuite/drivers/qe/engine/qe_calculation.py:309,401-452,564-576,607-608` | Change all `"pw2wannier90"` → `"pw2wannier"` |
+| `src/qmatsuite/calculation/structure_steps.py:270,283,302,784,1004` | Change all `"pw2wannier90"` → `"pw2wannier"` |
+| `src/qmatsuite/calculation/step_done.py:18` | Change `"pw2wannier90"` → `"pw2wannier"` |
+| `src/qmatsuite/calculation/verification.py:97` | Change `"pw2wannier90"` → `"pw2wannier"` |
+| `src/qmatsuite/calculation/step_artifacts.py:60,120` | Rename function and dict key |
+| `src/qmatsuite/calculation/input_runner.py:239,431` | Change `"pw2wannier90"` → `"pw2wannier"` |
+| `src/qmatsuite/calculation/naming.py:45,63-75,97-98` | Change all `"pw2wannier90"` → `"pw2wannier"` |
+| `src/qmatsuite/workflow/templates.py:119` | Change `"pw2wannier90"` → `"pw2wannier"` |
+| `src/qmatsuite/cli/main.py:956,964` | Change `"qe_pw2wannier90"` → `"qe_pw2wannier"`, `"pw2wannier90"` → `"pw2wannier"` |
+| `src/qmatsuite/frontends/cli/app.py:882,890` | Change SPEC and GEN names |
 
 **Demo projects to update**:
 | File | What to change |
@@ -600,13 +600,13 @@ rg "pw2wannier90" src/
 
 | File | What to change |
 |------|----------------|
-| `src/quantumvitas/workflow/gen_steps.py` | Change `"bands_pw"` to `"bandspw"` in GEN_STEPS |
-| `src/quantumvitas/workflow/registry.py:199-208` | Change `step_type_gen="bands_pw"` → `"bandspw"`, `step_type_spec="qe_bands_pw"` → `"qe_bandspw"` |
-| `src/quantumvitas/drivers/qe/step_types.py:32-36` | Change `step_type_spec="qe_bands_pw"` → `"qe_bandspw"` |
-| `src/quantumvitas/calculation/structure_steps.py` | Search and replace `bands_pw` → `bandspw` |
-| `src/quantumvitas/history/digests.py:314` | Change conditional check |
-| `src/quantumvitas/frontends/cli/app.py` | Change SPEC and GEN names |
-| `src/quantumvitas/presets/precision_variants.py` | Search and replace |
+| `src/qmatsuite/workflow/gen_steps.py` | Change `"bands_pw"` to `"bandspw"` in GEN_STEPS |
+| `src/qmatsuite/workflow/registry.py:199-208` | Change `step_type_gen="bands_pw"` → `"bandspw"`, `step_type_spec="qe_bands_pw"` → `"qe_bandspw"` |
+| `src/qmatsuite/drivers/qe/step_types.py:32-36` | Change `step_type_spec="qe_bands_pw"` → `"qe_bandspw"` |
+| `src/qmatsuite/calculation/structure_steps.py` | Search and replace `bands_pw` → `bandspw` |
+| `src/qmatsuite/history/digests.py:314` | Change conditional check |
+| `src/qmatsuite/frontends/cli/app.py` | Change SPEC and GEN names |
+| `src/qmatsuite/presets/precision_variants.py` | Search and replace |
 
 **Commands to run after changes**:
 ```bash
@@ -626,7 +626,7 @@ rg "bands_pw" src/
 
 **Goal**: Remove migration comments, verify no underscores remain.
 
-**Files to modify**: `src/quantumvitas/workflow/gen_steps.py`
+**Files to modify**: `src/qmatsuite/workflow/gen_steps.py`
 
 **Final content for GEN_STEPS**:
 ```python
@@ -686,7 +686,7 @@ class TestWannier90EngineOwnership:
 
     def test_wannierprep_is_w90_engine(self):
         """wannierprep uses W90 engine (wannier90.x -pp)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
         spec = registry.get("w90_wannierprep")
         assert spec is not None, "w90_wannierprep not found in registry"
@@ -694,7 +694,7 @@ class TestWannier90EngineOwnership:
 
     def test_wannier_is_w90_engine(self):
         """wannier uses W90 engine (wannier90.x)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
         spec = registry.get("w90_wannier")
         assert spec is not None, "w90_wannier not found in registry"
@@ -702,7 +702,7 @@ class TestWannier90EngineOwnership:
 
     def test_pw2wannier_is_qe_engine(self):
         """pw2wannier uses QE engine (pw2wannier90.x)."""
-        from quantumvitas.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry
         registry = get_registry()
         spec = registry.get("qe_pw2wannier")
         assert spec is not None, "qe_pw2wannier not found in registry"
@@ -726,23 +726,23 @@ class TestWannier90EngineOwnership:
 
 **Files to modify**:
 
-1. `src/quantumvitas/drivers/qe/driver.py` - Remove `get_materialization_map()`, add:
+1. `src/qmatsuite/drivers/qe/driver.py` - Remove `get_materialization_map()`, add:
    ```python
    PREFIX: str = "qe"
    SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({...})
    ```
 
-2. `src/quantumvitas/drivers/vasp/driver.py` - Same pattern
+2. `src/qmatsuite/drivers/vasp/driver.py` - Same pattern
 
-3. `src/quantumvitas/drivers/pyscf/driver.py` - Same pattern
+3. `src/qmatsuite/drivers/pyscf/driver.py` - Same pattern
 
-4. `src/quantumvitas/drivers/orca/driver.py` - Same pattern
+4. `src/qmatsuite/drivers/orca/driver.py` - Same pattern
 
-5. `src/quantumvitas/drivers/cp2k/driver.py` - Same pattern
+5. `src/qmatsuite/drivers/cp2k/driver.py` - Same pattern
 
-6. `src/quantumvitas/drivers/lammps/driver.py` - Same pattern
+6. `src/qmatsuite/drivers/lammps/driver.py` - Same pattern
 
-7. `src/quantumvitas/drivers/w90/driver.py` - Same pattern (PREFIX="w90")
+7. `src/qmatsuite/drivers/w90/driver.py` - Same pattern (PREFIX="w90")
 
 **Verification after each driver**:
 ```bash
@@ -756,7 +756,7 @@ class TestWannier90EngineOwnership:
 
 **Goal**: Use canonical `spec_from()` instead.
 
-**Files to modify**: `src/quantumvitas/workflow/registry.py`
+**Files to modify**: `src/qmatsuite/workflow/registry.py`
 
 **Changes**:
 - Remove `_gen_to_spec` dict construction

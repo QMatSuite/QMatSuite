@@ -36,9 +36,9 @@ Key constraints extracted for this step:
 
 ### Step 2 foundation reviewed
 
-- `src/quantumvitas/core/engines/engine_meta.py`
-- `src/quantumvitas/core/engines/engine_registry.py`
-- `src/quantumvitas/api/engines.py`
+- `src/qmatsuite/core/engines/engine_meta.py`
+- `src/qmatsuite/core/engines/engine_registry.py`
+- `src/qmatsuite/api/engines.py`
 - `docs/history/worklogs/DISTRIBUTION_STEP2_ENGINE_REGISTRY_2026-02-22_WORKLOG.md`
 
 ### Existing implementation audit for Step 3
@@ -51,25 +51,25 @@ Key constraints extracted for this step:
   - `core/pseudo_config.py` (`compute_sha256`, `download_github_release_asset`).
 - Daemon async infrastructure for long-running tasks already exists:
   - `daemon/jobs.py` and RPC polling endpoints (`get_job_status`, `list_jobs`, etc.).
-- CLI currently has no `qv engine ...` subcommands.
+- CLI currently has no `qms engine ...` subcommands.
 
 ## Task 0 architecture plan (completed before code changes)
 
 ### 1) Module placement (kernel vs API)
 
 Kernel modules (new):
-- `src/quantumvitas/core/engines/micromamba.py`
+- `src/qmatsuite/core/engines/micromamba.py`
   - micromamba binary acquisition, checksum verification, command wrappers, env lifecycle.
-- `src/quantumvitas/core/engines/engine_installer.py`
+- `src/qmatsuite/core/engines/engine_installer.py`
   - engine installation/uninstallation orchestration, install verification, engines.json registration.
 
 API module (extend existing):
-- `src/quantumvitas/api/engines.py`
+- `src/qmatsuite/api/engines.py`
   - add thin API wrappers for install/uninstall/list-installable operations.
 
 Frontend integration:
-- Daemon (`src/quantumvitas/daemon/server.py`) adds RPC handlers that call API functions only.
-- CLI (`src/quantumvitas/cli/main.py`) adds `qv engine ...` commands that call API functions only.
+- Daemon (`src/qmatsuite/daemon/server.py`) adds RPC handlers that call API functions only.
+- CLI (`src/qmatsuite/cli/main.py`) adds `qms engine ...` commands that call API functions only.
 
 Justification:
 - Keeps filesystem/process management in kernel.
@@ -111,7 +111,7 @@ Daemon responsibilities:
 - use `JobManager` for background installation to provide task/job polling via existing `get_job_status`.
 
 CLI responsibilities:
-- add `qv engine` group:
+- add `qms engine` group:
   - `list`, `install`, `uninstall`, `verify`, `path`.
 - CLI calls API only; no kernel imports.
 
@@ -186,8 +186,8 @@ Interpretation for this step:
 ### Kernel implementation added
 
 Created:
-- `src/quantumvitas/core/engines/micromamba.py`
-- `src/quantumvitas/core/engines/engine_installer.py`
+- `src/qmatsuite/core/engines/micromamba.py`
+- `src/qmatsuite/core/engines/engine_installer.py`
 
 `micromamba.py` details:
 - Pinned release tag: `2.5.0-2`.
@@ -227,7 +227,7 @@ Created:
 ### API integration added
 
 Modified:
-- `src/quantumvitas/api/engines.py`
+- `src/qmatsuite/api/engines.py`
 
 Added API methods:
 - `install_engine(engine_family, version=None, source="auto")`
@@ -242,7 +242,7 @@ Behavior:
 ### Daemon integration added
 
 Modified:
-- `src/quantumvitas/daemon/server.py`
+- `src/qmatsuite/daemon/server.py`
 
 Added RPC endpoints:
 - `engine.install`
@@ -257,14 +257,14 @@ Design choice:
 ### CLI integration added
 
 Modified:
-- `src/quantumvitas/cli/main.py`
+- `src/qmatsuite/cli/main.py`
 
-Added `qv engine` command group with subcommands:
-- `qv engine list [--installed-only]`
-- `qv engine install <engine> [--version X] [--source auto|conda|github_release]`
-- `qv engine uninstall <engine> [--installation-id ID]`
-- `qv engine verify <engine>`
-- `qv engine path <engine> <path> [--source user_path|user_venv]`
+Added `qms engine` command group with subcommands:
+- `qms engine list [--installed-only]`
+- `qms engine install <engine> [--version X] [--source auto|conda|github_release]`
+- `qms engine uninstall <engine> [--installation-id ID]`
+- `qms engine verify <engine>`
+- `qms engine path <engine> <path> [--source user_path|user_venv]`
 
 ### Test scaffolding added
 
@@ -395,9 +395,9 @@ Status:
 
 ### Post-green smoke checks (after full suite)
 Commands:
-- `source .venv/bin/activate && qv engine list`
-- `source .venv/bin/activate && qv engine list --installed-only`
-- `source .venv/bin/activate && python -c "from quantumvitas.api.engines import list_installable_engines; ..."`
+- `source .venv/bin/activate && qms engine list`
+- `source .venv/bin/activate && qms engine list --installed-only`
+- `source .venv/bin/activate && python -c "from qmatsuite.api.engines import list_installable_engines; ..."`
 
 Observed:
 - CLI list renders real per-engine detection (not all-true behavior).
@@ -423,10 +423,10 @@ Milestone commit created:
 ### Timeline correlation
 - `coverage.xml` from mandatory full pytest rerun was written at `12:49:25`.
 - Artifact creation occurred ~46s later at `12:50:11`.
-- That interval corresponds to post-pytest manual smoke commands (`qv engine list`), not code edit operations.
+- That interval corresponds to post-pytest manual smoke commands (`qms engine list`), not code edit operations.
 
 ### Deep root-cause analysis
-1. `qv engine list` calls API `list_engines()`.
+1. `qms engine list` calls API `list_engines()`.
 2. `list_engines()` calls `EngineRegistry().discover(persist=False)`.
 3. `discover()` verifies installations and runs version probes.
 4. QE metadata uses version probe command `pw.x --version`.
@@ -439,7 +439,7 @@ Milestone commit created:
 - Direct binary run in isolated temp dir:
   - `pw.x --version` created `CRASH` + `input_tmp.in` in that dir.
 - CLI reproduction:
-  - running `qv engine list` from an empty temp dir created `CRASH` + `input_tmp.in` there.
+  - running `qms engine list` from an empty temp dir created `CRASH` + `input_tmp.in` there.
 - This confirms pollution source is version probing path, not direct file writes in repo code.
 
 ### Runtime-safety design decision
@@ -457,11 +457,11 @@ Chosen design:
 
 ### Code changes implemented for fix
 - Added shared helper module:
-  - `src/quantumvitas/core/engines/version_probe.py`
+  - `src/qmatsuite/core/engines/version_probe.py`
   - function: `run_version_probe(command, timeout=...)`
 - Updated version-probe callsites to use safe helper:
-  - `src/quantumvitas/core/engines/engine_registry.py`
-  - `src/quantumvitas/core/engines/engine_installer.py`
+  - `src/qmatsuite/core/engines/engine_registry.py`
+  - `src/qmatsuite/core/engines/engine_installer.py`
 
 ### Regression tests added
 - `tests/unit/test_engine_registry_distribution.py`
@@ -472,7 +472,7 @@ Chosen design:
 Both tests use a fake executable that attempts to create `input_tmp.in` and `CRASH`; assertions verify caller CWD remains clean.
 
 ### Expected behavior after fix
-- `qv engine list` / engine discovery/verification no longer creates QE crash artifacts in caller CWD.
+- `qms engine list` / engine discovery/verification no longer creates QE crash artifacts in caller CWD.
 - In distribution mode, probe scratch path resolves under app cache (`get_cache_dir()`), not repo paths.
 - Interactive CLI use will not hang on version probes waiting for stdin.
 
@@ -486,10 +486,10 @@ Result:
 
 Manual runtime reproduction checks:
 1. Temp-cwd CLI check:
-   - command: `(cd /tmp/<tmpdir> && qv engine list)`
+   - command: `(cd /tmp/<tmpdir> && qms engine list)`
    - observed: output correct, and temp dir remained empty (no `CRASH`, no `input_tmp.in`).
 2. Repo-root stability check:
-   - ran `qv engine list` from repo root and compared mtimes for existing `CRASH`/`input_tmp.in`.
+   - ran `qms engine list` from repo root and compared mtimes for existing `CRASH`/`input_tmp.in`.
    - observed: mtimes unchanged; no new writes.
 
 Conclusion:

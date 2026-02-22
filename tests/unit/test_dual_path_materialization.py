@@ -7,9 +7,9 @@ and that multiple engine-specific patches raise a hard error.
 
 import pytest
 
-from quantumvitas.presets.dimensions import PrecisionOption, DIMENSION_QC_PRECISION
-from quantumvitas.presets.variants_registry import compile_dimension_patch_for_step
-from quantumvitas.presets.compiler import PresetCompilationError
+from qmatsuite.presets.dimensions import PrecisionOption, DIMENSION_QC_PRECISION
+from qmatsuite.presets.variants_registry import compile_dimension_patch_for_step
+from qmatsuite.presets.compiler import PresetCompilationError
 
 
 def test_general_ir_patch_when_no_engine_specific():

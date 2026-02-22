@@ -46,7 +46,7 @@ meta:                      # Top-level metadata for GUI display
   tags: ["bands", "Si", "PW"]
 ```
 
-**Fix**: Updated `QVService.list_demo_projects()` to read from top-level `meta` section:
+**Fix**: Updated `QMSService.list_demo_projects()` to read from top-level `meta` section:
 - `title` → `demo_meta.get("title")`
 - `subtitle` → `demo_meta.get("subtitle")`
 - `tags` → `demo_meta.get("tags")`
@@ -54,8 +54,8 @@ meta:                      # Top-level metadata for GUI display
 Also updated compat shaper `_shape_list_demo_projects()` to handle the new fields.
 
 **Files Changed**:
-- `src/quantumvitas/api/service.py` (lines 7602-7652)
-- `src/quantumvitas/daemon/compat.py` (lines 232-270)
+- `src/qmatsuite/api/service.py` (lines 7602-7652)
+- `src/qmatsuite/daemon/compat.py` (lines 232-270)
 
 ---
 
@@ -84,8 +84,8 @@ Received:   0
    - Pass the correct path to `_expand_step_ids_to_steps()` which reads `calculation.yaml`
 
 **Files Changed**:
-- `src/quantumvitas/daemon/server.py` (line 2040: added `_project_root`)
-- `src/quantumvitas/daemon/compat.py` (lines 468-522: fixed path computation using slug)
+- `src/qmatsuite/daemon/server.py` (line 2040: added `_project_root`)
+- `src/qmatsuite/daemon/compat.py` (lines 468-522: fixed path computation using slug)
 
 ---
 
@@ -93,7 +93,7 @@ Received:   0
 
 **Error**:
 ```
-Locator: getByTestId('qv-calc-analysis-panel').locator('[data-testid="qv-analysis-step-tab-bands"]')
+Locator: getByTestId('qms-calc-analysis-panel').locator('[data-testid="qms-analysis-step-tab-bands"]')
 Expected: visible
 Error: element(s) not found
 ```
@@ -109,8 +109,8 @@ Error: element(s) not found
 | Issue | Status | Files Changed |
 |-------|--------|---------------|
 | Schema drift `discover_qe_engines` | FIXED | `tests/contract_crawler/test_schema_preservation.py` |
-| Demo card showing ID | FIXED | `src/quantumvitas/api/service.py`, `src/quantumvitas/daemon/compat.py` |
-| Steps not showing | FIXED | `src/quantumvitas/daemon/server.py`, `src/quantumvitas/daemon/compat.py` |
+| Demo card showing ID | FIXED | `src/qmatsuite/api/service.py`, `src/qmatsuite/daemon/compat.py` |
+| Steps not showing | FIXED | `src/qmatsuite/daemon/server.py`, `src/qmatsuite/daemon/compat.py` |
 | Analysis tabs not visible | EXPECTED FIXED | Cascading fix from steps issue |
 
 ## Test Coverage Verification

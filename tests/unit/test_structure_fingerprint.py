@@ -10,16 +10,16 @@ import shutil
 
 from pymatgen.core import Structure, Lattice, Molecule
 
-from quantumvitas.core.structure_fingerprint import (
+from qmatsuite.core.structure_fingerprint import (
     structure_fingerprint,
     structure_like_fingerprint,
     quantize_scalar,
     quantize_array,
     DEFAULT_FINGERPRINT_TOL_ANG,
 )
-from quantumvitas.core.structure_canonicalize import canonicalize_structure_like_in_place
-from quantumvitas.io.structure_io import write_structure, read_structure
-from quantumvitas.api import QVService
+from qmatsuite.core.structure_canonicalize import canonicalize_structure_like_in_place
+from qmatsuite.io.structure_io import write_structure, read_structure
+from qmatsuite.api import QMSService
 
 
 @pytest.fixture
@@ -129,13 +129,13 @@ class TestUnitRepresentationStability:
         assert fp1 == fp3, "Same structure with coords shifted by 1.0 (mod equivalent) should yield same fingerprint"
 
 
-class TestQVServiceDedup:
-    """Test QVService structure deduplication by fingerprint."""
+class TestQMSServiceDedup:
+    """Test QMSService structure deduplication by fingerprint."""
     
     def test_import_identical_structures_dedup(self, si_structure, tmp_path):
         """Test that importing two steps with identical structures results in 1 structure resource when dedup enabled."""
         project_root = tmp_path / "test_project"
-        QVService.init_project(target_dir=project_root, name="test")
+        QMSService.init_project(target_dir=project_root, name="test")
         
         # Create two temporary input files with same structure
         # (In real usage, these would be QE input files, but for testing we'll create structure files)
@@ -147,15 +147,15 @@ class TestQVServiceDedup:
         
         # Import both structures WITH dedup enabled
         # Note: dedup is opt-in (default=False) to allow users to import same structure multiple times
-        resolved1 = QVService(project_root).structure.import_file(struct_file1, name="struct1", dedup_by_fingerprint=True)
-        resolved2 = QVService(project_root).structure.import_file(struct_file2, name="struct2", dedup_by_fingerprint=True)
+        resolved1 = QMSService(project_root).structure.import_file(struct_file1, name="struct1", dedup_by_fingerprint=True)
+        resolved2 = QMSService(project_root).structure.import_file(struct_file2, name="struct2", dedup_by_fingerprint=True)
         
         # Both should resolve to the same structure (deduplicated by fingerprint)
         assert resolved1.meta.ulid == resolved2.meta.ulid, \
             "Identical structures should be deduplicated to same structure_ulid when dedup enabled"
         
         # Project should have only 1 structure
-        from quantumvitas.core.project_utils import load_project_config
+        from qmatsuite.core.project_utils import load_project_config
         config = load_project_config(project_root)
         structures = config.get("structures", [])
         unique_structure_ulids = {entry.get("structure_ulid") for entry in structures}
@@ -165,7 +165,7 @@ class TestQVServiceDedup:
     def test_import_different_structures_no_dedup(self, si_structure, si_structure_different, tmp_path):
         """Test that importing two steps with different structures results in 2 structures."""
         project_root = tmp_path / "test_project"
-        QVService.init_project(target_dir=project_root, name="test")
+        QMSService.init_project(target_dir=project_root, name="test")
         
         # Create two structure files with different structures
         struct_file1 = tmp_path / "struct1.json"
@@ -175,15 +175,15 @@ class TestQVServiceDedup:
         write_structure(si_structure_different, struct_file2)
         
         # Import both structures
-        resolved1 = QVService(project_root).structure.import_file(struct_file1, name="struct1")
-        resolved2 = QVService(project_root).structure.import_file(struct_file2, name="struct2")
+        resolved1 = QMSService(project_root).structure.import_file(struct_file1, name="struct1")
+        resolved2 = QMSService(project_root).structure.import_file(struct_file2, name="struct2")
         
         # They should have different structure_ulids
         assert resolved1.meta.ulid != resolved2.meta.ulid, \
             "Different structures should have different structure_ulids"
         
         # Project should have 2 structures
-        from quantumvitas.core.project_utils import load_project_config
+        from qmatsuite.core.project_utils import load_project_config
         config = load_project_config(project_root)
         structures = config.get("structures", [])
         unique_structure_ulids = {entry.get("structure_ulid") for entry in structures}
@@ -193,19 +193,19 @@ class TestQVServiceDedup:
     def test_fingerprint_stored_in_metadata(self, si_structure, tmp_path):
         """Test that fingerprint is stored in structure metadata."""
         project_root = tmp_path / "test_project"
-        QVService.init_project(target_dir=project_root, name="test")
+        QMSService.init_project(target_dir=project_root, name="test")
         
         struct_file = tmp_path / "struct.json"
         write_structure(si_structure, struct_file)
         
         # Import structure
-        resolved = QVService(project_root).structure.import_file(struct_file, name="struct")
+        resolved = QMSService(project_root).structure.import_file(struct_file, name="struct")
         
         # Read structure file and check fingerprint in metadata
         import json
         structure_path = project_root / resolved.meta.path
         struct_data = json.loads(structure_path.read_text())
-        meta = struct_data.get("__qv_meta__", {})
+        meta = struct_data.get("__qms_meta__", {})
         
         assert "fingerprint" in meta, "Fingerprint should be stored in metadata"
         # Compute expected fingerprint: canonicalize first, then fingerprint
@@ -239,8 +239,8 @@ class TestMultiStructureCalculation:
         write_structure(struct2, struct_file2)
         
         # Create QE input files (minimal)
-        from quantumvitas.io.generator.qe_generator import QEInputGenerator
-        from quantumvitas.io.model import QEInput, QENamelist, QECard, QECardType
+        from qmatsuite.io.generator.qe_generator import QEInputGenerator
+        from qmatsuite.io.model import QEInput, QENamelist, QECard, QECardType
         
         input1 = tmp_path / "input1.in"
         input2 = tmp_path / "input2.in"
@@ -291,7 +291,7 @@ class TestMultiStructureCalculation:
         
         # Build calculation from inputs
         calculation_dir = tmp_path / "calculation"
-        from quantumvitas.calculation.importers import build_calculation_from_qe_inputs
+        from qmatsuite.calculation.importers import build_calculation_from_qe_inputs
         
         # This should not raise an assertion error about structure_ulid mismatch
         result = build_calculation_from_qe_inputs(
@@ -770,7 +770,7 @@ class TestImportStructureUnifiedFingerprint:
         
         # Create project
         project_root = tmp_path / "test_project"
-        QVService.init_project(target_dir=project_root, name="test")
+        QMSService.init_project(target_dir=project_root, name="test")
         
         # Create molecule
         h2 = Molecule(["H", "H"], [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]])
@@ -778,12 +778,12 @@ class TestImportStructureUnifiedFingerprint:
         write_structure(h2, mol_file)
         
         # Import molecule
-        resolved = QVService(project_root).structure.import_file(mol_file, name="h2")
+        resolved = QMSService(project_root).structure.import_file(mol_file, name="h2")
         
         # Read stored fingerprint from structure file
         structure_path = project_root / resolved.meta.path
         struct_data = json.loads(structure_path.read_text())
-        stored_fingerprint = struct_data.get("__qv_meta__", {}).get("fingerprint")
+        stored_fingerprint = struct_data.get("__qms_meta__", {}).get("fingerprint")
         
         # Compute expected: canonicalize then fingerprint
         h2_copy = Molecule(["H", "H"], [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]])
@@ -799,7 +799,7 @@ class TestImportStructureUnifiedFingerprint:
         """Two Molecules at different origins should dedup when dedup_by_fingerprint=True."""
         # Create project
         project_root = tmp_path / "test_project"
-        QVService.init_project(target_dir=project_root, name="test")
+        QMSService.init_project(target_dir=project_root, name="test")
         
         # Create same molecule at different origins
         h2_origin = Molecule(["H", "H"], [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]])
@@ -811,8 +811,8 @@ class TestImportStructureUnifiedFingerprint:
         write_structure(h2_translated, mol_file2)
         
         # Import both with dedup enabled
-        resolved1 = QVService(project_root).structure.import_file(mol_file1, name="h2_1", dedup_by_fingerprint=True)
-        resolved2 = QVService(project_root).structure.import_file(mol_file2, name="h2_2", dedup_by_fingerprint=True)
+        resolved1 = QMSService(project_root).structure.import_file(mol_file1, name="h2_1", dedup_by_fingerprint=True)
+        resolved2 = QMSService(project_root).structure.import_file(mol_file2, name="h2_2", dedup_by_fingerprint=True)
         
         # Should be same structure (deduped)
         assert resolved1.meta.ulid == resolved2.meta.ulid, (

@@ -11,12 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.pseudo_libinfo import (
+from qmatsuite.core.pseudo_libinfo import (
     compute_sha256_bytes,
     compute_sha_family_file,
     compute_sha_family_text,
 )
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.resources import get_resources_dir
 
 
 def test_whitespace_only_change(tmp_path: Path) -> None:

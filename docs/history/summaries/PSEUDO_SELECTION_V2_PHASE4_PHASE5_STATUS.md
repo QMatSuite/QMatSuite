@@ -4,7 +4,7 @@
 
 ### Phase 4.1-4.3: Backend sha_token-first Refactor ✓
 
-**File: `src/quantumvitas/core/pseudo_options.py`**
+**File: `src/qmatsuite/core/pseudo_options.py`**
 
 1. **New Schema:**
    - Added `PseudoOptionGroup` dataclass (sha_token-primary)
@@ -27,8 +27,8 @@
 ### Phase 4.4: API & RPC Wiring ✓
 
 **Files:**
-- `src/quantumvitas/api.py`: Updated `get_pseudo_options_for_elements()` with `use_sha_token_grouping` flag
-- `src/quantumvitas/daemon/server.py`: Updated `_handle_get_pseudo_options_for_calculation()` to use sha_token-first function
+- `src/qmatsuite/api.py`: Updated `get_pseudo_options_for_elements()` with `use_sha_token_grouping` flag
+- `src/qmatsuite/daemon/server.py`: Updated `_handle_get_pseudo_options_for_calculation()` to use sha_token-first function
 
 ### Phase 4.5-4.7: UI Refactor ⏳ (Partially Complete)
 
@@ -88,7 +88,7 @@
    ```
 
 3. **Add warnings display:**
-   - Call `qv.analyzeProjectPseudoEffects()` on selection change
+   - Call `qms.analyzeProjectPseudoEffects()` on selection change
    - Render warnings inline next to pseudo row
    - Show predicted effects (rename/overwrite)
 

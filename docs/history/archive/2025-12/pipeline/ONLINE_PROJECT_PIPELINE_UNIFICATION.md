@@ -6,16 +6,16 @@
 
 **证据日志：**
 ```
-[quantumvitas.api] [PIPELINE] display_atoms: count=31
+[qmatsuite.api] [PIPELINE] display_atoms: count=31
 [PIPELINE] bonds_len=30 maxBondIndex=30
 ```
 
-**结论：** project / online 的 canonical → display → bonds 逻辑在 `quantumvitas.api._build_structure_vis_payload` 中完全一致。
+**结论：** project / online 的 canonical → display → bonds 逻辑在 `qmatsuite.api._build_structure_vis_payload` 中完全一致。
 
 ### 旧问题根源（已修复）
 
 **问题 1：Online 存在第二套 pipeline**
-- **位置：** `src/quantumvitas/daemon/server.py:1756`（已删除）
+- **位置：** `src/qmatsuite/daemon/server.py:1756`（已删除）
 - **证据：** `[__main__] [viewer] kind=online ... inAtoms=12 outAtoms=12 supercell=(5,5,5)`
 - **根因：** 旧 viewer 日志显示错误的 outAtoms 和 supercell
 - **修复：** 删除旧日志，只使用共享 pipeline 的日志
@@ -47,7 +47,7 @@ payload = {
 
 ### 硬断言（后端 + 前端）
 
-**后端断言位置：** `src/quantumvitas/api.py:2038-2045, 2137-2147`
+**后端断言位置：** `src/qmatsuite/api.py:2038-2045, 2137-2147`
 ```python
 # HARD ASSERT: bonds must only reference atoms array
 if bonds and max_bond_idx >= atoms_len:
@@ -69,14 +69,14 @@ if (bondsLen > 0) {
 
 ### 删除的旧代码
 
-**文件：** `src/quantumvitas/daemon/server.py`
+**文件：** `src/qmatsuite/daemon/server.py`
 - **行 1756：** 删除旧 viewer 日志 `[viewer] kind=online ... inAtoms=... outAtoms=...`
 - **原因：** 共享 pipeline 已提供正确的 `[viz]` 日志
 
 ### Online Handler 清理
 
-**文件：** `src/quantumvitas/daemon/server.py:1649-1750`
-- **唯一调用：** `QVService._build_structure_vis_payload(...)`
+**文件：** `src/qmatsuite/daemon/server.py:1649-1750`
+- **唯一调用：** `QMSService._build_structure_vis_payload(...)`
 - **禁止：** 自己 build_display_atoms / build_bonds
 - **参数来源：** 完全从 GUI payload 获取（`supercell`, `repeat_boundary`, `display_mode`）
 - **默认值：** `supercell=[1,1,1]`（不允许 server-side magic default）
@@ -109,7 +109,7 @@ if (bondsLen > 0) {
 - **传递路径：** GUI → RPC payload → `DisplayModeParams`
 - **禁止：** Server-side magic default（例如 5×5×5）
 
-**验证：** `src/quantumvitas/daemon/server.py:1427`
+**验证：** `src/qmatsuite/daemon/server.py:1427`
 ```python
 supercell = tuple(payload.get("supercell", [1, 1, 1]))  # 从 payload 获取，默认 [1,1,1]
 ```
@@ -186,13 +186,13 @@ supercell = tuple(payload.get("supercell", [1, 1, 1]))  # 从 payload 获取，�
 
 ### 后端
 
-1. **`src/quantumvitas/api.py`**
+1. **`src/qmatsuite/api.py`**
    - 行 1980-1996：修复 `atoms` 包含所有 display atoms
    - 行 2038-2045：添加 bond index 硬断言
    - 行 2137-2147：添加最终 payload contract 验证
    - 行 2043-2063：添加证据日志
 
-2. **`src/quantumvitas/daemon/server.py`**
+2. **`src/qmatsuite/daemon/server.py`**
    - 行 1679-1713：修复 bond schema（idx1/idx2），添加硬断言
    - 行 1756：删除旧 viewer 日志
    - 行 1658-1678：确保 atoms_data 包含所有 display atoms

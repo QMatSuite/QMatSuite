@@ -50,11 +50,11 @@ graph TD
 ```
 
 **关键模块入口**:
-- **应用**: `src/quantumvitas/presets/integration.py:327` - `apply_presets_to_step()`
-- **编译**: `src/quantumvitas/presets/variants_registry.py:260` - `compile_dimension_patch_for_step()`
-- **匹配**: `src/quantumvitas/presets/paramspace.py:241` - `match_profile()`
-- **IR 转换**: `src/quantumvitas/ir/backends/qe/mapping.py:188` - `qe_yaml_to_ir_yaml()`
-- **存储**: `src/quantumvitas/workflow/step_factory.py:106` - `save_step_doc()`
+- **应用**: `src/qmatsuite/presets/integration.py:327` - `apply_presets_to_step()`
+- **编译**: `src/qmatsuite/presets/variants_registry.py:260` - `compile_dimension_patch_for_step()`
+- **匹配**: `src/qmatsuite/presets/paramspace.py:241` - `match_profile()`
+- **IR 转换**: `src/qmatsuite/ir/backends/qe/mapping.py:188` - `qe_yaml_to_ir_yaml()`
+- **存储**: `src/qmatsuite/workflow/step_factory.py:106` - `save_step_doc()`
 
 ### 链路 2: Workflow → GenStep → SpecStep → Runner 执行/落盘 → UI 反推 GenStep
 
@@ -84,10 +84,10 @@ graph TD
 ```
 
 **关键模块入口**:
-- **Materialization**: `src/quantumvitas/workflow/generalized_steps.py:96` - `materialize_public_step_key()`
-- **Registry**: `src/quantumvitas/workflow/registry.py:23` - `StepTypeSpec`
-- **执行**: `src/quantumvitas/calculation/runner.py:132` - `CalculationRunner.run()`
-- **反推**: `src/quantumvitas/workflow/generalized_steps.py:338` - `dematerialize_to_generalized_step()`
+- **Materialization**: `src/qmatsuite/workflow/generalized_steps.py:96` - `materialize_public_step_key()`
+- **Registry**: `src/qmatsuite/workflow/registry.py:23` - `StepTypeSpec`
+- **执行**: `src/qmatsuite/calculation/runner.py:132` - `CalculationRunner.run()`
+- **反推**: `src/qmatsuite/workflow/generalized_steps.py:338` - `dematerialize_to_generalized_step()`
 
 ---
 
@@ -95,20 +95,20 @@ graph TD
 
 | 文件路径 | 作用 | 关键类/函数 | 确认行为（证据） |
 |---------|------|------------|----------------|
-| `src/quantumvitas/presets/paramspace.py` | ParamSpace 核心定义 | `ParamSpace`, `ParamKey`, `Cell`, `match_profile()`, `compile_profile_patch()` | **证据**: 行 120-163 定义 ParamSpace 数据结构；行 241-309 实现匹配逻辑；行 316-377 实现编译逻辑 |
-| `src/quantumvitas/presets/variants_registry.py` | ParamSpace 变体注册表 | `ParamSpaceVariant`, `get_variant()`, `compile_dimension_patch_for_step()`, `detect_dimension_for_step()` | **证据**: 行 17-50 定义 ParamSpaceVariant；行 245-257 实现变体查找；行 260-343 实现编译；行 460-508 实现检测 |
-| `src/quantumvitas/presets/integration.py` | Preset 与计算集成 | `apply_presets_to_step()`, `detect_presets_from_calculation()` | **证据**: 行 327-568 实现 preset 应用；行 105-168 实现检测聚合 |
-| `src/quantumvitas/ir/backends/qe/mapping.py` | IR ↔ QE 映射层 | `ir_to_qe_param()`, `qe_to_ir_param()`, `qe_yaml_to_ir_yaml()`, `ir_patch_to_qe_patch()` | **证据**: 行 16-44 定义 IR→QE 映射表；行 62-94 实现 IR→QE 转换；行 97-123 实现 QE→IR 转换；行 188-259 实现 YAML 转换 |
-| `src/quantumvitas/core/yamldoc.py` | YAML 文档抽象 | `YamlDoc`, `StepDoc` | **证据**: 行 75-294 定义 YamlDoc；行 299-375 实现 set/delete/apply_patch |
-| `src/quantumvitas/workflow/step_factory.py` | Step 创建与保存 | `create_step_doc()`, `save_step_doc()` | **证据**: 行 24-61 实现创建；行 106-118 实现保存（通过 yaml_io） |
-| `src/quantumvitas/workflow/generalized_steps.py` | GenStep 定义与 materialization | `GeneralizedStep`, `materialize_public_step_key()`, `dematerialize_to_generalized_step()` | **证据**: 行 21-56 定义 GeneralizedStep 枚举；行 96-122 实现 materialization；行 338-353 实现反推 |
-| `src/quantumvitas/workflow/registry.py` | Step 类型注册表 | `StepTypeSpec`, `get_registry()` | **证据**: 行 23-50 定义 StepTypeSpec；行 181-558 定义所有 step 类型 |
-| `src/quantumvitas/data/qe_metadata.py` | QE 参数元数据访问 | `get_ui_parameters()`, `_load_raw_metadata()` | **证据**: 行 510-544 实现 UI 参数获取；行 90-257 实现元数据加载 |
-| `src/quantumvitas/api.py` | 服务层 API | `QVService.update_step_params()`, `QVService.get_step_detail()` | **证据**: 行 4492-4571 实现参数更新；行 4302-4489 实现 step 详情获取 |
+| `src/qmatsuite/presets/paramspace.py` | ParamSpace 核心定义 | `ParamSpace`, `ParamKey`, `Cell`, `match_profile()`, `compile_profile_patch()` | **证据**: 行 120-163 定义 ParamSpace 数据结构；行 241-309 实现匹配逻辑；行 316-377 实现编译逻辑 |
+| `src/qmatsuite/presets/variants_registry.py` | ParamSpace 变体注册表 | `ParamSpaceVariant`, `get_variant()`, `compile_dimension_patch_for_step()`, `detect_dimension_for_step()` | **证据**: 行 17-50 定义 ParamSpaceVariant；行 245-257 实现变体查找；行 260-343 实现编译；行 460-508 实现检测 |
+| `src/qmatsuite/presets/integration.py` | Preset 与计算集成 | `apply_presets_to_step()`, `detect_presets_from_calculation()` | **证据**: 行 327-568 实现 preset 应用；行 105-168 实现检测聚合 |
+| `src/qmatsuite/ir/backends/qe/mapping.py` | IR ↔ QE 映射层 | `ir_to_qe_param()`, `qe_to_ir_param()`, `qe_yaml_to_ir_yaml()`, `ir_patch_to_qe_patch()` | **证据**: 行 16-44 定义 IR→QE 映射表；行 62-94 实现 IR→QE 转换；行 97-123 实现 QE→IR 转换；行 188-259 实现 YAML 转换 |
+| `src/qmatsuite/core/yamldoc.py` | YAML 文档抽象 | `YamlDoc`, `StepDoc` | **证据**: 行 75-294 定义 YamlDoc；行 299-375 实现 set/delete/apply_patch |
+| `src/qmatsuite/workflow/step_factory.py` | Step 创建与保存 | `create_step_doc()`, `save_step_doc()` | **证据**: 行 24-61 实现创建；行 106-118 实现保存（通过 yaml_io） |
+| `src/qmatsuite/workflow/generalized_steps.py` | GenStep 定义与 materialization | `GeneralizedStep`, `materialize_public_step_key()`, `dematerialize_to_generalized_step()` | **证据**: 行 21-56 定义 GeneralizedStep 枚举；行 96-122 实现 materialization；行 338-353 实现反推 |
+| `src/qmatsuite/workflow/registry.py` | Step 类型注册表 | `StepTypeSpec`, `get_registry()` | **证据**: 行 23-50 定义 StepTypeSpec；行 181-558 定义所有 step 类型 |
+| `src/qmatsuite/data/qe_metadata.py` | QE 参数元数据访问 | `get_ui_parameters()`, `_load_raw_metadata()` | **证据**: 行 510-544 实现 UI 参数获取；行 90-257 实现元数据加载 |
+| `src/qmatsuite/api.py` | 服务层 API | `QMSService.update_step_params()`, `QMSService.get_step_detail()` | **证据**: 行 4492-4571 实现参数更新；行 4302-4489 实现 step 详情获取 |
 | `gui/src/components/panels/StepDetailPanel.tsx` | UI Step 详情面板 | `StepDetailPanel` | **证据**: 行 654-770 实现参数添加/保存逻辑 |
 | `gui/src/components/step_parameters/AddParameterPalette.tsx` | UI 参数搜索添加 | `AddParameterPalette` | **证据**: 行 54-70 实现搜索与添加 |
-| `src/quantumvitas/calculation/runner.py` | 计算执行器 | `CalculationRunner.run()` | **证据**: 行 132-480 实现执行逻辑 |
-| `src/quantumvitas/execution/executor.py` | Job 执行器 | `JobExecutor.execute()` | **证据**: 行 75-154 实现 job 执行 |
+| `src/qmatsuite/calculation/runner.py` | 计算执行器 | `CalculationRunner.run()` | **证据**: 行 132-480 实现执行逻辑 |
+| `src/qmatsuite/execution/executor.py` | Job 执行器 | `JobExecutor.execute()` | **证据**: 行 75-154 实现 job 执行 |
 
 ---
 
@@ -134,20 +134,20 @@ const sorted = [...response.data.parameters].sort((a, b) => {
 
 **结论**: 
 - ✅ **UI 分层是展示层过滤**，不是底层数据结构分层
-- **数据源**: `qe_ui_parameters.json` 中的 `importance` 字段（`src/quantumvitas/data/qe_metadata.py:510-544`）
+- **数据源**: `qe_ui_parameters.json` 中的 `importance` 字段（`src/qmatsuite/data/qe_metadata.py:510-544`）
 - **分层规则**: 来自静态 JSON 文件，不是 schema 或运行时计算
 
 #### 搜索添加参数
 
 **证据位置**: 
 - `gui/src/components/step_parameters/AddParameterPalette.tsx:54-70`
-- `src/quantumvitas/daemon/server.py:1586-1781`
+- `src/qmatsuite/daemon/server.py:1586-1781`
 
 **数据源**: `qe_module_parameters.json`（通过 `list_qe_parameter_metadata` RPC）
 
 **流程**:
 1. UI 调用 `list_qe_parameter_metadata({operation: "search", query: "..."})`
-2. Daemon 调用 `qe_metadata.search_parameters(query)`（`src/quantumvitas/data/qe_metadata.py`）
+2. Daemon 调用 `qe_metadata.search_parameters(query)`（`src/qmatsuite/data/qe_metadata.py`）
 3. 返回匹配的参数列表
 4. 用户点击 "Add" → `handleAddParameter(section, paramName)`
 5. 参数写入 `step.yaml` 的 `parameters.{section}.{paramName}` 字段
@@ -156,7 +156,7 @@ const sorted = [...response.data.parameters].sort((a, b) => {
 
 #### 任意添加参数（不校验合法性）
 
-**证据位置**: `src/quantumvitas/api.py:4541-4557`
+**证据位置**: `src/qmatsuite/api.py:4541-4557`
 
 ```python
 # 行 4541-4557: update_step_params 接受任意参数
@@ -185,7 +185,7 @@ for namelist, params in parameters.items():
 
 **输入源**: QE HTML 文档（`INPUT_PW.html` 等）
 
-**输出**: `src/quantumvitas/data/qe_module_parameters.json`
+**输出**: `src/qmatsuite/data/qe_module_parameters.json`
 
 **生成逻辑**:
 1. 解析 HTML 文档的 Table of Contents
@@ -200,22 +200,22 @@ for namelist, params in parameters.items():
 
 | 模块 | 用途 | 证据位置 |
 |------|------|---------|
-| `qe_metadata.py` | 元数据访问层 | `src/quantumvitas/data/qe_metadata.py:90-257` |
-| UI (daemon) | 参数搜索/浏览 | `src/quantumvitas/daemon/server.py:1586-1781` |
+| `qe_metadata.py` | 元数据访问层 | `src/qmatsuite/data/qe_metadata.py:90-257` |
+| UI (daemon) | 参数搜索/浏览 | `src/qmatsuite/daemon/server.py:1586-1781` |
 | UI (frontend) | 参数搜索/添加 | `gui/src/hooks/useQEParameterMetadata.ts` |
-| UI 参数列表 | 显示可编辑参数 | `src/quantumvitas/data/qe_metadata.py:510-544` |
+| UI 参数列表 | 显示可编辑参数 | `src/qmatsuite/data/qe_metadata.py:510-544` |
 
-**注意**: `qe_ui_parameters.json` 是另一个文件，用于 UI 参数重要性排序（`src/quantumvitas/data/qe_metadata.py:77-87`）
+**注意**: `qe_ui_parameters.json` 是另一个文件，用于 UI 参数重要性排序（`src/qmatsuite/data/qe_metadata.py:77-87`）
 
 ### A3. 写入与 round-trip
 
 #### 修改参数后 YAML 变化
 
-**证据位置**: `src/quantumvitas/api.py:4492-4571`
+**证据位置**: `src/qmatsuite/api.py:4492-4571`
 
 **调用链**:
 1. UI: `update_step_params` RPC（`gui/src/components/panels/StepDetailPanel.tsx:680-770`）
-2. API: `QVService.update_step_params()`（`src/quantumvitas/api.py:4492`）
+2. API: `QMSService.update_step_params()`（`src/qmatsuite/api.py:4492`）
 3. 加载: `StepDoc.load(step.absolute_path)`（行 4539）
 4. 构建 patch: `param_patch[namelist_upper][key] = str(value)`（行 4541-4554）
 5. 应用: `step_doc.apply_patch({"parameters": param_patch})`（行 4557）
@@ -223,15 +223,15 @@ for namelist, params in parameters.items():
 
 **YAML 变化位置**: `steps/{step_id}.step.yaml` 的 `parameters:` 字段
 
-**证据**: `src/quantumvitas/workflow/step_factory.py:106-118` → `yaml_io.save_yaml_doc()`
+**证据**: `src/qmatsuite/workflow/step_factory.py:106-118` → `yaml_io.save_yaml_doc()`
 
 #### 重开项目 UI 恢复
 
-**证据位置**: `src/quantumvitas/api.py:4302-4489`
+**证据位置**: `src/qmatsuite/api.py:4302-4489`
 
 **调用链**:
 1. UI: `get_step_detail` RPC
-2. API: `QVService.get_step_detail()`（行 4302）
+2. API: `QMSService.get_step_detail()`（行 4302）
 3. 加载: `StepDoc.load(step_path)`（行 4340）
 4. 导出: `step_doc.export_copy(["parameters"])`（行 4370）
 5. 返回: `{"parameters": {...}, "cards": {...}}`
@@ -260,7 +260,7 @@ UI 修改 ecutwfc=60
 
 #### 数据结构定义
 
-**证据位置**: `src/quantumvitas/presets/paramspace.py:120-163`
+**证据位置**: `src/qmatsuite/presets/paramspace.py:120-163`
 
 ```python
 @dataclass
@@ -282,7 +282,7 @@ class ParamSpace:
 
 #### Key 单归属规则
 
-**证据位置**: `src/quantumvitas/presets/variants_registry.py:118-160`
+**证据位置**: `src/qmatsuite/presets/variants_registry.py:118-160`
 
 **实现方式**: `VARIANT_BY_STEP_AND_DIMENSION` 索引表
 
@@ -304,7 +304,7 @@ for step_type in variant.applies_to_step_types:
 
 #### Profile 互斥
 
-**证据位置**: `src/quantumvitas/presets/paramspace.py:241-309`
+**证据位置**: `src/qmatsuite/presets/paramspace.py:241-309`
 
 **实现方式**: `match_profile()` 函数
 
@@ -328,7 +328,7 @@ if len(matching_profiles) > 1:
 
 #### Step Selector 绑定
 
-**证据位置**: `src/quantumvitas/presets/space_variant.py:17-50`
+**证据位置**: `src/qmatsuite/presets/space_variant.py:17-50`
 
 ```python
 @dataclass(frozen=True)
@@ -338,11 +338,11 @@ class ParamSpaceVariant:
 
 **结论**: ✅ **当前绑定的是 SPEC step types**（如 "scf", "nscf", "bands_pw"），不是 GenStep
 
-**证据**: `src/quantumvitas/presets/variants_registry.py:48-100` 中定义的 step types 都是 SPEC 类型
+**证据**: `src/qmatsuite/presets/variants_registry.py:48-100` 中定义的 step types 都是 SPEC 类型
 
 #### ParamSpace 如何声明影响哪些 steps
 
-**证据位置**: `src/quantumvitas/presets/variants_registry.py:42-111`
+**证据位置**: `src/qmatsuite/presets/variants_registry.py:42-111`
 
 **声明方式**: `ParamSpaceVariant.applies_to_step_types` 字段
 
@@ -353,7 +353,7 @@ class ParamSpaceVariant:
 
 #### 匹配/反推时的 "必须所有 step 都 match"
 
-**证据位置**: `src/quantumvitas/presets/detector.py:620-665`
+**证据位置**: `src/qmatsuite/presets/detector.py:620-665`
 
 **实现**: `detect_all_presets()` 聚合所有 steps
 
@@ -371,11 +371,11 @@ for dimension in dimensions:
 - ✅ **只匹配当前 calc 实际存在的 steps**
 - **逻辑**: 对每个 step，查找适用的 variant，如果所有 step 都匹配同一 profile，则返回该 profile；否则返回 CUSTOM
 
-**证据**: `src/quantumvitas/presets/detector.py:220-350` - `detect_dimension_from_steps()` 实现
+**证据**: `src/qmatsuite/presets/detector.py:220-350` - `detect_dimension_from_steps()` 实现
 
 ### B3. Presence/Absence / Not Applicable 逻辑
 
-**证据位置**: `src/quantumvitas/presets/paramspace.py:169-309`
+**证据位置**: `src/qmatsuite/presets/paramspace.py:169-309`
 
 #### Presence vs Effective Value
 
@@ -424,7 +424,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 #### 编译顺序
 
-**证据位置**: `src/quantumvitas/presets/integration.py:327-568`
+**证据位置**: `src/qmatsuite/presets/integration.py:327-568`
 
 **当前实现**: **无明确的全局编译顺序**
 
@@ -437,8 +437,8 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 **证据**: 未找到明确的 "oracle" 机制
 
 **Precision 的特殊性**:
-- Precision 的 canonical values 需要 structure + pseudos 计算（`src/quantumvitas/presets/precision.py`）
-- 这些值通过 `precision_context` 参数传入（`src/quantumvitas/presets/variants_registry.py:346-457`）
+- Precision 的 canonical values 需要 structure + pseudos 计算（`src/qmatsuite/presets/precision.py`）
+- 这些值通过 `precision_context` 参数传入（`src/qmatsuite/presets/variants_registry.py:346-457`）
 - **不是从其他 ParamSpace 读取**，而是从外部数据源（structure.yaml, pseudo files）计算
 
 #### 依赖关系示例
@@ -457,22 +457,22 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 ### C1. Preset 是否落盘
 
-**证据位置**: `src/quantumvitas/presets/dimensions.py`（需要查看）
+**证据位置**: `src/qmatsuite/presets/dimensions.py`（需要查看）
 
 **结论**: ✅ **Preset 不落盘**
 
 **证据**: 
-- `detect_presets_from_calculation()` 返回运行时计算的字典（`src/quantumvitas/presets/integration.py:105-168`）
-- UI 通过 `detect_presets` RPC 获取当前状态（`src/quantumvitas/daemon/server.py:3746-3792`）
+- `detect_presets_from_calculation()` 返回运行时计算的字典（`src/qmatsuite/presets/integration.py:105-168`）
+- UI 通过 `detect_presets` RPC 获取当前状态（`src/qmatsuite/daemon/server.py:3746-3792`）
 - **step.yaml 中不存储 preset 选择**，只存储 QE parameters
 
 ### C2. 用户点击 preset 后发生什么
 
-**证据位置**: `src/quantumvitas/presets/integration.py:327-568`
+**证据位置**: `src/qmatsuite/presets/integration.py:327-568`
 
 **流程**:
 1. UI: `apply_presets_to_calculation` RPC（`gui/src/hooks/usePresets.ts:343`）
-2. Daemon: `_handle_apply_presets_to_calculation()`（`src/quantumvitas/daemon/server.py:3834`）
+2. Daemon: `_handle_apply_presets_to_calculation()`（`src/qmatsuite/daemon/server.py:3834`）
 3. Integration: `apply_presets_to_step()`（行 327）
 4. 对每个 step:
    - 查找适用的 variants（`get_variant(dimension, step_type)`）
@@ -486,7 +486,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 ### C3. 反推逻辑
 
-**证据位置**: `src/quantumvitas/presets/paramspace.py:241-309`
+**证据位置**: `src/qmatsuite/presets/paramspace.py:241-309`
 
 **匹配规则**（行 265-298）:
 - 对每个 profile，检查所有 keys
@@ -500,7 +500,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 #### Custom 后的行为
 
-**证据位置**: `src/quantumvitas/presets/detector.py:620-665`
+**证据位置**: `src/qmatsuite/presets/detector.py:620-665`
 
 **逻辑**: 如果任一 step 的任一 dimension 不 match → 返回 CUSTOM
 
@@ -510,7 +510,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 ### C4. Freeform/Unknown 参数回读
 
-**证据位置**: `src/quantumvitas/presets/variants_registry.py:460-508`
+**证据位置**: `src/qmatsuite/presets/variants_registry.py:460-508`
 
 **检测流程**:
 1. `qe_yaml_to_ir_yaml()` 转换 QE YAML → IR YAML（行 496-497）
@@ -521,7 +521,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 - ✅ **Unknown 参数不参与匹配**（因为不在 IR mapping 中，不会被转换到 IR YAML）
 - ✅ **一旦解析为已知参数，参与严格匹配**（如果它在 ParamSpace.keys 中）
 
-**证据**: `src/quantumvitas/ir/backends/qe/mapping.py:188-259` - `qe_yaml_to_ir_yaml()` 只转换已知参数，unknown 参数被跳过（行 251-257）
+**证据**: `src/qmatsuite/ir/backends/qe/mapping.py:188-259` - `qe_yaml_to_ir_yaml()` 只转换已知参数，unknown 参数被跳过（行 251-257）
 
 ---
 
@@ -529,7 +529,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 ### D1. IR 数据结构
 
-**证据位置**: `src/quantumvitas/ir/parameters.py`
+**证据位置**: `src/qmatsuite/ir/parameters.py`
 
 **定义**: `IRParameter` dataclass（行 14-27）
 
@@ -539,7 +539,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 ### D2. IR 到 QE 参数的一一对应 mapping
 
-**证据位置**: `src/quantumvitas/ir/backends/qe/mapping.py:16-44`
+**证据位置**: `src/qmatsuite/ir/backends/qe/mapping.py:16-44`
 
 **映射表**: `IR_TO_QE_MAPPING`（行 16-44）
 
@@ -554,7 +554,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 ### D3. ParamSpace/preset 到 IR 的关系
 
-**证据位置**: `src/quantumvitas/presets/paramspace.py:57-117`
+**证据位置**: `src/qmatsuite/presets/paramspace.py:57-117`
 
 **ParamKey.key 字段**: **概念上是 IR key**（行 65-66 注释）
 
@@ -563,17 +563,17 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 - 编译时: IR patch → QE patch（`ir_patch_to_qe_patch()`）
 - 检测时: QE YAML → IR YAML（`qe_yaml_to_ir_yaml()`）
 
-**证据**: `src/quantumvitas/presets/variants_registry.py:311-343` - 编译流程中显式转换
+**证据**: `src/qmatsuite/presets/variants_registry.py:311-343` - 编译流程中显式转换
 
 ### D4. IR 是否与 YAML 写入绑定
 
-**证据位置**: `src/quantumvitas/workflow/step_factory.py:106-118`
+**证据位置**: `src/qmatsuite/workflow/step_factory.py:106-118`
 
 **YAML 存储**: `step.yaml` 的 `parameters:` 字段存储的是 **QE parameters**，不是 IR
 
 **结论**: ✅ **IR 只是中间态**，YAML 写入时已经转换为 QE parameters
 
-**证据**: `src/quantumvitas/presets/variants_registry.py:319-320` - `ir_patch_to_qe_patch()` 在保存前转换
+**证据**: `src/qmatsuite/presets/variants_registry.py:319-320` - `ir_patch_to_qe_patch()` 在保存前转换
 
 ### D5. ParamSpace → (IR) → QE engine params 流转
 
@@ -597,8 +597,8 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
    ```
 
 **证据**: 
-- 编译: `src/quantumvitas/presets/variants_registry.py:311-343`
-- 检测: `src/quantumvitas/presets/variants_registry.py:494-508`
+- 编译: `src/qmatsuite/presets/variants_registry.py:311-343`
+- 检测: `src/qmatsuite/presets/variants_registry.py:494-508`
 
 ---
 
@@ -606,7 +606,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 ### E1. Workflow 抽象
 
-**证据位置**: `src/quantumvitas/workflow/generalized_steps.py:1-59`
+**证据位置**: `src/qmatsuite/workflow/generalized_steps.py:1-59`
 
 **定义**: `GeneralizedStep` 枚举（行 21-56）
 
@@ -616,7 +616,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 ### E2. GenStep 是否已存在
 
-**证据位置**: `src/quantumvitas/workflow/generalized_steps.py:21-56`
+**证据位置**: `src/qmatsuite/workflow/generalized_steps.py:21-56`
 
 **结论**: ✅ **GenStep 已存在**，定义为 `GeneralizedStep` 枚举
 
@@ -624,7 +624,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 ### E3. SpecStep 定义与落盘结构
 
-**证据位置**: `src/quantumvitas/workflow/registry.py:23-50`
+**证据位置**: `src/qmatsuite/workflow/registry.py:23-50`
 
 **定义**: `StepTypeSpec`（行 23-50）
 
@@ -636,11 +636,11 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 **落盘**: `step.yaml` 的 `step_type` 字段存储 `machine_type`（SPEC）
 
-**证据**: `src/quantumvitas/workflow/step_factory.py:48-55` - 创建时使用 `machine_type`
+**证据**: `src/qmatsuite/workflow/step_factory.py:48-55` - 创建时使用 `machine_type`
 
 ### E4. GenStep + Engine/EngineFamily → SpecStep 映射
 
-**证据位置**: `src/quantumvitas/workflow/generalized_steps.py:59-122`
+**证据位置**: `src/qmatsuite/workflow/generalized_steps.py:59-122`
 
 **Materialization Map**: `MATERIALIZATION_MAP`（行 59-95）
 
@@ -654,7 +654,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 ### E5. Runner 执行时数据来源
 
-**证据位置**: `src/quantumvitas/calculation/runner.py:132-480`
+**证据位置**: `src/qmatsuite/calculation/runner.py:132-480`
 
 **执行流程**:
 1. `CalculationRunner.run()` 加载 calculation
@@ -663,7 +663,7 @@ elif cell.cell_type == CellType.NOT_APPLICABLE:
 
 **结论**: ✅ **直接读 spec step 的 engine params**，不会运行时再编译 preset/IR
 
-**证据**: `src/quantumvitas/calculation/step.py`（需要查看 `run()` 方法）
+**证据**: `src/qmatsuite/calculation/step.py`（需要查看 `run()` 方法）
 
 ### E6. Workflow 到 Runner 调用链
 
@@ -686,9 +686,9 @@ Workflow Template (GEN steps)
 ```
 
 **证据**: 
-- Materialization: `src/quantumvitas/workflow/generalized_steps.py:124-150`
-- 执行: `src/quantumvitas/calculation/runner.py:132-480`
-- Handler: `src/quantumvitas/execution/handlers.py:37-143`
+- Materialization: `src/qmatsuite/workflow/generalized_steps.py:124-150`
+- 执行: `src/qmatsuite/calculation/runner.py:132-480`
+- Handler: `src/qmatsuite/execution/handlers.py:37-143`
 
 ---
 
@@ -713,7 +713,7 @@ Workflow Template (GEN steps)
 
 **证据**: `detect_presets_from_calculation()` → `detect_all_presets()` → `match_profile()`
 
-**匹配算法入口**: `src/quantumvitas/presets/paramspace.py:241` - `match_profile()`
+**匹配算法入口**: `src/qmatsuite/presets/paramspace.py:241` - `match_profile()`
 
 **判定条件**:
 - 所有 ParamSpace.keys 必须 match（WILDCARD 跳过，NOT_APPLICABLE 要求缺席，VALUE 要求完全匹配）
@@ -744,8 +744,8 @@ Workflow Template (GEN steps)
 5. **Engine adapter**: 需要 ORCA engine 实现（类似 `QuantumEspressoEngine`）
 
 **最小抽象点**:
-- `Engine` 抽象类（已存在：`src/quantumvitas/core/engines/base.py`）
-- IR → Engine mapping 层（已存在：`src/quantumvitas/ir/backends/qe/mapping.py`，需要新增 ORCA 版本）
+- `Engine` 抽象类（已存在：`src/qmatsuite/core/engines/base.py`）
+- IR → Engine mapping 层（已存在：`src/qmatsuite/ir/backends/qe/mapping.py`，需要新增 ORCA 版本）
 - ParamSpace 保持不变（使用 IR keys）
 
 ---

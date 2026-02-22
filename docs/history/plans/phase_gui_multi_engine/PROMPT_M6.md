@@ -13,8 +13,8 @@ M0-M5 must be complete. The `list_engine_ui_parameters` RPC must be working (fro
 ### Modify
 
 1. `gui/src/components/panels/StepDetailPanel.tsx` — Remove `stepTypeToModule()` (lines 52-73), remove `LEGACY_EDITABLE_PARAMS` (lines 76-121), replace with generic RPC call
-2. `gui/src/hooks/useQVClient.ts` — Add `listEngineUiParameters()` convenience method
-3. `gui/src/types/qv.ts` — Add `EngineUIParameter` type and `list_engine_ui_parameters` RPC entry
+2. `gui/src/hooks/useQMSClient.ts` — Add `listEngineUiParameters()` convenience method
+3. `gui/src/types/qms.ts` — Add `EngineUIParameter` type and `list_engine_ui_parameters` RPC entry
 
 ## Do NOT Touch
 
@@ -28,7 +28,7 @@ M0-M5 must be complete. The `list_engine_ui_parameters` RPC must be working (fro
 
 ## Exact Instructions
 
-### Step 1: Add types to qv.ts
+### Step 1: Add types to qms.ts
 
 Add the `EngineUIParameter` interface (near the other engine types added in M5):
 
@@ -46,7 +46,7 @@ export interface EngineUIParameter {
 }
 ```
 
-Add the RPC entry to `QVCommandMap`:
+Add the RPC entry to `QMSCommandMap`:
 
 ```typescript
   list_engine_ui_parameters: {
@@ -55,7 +55,7 @@ Add the RPC entry to `QVCommandMap`:
   };
 ```
 
-### Step 2: Add convenience method to useQVClient.ts
+### Step 2: Add convenience method to useQMSClient.ts
 
 Add after the M5 convenience methods:
 
@@ -63,7 +63,7 @@ Add after the M5 convenience methods:
   listEngineUiParameters: (
     engineFamily: string,
     stepTypeGen: string
-  ) => Promise<QVResponse<QVResult<'list_engine_ui_parameters'>>>;
+  ) => Promise<QMSResponse<QMSResult<'list_engine_ui_parameters'>>>;
 ```
 
 Implementation:
@@ -91,7 +91,7 @@ Find the place where the component calls `listQeUiParameters(module, stepType)` 
 // OLD:
 // const module = stepTypeToModule(stepTypeGen);
 // if (module) {
-//   const res = await qv.listQeUiParameters(module, stepTypeGen);
+//   const res = await qms.listQeUiParameters(module, stepTypeGen);
 //   ...
 // } else {
 //   // Use LEGACY_EDITABLE_PARAMS fallback
@@ -100,7 +100,7 @@ Find the place where the component calls `listQeUiParameters(module, stepType)` 
 // NEW:
 const engineFamily = calculationDetail?.engine_family;
 if (engineFamily && stepTypeGen) {
-  const res = await qv.listEngineUiParameters(engineFamily, stepTypeGen);
+  const res = await qms.listEngineUiParameters(engineFamily, stepTypeGen);
   if (res.ok && res.data) {
     setUiParameters(res.data.parameters);
   } else {
@@ -173,7 +173,7 @@ If `engine_family` is not there, add it and thread it through from the parent.
 - The raw parameter editor (direct JSON/YAML editing) still works for ALL engines
 - QE parameter editing still works (the generic RPC returns QE parameters when engine_family="qe")
 - The K_POINTS card rendering is NOT changed in this milestone (it's a separate concern)
-- Existing QE RPC methods (`listQeUiParameters`) still exist in useQVClient.ts (deleted in M8)
+- Existing QE RPC methods (`listQeUiParameters`) still exist in useQMSClient.ts (deleted in M8)
 - The component gracefully handles engines with no UI parameter metadata
 
 ## Verifiers
@@ -201,7 +201,7 @@ source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dis
 
 ## Do NOT Do
 
-- Do NOT remove `listQeUiParameters` from useQVClient.ts (that's M8)
+- Do NOT remove `listQeUiParameters` from useQMSClient.ts (that's M8)
 - Do NOT modify QEParameterBrowserPanel.tsx (that's M7)
 - Do NOT modify Python backend files
 - Do NOT change the raw parameter editor (it should remain engine-agnostic)

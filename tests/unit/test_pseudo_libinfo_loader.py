@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from quantumvitas.core.pseudo_libinfo import load_pseudo_libinfo_bundle
-from quantumvitas.core.resources import get_resources_dir
+from qmatsuite.core.pseudo_libinfo import load_pseudo_libinfo_bundle
+from qmatsuite.core.resources import get_resources_dir
 
 
 def test_load_pseudo_libinfo_bundle() -> None:

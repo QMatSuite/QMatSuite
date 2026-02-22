@@ -16,19 +16,19 @@ Three pieces of cascade infrastructure exist but are disconnected:
 
 ## Fix 7.1: Cascade pass in `reconcile_manifest()`
 
-**File**: `src/quantumvitas/calculation/manifest_reconcile.py`
+**File**: `src/qmatsuite/calculation/manifest_reconcile.py`
 
 After the main for-loop builds `new_steps` and sets `first_changed_idx`, we add a cascade pass that forces all steps from `first_changed_idx` onward to `done=False`. This ensures that if step 1's SHA changes, steps 2+ are also marked for re-execution.
 
 ## Fix 7.2: Wire `clear_manifest_from_step()` for TARGET mode
 
-**File**: `src/quantumvitas/calculation/runner.py`
+**File**: `src/qmatsuite/calculation/runner.py`
 
 In `_execute_with_jobgraph()`, after the job_results processing loop, we call `clear_manifest_from_step()` to invalidate downstream steps when running in TARGET mode. This fulfills Constitution §5.3.
 
 ## Fix 7.3: Expose `run_mode` in MCP `run_calculation`
 
-**File**: `src/quantumvitas/mcp/tools/run_calculation.py`
+**File**: `src/qmatsuite/mcp/tools/run_calculation.py`
 
 Added `run_mode` parameter (default "incremental") to the MCP tool, with validation and pass-through to `svc.run.run_calculation()`.
 

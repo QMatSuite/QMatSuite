@@ -58,7 +58,7 @@ Created `COMPAT_TRIAGE.md` with full 116-method analysis:
 - **5 methods**: Exempt
 
 ### Compat Layer Implementation
-Created `src/quantumvitas/daemon/compat.py`:
+Created `src/qmatsuite/daemon/compat.py`:
 
 **Payload Adapters (11 methods)**:
 - `change_calculation_structure`: Accept 'structure' for 'new_structure'
@@ -143,14 +143,14 @@ Most are code errors on HEAD, not contract drift:
 ### Architecture Violation - Rollback (2026-01-29)
 
 **VIOLATION**: While fixing HEAD code errors, I introduced daemon→core imports which violate L1:
-- `from quantumvitas.core.pseudo_runtime import PseudoSelection` in server.py
-- `from quantumvitas.core.project_utils import load_project_config` in server.py
-- `from quantumvitas.core.resolution import build_resource_index` in server.py
+- `from qmatsuite.core.pseudo_runtime import PseudoSelection` in server.py
+- `from qmatsuite.core.project_utils import load_project_config` in server.py
+- `from qmatsuite.core.resolution import build_resource_index` in server.py
 
-**WHY WRONG**: Daemon must not import core/kernel directly. Daemon is boundary glue - only deals with dict payloads and dict responses. Allowed imports are quantumvitas.daemon.*, quantumvitas.api.*, and small pure utils.
+**WHY WRONG**: Daemon must not import core/kernel directly. Daemon is boundary glue - only deals with dict payloads and dict responses. Allowed imports are qmatsuite.daemon.*, qmatsuite.api.*, and small pure utils.
 
 **ROLLBACK APPLIED**:
-1. `PseudoSelection` - Removed import entirely. Daemon now passes raw dicts to API method (QVService.analyze_project_pseudo_effects already accepts dicts).
+1. `PseudoSelection` - Removed import entirely. Daemon now passes raw dicts to API method (QMSService.analyze_project_pseudo_effects already accepts dicts).
 2. `load_project_config`, `build_resource_index` - Added transparent wrappers to api/utils.py, then updated daemon to import from api/utils.
 
 **VALIDATION**: Full test suite run:
@@ -496,7 +496,7 @@ SKIPPED [1] set_common_card:
   Cannot set() a dict at path 'cards.K_POINTS'. Use apply_patch() for subtree updates.
 
 SKIPPED [1] reset_step_params:
-  QVService.reset_step_params() got an unexpected keyword argument 'calculation_ulid'
+  QMSService.reset_step_params() got an unexpected keyword argument 'calculation_ulid'
 
 SKIPPED [1] get_pseudo_options_for_calculation:
   'dict' object has no attribute 'store_dir'
@@ -562,7 +562,7 @@ SKIPPED [1] tests/contract_crawler/test_schema_preservation.py:248:
 #### Category 8: Soft Gate (1 skip - Optional Enforcement)
 ```
 SKIPPED [1] tests/contract_crawler/test_gui_methods_covered.py:24:
-  GUI coverage gate is soft. Set QV_ENFORCE_GUI_RPC_COVERAGE=1 to enforce.
+  GUI coverage gate is soft. Set QMS_ENFORCE_GUI_RPC_COVERAGE=1 to enforce.
 ```
 **Justification**: This is a soft warning gate that can be enforced with an environment variable. Not blocking normal test runs.
 
