@@ -46,7 +46,7 @@ asset_requirements:
   pseudopotentials:
   - file: He_ONCV_PBE_sr.upf
     element: He
-    source: resources/pseudo
+    source: src/quantumvitas/resources/pseudo
 attribution:
   source: Constructed for QMatSuite, inspired by QMCPACK tutorials
   license: MIT (QMatSuite)

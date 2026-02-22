@@ -18,7 +18,8 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CORPUS_ROOT = REPO_ROOT / "tests" / "inputformat" / "samples"
-DEMO_DIR = REPO_ROOT / "resources" / "demo_projects"
+RESOURCES_DIR = REPO_ROOT / "src" / "quantumvitas" / "resources"
+DEMO_DIR = RESOURCES_DIR / "demo_projects"
 
 # Map demo filename -> (corpus_dir_name, demo_slug, is_multi_step)
 QE_DEMO_MAP = {
@@ -220,7 +221,7 @@ def create_qe_corpus_entry(demo_file: str, dir_name: str, demo_slug: str, multi_
     asset_requirements = {}
     if pseudo_files:
         asset_requirements["pseudopotentials"] = [
-            {"file": pf, "element": pf.split(".")[0], "source": "resources/pseudo"}
+            {"file": pf, "element": pf.split(".")[0], "source": "src/quantumvitas/resources/pseudo"}
             for pf in pseudo_files
         ]
 

@@ -429,7 +429,7 @@ class TestNoLegacyIdentityFields:
         """
         Gate: No forbidden identity keys in YAML/JSON resource files.
 
-        Scans tests/fixtures/, tests/data/, resources/ for:
+        Scans tests/fixtures/, tests/data/, src/quantumvitas/resources/ for:
         - 'id' in meta blocks (should be 'ulid')
         - project_id, calc_id, step_id, structure_id (should be *_ulid)
         - ambiguous step_type (should be step_type_spec or step_type_gen)

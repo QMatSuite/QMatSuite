@@ -21,7 +21,7 @@ from quantumvitas.api import QVService
 # ---------------------------------------------------------------------------
 
 def _all_demo_ids() -> list[str]:
-    """Return sorted list of every demo ID in resources/demo_projects/."""
+    """Return sorted list of every demo ID in bundled demo_projects resources."""
     from quantumvitas.core.resources import get_resources_dir
 
     demo_dir = get_resources_dir() / "demo_projects"

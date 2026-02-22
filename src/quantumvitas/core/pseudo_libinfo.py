@@ -1,7 +1,7 @@
 """
 Runtime loader for pseudo library identification metadata bundle.
 
-This module loads vendor metadata from resources/pseudo_libinfo/<tag>/
+This module loads vendor metadata from quantumvitas/resources/pseudo_libinfo/<tag>/
 without any network access. It verifies SHA256 checksums and cross-validates
 the manifest against the index.
 
@@ -130,11 +130,23 @@ def load_pseudo_libinfo_bundle(repo_root: Path | None = None) -> PseudoLibInfoBu
     """
     if repo_root is not None:
         root = Path(repo_root)
-        candidates = [
-            root / "resources" / "pseudo_libinfo",
-            root / "src" / "quantumvitas" / "resources" / "pseudo_libinfo",
-            root / "pseudo_libinfo",
-        ]
+        is_repo_root = (
+            (root / "pyproject.toml").is_file()
+            and (root / "src" / "quantumvitas").is_dir()
+        )
+        if is_repo_root:
+            # Repo checkout: bundled metadata is under src/quantumvitas/resources.
+            candidates = [
+                root / "src" / "quantumvitas" / "resources" / "pseudo_libinfo",
+                root / "pseudo_libinfo",
+            ]
+        else:
+            # Package/test roots: allow package-local resources or direct pseudo_libinfo.
+            candidates = [
+                root / "resources" / "pseudo_libinfo",
+                root / "src" / "quantumvitas" / "resources" / "pseudo_libinfo",
+                root / "pseudo_libinfo",
+            ]
         pseudo_libinfo_root = next(
             (candidate for candidate in candidates if candidate.exists()),
             candidates[0],

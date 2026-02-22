@@ -1291,7 +1291,7 @@ class QVService:
             pack, this returns the pre-computed analysis data for comparison.
 
             Uses the demo_source field in project settings (S11) to locate
-            ref packs at resources/demo_projects/ref_packs/<demo_id>/.
+            ref packs at quantumvitas/resources/demo_projects/ref_packs/<demo_id>/.
 
             Args:
                 calculation_selector: Calculation selector
@@ -8437,7 +8437,7 @@ class QVService:
         Create a demo project from a bundled snapshot.
 
         This is the primary onboarding entry point for new users.
-        Creates a ready-to-run project from resources/demo_projects/.
+        Creates a ready-to-run project from quantumvitas/resources/demo_projects/.
 
         Args:
             target_dir: Directory to create the project in

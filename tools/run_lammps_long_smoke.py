@@ -36,6 +36,11 @@ from quantumvitas.core.yamldoc import CalcDoc
 from quantumvitas.core.models import load_calculation
 from quantumvitas.core.pseudo_provenance import compute_sha256_file
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+RESOURCES_DIR = REPO_ROOT / "src" / "quantumvitas" / "resources"
+LAMMPS_STRUCTURES_DIR = REPO_ROOT / "tests" / "data" / "lammps" / "structures"
+LAMMPS_POTENTIALS_DIR = RESOURCES_DIR / "lammps" / "potentials"
+
 
 def print_section(title: str):
     """Print a section header."""
@@ -103,8 +108,7 @@ def run_workflow_a_lj_relax(base_dir: Path) -> Dict[str, Any]:
         )
         
         # Load structure from test data
-        repo_root = Path(__file__).parent.parent
-        struct_file = repo_root / "tests" / "data" / "lammps" / "structures" / "lj_fcc_108.json"
+        struct_file = LAMMPS_STRUCTURES_DIR / "lj_fcc_108.json"
         if not struct_file.exists():
             print(f"ERROR: Structure file not found: {struct_file}")
             evidence["result"] = "FAIL"
@@ -273,8 +277,7 @@ def run_workflow_b_eam_md(base_dir: Path) -> Dict[str, Any]:
             name="EAM MD Test"
         )
         
-        repo_root = Path(__file__).parent.parent
-        struct_file = repo_root / "tests" / "data" / "lammps" / "structures" / "cu_fcc_32.json"
+        struct_file = LAMMPS_STRUCTURES_DIR / "cu_fcc_32.json"
         if not struct_file.exists():
             print(f"ERROR: Structure file not found: {struct_file}")
             evidence["result"] = "FAIL"
@@ -285,7 +288,7 @@ def run_workflow_b_eam_md(base_dir: Path) -> Dict[str, Any]:
         structure_id = struct_result.meta.ulid
 
         # Copy potential file
-        potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
+        potential_src = LAMMPS_POTENTIALS_DIR / "Cu_u3.eam"
         if not potential_src.exists():
             print(f"ERROR: Potential file not found: {potential_src}")
             evidence["result"] = "FAIL"
@@ -468,8 +471,7 @@ def run_workflow_c_chain(base_dir: Path) -> Dict[str, Any]:
             name="Chain Test"
         )
         
-        repo_root = Path(__file__).parent.parent
-        struct_file = repo_root / "tests" / "data" / "lammps" / "structures" / "cu_fcc_32.json"
+        struct_file = LAMMPS_STRUCTURES_DIR / "cu_fcc_32.json"
         if not struct_file.exists():
             print(f"ERROR: Structure file not found: {struct_file}")
             evidence["result"] = "FAIL"
@@ -480,7 +482,7 @@ def run_workflow_c_chain(base_dir: Path) -> Dict[str, Any]:
         structure_id = struct_result.meta.ulid
 
         # Copy potential file
-        potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
+        potential_src = LAMMPS_POTENTIALS_DIR / "Cu_u3.eam"
         if not potential_src.exists():
             print(f"ERROR: Potential file not found: {potential_src}")
             evidence["result"] = "FAIL"
@@ -667,8 +669,7 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
             name="Restart Test"
         )
         
-        repo_root = Path(__file__).parent.parent
-        struct_file = repo_root / "tests" / "data" / "lammps" / "structures" / "cu_fcc_32.json"
+        struct_file = LAMMPS_STRUCTURES_DIR / "cu_fcc_32.json"
         if not struct_file.exists():
             print(f"ERROR: Structure file not found: {struct_file}")
             evidence["result"] = "FAIL"
@@ -679,7 +680,7 @@ def run_workflow_d_restart(base_dir: Path) -> Dict[str, Any]:
         structure_id = struct_result.meta.ulid
 
         # Copy potential file
-        potential_src = repo_root / "resources" / "lammps" / "potentials" / "Cu_u3.eam"
+        potential_src = LAMMPS_POTENTIALS_DIR / "Cu_u3.eam"
         if not potential_src.exists():
             print(f"ERROR: Potential file not found: {potential_src}")
             evidence["result"] = "FAIL"

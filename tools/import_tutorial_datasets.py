@@ -6,10 +6,10 @@ This script:
 1. Scans tests/data/ for folders 0_* through 19_*
 2. For each dataset, finds .in files in execution order
 3. Extracts structure and parameters from inputs
-4. Maps pseudopotentials from project/pseudo or repo resources/pseudo/
+4. Maps pseudopotentials from project/pseudo or src/quantumvitas/resources/pseudo/
 5. Creates calculation structure using existing QMatSuite APIs
 6. Validates by round-tripping (parse -> export -> compare)
-7. Generates demo snapshots in resources/demo_projects/ with naming 00_* to 19_*
+7. Generates demo snapshots in src/quantumvitas/resources/demo_projects/ with naming 00_* to 19_*
 """
 
 from __future__ import annotations
@@ -71,24 +71,29 @@ class DemoResult:
     reference_artifacts: Dict[str, str] = field(default_factory=dict)
 
 
+def get_resources_root(repo_root: Path) -> Path:
+    """Return the repository resource SSOT location."""
+    return repo_root / "src" / "quantumvitas" / "resources"
+
+
 def compute_pseudo_identity(
-    repo_root: Path,
+    resources_root: Path,
     pseudo_filename: str,
     auto_download: bool = True,
 ) -> Optional[Tuple[str, str]]:
     """
-    Compute pseudo identity triple (sha256, sha_family) from resources/pseudo/.
+    Compute pseudo identity triple (sha256, sha_family) from src/quantumvitas/resources/pseudo/.
     If file is missing and auto_download=True, attempts to download from QE repository.
     
     Args:
-        repo_root: Repository root directory
+        resources_root: Resources root directory (src/quantumvitas/resources)
         pseudo_filename: Filename of pseudopotential (e.g., "Si.pbe-n-rrkjus_psl.1.0.0.UPF")
         auto_download: If True and file missing, attempt to download from QE repository
         
     Returns:
         Tuple of (sha256, sha_family) if file exists or was downloaded, None otherwise
     """
-    resources_pseudo_dir = repo_root / "resources" / "pseudo"
+    resources_pseudo_dir = resources_root / "pseudo"
     pseudo_file = resources_pseudo_dir / pseudo_filename
     
     # If file doesn't exist and auto_download is enabled, try downloading
@@ -115,15 +120,15 @@ def compute_pseudo_identity(
 
 def enhance_species_map_with_pseudo_identities(
     species_map: Dict[str, Dict[str, Any]],
-    repo_root: Path,
+    resources_root: Path,
     auto_download: bool = True,
 ) -> Tuple[Dict[str, Dict[str, Any]], List[str]]:
     """
-    Enhance species_map with pseudo identity triple from resources/pseudo/.
+    Enhance species_map with pseudo identity triple from src/quantumvitas/resources/pseudo/.
     
     Args:
         species_map: Species mapping dict (element -> {mass, pseudopot, ...})
-        repo_root: Repository root directory
+        resources_root: Resources root directory (src/quantumvitas/resources)
         
     Returns:
         Tuple of (enhanced_species_map, missing_pseudos_list)
@@ -143,7 +148,7 @@ def enhance_species_map_with_pseudo_identities(
             continue
         
         # Compute identity triple
-        identity = compute_pseudo_identity(repo_root, pseudo_filename, auto_download=auto_download)
+        identity = compute_pseudo_identity(resources_root, pseudo_filename, auto_download=auto_download)
         if identity is None:
             missing_pseudos.append(f"{element}: {pseudo_filename}")
             continue
@@ -1133,7 +1138,7 @@ def validate_roundtrip(original_input: Path, generated_input: Path) -> Validatio
 def create_demo_from_dataset(
     dataset: DatasetInfo,
     output_dir: Path,
-    repo_root: Path,
+    resources_root: Path,
     pseudo_search_dirs: List[Path],
     clean_mode: bool = False
 ) -> DemoResult:
@@ -1143,7 +1148,7 @@ def create_demo_from_dataset(
     Args:
         dataset: Dataset information
         output_dir: Directory to create demo in
-        repo_root: Repository root path
+        resources_root: Resources root directory (src/quantumvitas/resources)
         pseudo_search_dirs: Directories to search for pseudopotentials
         
     Returns:
@@ -1178,7 +1183,7 @@ def create_demo_from_dataset(
                 error="No input files found"
             )
         
-        # Check pseudopotentials for all inputs - must exist in resources/pseudo/
+        # Check pseudopotentials for all inputs - must exist in src/quantumvitas/resources/pseudo/
         missing_pseudos = []
         all_pseudos_needed = set()
         
@@ -1191,8 +1196,8 @@ def create_demo_from_dataset(
                 # Skip files that can't be parsed
                 continue
         
-        # Check if pseudos exist in resources/pseudo/, try downloading if missing
-        resources_pseudo_dir = repo_root / "resources" / "pseudo"
+        # Check if pseudos exist in src/quantumvitas/resources/pseudo/, try downloading if missing
+        resources_pseudo_dir = resources_root / "pseudo"
         missing_pseudos = []
         for pseudo_name in all_pseudos_needed:
             pseudo_file = resources_pseudo_dir / pseudo_name
@@ -1507,7 +1512,7 @@ def create_demo_from_dataset(
                 if "species_map" in calc:
                     enhanced_map, missing = enhance_species_map_with_pseudo_identities(
                         calc["species_map"],
-                        repo_root,
+                        resources_root,
                         auto_download=True,  # Already downloaded above, but ensure hashes are computed
                     )
                     if missing:
@@ -1787,14 +1792,16 @@ def main():
     args = parser.parse_args()
     
     repo_root = find_repo_root()
+    resources_root = get_resources_root(repo_root)
     tests_data_dir = repo_root / "tests" / "data"
-    output_dir = repo_root / "resources" / "demo_projects"
+    output_dir = resources_root / "demo_projects"
     
     # Find pseudopotential directories
-    repo_pseudo_dir = repo_root / "resources" / "pseudo"
+    repo_pseudo_dir = resources_root / "pseudo"
     pseudo_search_dirs = [repo_pseudo_dir] if repo_pseudo_dir.exists() else []
     
     print(f"Repository root: {repo_root}")
+    print(f"Resources root: {resources_root}")
     print(f"Tests data directory: {tests_data_dir}")
     print(f"Output directory: {output_dir}")
     print(f"Pseudopotential search directories: {pseudo_search_dirs}")
@@ -1814,7 +1821,7 @@ def main():
     for i, dataset in enumerate(datasets, 1):
         print(f"[{i}/{len(datasets)}] Processing {dataset.folder_name}...")
         result = create_demo_from_dataset(
-            dataset, output_dir, repo_root, pseudo_search_dirs, clean_mode=args.clean
+            dataset, output_dir, resources_root, pseudo_search_dirs, clean_mode=args.clean
         )
         results.append(result)
         

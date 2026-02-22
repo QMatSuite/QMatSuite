@@ -29,10 +29,10 @@ asset_requirements:
   pseudopotentials:
   - file: C.pbe-tm-gipaw.UPF
     element: C
-    source: resources/pseudo
+    source: src/quantumvitas/resources/pseudo
   - file: H.pbe-tm-gipaw.UPF
     element: H
-    source: resources/pseudo
+    source: src/quantumvitas/resources/pseudo
 multi_step: true
 steps:
 - step_type_gen: scf

@@ -56,7 +56,7 @@ asset_requirements:
   pseudopotentials:
   - file: Cu.pz-n-van_ak.UPF
     element: Cu
-    source: resources/pseudo
+    source: src/quantumvitas/resources/pseudo
 attribution:
   source: Constructed for QMatSuite, based on Wannier90 Tutorial Example 6
   license: MIT (QMatSuite)
