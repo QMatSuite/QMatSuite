@@ -61,7 +61,8 @@ jobs:
           micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "import qmatsuite, importlib.metadata as m; print('qmatsuite:', m.version('qmatsuite'))"
           micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from qmatsuite.daemon.server import main; print('daemon OK')"
           micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from qmatsuite.mcp.server import create_server; print('MCP OK')"
-          micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help | head -n 5
+          micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help > /tmp/qms_help.txt
+          head -n 5 /tmp/qms_help.txt
 
       - name: Install archive helper dependency
         run: |
@@ -140,7 +141,6 @@ jobs:
             --issuer "$APPLE_NOTARY_ISSUER_ID" \
             --key-id "$APPLE_NOTARY_KEY_ID" \
             --key "$key_file"
-          xcrun stapler staple "$DMG_PATH"
 
       - name: Print output artifacts
         run: |
