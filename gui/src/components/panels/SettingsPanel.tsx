@@ -422,6 +422,9 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
       const notices: Record<string, { tone: 'ok' | 'error'; text: string }> = {};
 
       for (const [engine, jobMeta] of entries) {
+        if (jobMeta.jobId === '__pending__') {
+          continue;
+        }
         const statusResp = await qms.call('get_job_status', { job_id: jobMeta.jobId });
         if (!statusResp.ok || !statusResp.data) {
           notices[engine] = {
@@ -460,7 +463,6 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
     const timer = setInterval(() => {
       void pollJobs();
     }, 2000);
-    void pollJobs();
 
     return () => {
       cancelled = true;
@@ -473,9 +475,18 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
   const allEngines = Array.from(new Set([...rowMap.keys(), ...installableMap.keys()])).sort();
 
   const handleInstall = useCallback(async (engine: string) => {
+    setPendingJobs((prev) => ({
+      ...prev,
+      [engine]: { jobId: '__pending__', action: 'install', message: 'Starting install...' },
+    }));
     setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Starting install...' } }));
     const response = await qms.installEngine(engine, { async: true, source: 'auto' });
     if (!response.ok) {
+      setPendingJobs((prev) => {
+        const next = { ...prev };
+        delete next[engine];
+        return next;
+      });
       setRowNotices((prev) => ({
         ...prev,
         [engine]: { tone: 'error', text: response.error?.message || 'Install failed to start' },
@@ -492,6 +503,11 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
       return;
     }
 
+    setPendingJobs((prev) => {
+      const next = { ...prev };
+      delete next[engine];
+      return next;
+    });
     setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Install completed' } }));
     await refreshEngineData();
   }, [qms, refreshEngineData]);

@@ -111,29 +111,13 @@ test.describe('E2E: Engine Manager + Update UI', () => {
         status: 'pending',
       },
     });
-    await setRpcMock(appPage, 'get_job_status', [
-      {
-        ok: true,
-        data: {
-          status: 'running',
-          last_log_line: 'Resolving dependencies...',
-        },
+    await setRpcMock(appPage, 'get_job_status', {
+      ok: true,
+      data: {
+        status: 'running',
+        last_log_line: 'Installing xTB package...',
       },
-      {
-        ok: true,
-        data: {
-          status: 'running',
-          last_log_line: 'Installing xTB package...',
-        },
-      },
-      {
-        ok: true,
-        data: {
-          status: 'completed',
-          last_log_line: 'Install completed',
-        },
-      },
-    ]);
+    });
 
     await expect(appPage.getByTestId('qms-welcome-title')).toBeVisible({ timeout: 30000 });
     await navigateToView(appPage, 'settings');
