@@ -116,6 +116,7 @@ jobs:
 
       - name: Sign Windows artifacts (Trusted Signing)
         if: ${{ inputs.sign }}
+        continue-on-error: false
         uses: Azure/trusted-signing-action@v0
         with:
           endpoint: ${{ vars.TRUSTEDSIGN_ENDPOINT }}
@@ -127,7 +128,7 @@ jobs:
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
-          continue-on-error: false
+          
 
       - name: Print output artifacts
         run: |
