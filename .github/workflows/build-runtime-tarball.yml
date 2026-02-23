@@ -55,13 +55,13 @@ jobs:
         if: ${{ inputs.qmatsuite_version == 'local' }}
         run: |
           micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install --upgrade pip
-          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install '.[mcp]'
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install '.'
 
       - name: Install qmatsuite from PyPI
         if: ${{ inputs.qmatsuite_version != 'local' }}
         run: |
           micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install --upgrade pip
-          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install "qmatsuite[mcp]==${{ inputs.qmatsuite_version }}"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install "qmatsuite==${{ inputs.qmatsuite_version }}"
 
       - name: Verify runtime import chain and CLI
         run: |

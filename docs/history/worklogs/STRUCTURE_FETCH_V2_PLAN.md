@@ -1110,7 +1110,7 @@ def search_materials_project(
 **Dependency:**
 - `mp-api` package (optional dependency)
 - Add to `pyproject.toml`: `mp-api = {version = "...", optional = true}`
-- Extras: `pip install qmatsuite[mp-api]` (optional)
+- Install: `pip install qmatsuite` (mp-api is now core)
 
 **Rich Metadata:**
 - Band gap, formation energy, hull distance, stability
@@ -2478,4 +2478,3 @@ The plan is broken into 7 PRs, each independently mergeable with clear acceptanc
 ---
 
 **End of Plan**
-

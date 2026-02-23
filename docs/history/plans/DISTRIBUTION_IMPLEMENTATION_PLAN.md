@@ -214,7 +214,7 @@
 | full→Si bands | macOS arm64 | 下载290MB → .pkg安装 → 启动 → Load demo → Run → band plot |
 | lite→探索→装QE→跑 | macOS arm64 | 下载190MB → 拖装 → 首次启动解压(30s) → 浏览demo ref results → 点Run→引导装QE → 跑demo |
 | lite→配VASP | Win x64 | 下载190MB → 安装 → Settings→Engine Manager → Configure VASP path → Run VASP SCF |
-| pip→MCP | Linux x64 | `pip install qmatsuite[mcp]` → MCP server → agent 跑 QE 计算 |
+| pip→MCP | Linux x64 | `pip install qmatsuite` → MCP server → agent 跑 QE 计算 |
 | pip→CLI engine | macOS arm64 | `pip install qmatsuite` → `qms engine install xtb` → xTB 计算完成 |
 
 ## 不在 Launch 范围内（defer post-launch）

@@ -39,8 +39,7 @@ Three distribution channels serve different user profiles:
 **Installation:**
 ```bash
 pip install qmatsuite           # Core
-pip install qmatsuite[mcp]      # + MCP server (fastmcp)
-pip install qmatsuite[all]      # + Materials Project API + MCP
+pip install qmatsuite           # Core package (includes MCP + mp-api)
 ```
 
 **First-launch experience:**
@@ -1206,7 +1205,7 @@ Investigation of the actual daemon import tree reveals:
 
 **Build pipeline** (CI):
 1. Create a clean micromamba environment with pinned deps
-2. `pip install qmatsuite[mcp]` into the environment
+2. `pip install qmatsuite` into the environment
 3. Compress with `tar --zstd` → `runtime.tar.zst` (~115 MB)
 4. Ship as part of the installer (NSIS / .pkg / .dmg app bundle)
 
