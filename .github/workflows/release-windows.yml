@@ -95,7 +95,7 @@ jobs:
         working-directory: gui
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npx electron-builder --win nsis --x64 --config electron-builder.json5
+        run: npx electron-builder --win nsis --x64 --config electron-builder.json5 --publish never
 
       - name: Azure Login (OIDC)
         if: ${{ inputs.sign }}

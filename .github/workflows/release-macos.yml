@@ -95,7 +95,7 @@ jobs:
         working-directory: gui
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5
+        run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5 --publish never
 
       - name: Import Apple signing certificate
         if: ${{ inputs.sign }}
@@ -118,7 +118,7 @@ jobs:
         working-directory: gui
         env:
           CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
-        run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5
+        run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5 --publish never
 
       - name: Notarize and staple DMG
         if: ${{ inputs.sign }}
