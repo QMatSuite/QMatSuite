@@ -661,3 +661,120 @@ Validation plan:
 - CI impact summary:
   - Clean installs now include `ase`, so GPAW trajectory parser tests no longer fail with missing dependency.
   - Lazy import contract preserved (no module-level `ase` import in parser).
+
+## 2026-02-22 19:3x — GUI E2E Flake Investigation: Engine Install Progress Indicator
+
+User-reported failure (Playwright, Electron project):
+- `tests/e2e/engine_manager.spec.ts:55:3`
+- Assertion failed: `getByTestId('qms-engine-progress-xtb')` not found/visible within 10s.
+- Screenshot evidence showed the xTB row rendering `install completed` directly, without a visible intermediate progress state.
+
+### Investigation path
+
+1. Reproduced against the targeted spec file:
+   - `cd gui && npx playwright test tests/e2e/engine_manager.spec.ts --project=electron --workers=1 --reporter=line`
+2. Inspected UI logic in:
+   - `gui/src/components/panels/SettingsPanel.tsx`
+3. Inspected E2E IPC mocks and job progression behavior in:
+   - `gui/electron/main.ts`
+   - `gui/electron/preload.ts`
+4. Correlated with failing assertion timing and screenshot output.
+
+### Root cause
+
+`EngineManagementSection` polling effect was configured so that when `pendingJobs` changed, the effect re-ran and performed an immediate extra `pollJobs()` call in addition to interval polling.
+
+Effectively this could compress mocked state transitions too quickly (`running -> running -> completed`) before Playwright sampled the DOM for `qms-engine-progress-xtb`, causing intermittent miss of the progress indicator.
+
+### Patch applied
+
+File changed:
+- `gui/src/components/panels/SettingsPanel.tsx`
+
+Change:
+- Removed immediate `void pollJobs();` invocation from the polling `useEffect`.
+- Kept interval-based polling (`setInterval(..., 2000)`) so progress state remains observable for test and user UI.
+
+### Validation status
+
+- Targeted spec rerun result:
+  - `tests/e2e/engine_manager.spec.ts` => **passed** (all tests in file passed in targeted run).
+- Full Playwright suite:
+  - A full run was started and observed executing long-running Electron E2E specs.
+  - At least one recurrence of the same assertion was observed during an in-progress full run prior to compaction.
+  - Current status at this log point: full-suite completion summary still pending capture.
+
+### Additional note
+
+This issue is timing-sensitive rather than a backend installation failure; UI transitions to `install completed` are happening, but the explicit progress test-id visibility window can be too short under some event timing paths.
+
+
+## 2026-02-22 20:0x — Engine Manager E2E Failure Closed (Progress Indicator Flake)
+
+User request context:
+- Fix failing GUI E2E assertion for `qms-engine-progress-xtb`.
+- Continue until fully solved.
+- Later directive: frontend-only changes, so no full pytest rerun required in this pass.
+
+### Observed failure
+
+- Failing test:
+  - `gui/tests/e2e/engine_manager.spec.ts`
+  - `Engine install action shows progress and commercial engine keeps configure path`
+- Symptom:
+  - Expected `qms-engine-progress-xtb` visible.
+  - Screenshot showed row already in `install completed` notice state.
+
+### Investigation and findings
+
+1. Initial assumption tested:
+- Hypothesis: polling effect timing in `SettingsPanel.tsx` cleared progress too quickly.
+- Action: patched UI polling flow to remove immediate poll and later added an immediate pending placeholder state.
+
+2. Important operational finding:
+- Playwright E2E launches from compiled artifacts (`dist/` + `dist-electron/`), not live TS source.
+- Earlier reruns were using stale build output until `npm run build:e2e` was rerun.
+
+3. Actual root cause for flake:
+- In E2E mode, RPC mock queue is keyed only by method name.
+- `get_job_status` is polled by multiple UI surfaces/jobs telemetry, not only Engine Manager.
+- The queued `get_job_status` mock sequence for this test was being consumed by unrelated polling calls, causing unexpected fast transition to completion and missed progress assertion.
+- This is a shared-mock-consumption issue, not Playwright test parallelism (tests are serial by config).
+
+4. Performance note captured (not root cause but relevant):
+- `engine.list` calls in logs repeatedly took ~5.6s due deep discovery/version probing.
+- This increases UI latency but did not directly explain this assertion failure.
+
+### Fixes applied
+
+- UI hardening:
+  - `gui/src/components/panels/SettingsPanel.tsx`
+  - Added deterministic immediate pending state on install click.
+  - Guarded polling so placeholder pseudo-job (`__pending__`) is not polled.
+
+- E2E determinism fix (primary closure for failing assertion):
+  - `gui/tests/e2e/engine_manager.spec.ts`
+  - Changed `get_job_status` mock for this test from queued `running->running->completed` array to a stable single `running` response.
+  - Prevents cross-consumption of queue elements by unrelated background polling.
+
+### Verification executed
+
+1. Rebuilt E2E artifacts:
+- `cd gui && npm run build:e2e`
+
+2. Stress check of target spec:
+- `cd gui && npx playwright test tests/e2e/engine_manager.spec.ts --project=electron --workers=1 --repeat-each=3`
+- Result: **12 passed**.
+
+3. Full GUI suite:
+- `cd gui && npx playwright test`
+- Result: **20 passed (7.0m)**.
+
+4. Pytest:
+- Not rerun in this pass per latest explicit user direction (frontend-only changes).
+
+### Files modified in this closure
+
+- `gui/src/components/panels/SettingsPanel.tsx`
+- `gui/tests/e2e/engine_manager.spec.ts`
+
