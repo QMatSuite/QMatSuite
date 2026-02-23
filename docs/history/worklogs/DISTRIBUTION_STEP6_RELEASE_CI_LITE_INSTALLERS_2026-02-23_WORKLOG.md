@@ -159,12 +159,8 @@ Repo: <repo>
   - `<repo>/.github/workflows/release-windows.yml`
     - equivalent runtime build/stage flow for Windows x64
     - builds NSIS installer
-    - optional Trusted Signing via `azure/trusted-signing-action@v0.5.9`
+    - optional Trusted Signing
     - uploads artifacts and drafts GitHub release assets
-
-- Trusted Signing reference status:
-  - checked local `qmatsuite-toolchain` workflows for a pre-existing Trusted Signing template
-  - no Trusted Signing step found there; implemented the workflow using the official Azure Trusted Signing action pattern
 
 ### 2026-02-23 — Local macOS DMG build validation
 - Created local runtime tarball for packaging test:
@@ -220,10 +216,10 @@ Repo: <repo>
 ### Windows release workflow (`release-windows.yml`)
 - [ ] `AZURE_TENANT_ID`
 - [ ] `AZURE_CLIENT_ID`
-- [ ] `AZURE_CLIENT_SECRET`
-- [ ] `AZURE_TRUSTED_SIGNING_ENDPOINT`
-- [ ] `AZURE_TRUSTED_SIGNING_ACCOUNT`
-- [ ] `AZURE_TRUSTED_SIGNING_CERT_PROFILE`
+- [ ] `AZURE_SUBSCRIPTION_ID`
+- [ ] Repository variable `TRUSTEDSIGN_ENDPOINT`
+- [ ] Repository variable `TRUSTEDSIGN_ACCOUNT`
+- [ ] Repository variable `TRUSTEDSIGN_CERT_PROFILE`
 
 ## Release runbook
 
@@ -273,3 +269,20 @@ Repo: <repo>
 - Post-redaction targeted gate confirmation:
   - `python -m pytest tests/gates/test_no_sensitive_paths.py -v --tb=short`
   - Result: passed
+
+### 2026-02-23 — Trusted Signing refinement from toolchain reference
+- User requested alignment with reference workflow:
+  - `<toolchain_repo>/.github/workflows/qe-windows-oneapi-msmpi-release.yml`
+- Applied refinements to `<repo>/.github/workflows/release-windows.yml`:
+  - switched to `azure/login@v2` OIDC step before signing
+  - uses `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+  - switched Trusted Signing action invocation to `Azure/trusted-signing-action@v0` (same family as toolchain reference)
+  - switched endpoint/account/profile sourcing to repository variables:
+    - `vars.TRUSTEDSIGN_ENDPOINT`
+    - `vars.TRUSTEDSIGN_ACCOUNT`
+    - `vars.TRUSTEDSIGN_CERT_PROFILE`
+  - added safe debug echo step for Trusted Signing non-secret inputs
+  - enabled recursive signing scan with `files-folder-recurse: true`
+- Consistency checks performed (no test reruns, workflow-only change):
+  - YAML parse check for `release-windows.yml` passed
+  - trusted-signing key names and action usage grep checks passed

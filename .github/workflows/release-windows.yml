@@ -96,21 +96,37 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: npx electron-builder --win nsis --x64 --config electron-builder.json5
 
+      - name: Azure Login (OIDC)
+        if: ${{ inputs.sign }}
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: false
+
+      - name: Debug Trusted Signing inputs (safe)
+        if: ${{ inputs.sign }}
+        shell: pwsh
+        run: |
+          "ENDPOINT = '${{ vars.TRUSTEDSIGN_ENDPOINT }}'"
+          "ACCOUNT  = '${{ vars.TRUSTEDSIGN_ACCOUNT }}'"
+          "PROFILE  = '${{ vars.TRUSTEDSIGN_CERT_PROFILE }}'"
+
       - name: Sign Windows artifacts (Trusted Signing)
         if: ${{ inputs.sign }}
-        uses: azure/trusted-signing-action@v0.5.9
+        uses: Azure/trusted-signing-action@v0
         with:
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          endpoint: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
-          trusted-signing-account-name: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
-          certificate-profile-name: ${{ secrets.AZURE_TRUSTED_SIGNING_CERT_PROFILE }}
+          endpoint: ${{ vars.TRUSTEDSIGN_ENDPOINT }}
+          trusted-signing-account-name: ${{ vars.TRUSTEDSIGN_ACCOUNT }}
+          certificate-profile-name: ${{ vars.TRUSTEDSIGN_CERT_PROFILE }}
           files-folder: ${{ github.workspace }}\\gui\\release
           files-folder-filter: exe
+          files-folder-recurse: true
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
+          continue-on-error: false
 
       - name: Print output artifacts
         run: |
