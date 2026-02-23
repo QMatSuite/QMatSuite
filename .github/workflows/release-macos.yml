@@ -116,7 +116,7 @@ jobs:
         if: ${{ inputs.sign }}
         working-directory: gui
         env:
-          CSC_NAME: "Developer ID Application: QMatSuite (${{ secrets.APPLE_TEAM_ID }})"
+          CSC_NAME: "Developer ID Application: ${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
         run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5
 
       - name: Notarize and staple DMG
