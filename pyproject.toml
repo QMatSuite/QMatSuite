@@ -26,27 +26,19 @@ dependencies = [
     "portalocker>=2.8,<3",
     "jinja2>=3.0.0",
     "fastmcp>=2,<3",
+    "mp-api>=0.30.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/QMatSuite/QMatSuite"
+Repository = "https://github.com/QMatSuite/QMatSuite"
+Issues = "https://github.com/QMatSuite/QMatSuite/issues"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.0.0"
-]
-# Materials Project native API (optional, requires API key)
-mp-api = [
-    "mp-api>=0.30.0"
-]
-# MCP server extra retained for backwards compatibility.
-# fastmcp is now a core dependency.
-mcp = [
-    "fastmcp>=2,<3"
-]
-# All optional dependencies
-all = [
-    "mp-api>=0.30.0",
-    "fastmcp>=2,<3"
 ]
 
 [tool.setuptools]
