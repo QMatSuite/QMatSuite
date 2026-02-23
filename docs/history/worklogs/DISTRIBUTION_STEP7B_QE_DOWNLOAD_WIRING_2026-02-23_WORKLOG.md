@@ -71,8 +71,42 @@ Repo: <repo>
   - Windows resolution skips `libxc` release and selects standard oneAPI/MSMPI asset
   - unsupported platform raises clear error
 
+### 2026-02-23 — State check before finalization
+- `git status --short`:
+  - `?? docs/history/plans/DISTRIBUTION_STEP7B_QE_DOWNLOAD_WIRING_PLAN.md`
+- `git diff --stat`: no tracked-file diff (only new plan file unstaged)
+- `pyproject.toml` version: `1.0.1`
+- `gui/package.json` version: `0.0.0`
+
 ### 2026-02-23 — Targeted validation after resolver patch
 - Ran targeted tests:
   - `python -m pytest tests/unit/test_engine_installer.py tests/unit/test_api_engine_installation.py -v --tb=short`
   - Result: `15 passed`
 - This validates resolver mapping logic and API install routing in isolation before milestone-wide suites.
+
+### 2026-02-23 — Version bump to 1.1.0
+- Updated `pyproject.toml`: version `1.0.1` → `1.1.0`
+- Updated `gui/package.json`: version `0.0.0` → `1.1.0`
+- Cross-check confirmed both versions are `1.1.0`
+
+### 2026-02-23 — Final milestone validation
+- Full pytest: `source .venv/bin/activate && python -m pytest tests/ -v --tb=short -n auto --dist=loadfile`
+  - Result: `========== 6514 passed, 4 skipped, 975 warnings in 374.97s (0:06:14) ===========`
+- Playwright E2E: `cd gui && npx playwright test`
+  - Result: `20 passed (6.8m)`
+- Local wheel build + clean install:
+  - `python -m build` succeeded (`qmatsuite-1.1.0.tar.gz` and `qmatsuite-1.1.0-py3-none-any.whl`)
+  - Clean venv install: distribution version `1.1.0` (via `importlib.metadata`), daemon/MCP/mp-api imports OK, `qms --help` OK
+
+### 2026-02-23 — QE runtime portability note
+- QE binaries downloaded from `qmatsuite-toolchain` currently lack bundled dylibs on macOS
+- `pw.x` fails with `dyld: Library not loaded` for `libgcc_s.1.1.dylib` on a clean macOS environment
+- This is a **toolchain packaging issue**, not a QMatSuite bug
+- `qms engine verify qe` correctly reports failure (verification hardening from this step)
+- Fix is tracked in Step 7A-fix (toolchain repo: bundle dylibs + rewrite paths)
+
+### 2026-02-23 — Step 7B complete
+- All Step 7B code changes are in place (QE resolver, install, verification hardening)
+- Version: 1.1.0
+- Tag: v1.1.0 (to be pushed by maintainer after review)
+- Ready for release workflow triggers by maintainer
