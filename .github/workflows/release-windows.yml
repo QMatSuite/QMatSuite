@@ -1,0 +1,142 @@
+name: Release Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to package (e.g., 1.0.2 or local)"
+        required: true
+        type: string
+        default: "local"
+      sign:
+        description: "Sign executables with Microsoft Trusted Signing"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      RUNTIME_ENV_PREFIX: ${{ github.workspace }}/runtime-env
+      RUNTIME_PLATFORM: windows-x64
+      RUNTIME_ARCHIVE: ${{ github.workspace }}/runtime-windows-x64.tar.zst
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          init-shell: bash
+          cache-downloads: true
+          cache-environment: false
+
+      - name: Build runtime environment
+        run: |
+          set -euo pipefail
+          micromamba create -y -p "$RUNTIME_ENV_PREFIX" -c conda-forge python=3.12 pip
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install --upgrade pip
+          if [[ "${{ inputs.version }}" == "local" ]]; then
+            micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install "${{ github.workspace }}"
+          else
+            micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install "qmatsuite==${{ inputs.version }}"
+          fi
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "import qmatsuite, importlib.metadata as m; print('qmatsuite:', m.version('qmatsuite'))"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from qmatsuite.daemon.server import main; print('daemon OK')"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from qmatsuite.mcp.server import create_server; print('MCP OK')"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help | head -n 5
+
+      - name: Install archive helper dependency
+        run: |
+          python -m pip install --upgrade pip zstandard
+
+      - name: Build runtime archive
+        run: |
+          python scripts/build_runtime_archive.py
+          ls -lh "$RUNTIME_ARCHIVE"
+
+      - name: Stage runtime archive for electron-builder
+        run: |
+          cp "$RUNTIME_ARCHIVE" "${{ github.workspace }}/gui/runtime.tar.zst"
+          ls -lh "${{ github.workspace }}/gui/runtime.tar.zst"
+
+      - name: Install GUI dependencies
+        working-directory: gui
+        run: npm ci
+
+      - name: Build GUI assets
+        working-directory: gui
+        run: npm run build:e2e
+
+      - name: Clean previous release outputs
+        run: |
+          rm -rf "${{ github.workspace }}/gui/release"
+
+      - name: Build NSIS installer
+        working-directory: gui
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --win nsis --x64 --config electron-builder.json5
+
+      - name: Sign Windows artifacts (Trusted Signing)
+        if: ${{ inputs.sign }}
+        uses: azure/trusted-signing-action@v0.5.9
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_TRUSTED_SIGNING_CERT_PROFILE }}
+          files-folder: ${{ github.workspace }}\\gui\\release
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Print output artifacts
+        run: |
+          find "${{ github.workspace }}/gui/release" -maxdepth 4 -type f \( -name "*.exe" -o -name "latest.yml" -o -name "*.blockmap" \) -print
+          du -sh "${{ github.workspace }}/gui/release" || true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: qms-windows-release
+          path: |
+            gui/release/**/*.exe
+            gui/release/**/latest.yml
+            gui/release/**/*.blockmap
+          if-no-files-found: error
+
+      - name: Upload installer to GitHub Release
+        if: ${{ inputs.version != 'local' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          draft: true
+          fail_on_unmatched_files: false
+          files: |
+            gui/release/**/*.exe
+            gui/release/**/latest.yml
+            gui/release/**/*.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

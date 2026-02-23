@@ -5,12 +5,21 @@
   "productName": "QMatSuite",
   "asar": true,
   "directories": {
-    "output": "release/${version}"
+    "output": "release"
   },
   "files": [
     "dist",
     "dist-electron",
     "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": ".",
+      "to": ".",
+      "filter": [
+        "runtime.tar.zst"
+      ]
+    }
   ],
   "publish": [
     {
@@ -21,9 +30,18 @@
   ],
   "mac": {
     "target": [
-      "dmg"
+      {
+        "target": "dmg",
+        "arch": [
+          "arm64"
+        ]
+      }
     ],
+    "category": "public.app-category.education",
     "artifactName": "${productName}-macOS-${version}.${ext}"
+  },
+  "dmg": {
+    "title": "QMatSuite ${version}"
   },
   "win": {
     "target": [
@@ -40,12 +58,9 @@
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
-  },
-  "linux": {
-    "target": [
-      "AppImage"
-    ],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
+    "deleteAppDataOnUninstall": false,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "QMatSuite"
   }
 }

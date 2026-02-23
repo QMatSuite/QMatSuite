@@ -1,0 +1,173 @@
+name: Release macOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to package (e.g., 1.0.2 or local)"
+        required: true
+        type: string
+        default: "local"
+      sign:
+        description: "Code sign and notarize"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    defaults:
+      run:
+        shell: bash
+    env:
+      RUNTIME_ENV_PREFIX: ${{ github.workspace }}/runtime-env
+      RUNTIME_PLATFORM: macos-arm64
+      RUNTIME_ARCHIVE: ${{ github.workspace }}/runtime-macos-arm64.tar.zst
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          init-shell: bash
+          cache-downloads: true
+          cache-environment: false
+
+      - name: Build runtime environment
+        run: |
+          set -euo pipefail
+          micromamba create -y -p "$RUNTIME_ENV_PREFIX" -c conda-forge python=3.12 pip
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install --upgrade pip
+          if [[ "${{ inputs.version }}" == "local" ]]; then
+            micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install "${{ github.workspace }}"
+          else
+            micromamba run -p "$RUNTIME_ENV_PREFIX" python -m pip install "qmatsuite==${{ inputs.version }}"
+          fi
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "import qmatsuite, importlib.metadata as m; print('qmatsuite:', m.version('qmatsuite'))"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from qmatsuite.daemon.server import main; print('daemon OK')"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from qmatsuite.mcp.server import create_server; print('MCP OK')"
+          micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help | head -n 5
+
+      - name: Install archive helper dependency
+        run: |
+          python -m pip install --upgrade pip zstandard
+
+      - name: Build runtime archive
+        run: |
+          python scripts/build_runtime_archive.py
+          ls -lh "$RUNTIME_ARCHIVE"
+
+      - name: Stage runtime archive for electron-builder
+        run: |
+          cp "$RUNTIME_ARCHIVE" "${{ github.workspace }}/gui/runtime.tar.zst"
+          ls -lh "${{ github.workspace }}/gui/runtime.tar.zst"
+
+      - name: Install GUI dependencies
+        working-directory: gui
+        run: npm ci
+
+      - name: Build GUI assets
+        working-directory: gui
+        run: npm run build:e2e
+
+      - name: Clean previous release outputs
+        run: |
+          rm -rf "${{ github.workspace }}/gui/release"
+
+      - name: Build unsigned DMG
+        if: ${{ !inputs.sign }}
+        working-directory: gui
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5
+
+      - name: Import Apple signing certificate
+        if: ${{ inputs.sign }}
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/qms-sign
+          echo "$APPLE_CERTIFICATE_P12" | base64 --decode > /tmp/qms-sign/cert.p12
+          security create-keychain -p "" qms-build.keychain
+          security default-keychain -s qms-build.keychain
+          security unlock-keychain -p "" qms-build.keychain
+          security import /tmp/qms-sign/cert.p12 -k qms-build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" qms-build.keychain
+          rm -f /tmp/qms-sign/cert.p12
+
+      - name: Build signed DMG
+        if: ${{ inputs.sign }}
+        working-directory: gui
+        env:
+          CSC_NAME: "Developer ID Application: QMatSuite (${{ secrets.APPLE_TEAM_ID }})"
+        run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5
+
+      - name: Notarize and staple DMG
+        if: ${{ inputs.sign }}
+        env:
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.private_keys
+          key_file="$HOME/.private_keys/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
+          printf '%s' "$APPLE_NOTARY_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          DMG_PATH=$(find "${{ github.workspace }}/gui/release" -name "*.dmg" | head -1)
+          if [[ -z "${DMG_PATH}" ]]; then
+            echo "DMG not found in gui/release"
+            exit 1
+          fi
+          xcrun notarytool submit "$DMG_PATH" \
+            --issuer "$APPLE_NOTARY_ISSUER_ID" \
+            --key-id "$APPLE_NOTARY_KEY_ID" \
+            --key "$key_file" \
+            --wait
+          xcrun stapler staple "$DMG_PATH"
+
+      - name: Print output artifacts
+        run: |
+          find "${{ github.workspace }}/gui/release" -maxdepth 4 -type f \( -name "*.dmg" -o -name "latest-mac.yml" -o -name "*.blockmap" \) -print
+          du -sh "${{ github.workspace }}/gui/release" || true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: qms-macos-release
+          path: |
+            gui/release/**/*.dmg
+            gui/release/**/latest-mac.yml
+            gui/release/**/*.blockmap
+          if-no-files-found: error
+
+      - name: Upload DMG to GitHub Release
+        if: ${{ inputs.version != 'local' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          draft: true
+          fail_on_unmatched_files: false
+          files: |
+            gui/release/**/*.dmg
+            gui/release/**/latest-mac.yml
+            gui/release/**/*.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
