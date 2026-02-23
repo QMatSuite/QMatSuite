@@ -31,8 +31,7 @@ from .version_probe import run_version_probe
 
 logger = logging.getLogger(__name__)
 
-QE_RELEASE_REPO_UNIX = "QMatSuite/qmatsuite-toolchain"
-QE_RELEASE_REPO_WINDOWS = "QMatSuite/quantum-espresso-windows-exe"
+QE_RELEASE_REPO = "QMatSuite/qmatsuite-toolchain"
 PYTHON_ENGINE_BASE_SPEC = "python=3.12"
 
 
@@ -155,14 +154,24 @@ def _detect_binary_version(engine_family: str, resolved_binary: Path) -> Optiona
         if match:
             return match.group(1)
 
+    if result.returncode != 0:
+        return None
+
     return output.splitlines()[0].strip() if output else None
 
 
 def _verify_binary_engine(engine_family: str, bin_dir: Path) -> Tuple[str, Optional[str]]:
+    meta = ENGINE_META[engine_family]
+    has_version_command = bool(meta.get("version_command"))
     for binary_name in get_detection_binaries(engine_family):
         resolved = _resolve_binary(bin_dir, binary_name)
         if resolved:
-            return binary_name, _detect_binary_version(engine_family, resolved)
+            version = _detect_binary_version(engine_family, resolved)
+            if has_version_command and version is None:
+                raise RuntimeError(
+                    f"Version probe failed for {engine_family} binary: {resolved}"
+                )
+            return binary_name, version
     raise RuntimeError(f"No required executable detected for {engine_family} in {bin_dir}")
 
 
@@ -265,92 +274,98 @@ def resolve_qe_github_release_asset(
     version: Optional[str] = None,
     variant: str = "openmp",
 ) -> Dict[str, str]:
-    """Resolve QE GitHub release asset URL for current platform."""
+    """Resolve QE GitHub release asset URL for current platform.
+
+    Strategy:
+    - Always read releases from QMatSuite/qmatsuite-toolchain.
+    - Map host platform to a concrete QE variant string.
+    - Find the latest release whose tag starts with ``qe-<version>-<variant>-``.
+    - Require exact zip asset match: ``qe-<version>-<variant>.zip``.
+    """
     normalized_variant = (variant or "openmp").strip().lower()
     if normalized_variant not in {"openmp", "mpi"}:
         raise ValueError("variant must be one of: openmp, mpi")
 
-    repo = QE_RELEASE_REPO_WINDOWS if platform.system() == "Windows" else QE_RELEASE_REPO_UNIX
-    if version:
-        tag = version if version.startswith("v") else f"v{version}"
-        api_url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
-    else:
-        api_url = f"https://api.github.com/repos/{repo}/releases/latest"
-
-    payload = json.loads(_download_text(api_url))
-    assets = payload.get("assets") if isinstance(payload, dict) else None
-    if not isinstance(assets, list) or not assets:
-        raise RuntimeError(f"No release assets found for {repo}")
-
     system = platform.system().lower()
     machine = platform.machine().lower()
+    qe_version = (version or "7.5").strip().lstrip("v")
+    if not qe_version:
+        qe_version = "7.5"
 
-    platform_tokens: List[str]
-    arch_tokens: List[str]
-    if "windows" in system:
-        platform_tokens = ["win", "windows"]
-        arch_tokens = ["x64", "amd64", "64"]
-    elif "darwin" in system:
-        platform_tokens = ["mac", "osx", "darwin"]
-        arch_tokens = ["arm64", "aarch64"] if machine in {"arm64", "aarch64"} else ["x64", "x86_64", "64"]
+    platform_variant: Optional[str]
+    if system == "windows" and machine in {"amd64", "x86_64"}:
+        # Toolchain Windows artifacts are published as oneAPI+MSMPI bundles.
+        platform_variant = "win-oneapi-msmpi"
+    elif system == "darwin" and machine in {"arm64", "aarch64"}:
+        platform_variant = f"macos-arm64-{normalized_variant}"
+    elif system == "darwin" and machine in {"x86_64", "amd64"}:
+        platform_variant = f"macos-x64-{normalized_variant}"
+    elif system == "linux" and machine in {"x86_64", "amd64"}:
+        platform_variant = f"linux-x64-{normalized_variant}"
     else:
-        platform_tokens = ["linux"]
-        arch_tokens = ["arm64", "aarch64"] if machine in {"arm64", "aarch64"} else ["x64", "x86_64", "64"]
+        platform_variant = None
 
-    preferred: List[Dict[str, Any]] = []
-    fallback: List[Dict[str, Any]] = []
-    for asset in assets:
-        if not isinstance(asset, dict):
+    if not platform_variant:
+        raise RuntimeError(f"No QE GitHub binary mapping for platform {system}/{machine}")
+
+    repo = QE_RELEASE_REPO
+    tag_prefix = f"qe-{qe_version}-{platform_variant}"
+    asset_name = f"{tag_prefix}.zip"
+    api_url = f"https://api.github.com/repos/{repo}/releases?per_page=100"
+    payload = json.loads(_download_text(api_url))
+    releases = payload if isinstance(payload, list) else []
+    if not releases:
+        raise RuntimeError(f"No releases available in {repo}")
+
+    for release in releases:
+        if not isinstance(release, dict):
             continue
-        name = str(asset.get("name") or "")
-        lowered = name.lower()
-        if not name or lowered.endswith(".sha256"):
-            continue
-        if normalized_variant not in lowered:
-            continue
-        if not any(token in lowered for token in platform_tokens):
+        release_tag = str(release.get("tag_name") or "")
+        if not (release_tag == tag_prefix or release_tag.startswith(f"{tag_prefix}-")):
             continue
 
-        target = preferred if any(token in lowered for token in arch_tokens) else fallback
-        target.append(asset)
+        assets = release.get("assets")
+        if not isinstance(assets, list):
+            continue
 
-    candidates = preferred or fallback
-    if not candidates:
-        raise RuntimeError(
-            f"No QE release asset matched platform={system}/{machine}, variant={normalized_variant}"
-        )
+        zip_asset: Optional[Dict[str, Any]] = None
+        checksum_asset: Optional[Dict[str, Any]] = None
+        for asset in assets:
+            if not isinstance(asset, dict):
+                continue
+            name = str(asset.get("name") or "")
+            if name == asset_name:
+                zip_asset = asset
+            elif name == f"{asset_name}.sha256":
+                checksum_asset = asset
 
-    # Prefer archive assets (zip/tar.*) over auxiliary executables.
-    candidates.sort(
-        key=lambda a: (
-            0
-            if str(a.get("name", "")).lower().endswith((".zip", ".tar.gz", ".tgz", ".tar.bz2"))
-            else 1,
-            str(a.get("name", "")),
-        )
+        if not zip_asset:
+            continue
+
+        asset_url = str(zip_asset.get("browser_download_url") or "")
+        if not asset_url:
+            continue
+
+        checksum_url = ""
+        if checksum_asset:
+            checksum_url = str(checksum_asset.get("browser_download_url") or "")
+
+        release_url = str(release.get("html_url") or _release_url_from_asset_url(asset_url) or "")
+        return {
+            "asset_url": asset_url,
+            "asset_name": asset_name,
+            "checksum_url": checksum_url,
+            "release_url": release_url,
+            "release_tag": release_tag,
+            "variant": platform_variant,
+            "repo": repo,
+        }
+
+    raise RuntimeError(
+        "No QE release asset found for "
+        f"platform={system}/{machine} in {repo} "
+        f"(tag prefix='{tag_prefix}', asset='{asset_name}')"
     )
-    selected = candidates[0]
-    asset_name = str(selected.get("name"))
-    asset_url = str(selected.get("browser_download_url"))
-
-    checksum_url = None
-    checksum_name_candidates = [f"{asset_name}.sha256"]
-    for asset in assets:
-        if not isinstance(asset, dict):
-            continue
-        name = str(asset.get("name") or "")
-        if name in checksum_name_candidates:
-            checksum_url = str(asset.get("browser_download_url"))
-            break
-
-    return {
-        "asset_url": asset_url,
-        "asset_name": asset_name,
-        "checksum_url": checksum_url or "",
-        "release_url": str(payload.get("html_url") or _release_url_from_asset_url(asset_url) or ""),
-        "release_tag": str(payload.get("tag_name") or ""),
-        "variant": normalized_variant,
-    }
 
 
 def install_engine_conda(
@@ -489,6 +504,10 @@ def install_engine_github_release(
     shutil.copytree(unpack_dir, target_root)
 
     final_bin_dir, _ = _find_binary_in_tree(target_root, family)
+    if platform.system() != "Windows" and final_bin_dir.is_dir():
+        for entry in final_bin_dir.iterdir():
+            if entry.is_file():
+                entry.chmod(entry.stat().st_mode | 0o111)
 
     installation: Installation = {
         "id": install_id,

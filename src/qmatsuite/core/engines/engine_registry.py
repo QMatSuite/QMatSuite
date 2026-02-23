@@ -522,6 +522,9 @@ class EngineRegistry:
             bin_dir=resolved_binary.parent,
             binary_name=resolved_binary.name,
         )
+        has_version_command = bool(meta.get("version_command"))
+        if has_version_command and version is None:
+            return False, f"version probe failed for {resolved_binary}"
         if version:
             installation["version"] = version
 
@@ -564,6 +567,8 @@ class EngineRegistry:
             match = re.search(regex, output)
             if match:
                 return match.group(1)
+        if result.returncode != 0:
+            return None
         first_line = output.splitlines()[0].strip()
         return first_line or None
 

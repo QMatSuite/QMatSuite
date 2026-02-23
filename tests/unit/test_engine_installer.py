@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
+import zipfile
 
 import pytest
 
@@ -176,3 +178,111 @@ def test_installer_version_probe_does_not_pollute_caller_cwd(
     assert version == "6.7.1"
     assert not (caller_cwd / "input_tmp.in").exists()
     assert not (caller_cwd / "CRASH").exists()
+
+
+def test_verify_binary_engine_rejects_non_runnable_binary(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    _make_executable(
+        bin_dir / "xtb",
+        "echo 'dyld: Library not loaded: libfoo.dylib' 1>&2\nexit 1",
+    )
+
+    with pytest.raises(RuntimeError, match="Version probe failed"):
+        engine_installer._verify_binary_engine("xtb", bin_dir)
+
+
+def test_resolve_qe_github_release_asset_macos_arm64(monkeypatch: pytest.MonkeyPatch) -> None:
+    releases = [
+        {
+            "tag_name": "qe-7.5-macos-arm64-openmp-20260223-2367b8b",
+            "html_url": "https://github.com/QMatSuite/qmatsuite-toolchain/releases/tag/qe-7.5-macos-arm64-openmp-20260223-2367b8b",
+            "assets": [
+                {
+                    "name": "qe-7.5-macos-arm64-openmp.zip",
+                    "browser_download_url": "https://example.invalid/qe-7.5-macos-arm64-openmp.zip",
+                }
+            ],
+        }
+    ]
+
+    monkeypatch.setattr(engine_installer.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(engine_installer.platform, "machine", lambda: "arm64")
+    monkeypatch.setattr(engine_installer, "_download_text", lambda _url: json.dumps(releases))
+
+    resolved = engine_installer.resolve_qe_github_release_asset(version="v7.5", variant="openmp")
+    assert resolved["repo"] == "QMatSuite/qmatsuite-toolchain"
+    assert resolved["release_tag"] == "qe-7.5-macos-arm64-openmp-20260223-2367b8b"
+    assert resolved["asset_name"] == "qe-7.5-macos-arm64-openmp.zip"
+    assert resolved["variant"] == "macos-arm64-openmp"
+
+
+def test_resolve_qe_github_release_asset_windows_skips_libxc_release(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    releases = [
+        {
+            "tag_name": "qe-7.5-win-oneapi-msmpi-libxc-20251223-a04eb07",
+            "html_url": "https://example.invalid/libxc",
+            "assets": [
+                {
+                    "name": "qe-7.5-win-oneapi-msmpi-libxc.zip",
+                    "browser_download_url": "https://example.invalid/libxc.zip",
+                }
+            ],
+        },
+        {
+            "tag_name": "qe-7.5-win-oneapi-msmpi-20251223-d409e9b",
+            "html_url": "https://example.invalid/win",
+            "assets": [
+                {
+                    "name": "qe-7.5-win-oneapi-msmpi.zip",
+                    "browser_download_url": "https://example.invalid/win.zip",
+                }
+            ],
+        },
+    ]
+
+    monkeypatch.setattr(engine_installer.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(engine_installer.platform, "machine", lambda: "AMD64")
+    monkeypatch.setattr(engine_installer, "_download_text", lambda _url: json.dumps(releases))
+
+    resolved = engine_installer.resolve_qe_github_release_asset(version="7.5", variant="openmp")
+    assert resolved["asset_name"] == "qe-7.5-win-oneapi-msmpi.zip"
+    assert resolved["asset_url"] == "https://example.invalid/win.zip"
+    assert resolved["variant"] == "win-oneapi-msmpi"
+
+
+def test_resolve_qe_github_release_asset_unsupported_platform(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(engine_installer.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(engine_installer.platform, "machine", lambda: "riscv64")
+
+    with pytest.raises(RuntimeError, match="No QE GitHub binary mapping"):
+        engine_installer.resolve_qe_github_release_asset()
+
+
+def test_install_engine_github_release_sets_executable_bits_on_unix(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    home = tmp_path / "home"
+    archive_path = tmp_path / "qe.zip"
+    with zipfile.ZipFile(archive_path, "w") as zf:
+        zf.writestr("qe-7.5/bin/pw.x", "#!/bin/sh\necho test\n")
+
+    monkeypatch.setattr(engine_installer.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(
+        engine_installer,
+        "_download_binary",
+        lambda _url, output_path: output_path.write_bytes(archive_path.read_bytes()),
+    )
+    monkeypatch.setattr(engine_installer, "_verify_or_download_sha256", lambda _path, _checksum: None)
+
+    installation = engine_installer.install_engine_github_release(
+        "qe",
+        asset_url="https://example.invalid/qe.zip",
+        app_data_dir=home,
+    )
+
+    pw_path = Path(installation["path"]) / "pw.x"
+    assert pw_path.exists()
+    assert os.access(pw_path, os.X_OK)
