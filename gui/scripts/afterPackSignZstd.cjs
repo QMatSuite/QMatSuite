@@ -41,7 +41,7 @@ module.exports = async function afterPack(context) {
     console.warn("afterPack: chmod failed:", e.message);
   }
 
-  // Fix rpath: add @executable_path/../lib/macos-arm64
+  // Add rpath: @executable_path/../lib/macos-arm64
   try {
     console.log("afterPack: adding rpath to zstd");
     await execFileAsync(
@@ -50,13 +50,14 @@ module.exports = async function afterPack(context) {
       { env: process.env }
     );
   } catch (e) {
-    // Ignore if rpath already exists
-    if (!e.stderr || !e.stderr.toString().includes("would duplicate")) {
-      console.warn("afterPack: install_name_tool -add_rpath failed (may already exist):", e.message);
+    // Ignore if rpath already exists (would duplicate error)
+    const stderr = (e.stderr || "").toString();
+    if (!stderr.includes("would duplicate") && !stderr.includes("already has LC_RPATH")) {
+      console.warn("afterPack: install_name_tool -add_rpath failed:", e.message);
     }
   }
 
-  // Check and rewrite libzstd library reference
+  // Check and rewrite libzstd library reference to use @rpath
   try {
     console.log("afterPack: checking library references in zstd");
     const otoolResult = await execFileAsync(
@@ -67,25 +68,26 @@ module.exports = async function afterPack(context) {
     const otoolOutput = (otoolResult.stdout || "").toString();
     const lines = otoolOutput.split("\n");
     
+    // Determine desired target path: prefer libzstd.1.dylib if it exists
+    const targetName = libZstdFiles.includes("libzstd.1.dylib") ? "libzstd.1.dylib" : libZstdName;
+    const desiredPath = "@rpath/" + targetName;
+    
     for (const line of lines) {
       if (line.includes("libzstd")) {
         // Extract the referenced path (first column, before whitespace)
         const match = line.match(/^\s*(\S+)/);
         if (match) {
           const oldPath = match[1];
-          // Determine target path: prefer libzstd.1.dylib if it exists
-          const targetName = libZstdFiles.includes("libzstd.1.dylib") ? "libzstd.1.dylib" : libZstdName;
-          const targetPath = "@rpath/" + targetName;
           
-          if (oldPath !== targetPath) {
-            console.log("afterPack: rewriting libzstd reference from", oldPath, "to", targetPath);
+          if (oldPath !== desiredPath) {
+            console.log("afterPack: rewriting libzstd reference from", oldPath, "to", desiredPath);
             await execFileAsync(
               "/usr/bin/install_name_tool",
-              ["-change", oldPath, targetPath, zstdPath],
+              ["-change", oldPath, desiredPath, zstdPath],
               { env: process.env }
             );
           } else {
-            console.log("afterPack: libzstd reference already correct:", targetPath);
+            console.log("afterPack: libzstd reference already correct:", desiredPath);
           }
           break;
         }
@@ -102,15 +104,19 @@ module.exports = async function afterPack(context) {
   }
 
   try {
-    // Codesign libzstd dylib first
-    console.log("afterPack: codesigning libzstd dylib:", libZstdPath);
-    const libSignResult = await execFileAsync(
-      "/usr/bin/codesign",
-      ["--force", "--timestamp", "--options", "runtime", "--sign", identity, libZstdPath],
-      { env: process.env }
-    );
-    if (libSignResult.stdout) console.log("afterPack: libzstd codesign stdout:", libSignResult.stdout);
-    if (libSignResult.stderr) console.error("afterPack: libzstd codesign stderr:", libSignResult.stderr);
+    // Codesign ALL libzstd dylibs first
+    console.log("afterPack: codesigning libzstd dylibs in", libDir);
+    for (const dylibFile of libZstdFiles) {
+      const dylibPath = path.join(libDir, dylibFile);
+      console.log("afterPack: codesigning", dylibPath);
+      const libSignResult = await execFileAsync(
+        "/usr/bin/codesign",
+        ["--force", "--timestamp", "--options", "runtime", "--sign", identity, dylibPath],
+        { env: process.env }
+      );
+      if (libSignResult.stdout) console.log("afterPack: codesign stdout:", libSignResult.stdout);
+      if (libSignResult.stderr) console.error("afterPack: codesign stderr:", libSignResult.stderr);
+    }
 
     // Codesign zstd binary
     console.log("afterPack: codesigning bundled zstd:", zstdPath);
@@ -122,7 +128,7 @@ module.exports = async function afterPack(context) {
     if (signResult.stdout) console.log("afterPack: codesign stdout:", signResult.stdout);
     if (signResult.stderr) console.error("afterPack: codesign stderr:", signResult.stderr);
 
-    // Verify both
+    // Verify codesign for one dylib and zstd
     console.log("afterPack: verifying codesign for libzstd:", libZstdPath);
     const libVerifyResult = await execFileAsync(
       "/usr/bin/codesign",

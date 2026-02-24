@@ -76,7 +76,20 @@ jobs:
             exit 1
           fi
           cp "$ZSTD_EXE" "${{ github.workspace }}/gui/extra/bin/windows-x64/zstd.exe"
-          ls -la "${{ github.workspace }}/gui/extra/bin/windows-x64/zstd.exe"
+
+          # Bundle dependent DLLs next to zstd.exe (best-effort)
+          ZSTD_DIR="$(dirname "$ZSTD_EXE")"
+          cp -n "$ZSTD_DIR"/libzstd*.dll "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
+          cp -n "$ZSTD_DIR"/zstd*.dll "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
+          LIBZSTD_DLL="$(find "$RUNTIME_ENV_PREFIX" -iname 'libzstd*.dll' | head -n 1 || true)"
+          if [[ -n "${LIBZSTD_DLL}" ]]; then
+            cp -n "$LIBZSTD_DLL" "${{ github.workspace }}/gui/extra/bin/windows-x64/" || true
+          fi
+
+          ls -la "${{ github.workspace }}/gui/extra/bin/windows-x64"
+
+          # Runtime sanity check: ensure bundled zstd can execute
+          "${{ github.workspace }}/gui/extra/bin/windows-x64/zstd.exe" --version
 
       - name: Install archive helper dependency
         run: |
