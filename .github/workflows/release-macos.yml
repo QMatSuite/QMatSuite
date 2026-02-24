@@ -64,6 +64,16 @@ jobs:
           micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help > /tmp/qms_help.txt
           head -n 5 /tmp/qms_help.txt
 
+      - name: Stage zstd binary for bundling
+        run: |
+          set -euo pipefail
+          micromamba install -y -p "$RUNTIME_ENV_PREFIX" -c conda-forge zstd
+          mkdir -p "${{ github.workspace }}/gui/extra/bin/macos-arm64"
+          cp "$RUNTIME_ENV_PREFIX/bin/zstd" "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
+          chmod 0755 "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
+          ls -la "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
+          file "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
+
       - name: Install archive helper dependency
         run: |
           python -m pip install --upgrade pip zstandard
@@ -119,6 +129,23 @@ jobs:
         env:
           CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
         run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5 --publish never
+
+      - name: Verify bundled zstd codesigning
+        if: ${{ inputs.sign }}
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find "${{ github.workspace }}/gui/release" -name "*.app" -type d -maxdepth 4 | head -n 1)
+          if [[ -z "${APP_PATH}" ]]; then
+            echo "Error: App bundle not found in gui/release"
+            exit 1
+          fi
+          ZSTD_PATH="${APP_PATH}/Contents/Resources/bin/macos-arm64/zstd"
+          if [[ ! -f "${ZSTD_PATH}" ]]; then
+            echo "Error: bundled zstd not found at ${ZSTD_PATH}"
+            exit 1
+          fi
+          ls -la "${ZSTD_PATH}"
+          /usr/bin/codesign -dv --verbose=4 "${ZSTD_PATH}"
 
       - name: Notarize and staple DMG
         if: ${{ inputs.sign }}

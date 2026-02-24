@@ -65,6 +65,19 @@ jobs:
           micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help > /tmp/qms_help.txt
           head -n 5 /tmp/qms_help.txt
 
+      - name: Stage zstd binary for bundling
+        run: |
+          set -euo pipefail
+          micromamba install -y -p "$RUNTIME_ENV_PREFIX" -c conda-forge zstd
+          mkdir -p "${{ github.workspace }}/gui/extra/bin/windows-x64"
+          ZSTD_EXE="$(find "$RUNTIME_ENV_PREFIX" -iname 'zstd.exe' | head -n 1)"
+          if [[ -z "${ZSTD_EXE}" ]]; then
+            echo "Error: zstd.exe not found in runtime environment"
+            exit 1
+          fi
+          cp "$ZSTD_EXE" "${{ github.workspace }}/gui/extra/bin/windows-x64/zstd.exe"
+          ls -la "${{ github.workspace }}/gui/extra/bin/windows-x64/zstd.exe"
+
       - name: Install archive helper dependency
         run: |
           python -m pip install --upgrade pip zstandard

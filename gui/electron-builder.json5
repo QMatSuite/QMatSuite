@@ -12,6 +12,7 @@
     "dist-electron",
     "package.json"
   ],
+  "afterPack": "scripts/afterPackSignZstd.cjs",
   "extraResources": [
     {
       "from": ".",
@@ -19,6 +20,10 @@
       "filter": [
         "runtime.tar.zst"
       ]
+    },
+    {
+      "from": "extra/bin",
+      "to": "bin"
     }
   ],
   "publish": [

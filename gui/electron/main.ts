@@ -347,12 +347,184 @@ function locateRuntimeTarball(): string | null {
   return null;
 }
 
-function extractRuntimeTarball(tarballPath: string, destinationDir: string): { ok: boolean; error: string | null } {
+function getBundledZstdPath(): string | null {
+  const platform = process.platform;
+  const arch = process.arch;
+  
+  // Determine platform-specific path
+  let platformDir: string;
+  let zstdName: string;
+  
+  if (platform === 'darwin' && arch === 'arm64') {
+    platformDir = 'macos-arm64';
+    zstdName = 'zstd';
+  } else if (platform === 'win32' && arch === 'x64') {
+    platformDir = 'windows-x64';
+    zstdName = 'zstd.exe';
+  } else {
+    return null; // Unsupported platform
+  }
+  
+  // Try packaged path first
+  const packagedPath = path.join(process.resourcesPath, 'bin', platformDir, zstdName);
+  if (fs.existsSync(packagedPath)) {
+    return packagedPath;
+  }
+  
+  // Fallback to dev mode path
+  const devPath = path.join(getProjectRoot(), 'gui', 'extra', 'bin', platformDir, zstdName);
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+  
+  return null;
+}
+
+async function validateBundledZstd(zstdPath: string): Promise<{ ok: boolean; error: string | null }> {
+  if (!fs.existsSync(zstdPath)) {
+    return {
+      ok: false,
+      error: `Bundled zstd not found at: ${zstdPath}`,
+    };
+  }
+  
+  // On macOS, check executable permission
+  if (process.platform === 'darwin') {
+    try {
+      fs.accessSync(zstdPath, fs.constants.X_OK);
+    } catch {
+      return {
+        ok: false,
+        error: `Bundled zstd is not executable. Run: chmod +x "${zstdPath}"`,
+      };
+    }
+    
+    // Check for quarantine attribute (best-effort)
+    try {
+      const { execSync } = await import('node:child_process');
+      const xattrOutput = execSync(`xattr -l "${zstdPath}"`, { encoding: 'utf-8', stdio: 'pipe' }).trim();
+      if (xattrOutput.includes('com.apple.quarantine')) {
+        return {
+          ok: false,
+          error: `Bundled zstd is quarantined. Run: xattr -d com.apple.quarantine "${zstdPath}" or xattr -dr com.apple.quarantine "/Applications/QMatSuite.app"`,
+        };
+      }
+    } catch {
+      // xattr check failed, but that's okay - continue
+    }
+  }
+  
+  return { ok: true, error: null };
+}
+
+async function extractWithBundledZstd(zstdPath: string, tarballPath: string, destinationDir: string): Promise<{ ok: boolean; error: string | null; zstdError?: string }> {
+  return new Promise((resolve) => {
+    try {
+      // Spawn zstd to decompress to stdout
+      const zstdProcess = spawn(zstdPath, ['-d', '--stdout', tarballPath], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      
+      // Spawn tar to extract from stdin
+      const tarProcess = spawn('tar', ['-x', '-C', destinationDir], {
+        stdio: ['pipe', 'inherit', 'inherit'],
+      });
+      
+      // Pipe zstd stdout to tar stdin
+      zstdProcess.stdout?.pipe(tarProcess.stdin!);
+      
+      // Collect stderr from both processes
+      let zstdStderr = '';
+      let tarStderr = '';
+      
+      zstdProcess.stderr?.on('data', (chunk) => {
+        zstdStderr += chunk.toString();
+      });
+      
+      tarProcess.stderr?.on('data', (chunk) => {
+        tarStderr += chunk.toString();
+      });
+      
+      // Wait for both processes
+      let zstdExited = false;
+      let tarExited = false;
+      let zstdCode: number | null = null;
+      let tarCode: number | null = null;
+      
+      zstdProcess.on('exit', (code) => {
+        zstdExited = true;
+        zstdCode = code;
+        if (tarExited) {
+          if (zstdCode === 0 && tarCode === 0) {
+            resolve({ ok: true, error: null });
+          } else {
+            resolve({
+              ok: false,
+              error: `Extraction failed: zstd exit code ${zstdCode}, tar exit code ${tarCode}`,
+              zstdError: zstdStderr || undefined,
+            });
+          }
+        }
+      });
+      
+      tarProcess.on('exit', (code) => {
+        tarExited = true;
+        tarCode = code;
+        if (zstdExited) {
+          if (zstdCode === 0 && tarCode === 0) {
+            resolve({ ok: true, error: null });
+          } else {
+            resolve({
+              ok: false,
+              error: `Extraction failed: zstd exit code ${zstdCode}, tar exit code ${tarCode}`,
+              zstdError: zstdStderr || undefined,
+            });
+          }
+        }
+      });
+      
+      zstdProcess.on('error', (err) => {
+        resolve({
+          ok: false,
+          error: `Failed to spawn zstd: ${err.message}`,
+          zstdError: err.message,
+        });
+      });
+      
+      tarProcess.on('error', (err) => {
+        resolve({
+          ok: false,
+          error: `Failed to spawn tar: ${err.message}`,
+        });
+      });
+      
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        zstdProcess.kill();
+        tarProcess.kill();
+        resolve({
+          ok: false,
+          error: 'Extraction timed out after 5 minutes',
+        });
+      }, 5 * 60 * 1000);
+    } catch (err) {
+      const error = err as Error;
+      resolve({
+        ok: false,
+        error: `Failed to extract with bundled zstd: ${error.message}`,
+      });
+    }
+  });
+}
+
+async function extractRuntimeTarball(tarballPath: string, destinationDir: string): Promise<{ ok: boolean; error: string | null }> {
+  // First, try system tar with zstd support
   const attempts: Array<string[]> = [
     ['--zstd', '-xf', tarballPath, '-C', destinationDir],
     ['-I', 'zstd', '-xf', tarballPath, '-C', destinationDir],
   ];
 
+  let systemTarError: string | null = null;
   for (const args of attempts) {
     const result = spawnSync('tar', args, {
       encoding: 'utf-8',
@@ -361,11 +533,73 @@ function extractRuntimeTarball(tarballPath: string, destinationDir: string): { o
     if (result.status === 0) {
       return { ok: true, error: null };
     }
+    if (result.stderr) {
+      systemTarError = result.stderr.toString();
+    }
   }
 
+  // System tar failed, try fallback with bundled zstd
+  const bundledZstdPath = getBundledZstdPath();
+  if (!bundledZstdPath) {
+    // No bundled zstd available, return comprehensive error
+    const platform = process.platform;
+    let helpMessage = '';
+    if (platform === 'darwin') {
+      helpMessage = '\n\nTo fix this:\n' +
+        '1. Install zstd via Homebrew: brew install zstd\n' +
+        '2. Restart QMatSuite';
+    } else if (platform === 'win32') {
+      helpMessage = '\n\nTo fix this:\n' +
+        '1. Install zstd via winget: winget install Facebook.Zstandard\n' +
+        '2. Restart QMatSuite';
+    }
+    
+    return {
+      ok: false,
+      error: `Failed to extract runtime tarball with system tar: ${tarballPath}${systemTarError ? `\nSystem tar error: ${systemTarError}` : ''}${helpMessage}`,
+    };
+  }
+  
+  // Validate bundled zstd
+  const validation = await validateBundledZstd(bundledZstdPath);
+  if (!validation.ok) {
+    return {
+      ok: false,
+      error: `Bundled zstd validation failed: ${validation.error}\n\nSystem tar error: ${systemTarError || 'unknown'}\n\nTo fix this:\n` +
+        (process.platform === 'darwin' 
+          ? `1. Remove quarantine: xattr -dr com.apple.quarantine "/Applications/QMatSuite.app"\n` +
+            `2. Or install system zstd: brew install zstd\n` +
+            `3. Restart QMatSuite`
+          : `1. Install zstd: winget install Facebook.Zstandard\n` +
+            `2. Restart QMatSuite`),
+    };
+  }
+  
+  // Try extraction with bundled zstd
+  const fallbackResult = await extractWithBundledZstd(bundledZstdPath, tarballPath, destinationDir);
+  if (fallbackResult.ok) {
+    return { ok: true, error: null };
+  }
+  
+  // Both methods failed, return comprehensive error
+  const platform = process.platform;
+  let helpMessage = '';
+  if (platform === 'darwin') {
+    helpMessage = '\n\nTo fix this:\n' +
+      '1. Remove quarantine: xattr -dr com.apple.quarantine "/Applications/QMatSuite.app"\n' +
+      '2. Or install system zstd: brew install zstd\n' +
+      '3. Restart QMatSuite';
+  } else if (platform === 'win32') {
+    helpMessage = '\n\nTo fix this:\n' +
+      '1. Install zstd: winget install Facebook.Zstandard\n' +
+      '2. Restart QMatSuite';
+  }
+  
   return {
     ok: false,
-    error: `Failed to extract runtime tarball with system tar: ${tarballPath}`,
+    error: `Failed to extract runtime tarball.\n` +
+      `System tar error: ${systemTarError || 'unknown'}\n` +
+      `Bundled zstd error: ${fallbackResult.error || 'unknown'}${fallbackResult.zstdError ? `\nzstd stderr: ${fallbackResult.zstdError}` : ''}${helpMessage}`,
   };
 }
 
@@ -456,7 +690,7 @@ async function ensureRuntimeReady(): Promise<boolean> {
     error: null,
   });
 
-  const extract = extractRuntimeTarball(runtimeTarball, tempRoot);
+  const extract = await extractRuntimeTarball(runtimeTarball, tempRoot);
   if (!extract.ok) {
     fs.rmSync(tempRoot, { recursive: true, force: true });
     setRuntimeSetupStatus({
