@@ -427,7 +427,7 @@ async function extractWithBundledZstd(zstdPath: string, tarballPath: string, des
       
       // Spawn tar to extract from stdin
       const tarProcess = spawn('tar', ['-x', '-C', destinationDir], {
-        stdio: ['pipe', 'inherit', 'inherit'],
+        stdio: ['pipe', 'inherit', 'pipe'],
       });
       
       // Pipe zstd stdout to tar stdin
@@ -437,11 +437,11 @@ async function extractWithBundledZstd(zstdPath: string, tarballPath: string, des
       let zstdStderr = '';
       let tarStderr = '';
       
-      zstdProcess.stderr?.on('data', (chunk) => {
+      zstdProcess.stderr?.on('data', (chunk: Buffer) => {
         zstdStderr += chunk.toString();
       });
       
-      tarProcess.stderr?.on('data', (chunk) => {
+      tarProcess.stderr?.on('data', (chunk: Buffer) => {
         tarStderr += chunk.toString();
       });
       
