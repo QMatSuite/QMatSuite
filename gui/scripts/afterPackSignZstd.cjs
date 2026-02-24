@@ -41,12 +41,12 @@ module.exports = async function afterPack(context) {
     console.warn("afterPack: chmod failed:", e.message);
   }
 
-  // Add rpath: @executable_path/../lib/macos-arm64
+  // Add rpath: @executable_path/../../lib/macos-arm64
   try {
     console.log("afterPack: adding rpath to zstd");
     await execFileAsync(
       "/usr/bin/install_name_tool",
-      ["-add_rpath", "@executable_path/../lib/macos-arm64", zstdPath],
+      ["-add_rpath", "@executable_path/../../lib/macos-arm64", zstdPath],
       { env: process.env }
     );
   } catch (e) {
@@ -95,6 +95,29 @@ module.exports = async function afterPack(context) {
     }
   } catch (e) {
     console.warn("afterPack: failed to check/rewrite library references:", e.message);
+  }
+
+  // Debug: print LC_RPATH entries to confirm rpath
+  try {
+    console.log("afterPack: dumping LC_RPATH for zstd");
+    const otoolLoadResult = await execFileAsync(
+      "/usr/bin/otool",
+      ["-l", zstdPath],
+      { env: process.env, encoding: "utf-8" }
+    );
+    const loadOutput = (otoolLoadResult.stdout || "").toString();
+    console.log("afterPack: otool -l zstd (filtered LC_RPATH):");
+    // Simple filter: print lines containing LC_RPATH and following two lines for context
+    const lcLines = loadOutput.split("\n");
+    for (let i = 0; i < lcLines.length; i++) {
+      if (lcLines[i].includes("LC_RPATH")) {
+        console.log(lcLines[i]);
+        if (i + 1 < lcLines.length) console.log(lcLines[i + 1]);
+        if (i + 2 < lcLines.length) console.log(lcLines[i + 2]);
+      }
+    }
+  } catch (e) {
+    console.warn("afterPack: failed to dump LC_RPATH for zstd:", e.message);
   }
 
   const identity = process.env.CSC_NAME;
