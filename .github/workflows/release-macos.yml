@@ -147,6 +147,66 @@ jobs:
           CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
         run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5 --publish never
 
+      - name: Patch zstd library path and re-sign
+        if: ${{ inputs.sign }}
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find "${{ github.workspace }}/gui/release" -name "*.app" -type d -maxdepth 4 | head -n 1)
+          if [[ -z "${APP_PATH}" ]]; then
+            echo "Error: App bundle not found in gui/release"
+            exit 1
+          fi
+
+          ZSTD_PATH="${APP_PATH}/Contents/Resources/bin/macos-arm64/zstd"
+          LIB_DIR="${APP_PATH}/Contents/Resources/lib/macos-arm64"
+
+          if [[ ! -f "${ZSTD_PATH}" ]]; then
+            echo "Error: bundled zstd not found at ${ZSTD_PATH}"
+            exit 1
+          fi
+          if [[ ! -d "${LIB_DIR}" ]]; then
+            echo "Error: lib directory not found at ${LIB_DIR}"
+            exit 1
+          fi
+
+          # Resolve libzstd.1.dylib (prefer explicit .1, else first libzstd*.dylib)
+          if [[ -f "${LIB_DIR}/libzstd.1.dylib" ]]; then
+            LIBZSTD="${LIB_DIR}/libzstd.1.dylib"
+          else
+            LIBZSTD=$(ls "${LIB_DIR}"/libzstd*.dylib 2>/dev/null | head -n 1 || true)
+          fi
+
+          if [[ -z "${LIBZSTD:-}" || ! -f "${LIBZSTD}" ]]; then
+            echo "Error: libzstd dylib not found in ${LIB_DIR} (bundling is broken)"
+            exit 1
+          fi
+
+          echo "Patching zstd to use @loader_path-based libzstd reference"
+          /usr/bin/install_name_tool -change \
+            "@rpath/libzstd.1.dylib" \
+            "@loader_path/../../lib/macos-arm64/libzstd.1.dylib" \
+            "${ZSTD_PATH}" || true
+
+          # Set a sensible dylib id for libzstd (best-effort)
+          /usr/bin/install_name_tool -id "@loader_path/libzstd.1.dylib" "${LIBZSTD}" || true
+
+          echo "otool -L for patched zstd:"
+          /usr/bin/otool -L "${ZSTD_PATH}" || true
+
+          # Re-sign libzstd dylib(s), then zstd, then the app bundle
+          echo "Re-signing libzstd dylibs in ${LIB_DIR}"
+          for dylib in "${LIB_DIR}"/libzstd*.dylib; do
+            if [[ -f "${dylib}" ]]; then
+              /usr/bin/codesign --force --options runtime --timestamp --sign "${CSC_NAME}" "${dylib}"
+            fi
+          done
+
+          echo "Re-signing zstd binary at ${ZSTD_PATH}"
+          /usr/bin/codesign --force --options runtime --timestamp --sign "${CSC_NAME}" "${ZSTD_PATH}"
+
+          echo "Re-signing app bundle at ${APP_PATH}"
+          /usr/bin/codesign --force --options runtime --timestamp --sign "${CSC_NAME}" "${APP_PATH}"
+
       - name: Verify bundled zstd codesigning
         if: ${{ inputs.sign }}
         run: |
