@@ -5,6 +5,11 @@ const { promisify } = require("util");
 const execFileAsync = promisify(execFile);
 
 module.exports = async function afterPack(context) {
+  if (process.platform !== "darwin") {
+    console.log("afterPack: skipping zstd patch/sign on non-macOS");
+    return;
+  }
+
   const appOutDir = context.appOutDir;
   const entries = fs.readdirSync(appOutDir);
   const appName = entries.find((e) => e.endsWith(".app"));

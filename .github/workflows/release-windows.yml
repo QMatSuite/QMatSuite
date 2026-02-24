@@ -216,7 +216,7 @@ jobs:
           trusted-signing-account-name: ${{ vars.TRUSTEDSIGN_ACCOUNT }}
           certificate-profile-name: ${{ vars.TRUSTEDSIGN_CERT_PROFILE }}
           files-folder: ${{ github.workspace }}\\gui\\release
-          files-folder-filter: exe
+          files-folder-filter: exe,dll
           files-folder-recurse: true
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com

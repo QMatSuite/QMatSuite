@@ -12,7 +12,6 @@
     "dist-electron",
     "package.json"
   ],
-  "afterPack": "scripts/afterPackSignZstd.cjs",
   "extraResources": [
     {
       "from": ".",
@@ -47,7 +46,8 @@
       }
     ],
     "category": "public.app-category.education",
-    "artifactName": "${productName}-macOS-${version}.${ext}"
+    "artifactName": "${productName}-macOS-${version}.${ext}",
+    "afterPack": "scripts/afterPackSignZstd.cjs"
   },
   "dmg": {
     "title": "QMatSuite ${version}"
