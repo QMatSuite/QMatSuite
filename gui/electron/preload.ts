@@ -47,13 +47,6 @@ interface DaemonStatus {
   projectRoot: string | null;
 }
 
-interface RuntimeSetupStatus {
-  stage: 'idle' | 'checking' | 'extracting' | 'verifying' | 'ready' | 'error';
-  progress: number;
-  message: string;
-  error: string | null;
-}
-
 interface UpdaterState {
   state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
   version: string | null;
@@ -152,26 +145,6 @@ const qmsApi = {
    */
   getDaemonStatus: async (): Promise<DaemonStatus> => {
     return ipcRenderer.invoke('qms-daemon-status');
-  },
-
-  /**
-   * Get runtime setup status from main process.
-   */
-  getRuntimeSetupStatus: async (): Promise<RuntimeSetupStatus> => {
-    return ipcRenderer.invoke('qms-runtime-setup-status');
-  },
-
-  /**
-   * Subscribe to runtime setup status updates.
-   */
-  onRuntimeSetupStatus: (callback: (status: RuntimeSetupStatus) => void): (() => void) => {
-    const handler = (_event: IpcRendererEvent, status: RuntimeSetupStatus) => {
-      callback(status);
-    };
-    ipcRenderer.on('runtime-setup-status', handler);
-    return () => {
-      ipcRenderer.removeListener('runtime-setup-status', handler);
-    };
   },
 
   /**

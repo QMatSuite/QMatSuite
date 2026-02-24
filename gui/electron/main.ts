@@ -65,13 +65,6 @@ interface DaemonStatus {
   projectRoot: string | null;
 }
 
-interface RuntimeSetupStatus {
-  stage: 'idle' | 'checking' | 'extracting' | 'verifying' | 'ready' | 'error';
-  progress: number;
-  message: string;
-  error: string | null;
-}
-
 interface UpdaterState {
   state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
   version: string | null;
@@ -93,13 +86,6 @@ const daemonStatus: DaemonStatus = {
   startupError: null,
   pythonPath: null,
   projectRoot: null,
-};
-
-const runtimeSetupStatus: RuntimeSetupStatus = {
-  stage: 'idle',
-  progress: 0,
-  message: 'Runtime setup not started',
-  error: null,
 };
 
 const updaterState: UpdaterState = {
@@ -130,11 +116,6 @@ function safeSend(channel: string, ...args: unknown[]): void {
   if (win && !win.isDestroyed() && win.webContents) {
     win.webContents.send(channel, ...args);
   }
-}
-
-function setRuntimeSetupStatus(partial: Partial<RuntimeSetupStatus>): void {
-  Object.assign(runtimeSetupStatus, partial);
-  safeSend('runtime-setup-status', { ...runtimeSetupStatus });
 }
 
 function setUpdaterState(partial: Partial<UpdaterState>): void {
@@ -322,368 +303,10 @@ function getRuntimePythonAt(baseDir: string): string {
     : path.join(baseDir, 'bin', 'python');
 }
 
-function getRuntimePythonPath(): string {
-  return getRuntimePythonAt(path.join(getAppDataDir(), 'runtime'));
-}
 
-function getRuntimeTarballCandidates(): string[] {
-  const candidates = [
-    process.env.QMS_RUNTIME_TARBALL || '',
-    path.join(process.resourcesPath, 'runtime.tar.zst'),
-    path.join(process.resourcesPath, 'resources', 'runtime.tar.zst'),
-    path.join(process.env.APP_ROOT || '', 'runtime.tar.zst'),
-    path.join(getProjectRoot(), 'runtime.tar.zst'),
-  ].filter(Boolean);
 
-  return Array.from(new Set(candidates));
-}
 
-function locateRuntimeTarball(): string | null {
-  for (const candidate of getRuntimeTarballCandidates()) {
-    if (candidate && fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  return null;
-}
 
-function getBundledZstdPath(): string | null {
-  const platform = process.platform;
-  const arch = process.arch;
-  
-  // Determine platform-specific path
-  let platformDir: string;
-  let zstdName: string;
-  
-  if (platform === 'darwin' && arch === 'arm64') {
-    platformDir = 'macos-arm64';
-    zstdName = 'zstd';
-  } else if (platform === 'win32' && arch === 'x64') {
-    platformDir = 'windows-x64';
-    zstdName = 'zstd.exe';
-  } else {
-    return null; // Unsupported platform
-  }
-  
-  // Try packaged path first
-  const packagedPath = path.join(process.resourcesPath, 'bin', platformDir, zstdName);
-  if (fs.existsSync(packagedPath)) {
-    return packagedPath;
-  }
-  
-  // Fallback to dev mode path
-  const devPath = path.join(getProjectRoot(), 'gui', 'extra', 'bin', platformDir, zstdName);
-  if (fs.existsSync(devPath)) {
-    return devPath;
-  }
-  
-  return null;
-}
-
-async function validateBundledZstd(zstdPath: string): Promise<{ ok: boolean; error: string | null }> {
-  if (!fs.existsSync(zstdPath)) {
-    return {
-      ok: false,
-      error: `Bundled zstd not found at: ${zstdPath}`,
-    };
-  }
-  
-  // On macOS, check executable permission
-  if (process.platform === 'darwin') {
-    try {
-      fs.accessSync(zstdPath, fs.constants.X_OK);
-    } catch {
-      return {
-        ok: false,
-        error: `Bundled zstd is not executable. Run: chmod +x "${zstdPath}"`,
-      };
-    }
-  }
-  
-  // Test zstd with --version to detect runtime issues (dyld, etc.)
-  try {
-    const testResult = spawnSync(zstdPath, ['--version'], {
-      encoding: 'utf-8',
-      timeout: 5000,
-    });
-    
-    if (testResult.status !== 0 || testResult.error) {
-      const stderr = (testResult.stderr || '').toString();
-      const stdout = (testResult.stdout || '').toString();
-      const combinedOutput = stderr + stdout;
-      
-      // Check for dyld missing library errors
-      if (combinedOutput.includes('Library not loaded') || 
-          combinedOutput.includes('@rpath') || 
-          combinedOutput.includes('dyld[') ||
-          combinedOutput.includes('Reason: tried:')) {
-        return {
-          ok: false,
-          error: `Bundled zstd failed to launch due to missing dynamic library.\n` +
-            `This indicates a packaging bug; please report issue with logs.\n` +
-            `Error output: ${combinedOutput}\n\n` +
-            `Workaround: Install system zstd via Homebrew: brew install zstd\n` +
-            `Then restart QMatSuite.`,
-        };
-      }
-      
-      // Check for permission/quarantine errors
-      if (combinedOutput.includes('quarantine') || 
-          combinedOutput.includes('Operation not permitted') ||
-          combinedOutput.includes('not permitted') ||
-          combinedOutput.includes('cannot be opened')) {
-        return {
-          ok: false,
-          error: `Bundled zstd cannot be executed due to macOS security restrictions.\n` +
-            `Error output: ${combinedOutput}\n\n` +
-            `To fix: Remove quarantine attribute:\n` +
-            `  xattr -d com.apple.quarantine "${zstdPath}"\n` +
-            `Or for the entire app:\n` +
-            `  xattr -dr com.apple.quarantine "/Applications/QMatSuite.app"`,
-        };
-      }
-      
-      // Generic failure
-      return {
-        ok: false,
-        error: `Bundled zstd failed to execute.\n` +
-          `Exit code: ${testResult.status}\n` +
-          `Error output: ${combinedOutput}`,
-      };
-    }
-  } catch (err) {
-    const error = err as Error;
-    const errorMsg = error.message || String(err);
-    
-    // Check for dyld errors in exception message
-    if (errorMsg.includes('Library not loaded') || 
-        errorMsg.includes('@rpath') || 
-        errorMsg.includes('dyld[')) {
-      return {
-        ok: false,
-        error: `Bundled zstd failed to launch due to missing dynamic library.\n` +
-          `This indicates a packaging bug; please report issue with logs.\n` +
-          `Error: ${errorMsg}\n\n` +
-          `Workaround: Install system zstd via Homebrew: brew install zstd\n` +
-          `Then restart QMatSuite.`,
-      };
-    }
-    
-    return {
-      ok: false,
-      error: `Failed to test bundled zstd: ${errorMsg}`,
-    };
-  }
-  
-  return { ok: true, error: null };
-}
-
-async function extractWithBundledZstd(zstdPath: string, tarballPath: string, destinationDir: string): Promise<{ ok: boolean; error: string | null; zstdError?: string }> {
-  return new Promise((resolve) => {
-    try {
-      // Spawn zstd to decompress to stdout
-      const zstdProcess = spawn(zstdPath, ['-d', '--stdout', tarballPath], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-      
-      // Spawn tar to extract from stdin
-      const tarProcess = spawn('tar', ['-x', '-C', destinationDir], {
-        stdio: ['pipe', 'inherit', 'pipe'],
-      });
-      
-      // Pipe zstd stdout to tar stdin
-      zstdProcess.stdout?.pipe(tarProcess.stdin!);
-      
-      // Collect stderr from both processes
-      let zstdStderr = '';
-      let tarStderr = '';
-      
-      zstdProcess.stderr?.on('data', (chunk: Buffer) => {
-        zstdStderr += chunk.toString();
-      });
-      
-      tarProcess.stderr?.on('data', (chunk: Buffer) => {
-        tarStderr += chunk.toString();
-      });
-      
-      // Wait for both processes
-      let zstdExited = false;
-      let tarExited = false;
-      let zstdCode: number | null = null;
-      let tarCode: number | null = null;
-      
-      zstdProcess.on('exit', (code) => {
-        zstdExited = true;
-        zstdCode = code;
-        if (tarExited) {
-          if (zstdCode === 0 && tarCode === 0) {
-            resolve({ ok: true, error: null });
-          } else {
-            resolve({
-              ok: false,
-              error: `Extraction failed: zstd exit code ${zstdCode}, tar exit code ${tarCode}`,
-              zstdError: zstdStderr || undefined,
-            });
-          }
-        }
-      });
-      
-      tarProcess.on('exit', (code) => {
-        tarExited = true;
-        tarCode = code;
-        if (zstdExited) {
-          if (zstdCode === 0 && tarCode === 0) {
-            resolve({ ok: true, error: null });
-          } else {
-            resolve({
-              ok: false,
-              error: `Extraction failed: zstd exit code ${zstdCode}, tar exit code ${tarCode}`,
-              zstdError: zstdStderr || undefined,
-            });
-          }
-        }
-      });
-      
-      zstdProcess.on('error', (err) => {
-        resolve({
-          ok: false,
-          error: `Failed to spawn zstd: ${err.message}`,
-          zstdError: err.message,
-        });
-      });
-      
-      tarProcess.on('error', (err) => {
-        resolve({
-          ok: false,
-          error: `Failed to spawn tar: ${err.message}`,
-        });
-      });
-      
-      // Timeout after 5 minutes
-      setTimeout(() => {
-        zstdProcess.kill();
-        tarProcess.kill();
-        resolve({
-          ok: false,
-          error: 'Extraction timed out after 5 minutes',
-        });
-      }, 5 * 60 * 1000);
-    } catch (err) {
-      const error = err as Error;
-      resolve({
-        ok: false,
-        error: `Failed to extract with bundled zstd: ${error.message}`,
-      });
-    }
-  });
-}
-
-async function extractRuntimeTarball(tarballPath: string, destinationDir: string): Promise<{ ok: boolean; error: string | null }> {
-  // First, try system tar with zstd support
-  const attempts: Array<string[]> = [
-    ['--zstd', '-xf', tarballPath, '-C', destinationDir],
-    ['-I', 'zstd', '-xf', tarballPath, '-C', destinationDir],
-  ];
-
-  let systemTarError: string | null = null;
-  for (const args of attempts) {
-    const result = spawnSync('tar', args, {
-      encoding: 'utf-8',
-      timeout: 5 * 60 * 1000,
-    });
-    if (result.status === 0) {
-      return { ok: true, error: null };
-    }
-    if (result.stderr) {
-      systemTarError = result.stderr.toString();
-    }
-  }
-
-  // System tar failed, try fallback with bundled zstd
-  const bundledZstdPath = getBundledZstdPath();
-  if (!bundledZstdPath) {
-    // No bundled zstd available, return comprehensive error
-    const platform = process.platform;
-    let helpMessage = '';
-    if (platform === 'darwin') {
-      helpMessage = '\n\nTo fix this:\n' +
-        '1. Install zstd via Homebrew: brew install zstd\n' +
-        '2. Restart QMatSuite';
-    } else if (platform === 'win32') {
-      helpMessage = '\n\nTo fix this:\n' +
-        '1. Install zstd via winget: winget install Facebook.Zstandard\n' +
-        '2. Restart QMatSuite';
-    }
-    
-    return {
-      ok: false,
-      error: `Failed to extract runtime tarball with system tar: ${tarballPath}${systemTarError ? `\nSystem tar error: ${systemTarError}` : ''}${helpMessage}`,
-    };
-  }
-  
-  // Validate bundled zstd
-  const validation = await validateBundledZstd(bundledZstdPath);
-  if (!validation.ok) {
-    // validation.error already contains detailed diagnostics and workarounds
-    return {
-      ok: false,
-      error: `Bundled zstd validation failed: ${validation.error}\n\nSystem tar error: ${systemTarError || 'unknown'}`,
-    };
-  }
-  
-  // Try extraction with bundled zstd
-  const fallbackResult = await extractWithBundledZstd(bundledZstdPath, tarballPath, destinationDir);
-  if (fallbackResult.ok) {
-    return { ok: true, error: null };
-  }
-  
-  // Both methods failed, return comprehensive error with real stderr
-  const platform = process.platform;
-  let helpMessage = '';
-  
-  // Check if bundled zstd error indicates dyld/library issues
-  const bundledError = fallbackResult.error || '';
-  const bundledStderr = fallbackResult.zstdError || '';
-  const combinedBundledError = bundledError + '\n' + bundledStderr;
-  
-  if (combinedBundledError.includes('Library not loaded') || 
-      combinedBundledError.includes('@rpath') || 
-      combinedBundledError.includes('dyld[')) {
-    helpMessage = '\n\nThis indicates a packaging bug (missing libzstd or incorrect rpath).\n' +
-      'Workaround: Install system zstd via Homebrew: brew install zstd\n' +
-      'Then restart QMatSuite.';
-  } else if (platform === 'darwin') {
-    helpMessage = '\n\nTo fix this:\n' +
-      '1. Install system zstd: brew install zstd\n' +
-      '2. Restart QMatSuite';
-  } else if (platform === 'win32') {
-    helpMessage = '\n\nTo fix this:\n' +
-      '1. Install zstd: winget install Facebook.Zstandard\n' +
-      '2. Restart QMatSuite';
-  }
-  
-  return {
-    ok: false,
-    error: `Failed to extract runtime tarball.\n` +
-      `System tar error: ${systemTarError || 'unknown'}\n` +
-      `Bundled zstd error: ${bundledError}${bundledStderr ? `\nzstd stderr: ${bundledStderr}` : ''}${helpMessage}`,
-  };
-}
-
-function findRuntimeRoot(extractRoot: string): string | null {
-  if (fs.existsSync(getRuntimePythonAt(extractRoot))) {
-    return extractRoot;
-  }
-  const children = fs.readdirSync(extractRoot, { withFileTypes: true });
-  for (const child of children) {
-    if (!child.isDirectory()) continue;
-    const candidate = path.join(extractRoot, child.name);
-    if (fs.existsSync(getRuntimePythonAt(candidate))) {
-      return candidate;
-    }
-  }
-  return null;
-}
 
 function verifyRuntimePython(pythonPath: string): { ok: boolean; error: string | null } {
   const result = spawnSync(
@@ -704,137 +327,81 @@ function verifyRuntimePython(pythonPath: string): { ok: boolean; error: string |
 }
 
 async function ensureRuntimeReady(): Promise<boolean> {
-  const runtimeDir = path.join(getAppDataDir(), 'runtime');
-  const runtimePython = getRuntimePythonAt(runtimeDir);
+  if (!app.isPackaged) return false; // Dev mode: use venv/system python
 
-  setRuntimeSetupStatus({
-    stage: 'checking',
-    progress: 5,
-    message: 'Checking runtime environment...',
-    error: null,
-  });
+  const runtimeDir = path.join(process.resourcesPath, 'runtime');
+  const pythonPath = getRuntimePythonAt(runtimeDir);
 
-  if (fs.existsSync(runtimePython)) {
-    setRuntimeSetupStatus({
-      stage: 'verifying',
-      progress: 90,
-      message: 'Verifying existing runtime...',
-      error: null,
-    });
-    const verify = verifyRuntimePython(runtimePython);
-    if (verify.ok) {
-      setRuntimeSetupStatus({
-        stage: 'ready',
-        progress: 100,
-        message: 'Runtime ready',
-        error: null,
-      });
-      return true;
+  if (!fs.existsSync(pythonPath)) {
+    // AppData fallback (migration from v1.1.0)
+    const appDataPython = getRuntimePythonAt(path.join(getAppDataDir(), 'runtime'));
+    if (fs.existsSync(appDataPython)) {
+      const verify = verifyRuntimePython(appDataPython);
+      if (verify.ok) return true;
+      console.warn('[main] AppData runtime verification failed:', verify.error);
     }
-    console.warn(`[main] Existing runtime failed verification: ${verify.error}`);
-  }
-
-  const runtimeTarball = locateRuntimeTarball();
-  if (!runtimeTarball) {
-    setRuntimeSetupStatus({
-      stage: 'ready',
-      progress: 100,
-      message: 'No bundled runtime tarball detected; using development/system Python',
-      error: null,
-    });
+    console.error('[main] In-app runtime not found at:', pythonPath);
     return false;
   }
 
-  const appDataDir = getAppDataDir();
-  const tempRoot = path.join(appDataDir, `runtime-extract-${Date.now()}`);
-  fs.rmSync(tempRoot, { recursive: true, force: true });
-  fs.mkdirSync(tempRoot, { recursive: true });
+  // conda-unpack: must run once on this machine to fix hardcoded paths
+  // from the CI build environment to the actual install location.
+  // Python binary itself works without this (CPython auto-detects sys.prefix),
+  // but shebangs, OpenSSL config, .pc files etc. need patching.
+  const marker = path.join(runtimeDir, '.conda-unpacked');
+  if (!fs.existsSync(marker)) {
+    console.log('[main] First launch: running conda-unpack to fix paths...');
+    const unpackScript = process.platform === 'win32'
+      ? path.join(runtimeDir, 'Scripts', 'conda-unpack')
+      : path.join(runtimeDir, 'bin', 'conda-unpack');
 
-  setRuntimeSetupStatus({
-    stage: 'extracting',
-    progress: 25,
-    message: 'Extracting bundled Python runtime...',
-    error: null,
-  });
-
-  const extract = await extractRuntimeTarball(runtimeTarball, tempRoot);
-  if (!extract.ok) {
-    fs.rmSync(tempRoot, { recursive: true, force: true });
-    setRuntimeSetupStatus({
-      stage: 'error',
-      progress: 100,
-      message: 'Runtime setup failed',
-      error: extract.error,
-    });
-    return false;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawn(pythonPath, [unpackScript], {
+          cwd: runtimeDir,
+          stdio: 'pipe',
+        });
+        let stderr = '';
+        proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
+        proc.on('close', (code: number | null) => {
+          if (code === 0) resolve();
+          else reject(new Error(`conda-unpack exited with code ${code}: ${stderr}`));
+        });
+        proc.on('error', reject);
+      });
+      // Write marker so we never run this again
+      fs.writeFileSync(marker, new Date().toISOString(), 'utf-8');
+      console.log('[main] conda-unpack completed successfully');
+    } catch (err) {
+      console.error('[main] conda-unpack failed:', err);
+      // Continue anyway — Python binary itself works, some edge cases may break
+      // Write marker to avoid retrying every launch
+      fs.writeFileSync(marker, `failed: ${err}`, 'utf-8');
+    }
   }
 
-  const extractedRuntimeRoot = findRuntimeRoot(tempRoot);
-  if (!extractedRuntimeRoot) {
-    fs.rmSync(tempRoot, { recursive: true, force: true });
-    setRuntimeSetupStatus({
-      stage: 'error',
-      progress: 100,
-      message: 'Runtime setup failed',
-      error: 'Extracted runtime does not contain a Python executable',
-    });
-    return false;
-  }
-
-  setRuntimeSetupStatus({
-    stage: 'extracting',
-    progress: 75,
-    message: 'Finalizing runtime files...',
-    error: null,
-  });
-
-  fs.rmSync(runtimeDir, { recursive: true, force: true });
-  fs.mkdirSync(path.dirname(runtimeDir), { recursive: true });
-  fs.renameSync(extractedRuntimeRoot, runtimeDir);
-  fs.rmSync(tempRoot, { recursive: true, force: true });
-
-  setRuntimeSetupStatus({
-    stage: 'verifying',
-    progress: 90,
-    message: 'Verifying runtime installation...',
-    error: null,
-  });
-
-  const verify = verifyRuntimePython(getRuntimePythonAt(runtimeDir));
-  if (!verify.ok) {
-    setRuntimeSetupStatus({
-      stage: 'error',
-      progress: 100,
-      message: 'Runtime verification failed',
-      error: verify.error,
-    });
-    return false;
-  }
-
-  setRuntimeSetupStatus({
-    stage: 'ready',
-    progress: 100,
-    message: 'Runtime setup complete',
-    error: null,
-  });
-  return true;
+  const verify = verifyRuntimePython(pythonPath);
+  if (verify.ok) return true;
+  console.error('[main] In-app runtime verification failed:', verify.error);
+  return false;
 }
 
 /**
  * Find the Python interpreter
- * 
+ *
  * Search order:
  * 1. QMS_DAEMON_PYTHON environment variable (if set)
  * 2. .venv/bin/python (Unix/macOS) or .venv/Scripts/python.exe (Windows)
  * 3. [Reserved] compiled daemon binary lookup (future)
- * 4. runtime/bin/python (distribution runtime)
- * 5. Fallback to 'python' on PATH
- * 
+ * 4. In-app runtime: process.resourcesPath/runtime (packaged)
+ * 5. AppData runtime (migration fallback from v1.1.0)
+ * 6. Fallback to 'python' on PATH
+ *
  * @returns Object with path and whether it was found
  */
 function findPythonPath(): { path: string; found: boolean; source: string } {
   const projectRoot = getProjectRoot();
-  
+
   // 1. Check environment variable first
   if (process.env.QMS_DAEMON_PYTHON) {
     const envPath = process.env.QMS_DAEMON_PYTHON;
@@ -843,12 +410,12 @@ function findPythonPath(): { path: string; found: boolean; source: string } {
     }
     console.warn(`[main] QMS_DAEMON_PYTHON set to ${envPath} but file not found`);
   }
-  
+
   // 2. Check .venv in project root
   const isWindows = process.platform === 'win32';
   const venvCandidates = [
     // .venv (common convention)
-    isWindows 
+    isWindows
       ? path.join(projectRoot, '.venv', 'Scripts', 'python.exe')
       : path.join(projectRoot, '.venv', 'bin', 'python'),
     // venv (alternative)
@@ -856,7 +423,7 @@ function findPythonPath(): { path: string; found: boolean; source: string } {
       ? path.join(projectRoot, 'venv', 'Scripts', 'python.exe')
       : path.join(projectRoot, 'venv', 'bin', 'python'),
   ];
-  
+
   for (const candidate of venvCandidates) {
     if (fs.existsSync(candidate)) {
       return { path: candidate, found: true, source: `venv at ${path.dirname(path.dirname(candidate))}` };
@@ -865,13 +432,19 @@ function findPythonPath(): { path: string; found: boolean; source: string } {
 
   // 3. Reserved for future compiled daemon binary.
 
-  // 4. Runtime environment path (production distribution)
-  const runtimePython = getRuntimePythonPath();
-  if (fs.existsSync(runtimePython)) {
-    return { path: runtimePython, found: true, source: 'runtime env' };
+  // 4. In-app runtime (packaged app — runtime bundled inside app resources)
+  const inAppPython = getRuntimePythonAt(path.join(process.resourcesPath, 'runtime'));
+  if (fs.existsSync(inAppPython)) {
+    return { path: inAppPython, found: true, source: 'in-app runtime' };
   }
 
-  // 5. Fallback to system python
+  // 5. AppData runtime (migration fallback from v1.1.0)
+  const appDataPython = getRuntimePythonAt(path.join(getAppDataDir(), 'runtime'));
+  if (fs.existsSync(appDataPython)) {
+    return { path: appDataPython, found: true, source: 'AppData runtime (legacy)' };
+  }
+
+  // 6. Fallback to system python
   console.warn('[main] No runtime/venv python found, falling back to system python');
   return { path: 'python', found: false, source: 'system PATH (fallback)' };
 }
@@ -1247,10 +820,6 @@ ipcMain.handle('qms-daemon-status', async (): Promise<DaemonStatus> => {
   return { ...daemonStatus };
 });
 
-ipcMain.handle('qms-runtime-setup-status', async (): Promise<RuntimeSetupStatus> => {
-  return { ...runtimeSetupStatus };
-});
-
 ipcMain.handle('qms-updater-state', async (): Promise<UpdaterState> => {
   return { ...updaterState };
 });
@@ -1578,7 +1147,6 @@ function createWindow(): void {
     });
     // Also send daemon status
     safeSend('daemon-status', { ...daemonStatus });
-    safeSend('runtime-setup-status', { ...runtimeSetupStatus });
     safeSend('updater-state', { ...updaterState });
   });
 
@@ -1631,14 +1199,12 @@ app.whenReady().then(() => {
 
   void (async () => {
     const runtimePrepared = await ensureRuntimeReady();
-    const runtimeSetupFailed = runtimeSetupStatus.stage === 'error';
 
-    if (runtimeSetupFailed && app.isPackaged) {
-      const startupError = runtimeSetupStatus.error || 'Runtime setup failed';
-      daemonStatus.startupError = startupError;
+    if (!runtimePrepared && app.isPackaged) {
+      daemonStatus.startupError = 'Bundled runtime not found or verification failed';
       daemonStatus.connected = false;
       safeSend('daemon-status', { ...daemonStatus });
-      console.error(`[main] Runtime setup failed in packaged mode: ${startupError}`);
+      console.error('[main] Runtime not found in packaged mode');
       return;
     }
 

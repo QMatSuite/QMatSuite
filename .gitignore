@@ -126,6 +126,7 @@ gui/dist/
 gui/dist-electron/
 gui/test-results/
 gui/.vite/
+gui/runtime/
 
 # =============================================================================
 # QMatSuite repo-root hidden data directories (see CONSTITUTION_ZH.md section 9)

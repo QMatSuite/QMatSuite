@@ -18,13 +18,6 @@ export interface DaemonStatus {
   projectRoot: string | null;
 }
 
-export interface RuntimeSetupStatus {
-  stage: 'idle' | 'checking' | 'extracting' | 'verifying' | 'ready' | 'error';
-  progress: number;
-  message: string;
-  error: string | null;
-}
-
 export interface UpdaterState {
   state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
   version: string | null;
@@ -2206,16 +2199,6 @@ export interface QMSApi {
    * Get detailed daemon status
    */
   getDaemonStatus: () => Promise<DaemonStatus>;
-
-  /**
-   * Get runtime setup status.
-   */
-  getRuntimeSetupStatus: () => Promise<RuntimeSetupStatus>;
-
-  /**
-   * Subscribe to runtime setup status updates.
-   */
-  onRuntimeSetupStatus: (callback: (status: RuntimeSetupStatus) => void) => () => void;
 
   /**
    * Get updater status.

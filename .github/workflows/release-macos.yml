@@ -30,8 +30,6 @@ jobs:
         shell: bash
     env:
       RUNTIME_ENV_PREFIX: ${{ github.workspace }}/runtime-env
-      RUNTIME_PLATFORM: macos-arm64
-      RUNTIME_ARCHIVE: ${{ github.workspace }}/runtime-macos-arm64.tar.zst
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -75,35 +73,34 @@ jobs:
           micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help > /tmp/qms_help.txt
           head -n 5 /tmp/qms_help.txt
 
-      - name: Stage zstd binary for bundling
+      - name: Build relocatable runtime with conda-pack
         run: |
           set -euo pipefail
-          micromamba install -y -p "$RUNTIME_ENV_PREFIX" -c conda-forge zstd
-          mkdir -p "${{ github.workspace }}/gui/extra/bin/macos-arm64"
-          cp "$RUNTIME_ENV_PREFIX/bin/zstd" "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
-          chmod 0755 "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
-          ls -la "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
-          file "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
-          otool -L "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd" || true
-          
-          # Stage libzstd dylibs
-          mkdir -p "${{ github.workspace }}/gui/extra/lib/macos-arm64"
-          cp -a "$RUNTIME_ENV_PREFIX/lib/libzstd"*.dylib "${{ github.workspace }}/gui/extra/lib/macos-arm64/" || true
-          ls -la "${{ github.workspace }}/gui/extra/lib/macos-arm64" || true
+          pip install conda-pack
+          conda-pack -p "$RUNTIME_ENV_PREFIX" \
+            -o "${{ github.workspace }}/runtime-packed.tar.gz" --force
+          mkdir -p "${{ github.workspace }}/gui/runtime"
+          tar -xzf "${{ github.workspace }}/runtime-packed.tar.gz" \
+            -C "${{ github.workspace }}/gui/runtime"
+          # DO NOT run conda-unpack here — it must run on the user's machine
+          # (first launch on macOS, or during NSIS install on Windows)
+          rm -f "${{ github.workspace }}/runtime-packed.tar.gz"
 
-      - name: Install archive helper dependency
-        run: |
-          python -m pip install --upgrade pip zstandard
+          # Strip bulky non-essential files to reduce count (EMFILE) and size
+          cd "${{ github.workspace }}/gui/runtime"
+          find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name tests -path '*/site-packages/*/tests' -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name test -path '*/site-packages/*/test' -exec rm -rf {} + 2>/dev/null || true
+          find . -type f -name '*.pyc' -delete 2>/dev/null || true
+          find . -type f -name '*.pyo' -delete 2>/dev/null || true
+          find . -type f -name '*.a' -delete 2>/dev/null || true
+          rm -rf share/man share/doc share/gtk-doc share/info 2>/dev/null || true
+          cd "${{ github.workspace }}"
 
-      - name: Build runtime archive
-        run: |
-          python scripts/build_runtime_archive.py
-          ls -lh "$RUNTIME_ARCHIVE"
-
-      - name: Stage runtime archive for electron-builder
-        run: |
-          cp "$RUNTIME_ARCHIVE" "${{ github.workspace }}/gui/runtime.tar.zst"
-          ls -lh "${{ github.workspace }}/gui/runtime.tar.zst"
+          echo "=== Runtime size after strip ==="
+          du -sh "${{ github.workspace }}/gui/runtime"
+          echo "=== File count ==="
+          find "${{ github.workspace }}/gui/runtime" -type f | wc -l
 
       - name: Install GUI dependencies
         working-directory: gui
@@ -122,7 +119,9 @@ jobs:
         working-directory: gui
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5 --publish never
+        run: |
+          ulimit -n 65536
+          npx electron-builder --mac dmg --arm64 --config electron-builder.json5 --publish never
 
       - name: Import Apple signing certificate
         if: ${{ inputs.sign }}
@@ -145,41 +144,9 @@ jobs:
         working-directory: gui
         env:
           CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
-        run: npx electron-builder --mac dmg --arm64 --config electron-builder.json5 --publish never
-
-      - name: Verify bundled zstd codesigning
-        if: ${{ inputs.sign }}
         run: |
-          set -euo pipefail
-          APP_PATH=$(find "${{ github.workspace }}/gui/release" -name "*.app" -type d -maxdepth 4 | head -n 1)
-          if [[ -z "${APP_PATH}" ]]; then
-            echo "Error: App bundle not found in gui/release"
-            exit 1
-          fi
-          ZSTD_PATH="${APP_PATH}/Contents/Resources/bin/macos-arm64/zstd"
-          if [[ ! -f "${ZSTD_PATH}" ]]; then
-            echo "Error: bundled zstd not found at ${ZSTD_PATH}"
-            exit 1
-          fi
-          ls -la "${ZSTD_PATH}"
-          /usr/bin/codesign -dv --verbose=4 "${ZSTD_PATH}"
-          echo "Checking library references:"
-          /usr/bin/otool -L "${ZSTD_PATH}" | grep -i libzstd || true
-          
-          # Verify libzstd dylib is present
-          LIB_DIR="${APP_PATH}/Contents/Resources/lib/macos-arm64"
-          if [[ ! -d "${LIB_DIR}" ]]; then
-            echo "Error: lib directory not found at ${LIB_DIR}"
-            exit 1
-          fi
-          if [[ -z "$(find "${LIB_DIR}" -name 'libzstd*.dylib' 2>/dev/null)" ]]; then
-            echo "Error: libzstd dylib not found in ${LIB_DIR} (bundling is broken)"
-            exit 1
-          fi
-          
-          # Definitive runtime test: run zstd --version
-          echo "Testing bundled zstd execution:"
-          "${ZSTD_PATH}" --version
+          ulimit -n 65536
+          npx electron-builder --mac dmg --arm64 --config electron-builder.json5 --publish never
 
       - name: Notarize and staple DMG
         if: ${{ inputs.notarize }}

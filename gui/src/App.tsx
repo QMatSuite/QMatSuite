@@ -55,7 +55,6 @@ import type {
   QMSResponse,
   JobSubmitResult,
   PreflightCheckResult,
-  RuntimeSetupStatus,
   UpdaterState,
 } from './types';
 import './App.css';
@@ -184,7 +183,6 @@ function App() {
   const [jobNotification, setJobNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [missingEngineGuidance, setMissingEngineGuidance] = useState<MissingEngineGuidanceState | null>(null);
-  const [runtimeSetupStatus, setRuntimeSetupStatus] = useState<RuntimeSetupStatus | null>(null);
   const [updaterState, setUpdaterState] = useState<UpdaterState | null>(null);
   const [updaterDismissed, setUpdaterDismissed] = useState(false);
   
@@ -224,28 +222,18 @@ function App() {
     if (!window.qms) return;
     let cancelled = false;
 
-    void window.qms.getRuntimeSetupStatus().then((status) => {
-      if (!cancelled) setRuntimeSetupStatus(status);
-    }).catch(() => {
-      // Runtime status channel is best-effort.
-    });
-
     void window.qms.getUpdaterState().then((status) => {
       if (!cancelled) setUpdaterState(status);
     }).catch(() => {
       // Updater state channel is best-effort.
     });
 
-    const unsubRuntime = window.qms.onRuntimeSetupStatus((status) => {
-      if (!cancelled) setRuntimeSetupStatus(status);
-    });
     const unsubUpdater = window.qms.onUpdaterState((status) => {
       if (!cancelled) setUpdaterState(status);
     });
 
     return () => {
       cancelled = true;
-      unsubRuntime();
       unsubUpdater();
     };
   }, []);
@@ -2853,8 +2841,6 @@ function App() {
     }
   };
 
-  const runtimeStage = runtimeSetupStatus?.stage ?? 'idle';
-  const showRuntimeSetupOverlay = runtimeStage !== 'idle' && runtimeStage !== 'ready';
   const showUpdaterBanner = Boolean(
     updaterState &&
     !updaterDismissed &&
@@ -3014,36 +3000,6 @@ function App() {
         </div>
       </AppShell>
 
-      {showRuntimeSetupOverlay && runtimeSetupStatus && (
-        <div className="runtime-setup-overlay" data-testid="qms-runtime-setup-overlay">
-          <div className="runtime-setup-overlay__card">
-            <h2 className="runtime-setup-overlay__title">Setting up QMatSuite...</h2>
-            <p className="runtime-setup-overlay__message">{runtimeSetupStatus.message}</p>
-            <div className="runtime-setup-overlay__progress-track" role="progressbar" aria-valuenow={runtimeSetupStatus.progress}>
-              <div
-                className="runtime-setup-overlay__progress-fill"
-                style={{ width: `${Math.max(0, Math.min(100, runtimeSetupStatus.progress || 0))}%` }}
-              />
-            </div>
-            <div className="runtime-setup-overlay__progress-text">
-              {(runtimeSetupStatus.progress || 0).toFixed(0)}%
-            </div>
-            {runtimeSetupStatus.stage === 'error' && (
-              <div className="runtime-setup-overlay__error" data-testid="qms-runtime-setup-error">
-                <p>{runtimeSetupStatus.error || 'Runtime setup failed.'}</p>
-                <a
-                  href="https://github.com/QMatSuite/QMatSuite/issues"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Report Issue
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
       {/* Dialogs */}
       <CreateProjectDialog
         isOpen={showCreateProject}

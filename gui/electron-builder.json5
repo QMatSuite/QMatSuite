@@ -12,22 +12,10 @@
     "dist-electron",
     "package.json"
   ],
-  "afterPack": "scripts/afterPackSignZstd.cjs",
   "extraResources": [
     {
-      "from": ".",
-      "to": ".",
-      "filter": [
-        "runtime.tar.zst"
-      ]
-    },
-    {
-      "from": "extra/bin",
-      "to": "bin"
-    },
-    {
-      "from": "extra/lib",
-      "to": "lib"
+      "from": "runtime",
+      "to": "runtime"
     }
   ],
   "publish": [
@@ -70,6 +58,7 @@
     "deleteAppDataOnUninstall": false,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "QMatSuite"
+    "shortcutName": "QMatSuite",
+    "include": "installer/conda-unpack.nsh"
   }
 }

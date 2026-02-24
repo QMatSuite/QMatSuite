@@ -26,79 +26,9 @@ jobs:
         shell: bash
     env:
       RUNTIME_ENV_PREFIX: ${{ github.workspace }}/runtime-env
-      RUNTIME_PLATFORM: windows-x64
-      RUNTIME_ARCHIVE: ${{ github.workspace }}/runtime-windows-x64.tar.zst
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Cache zstd win64
-        uses: actions/cache@v4
-        with:
-          path: .cache/zstd/1.5.7
-          key: zstd-win64-v1.5.7
-
-      - name: Prepare zstd win64 (cache + tmp) and fail-fast verify
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $Version = "1.5.7"
-          $Url = "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-v1.5.7-win64.zip"
-          $CacheDir = Join-Path "${{ github.workspace }}" ".cache\zstd\1.5.7"
-          $ZipPath = Join-Path $CacheDir "zstd-v1.5.7-win64.zip"
-          $TmpDir = Join-Path "${{ github.workspace }}" ".tmp\zstd-win64"
-
-          Write-Host "Preparing zstd version $Version"
-          New-Item -ItemType Directory -Force -Path $CacheDir | Out-Null
-          New-Item -ItemType Directory -Force -Path $TmpDir | Out-Null
-
-          # Check if already extracted
-          $existingExe = Get-ChildItem -Path $CacheDir -Recurse -Filter "zstd.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $existingExe) {
-            Write-Host "zstd not found in cache; downloading from $Url"
-            Invoke-WebRequest -Uri $Url -OutFile $ZipPath
-            Write-Host "Expanding archive $ZipPath to $CacheDir"
-            Expand-Archive -Force $ZipPath $CacheDir
-          } else {
-            Write-Host "Using cached zstd from $CacheDir"
-          }
-
-          # Locate files robustly (no hardcoded subdir)
-          $zstdExe = Get-ChildItem -Path $CacheDir -Recurse -Filter "zstd.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-          $libDll = Get-ChildItem -Path $CacheDir -Recurse -Filter "libzstd.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
-
-          if (-not $zstdExe) {
-            Write-Host "Cache directory contents:"
-            Get-ChildItem $CacheDir -Recurse -Depth 3 | Select-Object FullName | Format-Table -AutoSize
-            Write-Error "zstd.exe not found in cache directory: $CacheDir"
-            exit 1
-          }
-          if (-not $libDll) {
-            Write-Host "Cache directory contents:"
-            Get-ChildItem $CacheDir -Recurse -Depth 3 | Select-Object FullName | Format-Table -AutoSize
-            Write-Error "libzstd.dll not found in cache directory: $CacheDir"
-            exit 1
-          }
-
-          # Copy both into tmp dir
-          Copy-Item -Force $zstdExe.FullName (Join-Path $TmpDir "zstd.exe")
-          Copy-Item -Force $libDll.FullName (Join-Path $TmpDir "libzstd.dll")
-
-          # Remember tmp path for later steps
-          Add-Content $env:GITHUB_ENV ("TMP_ZSTD_DIR=" + $TmpDir)
-
-          # FAIL-FAST runtime check FROM TMP DIR
-          Push-Location $TmpDir
-          & (Join-Path $TmpDir "zstd.exe") -V
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error ("zstd -V failed with exit code " + $LASTEXITCODE)
-            Pop-Location
-            exit $LASTEXITCODE
-          }
-          Pop-Location
-
-          Write-Host "zstd prepared successfully in tmp directory:"
-          Get-ChildItem $TmpDir | Format-Table -AutoSize
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -133,19 +63,32 @@ jobs:
           micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help > /tmp/qms_help.txt
           head -n 5 /tmp/qms_help.txt
 
-      - name: Install archive helper dependency
+      - name: Build relocatable runtime with conda-pack
         run: |
-          python -m pip install --upgrade pip zstandard
+          set -euo pipefail
+          pip install conda-pack
+          conda-pack -p "$RUNTIME_ENV_PREFIX" -o runtime-packed.tar.gz --force
+          mkdir -p gui/runtime
+          tar -xzf runtime-packed.tar.gz -C gui/runtime
+          # DO NOT run conda-unpack here — it runs on the user's machine
+          # (during NSIS install via customInstall macro, or on first launch)
+          rm -f runtime-packed.tar.gz
 
-      - name: Build runtime archive
-        run: |
-          python scripts/build_runtime_archive.py
-          ls -lh "$RUNTIME_ARCHIVE"
+          # Strip bulky non-essential files to reduce count and installer size
+          cd gui/runtime
+          find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name tests -path '*/site-packages/*/tests' -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name test -path '*/site-packages/*/test' -exec rm -rf {} + 2>/dev/null || true
+          find . -type f -name '*.pyc' -delete 2>/dev/null || true
+          find . -type f -name '*.pyo' -delete 2>/dev/null || true
+          find . -type f -name '*.a' -delete 2>/dev/null || true
+          rm -rf share/man share/doc share/gtk-doc share/info 2>/dev/null || true
+          cd "$GITHUB_WORKSPACE"
 
-      - name: Stage runtime archive for electron-builder
-        run: |
-          cp "$RUNTIME_ARCHIVE" "${{ github.workspace }}/gui/runtime.tar.zst"
-          ls -lh "${{ github.workspace }}/gui/runtime.tar.zst"
+          echo "=== Runtime size after strip ==="
+          du -sh gui/runtime
+          echo "=== File count ==="
+          find gui/runtime -type f | wc -l
 
       - name: Install GUI dependencies
         working-directory: gui
@@ -158,31 +101,6 @@ jobs:
       - name: Clean previous release outputs
         run: |
           rm -rf "${{ github.workspace }}/gui/release"
-
-      - name: Stage zstd from tmp into gui/extra/bin/windows-x64
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          if (-not $env:TMP_ZSTD_DIR) {
-            Write-Error "TMP_ZSTD_DIR not set"
-            exit 1
-          }
-
-          $stageDir = "gui\extra\bin\windows-x64"
-          New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
-
-          Copy-Item -Force (Join-Path $env:TMP_ZSTD_DIR "zstd.exe") (Join-Path $stageDir "zstd.exe")
-          Copy-Item -Force (Join-Path $env:TMP_ZSTD_DIR "libzstd.dll") (Join-Path $stageDir "libzstd.dll")
-
-          Write-Host "Staged zstd files:"
-          Get-ChildItem $stageDir | Format-Table -AutoSize
-
-          # Quick confirm
-          & (Join-Path $stageDir "zstd.exe") -V
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error ("staged zstd -V failed with exit code " + $LASTEXITCODE)
-            exit $LASTEXITCODE
-          }
 
       - name: Build NSIS installer
         working-directory: gui
@@ -216,12 +134,12 @@ jobs:
           trusted-signing-account-name: ${{ vars.TRUSTEDSIGN_ACCOUNT }}
           certificate-profile-name: ${{ vars.TRUSTEDSIGN_CERT_PROFILE }}
           files-folder: ${{ github.workspace }}\\gui\\release
-          files-folder-filter: exe,dll
+          files-folder-filter: exe,dll,pyd
           files-folder-recurse: true
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
-          
+
 
       - name: Print output artifacts
         run: |

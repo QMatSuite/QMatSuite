@@ -1,4 +1,4 @@
-name: Build Runtime Tarball
+name: Build Runtime Directory
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  build-tarball:
+  build-runtime:
     strategy:
       fail-fast: false
       matrix:
@@ -30,7 +30,6 @@ jobs:
         shell: bash
     env:
       RUNTIME_ENV_PREFIX: ${{ github.workspace }}/runtime-env
-      RUNTIME_ARCHIVE: runtime-${{ matrix.platform }}.tar.zst
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,53 +69,18 @@ jobs:
           micromamba run -p "$RUNTIME_ENV_PREFIX" python -c "from qmatsuite.mcp.server import create_server; print('MCP OK')"
           micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help | head -n 5
 
-      - name: Install zstandard helper
+      - name: Build relocatable runtime with conda-pack
         run: |
-          python -m pip install --upgrade pip zstandard
-
-      - name: Build runtime tar.zst archive and print size metrics
-        run: |
-          python - <<'PY'
-          import os
-          import tarfile
-          from pathlib import Path
-
-          import zstandard as zstd
-
-          env_dir = Path(os.environ["RUNTIME_ENV_PREFIX"]).resolve()
-          out_path = Path(os.environ["RUNTIME_ARCHIVE"]).resolve()
-          tmp_tar = out_path.with_suffix("")
-
-          if not env_dir.is_dir():
-              raise SystemExit(f"Runtime env not found: {env_dir}")
-
-          def dir_size_bytes(path: Path) -> int:
-              total = 0
-              for p in path.rglob("*"):
-                  if p.is_file():
-                      total += p.stat().st_size
-              return total
-
-          uncompressed_bytes = dir_size_bytes(env_dir)
-
-          with tarfile.open(tmp_tar, "w") as tf:
-              tf.add(env_dir, arcname=".")
-
-          cctx = zstd.ZstdCompressor(level=19, threads=-1)
-          with tmp_tar.open("rb") as src, out_path.open("wb") as dst:
-              cctx.copy_stream(src, dst)
-
-          tmp_tar.unlink(missing_ok=True)
-
-          compressed_bytes = out_path.stat().st_size
-          print(f"runtime env path: {env_dir}")
-          print(f"uncompressed bytes: {uncompressed_bytes}")
-          print(f"compressed bytes: {compressed_bytes}")
-          print(f"archive: {out_path.name}")
-          PY
+          pip install conda-pack
+          conda-pack -p "$RUNTIME_ENV_PREFIX" -o runtime-packed.tar.gz --force
+          mkdir runtime
+          tar -xzf runtime-packed.tar.gz -C runtime
+          # DO NOT run conda-unpack here — it must run on the user's machine
+          rm -f runtime-packed.tar.gz
+          du -sh runtime
 
       - name: Upload runtime artifact
         uses: actions/upload-artifact@v4
         with:
           name: runtime-${{ matrix.platform }}
-          path: ${{ env.RUNTIME_ARCHIVE }}
+          path: runtime/
