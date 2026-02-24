@@ -81,6 +81,19 @@ jobs:
           ZSTD_DIR="$(dirname "$ZSTD_EXE")"
           cp -n "$ZSTD_DIR"/libzstd*.dll "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
           cp -n "$ZSTD_DIR"/zstd*.dll "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
+          cp -n "$ZSTD_DIR"/libgcc_s_seh-1.dll  "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
+          cp -n "$ZSTD_DIR"/libstdc++-6.dll     "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
+          cp -n "$ZSTD_DIR"/libwinpthread-1.dll "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
+          cp -n "$ZSTD_DIR"/zlib1.dll           "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
+
+          # Fallback search for common runtime DLLs in the environment
+          for name in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll zlib1.dll; do
+            DLL="$(find "$RUNTIME_ENV_PREFIX" -iname "$name" | head -n 1 || true)"
+            if [[ -n "${DLL}" ]]; then
+              cp -n "$DLL" "${{ github.workspace }}/gui/extra/bin/windows-x64/" || true
+            fi
+          done
+
           LIBZSTD_DLL="$(find "$RUNTIME_ENV_PREFIX" -iname 'libzstd*.dll' | head -n 1 || true)"
           if [[ -n "${LIBZSTD_DLL}" ]]; then
             cp -n "$LIBZSTD_DLL" "${{ github.workspace }}/gui/extra/bin/windows-x64/" || true
@@ -88,8 +101,8 @@ jobs:
 
           ls -la "${{ github.workspace }}/gui/extra/bin/windows-x64"
 
-          # Runtime sanity check: ensure bundled zstd can execute
-          "${{ github.workspace }}/gui/extra/bin/windows-x64/zstd.exe" --version
+          # Runtime sanity check (PowerShell): ensure bundled zstd can execute and surface loader errors
+          powershell -NoProfile -Command "& '${{ github.workspace }}\\gui\\extra\\bin\\windows-x64\\zstd.exe' --version"
 
       - name: Install archive helper dependency
         run: |
