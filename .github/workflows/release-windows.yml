@@ -32,6 +32,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache zstd win64
+        uses: actions/cache@v4
+        with:
+          path: .cache/zstd/v1.5.7
+          key: zstd-win64-v1.5.7
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -65,44 +71,57 @@ jobs:
           micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help > /tmp/qms_help.txt
           head -n 5 /tmp/qms_help.txt
 
-      - name: Stage zstd binary for bundling
+      - name: Stage official zstd (GitHub release) for bundling
+        shell: pwsh
         run: |
-          set -euo pipefail
-          micromamba install -y -p "$RUNTIME_ENV_PREFIX" -c conda-forge zstd
-          mkdir -p "${{ github.workspace }}/gui/extra/bin/windows-x64"
-          ZSTD_EXE="$(find "$RUNTIME_ENV_PREFIX" -iname 'zstd.exe' | head -n 1)"
-          if [[ -z "${ZSTD_EXE}" ]]; then
-            echo "Error: zstd.exe not found in runtime environment"
+          $ErrorActionPreference = "Stop"
+          $zstdVersion   = "1.5.7"
+          $zstdCacheDir  = ".cache/zstd/$zstdVersion"
+          $zstdZipName   = "zstd-v$zstdVersion-win64.zip"
+          $zstdUrl       = "https://github.com/facebook/zstd/releases/download/v$zstdVersion/$zstdZipName"
+
+          Write-Host "Using zstd version $zstdVersion"
+          New-Item -ItemType Directory -Force -Path $zstdCacheDir | Out-Null
+
+          $zipPath = Join-Path $zstdCacheDir $zstdZipName
+          $zstdExePath = Join-Path $zstdCacheDir "zstd.exe"
+          $libzstdDllPath = Join-Path $zstdCacheDir "dll\libzstd.dll"
+
+          if (-not (Test-Path $zstdExePath) -or -not (Test-Path $libzstdDllPath)) {
+            Write-Host "zstd not found in cache; downloading from $zstdUrl"
+            Invoke-WebRequest -Uri $zstdUrl -OutFile $zipPath
+            Write-Host "Expanding archive $zipPath to $zstdCacheDir"
+            Expand-Archive -Force $zipPath $zstdCacheDir
+          } else {
+            Write-Host "Using cached zstd from $zstdCacheDir"
+          }
+
+          if (-not (Test-Path $zstdExePath)) {
+            Write-Error "zstd.exe not found at expected path: $zstdExePath"
             exit 1
-          fi
-          cp "$ZSTD_EXE" "${{ github.workspace }}/gui/extra/bin/windows-x64/zstd.exe"
+          }
+          if (-not (Test-Path $libzstdDllPath)) {
+            Write-Error "libzstd.dll not found at expected path: $libzstdDllPath"
+            exit 1
+          }
 
-          # Bundle dependent DLLs next to zstd.exe (best-effort)
-          ZSTD_DIR="$(dirname "$ZSTD_EXE")"
-          cp -n "$ZSTD_DIR"/libzstd*.dll "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
-          cp -n "$ZSTD_DIR"/zstd*.dll "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
-          cp -n "$ZSTD_DIR"/libgcc_s_seh-1.dll  "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
-          cp -n "$ZSTD_DIR"/libstdc++-6.dll     "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
-          cp -n "$ZSTD_DIR"/libwinpthread-1.dll "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
-          cp -n "$ZSTD_DIR"/zlib1.dll           "${{ github.workspace }}/gui/extra/bin/windows-x64/" 2>/dev/null || true
+          $stageDir = "gui\extra\bin\windows-x64"
+          New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
 
-          # Fallback search for common runtime DLLs in the environment
-          for name in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll zlib1.dll; do
-            DLL="$(find "$RUNTIME_ENV_PREFIX" -iname "$name" | head -n 1 || true)"
-            if [[ -n "${DLL}" ]]; then
-              cp -n "$DLL" "${{ github.workspace }}/gui/extra/bin/windows-x64/" || true
-            fi
-          done
+          Copy-Item -Force $zstdExePath    (Join-Path $stageDir "zstd.exe")
+          Copy-Item -Force $libzstdDllPath (Join-Path $stageDir "libzstd.dll")
 
-          LIBZSTD_DLL="$(find "$RUNTIME_ENV_PREFIX" -iname 'libzstd*.dll' | head -n 1 || true)"
-          if [[ -n "${LIBZSTD_DLL}" ]]; then
-            cp -n "$LIBZSTD_DLL" "${{ github.workspace }}/gui/extra/bin/windows-x64/" || true
-          fi
+          Write-Host "Staged zstd files:"
+          Get-ChildItem $stageDir | Format-Table -AutoSize
 
-          ls -la "${{ github.workspace }}/gui/extra/bin/windows-x64"
-
-          # Runtime sanity check (PowerShell): ensure bundled zstd can execute and surface loader errors
-          powershell -NoProfile -Command '$ErrorActionPreference="Continue"; $exe="${{ github.workspace }}\gui\extra\bin\windows-x64\zstd.exe"; Write-Host ("Running: " + $exe); & $exe -V 2>&1 | ForEach-Object { Write-Host $_ }; $code=$LASTEXITCODE; Write-Host ("zstd -V exit code: " + $code); if ($code -eq 0) { Write-Host "Running: zstd --help"; & $exe --help 2>&1 | ForEach-Object { Write-Host $_ }; }; exit $code'
+          # Fast-fail sanity check
+          & (Join-Path $stageDir "zstd.exe") -V
+          $code = $LASTEXITCODE
+          Write-Host ("zstd -V exit code: " + $code)
+          if ($code -ne 0) {
+            Write-Error ("zstd -V failed with exit code " + $code)
+            exit $code
+          }
 
       - name: Install archive helper dependency
         run: |
