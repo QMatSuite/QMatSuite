@@ -398,20 +398,81 @@ async function validateBundledZstd(zstdPath: string): Promise<{ ok: boolean; err
         error: `Bundled zstd is not executable. Run: chmod +x "${zstdPath}"`,
       };
     }
+  }
+  
+  // Test zstd with --version to detect runtime issues (dyld, etc.)
+  try {
+    const testResult = spawnSync(zstdPath, ['--version'], {
+      encoding: 'utf-8',
+      timeout: 5000,
+    });
     
-    // Check for quarantine attribute (best-effort)
-    try {
-      const { execSync } = await import('node:child_process');
-      const xattrOutput = execSync(`xattr -l "${zstdPath}"`, { encoding: 'utf-8', stdio: 'pipe' }).trim();
-      if (xattrOutput.includes('com.apple.quarantine')) {
+    if (testResult.status !== 0 || testResult.error) {
+      const stderr = (testResult.stderr || '').toString();
+      const stdout = (testResult.stdout || '').toString();
+      const combinedOutput = stderr + stdout;
+      
+      // Check for dyld missing library errors
+      if (combinedOutput.includes('Library not loaded') || 
+          combinedOutput.includes('@rpath') || 
+          combinedOutput.includes('dyld[') ||
+          combinedOutput.includes('Reason: tried:')) {
         return {
           ok: false,
-          error: `Bundled zstd is quarantined. Run: xattr -d com.apple.quarantine "${zstdPath}" or xattr -dr com.apple.quarantine "/Applications/QMatSuite.app"`,
+          error: `Bundled zstd failed to launch due to missing dynamic library.\n` +
+            `This indicates a packaging bug; please report issue with logs.\n` +
+            `Error output: ${combinedOutput}\n\n` +
+            `Workaround: Install system zstd via Homebrew: brew install zstd\n` +
+            `Then restart QMatSuite.`,
         };
       }
-    } catch {
-      // xattr check failed, but that's okay - continue
+      
+      // Check for permission/quarantine errors
+      if (combinedOutput.includes('quarantine') || 
+          combinedOutput.includes('Operation not permitted') ||
+          combinedOutput.includes('not permitted') ||
+          combinedOutput.includes('cannot be opened')) {
+        return {
+          ok: false,
+          error: `Bundled zstd cannot be executed due to macOS security restrictions.\n` +
+            `Error output: ${combinedOutput}\n\n` +
+            `To fix: Remove quarantine attribute:\n` +
+            `  xattr -d com.apple.quarantine "${zstdPath}"\n` +
+            `Or for the entire app:\n` +
+            `  xattr -dr com.apple.quarantine "/Applications/QMatSuite.app"`,
+        };
+      }
+      
+      // Generic failure
+      return {
+        ok: false,
+        error: `Bundled zstd failed to execute.\n` +
+          `Exit code: ${testResult.status}\n` +
+          `Error output: ${combinedOutput}`,
+      };
     }
+  } catch (err) {
+    const error = err as Error;
+    const errorMsg = error.message || String(err);
+    
+    // Check for dyld errors in exception message
+    if (errorMsg.includes('Library not loaded') || 
+        errorMsg.includes('@rpath') || 
+        errorMsg.includes('dyld[')) {
+      return {
+        ok: false,
+        error: `Bundled zstd failed to launch due to missing dynamic library.\n` +
+          `This indicates a packaging bug; please report issue with logs.\n` +
+          `Error: ${errorMsg}\n\n` +
+          `Workaround: Install system zstd via Homebrew: brew install zstd\n` +
+          `Then restart QMatSuite.`,
+      };
+    }
+    
+    return {
+      ok: false,
+      error: `Failed to test bundled zstd: ${errorMsg}`,
+    };
   }
   
   return { ok: true, error: null };
@@ -563,15 +624,10 @@ async function extractRuntimeTarball(tarballPath: string, destinationDir: string
   // Validate bundled zstd
   const validation = await validateBundledZstd(bundledZstdPath);
   if (!validation.ok) {
+    // validation.error already contains detailed diagnostics and workarounds
     return {
       ok: false,
-      error: `Bundled zstd validation failed: ${validation.error}\n\nSystem tar error: ${systemTarError || 'unknown'}\n\nTo fix this:\n` +
-        (process.platform === 'darwin' 
-          ? `1. Remove quarantine: xattr -dr com.apple.quarantine "/Applications/QMatSuite.app"\n` +
-            `2. Or install system zstd: brew install zstd\n` +
-            `3. Restart QMatSuite`
-          : `1. Install zstd: winget install Facebook.Zstandard\n` +
-            `2. Restart QMatSuite`),
+      error: `Bundled zstd validation failed: ${validation.error}\n\nSystem tar error: ${systemTarError || 'unknown'}`,
     };
   }
   
@@ -581,14 +637,25 @@ async function extractRuntimeTarball(tarballPath: string, destinationDir: string
     return { ok: true, error: null };
   }
   
-  // Both methods failed, return comprehensive error
+  // Both methods failed, return comprehensive error with real stderr
   const platform = process.platform;
   let helpMessage = '';
-  if (platform === 'darwin') {
+  
+  // Check if bundled zstd error indicates dyld/library issues
+  const bundledError = fallbackResult.error || '';
+  const bundledStderr = fallbackResult.zstdError || '';
+  const combinedBundledError = bundledError + '\n' + bundledStderr;
+  
+  if (combinedBundledError.includes('Library not loaded') || 
+      combinedBundledError.includes('@rpath') || 
+      combinedBundledError.includes('dyld[')) {
+    helpMessage = '\n\nThis indicates a packaging bug (missing libzstd or incorrect rpath).\n' +
+      'Workaround: Install system zstd via Homebrew: brew install zstd\n' +
+      'Then restart QMatSuite.';
+  } else if (platform === 'darwin') {
     helpMessage = '\n\nTo fix this:\n' +
-      '1. Remove quarantine: xattr -dr com.apple.quarantine "/Applications/QMatSuite.app"\n' +
-      '2. Or install system zstd: brew install zstd\n' +
-      '3. Restart QMatSuite';
+      '1. Install system zstd: brew install zstd\n' +
+      '2. Restart QMatSuite';
   } else if (platform === 'win32') {
     helpMessage = '\n\nTo fix this:\n' +
       '1. Install zstd: winget install Facebook.Zstandard\n' +
@@ -599,7 +666,7 @@ async function extractRuntimeTarball(tarballPath: string, destinationDir: string
     ok: false,
     error: `Failed to extract runtime tarball.\n` +
       `System tar error: ${systemTarError || 'unknown'}\n` +
-      `Bundled zstd error: ${fallbackResult.error || 'unknown'}${fallbackResult.zstdError ? `\nzstd stderr: ${fallbackResult.zstdError}` : ''}${helpMessage}`,
+      `Bundled zstd error: ${bundledError}${bundledStderr ? `\nzstd stderr: ${bundledStderr}` : ''}${helpMessage}`,
   };
 }
 

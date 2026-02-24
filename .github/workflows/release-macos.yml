@@ -9,10 +9,15 @@ on:
         type: string
         default: "local"
       sign:
-        description: "Code sign and notarize"
+        description: "Code sign the app (Developer ID)"
         required: true
         type: boolean
         default: true
+      notarize:
+        description: "Notarize DMG with Apple notary service"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -30,6 +35,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate signing inputs
+        if: ${{ inputs.notarize && !inputs.sign }}
+        run: |
+          echo "Invalid workflow inputs: notarize=true requires sign=true."
+          exit 1
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -73,6 +84,12 @@ jobs:
           chmod 0755 "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
           ls -la "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
           file "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd"
+          otool -L "${{ github.workspace }}/gui/extra/bin/macos-arm64/zstd" || true
+          
+          # Stage libzstd dylibs
+          mkdir -p "${{ github.workspace }}/gui/extra/lib/macos-arm64"
+          cp -a "$RUNTIME_ENV_PREFIX/lib/libzstd"*.dylib "${{ github.workspace }}/gui/extra/lib/macos-arm64/" || true
+          ls -la "${{ github.workspace }}/gui/extra/lib/macos-arm64" || true
 
       - name: Install archive helper dependency
         run: |
@@ -146,9 +163,26 @@ jobs:
           fi
           ls -la "${ZSTD_PATH}"
           /usr/bin/codesign -dv --verbose=4 "${ZSTD_PATH}"
+          echo "Checking library references:"
+          /usr/bin/otool -L "${ZSTD_PATH}" | grep -i libzstd || true
+          
+          # Verify libzstd dylib is present
+          LIB_DIR="${APP_PATH}/Contents/Resources/lib/macos-arm64"
+          if [[ ! -d "${LIB_DIR}" ]]; then
+            echo "Error: lib directory not found at ${LIB_DIR}"
+            exit 1
+          fi
+          if [[ -z "$(find "${LIB_DIR}" -name 'libzstd*.dylib' 2>/dev/null)" ]]; then
+            echo "Error: libzstd dylib not found in ${LIB_DIR} (bundling is broken)"
+            exit 1
+          fi
+          
+          # Definitive runtime test: run zstd --version
+          echo "Testing bundled zstd execution:"
+          "${ZSTD_PATH}" --version
 
       - name: Notarize and staple DMG
-        if: ${{ inputs.sign }}
+        if: ${{ inputs.notarize }}
         env:
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}

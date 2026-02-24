@@ -24,6 +24,10 @@
     {
       "from": "extra/bin",
       "to": "bin"
+    },
+    {
+      "from": "extra/lib",
+      "to": "lib"
     }
   ],
   "publish": [
