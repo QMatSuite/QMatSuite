@@ -35,8 +35,70 @@ jobs:
       - name: Cache zstd win64
         uses: actions/cache@v4
         with:
-          path: .cache/zstd/v1.5.7
+          path: .cache/zstd/1.5.7
           key: zstd-win64-v1.5.7
+
+      - name: Prepare zstd win64 (cache + tmp) and fail-fast verify
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $Version = "1.5.7"
+          $Url = "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-v1.5.7-win64.zip"
+          $CacheDir = Join-Path "${{ github.workspace }}" ".cache\zstd\1.5.7"
+          $ZipPath = Join-Path $CacheDir "zstd-v1.5.7-win64.zip"
+          $TmpDir = Join-Path "${{ github.workspace }}" ".tmp\zstd-win64"
+
+          Write-Host "Preparing zstd version $Version"
+          New-Item -ItemType Directory -Force -Path $CacheDir | Out-Null
+          New-Item -ItemType Directory -Force -Path $TmpDir | Out-Null
+
+          # Check if already extracted
+          $existingExe = Get-ChildItem -Path $CacheDir -Recurse -Filter "zstd.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $existingExe) {
+            Write-Host "zstd not found in cache; downloading from $Url"
+            Invoke-WebRequest -Uri $Url -OutFile $ZipPath
+            Write-Host "Expanding archive $ZipPath to $CacheDir"
+            Expand-Archive -Force $ZipPath $CacheDir
+          } else {
+            Write-Host "Using cached zstd from $CacheDir"
+          }
+
+          # Locate files robustly (no hardcoded subdir)
+          $zstdExe = Get-ChildItem -Path $CacheDir -Recurse -Filter "zstd.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $libDll = Get-ChildItem -Path $CacheDir -Recurse -Filter "libzstd.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+
+          if (-not $zstdExe) {
+            Write-Host "Cache directory contents:"
+            Get-ChildItem $CacheDir -Recurse -Depth 3 | Select-Object FullName | Format-Table -AutoSize
+            Write-Error "zstd.exe not found in cache directory: $CacheDir"
+            exit 1
+          }
+          if (-not $libDll) {
+            Write-Host "Cache directory contents:"
+            Get-ChildItem $CacheDir -Recurse -Depth 3 | Select-Object FullName | Format-Table -AutoSize
+            Write-Error "libzstd.dll not found in cache directory: $CacheDir"
+            exit 1
+          }
+
+          # Copy both into tmp dir
+          Copy-Item -Force $zstdExe.FullName (Join-Path $TmpDir "zstd.exe")
+          Copy-Item -Force $libDll.FullName (Join-Path $TmpDir "libzstd.dll")
+
+          # Remember tmp path for later steps
+          Add-Content $env:GITHUB_ENV ("TMP_ZSTD_DIR=" + $TmpDir)
+
+          # FAIL-FAST runtime check FROM TMP DIR
+          Push-Location $TmpDir
+          & (Join-Path $TmpDir "zstd.exe") -V
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error ("zstd -V failed with exit code " + $LASTEXITCODE)
+            Pop-Location
+            exit $LASTEXITCODE
+          }
+          Pop-Location
+
+          Write-Host "zstd prepared successfully in tmp directory:"
+          Get-ChildItem $TmpDir | Format-Table -AutoSize
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -71,58 +133,6 @@ jobs:
           micromamba run -p "$RUNTIME_ENV_PREFIX" qms --help > /tmp/qms_help.txt
           head -n 5 /tmp/qms_help.txt
 
-      - name: Stage official zstd (GitHub release) for bundling
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $zstdVersion   = "1.5.7"
-          $zstdCacheDir  = ".cache/zstd/$zstdVersion"
-          $zstdZipName   = "zstd-v$zstdVersion-win64.zip"
-          $zstdUrl       = "https://github.com/facebook/zstd/releases/download/v$zstdVersion/$zstdZipName"
-
-          Write-Host "Using zstd version $zstdVersion"
-          New-Item -ItemType Directory -Force -Path $zstdCacheDir | Out-Null
-
-          $zipPath = Join-Path $zstdCacheDir $zstdZipName
-          $zstdExePath = Join-Path $zstdCacheDir "zstd.exe"
-          $libzstdDllPath = Join-Path $zstdCacheDir "dll\libzstd.dll"
-
-          if (-not (Test-Path $zstdExePath) -or -not (Test-Path $libzstdDllPath)) {
-            Write-Host "zstd not found in cache; downloading from $zstdUrl"
-            Invoke-WebRequest -Uri $zstdUrl -OutFile $zipPath
-            Write-Host "Expanding archive $zipPath to $zstdCacheDir"
-            Expand-Archive -Force $zipPath $zstdCacheDir
-          } else {
-            Write-Host "Using cached zstd from $zstdCacheDir"
-          }
-
-          if (-not (Test-Path $zstdExePath)) {
-            Write-Error "zstd.exe not found at expected path: $zstdExePath"
-            exit 1
-          }
-          if (-not (Test-Path $libzstdDllPath)) {
-            Write-Error "libzstd.dll not found at expected path: $libzstdDllPath"
-            exit 1
-          }
-
-          $stageDir = "gui\extra\bin\windows-x64"
-          New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
-
-          Copy-Item -Force $zstdExePath    (Join-Path $stageDir "zstd.exe")
-          Copy-Item -Force $libzstdDllPath (Join-Path $stageDir "libzstd.dll")
-
-          Write-Host "Staged zstd files:"
-          Get-ChildItem $stageDir | Format-Table -AutoSize
-
-          # Fast-fail sanity check
-          & (Join-Path $stageDir "zstd.exe") -V
-          $code = $LASTEXITCODE
-          Write-Host ("zstd -V exit code: " + $code)
-          if ($code -ne 0) {
-            Write-Error ("zstd -V failed with exit code " + $code)
-            exit $code
-          }
-
       - name: Install archive helper dependency
         run: |
           python -m pip install --upgrade pip zstandard
@@ -148,6 +158,31 @@ jobs:
       - name: Clean previous release outputs
         run: |
           rm -rf "${{ github.workspace }}/gui/release"
+
+      - name: Stage zstd from tmp into gui/extra/bin/windows-x64
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (-not $env:TMP_ZSTD_DIR) {
+            Write-Error "TMP_ZSTD_DIR not set"
+            exit 1
+          }
+
+          $stageDir = "gui\extra\bin\windows-x64"
+          New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
+
+          Copy-Item -Force (Join-Path $env:TMP_ZSTD_DIR "zstd.exe") (Join-Path $stageDir "zstd.exe")
+          Copy-Item -Force (Join-Path $env:TMP_ZSTD_DIR "libzstd.dll") (Join-Path $stageDir "libzstd.dll")
+
+          Write-Host "Staged zstd files:"
+          Get-ChildItem $stageDir | Format-Table -AutoSize
+
+          # Quick confirm
+          & (Join-Path $stageDir "zstd.exe") -V
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error ("staged zstd -V failed with exit code " + $LASTEXITCODE)
+            exit $LASTEXITCODE
+          }
 
       - name: Build NSIS installer
         working-directory: gui
