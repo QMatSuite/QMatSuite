@@ -9,7 +9,7 @@
  * - Step Focus mode: Compact step list on left, StepDetailPanel as main workspace on right
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { CalculationDetailPanel } from './CalculationListPanel';
 import { StepDetailPanel } from './StepDetailPanel';
 import { ResizablePane, type ResizablePaneRef } from '../layout/ResizablePane';
@@ -32,7 +32,7 @@ interface CalculationOverviewTabProps {
   onCalculationDetailUpdated?: (detail: CalculationDetailResult) => void;
 }
 
-export function CalculationOverviewTab({
+export const CalculationOverviewTab = memo(function CalculationOverviewTab({
   calculationSummary,
   calculationDetail,
   projectRoot,
@@ -241,7 +241,7 @@ export function CalculationOverviewTab({
       </div>
     </div>
   );
-}
+});
 
 // Compact Step List Component for Focus Mode
 interface CompactStepListProps {

@@ -1,5 +1,19 @@
 /* App-specific styles - Using Design Tokens */
 
+/* Extracted inline styles (Phase 4: F027) */
+.structures-view__import-btn {
+  flex: 1;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.error-panel__selection-hint {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
 .main-content {
   display: flex;
   flex-direction: column;

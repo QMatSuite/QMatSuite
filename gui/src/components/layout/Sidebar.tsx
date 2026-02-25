@@ -10,7 +10,7 @@
  * - Collapsible to show only icons
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, memo } from 'react';
 import type { QMSClient } from '../../hooks/useQMSClient';
 import type { DaemonStatus, JobCounts } from '../../types/qms';
 import './Sidebar.css';
@@ -31,8 +31,8 @@ interface SidebarProps {
   jobCounts: JobCounts | null;
 }
 
-export function Sidebar({ 
-  qms, 
+export const Sidebar = memo(function Sidebar({
+  qms,
   projectRoot,
   projectLoaded,
   projectError,
@@ -309,4 +309,4 @@ export function Sidebar({
       </div>
     </div>
   );
-}
+});

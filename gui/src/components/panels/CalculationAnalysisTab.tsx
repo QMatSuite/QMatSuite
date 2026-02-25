@@ -5,6 +5,7 @@
  * Reuses CalculationAnalysisPanel logic but adapted for tab context.
  */
 
+import { memo } from 'react';
 import { CalculationAnalysisPanel } from './CalculationAnalysisPanel';
 import type { CalculationInfo, CalculationDetailResult } from '../../types/qms';
 import './CalculationAnalysisTab.css';
@@ -14,7 +15,7 @@ interface CalculationAnalysisTabProps {
   calculation: CalculationInfo | CalculationDetailResult | null;
 }
 
-export function CalculationAnalysisTab({ projectRoot, calculation }: CalculationAnalysisTabProps) {
+export const CalculationAnalysisTab = memo(function CalculationAnalysisTab({ projectRoot, calculation }: CalculationAnalysisTabProps) {
   if (!calculation) {
     return (
       <div className="calculation-analysis-tab calculation-analysis-tab--empty">
@@ -31,5 +32,5 @@ export function CalculationAnalysisTab({ projectRoot, calculation }: Calculation
       />
     </div>
   );
-}
+});
 

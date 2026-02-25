@@ -5,7 +5,7 @@
  * Focuses on runtime state, not job history.
  */
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, memo } from 'react';
 import { useJobs, useJobDetail } from '../../hooks/useJobs';
 import type { CalculationInfo, CalculationDetailResult, JobSummary } from '../../types/qms';
 import './CalculationRunTab.css';
@@ -41,7 +41,7 @@ function StatusBadge({ status, size = 'medium' }: StatusBadgeProps) {
   );
 }
 
-export function CalculationRunTab({ projectRoot, calculation }: CalculationRunTabProps) {
+export const CalculationRunTab = memo(function CalculationRunTab({ projectRoot, calculation }: CalculationRunTabProps) {
   const { jobs, isLoading, refresh } = useJobs({
     projectRoot,
     pollInterval: 3000,
@@ -353,5 +353,5 @@ export function CalculationRunTab({ projectRoot, calculation }: CalculationRunTa
       </div>
     </div>
   );
-}
+});
 

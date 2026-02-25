@@ -5,7 +5,7 @@
  * Supports both project structures and online candidates with provenance metadata.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import type { StructureModel, Provenance } from '../../types/qms';
 import './StructureDetailPanel.css';
 
@@ -143,7 +143,7 @@ function AccordionSection({ title, defaultExpanded = false, children }: Accordio
   );
 }
 
-export function StructureDetailPanel({ model, onClose }: StructureDetailPanelProps) {
+export const StructureDetailPanel = memo(function StructureDetailPanel({ model, onClose }: StructureDetailPanelProps) {
   const provenance = model?.provenance ?? null;
   const isOnline = provenance != null;
   
@@ -412,4 +412,4 @@ export function StructureDetailPanel({ model, onClose }: StructureDetailPanelPro
       </div>
     </div>
   );
-}
+});

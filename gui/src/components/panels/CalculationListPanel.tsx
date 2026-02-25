@@ -2,7 +2,7 @@
  * CalculationListPanel - Displays a list of calculations in a project
  */
 
-import { useState, useCallback, useMemo, useEffect, type RefObject } from 'react';
+import { useState, useCallback, useMemo, useEffect, memo, type RefObject } from 'react';
 import type { CalculationInfo, DetectWorkflowForCalculationResult, StepPaletteResult } from '../../types/qms';
 import './CalculationListPanel.css';
 
@@ -19,9 +19,9 @@ interface CalculationListPanelProps {
   paneRef?: RefObject<{ toggle: () => void; collapse: () => void; expand: () => void }>;
 }
 
-export function CalculationListPanel({ 
-  calculations, 
-  isLoading, 
+export const CalculationListPanel = memo(function CalculationListPanel({
+  calculations,
+  isLoading,
   selectedId,
   onSelect,
   onRename,
@@ -315,7 +315,7 @@ export function CalculationListPanel({
       </div>
     </div>
   );
-}
+});
 
 // =============================================================================
 // Calculation Detail View

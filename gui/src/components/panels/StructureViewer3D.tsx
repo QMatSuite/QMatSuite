@@ -4,7 +4,7 @@
  * Uses react-three-fiber for WebGL rendering with Three.js
  */
 
-import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
+import { useRef, useMemo, useState, useEffect, useCallback, memo } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
@@ -410,7 +410,7 @@ interface StructureViewer3DPropsExtended extends StructureViewer3DProps {
   currentBoxBounds?: [number, number, number, number, number, number] | null;
 }
 
-export function StructureViewer3D({
+export const StructureViewer3D = memo(function StructureViewer3D({
   data,
   isLoading = false,
   showBonds = true,
@@ -850,5 +850,5 @@ export function StructureViewer3D({
       </div>
     </div>
   );
-}
+});
 

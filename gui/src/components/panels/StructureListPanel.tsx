@@ -3,7 +3,7 @@
  * Supports two-panel layout: Project Structures + Online Import
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
 import type { StructureInfo } from '../../types/qms';
 import { OnlineImportPanel, type OnlineCandidate } from './OnlineImportPanel';
 import './StructureListPanel.css';
@@ -27,9 +27,9 @@ interface StructureListPanelProps {
   onlineCandidates?: OnlineCandidate[];
 }
 
-export function StructureListPanel({ 
-  structures, 
-  isLoading, 
+export const StructureListPanel = memo(function StructureListPanel({
+  structures,
+  isLoading,
   selectedId,
   onSelect,
   onRename,
@@ -236,7 +236,7 @@ export function StructureListPanel({
       )}
     </div>
   );
-}
+});
 
 // =============================================================================
 // Structure Detail View

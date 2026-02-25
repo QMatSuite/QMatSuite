@@ -4,7 +4,7 @@
  * Provides at-a-glance information about the current application state.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import type { EnvironmentInfo, JobCounts } from '../../types/qms';
 import './StatusBar.css';
 
@@ -17,7 +17,7 @@ interface StatusBarProps {
   onNavigateToHome?: () => void;
 }
 
-export function StatusBar({
+export const StatusBar = memo(function StatusBar({
   projectRoot,
   projectName,
   daemonConnected,
@@ -164,5 +164,5 @@ export function StatusBar({
       </div>
     </div>
   );
-}
+});
 
