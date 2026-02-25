@@ -46,16 +46,19 @@ QMatSuite v1.2.0 is a computational materials science workflow manager supportin
 
 ### 1.2 GitHub Releases
 
+**v1.2.0 is a published release** (not draft, not pre-release). Verified via `gh release view v1.2.0` on 2026-02-25.
+
 | Release | Date | Assets |
 |---------|------|--------|
-| v1.2.0 (latest) | 2026-02-24 23:39:50 UTC | QMatSuite-macOS-1.2.0.dmg, QMatSuite-Windows-1.2.0.exe, blockmaps, latest-mac.yml, latest.yml |
+| v1.2.0 (latest, **published**) | 2026-02-24 23:39:50 UTC | QMatSuite-macOS-1.2.0.dmg (287 MB), QMatSuite-Windows-1.2.0.exe (251 MB), blockmaps, latest-mac.yml, latest.yml |
 | v1.1.0 (pre-release) | 2026-02-24 02:43:17 UTC | (QE download wiring) |
 | v0.9.1 (pre-release) | 2026-02-24 01:13:30 UTC | — |
 | v0.9.0 (pre-release) | 2026-02-24 01:06:13 UTC | — |
 
 ### 1.3 Toolchain Repository (QMatSuite/qmatsuite-toolchain)
 
-- Latest release: `qe-7.5-win-oneapi-msmpi-20251223-d409e9b`
+- Latest release: `qe-7.5-macos-arm64-openmp-20260223-10d20bf` (macOS arm64 OpenMP, **verified portable** — see §4.5)
+- Previous releases: `qe-7.5-win-oneapi-msmpi-20251223-d409e9b` (Windows MPI), `qe-7.5-win-oneapi-msmpi-libxc-20251223-a04eb07` (Windows MPI+libxc)
 - Build matrix: Ubuntu, macOS, Windows (MinGW + Intel oneAPI)
 - QE 7.5 + Wannier90 workflows
 
@@ -79,7 +82,7 @@ QMatSuite v1.2.0 is a computational materials science workflow manager supportin
 | PyPI | 1.2.0 | OK |
 | GitHub release tag | v1.2.0 | OK |
 
-> **Bug found and fixed**: `__init__.py.__version__` was still `"1.0.1"`. Updated to `"1.2.0"` during this review session. The PyPI package was uploaded from `pyproject.toml` (correct), so the published package version is correct, but `qmatsuite.__version__` would have returned the wrong string at runtime.
+> **Bug found and fixed**: `__init__.py.__version__` was still `"1.0.1"`. Updated to `"1.2.0"` during this review session and committed. The PyPI package metadata was uploaded from `pyproject.toml` (correct), so `importlib.metadata.version("qmatsuite")` returns `"1.2.0"`, but `qmatsuite.__version__` would have returned `"1.0.1"` at runtime. The fix is in the repo but the published PyPI package (v1.2.0) still has the old string — a v1.2.1 release would fix this for pip users.
 
 ### 2.2 Dependencies (pyproject.toml)
 
@@ -142,19 +145,34 @@ All 15 engines have registered drivers under `src/qmatsuite/drivers/`:
 
 ### 3.2 Engine Management System
 
-The engine management system is **substantially implemented** (not "Not Started" as the design doc previously indicated):
+The engine management system is **fully implemented** — all 7 Phase 2 roadmap items verified on 2026-02-25. The design doc previously marked these as "🔲 Not started" which was a major documentation drift.
+
+#### Implementation Inventory
 
 | Component | File | Lines | Status |
 |-----------|------|-------|--------|
-| Central registry | `core/engines/engine_registry.py` | 671 | Implemented |
-| Engine metadata | `core/engines/engine_meta.py` | 267 | Implemented |
-| Discovery (8-tier) | `core/engines/discovery.py` | 729 | Implemented |
-| Installer (micromamba) | `core/engines/engine_installer.py` | 708 | Implemented |
-| Micromamba interface | `core/engines/micromamba.py` | 343 | Implemented |
-| Engine-specific resolvers | `*_resolver.py` (6 files) | ~764 | Implemented |
-| API surface | `api/engines.py` | — | Implemented |
-| engines.json registry | `engines.json` | — | Implemented |
+| Central registry | `core/engines/engine_registry.py` | 672 | ✅ Implemented |
+| Engine metadata | `core/engines/engine_meta.py` | 267 | ✅ Implemented |
+| Discovery (8-tier) | `core/engines/discovery.py` | 729 | ✅ Implemented |
+| Installer (micromamba) | `core/engines/engine_installer.py` | 708 | ✅ Implemented |
+| Micromamba interface | `core/engines/micromamba.py` | 344 | ✅ Implemented |
+| Engine-specific resolvers | `*_resolver.py` (6 files) | ~764 | ✅ Implemented |
+| API surface | `api/engines.py` | — | ✅ Implemented |
+| Daemon RPC handlers | `daemon/server.py` (10 endpoints) | — | ✅ Implemented |
+| GUI engine manager | `SettingsPanel.tsx:EngineManagementSection` | — | ✅ Implemented |
 | **Total** | **22 files** | **4,270** | **Operational** |
+
+#### Phase 2 Roadmap Verification
+
+| Roadmap Item | Design Doc Said | Verified Status | Key Evidence |
+|---|---|---|---|
+| 2.1 `engines.json` registry | 🔲 Not started | ✅ Done | `EngineRegistry` class: load/save/add/remove/list/get_active/set_active, atomic writes, schema versioning |
+| 2.2 QE resolver integration | 🔲 Not started | ✅ Done | `_resolve_qe_bin_dir_from_registry()` — registry-first lookup, falls back to legacy two-state |
+| 2.3 All engine handlers | 🔲 Not started | ✅ Done | All 15 handlers use `engine_registry.get(family)` — no engine-specific path imports |
+| 2.4 `list_engines` detection | 🔲 Not started | ✅ Done | `api/engines.py:list_engines()` — registry discovery + importlib/shutil.which fallback |
+| 2.5 Micromamba integration | 🔲 Not started | ✅ Done | `micromamba.py` — platform-aware download, SHA256 verify, ad-hoc codesign (macOS), create/remove/list envs |
+| 2.6 Daemon RPC endpoints | 🔲 Not started | ✅ Done | 10 handlers: engine.list, engine.verify, engine.set_active, engine.register_path, engine.unregister, engine.install, engine.uninstall, engine.list_installable, list_engine_families, set_engine_family |
+| 2.7 GUI engine manager | 🔲 Not started | ✅ Done | Install/uninstall with real-time progress bar, verify, configure-path, switch active, job polling |
 
 ENGINE_META covers all 15 engines with: display_name, engine_family, conda_package, binary names, version probing, supported source types (managed, system_path, custom_path).
 
@@ -256,6 +274,37 @@ Priority order:
 | macOS | Apple Developer ID (electron-builder `--deep`) | 409 Mach-O files |
 | Windows | Azure Trusted Signing | exe, dll, pyd (~394 files) |
 
+### 4.5 QE macOS Binary Portability (Step 7A — Verified)
+
+**Method**: Static analysis via `otool -L` on all Mach-O binaries in the latest toolchain release (`qe-7.5-macos-arm64-openmp-20260223-10d20bf`). This is the correct verification — running `pw.x` on this dev machine would prove nothing because Homebrew libraries are available locally.
+
+**Toolchain asset**: `qe-7.5-macos-arm64-openmp.zip` (179 MB)
+
+**Contents**: 89 Mach-O executables in `bin/`, 4 dylibs in `lib/`
+
+**All unique dylib references across ALL 89 binaries**:
+
+| Reference | Category | Portable? |
+|-----------|----------|-----------|
+| `@executable_path/../lib/libfftw3.3.dylib` | Bundled | ✅ Yes |
+| `@executable_path/../lib/libgfortran.5.dylib` | Bundled | ✅ Yes |
+| `@executable_path/../lib/libquadmath.0.dylib` | Bundled | ✅ Yes |
+| `/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate` | System framework | ✅ Yes |
+| `/usr/lib/libSystem.B.dylib` | System | ✅ Yes |
+
+**Bundled dylibs verified present**:
+
+| Dylib | Size | Own dependencies |
+|-------|------|-----------------|
+| `libfftw3.3.dylib` | 696K | `@loader_path/` + `/usr/lib/libSystem.B.dylib` |
+| `libgfortran.5.dylib` | 2.1M | `@loader_path/libquadmath.0.dylib`, `@loader_path/libgcc_s.1.1.dylib`, `/usr/lib/libSystem.B.dylib` |
+| `libquadmath.0.dylib` | 356K | `@loader_path/` + `/usr/lib/libSystem.B.dylib` |
+| `libgcc_s.1.1.dylib` | 216K | `@loader_path/` + `/usr/lib/libSystem.B.dylib` |
+
+**Key notable binaries verified**: pw.x, ph.x, pp.x, bands.x, dos.x, projwfc.x, pw2wannier90.x, matdyn.x, q2r.x — all present, all clean.
+
+**Verdict**: **✅ Step 7A VERIFIED — all 89 QE binaries are portable.** Zero Homebrew (`/opt/homebrew/`), MacPorts (`/opt/local/`), `/usr/local/`, or build-path (`/Users/`) references. All non-system libraries use `@executable_path/../lib/` pointing to bundled dylibs that are present in the archive. The `Accelerate.framework` reference is Apple's built-in BLAS/LAPACK (ships with every macOS installation).
+
 ---
 
 ## 5. CI/CD Workflows
@@ -272,15 +321,17 @@ Priority order:
 
 ## 6. Design Document vs Code Reality
 
-Critical drift found between `docs/design/CROSS_PLATFORM_DISTRIBUTION_DESIGN.md` and actual codebase:
+Drift analysis between `docs/design/CROSS_PLATFORM_DISTRIBUTION_DESIGN.md` and actual codebase. **Major drifts corrected during this review** (2026-02-25):
 
-| Area | Design Doc Says | Code Reality | Gap |
-|------|----------------|--------------|-----|
-| Engine management | "Section 3 — Not Started" | 4,270 LOC across 22 files, fully operational | **Major drift** — doc needs rewrite of §3 |
-| `ase` dependency | "Removed in v1.1.0" | Intentionally kept (lazy, traj parser) | **Fixed** during this review |
-| MCP tools | Not detailed | 32 tools, fully implemented | Doc lacks MCP section |
-| Preset system | Not detailed | 6,797 LOC, 24 variants, 4 dimensions | Doc lacks preset section |
-| Demo store | Not detailed | 80+ demos, 15 engines | Doc lacks demo section |
+| Area | Design Doc Said | Code Reality | Status |
+|------|----------------|--------------|--------|
+| Engine management | "🔲 Mostly not started" (§3, §6, §7 Phase 2) | 4,270 LOC across 22 files, all Phase 2 items complete | **FIXED** — design doc §3, §6, §7 updated with verified statuses |
+| QE macOS portability | "Step 7A incomplete — dylib bundling not portable" | 89 binaries verified portable via otool -L static analysis | **FIXED** — design doc §1.4, §6, §0.4 updated |
+| `ase` dependency | "✅ Removed in v1.1.0" (§4.2, Appendix B) | Intentionally kept (lazy, traj parser) | **FIXED** — corrected in §4.2, Appendix B |
+| Toolchain latest release | `qe-7.5-win-oneapi-msmpi-20251223-d409e9b` | `qe-7.5-macos-arm64-openmp-20260223-10d20bf` | **FIXED** — updated in Appendix A |
+| MCP tools | Not detailed in design doc | 32 tools, fully implemented | Doc scope — not a distribution concern |
+| Preset system | Not detailed in design doc | 6,797 LOC, 24 variants, 4 dimensions | Doc scope — not a distribution concern |
+| Demo store | Not detailed in design doc | 80+ demos, 15 engines | Doc scope — not a distribution concern |
 | Runtime architecture | Correctly documented (§1.2, §4.3) | Matches v1.2.0 implementation | OK |
 | Code signing | Correctly documented (§8) | Matches (409 macOS, ~394 Windows) | OK |
 | CI workflows | Correctly documented (§5) | Matches 5 workflows | OK |
@@ -311,13 +362,15 @@ All old runtime extraction infrastructure has been removed:
 
 ---
 
-## 8. Bugs Found During This Review
+## 8. Bugs Found and Fixed During This Review
 
 | Bug | Severity | Status |
 |-----|----------|--------|
-| `__init__.py.__version__` = "1.0.1" (should be "1.2.0") | Medium | **Fixed** — edited `src/qmatsuite/__init__.py` |
-| Design doc marks `ase` as "Removed" (it's intentionally kept) | Low | **Fixed** — corrected Appendix B |
-| Design doc §3 "Not Started" for engine management (fully implemented) | Low (doc-only) | **Noted** — needs §3 rewrite |
+| `__init__.py.__version__` = "1.0.1" (should be "1.2.0") | Medium | **Fixed** — edited and committed in repo. PyPI v1.2.0 still has old string; needs v1.2.1 for pip users. |
+| Design doc marks `ase` as "Removed" (it's intentionally kept) | Low | **Fixed** — corrected in §4.2 and Appendix B |
+| Design doc §3 "Not Started" for engine management (fully implemented) | Medium (doc-only) | **Fixed** — §3 rewritten with Phase 2 verification table, §6 gap analysis updated, §7 roadmap updated |
+| Design doc §1.4 "Step 7A incomplete" (macOS QE portability) | Medium (doc-only) | **Fixed** — verified via otool -L static analysis (89 binaries, zero non-portable refs), §1.4 and §6 updated |
+| Design doc toolchain latest release stale (pointed to Windows, not latest macOS) | Low | **Fixed** — updated to `qe-7.5-macos-arm64-openmp-20260223-10d20bf` |
 
 ---
 
@@ -325,23 +378,27 @@ All old runtime extraction infrastructure has been removed:
 
 ### Immediate (pre-next-release)
 
-1. **Commit the `__version__` fix** — The `__init__.py` version mismatch means `qmatsuite.__version__` returns wrong value at runtime. Already fixed in working tree; needs commit + PyPI re-release or note for v1.2.1.
+1. ~~**Commit the `__version__` fix**~~ — ✅ Done. Fix committed in repo. PyPI v1.2.0 still has `"1.0.1"` at runtime; include fix in v1.2.1.
 
-2. **Update design doc §3** — Engine management is fully implemented (4,270 LOC) but the design doc says "Not Started". This creates confusion for contributors.
+2. ~~**Update design doc §3**~~ — ✅ Done. Design doc §3, §6, §7 updated with verified Phase 2 status (all 7 items ✅ Done).
+
+3. **Publish v1.2.1** — A patch release to fix `qmatsuite.__version__` on PyPI. The only code change is `__init__.py:14`.
 
 ### Near-term
 
-3. **Version single-sourcing** — Consider reading version from `pyproject.toml` at build time (or use `importlib.metadata.version("qmatsuite")`) to prevent version string drift. The current three-location approach (pyproject.toml, package.json, `__init__.py`) is error-prone.
+4. **Version single-sourcing** — Consider reading version from `pyproject.toml` at build time (or use `importlib.metadata.version("qmatsuite")`) to prevent version string drift. The current three-location approach (pyproject.toml, package.json, `__init__.py`) is error-prone.
 
-4. **Remaining Phase B1 engines** — Siesta, Wannier90, GPAW, Psi4, PySCF, xTB, Yambo still at partial maturity. Prioritize by user demand.
+5. **Remaining Phase B1 engines** — Siesta, Wannier90, GPAW, Psi4, PySCF, xTB, Yambo still at partial maturity. Prioritize by user demand.
 
-5. **MCP documentation** — The 32-tool MCP server is a major feature but has no dedicated section in the design doc. Consider adding a reference document.
+6. **MCP documentation** — The 32-tool MCP server is a major feature but has no dedicated section in the design doc. Consider adding a reference document.
+
+7. **qmatsuite-full release** — Engine management (Phase 2) is complete. macOS QE binary is verified portable (Step 7A). The remaining work for the "full" release is packaging QE + SSSP into the installer (§1.3 of design doc).
 
 ### Low priority
 
-6. **AppData cleanup** — Users upgrading from v1.1.0 have an unused `~/Library/Application Support/QMatSuite/runtime/` (~800 MB). A one-time cleanup in a future release would reclaim disk space.
+8. **AppData cleanup** — Users upgrading from v1.1.0 have an unused `~/Library/Application Support/QMatSuite/runtime/` (~800 MB). A one-time cleanup in a future release would reclaim disk space.
 
-7. **Legacy resolver stubs** — Several files in `core/engines/` are 6-12 line stubs (`qe_resolver.py`, `qe_installation.py`, `qe_pseudopotentials.py`, `qe_calculation.py`, `qe_binary_locator.py`, `qe.py`). Consider consolidation.
+9. **Legacy resolver stubs** — Several files in `core/engines/` are 6-12 line stubs (`qe_resolver.py`, `qe_installation.py`, `qe_pseudopotentials.py`, `qe_calculation.py`, `qe_binary_locator.py`, `qe.py`). Consider consolidation.
 
 ---
 
