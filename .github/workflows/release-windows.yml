@@ -76,21 +76,24 @@ jobs:
           unzip -q "$RUNNER_TEMP/${QE_ASSET}" -d "$RUNNER_TEMP/qe-bundle"
 
           echo "Verifying QE binary..."
-          QE_BIN_DIR=$(find "$RUNNER_TEMP/qe-bundle" -name "pw.exe" -type f | head -1 | xargs dirname)
-          if [[ -z "$QE_BIN_DIR" ]]; then
-            # Try pw.x as well (some builds use .x even on Windows)
-            QE_BIN_DIR=$(find "$RUNNER_TEMP/qe-bundle" -name "pw.x" -type f | head -1 | xargs dirname)
+          QE_PW_PATH=$(find "$RUNNER_TEMP/qe-bundle" -name "pw.exe" -type f | head -1)
+          if [[ -z "$QE_PW_PATH" ]]; then
+            QE_PW_PATH=$(find "$RUNNER_TEMP/qe-bundle" -name "pw.x" -type f | head -1)
           fi
-          if [[ -z "$QE_BIN_DIR" ]]; then
+          if [[ -z "$QE_PW_PATH" ]]; then
             echo "::error::pw.exe/pw.x not found in QE archive"
             find "$RUNNER_TEMP/qe-bundle" -type f | head -20
             exit 1
           fi
+
+          # Resolve to absolute POSIX path (avoids Windows path mangling with xargs)
+          QE_BIN_DIR=$(cd "$(dirname "$QE_PW_PATH")" && pwd)
           echo "QE bin directory: $QE_BIN_DIR"
           ls "$QE_BIN_DIR/" | head -10
 
-          # QE_BUNDLE_DIR points to the directory containing bin/
-          echo "QE_BUNDLE_DIR=$QE_BIN_DIR/.." >> "$GITHUB_ENV"
+          # QE_BUNDLE_DIR = absolute path to the directory containing bin/
+          QE_BUNDLE_DIR=$(cd "$QE_BIN_DIR/.." && pwd)
+          echo "QE_BUNDLE_DIR=$QE_BUNDLE_DIR" >> "$GITHUB_ENV"
 
       - name: Download SSSP from qmatsuite-assets
         if: ${{ steps.flags.outputs.build_full == 'true' }}
