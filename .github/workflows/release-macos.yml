@@ -180,7 +180,7 @@ jobs:
         with:
           name: qms-macos-release
           path: |
-            gui/release/**/*.dmg
+            gui/release/*.dmg
             gui/release/**/latest-mac.yml
             gui/release/**/*.blockmap
           if-no-files-found: error

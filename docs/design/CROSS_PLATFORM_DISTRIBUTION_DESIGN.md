@@ -1,8 +1,27 @@
 # Cross-Platform Distribution & Engine Management Design
 
-**Status**: Design Document (not yet implemented)
-**Date**: 2026-02-21
+**Status**: Design Document — partially implemented as of v1.2.0
+**Date**: 2026-02-24 (originally 2026-02-21)
 **Author**: Distribution architecture for QMatSuite v2
+
+### Implementation Status Summary
+
+| Area | Status |
+|------|--------|
+| Path management (`paths.py` refactor) | ✅ v1.1.0 (Step 1) |
+| PyPI publishing | ✅ v1.2.0 (Step 4) |
+| Electron packaging (production builds, branding) | ✅ v1.2.0 (Steps 3-6) |
+| Python runtime bundling (conda-pack in-app) | ✅ v1.2.0 (Step 8) |
+| macOS code signing + notarization | ✅ v1.2.0 (Step 5) |
+| Windows code signing (Azure Trusted Signing) | ✅ v1.2.0 (Step 5) |
+| Engine registry (`engines.json`) | 🔲 Not yet implemented |
+| Micromamba integration for engine management | 🔲 Not yet implemented |
+| Engine manager GUI | 🔲 Not yet implemented |
+| qmatsuite-full release (QE + SSSP bundled) | 🔲 Not yet implemented |
+| Auto-update | Partial (configured but has full-screen error when no release exists) |
+| Linux AppImage | 🔲 Not yet implemented |
+
+Detailed worklogs: `docs/history/worklogs/DISTRIBUTION_STEP*`
 
 ---
 
@@ -11,10 +30,11 @@
 1. [Distribution Channels](#1-distribution-channels) (incl. §1.5 Size Estimates, §1.6 Per-Platform Install)
 2. [Cross-Platform File Layout](#2-cross-platform-file-layout)
 3. [Engine Management](#3-engine-management)
-4. [Python Backend Packaging](#4-python-backend-packaging-for-full-release) (Micromamba — final decision)
-5. [Current State vs Design — Gap Analysis](#5-current-state-vs-design--gap-analysis)
-6. [Roadmap](#6-roadmap)
-7. [Code Signing Strategy](#7-code-signing-strategy)
+4. [Python Backend Packaging](#4-python-backend-packaging-for-full-release)
+5. [Build & Release Workflow](#5-build--release-workflow)
+6. [Current State vs Design — Gap Analysis](#6-current-state-vs-design--gap-analysis)
+7. [Roadmap](#7-roadmap)
+8. [Code Signing Strategy](#8-code-signing-strategy)
 
 ---
 
@@ -22,23 +42,25 @@
 
 Three distribution channels serve different user profiles:
 
-| Channel | Target User | Contents | Platform |
-|---------|------------|----------|----------|
-| `pip install qmatsuite` | Jupyter / API / Agent users | Python backend only | All (Mac, Win, Linux) |
-| GitHub Release: **qmatsuite-lite** | Users who want selective engine install | Electron app + Python backend + micromamba engine manager | Mac, Windows |
-| GitHub Release: **qmatsuite-full** | Zero-friction QE users | lite + QE binary (OpenMP) + SSSP libraries | Mac, Windows |
+| Channel | Target User | Contents | Platform | Status |
+|---------|------------|----------|----------|--------|
+| `pip install qmatsuite` | Jupyter / API / Agent users | Python backend only | All (Mac, Win, Linux) | ✅ v1.2.0 |
+| GitHub Release: **qmatsuite-lite** | Users who want selective engine install | Electron app + Python runtime (conda-pack) | Mac arm64, Windows x64 | ✅ v1.2.0 |
+| GitHub Release: **qmatsuite-full** | Zero-friction QE users | lite + QE binary (OpenMP) + SSSP libraries | Mac, Windows | 🔲 Planned |
 
 ### 1.1 `pip install qmatsuite`
+
+✅ Implemented in v1.2.0
 
 **What's included:**
 - `qmatsuite` Python package (CLI `qms`, daemon, MCP server, all 15 engine drivers)
 - All Python dependencies (pymatgen, numpy, scipy, etc.)
 - Bundled demo pseudopotentials in `resources/pseudo/`
+- MCP server and mp-api integration
 - No GUI, no Electron, no bundled engines
 
 **Installation:**
 ```bash
-pip install qmatsuite           # Core
 pip install qmatsuite           # Core package (includes MCP + mp-api)
 ```
 
@@ -53,42 +75,45 @@ pip install qmatsuite           # Core package (includes MCP + mp-api)
 - Linux (x86_64): Full support — primary path for HPC users
 - Windows: Full support via pip in a conda environment
 
-**Current state:** `pyproject.toml` exists with `qms` entry point. Package installs from source with `pip install -e '.[dev,mcp]'`. Not yet published to PyPI.
+**Current state:** v1.2.0 published on PyPI. `pip install qmatsuite` works. 6514 tests passing.
 
 ### 1.2 GitHub Release: qmatsuite-lite
+
+✅ Implemented in v1.2.0 (macOS arm64 DMG, Windows x64 NSIS)
 
 **What is lite?** The core product. Lite is for:
 - Users who see a 400MB+ full download and prefer a smaller initial install
 - Users who don't need QE (they use ORCA, VASP, Gaussian, etc.) and don't want QE binary + SSSP they'll never use
-- Users who want to install engines selectively via the built-in package manager
+- Users who want to install engines selectively (engine manager GUI planned, not yet implemented)
 
-Lite = Electron app + Python backend + micromamba binary. Full = lite + QE + SSSP.
+Lite = Electron app + Python runtime (bundled via conda-pack as uncompressed directory inside the app). Micromamba binary for one-click engine installation is planned but **not yet included** in v1.2.0. (Updated 2026-02-24)
 
 **What's included:**
 - Electron desktop application (React + Three.js GUI)
-- Embedded Python environment (via micromamba, see §4)
+- Embedded Python environment (via conda-pack, bundled as directory inside the app)
 - `qmatsuite` package pre-installed in the embedded Python
-- Micromamba binary for one-click engine installation
-- No engines pre-installed (user installs via built-in engine manager or configures their own)
+- No micromamba yet (planned for future release)
+- No engines pre-installed (user configures own engine paths)
 
 **Installation:**
-- **macOS**: Download `.dmg`, drag QMatSuite to Applications, launch
-- **Windows**: Download `.exe` NSIS installer, install, launch from Start Menu
+- **macOS arm64**: Download `.dmg`, drag QMatSuite to Applications, launch
+- **Windows x64**: Download `.exe` NSIS installer, install, launch from Start Menu
 
-**First-launch experience:**
+**First-launch experience (v1.2.0):**
 1. User launches QMatSuite
-2. Welcome screen: "No engines detected. Install Quantum ESPRESSO?" (or skip to configure own engines)
-3. User clicks "Install QE" → micromamba downloads QE (~200MB conda package) → registered in engine manager
-4. Or: user configures path to existing VASP / ORCA / Gaussian installation
-5. User creates project, imports structure (CIF drag-and-drop), configures calculation via GUI
-6. Runs calculation using installed or configured engine
+2. `ensureRuntimeReady()` checks for `.conda-unpacked` marker
+3. If first launch: runs conda-unpack to fix paths (few seconds, no UI overlay)
+4. Daemon starts immediately using bundled Python runtime
+5. User can configure engine paths manually via settings
 
 **Platform support:**
-- macOS (Apple Silicon primary, Intel via Rosetta 2): `.dmg` release
+- macOS (Apple Silicon): `.dmg` release (arm64 only). Intel (x64) planned as separate DMG (not universal binary — see §7 note).
 - Windows (x64): NSIS installer
 - Linux: AppImage (lower priority — most Linux users prefer `pip install`)
 
 ### 1.3 GitHub Release: qmatsuite-full
+
+🔲 Not yet implemented. Planned for v1.3.0+ after engine management (§3) is complete.
 
 **What's included:**
 - Everything in qmatsuite-lite
@@ -109,7 +134,7 @@ Lite = Electron app + Python backend + micromamba binary. Full = lite + QE + SSS
 
 **Platform support:**
 - macOS (Apple Silicon native): `.pkg` installer with arm64 QE binary
-- macOS (Intel): `.pkg` installer with x86_64 QE binary (or universal binary)
+- macOS (Intel): `.pkg` installer with x86_64 QE binary (separate build, not universal binary)
 - Windows (x64): NSIS installer with QE from GitHub Releases
 
 ### 1.4 QE Binary — Dual Variant Strategy
@@ -134,143 +159,161 @@ Both variants include `pw2qmcpack` for QE→QMCPACK workflows.
 - All releases: SHA256 checksums + GitHub Artifact Attestation
 - Windows existing release: [QMatSuite/quantum-espresso-windows-exe](https://github.com/QMatSuite/quantum-espresso-windows-exe) (QE 7.5, MPI variant, ~400MB zip)
 
+**Current status** (Updated 2026-02-24): The toolchain repo has CI workflows for both variants. Windows binaries are working and signed. macOS dylib bundling is not yet portable (Step 7A incomplete — binaries build but require system-installed OpenMPI/FFTW).
+
 ### 1.5 Download vs Installed Size
 
-Download size is what users see first. All estimates use LZMA2 / zstd compression.
+Updated with measured values from v1.2.0. (Updated 2026-02-24)
 
-| Component | Installed Size | Compressed Size | Notes |
-|-----------|---------------|----------------|-------|
-| Electron shell (Chromium + asar) | ~200 MB | ~70 MB | Standard Electron overhead |
-| micromamba binary | ~5 MB | ~5 MB | Already statically linked |
-| Python 3.12 interpreter | ~40 MB | ~15 MB | In conda env tarball |
-| qmatsuite + all deps | 348 MB | ~100 MB | Scientific Python stack compresses well |
-| QE 7.5 OpenMP binary | ~150 MB | ~50 MB | Single-variant, no MPI |
-| SSSP efficiency v1.3.0 | ~80 MB | ~30 MB | UPF pseudopotentials |
+| Component | Installed Size | Notes |
+|-----------|---------------|-------|
+| Electron shell (Chromium + asar) | ~200 MB | Standard Electron overhead |
+| Python runtime (conda-pack, stripped) | ~526 MB | After stripping `__pycache__`, tests, docs, `.a` files |
+| Runtime file count | ~20,379 | Down from ~39,763 pre-strip |
+| DMG compressed size | 284 MB | UDZO compression |
 
-| Channel | Download Size | Installed Size |
-|---------|--------------|---------------|
-| **pip install qmatsuite** | ~45 MB (wheel) | ~348 MB |
-| **qmatsuite-lite** | **~190 MB** | ~590 MB |
-| **qmatsuite-full** | **~290 MB** | ~820 MB |
+| Channel | Download Size | Installed Size | Status |
+|---------|--------------|---------------|--------|
+| **pip install qmatsuite** | ~45 MB (wheel) | ~348 MB | ✅ v1.2.0 |
+| **qmatsuite-lite (macOS arm64)** | **284 MB** (DMG) | **~982 MB** | ✅ v1.2.0 |
+| **qmatsuite-lite (Windows x64)** | TBD (NSIS) | TBD | ✅ v1.2.0 (CI ready, pending first release trigger) |
+| **qmatsuite-full** | ~400-500 MB est. | ~1.2 GB est. | 🔲 Planned |
 
-The full release at ~290 MB is comparable to VS Code (~100 MB download) + a moderate extension set, or MATLAB (~300 MB initial download).
+**Size note** (Updated 2026-02-24): The installed size is ~982 MB because the runtime is bundled as an uncompressed directory inside the `.app` bundle (no separate extraction to `~/Library/Application Support/`). Total disk usage is actually LOWER than the original design (~982 MB vs ~1.3 GB) because there is no duplicate storage (compressed in app + extracted in AppData). The DMG at 284 MB is smaller than v1.1.0's 296 MB thanks to runtime stripping.
 
 ### 1.6 Per-Platform Installation Behavior
 
 #### 1.6.1 Windows (NSIS Installer)
 
+✅ Implemented in v1.2.0 (Updated 2026-02-24)
+
 **Both lite and full** use NSIS (Nullsoft Scriptable Install System).
 
-**Install path**: `%LOCALAPPDATA%\QMatSuite\` — per-user, no UAC prompt. Follows the VS Code / Discord / Slack convention of per-user install to LocalAppData.
+**Install path**: `%LOCALAPPDATA%\Programs\QMatSuite\` — per-user, no UAC prompt. Follows the VS Code / Discord / Slack convention of per-user install to LocalAppData. (This is the electron-builder default for NSIS `perMachine: false`.)
 
 **Directory layout after install:**
 ```
+%LOCALAPPDATA%\Programs\QMatSuite\
+├── QMatSuite.exe              # Electron main executable
+├── resources\
+│   ├── app.asar               # Electron app bundle
+│   └── runtime\               # Python environment (uncompressed, conda-pack)
+│       ├── python.exe
+│       ├── Lib\site-packages\qmatsuite\
+│       └── Scripts\
+│           └── conda-unpack   # Run once during NSIS install
+├── ...                        # Chromium DLLs
+└── Uninstall QMatSuite.exe    # NSIS uninstaller
+```
+
+**App data directory** (engines, config, logs — persists across updates):
+```
 %LOCALAPPDATA%\QMatSuite\
-├── app\                           # Electron app files
-│   ├── QMatSuite.exe              # Main executable
-│   ├── resources\app.asar         # Electron app bundle
-│   └── ...                        # Chromium DLLs, etc.
-├── runtime\                       # Pre-created conda env (compressed tarball expanded at install)
-│   ├── python.exe
-│   ├── Lib\site-packages\
-│   │   ├── qmatsuite\
-│   │   ├── numpy\
-│   │   └── ...
-│   └── Scripts\
-├── micromamba\                    # Engine manager
-│   ├── micromamba.exe
-│   ├── envs\                     # Engine environments
-│   └── pkgs\                     # Package cache
-├── engines\                      # (full only) Pre-bundled engines
-│   └── qe\bundled-7.5\bin\
-│       └── pw.exe
-├── libraries\                    # (full only) Pseudopotentials
-│   └── pseudo\SSSP\
+├── engines\                   # (future) Engine installations
 ├── config\
 │   ├── settings.json
-│   └── engines.json
+│   └── engines.json           # (future) Engine registry
 └── logs\
 ```
 
-**Install flow:**
-1. User downloads `QMatSuite-Setup-x.y.z.exe` (~190 MB lite, ~290 MB full)
+**Install flow (v1.2.0):**
+1. User downloads `QMatSuite-Windows-x.y.z.exe` (~TBD MB)
 2. NSIS installer runs — no UAC prompt (per-user install)
-3. Extracts Electron app to `%LOCALAPPDATA%\QMatSuite\app\`
-4. Expands pre-created conda env tarball to `runtime\`
-5. (full only) Extracts QE binary to `engines\qe\bundled-7.5\`
-6. (full only) Extracts SSSP to `libraries\pseudo\SSSP\`
-7. Creates Start Menu shortcut
-8. On first launch: Electron finds `runtime\python.exe`, starts daemon
+3. Extracts Electron app + runtime directory to `%LOCALAPPDATA%\Programs\QMatSuite\`
+4. Runtime directory is placed directly by NSIS (no tarball extraction needed)
+5. NSIS `customInstall` hook runs `python.exe Scripts\conda-unpack` to patch hardcoded CI paths
+6. Writes `.conda-unpacked` marker file in runtime directory
+7. Creates Start Menu shortcut and desktop shortcut
+8. On first launch: Electron finds `resources\runtime\python.exe`, starts daemon immediately
 
-**Uninstall**: NSIS uninstaller in Add/Remove Programs. Removes `app\` and `runtime\`. Preserves `engines\`, `libraries\`, `config\` (user data). Option to remove everything.
+**Code signing**: Azure Trusted Signing signs exe, dll, AND pyd files (`files-folder-filter: exe,dll,pyd`). ~394 signable files total per release. Azure Trusted Signing Basic plan: $9.99/month, 5,000 signatures/month included.
+
+**Uninstall**: NSIS uninstaller in Add/Remove Programs. Removes app directory. Preserves `%LOCALAPPDATA%\QMatSuite\` (engines, config — user data). Option to remove everything.
 
 #### 1.6.2 macOS Lite (DMG)
+
+✅ Implemented in v1.2.0 — architecture significantly changed from original design. (Updated 2026-02-24)
 
 **Install path**: `/Applications/QMatSuite.app` (drag to Applications). User data at `~/Library/Application Support/QMatSuite/`.
 
 **DMG contents:**
 ```
-QMatSuite.dmg (~190 MB)
+QMatSuite.dmg (284 MB)
 └── QMatSuite.app
     └── Contents/
         ├── MacOS/QMatSuite        # Electron main binary
         ├── Resources/
         │   ├── app.asar           # Electron app bundle
-        │   └── runtime.tar.zst    # Compressed conda env (~115 MB)
+        │   └── runtime/           # Python environment (uncompressed, conda-pack)
+        │       ├── bin/python3.12
+        │       └── lib/python3.12/site-packages/...
         ├── Frameworks/            # Chromium frameworks
         └── Info.plist
 ```
 
-**First-launch flow:**
-1. User drags QMatSuite.app to Applications
-2. On first launch, Electron detects no expanded runtime
-3. Shows "Setting up QMatSuite..." with progress bar
-4. Expands `runtime.tar.zst` to `~/Library/Application Support/QMatSuite/runtime/` (~30 seconds)
-5. Verifies: `runtime/bin/python -c "import qmatsuite"`
-6. Starts daemon from the expanded runtime
+**Architecture change from original design:** The original design bundled a compressed `runtime.tar.zst` inside the app and extracted it to `~/Library/Application Support/QMatSuite/runtime/` on first launch (10-30 second delay with progress overlay). The v1.2.0 implementation bundles the runtime as an **uncompressed directory** directly inside the `.app` bundle via electron-builder's `extraResources`. This eliminates the first-launch delay entirely.
 
-**Post-setup directory layout:**
+**conda-pack and conda-unpack:** The runtime is built using `conda-pack`, which creates relocatable Python environments. `conda-pack` produces a tarball with the environment; CI extracts it and strips non-essential files, then electron-builder bundles the resulting directory. On first launch, `conda-unpack` runs to patch text files (shebangs, `.pc` files, OpenSSL config paths) to match the actual install location. Python itself works without conda-unpack (CPython auto-detects `sys.prefix` from its physical location), so the Python binary can run the conda-unpack script.
+
+**Runtime stripping:** CI strips the following from the runtime before bundling to reduce file count and size:
+- `__pycache__/` directories, `*.pyc`, `*.pyo` files
+- `*.a` static library files
+- `tests/` and `test/` directories inside site-packages
+- `share/man`, `share/doc`, `share/gtk-doc`, `share/info`
+- Result: ~39,763 → ~20,379 files, ~860 MB → ~526 MB
+
+**First-launch flow (v1.2.0):**
+1. User drags QMatSuite.app to Applications
+2. On first launch, `ensureRuntimeReady()` checks for `.conda-unpacked` marker file in the runtime directory
+3. If marker absent: runs `bin/python3.12 bin/conda-unpack` (few seconds, no UI overlay)
+4. Writes `.conda-unpacked` marker to prevent re-running
+5. Verifies: `runtime/bin/python3.12 -c "import qmatsuite"`
+6. Starts daemon from the in-app runtime
+
+**Code signing detail:** 409 Mach-O files in the app bundle:
+- 25 executables in `runtime/bin/` (python3.12, openssl, bzip2, etc.)
+- 60 `.dylib` files (libpython3.12, libssl, libcrypto, ICU, ncurses, etc.)
+- 77 `.so` stdlib extensions (lib-dynload: `_ssl`, `_hashlib`, etc.)
+- 217 `.so` site-packages extensions (scipy 109, pandas 45, numpy 19, matplotlib 9, PIL 8, etc.)
+- 15 Electron framework binaries
+
+electron-builder signs all Mach-O files with `--deep` codesign when `CSC_NAME` is set. CI sets `ulimit -n 65536` to avoid EMFILE errors during signing (macOS default is 256).
+
+**Notarization:** Submitted async via `xcrun notarytool submit` (without `--wait`). DMG uploaded to GitHub Release immediately. Notarization completes in background. Stapling deferred (online users unaffected; offline users can right-click → Open).
+
+**App data directory** (persists across updates, NOT inside the .app bundle):
 ```
 ~/Library/Application Support/QMatSuite/
-├── runtime/                       # Expanded from app bundle
-│   ├── bin/python3.12
-│   └── lib/python3.12/site-packages/...
-├── micromamba/
-│   ├── bin/micromamba
-│   └── envs/
-├── engines/
-├── libraries/
+├── engines/                      # (future) Engine installations
 ├── config/
 │   ├── settings.json
-│   └── engines.json
+│   └── engines.json              # (future) Engine registry
 └── logs/
 ```
 
-**Why DMG for lite**: Drag-to-install is the standard macOS experience for self-contained apps. The compressed conda env tarball inside the `.app` bundle keeps the drag-to-install experience clean.
-
 #### 1.6.3 macOS Full (.pkg Installer)
+
+🔲 Not yet implemented. Planned for after engine management (§3) is complete.
 
 **Install path**: Same as lite — `/Applications/QMatSuite.app` + `~/Library/Application Support/QMatSuite/`. The .pkg installer handles installing to multiple locations atomically.
 
+**Note** (Updated 2026-02-24): The runtime-in-app architecture from lite applies here too — the `.pkg` would install the `.app` bundle with `runtime/` directory inside, plus QE binaries and SSSP to `~/Library/Application Support/QMatSuite/`.
+
 **Why .pkg for full (not DMG)**: The full release needs to install files to multiple locations:
 - The app bundle → `/Applications/QMatSuite.app`
-- The expanded runtime → `~/Library/Application Support/QMatSuite/runtime/`
 - QE binary → `~/Library/Application Support/QMatSuite/engines/qe/bundled-7.5/`
 - SSSP → `~/Library/Application Support/QMatSuite/libraries/pseudo/SSSP/`
 
-A DMG can only drag one `.app` to Applications. A `.pkg` installer can atomically install to all locations, provide progress feedback, and handle the conda env expansion during install (not first launch).
+A DMG can only drag one `.app` to Applications. A `.pkg` installer can atomically install to all locations, provide progress feedback, and register engines during install.
 
 **Install flow:**
-1. User downloads `QMatSuite-Full-x.y.z.pkg` (~290 MB)
+1. User downloads `QMatSuite-Full-x.y.z.pkg` (~400-500 MB est.)
 2. macOS Installer.app runs (Gatekeeper checks Developer ID signature)
-3. Installs QMatSuite.app to `/Applications/`
-4. Expands runtime env to `~/Library/Application Support/QMatSuite/runtime/`
-5. Installs QE to `~/Library/Application Support/QMatSuite/engines/qe/bundled-7.5/`
-6. Installs SSSP to `~/Library/Application Support/QMatSuite/libraries/pseudo/SSSP/`
-7. Registers in engines.json
-8. On launch: Electron finds `runtime/bin/python`, starts daemon — QE ready immediately
-
-**Key advantage over DMG for full**: No first-launch setup delay. Everything is ready on first launch ("5-minute Si band structure" goal).
+3. Installs QMatSuite.app to `/Applications/` (includes runtime inside)
+4. Installs QE to `~/Library/Application Support/QMatSuite/engines/qe/bundled-7.5/`
+5. Installs SSSP to `~/Library/Application Support/QMatSuite/libraries/pseudo/SSSP/`
+6. Registers in engines.json
+7. On launch: Electron finds in-app runtime, starts daemon — QE ready immediately
 
 #### 1.6.4 Linux
 
@@ -284,32 +327,30 @@ A DMG can only drag one `.app` to Applications. A `.pkg` installer can atomicall
 
 ### 2.1 Current State
 
-All paths are anchored to the repository root via `src/qmatsuite/core/paths.py`:
+✅ Refactored in v1.1.0 (Step 1). (Updated 2026-02-24)
+
+`src/qmatsuite/core/paths.py` provides environment-aware path resolution supporting dev mode, Electron mode, and pip-installed mode. The old `get_repo_root()` issue (failing for pip-installed packages) is solved.
 
 ```
-<REPO_ROOT>/
-├── .qmatsuite/                    # Persistent assets (gitignored)
-│   ├── config/settings.json       # User settings
-│   ├── engines/qe/<version>/bin/  # QE binaries
-│   ├── seeds/pseudo/              # Offline pseudo seeds
-│   ├── libraries/pseudo/SSSP/     # Installed SSSP
-│   └── logs/                      # Runtime logs
-├── .tmp/                          # Scratch space (gitignored)
-│   ├── downloads/                 # Download cache
-│   ├── unpack/                    # Extraction temp
-│   ├── runs/                      # Calculation scratch
-│   ├── probe/                     # Engine discovery probes
-│   └── locks/                     # Concurrency locks
-└── <user-projects>/               # User project directories (anywhere)
+<REPO_ROOT>/                           # Dev mode layout
+├── .qmatsuite/                        # Persistent assets (gitignored)
+│   ├── config/settings.json           # User settings
+│   ├── engines/qe/<version>/bin/      # QE binaries
+│   ├── seeds/pseudo/                  # Offline pseudo seeds
+│   ├── libraries/pseudo/SSSP/         # Installed SSSP
+│   └── logs/                          # Runtime logs
+├── .tmp/                              # Scratch space (gitignored)
+│   ├── downloads/                     # Download cache
+│   ├── unpack/                        # Extraction temp
+│   ├── runs/                          # Calculation scratch
+│   ├── probe/                         # Engine discovery probes
+│   └── locks/                         # Concurrency locks
+└── <user-projects>/                   # User project directories (anywhere)
 ```
-
-**Root discovery** (`paths.py:22-52`): Walks up from `__file__` looking for `pyproject.toml` + `src/qmatsuite/`. This only works when running from a git checkout or editable install.
-
-**Problem**: After `pip install qmatsuite`, there is no `pyproject.toml` in the installed package — `get_repo_root()` raises `RuntimeError`. This must be solved for any distribution channel.
 
 ### 2.2 Target State
 
-Separate three concerns:
+✅ Implemented (Step 1). Three concerns are separated:
 
 | Concern | Contents | Persistence | Updated by |
 |---------|----------|-------------|-----------|
@@ -319,25 +360,25 @@ Separate three concerns:
 
 **Platform-specific locations:**
 
-| Platform | App Data | Cache | User Data |
-|----------|----------|-------|-----------|
-| macOS (pip) | `~/.qmatsuite/` | System temp or `~/.qmatsuite/.tmp/` | User-chosen |
-| macOS (Electron) | `~/Library/Application Support/QMatSuite/` | `~/Library/Caches/QMatSuite/` | User-chosen |
-| Windows (pip) | `%USERPROFILE%\.qmatsuite\` | System temp | User-chosen |
-| Windows (Electron) | `%LOCALAPPDATA%\QMatSuite\` | `%LOCALAPPDATA%\QMatSuite\cache\` | User-chosen |
-| Linux (pip) | `~/.qmatsuite/` or `$XDG_DATA_HOME/qmatsuite/` | System temp | User-chosen |
-| Dev (repo checkout) | `<REPO_ROOT>/.qmatsuite/` | `<REPO_ROOT>/.tmp/` | Anywhere |
+| Platform | App Data | Cache | User Data | Status |
+|----------|----------|-------|-----------|--------|
+| macOS (pip) | `~/.qmatsuite/` | System temp or `~/.qmatsuite/.tmp/` | User-chosen | ✅ |
+| macOS (Electron) | `~/Library/Application Support/QMatSuite/` | `~/Library/Caches/QMatSuite/` | User-chosen | ✅ |
+| Windows (pip) | `%USERPROFILE%\.qmatsuite\` | System temp | User-chosen | ✅ |
+| Windows (Electron) | `%LOCALAPPDATA%\QMatSuite\` | `%LOCALAPPDATA%\QMatSuite\cache\` | User-chosen | ✅ |
+| Linux (pip) | `~/.qmatsuite/` or `$XDG_DATA_HOME/qmatsuite/` | System temp | User-chosen | ✅ |
+| Dev (repo checkout) | `<REPO_ROOT>/.qmatsuite/` | `<REPO_ROOT>/.tmp/` | Anywhere | ✅ |
+
+**Note** (Updated 2026-02-24): The Python runtime lives INSIDE the app bundle (not in app data). Engines, config, and logs go to app data. This separation means app updates replace the runtime but never touch user data.
 
 ### 2.3 Path Resolution Design
 
-Replace the current `get_repo_root()`-based approach with an environment-aware resolution chain:
+✅ Implemented in `src/qmatsuite/core/paths.py` (Step 1). (Updated 2026-02-24)
+
+The implemented resolution chain matches the original design:
 
 ```python
-# src/qmatsuite/core/paths.py — proposed design
-
-import os
-import sys
-from pathlib import Path
+# src/qmatsuite/core/paths.py — implemented
 
 def get_app_data_dir() -> Path:
     """
@@ -349,111 +390,20 @@ def get_app_data_dir() -> Path:
     3. Electron mode: platform-appropriate Application Support / LOCALAPPDATA
     4. pip mode: ~/.qmatsuite/
     """
-    # 1. Explicit override
-    env_home = os.environ.get("QMATSUITE_HOME")
-    if env_home:
-        p = Path(env_home)
-        p.mkdir(parents=True, exist_ok=True)
-        return p
-
-    # 2. Dev mode — walk up looking for repo markers
-    repo_root = _try_find_repo_root()
-    if repo_root is not None:
-        p = repo_root / ".qmatsuite"
-        p.mkdir(parents=True, exist_ok=True)
-        return p
-
-    # 3. Electron mode — check if running inside Electron bundle
-    if _is_electron_bundle():
-        return _electron_app_data_dir()
-
-    # 4. pip mode — user home
-    p = Path.home() / ".qmatsuite"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
+    ...
 
 def get_cache_dir() -> Path:
     """
-    Resolve the QMatSuite cache directory (deletable anytime).
-
     Resolution order:
     1. QMATSUITE_CACHE environment variable
     2. Dev mode: <repo_root>/.tmp/
     3. Electron mode: platform cache directory
     4. pip mode: <app_data_dir>/.tmp/
     """
-    env_cache = os.environ.get("QMATSUITE_CACHE")
-    if env_cache:
-        p = Path(env_cache)
-        p.mkdir(parents=True, exist_ok=True)
-        return p
-
-    repo_root = _try_find_repo_root()
-    if repo_root is not None:
-        p = repo_root / ".tmp"
-        p.mkdir(parents=True, exist_ok=True)
-        return p
-
-    if _is_electron_bundle():
-        return _electron_cache_dir()
-
-    p = get_app_data_dir() / ".tmp"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
-def get_config_file() -> Path:
-    """Get path to settings.json."""
-    return get_app_data_dir() / "config" / "settings.json"
-
-
-def _try_find_repo_root() -> Path | None:
-    """Walk up from __file__ looking for pyproject.toml + src/qmatsuite/."""
-    current = Path(__file__).parent
-    for _ in range(10):  # Max 10 levels
-        if (current / "pyproject.toml").exists() and (current / "src" / "qmatsuite").exists():
-            return current.resolve()
-        parent = current.parent
-        if parent == current:
-            break
-        current = parent
-    return None
-
-
-def _is_electron_bundle() -> bool:
-    """Check if running inside an Electron-bundled Python environment."""
-    return os.environ.get("QMATSUITE_ELECTRON") == "1"
-
-
-def _electron_app_data_dir() -> Path:
-    """Platform-appropriate app data for Electron bundles."""
-    if sys.platform == "darwin":
-        p = Path.home() / "Library" / "Application Support" / "QMatSuite"
-    elif sys.platform == "win32":
-        local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
-        p = Path(local_app_data) / "QMatSuite"
-    else:
-        # Linux XDG
-        xdg = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
-        p = Path(xdg) / "qmatsuite"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
-def _electron_cache_dir() -> Path:
-    """Platform-appropriate cache for Electron bundles."""
-    if sys.platform == "darwin":
-        p = Path.home() / "Library" / "Caches" / "QMatSuite"
-    elif sys.platform == "win32":
-        local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
-        p = Path(local_app_data) / "QMatSuite" / "cache"
-    else:
-        xdg = os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))
-        p = Path(xdg) / "qmatsuite"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
+    ...
 ```
+
+Electron detection uses `QMATSUITE_ELECTRON=1` environment variable, set by `main.ts` when spawning the daemon.
 
 **App data directory structure** (same across all platforms):
 
@@ -461,30 +411,23 @@ def _electron_cache_dir() -> Path:
 <app_data_dir>/
 ├── config/
 │   └── settings.json          # User settings
-│   └── engines.json           # Engine registry (see §3)
+│   └── engines.json           # Engine registry (see §3) — 🔲 not yet populated
 ├── engines/
 │   ├── qe/
-│   │   ├── bundled-7.5/bin/   # Bundled QE (full release only)
-│   │   └── conda-7.5/bin/     # Micromamba-installed QE
+│   │   ├── bundled-7.5/bin/   # (future) Bundled QE (full release only)
+│   │   └── conda-7.5/bin/     # (future) Micromamba-installed QE
 │   ├── xtb/
-│   │   └── conda-6.7.1/bin/   # Micromamba-installed xTB
-│   ├── lammps/
-│   │   └── conda-2024.1/bin/  # Micromamba-installed LAMMPS
+│   │   └── conda-6.7.1/bin/   # (future) Micromamba-installed xTB
 │   └── vasp/
 │       └── user/bin/          # User-provided VASP
 ├── libraries/
 │   └── pseudo/
 │       └── SSSP/
-│           ├── efficiency/1.3.0/
-│           └── precision/1.3.0/
 ├── seeds/
 │   └── pseudo/                # Offline install seeds
-├── micromamba/
-│   ├── bin/micromamba          # Micromamba binary (~5MB)
-│   └── envs/                  # Conda environments
-│       ├── qe-7.5/
-│       ├── xtb-6.7.1/
-│       └── lammps-2024.1/
+├── micromamba/                 # 🔲 Not yet implemented
+│   ├── bin/micromamba
+│   └── envs/
 └── logs/
 ```
 
@@ -499,6 +442,8 @@ def _electron_cache_dir() -> Path:
 ---
 
 ## 3. Engine Management
+
+🔲 Mostly not yet implemented. The unified `engines.json` registry, micromamba integration, and engine manager GUI are all future work. The QE resolver still uses the two-state model. The `list_engines` MCP tool still reports all engines as installed. The entire section below is the forward-looking design. (Updated 2026-02-24)
 
 ### 3.1 Current State
 
@@ -634,17 +579,17 @@ ENGINE_META = {
         "version_regex": r"v\.(\d+\.\d+)",
         "conda_package": "qe",
         "conda_channel": "conda-forge",
-        "github_release": "QMatSuite/qmatsuite-toolchain",  # For pre-built binaries
+        "github_release": "QMatSuite/qmatsuite-toolchain",
         "env_vars": {},
-        "bundleable": True,  # Shipped with qmatsuite-full
+        "bundleable": True,
     },
     "vasp": {
         "display_name": "VASP",
         "engine_type": "binary",
         "required_binaries": ["vasp_std"],
         "optional_binaries": ["vasp_gam", "vasp_ncl"],
-        "version_command": None,  # VASP doesn't have --version
-        "conda_package": None,    # Licensed, not on conda
+        "version_command": None,
+        "conda_package": None,
         "env_vars": {"VASP_PP_PATH": "Path to POTCAR library"},
         "bundleable": False,
     },
@@ -674,8 +619,8 @@ ENGINE_META = {
         "display_name": "ORCA",
         "engine_type": "binary",
         "required_binaries": ["orca"],
-        "version_command": None,  # ORCA doesn't support --version standalone
-        "conda_package": None,    # Licensed, free for academics but manual download
+        "version_command": None,
+        "conda_package": None,
         "env_vars": {},
         "bundleable": False,
     },
@@ -684,7 +629,7 @@ ENGINE_META = {
         "engine_type": "binary",
         "required_binaries": ["g16"],
         "optional_binaries": ["g09"],
-        "version_command": None,  # Licensed
+        "version_command": None,
         "conda_package": None,
         "env_vars": {"g16root": "Gaussian root directory", "GAUSS_SCRDIR": "Scratch directory"},
         "bundleable": False,
@@ -726,10 +671,10 @@ ENGINE_META = {
         "display_name": "Wannier90",
         "engine_type": "binary",
         "required_binaries": ["wannier90.x"],
-        "version_command": None,  # Parse header from wannier90.x output
-        "conda_package": None,    # Bundled with QE conda package
+        "version_command": None,
+        "conda_package": None,
         "env_vars": {},
-        "bundleable": False,      # Comes with QE
+        "bundleable": False,
     },
     "yambo": {
         "display_name": "Yambo",
@@ -737,7 +682,7 @@ ENGINE_META = {
         "required_binaries": ["yambo"],
         "optional_binaries": ["p2y"],
         "version_command": ["yambo", "-h"],
-        "conda_package": None,    # Niche, user provides
+        "conda_package": None,
         "env_vars": {},
         "bundleable": False,
     },
@@ -755,8 +700,8 @@ ENGINE_META = {
     "pyscf": {
         "display_name": "PySCF",
         "engine_type": "python",
-        "required_binaries": [],   # No binary — Python package
-        "python_import": "pyscf",  # Module to test availability
+        "required_binaries": [],
+        "python_import": "pyscf",
         "version_command": "import pyscf; print(pyscf.__version__)",
         "conda_package": "pyscf",
         "conda_channel": "conda-forge",
@@ -843,6 +788,8 @@ When the engine manager runs discovery (on app launch or user request):
 ```
 
 ### 3.6 Micromamba Integration
+
+🔲 Not yet implemented. Design retained for future release.
 
 **What**: QMatSuite ships with or auto-downloads [micromamba](https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html) (~5MB statically-linked binary) for one-click engine installation.
 
@@ -966,7 +913,7 @@ Daemon process (qmatsuite-runtime env)    Runner subprocess (engine env)
 |   - subprocess.run(python, ...)   |     |   Write results.json      |
 |   - Reads results.json            | <-- |                           |
 +-----------------------------------+     +---------------------------+
-     sys.executable ≠ engine python
+     sys.executable != engine python
      PYTHONPATH injected for qmatsuite
 ```
 
@@ -977,14 +924,13 @@ def _get_runner_env(self) -> Dict[str, str]:
     """Inject PYTHONPATH so the engine's Python can import qmatsuite."""
     import qmatsuite
     env = os.environ.copy()
-    # Add qmatsuite's site-packages to PYTHONPATH
     src_dir = str(Path(qmatsuite.__file__).parent.parent)
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = f"{src_dir}:{existing}" if existing else src_dir
     return env
 ```
 
-The runner subprocess uses the engine's Python interpreter (which has pyscf/psi4/gpaw) but gets `qmatsuite` via PYTHONPATH injection from the daemon's environment. This works for both dev mode and distribution.
+The runner subprocess uses the engine's Python interpreter (which has pyscf/psi4/gpaw) but gets `qmatsuite` via PYTHONPATH injection from the daemon's environment.
 
 **Three source types for Python engines:**
 
@@ -1023,11 +969,11 @@ The runner subprocess uses the engine's Python interpreter (which has pyscf/psi4
 
 **Dev mode compatibility:**
 
-In dev mode, the developer's active venv typically has PySCF/Psi4 installed alongside qmatsuite. The engine adapters (`pyscf_engine.py`, `psi4_engine.py`) use `discover_engine()` which checks engines.json first, then falls back to `sys.executable`. This means:
+In dev mode, the developer's active venv typically has PySCF/Psi4 installed alongside qmatsuite. The engine adapters use `discover_engine()` which checks engines.json first, then falls back to `sys.executable`. This means:
 
-1. **No engines.json**: Falls back to `sys.executable` (developer's venv) — existing behavior, no changes needed
+1. **No engines.json**: Falls back to `sys.executable` (developer's venv) — existing behavior
 2. **With engines.json**: Uses registered Python executable — production behavior
-3. **PYTHONPATH injection**: Works in both modes because `qmatsuite.__file__` resolves correctly whether installed via `pip install -e .` (dev) or via pip in micromamba (production)
+3. **PYTHONPATH injection**: Works in both modes
 
 **Installation flow** (user clicks "Install PySCF" in GUI):
 
@@ -1089,19 +1035,6 @@ The engine manager needs TWO package sources:
    }
 ```
 
-This same mechanism extends to any future pre-built binary (Wannier90, QMCPACK, etc.).
-
-**Source type summary** (updated from §3.3):
-
-| Source | Description | Discovery | Example |
-|--------|------------|-----------|---------|
-| `bundled` | Shipped with qmatsuite-full | Check `<app_data>/engines/<engine>/bundled-*/bin/` | QE 7.5 in full release |
-| `micromamba` | Installed via built-in conda manager | Check `<app_data>/micromamba/envs/<env>/` | xTB, CP2K, PySCF |
-| `github_release` | Downloaded from QMatSuite GitHub Releases | Check `<app_data>/engines/<engine>/github-*/bin/` | QE OpenMP/MPI variants |
-| `system_path` | Found on system PATH | `shutil.which()` at discovery time | Any engine via apt/brew |
-| `user_path` | User-specified binary path | User configures in GUI or settings | VASP, Gaussian (licensed) |
-| `user_venv` | User-specified Python venv (Python engines only) | User configures path | User's own PySCF venv |
-
 ### 3.10 Integration with Existing Code
 
 The unified registry replaces the QE-specific two-state resolver while preserving the contract:
@@ -1109,17 +1042,17 @@ The unified registry replaces the QE-specific two-state resolver while preservin
 **Current flow** (QE only):
 ```
 qe_resolver.resolve_qe_bin_dir()
-  → State 1: settings.qe.bin_dir
-  → State 2: find_internal_qe_bin_dir() (scan .qmatsuite/engines/qe/)
-  → Error
+  -> State 1: settings.qe.bin_dir
+  -> State 2: find_internal_qe_bin_dir() (scan .qmatsuite/engines/qe/)
+  -> Error
 ```
 
 **Target flow** (all engines):
 ```
 engine_registry.get_active_installation(engine_family)
-  → Look up engines.json for active installation
-  → Return path + env_vars
-  → If not found: raise EngineNotInstalledError with actionable message
+  -> Look up engines.json for active installation
+  -> Return path + env_vars
+  -> If not found: raise EngineNotInstalledError with actionable message
 ```
 
 The `qe_resolver.py` two-state model becomes a specialization of the general registry:
@@ -1169,47 +1102,60 @@ Investigation of the actual daemon import tree reveals:
 | msgpack, ulid-py, requests, certifi, portalocker | ~1.5 MB | Small deps |
 | **Total** | **~43 MB** | vs 348 MB current |
 
-**Dead dependencies** (NOT imported anywhere in `src/qmatsuite/`):
+**Dead dependencies** (removed in v1.2.0):
 | Package | Size | Status |
 |---------|------|--------|
-| ase | 11.3 MB | Zero imports. Remove from `pyproject.toml`. |
-| beautifulsoup4 | 0.8 MB | Zero imports. Remove from `pyproject.toml`. |
+| ~~ase~~ | ~~11.3 MB~~ | ✅ Removed |
+| ~~beautifulsoup4~~ | ~~0.8 MB~~ | ✅ Removed |
 
-**PySCF optional extra**: Currently in `pyproject.toml` line 38-40 as optional pip dependency. Should be removed — PySCF is a micromamba-managed engine (§3.8), not a pip dependency.
+**PySCF optional extra**: ✅ Removed from `pyproject.toml`. PySCF is a micromamba-managed engine (§3.8), not a pip dependency.
 
-### 4.3 Decision: Embedded Python via Micromamba
+### 4.3 Decision: Embedded Python via conda-pack
 
-**Final decision**: Use micromamba to create a pre-built conda environment (`qmatsuite-runtime`) containing Python 3.12 + all dependencies. The installer ships this environment as a compressed tarball that is expanded at install time (full) or first launch (lite).
+✅ Implemented in v1.2.0 (Step 8). (Updated 2026-02-24)
 
-**Why micromamba wins:**
-- Micromamba is already needed for engine management (xTB, LAMMPS, PySCF, etc.)
-- One packaging system, not two — simpler build pipeline, simpler debugging
-- Full Python environment: extensible (user can `pip install mp-api` into it)
-- Clean update path: `pip install --upgrade qmatsuite` into existing env
+**Final decision**: Use **conda-pack** to create a relocatable Python environment containing Python 3.12 + all dependencies. The environment is bundled as an **uncompressed directory** inside the app via electron-builder's `extraResources`. On first launch, `conda-unpack` patches paths for the target machine.
+
+**Architecture change from original design:** The original design used micromamba to create the environment + zstd-compressed tarball that was expanded at install time (full) or first launch (lite, with 10-30 second delay and progress overlay). The implemented approach eliminates the first-launch delay entirely by bundling the runtime as a plain directory. No zstd compression, no micromamba needed for runtime creation, no extraction overlay.
+
+**Why conda-pack:**
+- Creates fully relocatable Python environments
+- `conda-unpack` script patches shebangs, `.pc` files, and OpenSSL config paths
+- CPython auto-detects `sys.prefix` from its physical location, so Python works even before conda-unpack runs
+- Well-established tool (conda-forge, 1M+ downloads)
 - No anti-virus false positives (common with PyInstaller on Windows)
 - No bundling complexity — conda packages handle all native dependencies (BLAS, LAPACK, etc.)
 - Fast startup (~1s, native CPython)
 
-**Runtime environment layout:**
+**Runtime environment layout (v1.2.0):**
 ```
-<app_data>/runtime/                    # or micromamba/envs/qmatsuite-runtime/
-├── bin/python3.12                     # Python interpreter
-├── lib/python3.12/
-│   └── site-packages/
-│       ├── qmatsuite/              # Our package
-│       ├── numpy/
-│       ├── pymatgen/
-│       └── ...
-└── ...
+macOS:   QMatSuite.app/Contents/Resources/runtime/
+Windows: <install_dir>/resources/runtime/
 ```
 
-**Build pipeline** (CI):
-1. Create a clean micromamba environment with pinned deps
-2. `pip install qmatsuite` into the environment
-3. Compress with `tar --zstd` → `runtime.tar.zst` (~115 MB)
-4. Ship as part of the installer (NSIS / .pkg / .dmg app bundle)
+The runtime is INSIDE the app bundle, not in `<app_data>/runtime/` as originally designed. This means app updates atomically replace the runtime.
 
-**Pre-work (Phase 0, no dependencies):** Make pymatgen/matplotlib/scipy imports lazy. This improves daemon startup time from ~1-2s to ~200ms, benefiting all distribution channels including pip.
+**Build pipeline (CI) — implemented:**
+```
+1. CI creates conda environment (micromamba create -p runtime-env python=3.12 pip)
+2. pip install qmatsuite==1.2.0 from PyPI into the environment
+3. conda-pack packages the environment as a relocatable tarball
+4. Extract tarball to gui/runtime/
+5. DO NOT run conda-unpack in CI (paths would be wrong on user machine)
+6. Strip: remove __pycache__/, *.pyc, *.pyo, *.a, tests/, share/man|doc|info
+7. electron-builder bundles gui/runtime/ as extraResources
+8. On target machine: conda-unpack patches paths on first launch (macOS)
+   or during NSIS install (Windows)
+```
+
+**Strip results:**
+| Metric | Before strip | After strip |
+|--------|-------------|-------------|
+| Runtime directory | 860 MB | 526 MB |
+| File count | 39,763 | 20,379 |
+| DMG size | 372 MB | 284 MB |
+
+**Pre-work (Phase 0, completed):** ✅ Dead dependencies removed (ase, beautifulsoup4). Some lazy imports done (Step 1). Full lazy import optimization is partially done.
 
 ### 4.4 Future Alternatives (Reference Only)
 
@@ -1232,39 +1178,36 @@ Compile Python to C and produce a native executable. If Nuitka matures sufficien
 
 ### 4.5 Electron + Embedded Python Integration
 
-**First launch (qmatsuite-lite):**
+✅ Implemented in v1.2.0 (Step 8). (Updated 2026-02-24)
+
+**First launch (v1.2.0):**
 1. Electron app starts
-2. Detects compressed `runtime.tar.zst` in app bundle (macOS) or install dir (Windows)
-3. Shows "Setting up QMatSuite..." with progress bar
-4. Expands tarball to `<app_data>/runtime/` (~30 seconds)
+2. `ensureRuntimeReady()` checks for `.conda-unpacked` marker in runtime directory
+3. If marker absent: runs `python3.12 bin/conda-unpack` (macOS) or `python.exe Scripts\conda-unpack` (Windows) — takes a few seconds, no UI overlay
+4. Writes `.conda-unpacked` marker to prevent re-running
 5. Verifies: `<runtime>/bin/python -c "import qmatsuite; print(qmatsuite.__version__)"`
 6. Starts daemon: `<runtime>/bin/python -m qmatsuite.daemon.server`
 
-**First launch (qmatsuite-full):**
-Runtime is already expanded by the installer (NSIS / .pkg). No first-launch delay.
-- QE binary ready at `<app_data>/engines/qe/bundled-7.5/bin/`
-- SSSP ready at `<app_data>/libraries/pseudo/SSSP/`
-- Daemon starts immediately
+**Subsequent launches**: Marker exists, daemon starts immediately.
 
-**Electron `findPythonPath()` resolution chain:**
+**Electron `findPythonPath()` resolution chain (v1.2.0):**
 
 ```typescript
 function findPythonPath(): { path: string; found: boolean; source: string } {
   // Priority 1: QMS_DAEMON_PYTHON override (explicit user/CI override)
   // Priority 2: .venv/bin/python (dev mode — repo checkout detected)
-  // Priority 3: Nuitka compiled binary (future — reserved slot)
-  //   Check <app_data>/bin/qmatsuite-daemon[.exe]
-  // Priority 4: Micromamba runtime environment (production)
-  const appDataDir = getAppDataDir();
-  const runtimePython = isWindows
-    ? path.join(appDataDir, 'runtime', 'python.exe')
-    : path.join(appDataDir, 'runtime', 'bin', 'python');
-  if (fs.existsSync(runtimePython)) {
-    return { path: runtimePython, found: true, source: 'runtime env' };
-  }
-  // Priority 5: system python fallback (pip-installed qmatsuite)
+  // Priority 3: (Reserved for Nuitka compiled binary — future)
+  // Priority 4: In-app runtime (packaged mode)
+  //   macOS:   process.resourcesPath/runtime/bin/python3.12
+  //   Windows: process.resourcesPath/runtime/python.exe
+  // Priority 5: AppData runtime (legacy migration from v1.1.0)
+  //   macOS:   ~/Library/Application Support/QMatSuite/runtime/bin/python
+  //   Windows: %LOCALAPPDATA%/QMatSuite/runtime/python.exe
+  // Priority 6: system python fallback (pip-installed qmatsuite)
 }
 ```
+
+**Key change from original design:** Priority 4 now looks in `process.resourcesPath/runtime/` (inside the app bundle), not in `<app_data>/runtime/`. Priority 5 is a migration fallback for users upgrading from v1.1.0 who may still have an extracted runtime in AppData.
 
 ### 4.6 Update Strategy
 
@@ -1272,140 +1215,188 @@ Three independent update dimensions:
 
 | Dimension | Mechanism | Frequency | Affects |
 |-----------|----------|-----------|---------|
-| **qmatsuite package** | `pip install --upgrade qmatsuite` in runtime env | Per release | Python code only |
-| **Python version** | New runtime tarball in Electron update | Yearly | Runtime env |
-| **Electron shell** | `electron-updater` auto-update from GitHub Releases | Per release | GUI only |
+| **qmatsuite package** | Full Electron update (new .app with new runtime) | Per release | Python code + runtime |
+| **Python version** | Full Electron update (new runtime in app) | Yearly | Runtime env |
+| **Electron shell** | `electron-updater` auto-update from GitHub Releases | Per release | GUI + runtime (since runtime is in-app) |
 
-**Updating `qmatsuite` package** (most common):
-```bash
-# Electron triggers this on update check:
-<runtime>/bin/pip install --upgrade qmatsuite
-# Or: download .whl from GitHub Release, pip install locally
+**Update strategy change** (Updated 2026-02-24): Since the runtime is now inside the `.app` bundle, updating `qmatsuite` package requires a full Electron update (new .app with new runtime). The original design allowed independent `pip install --upgrade qmatsuite` into the extracted runtime. The current approach trades that flexibility for zero first-launch delay and simpler architecture. In-app pip upgrade is still technically possible but not yet implemented.
+
+**Key invariant**: Updating the app never touches `<app_data_dir>/engines/`, `<app_data_dir>/libraries/`, or user project directories. Engines, pseudopotentials, and projects persist across all app updates.
+
+---
+
+## 5. Build & Release Workflow
+
+✅ Implemented in v1.2.0. (Added 2026-02-24)
+
+### 5.1 CI Workflows
+
+| Workflow | File | Trigger | Output |
+|----------|------|---------|--------|
+| Python tests | `tests.yml` | Push/PR | Test results (6514 tests) |
+| PyPI release | `release-pip.yml` | Manual (version + target) | Package on TestPyPI or PyPI |
+| Build runtime | `build-runtime-dir.yml` | Manual | conda-pack runtime directory artifact |
+| macOS release | `release-macos.yml` | Manual (version + sign + notarize flags) | Signed+notarized DMG on GitHub Releases |
+| Windows release | `release-windows.yml` | Manual (version + sign flag) | Signed NSIS installer on GitHub Releases |
+
+### 5.2 Release Sequence
+
 ```
-This is the lightest update — only the Python package changes. No runtime rebuild, no Electron update needed.
+1. Bump version in pyproject.toml + gui/package.json
+2. Commit, tag (v1.2.0), push
+3. Trigger PyPI release → testpypi first → verify → pypi
+4. Trigger macOS release (depends on PyPI — CI installs qmatsuite from PyPI)
+5. Trigger Windows release (same dependency)
+6. macOS and Windows can run in parallel
+```
 
-**Updating Python version** (rare):
-Ships as part of an Electron update that includes a new `runtime.tar.zst`. The old runtime is replaced. User data (engines, projects, config) is never touched.
+### 5.3 macOS Release Pipeline Detail
 
-**Updating Electron shell** (GUI changes):
-Standard `electron-updater` with GitHub Releases. Downloads differential update, restarts app. Runtime env is NOT affected.
+```
+Checkout → Node 20 → Python 3.12 → micromamba
+→ Build runtime environment (micromamba create + pip install qmatsuite)
+→ conda-pack → extract tarball → strip files (NO conda-unpack in CI)
+→ npm ci → npm run build:e2e
+→ electron-builder --mac dmg --arm64
+  (unsigned: CSC_IDENTITY_AUTO_DISCOVERY=false)
+  (signed: CSC_NAME="Developer Name (TeamID)")
+  ulimit -n 65536 before build
+→ Notarize: xcrun notarytool submit (async, no --wait)
+→ Upload artifact → Upload to GitHub Release (if versioned)
+```
 
-**Key invariant**: Updating any one dimension never touches the other two. Engines, pseudopotentials, and user projects are always preserved across all updates.
+### 5.4 Windows Release Pipeline Detail
+
+```
+Checkout → Node 20 → Python 3.12 → micromamba
+→ Build runtime environment (micromamba create + pip install qmatsuite)
+→ conda-pack → extract tarball (relative paths!) → strip files
+→ npm ci → npm run build:e2e
+→ electron-builder --win nsis --x64
+  (CSC_IDENTITY_AUTO_DISCOVERY=false — signing is post-build)
+→ Azure Login (OIDC)
+→ Azure Trusted Signing (files-folder-filter: exe,dll,pyd, recurse: true)
+→ Upload artifact → Upload to GitHub Release (if versioned)
+```
 
 ---
 
-## 5. Current State vs Design — Gap Analysis
+## 6. Current State vs Design — Gap Analysis
 
-| Component | Current State | Target State | Gap |
-|-----------|--------------|-------------|-----|
-| **Engine discovery** | QE-only two-state resolver (`qe_resolver.py`). Other engines rely on system PATH. | Unified `engines.json` registry with 4 source types (bundled, micromamba, system_path, user_path) for all 15 engines | **Large** — new module, new data model, integration with all engine handlers |
-| **Path management** | `paths.py` hardcodes `repo_root/.qmatsuite/` via `get_repo_root()` walk-up. Fails for pip-installed packages. | Platform-aware resolution chain (`QMATSUITE_HOME` → repo_root → Electron → `~/.qmatsuite/`) | **Medium** — refactor `paths.py`, add env var support, add Electron detection |
-| **Micromamba** | Not integrated. xTB handler suggests `conda install` in error message but doesn't automate it. | Built-in conda manager: download micromamba, create envs, install engines, GUI integration | **Large** — new module, download + verify logic, GUI components |
-| **pip install** | `pyproject.toml` exists with `qms` entry point. Installs from source. Not published to PyPI. `get_repo_root()` fails in installed mode. | Working `pip install qmatsuite` from PyPI. `paths.py` handles installed mode. | **Medium** — fix `paths.py`, add `package_data` for resources, publish to PyPI |
-| **Electron packaging** | `electron-builder.json5` exists with placeholder values (`YourAppID`, `YourAppName`). No code signing, no auto-update. Builds `.dmg`/`.exe`/`.AppImage`. | Production Electron builds with proper appId, code signing, auto-update, QMatSuite branding | **Medium** — configuration + CI workflow, no architectural change |
-| **Python bundling** | Not done. Electron assumes Python venv at `<project_root>/.venv/`. | Embedded Python via pre-built conda env. Electron finds `<app_data>/runtime/bin/python` | **Large** — first-launch setup flow, micromamba integration, Electron Python resolution |
-| **QE binary (Windows)** | CI builds QE 7.5 in [qmatsuite-toolchain](https://github.com/QMatSuite/qmatsuite-toolchain). Releases distributed via [quantum-espresso-windows-exe](https://github.com/QMatSuite/quantum-espresso-windows-exe) (~400MB zip). | Bundled in qmatsuite-full Windows installer at `<app_data>/engines/qe/bundled-7.5/bin/` | **Small** — download + stage in installer; binary already exists |
-| **QE binary (macOS)** | CI builds QE 7.5 for macOS in qmatsuite-toolchain (GCC + OpenMPI + FFTW3 + Accelerate). | Bundled in qmatsuite-full macOS `.pkg` at `<app_data>/engines/qe/bundled-7.5/bin/` | **Small** — similar to Windows; binary already built in CI |
-| **SSSP bundling** | Downloaded at runtime via `download_pseudo_library` MCP tool / CLI. SSSP manifest in `resources/pseudo_libinfo/`. | Pre-bundled in qmatsuite-full installer. Runtime download for lite/pip. | **Small** — package SSSP files in installer alongside QE binary |
-| **Auto-update** | Not implemented. No mechanism for Electron or pip updates. | Electron: `electron-updater` with GitHub Releases. pip: standard PyPI `pip install --upgrade`. | **Medium** — Electron auto-update configuration + release CI |
-| **Engine setup GUI** | Not investigated in detail, but Electron GUI exists with full React + Three.js frontend. Daemon provides engine-related RPC commands. | Engine manager panel: show installed engines, install via micromamba, configure user_path, switch active version | **Medium** — new GUI panel, new daemon RPC commands for engine management |
+(Updated 2026-02-24)
+
+| Component | Status | Current State | Target State | Gap |
+|-----------|--------|--------------|-------------|-----|
+| **Path management** | ✅ Done (Step 1) | Platform-aware resolution chain in `paths.py` | — | Complete |
+| **pip install** | ✅ Done (Step 4, v1.2.0) | v1.2.0 on PyPI, 6514 tests passing | — | Complete |
+| **Electron packaging** | ✅ Done (Steps 3-6) | Production builds with branding, icons, proper appId | — | Complete |
+| **Python bundling** | ✅ Done (Step 8) | conda-pack runtime as directory in app, 284 MB DMG | — | Complete |
+| **Code signing (macOS)** | ✅ Done (Step 5) | Developer ID + notarization, 409 Mach-O files signed | — | Complete |
+| **Code signing (Windows)** | ✅ Done (Step 5) | Azure Trusted Signing, exe+dll+pyd, ~394 files | — | Complete |
+| **QE binary (Windows)** | Partial | Binary exists + signed in toolchain repo | Bundled in full installer | Needs full release (§1.3) |
+| **QE binary (macOS)** | Partial | CI builds, but dylib bundling not portable | Bundled in full installer | Step 7A incomplete |
+| **Auto-update** | Partial | electron-updater configured | Working auto-update | Full-screen error when no release exists (bug to fix) |
+| **Engine discovery** | 🔲 Not started | QE-only two-state resolver | Unified `engines.json` for all 15 engines | Large — new module |
+| **Micromamba** | 🔲 Not started | Not integrated in lite installer | Built-in conda manager for engine install | Large — new module |
+| **Engine setup GUI** | 🔲 Not started | Basic engine manager panel exists | Full install/uninstall/verify GUI | Medium — GUI + RPC |
+| **SSSP bundling** | 🔲 Not started | Runtime download via MCP/CLI | Pre-bundled in full installer | Small — package in installer |
 
 ---
 
-## 6. Roadmap
-
-### Phase 1: Foundation (everything else depends on this)
-
-| # | Work Package | Complexity | Depends On |
-|---|-------------|-----------|------------|
-| 1.1 | Refactor `paths.py` to support `QMATSUITE_HOME` + platform-aware resolution | **M** | — |
-| 1.2 | Fix `get_repo_root()` fallback for pip-installed packages (no `pyproject.toml`) | **S** | 1.1 |
-| 1.3 | Add `package_data` for all non-`.json` resources (pseudo, demo YAMLs, knowledge .db) to `pyproject.toml` | **S** | — |
-| 1.4 | Publish `qmatsuite` to PyPI (test → production) | **S** | 1.2, 1.3 |
-
-### Phase 2: Engine Management (enables lite distribution)
-
-| # | Work Package | Complexity | Depends On |
-|---|-------------|-----------|------------|
-| 2.1 | Design and implement `engines.json` registry module | **L** | 1.1 |
-| 2.2 | Integrate registry with QE resolver (replace two-state with registry lookup) | **M** | 2.1 |
-| 2.3 | Integrate registry with all other engine handlers | **M** | 2.1 |
-| 2.4 | Implement `list_engines` real `installed` detection via registry | **S** | 2.1 |
-| 2.5 | Micromamba download + environment management module | **L** | 1.1 |
-| 2.6 | Daemon RPC commands for engine management (list, install, verify, set-active) | **M** | 2.1, 2.5 |
-| 2.7 | GUI engine manager panel | **M** | 2.6 |
-
-### Phase 3: Electron Distribution (enables first release)
-
-| # | Work Package | Complexity | Depends On |
-|---|-------------|-----------|------------|
-| 3.1 | Configure `electron-builder.json5` with production values (appId, product name, icons) | **S** | — |
-| 3.2 | First-launch setup flow: expand pre-built runtime tarball + micromamba bootstrap | **L** | 2.5 |
-| 3.3 | Electron `findPythonPath()` — add micromamba runtime env lookup | **S** | 3.2 |
-| 3.4 | macOS CI build workflow: `.dmg` (lite) + `.pkg` (full) via electron-builder | **M** | 3.1 |
-| 3.5 | Windows NSIS installer CI build workflow | **M** | 3.1 |
-| 3.6 | QE binary bundling in full-release installer (Mac arm64 + Windows x64) | **M** | 3.4, 3.5 |
-| 3.7 | SSSP library bundling in full-release installer | **S** | 3.6 |
-| 3.8 | macOS code signing (Developer ID + notarization) | **M** | 3.4 |
-| 3.9 | Windows code signing (certificate or Trusted Signing) | **M** | 3.5 |
-
-### Phase 4: Polish (post-launch)
-
-| # | Work Package | Complexity | Depends On |
-|---|-------------|-----------|------------|
-| 4.1 | Electron auto-update via `electron-updater` + GitHub Releases | **M** | 3.4, 3.5 |
-| 4.2 | Linux AppImage build (lower priority) | **S** | 3.1 |
-| 4.3 | QE universal binary for macOS (arm64 + x86_64) | **M** | 3.6 |
-| 4.4 | Engine update notification in GUI ("xTB 6.8.0 available, update?") | **S** | 2.7 |
-| 4.5 | Offline installer variant (pre-pack micromamba envs for air-gapped HPC) | **L** | 2.5, 3.6 |
-| 4.6 | Contributing guide for adding new engines to the registry | **S** | 2.1 |
+## 7. Roadmap
 
 ### Phase 0: Pre-work (can be done immediately, no dependencies)
 
-| # | Work Package | Complexity | Depends On |
-|---|-------------|-----------|------------|
-| 0.1 | Remove dead dependencies: `ase`, `beautifulsoup4` from `pyproject.toml` | **S** | — |
-| 0.2 | Remove `pyscf` optional extra from `pyproject.toml` (micromamba-managed) | **S** | — |
-| 0.3 | Make pymatgen/matplotlib/scipy imports lazy in `core/structure_fingerprint.py`, `core/structure_canonicalize.py`, `api/utils.py:558`, `analysis/structure_viz.py` | **M** | — |
-| 0.4 | Add QE OpenMP-only CI workflow to qmatsuite-toolchain (no MPI variant) | **M** | — |
+| # | Work Package | Complexity | Status |
+|---|-------------|-----------|--------|
+| 0.1 | Remove dead dependencies: `ase`, `beautifulsoup4` from `pyproject.toml` | **S** | ✅ Done (v1.1.0) |
+| 0.2 | Remove `pyscf` optional extra from `pyproject.toml` (micromamba-managed) | **S** | ✅ Done (v1.1.0) |
+| 0.3 | Make pymatgen/matplotlib/scipy imports lazy | **M** | Partial (some lazy imports done in Step 1) |
+| 0.4 | Add QE OpenMP-only CI workflow to qmatsuite-toolchain (no MPI variant) | **M** | Partial (toolchain has workflows, macOS dylib bundling incomplete) |
+
+### Phase 1: Foundation (everything else depends on this)
+
+| # | Work Package | Complexity | Status |
+|---|-------------|-----------|--------|
+| 1.1 | Refactor `paths.py` to support `QMATSUITE_HOME` + platform-aware resolution | **M** | ✅ Done (Step 1, v1.1.0) |
+| 1.2 | Fix `get_repo_root()` fallback for pip-installed packages | **S** | ✅ Done (Step 1) |
+| 1.3 | Add `package_data` for all non-`.json` resources to `pyproject.toml` | **S** | ✅ Done |
+| 1.4 | Publish `qmatsuite` to PyPI (test → production) | **S** | ✅ Done (Step 4, v1.2.0) |
+
+### Phase 2: Engine Management (enables lite distribution)
+
+| # | Work Package | Complexity | Status |
+|---|-------------|-----------|--------|
+| 2.1 | Design and implement `engines.json` registry module | **L** | 🔲 Not started |
+| 2.2 | Integrate registry with QE resolver (replace two-state with registry lookup) | **M** | 🔲 Not started |
+| 2.3 | Integrate registry with all other engine handlers | **M** | 🔲 Not started |
+| 2.4 | Implement `list_engines` real `installed` detection via registry | **S** | 🔲 Not started |
+| 2.5 | Micromamba download + environment management module | **L** | 🔲 Not started |
+| 2.6 | Daemon RPC commands for engine management (list, install, verify, set-active) | **M** | 🔲 Not started |
+| 2.7 | GUI engine manager panel | **M** | 🔲 Not started |
+
+### Phase 3: Electron Distribution (enables first release)
+
+| # | Work Package | Complexity | Status |
+|---|-------------|-----------|--------|
+| 3.1 | Configure `electron-builder.json5` with production values (appId, product name, icons) | **S** | ✅ Done (Step 3, v1.2.0) |
+| 3.2 | Runtime bundling: conda-pack directory in app (originally: expand pre-built runtime tarball) | **L** | ✅ Done (Step 8 — conda-pack, not micromamba bootstrap) |
+| 3.3 | Electron `findPythonPath()` — add in-app runtime lookup | **S** | ✅ Done (Step 2) |
+| 3.4 | macOS CI build workflow: `.dmg` (lite) via electron-builder | **M** | ✅ Done (Step 5) |
+| 3.5 | Windows NSIS installer CI build workflow | **M** | ✅ Done (Step 5) |
+| 3.6 | QE binary bundling in full-release installer (Mac arm64 + Windows x64) | **M** | 🔲 Not started |
+| 3.7 | SSSP library bundling in full-release installer | **S** | 🔲 Not started |
+| 3.8 | macOS code signing (Developer ID + notarization) | **M** | ✅ Done (Step 5) |
+| 3.9 | Windows code signing (Azure Trusted Signing) | **M** | ✅ Done (Step 5) |
+
+### Phase 4: Polish (post-launch)
+
+| # | Work Package | Complexity | Status |
+|---|-------------|-----------|--------|
+| 4.1 | Electron auto-update via `electron-updater` + GitHub Releases | **M** | Partial (configured but has full-screen error bug) |
+| 4.2 | Linux AppImage build (lower priority) | **S** | 🔲 Not started |
+| 4.3 | macOS Intel (x64) DMG — separate build, not universal binary | **M** | 🔲 Not started |
+| 4.4 | Engine update notification in GUI ("xTB 6.8.0 available, update?") | **S** | 🔲 Not started |
+| 4.5 | Offline installer variant (pre-pack micromamba envs for air-gapped HPC) | **L** | 🔲 Not started |
+| 4.6 | Contributing guide for adding new engines to the registry | **S** | 🔲 Not started |
 
 ### Complexity Legend
 
 | Size | Estimated Scope |
 |------|----------------|
 | **S** | < 1 day, single file or config change |
-| **M** | 1–3 days, multiple files, moderate testing |
-| **L** | 3–7 days, new module or significant refactor, extensive testing |
-| **XL** | 1–2 weeks, major new subsystem |
+| **M** | 1-3 days, multiple files, moderate testing |
+| **L** | 3-7 days, new module or significant refactor, extensive testing |
+| **XL** | 1-2 weeks, major new subsystem |
 
 ---
 
-## 7. Code Signing Strategy
+## 8. Code Signing Strategy
 
 **Principle**: Every distributed executable is signed. Container signatures (DMG, .pkg, NSIS) cover all bundled contents including third-party binaries.
 
-### 7.1 Complete Signing Matrix
+### 8.1 Complete Signing Matrix
 
-| Platform | Artifact | Signing Method | Covers Contents? | Status |
-|----------|---------|---------------|-----------------|--------|
-| macOS lite | `.dmg` installer | Apple Developer ID + notarization | Yes — all files inside DMG | Available |
-| macOS lite | `QMatSuite.app` bundle | Apple Developer ID codesign | Yes — Frameworks, Resources, runtime tarball | Available |
-| macOS lite | `micromamba` (in app bundle) | Covered by DMG + app signature | N/A (inside signed container) | Automatic |
-| macOS lite | `runtime.tar.zst` (in app bundle) | Covered by DMG + app signature | N/A (inside signed container) | Automatic |
-| macOS full | `.pkg` installer | Apple Developer ID + notarization | Yes — all payloads signed | Available |
-| macOS full | QE binary (bundled) | Apple Developer ID codesign in .pkg | Yes | Needs CI |
-| macOS full | SSSP files | Covered by .pkg signature | N/A (data files) | Automatic |
-| macOS | micromamba (downloaded at runtime) | Ad-hoc sign after download | Self-only | Needs implementation |
-| macOS | QE binary (GitHub Release download) | Ad-hoc sign after download | Self-only | Needs implementation |
-| Windows | NSIS `.exe` installer | Microsoft Trusted Signing | Yes — all files inside installer | Available |
-| Windows | `QMatSuite.exe` | Microsoft Trusted Signing | Self-only | Available |
-| Windows | QE binary (bundled in NSIS) | Covered by NSIS signature | N/A (inside signed installer) | Automatic |
-| Windows | QE binary (GitHub Release) | Microsoft Trusted Signing | Self-only | Done |
-| Windows | micromamba.exe | Covered by NSIS signature (bundled) or unsigned (downloaded) | Bundled=covered, Downloaded=SHA256 only | Partial |
+(Updated 2026-02-24 with measured values from v1.2.0)
+
+| Platform | Artifact | Signing Method | Details | Status |
+|----------|---------|---------------|---------|--------|
+| macOS lite | `.dmg` installer (284 MB) | Apple Developer ID + notarization | UDZO compressed | ✅ v1.2.0 |
+| macOS lite | `QMatSuite.app` bundle | Apple Developer ID `--deep` codesign | 409 Mach-O files individually signed (25 exe + 60 dylib + 77 stdlib .so + 217 site-packages .so + 15 Electron) | ✅ v1.2.0 |
+| macOS full | `.pkg` installer | Apple Developer ID + notarization | Includes QE binary + SSSP | 🔲 Planned |
+| macOS | micromamba (downloaded at runtime) | Ad-hoc sign after download | Self-only | 🔲 Not started |
+| macOS | QE binary (GitHub Release download) | Ad-hoc sign after download | Self-only | 🔲 Not started |
+| Windows | NSIS `.exe` installer | Microsoft Trusted Signing | Outer installer signed | ✅ v1.2.0 |
+| Windows | All exe + dll + pyd in `win-unpacked/` | Microsoft Trusted Signing (`files-folder-filter: exe,dll,pyd`) | ~394 files signed recursively | ✅ v1.2.0 |
+| Windows | QE binary (GitHub Release) | Microsoft Trusted Signing | Self-only | Done (toolchain repo) |
 | Linux | PyPI wheel | N/A (pip verifies via PyPI TLS) | N/A | N/A |
-| All | GitHub Release assets | SHA256 checksums + GitHub Artifact Attestation | Attestation covers build provenance | Available |
+| All | GitHub Release assets | SHA256 checksums + GitHub Artifact Attestation | Build provenance | Available |
 
-### 7.2 Third-Party Binary Signing
+**macOS signing count:** 409 Mach-O files, 0 unsigned. `ulimit -n 65536` set in CI to avoid EMFILE during signing.
+
+**Windows signing count:** ~394 files (exe + dll + pyd). Azure Trusted Signing Basic: $9.99/month, 5,000 signatures/month. ~394 operations per release, well within quota.
+
+### 8.2 Third-Party Binary Signing
 
 **micromamba**: Upstream releases from `mamba-org/micromamba-releases` are **NOT code-signed** (SHA256 only). On macOS, unsigned binaries trigger Gatekeeper warnings (Spyder issue #18661).
 
@@ -1415,18 +1406,18 @@ Standard `electron-updater` with GitHub Releases. Downloads differential update,
 
 **QE binary on macOS**: Same strategy. Bundled = covered by container signature. GitHub Release download = ad-hoc sign after download. Windows QE binaries from qmatsuite-toolchain are already Microsoft Trusted-Signed.
 
-### 7.3 conda-forge Package Signing
+### 8.3 conda-forge Package Signing
 
 conda-forge packages are **NOT cryptographically signed**. The `conda-content-trust` TUF framework exists in conda 4.10.1+ but conda-forge does not generate signatures. Package integrity relies on HTTPS transport security + repodata.json integrity.
 
 **Implication**: For micromamba-installed engines, integrity = HTTPS + conda-forge infrastructure trust. This is the same trust model used by Jupyter, Spyder, and all conda-based scientific software.
 
-### 7.4 Certificates
+### 8.4 Certificates
 
 | Platform | Certificate | Program | Cost | Used For |
 |----------|-----------|---------|------|----------|
 | macOS | Apple Developer ID | Apple Developer Program | 99 USD/year | .app, .dmg, .pkg signing + notarization |
-| Windows | Authenticode | Microsoft Trusted Signing | Available | .exe, NSIS installer signing |
+| Windows | Authenticode | Microsoft Trusted Signing Basic | **$9.99/month** | .exe, .dll, .pyd, NSIS installer signing |
 
 ---
 
@@ -1452,10 +1443,11 @@ conda-forge packages are **NOT cryptographically signed**. The `conda-content-tr
 
 ### QMatSuite/QMatSuite (main repo)
 
+- **Current version**: v1.2.0 (Updated 2026-02-24)
 - **CI workflow**: `.github/workflows/tests.yml`
   - Matrix: Ubuntu 22.04 + macOS 14, Python 3.12
   - Builds QE 7.5 from source (cached), stages to `.qmatsuite/engines/qe/managed:qe-7.5:<os>`
-  - Runs pytest (5707 tests) + Playwright E2E (11 specs)
+  - Runs pytest (**6514 tests**) + Playwright E2E (**20 tests**)
   - LAMMPS installed via apt/brew (system_path source type)
 
 ## Appendix B: Dependency Inventory (Measured)
@@ -1470,11 +1462,11 @@ Actual installed sizes measured from the project's `.venv/` (Python 3.12, macOS 
 | scipy 1.17.0 | Scientific computing | 78.5 MB | Yes (Fortran) | Transitive via pymatgen; direct use lazy (1 place) |
 | pymatgen 2024.10.3 | Materials science | 19.2 MB | Yes (via spglib) | CORE — module-level imports (can be made lazy) |
 | matplotlib 3.10.8 | Plotting | 25.0 MB | Yes (Agg backend) | CORE — module-level import (can be made lazy) |
-| ~~ase 3.27.0~~ | ~~Atomic simulation~~ | ~~11.3 MB~~ | ~~No~~ | **DEAD — remove** |
+| ~~ase 3.27.0~~ | ~~Atomic simulation~~ | ~~11.3 MB~~ | ~~No~~ | ✅ **Removed in v1.1.0** |
 | plotext 5.3.2 | Terminal plotting | 0.7 MB | No | LAZY — MCP renderer only |
 | PyYAML 6.0.3 | YAML parsing | 0.8 MB | Yes (C loader) | CORE |
 | typer 0.21.1 | CLI framework | 0.4 MB | No | CORE |
-| ~~beautifulsoup4 4.14.3~~ | ~~HTML parsing~~ | ~~0.8 MB~~ | ~~No~~ | **DEAD — remove** |
+| ~~beautifulsoup4 4.14.3~~ | ~~HTML parsing~~ | ~~0.8 MB~~ | ~~No~~ | ✅ **Removed in v1.1.0** |
 | ulid-py 1.1.0 | ULID generation | 0.2 MB | No | CORE |
 | msgpack 1.1.2 | Binary serialization | 0.3 MB | Yes | CORE |
 | requests 2.32.5 | HTTP client | 0.4 MB | No | CORE |
@@ -1501,8 +1493,7 @@ Actual installed sizes measured from the project's `.venv/` (Python 3.12, macOS 
 |--------|-------|
 | Full transitive closure | 74 packages |
 | Total installed size | 348.4 MB |
-| Dead dependencies | 12.1 MB (ase + beautifulsoup4) |
-| Savings if dead deps removed | 12.1 MB + transitive savings |
+| ~~Dead dependencies~~ | ✅ Removed (ase + beautifulsoup4) |
 | Minimal startup set (if lazy) | ~43 MB |
 
-All packages available on conda-forge, confirming micromamba approach viability.
+All packages available on conda-forge, confirming conda-pack approach viability.

@@ -151,7 +151,7 @@ jobs:
         with:
           name: qms-windows-release
           path: |
-            gui/release/**/*.exe
+            gui/release/*.exe
             gui/release/**/latest.yml
             gui/release/**/*.blockmap
           if-no-files-found: error
