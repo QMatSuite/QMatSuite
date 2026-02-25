@@ -227,37 +227,40 @@ jobs:
           # (first launch on macOS, or during NSIS install on Windows)
           rm -f "${{ github.workspace }}/runtime-packed.tar.gz"
 
-          # Strip bulky non-essential files to reduce count (EMFILE) and size
+          # ── Conservative runtime strip (safe removals only) ──
           cd "${{ github.workspace }}/gui/runtime"
+
+          # Bytecode caches (auto-regenerated on first import)
           find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-          find . -type d -name tests -path '*/site-packages/*/tests' -exec rm -rf {} + 2>/dev/null || true
-          find . -type d -name test -path '*/site-packages/*/test' -exec rm -rf {} + 2>/dev/null || true
           find . -type f -name '*.pyc' -delete 2>/dev/null || true
           find . -type f -name '*.pyo' -delete 2>/dev/null || true
+
+          # Static libraries (only needed for linking at compile time)
           find . -type f -name '*.a' -delete 2>/dev/null || true
+
+          # Site-packages test suites (not stdlib — only third-party package tests)
+          find . -type d -name tests -path '*/site-packages/*/tests' -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name test -path '*/site-packages/*/test' -exec rm -rf {} + 2>/dev/null || true
+
+          # Documentation and man pages
           rm -rf share/man share/doc share/gtk-doc share/info 2>/dev/null || true
 
-          # C/C++ headers — only needed for compiling extensions, never at runtime
-          rm -rf include 2>/dev/null || true
-
-          # Conda package metadata — only used by conda package manager
-          rm -rf conda-meta 2>/dev/null || true
-
-          # Build tools in share/ — cmake modules can be ~4000 files alone
+          # Build tools in share/ (CMake modules, autoconf, GObject introspection)
           rm -rf share/cmake* share/aclocal share/gir-1.0 2>/dev/null || true
 
-          # Stdlib test suite — never needed at runtime
+          # Stdlib test suite (not the stdlib itself — just the test/ directory)
           rm -rf lib/python*/test 2>/dev/null || true
 
-          # Stdlib modules not needed for headless daemon
-          rm -rf lib/python*/ensurepip lib/python*/turtledemo lib/python*/pydoc_data 2>/dev/null || true
+          # Stdlib modules that are demos/docs, not functional
+          rm -rf lib/python*/turtledemo lib/python*/pydoc_data 2>/dev/null || true
 
-          # Type stubs and markers — only used by type checkers, not at runtime
+          # Type stubs and markers (only used by IDEs/type checkers)
           find . -type f -name '*.pyi' -delete 2>/dev/null || true
           find . -type f -name 'py.typed' -delete 2>/dev/null || true
 
-          # Remove empty directories left by stripping
+          # Clean up empty directories left by stripping
           find . -type d -empty -delete 2>/dev/null || true
+
           cd "${{ github.workspace }}"
 
           echo "=== Runtime size after strip ==="
@@ -315,7 +318,12 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: |
+          # Raise kernel limit (GitHub Actions runners have sudo)
+          sudo sysctl -w kern.maxfilesperproc=524288
+          sudo sysctl -w kern.maxfiles=524288
           ulimit -n 65536
+          # Verify
+          echo "kern.maxfilesperproc=$(sysctl -n kern.maxfilesperproc) | ulimit -n=$(ulimit -n)"
           npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
       - name: Build lite DMG (signed)
@@ -324,7 +332,12 @@ jobs:
         env:
           CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
         run: |
+          # Raise kernel limit (GitHub Actions runners have sudo)
+          sudo sysctl -w kern.maxfilesperproc=524288
+          sudo sysctl -w kern.maxfiles=524288
           ulimit -n 65536
+          # Verify
+          echo "kern.maxfilesperproc=$(sysctl -n kern.maxfilesperproc) | ulimit -n=$(ulimit -n)"
           npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
       - name: Rename and hold lite DMG
@@ -374,7 +387,12 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: |
+          # Raise kernel limit (GitHub Actions runners have sudo)
+          sudo sysctl -w kern.maxfilesperproc=524288
+          sudo sysctl -w kern.maxfiles=524288
           ulimit -n 65536
+          # Verify
+          echo "kern.maxfilesperproc=$(sysctl -n kern.maxfilesperproc) | ulimit -n=$(ulimit -n)"
           npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
       - name: Build full DMG (signed)
@@ -383,7 +401,12 @@ jobs:
         env:
           CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
         run: |
+          # Raise kernel limit (GitHub Actions runners have sudo)
+          sudo sysctl -w kern.maxfilesperproc=524288
+          sudo sysctl -w kern.maxfiles=524288
           ulimit -n 65536
+          # Verify
+          echo "kern.maxfilesperproc=$(sysctl -n kern.maxfilesperproc) | ulimit -n=$(ulimit -n)"
           npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
       - name: Rename and hold full DMG
