@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
+import platform
 import re
 import shutil
+import stat
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -516,6 +518,15 @@ class EngineRegistry:
                     break
         if not resolved_binary:
             return False, f"required binaries not found in {base_path}"
+
+        # Check executable permission (non-Windows)
+        if platform.system() != "Windows":
+            st = resolved_binary.stat()
+            if not (st.st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)):
+                return False, (
+                    f"binary lacks execute permission: {resolved_binary}. "
+                    f"Fix with: chmod +x \"{resolved_binary}\""
+                )
 
         version = self._detect_binary_version(
             engine_family=engine_family,

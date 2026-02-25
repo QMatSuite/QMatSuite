@@ -457,6 +457,24 @@ async function stageBundledEngines(): Promise<void> {
         fs.cpSync(bundledQeDir, stagingDir, { recursive: true });
         // Step 2: Atomic rename to final directory
         fs.renameSync(stagingDir, finalDir);
+
+        // Step 2b: Fix binary permissions (cpSync may not preserve execute bits)
+        if (process.platform === 'darwin') {
+          const binDir = path.join(finalDir, 'bin');
+          if (fs.existsSync(binDir)) {
+            const pwx = path.join(binDir, 'pw.x');
+            if (fs.existsSync(pwx)) {
+              const mode = fs.statSync(pwx).mode;
+              const hasExec = (mode & 0o111) !== 0;
+              console.log(`[main] pw.x mode after cpSync: ${mode.toString(8)}, executable: ${hasExec}`);
+            }
+            // Fix execute permissions
+            spawnSync('chmod', ['-R', '+x', binDir]);
+            // Strip quarantine xattr (downloaded/bundled binaries may be quarantined)
+            spawnSync('xattr', ['-dr', 'com.apple.quarantine', finalDir], { stdio: 'ignore' });
+          }
+        }
+
         // Step 3: Write marker (confirms completion)
         fs.writeFileSync(marker, new Date().toISOString(), 'utf-8');
         console.log('[main] QE engine staged to', finalDir);

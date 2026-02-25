@@ -63,6 +63,7 @@ export interface QMSClient {
     options?: { installationId?: string; async?: boolean }
   ) => Promise<QMSResponse<QMSResult<'engine.uninstall'>>>;
   verifyEngine: (engineFamily: string) => Promise<QMSResponse<QMSResult<'engine.verify'>>>;
+  fixEnginePermissions: (engineDir: string) => Promise<QMSResponse<QMSResult<'engine.fix_permissions'>>>;
   setActiveEngineInstallation: (engineFamily: string, installationId: string) => Promise<QMSResponse<QMSResult<'engine.set_active'>>>;
   registerEnginePath: (
     engineFamily: string,
@@ -438,6 +439,11 @@ export function useQMSClient(): QMSClient {
     [call]
   );
 
+  const fixEnginePermissions = useCallback(
+    (engineDir: string) => call('engine.fix_permissions', { engine_dir: engineDir }),
+    [call]
+  );
+
   const setActiveEngineInstallation = useCallback(
     (engineFamily: string, installationId: string) => call('engine.set_active', {
       engine_family: engineFamily,
@@ -701,6 +707,7 @@ export function useQMSClient(): QMSClient {
     installEngine,
     uninstallEngine,
     verifyEngine,
+    fixEnginePermissions,
     setActiveEngineInstallation,
     registerEnginePath,
     unregisterEngine,

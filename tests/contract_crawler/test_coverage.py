@@ -33,6 +33,7 @@ EXEMPT_METHODS: dict[str, str] = {
     "engine.uninstall": "Mutates local engine install state; requires deterministic preinstalled installation setup not provided by crawler",
     "engine.register_path": "Mutates per-user engine registry and requires deterministic filesystem layout for valid engine binaries/venvs",
     "engine.path": "Alias of engine.register_path; same mutation and filesystem prerequisite constraints",
+    "engine.fix_permissions": "Mutates filesystem permissions (chmod/xattr) on engine binaries; requires deterministic engine installation",
 }
 
 

@@ -653,6 +653,34 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
     }));
   }, [qms]);
 
+  const handleFixPermissions = useCallback(async (engine: string, engineDir: string) => {
+    setRowNotices((prev) => ({
+      ...prev,
+      [engine]: { tone: 'ok', text: 'Fixing permissions...' },
+    }));
+    const response = await qms.fixEnginePermissions(engineDir);
+    if (!response.ok) {
+      setRowNotices((prev) => ({
+        ...prev,
+        [engine]: { tone: 'error', text: response.error?.message || 'Failed to fix permissions' },
+      }));
+      return;
+    }
+    const fixes = response.data?.fixes_applied || [];
+    setRowNotices((prev) => ({
+      ...prev,
+      [engine]: {
+        tone: response.data?.success ? 'ok' : 'error',
+        text: response.data?.success
+          ? `Permissions fixed (${fixes.length} change${fixes.length !== 1 ? 's' : ''}). Re-verifying...`
+          : (response.data?.error || 'Fix failed'),
+      },
+    }));
+    if (response.data?.success) {
+      await handleVerify(engine);
+    }
+  }, [qms, handleVerify]);
+
   const handleSetActive = useCallback(async (engine: string, installationId: string) => {
     const response = await qms.setActiveEngineInstallation(engine, installationId);
     if (!response.ok || !response.data?.active) {
@@ -794,6 +822,17 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
                     )}
                     {notice && (
                       <EngineNotice engine={engine} notice={notice} />
+                    )}
+                    {notice && notice.tone === 'error' && active?.path &&
+                      /lacks execute permission|chmod|permission denied/i.test(notice.text) && (
+                      <button
+                        className="settings-btn settings-btn--sm"
+                        onClick={() => void handleFixPermissions(engine, active.path!)}
+                        disabled={!!pending}
+                        data-testid={`qms-engine-fix-permissions-${engine}`}
+                      >
+                        Fix Permissions
+                      </button>
                     )}
                   </div>
 

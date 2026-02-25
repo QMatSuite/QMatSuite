@@ -611,6 +611,13 @@ def install_engine_github_release(
             if entry.is_file():
                 entry.chmod(entry.stat().st_mode | 0o111)
 
+    # Strip macOS quarantine xattr (Gatekeeper blocks unsigned binaries)
+    if platform.system() == "Darwin":
+        subprocess.run(
+            ["xattr", "-dr", "com.apple.quarantine", str(target_root)],
+            capture_output=True,  # suppress errors if no xattr present
+        )
+
     if on_progress:
         on_progress(stage="Registering")
 

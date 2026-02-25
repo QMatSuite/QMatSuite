@@ -253,6 +253,7 @@ class QMSDaemon:
             "engine.install": self._handle_engine_install,
             "engine.uninstall": self._handle_engine_uninstall,
             "engine.list_installable": self._handle_engine_list_installable,
+            "engine.fix_permissions": self._handle_engine_fix_permissions,
             
             # Pseudopotential configuration
             "get_pseudo_config": self._handle_get_pseudo_config,
@@ -1398,6 +1399,13 @@ class QMSDaemon:
 
         items = list_installable_engines()
         return {"engines": items, "count": len(items)}
+
+    def _handle_engine_fix_permissions(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply chmod +x and strip quarantine xattr for an engine directory."""
+        from qmatsuite.api.engines import fix_engine_permissions
+
+        engine_dir = self._require_str(payload, "engine_dir")
+        return fix_engine_permissions(engine_dir)
 
     def _handle_engine_list(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """List engines with real installed/active status."""

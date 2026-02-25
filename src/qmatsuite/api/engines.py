@@ -272,6 +272,13 @@ def get_bundled_qe_staging_status() -> Optional[str]:
     return check_bundled_qe_status()
 
 
+def fix_engine_permissions(engine_dir: str) -> Dict[str, Any]:
+    """Apply chmod +x and strip quarantine for an engine directory."""
+    from qmatsuite.core.engines.diagnostics import fix_binary_permissions
+
+    return fix_binary_permissions(engine_dir)
+
+
 def get_bundled_sssp_staging_status() -> Optional[str]:
     """Return bundled SSSP staging status for Electron full variant.
 
@@ -292,6 +299,7 @@ __all__ = [
     "install_engine",
     "uninstall_engine",
     "list_installable_engines",
+    "fix_engine_permissions",
     "get_bundled_qe_staging_status",
     "get_bundled_sssp_staging_status",
 ]

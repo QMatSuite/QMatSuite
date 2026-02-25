@@ -889,6 +889,16 @@ export interface QMSCommandMap {
       count: number;
     };
   };
+  "engine.fix_permissions": {
+    payload: {
+      engine_dir: string;
+    };
+    result: {
+      success: boolean;
+      fixes_applied: string[];
+      error?: string;
+    };
+  };
   list_step_palette: {
     payload: { engine_family: string | null };
     result: StepPaletteResult;

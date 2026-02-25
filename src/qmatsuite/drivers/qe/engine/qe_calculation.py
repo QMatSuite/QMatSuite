@@ -638,6 +638,35 @@ class QECalculationRunner:
                 parsed_output=parsed_output
             )
         
+        except PermissionError as e:
+            from qmatsuite.core.engines.diagnostics import diagnose_binary_to_log_string
+            diag_str = diagnose_binary_to_log_string(command[0])
+            logger.error(f"[RUN_STEP] Permission denied executing {command[0]}:\n{diag_str}")
+            return StepResult(
+                step_type_spec=step_type_spec,
+                input_file=input_file,
+                success=False,
+                error=(
+                    f"Permission denied executing {Path(command[0]).name}. "
+                    f"Run: chmod +x \"{command[0]}\""
+                ),
+                execution_time=time.time() - start_time,
+                stdout_file=stdout_capture_path,
+                stderr_file=stderr_capture_path,
+            )
+        except OSError as e:
+            from qmatsuite.core.engines.diagnostics import diagnose_binary_to_log_string
+            diag_str = diagnose_binary_to_log_string(command[0])
+            logger.error(f"[RUN_STEP] OS error executing {command[0]}:\n{diag_str}")
+            return StepResult(
+                step_type_spec=step_type_spec,
+                input_file=input_file,
+                success=False,
+                error=f"Failed to execute {Path(command[0]).name}: {e}",
+                execution_time=time.time() - start_time,
+                stdout_file=stdout_capture_path,
+                stderr_file=stderr_capture_path,
+            )
         except Exception as e:
             return StepResult(
                 step_type_spec=step_type_spec,

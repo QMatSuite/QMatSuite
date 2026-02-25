@@ -90,6 +90,7 @@ def get_method_categories() -> dict[str, list[str]]:
             "engine.list", "engine.verify", "engine.set_active",
             "engine.register_path", "engine.path", "engine.unregister",
             "engine.install", "engine.uninstall", "engine.list_installable",
+            "engine.fix_permissions",
         ],
         "pseudo_config": [
             "get_pseudo_config", "set_pseudo_config", "validate_pseudo_config",
