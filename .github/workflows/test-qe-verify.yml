@@ -32,7 +32,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          echo "=== Downloading ${QE_RELEASE_TAG} ==="
+          echo "=== Downloading ${{ matrix.qe_release_tag }} ==="
           gh release download "${{ matrix.qe_release_tag }}" \
             --repo QMatSuite/qmatsuite-toolchain \
             --pattern "${{ matrix.qe_asset }}" \
@@ -45,8 +45,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/qe-bundle"
           unzip -q "$RUNNER_TEMP/${{ matrix.qe_asset }}" -d "$RUNNER_TEMP/qe-bundle"
 
-          echo "=== Full directory tree ==="
-          find "$RUNNER_TEMP/qe-bundle" -type f | sort
+          echo "=== Full directory tree (first 50) ==="
+          find "$RUNNER_TEMP/qe-bundle" -type f | sort | head -50
+          echo "... Total: $(find "$RUNNER_TEMP/qe-bundle" -type f | wc -l) files"
 
           echo ""
           echo "=== Looking for pw.x ==="
