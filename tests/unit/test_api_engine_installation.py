@@ -14,7 +14,7 @@ from qmatsuite.api.engines import (
 def test_install_engine_calls_conda_for_xtb(monkeypatch: pytest.MonkeyPatch) -> None:
     called: dict[str, object] = {}
 
-    def fake_install_engine_conda(engine_family: str, version: str | None = None):
+    def fake_install_engine_conda(engine_family: str, version: str | None = None, on_progress=None):
         called["engine_family"] = engine_family
         called["version"] = version
         return {"id": "conda-6.7.1", "source": "micromamba"}
@@ -37,7 +37,7 @@ def test_install_engine_routes_qe_github_release(monkeypatch: pytest.MonkeyPatch
     )
     monkeypatch.setattr(
         "qmatsuite.api.engines.install_engine_github_release",
-        lambda family, asset_url, checksum_url=None: {
+        lambda family, asset_url, checksum_url=None, expected_sha256=None, on_progress=None: {
             "ulid": "github-7.5-openmp",
             "source": "github_release",
             "family": family,

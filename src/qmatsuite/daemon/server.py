@@ -26,7 +26,7 @@ import traceback
 import yaml
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, TextIO
+from typing import Any, Callable, Dict, List, Optional, TextIO
 
 from qmatsuite.api import QMSService, APIError, get_service
 from qmatsuite.api.utils import (
@@ -1513,13 +1513,33 @@ class QMSDaemon:
 
             return api_install_engine(engine_family, version=version, source=source)
 
+        job_id_holder: List[str] = []
+
         def install_wrapper(**kwargs):
             from qmatsuite.api.engines import install_engine as api_install_engine
+
+            job = self.job_manager.get_job(job_id_holder[0]) if job_id_holder else None
+
+            def progress_cb(**kw):
+                if job is None:
+                    return
+                if "stage" in kw:
+                    job.progress_stage = kw["stage"]
+                    job.last_log_line = kw["stage"]
+                if "bytes_downloaded" in kw:
+                    job.progress_bytes = kw["bytes_downloaded"]
+                    job.progress_total = kw.get("bytes_total")
+                    t = kw.get("bytes_total")
+                    if t and t > 0:
+                        job.progress_pct = min(99.0, kw["bytes_downloaded"] / t * 100)
+                if "log_line" in kw:
+                    job.last_log_line = str(kw["log_line"])[:200]
 
             return api_install_engine(
                 kwargs["engine_family"],
                 version=kwargs.get("version"),
                 source=str(kwargs.get("source", "auto")),
+                on_progress=progress_cb,
             )
 
         job_id = self.job_manager.submit(
@@ -1531,6 +1551,7 @@ class QMSDaemon:
             version=version,
             source=source,
         )
+        job_id_holder.append(job_id)
         return {"job_id": job_id, "status": "pending", "target_name": engine_family}
 
     def _handle_engine_uninstall(self, payload: Dict[str, Any]) -> Dict[str, Any]:

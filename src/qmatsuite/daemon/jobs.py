@@ -64,7 +64,13 @@ class Job:
     
     # Last log line (for quick status display)
     last_log_line: Optional[str] = None
-    
+
+    # Install/download progress (for engine install jobs)
+    progress_pct: Optional[float] = None       # 0.0–100.0
+    progress_bytes: Optional[int] = None       # bytes downloaded so far
+    progress_total: Optional[int] = None       # total bytes (None if unknown)
+    progress_stage: Optional[str] = None       # e.g., "Downloading micromamba"
+
     # I/O directory (the actual directory used by the runner to write QE input/output and artifacts)
     io_dir: Optional[str] = None
     
@@ -87,6 +93,10 @@ class Job:
             "project_root": self.project_root,
             "output_file": self.output_file,
             "last_log_line": self.last_log_line,
+            "progress_pct": self.progress_pct,
+            "progress_bytes": self.progress_bytes,
+            "progress_total": self.progress_total,
+            "progress_stage": self.progress_stage,
             "io_dir": self.io_dir,
             "steps": self.steps,
         }
@@ -104,6 +114,10 @@ class Job:
             "project_root": self.project_root,
             "error": self.error[:200] if self.error and len(self.error) > 200 else self.error,
             "last_log_line": self.last_log_line,
+            "progress_pct": self.progress_pct,
+            "progress_bytes": self.progress_bytes,
+            "progress_total": self.progress_total,
+            "progress_stage": self.progress_stage,
             "steps": self.steps,  # Include steps for step progress visualization
         }
         return result

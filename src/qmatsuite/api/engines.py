@@ -168,6 +168,7 @@ def install_engine(
     engine_family: str,
     version: str | None = None,
     source: str = "auto",
+    on_progress=None,
 ) -> Dict[str, Any]:
     """
     Install an engine via conda/micromamba or GitHub release.
@@ -176,6 +177,7 @@ def install_engine(
         engine_family: Engine family key (e.g. ``xtb``)
         version: Optional version string
         source: ``auto`` | ``conda`` | ``github_release``
+        on_progress: Optional callback receiving keyword progress events.
     """
     family = (engine_family or "").strip().lower()
     if family not in ENGINE_META:
@@ -193,7 +195,7 @@ def install_engine(
             )
 
     if selected_source == "conda":
-        installation = install_engine_conda(family, version=version)
+        installation = install_engine_conda(family, version=version, on_progress=on_progress)
     elif selected_source == "github_release":
         if family != "qe":
             raise ValueError(
@@ -204,6 +206,8 @@ def install_engine(
             family,
             asset_url=release_asset["asset_url"],
             checksum_url=release_asset.get("checksum_url") or None,
+            expected_sha256=release_asset.get("expected_sha256"),
+            on_progress=on_progress,
         )
     else:
         raise ValueError(

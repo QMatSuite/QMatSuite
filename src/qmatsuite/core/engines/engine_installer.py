@@ -54,11 +54,28 @@ def _registry_for(app_data_dir: Path) -> EngineRegistry:
     return EngineRegistry(registry_path=app_data_dir / "config" / "engines.json")
 
 
-def _download_binary(url: str, output_path: Path) -> None:
+def _download_binary(url: str, output_path: Path, on_progress=None) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with urllib.request.urlopen(url, context=_ssl_context(), timeout=180) as response:
+        total = None
+        content_length = response.headers.get("Content-Length")
+        if content_length:
+            try:
+                total = int(content_length)
+            except (ValueError, TypeError):
+                pass
+
+        downloaded = 0
+        chunk_size = 65536  # 64 KB
         with output_path.open("wb") as fh:
-            shutil.copyfileobj(response, fh)
+            while True:
+                chunk = response.read(chunk_size)
+                if not chunk:
+                    break
+                fh.write(chunk)
+                downloaded += len(chunk)
+                if on_progress:
+                    on_progress(bytes_downloaded=downloaded, bytes_total=total)
 
 
 def _download_text(url: str) -> str:
@@ -259,15 +276,62 @@ def _find_binary_in_tree(root: Path, engine_family: str) -> Tuple[Path, str]:
     return selected.parent, selected.name
 
 
-def _verify_or_download_sha256(asset_path: Path, checksum_url: Optional[str]) -> None:
-    if not checksum_url:
+def _parse_checksums_txt(text: str, target_filename: str) -> Optional[str]:
+    """Parse a ``checksums.txt`` (sha256sum output format) and return the hash for *target_filename*.
+
+    Each line is expected to be ``<64-char-hex>  <filename>`` (two-space separator).
+    Returns ``None`` when the file is not found or the text is empty/malformed.
+    """
+    if not text:
+        return None
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(None, 1)  # split on whitespace, max 2 tokens
+        if len(parts) != 2:
+            continue
+        digest, fname = parts
+        # Strip leading '*' that some sha256sum implementations prepend to binary-mode filenames
+        fname = fname.lstrip("*").strip()
+        if len(digest) != 64:
+            continue
+        if fname == target_filename:
+            return digest.lower()
+    return None
+
+
+def _verify_sha256(
+    asset_path: Path,
+    expected_hash: Optional[str] = None,
+    checksum_url: Optional[str] = None,
+) -> None:
+    """Verify SHA256 of *asset_path* against *expected_hash* or a remote checksum URL.
+
+    Priority: direct *expected_hash* > download from *checksum_url* > warn and return.
+    On mismatch the bad file is deleted and ``RuntimeError`` is raised.
+    """
+    expected: Optional[str] = None
+
+    if expected_hash:
+        expected = expected_hash.strip().lower()
+    elif checksum_url:
+        checksum_text = _download_text(checksum_url)
+        expected = _parse_sha256(checksum_text)
+
+    if not expected:
+        logger.warning("No checksum available for %s — skipping verification", asset_path.name)
         return
 
-    checksum_text = _download_text(checksum_url)
-    expected = _parse_sha256(checksum_text)
     actual = _compute_sha256(asset_path)
     if expected != actual.lower():
-        raise RuntimeError(f"Checksum mismatch for {asset_path.name}: expected {expected}, got {actual}")
+        try:
+            asset_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise RuntimeError(
+            f"Checksum mismatch for {asset_path.name}: expected {expected}, got {actual}"
+        )
 
 
 def resolve_qe_github_release_asset(
@@ -330,6 +394,7 @@ def resolve_qe_github_release_asset(
 
         zip_asset: Optional[Dict[str, Any]] = None
         checksum_asset: Optional[Dict[str, Any]] = None
+        checksums_txt_asset: Optional[Dict[str, Any]] = None
         for asset in assets:
             if not isinstance(asset, dict):
                 continue
@@ -338,6 +403,8 @@ def resolve_qe_github_release_asset(
                 zip_asset = asset
             elif name == f"{asset_name}.sha256":
                 checksum_asset = asset
+            elif name == "checksums.txt":
+                checksums_txt_asset = asset
 
         if not zip_asset:
             continue
@@ -350,8 +417,19 @@ def resolve_qe_github_release_asset(
         if checksum_asset:
             checksum_url = str(checksum_asset.get("browser_download_url") or "")
 
+        # Try to extract expected_sha256 from checksums.txt if no per-asset .sha256
+        expected_sha256: Optional[str] = None
+        if not checksum_url and checksums_txt_asset:
+            checksums_txt_url = str(checksums_txt_asset.get("browser_download_url") or "")
+            if checksums_txt_url:
+                try:
+                    checksums_text = _download_text(checksums_txt_url)
+                    expected_sha256 = _parse_checksums_txt(checksums_text, asset_name)
+                except Exception as exc:
+                    logger.warning("Failed to fetch checksums.txt: %s", exc)
+
         release_url = str(release.get("html_url") or _release_url_from_asset_url(asset_url) or "")
-        return {
+        result: Dict[str, Any] = {
             "asset_url": asset_url,
             "asset_name": asset_name,
             "checksum_url": checksum_url,
@@ -360,6 +438,9 @@ def resolve_qe_github_release_asset(
             "variant": platform_variant,
             "repo": repo,
         }
+        if expected_sha256:
+            result["expected_sha256"] = expected_sha256
+        return result
 
     raise RuntimeError(
         "No QE release asset found for "
@@ -372,6 +453,7 @@ def install_engine_conda(
     engine_family: str,
     version: str | None = None,
     app_data_dir: Path | None = None,
+    on_progress=None,
 ) -> Installation:
     """Install an engine via micromamba and register it in engines.json."""
     family = _normalize_engine(engine_family)
@@ -394,10 +476,18 @@ def install_engine_conda(
 
     channels = [str(meta.get("conda_channel") or "conda-forge")]
 
+    if on_progress:
+        on_progress(stage="Bootstrapping micromamba")
+
     env_created = False
     try:
-        env_dir = create_env(env_name, packages, channels, app_dir)
+        if on_progress:
+            on_progress(stage="Installing via conda")
+        env_dir = create_env(env_name, packages, channels, app_dir, on_progress=on_progress)
         env_created = True
+
+        if on_progress:
+            on_progress(stage="Verifying installation")
 
         installation: Installation
         detected_version: Optional[str] = None
@@ -436,6 +526,9 @@ def install_engine_conda(
         install_id = f"conda-{installation['version']}" if installation.get("version") else f"conda-{env_name}"
         installation["id"] = install_id
 
+        if on_progress:
+            on_progress(stage="Registering")
+
         registry = _registry_for(app_dir)
         registry.add_installation(family, installation)
         registry.set_active(family, install_id)
@@ -454,7 +547,9 @@ def install_engine_github_release(
     engine_family: str,
     asset_url: str,
     checksum_url: str | None = None,
+    expected_sha256: str | None = None,
     app_data_dir: Path | None = None,
+    on_progress=None,
 ) -> Installation:
     """Install an engine from a GitHub release asset and register it."""
     family = _normalize_engine(engine_family)
@@ -470,10 +565,17 @@ def install_engine_github_release(
     downloads_dir.mkdir(parents=True, exist_ok=True)
     unpack_dir.mkdir(parents=True, exist_ok=True)
 
-    _download_binary(asset_url, asset_path)
+    if on_progress:
+        on_progress(stage="Downloading")
+    _download_binary(asset_url, asset_path, on_progress=on_progress)
 
+    if on_progress:
+        on_progress(stage="Verifying checksum")
     checksum = (checksum_url or "").strip() or None
-    _verify_or_download_sha256(asset_path, checksum)
+    _verify_sha256(asset_path, expected_hash=expected_sha256, checksum_url=checksum)
+
+    if on_progress:
+        on_progress(stage="Extracting")
 
     if zipfile.is_zipfile(asset_path):
         with zipfile.ZipFile(asset_path) as archive:
@@ -508,6 +610,9 @@ def install_engine_github_release(
         for entry in final_bin_dir.iterdir():
             if entry.is_file():
                 entry.chmod(entry.stat().st_mode | 0o111)
+
+    if on_progress:
+        on_progress(stage="Registering")
 
     installation: Installation = {
         "id": install_id,

@@ -10,9 +10,10 @@ import platform
 import shutil
 import ssl
 import subprocess
+import threading
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import certifi
 
@@ -76,11 +77,28 @@ def _asset_url(asset_name: str) -> str:
     )
 
 
-def _download_binary(url: str, output_path: Path) -> None:
+def _download_binary(url: str, output_path: Path, on_progress=None) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with urllib.request.urlopen(url, context=_ssl_context(), timeout=120) as response:
+        total = None
+        content_length = response.headers.get("Content-Length")
+        if content_length:
+            try:
+                total = int(content_length)
+            except (ValueError, TypeError):
+                pass
+
+        downloaded = 0
+        chunk_size = 65536  # 64 KB
         with output_path.open("wb") as fh:
-            shutil.copyfileobj(response, fh)
+            while True:
+                chunk = response.read(chunk_size)
+                if not chunk:
+                    break
+                fh.write(chunk)
+                downloaded += len(chunk)
+                if on_progress:
+                    on_progress(bytes_downloaded=downloaded, bytes_total=total)
 
 
 def _download_text(url: str) -> str:
@@ -128,7 +146,7 @@ def _adhoc_sign_macos(binary_path: Path) -> None:
         logger.warning("codesign returned %s for %s: %s", result.returncode, binary_path, stderr)
 
 
-def ensure_micromamba(app_data_dir: Optional[Path] = None) -> Path:
+def ensure_micromamba(app_data_dir: Optional[Path] = None, on_progress=None) -> Path:
     """
     Ensure micromamba binary is available; download + verify when missing.
 
@@ -150,8 +168,11 @@ def ensure_micromamba(app_data_dir: Optional[Path] = None) -> Path:
     download_path = bin_dir / f".{asset_name}.download"
     staged_path = bin_dir / f".{micromamba_path.name}.staged"
 
+    if on_progress:
+        on_progress(stage="Downloading micromamba")
+
     try:
-        _download_binary(binary_url, download_path)
+        _download_binary(binary_url, download_path, on_progress=on_progress)
         checksum_text = _download_text(checksum_url)
         expected_sha256 = _parse_sha256(checksum_text)
         actual_sha256 = _compute_sha256(download_path)
@@ -181,11 +202,20 @@ def ensure_micromamba(app_data_dir: Optional[Path] = None) -> Path:
 def run_micromamba(
     cmd: List[str],
     app_data_dir: Path,
+    timeout: int = 900,
+    on_progress: Optional[Callable[..., None]] = None,
     **kwargs: Any,
 ) -> subprocess.CompletedProcess[str]:
-    """Run a micromamba command with `MAMBA_ROOT_PREFIX` configured."""
+    """Run a micromamba command with `MAMBA_ROOT_PREFIX` configured.
+
+    Args:
+        cmd: micromamba subcommand and arguments.
+        app_data_dir: Application data directory.
+        timeout: Subprocess timeout in seconds (default 900).
+        on_progress: Optional callback receiving ``log_line=`` kwargs.
+    """
     app_dir = Path(app_data_dir).expanduser().resolve()
-    micromamba_exe = ensure_micromamba(app_dir)
+    micromamba_exe = ensure_micromamba(app_dir, on_progress=on_progress)
     root_prefix = _micromamba_root(app_dir)
     root_prefix.mkdir(parents=True, exist_ok=True)
 
@@ -193,12 +223,68 @@ def run_micromamba(
     env["MAMBA_ROOT_PREFIX"] = str(root_prefix)
     env.setdefault("MAMBA_NO_RC", "true")
 
+    full_cmd = [str(micromamba_exe), "-r", str(root_prefix), *cmd]
+
+    if on_progress is not None:
+        # Popen + reader-thread: allows streaming output while respecting timeout.
+        check = kwargs.pop("check", True)
+        # Remove kwargs that conflict with Popen streaming
+        kwargs.pop("capture_output", None)
+        kwargs.pop("text", None)
+
+        process = subprocess.Popen(
+            full_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env=env,
+            **kwargs,
+        )
+        output_lines: List[str] = []
+
+        def reader():
+            assert process.stdout is not None
+            for line in process.stdout:
+                stripped = line.rstrip("\n")
+                output_lines.append(stripped)
+                if on_progress:
+                    on_progress(log_line=stripped)
+            process.stdout.close()
+
+        reader_thread = threading.Thread(target=reader, daemon=True)
+        reader_thread.start()
+
+        try:
+            returncode = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            raise RuntimeError(
+                f"micromamba timed out after {timeout}s: {' '.join(cmd)}"
+            )
+
+        reader_thread.join(timeout=5)
+
+        if check and returncode != 0:
+            raise subprocess.CalledProcessError(
+                returncode, full_cmd, output="\n".join(output_lines), stderr=""
+            )
+
+        return subprocess.CompletedProcess(
+            full_cmd, returncode, stdout="\n".join(output_lines), stderr=""
+        )
+
+    # Fallback: simple subprocess.run for callers without on_progress
     kwargs.setdefault("check", True)
     kwargs.setdefault("capture_output", True)
     kwargs.setdefault("text", True)
 
-    full_cmd = [str(micromamba_exe), "-r", str(root_prefix), *cmd]
-    return subprocess.run(full_cmd, env=env, **kwargs)
+    try:
+        return subprocess.run(full_cmd, env=env, timeout=timeout, **kwargs)
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            f"micromamba timed out after {timeout}s: {' '.join(cmd)}"
+        ) from exc
 
 
 def create_env(
@@ -206,6 +292,8 @@ def create_env(
     packages: List[str],
     channels: List[str],
     app_data_dir: Path,
+    timeout: int = 900,
+    on_progress: Optional[Callable[..., None]] = None,
 ) -> Path:
     """Create a new micromamba environment and return its path."""
     if not env_name.strip():
@@ -219,15 +307,15 @@ def create_env(
             cmd.extend(["-c", channel])
     cmd.extend(packages)
 
-    run_micromamba(cmd, app_data_dir)
+    run_micromamba(cmd, app_data_dir, timeout=timeout, on_progress=on_progress)
     return _micromamba_root(app_data_dir) / "envs" / env_name
 
 
-def remove_env(env_name: str, app_data_dir: Path) -> None:
+def remove_env(env_name: str, app_data_dir: Path, timeout: int = 120) -> None:
     """Remove a micromamba environment by name."""
     if not env_name.strip():
         raise ValueError("env_name is required")
-    run_micromamba(["env", "remove", "--yes", "--name", env_name], app_data_dir)
+    run_micromamba(["env", "remove", "--yes", "--name", env_name], app_data_dir, timeout=timeout)
 
 
 def list_envs(app_data_dir: Path) -> List[Dict[str, str]]:
