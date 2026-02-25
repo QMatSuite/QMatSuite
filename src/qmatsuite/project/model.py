@@ -108,9 +108,13 @@ class Project:
     calculations: Dict[str, CalculationRef] = field(default_factory=dict)
 
     @classmethod
-    def open(cls, project_root: Path | str) -> "Project":
+    def open(cls, project_root: Path | str, index=None) -> "Project":
         """
         Load project metadata from ``project.qms.yml``.
+
+        Args:
+            project_root: Path to project root directory.
+            index: Optional pre-built ResourceIndex (avoids redundant filesystem scans).
         """
         root = Path(project_root).resolve()
         config_file = root / "project.qms.yml"
@@ -131,41 +135,43 @@ class Project:
         settings = ProjectSettings(data.get("settings", {}))
 
         project = cls(root=root, meta=project_meta, settings=settings)
-        # Project.open() is self-contained and builds its own index internally
-        # This keeps it simple and avoids issues with mismatched index/project_root
         project.structures = cls._load_structures(
-            root, data.get("structures", []), project_section.get("structures_dir", "structures")
+            root, data.get("structures", []), project_section.get("structures_dir", "structures"),
+            index=index,
         )
         project.calculations = cls._load_calculations(
-            root, data.get("calculations", []), project_section.get("calculations_dir", "calculations")
+            root, data.get("calculations", []), project_section.get("calculations_dir", "calculations"),
+            index=index,
         )
         return project
 
     @staticmethod
     def _load_structures(
-        root: Path, entries: list[dict], default_dir: str
+        root: Path, entries: list[dict], default_dir: str, index=None,
     ) -> Dict[str, StructureRef]:
         """
         Load structures from project entries.
-        
+
         In the new DAG + ID-only model:
         - Entries have structure_ulid (ULID), not file path
         - Structure file location is resolved via ResourceIndex using structure_ulid
         - Structure meta (name, slug, path) is loaded from the structure file itself
-        
+
         Args:
             root: Project root path
             entries: Structure entries from project.qms.yml
             default_dir: Default structures directory name
+            index: Optional pre-built ResourceIndex (avoids redundant filesystem scans)
         """
         structures: Dict[str, StructureRef] = {}
-        
-        # Build index for this project only
-        try:
-            from qmatsuite.core.resolution import build_resource_index
-            index = build_resource_index(root)
-        except Exception:
-            index = None
+
+        # Build index only if not provided
+        if index is None:
+            try:
+                from qmatsuite.core.resolution import build_resource_index
+                index = build_resource_index(root)
+            except Exception:
+                index = None
         
         for entry in entries:
             structure_ulid = entry.get("structure_ulid") or entry.get("ulid")
@@ -243,33 +249,37 @@ class Project:
 
     @staticmethod
     def _load_calculations(
-        root: Path, entries: list[dict], default_dir: str
+        root: Path, entries: list[dict], default_dir: str, index=None,
     ) -> Dict[str, CalculationRef]:
         """
         Load calculations from project entries using ID-based resolution.
-        
+
         Resolution strategy (in order):
         1. Try registry-based resolution by calculation_id (preferred for ID-only model)
         2. Fall back to entry["path"] if available (legacy support)
         3. Fall back to scanning calculations/*/calculation.yaml by meta.ulid
         4. Raise error if calculation directory cannot be found
-        
+
         Args:
             root: Project root path
             entries: Calculation entries from project.qms.yml
             default_dir: Default calculations directory name
+            index: Optional pre-built ResourceIndex (avoids redundant filesystem scans)
         """
         from qmatsuite.core.resolution import build_resource_index, require_calculation, ResourceNotFoundError
         from qmatsuite.core.resources import ResourceMeta
-        
+
         calculations: Dict[str, CalculationRef] = {}
         calculations_dir = root / default_dir.rstrip('/')
-        
-        # Build index for this project only
-        try:
-            registry = build_resource_index(root)
-        except Exception:
-            registry = None
+
+        # Build index only if not provided
+        if index is not None:
+            registry = index
+        else:
+            try:
+                registry = build_resource_index(root)
+            except Exception:
+                registry = None
         
         for entry in entries:
             calculation_id = entry.get("calculation_id") or entry.get("ulid")

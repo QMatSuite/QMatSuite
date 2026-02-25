@@ -1,0 +1,126 @@
+{
+  "project_root": "/private/tmp/qms_bench_project",
+  "timestamp": "2026-02-24T23:39:40-0500",
+  "cprofile_top30": "         606792398 function calls (601247496 primitive calls) in 119.149 seconds\n\n   Ordered by: cumulative time\n   List reduced from 459 to 30 due to restriction <30>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n        1    0.000    0.000  119.159  119.159 /Users/hh7465/QMatSuite/src/qmatsuite/api/service.py:3390(list)\n      389    0.281    0.001  114.726    0.295 /Users/hh7465/QMatSuite/src/qmatsuite/core/resolution.py:533(build_resource_index)\n    54414    0.065    0.000  112.120    0.002 /Users/hh7465/QMatSuite/src/qmatsuite/core/yaml_io.py:32(_load_yaml_raw)\n    54414    0.034    0.000  110.383    0.002 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/__init__.py:117(safe_load)\n    54414    0.271    0.000  110.348    0.002 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/__init__.py:74(load)\n    53790    0.025    0.000  109.782    0.002 /Users/hh7465/QMatSuite/src/qmatsuite/core/yaml_io.py:65(load_yaml_meta_subtree)\n    54414    0.033    0.000  109.678    0.002 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/constructor.py:47(get_single_data)\n    54414    0.054    0.000  103.517    0.002 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/composer.py:29(get_single_node)\n       50    0.001    0.000  102.296    2.046 /Users/hh7465/QMatSuite/src/qmatsuite/calculation/calculation.py:168(from_yaml)\n       85    0.003    0.000  102.130    1.202 /Users/hh7465/QMatSuite/src/qmatsuite/calculation/calculation.py:504(_build_step_inspection)\n    54414    0.037    0.000  101.943    0.002 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/composer.py:50(compose_document)\n3534539/54414    3.168    0.000  101.814    0.002 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/composer.py:63(compose_node)\n353567/54414    1.117    0.000  101.148    0.002 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/composer.py:117(compose_mapping_node)\n      170    0.000    0.000  100.800    0.593 /Users/hh7465/QMatSuite/src/qmatsuite/core/resolution.py:1739(require_step)\n      170    0.003    0.000  100.800    0.593 /Users/hh7465/QMatSuite/src/qmatsuite/core/resolution.py:1302(resolve_step)\n 10985468    2.534    0.000   92.530    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/parser.py:94(check_event)\n 26782600    7.825    0.000   71.975    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/scanner.py:113(check_token)\n  5212079    4.841    0.000   50.236    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/scanner.py:156(fetch_more_tokens)\n      220    0.002    0.000   50.163    0.228 /Users/hh7465/QMatSuite/src/qmatsuite/core/resolution.py:1098(resolve_calculation)\n258908/60050    0.644    0.000   41.602    0.001 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/composer.py:99(compose_sequence_node)\n  1251080    0.808    0.000   32.467    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/parser.py:446(parse_block_mapping_value)\n  1602941    1.137    0.000   27.220    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/parser.py:427(parse_block_mapping_key)\n  2618622    1.105    0.000   25.674    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/scanner.py:668(fetch_plain)\n  3534539    4.830    0.000   22.182    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/parser.py:273(parse_node)\n  2618622    6.984    0.000   22.127    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/scanner.py:1270(scan_plain)\n   743949    0.522    0.000   17.067    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/parser.py:381(parse_block_sequence_entry)\n 43898142    9.792    0.000   16.954    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/scanner.py:145(need_more_tokens)\n  2502160    0.566    0.000   16.337    0.000 /Users/hh7465/QMatSuite/.venv/lib/python3.14/site-packages/yaml/parser.py:270(parse_block_node_or_indentless_sequence)\n       50    0.001    0.000   14.374    0.287 /Users/hh7465/QMatSuite/src/qmatsuite/core/models.py:393(load_calculation)\n       47    0.000    0.000   13.809    0.294 /Users/hh7465/QMatSuite/src/qmatsuite/core/resolution.py:900(resolve_structure)\n\n\n",
+  "sub_operations": {
+    "list_calculations_resolution": {
+      "time_s": 0.6752,
+      "count": 50
+    },
+    "project_open": {
+      "time_s": 0.2134,
+      "n_structures": 47,
+      "n_calculations": 50
+    },
+    "load_calculation_per_calc": {
+      "sample_size": 5,
+      "times_s": [
+        0.1076,
+        0.1068,
+        0.1082,
+        0.1085,
+        0.1066
+      ],
+      "avg_s": 0.1075,
+      "projected_50_s": 5.3769
+    },
+    "calculation_from_yaml_per_calc": {
+      "sample_size": 5,
+      "times_s": [
+        0.4258,
+        0.4173,
+        0.4231,
+        0.4231,
+        0.426
+      ],
+      "avg_s": 0.4231,
+      "projected_50_s": 21.1525
+    },
+    "build_resource_index_standalone": {
+      "times_s": [
+        0.1039,
+        0.1026,
+        0.1031
+      ],
+      "median_s": 0.1031
+    },
+    "load_config": {
+      "time_s": 0.0036,
+      "n_calc_entries": 50,
+      "n_struct_entries": 47
+    },
+    "calculation_to_resolved_per_entry": {
+      "sample_size": 5,
+      "times_s": [
+        0.0221,
+        0.0217,
+        0.0096,
+        0.0175,
+        0.0013
+      ],
+      "avg_s": 0.0144,
+      "projected_50_s": 0.7225
+    },
+    "calculation_to_dto_per_calc": {
+      "sample_size": 5,
+      "times_s": [
+        1.5e-05,
+        9e-06,
+        1.2e-05,
+        1.1e-05,
+        9e-06
+      ],
+      "avg_s": 1.1e-05
+    },
+    "ensure_calc_identity_per_calc": {
+      "sample_size": 5,
+      "times_s": [
+        0.000422,
+        0.00045,
+        0.000444,
+        0.000455,
+        0.000454
+      ],
+      "avg_s": 0.000445
+    }
+  },
+  "full_list_with_io": {
+    "total_time_s": 42.2028,
+    "n_results": 50,
+    "io": {
+      "file_reads": 72697,
+      "file_read_time_s": 1.6134,
+      "total_bytes_read": 70703197,
+      "avg_file_size": 973.0,
+      "dir_scans": 439,
+      "dir_scan_time_s": 0.0285,
+      "total_dir_entries": 21950,
+      "glob_calls": 19839,
+      "glob_time_s": 0.5477
+    },
+    "build_resource_index": {
+      "call_count": 389,
+      "total_time_s": 40.6139,
+      "avg_time_s": 0.1044,
+      "call_sites": {
+        "qmatsuite/project/model.py:166 in _load_structures": 1,
+        "qmatsuite/project/model.py:270 in _load_calculations": 1,
+        "qmatsuite/core/resolution.py:932 in resolve_structure": 47,
+        "qmatsuite/core/resolution.py:1126 in resolve_calculation": 170,
+        "qmatsuite/core/resolution.py:1344 in resolve_step": 170
+      }
+    }
+  },
+  "scaling": {
+    "calc_to_resolved_1": 0.0224,
+    "calc_to_resolved_5": 0.0729,
+    "calc_to_resolved_10": 0.126,
+    "calc_to_resolved_25": 0.3493,
+    "calc_to_resolved_50": 0.6799,
+    "load_and_from_yaml_1": 0.5404,
+    "load_and_from_yaml_5": 2.6661,
+    "load_and_from_yaml_10": 5.3789,
+    "load_and_from_yaml_25": 14.2825,
+    "load_and_from_yaml_50": 41.4042
+  }
+}

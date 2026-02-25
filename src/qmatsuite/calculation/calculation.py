@@ -167,19 +167,26 @@ class Calculation:
 
     @classmethod
     def from_yaml(
-        cls, 
-        calculation_dir: Path, 
+        cls,
+        calculation_dir: Path,
         project: Project,
         materialize_steps: bool = True,
+        index=None,
     ) -> "Calculation":
         """
         Load calculation from calculation.yaml.
-        
+
         DAG + ID-only model:
         - Calculation.yaml contains structure_ulid (ULID) pointing to structure resource.
         - Steps are referenced by step_ulid (ULID) in calculation.steps entries.
         - Step YAML files do NOT contain structure_ulid or parent_calculation_id.
         - Structure is resolved via calculation.structure_ulid at execution time.
+
+        Args:
+            calculation_dir: Path to calculation directory.
+            project: Parent Project object.
+            materialize_steps: If True, fully materialize steps (execution mode).
+            index: Optional pre-built ResourceIndex (avoids redundant filesystem scans).
         """
         calculation_yaml = calculation_dir / "calculation.yaml"
         if not calculation_yaml.exists():
@@ -271,7 +278,7 @@ class Calculation:
             else:
                 # Inspection mode: create lightweight step objects without materialization
                 # This avoids calling materialize_step_spec and ensure_qe_pseudos
-                step, _ = _build_step_inspection(step_data, calculation_dir, working_dir, project)
+                step, _ = _build_step_inspection(step_data, calculation_dir, working_dir, project, index=index)
                 steps.append(step)
 
         # Create calculation instance
@@ -506,13 +513,17 @@ def _build_step_inspection(
     calculation_dir: Path,
     working_dir: Path,
     project: Project,
+    index=None,
 ) -> tuple[Step, bool]:
     """
     Build a lightweight Step for inspection (no materialization).
-    
+
     This function creates Step objects without calling materialize_step_spec
     or ensure_qe_pseudos, making it suitable for inspection/metadata APIs.
-    
+
+    Args:
+        index: Optional pre-built ResourceIndex (avoids redundant filesystem scans).
+
     Returns:
         Tuple of (Step, migrated_flag) where migrated_flag indicates if legacy
         fallback path was used.
@@ -542,9 +553,9 @@ def _build_step_inspection(
         else:
             calculation_selector = calculation_dir.name
         
-        step_resolved = require_step(project.root, calculation_selector, step_ulid)
+        step_resolved = require_step(project.root, calculation_selector, step_ulid, index=index)
         step_file_path = step_resolved.absolute_path
-        
+
         # Load step file to extract step_type
         if step_file_path.exists():
             try:
@@ -622,7 +633,7 @@ def _build_step_inspection(
             else:
                 calculation_selector = calculation_dir.name
             
-            step_resolved = require_step(project.root, calculation_selector, step_ulid)
+            step_resolved = require_step(project.root, calculation_selector, step_ulid, index=index)
             step_file_path = step_resolved.absolute_path
             step_meta = step_resolved.meta
             new_step_ulid = step_meta.ulid  # Use the ULID from registry

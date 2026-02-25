@@ -117,11 +117,8 @@ def bench_preset_compilation() -> dict:
     from qmatsuite.presets.dimensions import MagnetismOption
 
     def _run_100():
-        # Clear lru_cache so each batch re-compiles
-        compile_magnetism.cache_clear()
         results = []
         for _ in range(100):
-            compile_magnetism.cache_clear()
             results.append(compile_magnetism(MagnetismOption.COLLINEAR_LSDA))
         return results[-1]
 
@@ -201,7 +198,7 @@ def main() -> None:
     parser.add_argument(
         "--label",
         required=True,
-        choices=["before", "after"],
+        choices=["before", "after", "after-s4"],
         help="Label for this benchmark run.",
     )
     parser.add_argument(

@@ -1,0 +1,63 @@
+{
+  "label": "after",
+  "project_root": "/private/tmp/qms_bench_project",
+  "n_calculations": 50,
+  "n_runs_per_benchmark": 3,
+  "timestamp": "2026-02-24T23:17:25-0500",
+  "benchmarks": {
+    "1_import_time": {
+      "median_s": 0.260791,
+      "all_s": [
+        0.260625,
+        0.271358,
+        0.260791
+      ],
+      "n_runs": 3
+    },
+    "2_list_no_detail": {
+      "median_s": 43.403225,
+      "all_s": [
+        43.104118,
+        43.403225,
+        44.420904
+      ],
+      "n_runs": 3
+    },
+    "3_list_with_detail": {
+      "median_s": 49.360202,
+      "all_s": [
+        49.694211,
+        49.185761,
+        49.360202
+      ],
+      "n_runs": 3
+    },
+    "4_get_detail_single": {
+      "median_s": 0.225789,
+      "all_s": [
+        0.225789,
+        0.226012,
+        0.223986
+      ],
+      "n_runs": 3
+    },
+    "5_build_resource_index": {
+      "median_s": 0.106462,
+      "all_s": [
+        0.106917,
+        0.10602,
+        0.106462
+      ],
+      "n_runs": 3
+    },
+    "6_preset_compilation_100x": {
+      "median_s": 0.000161,
+      "all_s": [
+        0.000276,
+        0.000161,
+        0.000147
+      ],
+      "n_runs": 3
+    }
+  }
+}

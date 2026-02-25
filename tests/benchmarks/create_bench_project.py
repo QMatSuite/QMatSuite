@@ -56,7 +56,7 @@ def create_bench_project(output_dir: Path | None = None) -> Path:
         print("ERROR: No demo projects found.", file=sys.stderr)
         sys.exit(1)
 
-    demo_ids = [d["name"] for d in demos]
+    demo_ids = [d["ulid"] for d in demos]
     print(f"Found {len(demo_ids)} demo project(s): {demo_ids}")
 
     # ── 4. Load demos in a cycle until we reach 50 ────────────────

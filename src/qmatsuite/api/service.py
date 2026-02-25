@@ -3409,27 +3409,28 @@ class QMSService:
                 APIError: If project invalid
             """
             try:
-                from qmatsuite.core.resolution import list_calculations
+                from qmatsuite.core.resolution import list_calculations, build_resource_index
                 from qmatsuite.core.models import load_calculation
                 from qmatsuite.project.model import Project
                 from qmatsuite.calculation.calculation import Calculation
 
+                # S4: Build ResourceIndex ONCE for the entire request (request-scoped sharing)
+                _shared_index = build_resource_index(self._service.project_root)
+
                 # List all calculations
                 calc_resolved_list = list_calculations(self._service.project_root)
 
-                project = Project.open(self._service.project_root)
+                project = Project.open(self._service.project_root, index=_shared_index)
                 results: list = []
 
-                # Build shared context once for detail mode (F001+F002: request-scoped sharing)
+                # Build additional shared context for detail mode (F001+F002)
                 if detail:
-                    from qmatsuite.core.resolution import build_resource_index
                     from qmatsuite.core.project_utils import load_project_config
                     from qmatsuite.core.resolution import make_structure_selector_resolver
                     _shared_config = load_project_config(self._service.project_root)
                     _shared_resolver = make_structure_selector_resolver(self._service.project_root, config=_shared_config)
-                    _shared_index = build_resource_index(self._service.project_root)
                 else:
-                    _shared_index = _shared_config = _shared_resolver = None
+                    _shared_config = _shared_resolver = None
 
                 for calc_resolved in calc_resolved_list:
                     try:
@@ -3443,9 +3444,9 @@ class QMSService:
                         if not calc_yaml.exists():
                             continue
 
-                        # Load calculation model and object
-                        calc_model = load_calculation(calc_yaml, self._service.project_root)
-                        calc_obj = Calculation.from_yaml(calc_dir, project, materialize_steps=False)
+                        # Load calculation model and object (pass shared index)
+                        calc_model = load_calculation(calc_yaml, self._service.project_root, index=_shared_index)
+                        calc_obj = Calculation.from_yaml(calc_dir, project, materialize_steps=False, index=_shared_index)
 
                         # Build CalculationDTO
                         dto = calculation_to_dto(
@@ -4443,8 +4444,8 @@ class QMSService:
             from qmatsuite.io.structure_io import read_structure
             from qmatsuite.calculation.structure_steps import StructureStepSpec
 
-            # Resolve calculation
-            calc_resolved = require_calculation(self._service.project_root, selector)
+            # Resolve calculation (pass shared index to avoid rebuild)
+            calc_resolved = require_calculation(self._service.project_root, selector, config=config, index=index)
 
             # Get calculation directory and yaml path
             if calc_resolved.absolute_path.name == "calculation.yaml":
@@ -4454,8 +4455,8 @@ class QMSService:
                 calc_dir = calc_resolved.absolute_path
                 calc_yaml = calc_dir / "calculation.yaml"
 
-            # Load calculation model
-            calc_model = load_calculation(calc_yaml, project_root=self._service.project_root, resolve_structure_selector=resolver)
+            # Load calculation model (pass shared index to avoid rebuild)
+            calc_model = load_calculation(calc_yaml, project_root=self._service.project_root, resolve_structure_selector=resolver, index=index)
 
             # Get structure info
             structure_name = None
@@ -4464,7 +4465,7 @@ class QMSService:
 
             if structure_ulid:
                 try:
-                    struct_resolved = resolve_structure(self._service.project_root, structure_ulid, config=config)
+                    struct_resolved = resolve_structure(self._service.project_root, structure_ulid, config=config, index=index)
                     structure_name = struct_resolved.meta.name if struct_resolved.meta else None
                     if struct_resolved.absolute_path.exists():
                         structure = read_structure(struct_resolved.absolute_path)

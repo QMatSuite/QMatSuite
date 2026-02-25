@@ -391,9 +391,10 @@ class CalculationModel:
 
 
 def load_calculation(
-    path: Path, 
+    path: Path,
     project_root: Optional[Path] = None,
     resolve_structure_selector: Optional[callable] = None,  # DEPRECATED - no longer used
+    index=None,
 ) -> CalculationModel:
     """
     Load a CalculationModel from a calculation.yaml file.
@@ -463,7 +464,7 @@ def load_calculation(
             from qmatsuite.core.resolution import resolve_structure
             from qmatsuite.core.project_utils import load_project_config
             config = load_project_config(project_root)
-            resolved = resolve_structure(project_root, model.structure_ulid, config=config)
+            resolved = resolve_structure(project_root, model.structure_ulid, config=config, index=index)
             model.structure_name = resolved.meta.name
         except Exception:
             # If lookup fails, structure_name remains None (cosmetic field)
