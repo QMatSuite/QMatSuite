@@ -362,6 +362,10 @@ export interface JobInfo {
   project_root: string | null;
   output_file: string | null;
   last_log_line: string | null;
+  progress_pct: number | null;
+  progress_bytes: number | null;
+  progress_total: number | null;
+  progress_stage: string | null;
   // TODO: Backend should include these fields in get_job_status response
   steps?: JobStepInfo[];  // Step-level progress info
   io_dir?: string | null;  // Absolute path to I/O directory (the actual directory used by the runner to write QE input/output and artifacts)

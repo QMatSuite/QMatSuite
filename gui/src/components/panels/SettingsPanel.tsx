@@ -364,15 +364,86 @@ function isInstallationUninstallable(installation: EngineInstallation | null | u
   return source === 'micromamba' || source === 'github_release';
 }
 
+function EngineNotice({ engine, notice }: { engine: string; notice: { tone: 'ok' | 'error'; text: string } }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = notice.text.length > 150;
+
+  return (
+    <div
+      className={`engine-manager-row__notice engine-manager-row__notice--${notice.tone}`}
+      data-testid={`qms-engine-notice-${engine}`}
+    >
+      {isLong && !expanded ? (
+        <>
+          {notice.text.slice(0, 150)}...{' '}
+          <button
+            className="engine-notice-toggle"
+            onClick={() => setExpanded(true)}
+          >
+            Show more
+          </button>
+        </>
+      ) : isLong && expanded ? (
+        <>
+          {notice.text}{' '}
+          <button
+            className="engine-notice-toggle"
+            onClick={() => setExpanded(false)}
+          >
+            Show less
+          </button>
+        </>
+      ) : (
+        notice.text
+      )}
+    </div>
+  );
+}
+
+function formatBytes(bytes: number | null): string {
+  if (bytes == null || bytes < 0) return '';
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const val = bytes / Math.pow(1024, i);
+  return `${val < 10 ? val.toFixed(1) : Math.round(val)} ${units[i]}`;
+}
+
+function formatElapsed(startedAt: string | null): string {
+  if (!startedAt) return '';
+  const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+  if (elapsed < 0) return '';
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
 function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSectionProps) {
   const [engineRows, setEngineRows] = useState<EngineStatusEntry[]>([]);
   const [installableRows, setInstallableRows] = useState<InstallableEngineEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingJobs, setPendingJobs] = useState<
-    Record<string, { jobId: string; action: 'install' | 'uninstall'; message: string }>
+    Record<string, {
+      jobId: string;
+      action: 'install' | 'uninstall';
+      message: string;
+      progressPct: number | null;
+      progressBytes: number | null;
+      progressTotal: number | null;
+      progressStage: string | null;
+      startedAt: string | null;
+    }>
   >({});
   const [rowNotices, setRowNotices] = useState<Record<string, { tone: 'ok' | 'error'; text: string }>>({});
+  const [_tick, setTick] = useState(0);
+
+  // Tick every second while jobs are active so elapsed time updates
+  useEffect(() => {
+    if (Object.keys(pendingJobs).length === 0) return;
+    const timer = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, [Object.keys(pendingJobs).length > 0]);
 
   const refreshEngineData = useCallback(async () => {
     if (!qms?.state.isConnected) return;
@@ -415,7 +486,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
       const entries = Object.entries(pendingJobs);
       if (entries.length === 0) return;
 
-      const nextJobs: Record<string, { jobId: string; action: 'install' | 'uninstall'; message: string }> = {
+      const nextJobs: typeof pendingJobs = {
         ...pendingJobs,
       };
       let needsRefresh = false;
@@ -437,10 +508,27 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
 
         const status = statusResp.data.status;
         const line = statusResp.data.last_log_line || statusResp.data.error || '';
-        if (status === 'pending' || status === 'running') {
+        if (status === 'pending') {
+          nextJobs[engine] = {
+            ...jobMeta,
+            message: 'Waiting for current task to complete...',
+            progressPct: null,
+            progressBytes: null,
+            progressTotal: null,
+            progressStage: null,
+            startedAt: jobMeta.startedAt,
+          };
+          continue;
+        }
+        if (status === 'running') {
           nextJobs[engine] = {
             ...jobMeta,
             message: line || `${jobMeta.action} in progress...`,
+            progressPct: statusResp.data.progress_pct ?? null,
+            progressBytes: statusResp.data.progress_bytes ?? null,
+            progressTotal: statusResp.data.progress_total ?? null,
+            progressStage: statusResp.data.progress_stage ?? null,
+            startedAt: statusResp.data.started_at ?? jobMeta.startedAt,
           };
           continue;
         }
@@ -477,7 +565,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
   const handleInstall = useCallback(async (engine: string) => {
     setPendingJobs((prev) => ({
       ...prev,
-      [engine]: { jobId: '__pending__', action: 'install', message: 'Starting install...' },
+      [engine]: { jobId: '__pending__', action: 'install', message: 'Starting install...', progressPct: null, progressBytes: null, progressTotal: null, progressStage: null, startedAt: null },
     }));
     setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Starting install...' } }));
     const response = await qms.installEngine(engine, { async: true, source: 'auto' });
@@ -498,7 +586,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
     if (jobId) {
       setPendingJobs((prev) => ({
         ...prev,
-        [engine]: { jobId, action: 'install', message: 'Install queued...' },
+        [engine]: { jobId, action: 'install', message: 'Install queued...', progressPct: null, progressBytes: null, progressTotal: null, progressStage: null, startedAt: null },
       }));
       return;
     }
@@ -528,7 +616,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
     if (jobId) {
       setPendingJobs((prev) => ({
         ...prev,
-        [engine]: { jobId, action: 'uninstall', message: 'Uninstall queued...' },
+        [engine]: { jobId, action: 'uninstall', message: 'Uninstall queued...', progressPct: null, progressBytes: null, progressTotal: null, progressStage: null, startedAt: null },
       }));
       return;
     }
@@ -660,16 +748,31 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
                     </div>
                     {pending && (
                       <div className="engine-manager-row__progress" data-testid={`qms-engine-progress-${engine}`}>
-                        {pending.message}
+                        <div className="engine-progress-bar">
+                          <div
+                            className={`engine-progress-bar__fill${pending.progressPct == null ? ' engine-progress-bar__fill--indeterminate' : ''}`}
+                            style={pending.progressPct != null ? { width: `${pending.progressPct}%` } : undefined}
+                          />
+                        </div>
+                        <div className="engine-progress-info">
+                          <span className="engine-progress-info__stage">
+                            {pending.progressStage || pending.message}
+                          </span>
+                          <span className="engine-progress-info__stats">
+                            {pending.progressPct != null && `${Math.round(pending.progressPct)}%`}
+                            {pending.progressBytes != null && pending.progressTotal != null &&
+                              ` · ${formatBytes(pending.progressBytes)} / ${formatBytes(pending.progressTotal)}`}
+                            {pending.startedAt && ` · ${formatElapsed(pending.startedAt)}`}
+                          </span>
+                        </div>
+                        {pending.message && pending.progressStage &&
+                          pending.message !== pending.progressStage && (
+                          <div className="engine-progress-log">{pending.message}</div>
+                        )}
                       </div>
                     )}
                     {notice && (
-                      <div
-                        className={`engine-manager-row__notice engine-manager-row__notice--${notice.tone}`}
-                        data-testid={`qms-engine-notice-${engine}`}
-                      >
-                        {notice.text}
-                      </div>
+                      <EngineNotice engine={engine} notice={notice} />
                     )}
                   </div>
 

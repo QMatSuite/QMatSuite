@@ -1706,6 +1706,79 @@
   color: var(--color-primary);
 }
 
+/* Engine Install Progress Bar */
+.engine-progress-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-tertiary, rgba(0, 0, 0, 0.1));
+  overflow: hidden;
+  margin-bottom: 0.35rem;
+}
+
+.engine-progress-bar__fill {
+  height: 100%;
+  background: var(--color-primary, #007bff);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.engine-progress-bar__fill--indeterminate {
+  width: 30%;
+  animation: engine-progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes engine-progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+.engine-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.8rem;
+  gap: 0.5rem;
+}
+
+.engine-progress-info__stage {
+  color: var(--color-primary, #007bff);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.engine-progress-info__stats {
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.engine-progress-log {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 0.15rem;
+}
+
+.engine-notice-toggle {
+  background: none;
+  border: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0;
+  opacity: 0.8;
+}
+
+.engine-notice-toggle:hover {
+  opacity: 1;
+}
+
 .engine-manager-row__notice {
   font-size: 0.8rem;
   font-weight: 500;
