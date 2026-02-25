@@ -613,10 +613,13 @@ def install_engine_github_release(
 
     # Strip macOS quarantine xattr (Gatekeeper blocks unsigned binaries)
     if platform.system() == "Darwin":
-        subprocess.run(
-            ["xattr", "-dr", "com.apple.quarantine", str(target_root)],
-            capture_output=True,  # suppress errors if no xattr present
-        )
+        try:
+            subprocess.run(
+                ["xattr", "-dr", "com.apple.quarantine", str(target_root)],
+                capture_output=True,
+            )
+        except FileNotFoundError:
+            pass  # xattr not available, skip
 
     if on_progress:
         on_progress(stage="Registering")
