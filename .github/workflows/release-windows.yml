@@ -119,15 +119,17 @@ jobs:
           echo "${SSSP_JSON_SHA256}  $RUNNER_TEMP/${SSSP_JSON}" | sha256sum -c -
 
           echo "Extracting SSSP into three-level layout: SSSP/efficiency/1.3.0..."
-          SSSP_INSTALL_DIR="$RUNNER_TEMP/sssp-bundle/SSSP/efficiency/1.3.0"
+          # Convert Windows paths to POSIX (tar interprets D: as remote host)
+          TEMP_POSIX=$(cd "$RUNNER_TEMP" && pwd)
+          SSSP_INSTALL_DIR="$TEMP_POSIX/sssp-bundle/SSSP/efficiency/1.3.0"
           mkdir -p "$SSSP_INSTALL_DIR"
-          tar -xzf "$RUNNER_TEMP/${SSSP_TARBALL}" -C "$SSSP_INSTALL_DIR"
-          cp "$RUNNER_TEMP/${SSSP_JSON}" "$SSSP_INSTALL_DIR/"
+          tar -xzf "$TEMP_POSIX/${SSSP_TARBALL}" -C "$SSSP_INSTALL_DIR"
+          cp "$TEMP_POSIX/${SSSP_JSON}" "$SSSP_INSTALL_DIR/"
 
           # Write head.json (required by pseudo library three-level walk)
           printf '%s\n' '{"library_key":"sssp","dir_name":"SSSP","variant":"efficiency","version":"1.3.0","source_archive":"SSSP_1.3.0_PBE_efficiency.tar.gz","sha256":"7a85b71fa3d68df1b5ed33c55c7057681fbf10377ae3b3eac9392924d9189f12"}' > "$SSSP_INSTALL_DIR/head.json"
 
-          echo "SSSP_BUNDLE_DIR=$RUNNER_TEMP/sssp-bundle" >> "$GITHUB_ENV"
+          echo "SSSP_BUNDLE_DIR=$TEMP_POSIX/sssp-bundle" >> "$GITHUB_ENV"
           echo "✅ SSSP verified and extracted"
 
       # ── Standard build steps ──
