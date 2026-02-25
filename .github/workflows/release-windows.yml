@@ -225,9 +225,9 @@ jobs:
         with:
           name: qms-windows-release
           path: |
-            gui/release/*.exe
-            gui/release/**/latest.yml
-            gui/release/**/*.blockmap
+            gui/release/QMatSuite-*.exe
+            gui/release/latest.yml
+            gui/release/QMatSuite-*.exe.blockmap
           if-no-files-found: error
 
       - name: Upload installer to GitHub Release
@@ -238,8 +238,8 @@ jobs:
           draft: true
           fail_on_unmatched_files: false
           files: |
-            gui/release/**/*.exe
-            gui/release/**/latest.yml
-            gui/release/**/*.blockmap
+            gui/release/QMatSuite-*.exe
+            gui/release/latest.yml
+            gui/release/QMatSuite-*.exe.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -248,9 +248,9 @@ jobs:
         with:
           name: qms-macos-release-${{ matrix.arch_label }}
           path: |
-            gui/release/*.dmg
-            gui/release/**/latest-mac.yml
-            gui/release/**/*.blockmap
+            gui/release/QMatSuite-*.dmg
+            gui/release/latest-mac.yml
+            gui/release/QMatSuite-*.dmg.blockmap
           if-no-files-found: error
 
       - name: Upload DMG to GitHub Release
@@ -261,8 +261,8 @@ jobs:
           draft: true
           fail_on_unmatched_files: false
           files: |
-            gui/release/**/*.dmg
-            gui/release/**/latest-mac.yml
-            gui/release/**/*.blockmap
+            gui/release/QMatSuite-*.dmg
+            gui/release/latest-mac.yml
+            gui/release/QMatSuite-*.dmg.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
