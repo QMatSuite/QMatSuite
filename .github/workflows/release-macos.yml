@@ -118,6 +118,7 @@ jobs:
             exit 1
           fi
           QE_BIN_DIR=$(dirname "$QE_PW_PATH")
+          chmod +x "$QE_BIN_DIR"/*
 
           # pw.x with empty stdin prints the QE banner then exits — capture and check.
           # (GNU timeout is not available on macOS CI runners.)
