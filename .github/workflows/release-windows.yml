@@ -187,6 +187,28 @@ jobs:
           find . -type f -name '*.pyo' -delete 2>/dev/null || true
           find . -type f -name '*.a' -delete 2>/dev/null || true
           rm -rf share/man share/doc share/gtk-doc share/info 2>/dev/null || true
+
+          # C/C++ headers — only needed for compiling extensions, never at runtime
+          rm -rf include 2>/dev/null || true
+
+          # Conda package metadata — only used by conda package manager
+          rm -rf conda-meta 2>/dev/null || true
+
+          # Build tools in share/ — cmake modules can be ~4000 files alone
+          rm -rf share/cmake* share/aclocal share/gir-1.0 2>/dev/null || true
+
+          # Stdlib test suite — never needed at runtime
+          rm -rf lib/python*/test 2>/dev/null || true
+
+          # Stdlib modules not needed for headless daemon
+          rm -rf lib/python*/ensurepip lib/python*/turtledemo lib/python*/pydoc_data 2>/dev/null || true
+
+          # Type stubs and markers — only used by type checkers, not at runtime
+          find . -type f -name '*.pyi' -delete 2>/dev/null || true
+          find . -type f -name 'py.typed' -delete 2>/dev/null || true
+
+          # Remove empty directories left by stripping
+          find . -type d -empty -delete 2>/dev/null || true
           cd "$GITHUB_WORKSPACE"
 
           echo "=== Runtime size after strip ==="
