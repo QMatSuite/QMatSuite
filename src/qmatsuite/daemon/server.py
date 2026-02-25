@@ -1405,11 +1405,26 @@ class QMSDaemon:
 
         installed_only = bool(payload.get("installed_only", False))
         items = api_list_engines(installed_only=installed_only)
-        return {
+        result: Dict[str, Any] = {
             "engines": items,
             "count": len(items),
             "installed_only": installed_only,
         }
+
+        # Report bundled engines that are still being staged (full variant, first launch).
+        from qmatsuite.api.engines import get_bundled_qe_staging_status
+
+        qe_status = get_bundled_qe_staging_status()
+        if qe_status in ("staging", "staging_incomplete"):
+            result.setdefault("pending_engines", []).append({
+                "engine": "qe",
+                "version": "7.5",
+                "source": "bundled",
+                "status": qe_status,
+                "message": "Bundled QE is being set up (first launch only). Refresh in a few seconds.",
+            })
+
+        return result
 
     def _handle_engine_verify(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Verify currently active installation for an engine family."""
@@ -3589,7 +3604,7 @@ class QMSDaemon:
     def _handle_preflight_check(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Perform pre-flight checks before running.
-        
+
         Payload:
             project_root: str - Path to project root
             calculation: Optional[str] - Calculation selector
@@ -3598,7 +3613,7 @@ class QMSDaemon:
         project_root = self._require_path(payload, "project_root")
         calculation = payload.get("calculation")
         step = payload.get("step")
-        
+
         # Resolve with fallback if selectors provided
         if calculation:
             self._resolve_calculation_with_fallback(project_root, calculation)
@@ -3607,10 +3622,25 @@ class QMSDaemon:
 
         # Use domain API
         svc = get_service(project_root)
-        return svc.run.preflight(
+        result = svc.run.preflight(
             calc_selector=calculation,
             step_selector=step,
         )
+
+        # If QE check failed and bundled engine is still being staged,
+        # annotate the response so the frontend can show a better message.
+        if not result.get("ok"):
+            from qmatsuite.api.engines import get_bundled_qe_staging_status
+
+            qe_status = get_bundled_qe_staging_status()
+            if qe_status in ("staging", "staging_incomplete"):
+                result["bundled_engine_staging"] = {
+                    "engine": "qe",
+                    "status": qe_status,
+                    "message": "Bundled QE is being set up (first launch only). Please try again in a few seconds.",
+                }
+
+        return result
     
     # -------------------------------------------------------------------------
     # Demo project handlers

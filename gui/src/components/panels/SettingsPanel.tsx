@@ -21,6 +21,7 @@ import type {
   EngineStatusEntry,
   EngineInstallation,
   InstallableEngineEntry,
+  PendingEngineEntry,
 } from '../../types/qms';
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
@@ -421,6 +422,7 @@ function formatElapsed(startedAt: string | null): string {
 function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSectionProps) {
   const [engineRows, setEngineRows] = useState<EngineStatusEntry[]>([]);
   const [installableRows, setInstallableRows] = useState<InstallableEngineEntry[]>([]);
+  const [pendingEngines, setPendingEngines] = useState<PendingEngineEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingJobs, setPendingJobs] = useState<
@@ -465,6 +467,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
 
       setEngineRows(listResp.data?.engines || []);
       setInstallableRows(installableResp.data?.engines || []);
+      setPendingEngines(listResp.data?.pending_engines || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to refresh engine manager');
     } finally {
@@ -476,6 +479,13 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
     if (!qms?.state.isConnected) return;
     refreshEngineData();
   }, [qms, qms?.state.isConnected, refreshEngineData]);
+
+  // Auto-refresh every 5s while bundled engines are still being staged.
+  useEffect(() => {
+    if (pendingEngines.length === 0) return;
+    const timer = setInterval(() => { void refreshEngineData(); }, 5000);
+    return () => clearInterval(timer);
+  }, [pendingEngines.length, refreshEngineData]);
 
   useEffect(() => {
     if (!qms?.state.isConnected || Object.keys(pendingJobs).length === 0) return;
@@ -726,6 +736,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
                 : 'Not installed';
               const sourceText = row?.active_source ? formatEngineSourceLabel(row.active_source) : '—';
               const pending = pendingJobs[engine];
+              const pendingStaging = pendingEngines.find(pe => pe.engine === engine);
               const notice = rowNotices[engine];
               const hasInstallMethod = !!(installable && installable.install_methods.length > 0);
               const manualOnly = !!installable?.manual_only;
@@ -769,6 +780,16 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
                           pending.message !== pending.progressStage && (
                           <div className="engine-progress-log">{pending.message}</div>
                         )}
+                      </div>
+                    )}
+                    {!pending && pendingStaging && (
+                      <div className="engine-manager-row__progress" data-testid={`qms-engine-staging-${engine}`}>
+                        <div className="engine-progress-bar">
+                          <div className="engine-progress-bar__fill engine-progress-bar__fill--indeterminate" />
+                        </div>
+                        <div className="engine-progress-info">
+                          <span className="engine-progress-info__stage">{pendingStaging.message}</span>
+                        </div>
                       </div>
                     )}
                     {notice && (

@@ -426,50 +426,77 @@ async function stageBundledEngines(): Promise<void> {
   const appDataDir = getAppDataDir();
   const resourcesDir = process.resourcesPath;
 
-  // Check for bundled QE engine
+  // ── QE engine: staged to <appData>/engines/qe/bundled-7.5/bin/pw.x ──
+  // Discovery: engine_registry._scan_bundled("qe") scans home_engines_dir()/qe/
+  // for subdirs containing bin/ with pw.x (Unix) or pw.exe (Windows).
   const bundledQeDir = path.join(resourcesDir, 'engines', 'qe', 'bundled-7.5');
   const bundledQeBin = process.platform === 'win32'
     ? path.join(bundledQeDir, 'bin', 'pw.exe')
     : path.join(bundledQeDir, 'bin', 'pw.x');
 
   if (fs.existsSync(bundledQeBin)) {
-    const targetQeDir = path.join(appDataDir, 'engines', 'qe', 'bundled-7.5');
-    const marker = path.join(targetQeDir, '.bundled-staged-7.5');
+    const qeBaseDir = path.join(appDataDir, 'engines', 'qe');
+    const finalDir = path.join(qeBaseDir, 'bundled-7.5');
+    const stagingDir = path.join(qeBaseDir, 'bundled-7.5.staging');
+    const marker = path.join(finalDir, '.bundled-staged-7.5');
 
     if (!fs.existsSync(marker)) {
       console.log('[main] Staging bundled QE engine to AppData...');
       try {
-        fs.mkdirSync(targetQeDir, { recursive: true });
-        fs.cpSync(bundledQeDir, targetQeDir, { recursive: true });
+        // Clean up incomplete previous attempts
+        if (fs.existsSync(stagingDir)) {
+          fs.rmSync(stagingDir, { recursive: true });
+        }
+        if (fs.existsSync(finalDir) && !fs.existsSync(marker)) {
+          fs.rmSync(finalDir, { recursive: true });
+        }
+
+        fs.mkdirSync(qeBaseDir, { recursive: true });
+
+        // Step 1: Copy to staging directory
+        fs.cpSync(bundledQeDir, stagingDir, { recursive: true });
+        // Step 2: Atomic rename to final directory
+        fs.renameSync(stagingDir, finalDir);
+        // Step 3: Write marker (confirms completion)
         fs.writeFileSync(marker, new Date().toISOString(), 'utf-8');
-        console.log('[main] QE engine staged to', targetQeDir);
+        console.log('[main] QE engine staged to', finalDir);
       } catch (err) {
         console.error('[main] Failed to stage bundled QE engine:', err);
+        try { if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true }); } catch { /* best effort */ }
       }
     }
   }
 
-  // Check for bundled SSSP pseudo library (three-level layout)
+  // ── SSSP pseudo library: staged to <appData>/libraries/pseudo/SSSP/efficiency/1.3.0/ ──
+  // Discovery: pseudo.layout.iter_installed_libraries() walks
+  //   <libraries_root>/<Library>/<variant>/<version>/head.json
+  // head.json must contain: {library_key, dir_name, variant, version, ...}
   const bundledSsspDir = path.join(
     resourcesDir, 'libraries', 'pseudo', 'SSSP', 'efficiency', '1.3.0'
   );
   const bundledSsspHead = path.join(bundledSsspDir, 'head.json');
 
   if (fs.existsSync(bundledSsspHead)) {
-    const targetSsspDir = path.join(
-      appDataDir, 'libraries', 'pseudo', 'SSSP', 'efficiency', '1.3.0'
-    );
-    const marker = path.join(targetSsspDir, '.bundled-staged-1.3.0');
+    const ssspBaseDir = path.join(appDataDir, 'libraries', 'pseudo', 'SSSP', 'efficiency');
+    const finalDir = path.join(ssspBaseDir, '1.3.0');
+    const stagingDir = path.join(ssspBaseDir, '1.3.0.staging');
+    const marker = path.join(finalDir, '.bundled-staged-1.3.0');
 
     if (!fs.existsSync(marker)) {
       console.log('[main] Staging bundled SSSP library to AppData...');
       try {
-        fs.mkdirSync(targetSsspDir, { recursive: true });
-        fs.cpSync(bundledSsspDir, targetSsspDir, { recursive: true });
+        if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true });
+        if (fs.existsSync(finalDir) && !fs.existsSync(marker)) {
+          fs.rmSync(finalDir, { recursive: true });
+        }
+        fs.mkdirSync(ssspBaseDir, { recursive: true });
+        fs.cpSync(bundledSsspDir, stagingDir, { recursive: true });
+        fs.renameSync(stagingDir, finalDir);
         fs.writeFileSync(marker, new Date().toISOString(), 'utf-8');
-        console.log('[main] SSSP library staged to', targetSsspDir);
+        console.log('[main] SSSP library staged to', finalDir);
       } catch (err) {
         console.error('[main] Failed to stage bundled SSSP library:', err);
+        try { if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true }); } catch { /* best effort */ }
       }
     }
   }
@@ -585,6 +612,7 @@ function spawnDaemon(): boolean {
         ...process.env,
         PYTHONUNBUFFERED: '1', // Ensure unbuffered output
         QMATSUITE_ELECTRON: '1',
+        ...(app.isPackaged ? { QMATSUITE_RESOURCES_PATH: process.resourcesPath } : {}),
       },
       // Use independent pipes - daemon's stdio is not tied to Electron's stdin
       stdio: ['pipe', 'pipe', 'pipe'],

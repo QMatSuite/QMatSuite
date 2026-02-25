@@ -274,6 +274,12 @@ export function CalculationProvider({ children }: { children: ReactNode }) {
       const preflight = preflightResponse.data as PreflightCheckResult;
 
       if (!preflight.ok) {
+        // If a bundled engine is still being staged (full variant, first launch),
+        // show a non-blocking message instead of the missing engine guidance.
+        if (preflight.bundled_engine_staging) {
+          showNotification(preflight.bundled_engine_staging.message, 'success');
+          return;
+        }
         const errorMsg = preflight.errors.join('; ') || 'Pre-flight check failed';
         const inferred = selectedEngineFamily || inferMissingEngineFamily(errorMsg);
         if (inferred) {

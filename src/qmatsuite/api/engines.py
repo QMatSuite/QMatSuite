@@ -262,6 +262,26 @@ def list_installable_engines() -> List[Dict[str, Any]]:
     return _list_installable_engines_kernel()
 
 
+def get_bundled_qe_staging_status() -> Optional[str]:
+    """Return bundled QE staging status for Electron full variant.
+
+    Returns None (lite/non-Electron), "ready", "staging", or "staging_incomplete".
+    """
+    from qmatsuite.core.engines.bundled_staging import check_bundled_qe_status
+
+    return check_bundled_qe_status()
+
+
+def get_bundled_sssp_staging_status() -> Optional[str]:
+    """Return bundled SSSP staging status for Electron full variant.
+
+    Returns None (lite/non-Electron), "ready", "staging", or "staging_incomplete".
+    """
+    from qmatsuite.core.engines.bundled_staging import check_bundled_sssp_status
+
+    return check_bundled_sssp_status()
+
+
 __all__ = [
     "list_engines",
     "get_active_engine",
@@ -272,4 +292,6 @@ __all__ = [
     "install_engine",
     "uninstall_engine",
     "list_installable_engines",
+    "get_bundled_qe_staging_status",
+    "get_bundled_sssp_staging_status",
 ]

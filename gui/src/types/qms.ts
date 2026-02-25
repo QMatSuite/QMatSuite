@@ -469,6 +469,14 @@ export interface InstallableEngineEntry {
   manual_only: boolean;
 }
 
+export interface PendingEngineEntry {
+  engine: string;
+  version: string;
+  source: string;
+  status: string;
+  message: string;
+}
+
 export interface StepPaletteEntry {
   gen: string;
   spec: string;
@@ -782,6 +790,7 @@ export interface QMSCommandMap {
       engines: EngineStatusEntry[];
       count: number;
       installed_only: boolean;
+      pending_engines?: PendingEngineEntry[];
     };
   };
   "engine.verify": {
@@ -2090,6 +2099,11 @@ export interface PreflightCheckResult {
   checks: PreflightCheck[];
   errors: string[];
   warnings: string[];
+  bundled_engine_staging?: {
+    engine: string;
+    status: string;
+    message: string;
+  };
 }
 
 export interface DemoProjectInfo {
