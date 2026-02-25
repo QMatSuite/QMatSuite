@@ -16,6 +16,16 @@
     {
       "from": "runtime",
       "to": "runtime"
+    },
+    {
+      "from": "engines",
+      "to": "engines",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "libraries",
+      "to": "libraries",
+      "filter": ["**/*"]
     }
   ],
   "publish": [

@@ -8,6 +8,15 @@ on:
         required: true
         type: string
         default: "local"
+      variant:
+        description: "Which variants to build"
+        required: true
+        type: choice
+        options:
+          - both
+          - lite
+          - full
+        default: "both"
       sign:
         description: "Sign executables with Microsoft Trusted Signing"
         required: true
@@ -29,6 +38,96 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Compute build flags
+        id: flags
+        run: |
+          variant="${{ inputs.variant }}"
+          if [[ "$variant" == "full" || "$variant" == "both" ]]; then
+            echo "build_full=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_full=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "$variant" == "lite" || "$variant" == "both" ]]; then
+            echo "build_lite=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_lite=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Fail-fast: download QE + SSSP before expensive runtime build ──
+
+      - name: Download QE binary from toolchain release
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          QE_RELEASE_TAG="qe-7.5-win-oneapi-msmpi-20251223-d409e9b"
+          QE_ASSET="qe-7.5-win-oneapi-msmpi.zip"
+
+          echo "Downloading QE binary from toolchain release: ${QE_RELEASE_TAG}..."
+          gh release download "${QE_RELEASE_TAG}" \
+            --repo QMatSuite/qmatsuite-toolchain \
+            --pattern "${QE_ASSET}" \
+            --dir "$RUNNER_TEMP"
+
+          echo "Extracting QE binary..."
+          mkdir -p "$RUNNER_TEMP/qe-bundle"
+          unzip -q "$RUNNER_TEMP/${QE_ASSET}" -d "$RUNNER_TEMP/qe-bundle"
+
+          echo "Verifying QE binary..."
+          QE_BIN_DIR=$(find "$RUNNER_TEMP/qe-bundle" -name "pw.exe" -type f | head -1 | xargs dirname)
+          if [[ -z "$QE_BIN_DIR" ]]; then
+            # Try pw.x as well (some builds use .x even on Windows)
+            QE_BIN_DIR=$(find "$RUNNER_TEMP/qe-bundle" -name "pw.x" -type f | head -1 | xargs dirname)
+          fi
+          if [[ -z "$QE_BIN_DIR" ]]; then
+            echo "::error::pw.exe/pw.x not found in QE archive"
+            find "$RUNNER_TEMP/qe-bundle" -type f | head -20
+            exit 1
+          fi
+          echo "QE bin directory: $QE_BIN_DIR"
+          ls "$QE_BIN_DIR/" | head -10
+
+          # QE_BUNDLE_DIR points to the directory containing bin/
+          echo "QE_BUNDLE_DIR=$QE_BIN_DIR/.." >> "$GITHUB_ENV"
+
+      - name: Download SSSP from qmatsuite-assets
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SSSP_TAG="assets-2025-12-26"
+          SSSP_TARBALL="SSSP_1.3.0_PBE_efficiency.tar.gz"
+          SSSP_JSON="SSSP_1.3.0_PBE_efficiency.json"
+          SSSP_TARBALL_SHA256="7a85b71fa3d68df1b5ed33c55c7057681fbf10377ae3b3eac9392924d9189f12"
+          SSSP_JSON_SHA256="2c8642a70308ecd072a209a30c160bf51423560bb202116cb31fd5275eff814a"
+
+          echo "Downloading SSSP from qmatsuite-assets..."
+          gh release download "${SSSP_TAG}" \
+            --repo QMatSuite/qmatsuite-assets \
+            --pattern "${SSSP_TARBALL}" \
+            --pattern "${SSSP_JSON}" \
+            --dir "$RUNNER_TEMP"
+
+          echo "Verifying SHA256..."
+          echo "${SSSP_TARBALL_SHA256}  $RUNNER_TEMP/${SSSP_TARBALL}" | sha256sum -c -
+          echo "${SSSP_JSON_SHA256}  $RUNNER_TEMP/${SSSP_JSON}" | sha256sum -c -
+
+          echo "Extracting SSSP into three-level layout: SSSP/efficiency/1.3.0..."
+          SSSP_INSTALL_DIR="$RUNNER_TEMP/sssp-bundle/SSSP/efficiency/1.3.0"
+          mkdir -p "$SSSP_INSTALL_DIR"
+          tar -xzf "$RUNNER_TEMP/${SSSP_TARBALL}" -C "$SSSP_INSTALL_DIR"
+          cp "$RUNNER_TEMP/${SSSP_JSON}" "$SSSP_INSTALL_DIR/"
+
+          # Write head.json (required by pseudo library three-level walk)
+          printf '%s\n' '{"library_key":"sssp","dir_name":"SSSP","variant":"efficiency","version":"1.3.0","source_archive":"SSSP_1.3.0_PBE_efficiency.tar.gz","sha256":"7a85b71fa3d68df1b5ed33c55c7057681fbf10377ae3b3eac9392924d9189f12"}' > "$SSSP_INSTALL_DIR/head.json"
+
+          echo "SSSP_BUNDLE_DIR=$RUNNER_TEMP/sssp-bundle" >> "$GITHUB_ENV"
+          echo "✅ SSSP verified and extracted"
+
+      # ── Standard build steps ──
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -71,7 +170,7 @@ jobs:
           mkdir -p gui/runtime
           tar -xzf runtime-packed.tar.gz -C gui/runtime
           # DO NOT run conda-unpack here — it runs on the user's machine
-          # (during NSIS install via customInstall macro, or on first launch)
+          # (during NSIS install via customInstall macro)
           rm -f runtime-packed.tar.gz
 
           # Strip bulky non-essential files to reduce count and installer size
@@ -98,15 +197,110 @@ jobs:
         working-directory: gui
         run: npm run build:e2e
 
-      - name: Clean previous release outputs
-        run: |
-          rm -rf "${{ github.workspace }}/gui/release"
+      # ── Prepare holding directory for installers ──
 
-      - name: Build NSIS installer
+      - name: Create installer holding directory
+        run: mkdir -p "$RUNNER_TEMP/exe-hold"
+
+      # ── Build lite NSIS installer ──
+
+      - name: Clean release outputs (lite)
+        if: ${{ steps.flags.outputs.build_lite == 'true' }}
+        run: rm -rf "${{ github.workspace }}/gui/release"
+
+      - name: Ensure no extra engines/libraries staged (lite)
+        if: ${{ steps.flags.outputs.build_lite == 'true' }}
+        run: |
+          rm -rf "${{ github.workspace }}/gui/engines"
+          rm -rf "${{ github.workspace }}/gui/libraries"
+
+      - name: Build lite NSIS installer
+        if: ${{ steps.flags.outputs.build_lite == 'true' }}
         working-directory: gui
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: npx electron-builder --win nsis --x64 --config electron-builder.json5 --publish never
+
+      - name: Rename and hold lite installer
+        if: ${{ steps.flags.outputs.build_lite == 'true' }}
+        run: |
+          set -euo pipefail
+          cd "${{ github.workspace }}/gui/release"
+          # electron-builder produces: QMatSuite-Windows-{version}.exe
+          # Lite keeps the default name (no rename needed)
+          mv QMatSuite-*.exe QMatSuite-*.exe.blockmap latest.yml "$RUNNER_TEMP/exe-hold/" 2>/dev/null || true
+          echo "Lite installer moved to holding directory"
+          ls -la "$RUNNER_TEMP/exe-hold/"
+
+      # ── Build full NSIS installer ──
+
+      - name: Stage QE + SSSP for full build
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
+        run: |
+          set -euo pipefail
+          echo "Staging QE binary into gui/engines/..."
+          mkdir -p "${{ github.workspace }}/gui/engines/qe/bundled-7.5"
+          cp -R "$QE_BUNDLE_DIR"/. "${{ github.workspace }}/gui/engines/qe/bundled-7.5/"
+          echo "QE staged:"
+          ls "${{ github.workspace }}/gui/engines/qe/bundled-7.5/bin/" | head -5
+          du -sh "${{ github.workspace }}/gui/engines/qe/bundled-7.5"
+
+          echo "Staging SSSP into gui/libraries/pseudo/ (three-level layout)..."
+          mkdir -p "${{ github.workspace }}/gui/libraries/pseudo"
+          cp -R "$SSSP_BUNDLE_DIR"/. "${{ github.workspace }}/gui/libraries/pseudo/"
+          echo "SSSP staged:"
+          ls "${{ github.workspace }}/gui/libraries/pseudo/SSSP/efficiency/1.3.0/" | head -5
+          du -sh "${{ github.workspace }}/gui/libraries/pseudo"
+
+      - name: Clean release outputs (full)
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
+        run: rm -rf "${{ github.workspace }}/gui/release"
+
+      - name: Build full NSIS installer
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
+        working-directory: gui
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --win nsis --x64 --config electron-builder.json5 --publish never
+
+      - name: Rename and hold full installer
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
+        run: |
+          set -euo pipefail
+          cd "${{ github.workspace }}/gui/release"
+          # Rename: QMatSuite-Windows-{version}.exe -> QMatSuite-Full-Windows-{version}.exe
+          for f in QMatSuite-Windows-*.exe; do
+            new_name="${f/QMatSuite-Windows-/QMatSuite-Full-Windows-}"
+            mv "$f" "$new_name"
+            echo "Renamed $f -> $new_name"
+          done
+          for f in QMatSuite-Windows-*.exe.blockmap; do
+            new_name="${f/QMatSuite-Windows-/QMatSuite-Full-Windows-}"
+            mv "$f" "$new_name"
+          done
+          mv QMatSuite-*.exe QMatSuite-*.exe.blockmap "$RUNNER_TEMP/exe-hold/" 2>/dev/null || true
+          # latest.yml already held from lite build (or copy if full-only)
+          mv latest.yml "$RUNNER_TEMP/exe-hold/" 2>/dev/null || true
+          echo "Full installer moved to holding directory"
+          ls -la "$RUNNER_TEMP/exe-hold/"
+
+      - name: Remove staged engines/libraries
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
+        run: |
+          rm -rf "${{ github.workspace }}/gui/engines"
+          rm -rf "${{ github.workspace }}/gui/libraries"
+
+      # ── Collect all installers back into gui/release/ ──
+
+      - name: Collect installers into release directory
+        run: |
+          rm -rf "${{ github.workspace }}/gui/release"
+          mkdir -p "${{ github.workspace }}/gui/release"
+          cp "$RUNNER_TEMP/exe-hold"/* "${{ github.workspace }}/gui/release/" 2>/dev/null || true
+          echo "=== Final release directory ==="
+          ls -la "${{ github.workspace }}/gui/release/"
+
+      # ── Signing ──
 
       - name: Azure Login (OIDC)
         if: ${{ inputs.sign }}
@@ -214,6 +408,8 @@ jobs:
           }
           Write-Host ""
           Write-Host "Restored $copiedCount signed files to release directory."
+
+      # ── Upload ──
 
       - name: Print output artifacts
         run: |

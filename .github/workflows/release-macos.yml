@@ -8,6 +8,15 @@ on:
         required: true
         type: string
         default: "local"
+      variant:
+        description: "Which variants to build"
+        required: true
+        type: choice
+        options:
+          - both
+          - lite
+          - full
+        default: "both"
       sign:
         description: "Code sign the app (Developer ID)"
         required: true
@@ -19,7 +28,7 @@ on:
         type: boolean
         default: false
       wait_for_staple:
-        description: "Wait for notarization and staple (up to 15 min per DMG)"
+        description: "Wait for notarization and staple (up to 30 min per DMG)"
         required: true
         type: boolean
         default: false
@@ -49,29 +58,132 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Compute build flags
+        id: flags
+        run: |
+          variant="${{ inputs.variant }}"
+          arch="${{ matrix.arch }}"
+
+          # Full variant only available on arm64 (no Intel QE binary yet)
+          if [[ "$arch" == "arm64" && ("$variant" == "full" || "$variant" == "both") ]]; then
+            echo "build_full=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_full=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ "$variant" == "lite" || "$variant" == "both" ]]; then
+            echo "build_lite=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_lite=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip x64 when variant=full
+        if: ${{ matrix.arch == 'x64' && inputs.variant == 'full' }}
+        run: |
+          echo "::notice::Skipping x64 — full variant only available on arm64 (no Intel QE binary)"
+          echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+
       - name: Validate signing inputs
-        if: ${{ inputs.notarize && !inputs.sign }}
+        if: ${{ env.SKIP_BUILD != 'true' && inputs.notarize && !inputs.sign }}
         run: |
           echo "Invalid workflow inputs: notarize=true requires sign=true."
           exit 1
 
       - name: Validate staple inputs
-        if: ${{ inputs.wait_for_staple && !inputs.notarize }}
+        if: ${{ env.SKIP_BUILD != 'true' && inputs.wait_for_staple && !inputs.notarize }}
         run: |
           echo "Invalid workflow inputs: wait_for_staple=true requires notarize=true."
           exit 1
 
+      # ── Fail-fast: download QE + SSSP before expensive runtime build ──
+
+      - name: Download QE binary from toolchain release
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          QE_RELEASE_TAG="qe-7.5-macos-arm64-openmp-20260223-10d20bf"
+          QE_ASSET="qe-7.5-macos-arm64-openmp.zip"
+
+          echo "Downloading QE binary from toolchain release: ${QE_RELEASE_TAG}..."
+          gh release download "${QE_RELEASE_TAG}" \
+            --repo QMatSuite/qmatsuite-toolchain \
+            --pattern "${QE_ASSET}" \
+            --dir "$RUNNER_TEMP"
+
+          echo "Extracting QE binary..."
+          mkdir -p "$RUNNER_TEMP/qe-bundle"
+          unzip -q "$RUNNER_TEMP/${QE_ASSET}" -d "$RUNNER_TEMP/qe-bundle"
+
+          echo "Verifying QE binary..."
+          QE_BIN_DIR=$(find "$RUNNER_TEMP/qe-bundle" -name "pw.x" -type f | head -1 | xargs dirname)
+          if [[ -z "$QE_BIN_DIR" ]]; then
+            echo "::error::pw.x not found in QE archive"
+            exit 1
+          fi
+          if timeout 10 "$QE_BIN_DIR/pw.x" < /dev/null 2>&1 | grep -qi "quantum espresso"; then
+            echo "✅ QE binary verified"
+            timeout 5 "$QE_BIN_DIR/pw.x" < /dev/null 2>&1 | head -3 || true
+          else
+            echo "::error::QE binary verification failed — pw.x did not produce expected output"
+            exit 1
+          fi
+
+          # QE_BUNDLE_DIR points to the directory containing bin/ and lib/
+          echo "QE_BUNDLE_DIR=$QE_BIN_DIR/.." >> "$GITHUB_ENV"
+
+      - name: Download SSSP from qmatsuite-assets
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SSSP_TAG="assets-2025-12-26"
+          SSSP_TARBALL="SSSP_1.3.0_PBE_efficiency.tar.gz"
+          SSSP_JSON="SSSP_1.3.0_PBE_efficiency.json"
+          SSSP_TARBALL_SHA256="7a85b71fa3d68df1b5ed33c55c7057681fbf10377ae3b3eac9392924d9189f12"
+          SSSP_JSON_SHA256="2c8642a70308ecd072a209a30c160bf51423560bb202116cb31fd5275eff814a"
+
+          echo "Downloading SSSP from qmatsuite-assets..."
+          gh release download "${SSSP_TAG}" \
+            --repo QMatSuite/qmatsuite-assets \
+            --pattern "${SSSP_TARBALL}" \
+            --pattern "${SSSP_JSON}" \
+            --dir "$RUNNER_TEMP"
+
+          echo "Verifying SHA256..."
+          echo "${SSSP_TARBALL_SHA256}  $RUNNER_TEMP/${SSSP_TARBALL}" | shasum -a 256 -c -
+          echo "${SSSP_JSON_SHA256}  $RUNNER_TEMP/${SSSP_JSON}" | shasum -a 256 -c -
+
+          echo "Extracting SSSP into three-level layout: SSSP/efficiency/1.3.0..."
+          SSSP_INSTALL_DIR="$RUNNER_TEMP/sssp-bundle/SSSP/efficiency/1.3.0"
+          mkdir -p "$SSSP_INSTALL_DIR"
+          tar -xzf "$RUNNER_TEMP/${SSSP_TARBALL}" -C "$SSSP_INSTALL_DIR"
+          cp "$RUNNER_TEMP/${SSSP_JSON}" "$SSSP_INSTALL_DIR/"
+
+          # Write head.json (required by pseudo library three-level walk)
+          printf '%s\n' '{"library_key":"sssp","dir_name":"SSSP","variant":"efficiency","version":"1.3.0","source_archive":"SSSP_1.3.0_PBE_efficiency.tar.gz","sha256":"7a85b71fa3d68df1b5ed33c55c7057681fbf10377ae3b3eac9392924d9189f12"}' > "$SSSP_INSTALL_DIR/head.json"
+
+          echo "SSSP_BUNDLE_DIR=$RUNNER_TEMP/sssp-bundle" >> "$GITHUB_ENV"
+          echo "✅ SSSP verified and extracted"
+
+      # ── Standard build steps (shared by lite and full) ──
+
       - name: Set up Node
+        if: ${{ env.SKIP_BUILD != 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
       - name: Set up Python
+        if: ${{ env.SKIP_BUILD != 'true' }}
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Set up micromamba
+        if: ${{ env.SKIP_BUILD != 'true' }}
         uses: mamba-org/setup-micromamba@v2
         with:
           init-shell: bash
@@ -79,6 +191,7 @@ jobs:
           cache-environment: false
 
       - name: Build runtime environment
+        if: ${{ env.SKIP_BUILD != 'true' }}
         run: |
           set -euo pipefail
           micromamba create -y -p "$RUNTIME_ENV_PREFIX" -c conda-forge python=3.12 pip
@@ -95,6 +208,7 @@ jobs:
           head -n 5 /tmp/qms_help.txt
 
       - name: Build relocatable runtime with conda-pack
+        if: ${{ env.SKIP_BUILD != 'true' }}
         run: |
           set -euo pipefail
           pip install conda-pack
@@ -124,28 +238,17 @@ jobs:
           find "${{ github.workspace }}/gui/runtime" -type f | wc -l
 
       - name: Install GUI dependencies
+        if: ${{ env.SKIP_BUILD != 'true' }}
         working-directory: gui
         run: npm ci
 
       - name: Build GUI assets
+        if: ${{ env.SKIP_BUILD != 'true' }}
         working-directory: gui
         run: npm run build:e2e
 
-      - name: Clean previous release outputs
-        run: |
-          rm -rf "${{ github.workspace }}/gui/release"
-
-      - name: Build unsigned DMG
-        if: ${{ !inputs.sign }}
-        working-directory: gui
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: |
-          ulimit -n 65536
-          npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
-
       - name: Import Apple signing certificate
-        if: ${{ inputs.sign }}
+        if: ${{ env.SKIP_BUILD != 'true' && inputs.sign }}
         env:
           APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -160,8 +263,35 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "" qms-build.keychain
           rm -f /tmp/qms-sign/cert.p12
 
-      - name: Build signed DMG
-        if: ${{ inputs.sign }}
+      # ── Prepare holding directory for DMGs ──
+
+      - name: Create DMG holding directory
+        if: ${{ env.SKIP_BUILD != 'true' }}
+        run: mkdir -p "$RUNNER_TEMP/dmg-hold"
+
+      # ── Build lite DMG ──
+
+      - name: Clean release outputs (lite)
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_lite == 'true' }}
+        run: rm -rf "${{ github.workspace }}/gui/release"
+
+      - name: Ensure no extra engines/libraries staged (lite)
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_lite == 'true' }}
+        run: |
+          rm -rf "${{ github.workspace }}/gui/engines"
+          rm -rf "${{ github.workspace }}/gui/libraries"
+
+      - name: Build lite DMG (unsigned)
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_lite == 'true' && !inputs.sign }}
+        working-directory: gui
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          ulimit -n 65536
+          npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
+
+      - name: Build lite DMG (signed)
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_lite == 'true' && inputs.sign }}
         working-directory: gui
         env:
           CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
@@ -169,8 +299,109 @@ jobs:
           ulimit -n 65536
           npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
+      - name: Rename and hold lite DMG
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_lite == 'true' }}
+        run: |
+          set -euo pipefail
+          cd "${{ github.workspace }}/gui/release"
+          # electron-builder produces: QMatSuite-macOS-{version}.dmg
+          for f in QMatSuite-macOS-*.dmg; do
+            # Rename to include arch: QMatSuite-macOS-{version}-{arch}.dmg
+            new_name="${f%.dmg}-${{ matrix.arch_label }}.dmg"
+            mv "$f" "$new_name"
+            echo "Renamed $f -> $new_name"
+          done
+          # Move all release artifacts to holding dir
+          mv QMatSuite-*.dmg QMatSuite-*.dmg.blockmap latest-mac.yml "$RUNNER_TEMP/dmg-hold/" 2>/dev/null || true
+          echo "Lite DMG moved to holding directory"
+          ls -la "$RUNNER_TEMP/dmg-hold/"
+
+      # ── Build full DMG (arm64 only) ──
+
+      - name: Stage QE + SSSP for full build
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        run: |
+          set -euo pipefail
+          echo "Staging QE binary into gui/engines/..."
+          mkdir -p "${{ github.workspace }}/gui/engines/qe/bundled-7.5"
+          cp -R "$QE_BUNDLE_DIR"/. "${{ github.workspace }}/gui/engines/qe/bundled-7.5/"
+          echo "QE staged:"
+          ls "${{ github.workspace }}/gui/engines/qe/bundled-7.5/bin/" | head -5
+          du -sh "${{ github.workspace }}/gui/engines/qe/bundled-7.5"
+
+          echo "Staging SSSP into gui/libraries/pseudo/ (three-level layout)..."
+          mkdir -p "${{ github.workspace }}/gui/libraries/pseudo"
+          cp -R "$SSSP_BUNDLE_DIR"/. "${{ github.workspace }}/gui/libraries/pseudo/"
+          echo "SSSP staged:"
+          ls "${{ github.workspace }}/gui/libraries/pseudo/SSSP/efficiency/1.3.0/" | head -5
+          du -sh "${{ github.workspace }}/gui/libraries/pseudo"
+
+      - name: Clean release outputs (full)
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        run: rm -rf "${{ github.workspace }}/gui/release"
+
+      - name: Build full DMG (unsigned)
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' && !inputs.sign }}
+        working-directory: gui
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          ulimit -n 65536
+          npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
+
+      - name: Build full DMG (signed)
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' && inputs.sign }}
+        working-directory: gui
+        env:
+          CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
+        run: |
+          ulimit -n 65536
+          npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
+
+      - name: Rename and hold full DMG
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        run: |
+          set -euo pipefail
+          cd "${{ github.workspace }}/gui/release"
+          # Rename: QMatSuite-macOS-{version}.dmg -> QMatSuite-Full-macOS-{version}-arm64.dmg
+          for f in QMatSuite-macOS-*.dmg; do
+            new_name="${f/QMatSuite-macOS-/QMatSuite-Full-macOS-}"
+            new_name="${new_name%.dmg}-arm64.dmg"
+            mv "$f" "$new_name"
+            echo "Renamed $f -> $new_name"
+          done
+          for f in QMatSuite-macOS-*.dmg.blockmap; do
+            new_name="${f/QMatSuite-macOS-/QMatSuite-Full-macOS-}"
+            new_name="${new_name%.dmg.blockmap}-arm64.dmg.blockmap"
+            mv "$f" "$new_name"
+          done
+          mv QMatSuite-*.dmg QMatSuite-*.dmg.blockmap "$RUNNER_TEMP/dmg-hold/" 2>/dev/null || true
+          # latest-mac.yml already held from lite build (or copy if full-only)
+          mv latest-mac.yml "$RUNNER_TEMP/dmg-hold/" 2>/dev/null || true
+          echo "Full DMG moved to holding directory"
+          ls -la "$RUNNER_TEMP/dmg-hold/"
+
+      - name: Remove staged engines/libraries
+        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        run: |
+          rm -rf "${{ github.workspace }}/gui/engines"
+          rm -rf "${{ github.workspace }}/gui/libraries"
+
+      # ── Collect all DMGs back into gui/release/ ──
+
+      - name: Collect DMGs into release directory
+        if: ${{ env.SKIP_BUILD != 'true' }}
+        run: |
+          rm -rf "${{ github.workspace }}/gui/release"
+          mkdir -p "${{ github.workspace }}/gui/release"
+          cp "$RUNNER_TEMP/dmg-hold"/* "${{ github.workspace }}/gui/release/" 2>/dev/null || true
+          echo "=== Final release directory ==="
+          ls -la "${{ github.workspace }}/gui/release/"
+
+      # ── Notarization ──
+
       - name: Submit notarization (fire-and-forget)
-        if: ${{ inputs.notarize && !inputs.wait_for_staple }}
+        if: ${{ env.SKIP_BUILD != 'true' && inputs.notarize && !inputs.wait_for_staple }}
         env:
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
@@ -181,21 +412,18 @@ jobs:
           key_file="$HOME/.private_keys/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           printf '%s' "$APPLE_NOTARY_KEY" > "$key_file"
           chmod 600 "$key_file"
-          DMG_PATH=$(find "${{ github.workspace }}/gui/release" -name "*.dmg" | head -1)
-          if [[ -z "${DMG_PATH}" ]]; then
-            echo "DMG not found in gui/release"
-            exit 1
-          fi
-          echo "Submitting notarization (fire-and-forget) for ${{ matrix.arch_label }}..."
-          xcrun notarytool submit "$DMG_PATH" \
-            --issuer "$APPLE_NOTARY_ISSUER_ID" \
-            --key-id "$APPLE_NOTARY_KEY_ID" \
-            --key "$key_file"
-          echo "Notarization submitted. DMG will be uploaded without waiting for approval."
+          for DMG_PATH in "${{ github.workspace }}/gui/release/"*.dmg; do
+            echo "Submitting notarization (fire-and-forget) for $(basename "$DMG_PATH")..."
+            xcrun notarytool submit "$DMG_PATH" \
+              --issuer "$APPLE_NOTARY_ISSUER_ID" \
+              --key-id "$APPLE_NOTARY_KEY_ID" \
+              --key "$key_file"
+          done
+          echo "All DMGs submitted. They will be uploaded without waiting for approval."
 
       - name: Submit notarization, wait, and staple
         id: notarize_wait
-        if: ${{ inputs.notarize && inputs.wait_for_staple }}
+        if: ${{ env.SKIP_BUILD != 'true' && inputs.notarize && inputs.wait_for_staple }}
         continue-on-error: true
         env:
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
@@ -207,43 +435,49 @@ jobs:
           key_file="$HOME/.private_keys/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           printf '%s' "$APPLE_NOTARY_KEY" > "$key_file"
           chmod 600 "$key_file"
-          DMG_PATH=$(find "${{ github.workspace }}/gui/release" -name "*.dmg" | head -1)
-          if [[ -z "${DMG_PATH}" ]]; then
-            echo "DMG not found in gui/release"
-            exit 1
-          fi
-          echo "Submitting notarization (wait mode, 15 min timeout) for ${{ matrix.arch_label }}..."
-          if xcrun notarytool submit "$DMG_PATH" \
-            --issuer "$APPLE_NOTARY_ISSUER_ID" \
-            --key-id "$APPLE_NOTARY_KEY_ID" \
-            --key "$key_file" \
-            --wait --timeout 15m; then
-            echo "Notarization approved — stapling DMG..."
-            xcrun stapler staple "$DMG_PATH"
+          all_stapled=true
+          for DMG_PATH in "${{ github.workspace }}/gui/release/"*.dmg; do
+            dmg_name=$(basename "$DMG_PATH")
+            echo "Submitting notarization (wait mode, 30 min timeout) for ${dmg_name}..."
+            if xcrun notarytool submit "$DMG_PATH" \
+              --issuer "$APPLE_NOTARY_ISSUER_ID" \
+              --key-id "$APPLE_NOTARY_KEY_ID" \
+              --key "$key_file" \
+              --wait --timeout 30m; then
+              echo "Notarization approved — stapling ${dmg_name}..."
+              xcrun stapler staple "$DMG_PATH"
+              echo "✅ ${dmg_name} stapled"
+            else
+              echo "::warning::Notarization did not complete for ${dmg_name}. To staple manually: xcrun stapler staple \"${dmg_name}\""
+              all_stapled=false
+            fi
+          done
+          if [[ "$all_stapled" == "true" ]]; then
             echo "stapled=true" >> "$GITHUB_OUTPUT"
-            echo "DMG stapled successfully."
           else
-            echo "::warning::Notarization did not complete within 15 minutes for ${{ matrix.arch_label }}. DMG will be uploaded without stapling. To staple manually: xcrun stapler staple \"$(basename "$DMG_PATH")\""
             echo "stapled=false" >> "$GITHUB_OUTPUT"
-            # Exit 0 so continue-on-error doesn't mask the actual status
             exit 1
           fi
 
       - name: Report notarization result
-        if: ${{ inputs.notarize && inputs.wait_for_staple }}
+        if: ${{ env.SKIP_BUILD != 'true' && inputs.notarize && inputs.wait_for_staple }}
         run: |
           if [[ "${{ steps.notarize_wait.outputs.stapled }}" == "true" ]]; then
-            echo "✅ ${{ matrix.arch_label }} DMG: notarized and stapled"
+            echo "✅ ${{ matrix.arch_label }}: all DMGs notarized and stapled"
           else
-            echo "⚠️ ${{ matrix.arch_label }} DMG: notarization incomplete — uploaded without stapling"
+            echo "⚠️ ${{ matrix.arch_label }}: some DMGs not stapled — uploaded without stapling"
           fi
 
+      # ── Upload ──
+
       - name: Print output artifacts
+        if: ${{ env.SKIP_BUILD != 'true' }}
         run: |
           find "${{ github.workspace }}/gui/release" -maxdepth 4 -type f \( -name "*.dmg" -o -name "latest-mac.yml" -o -name "*.blockmap" \) -print
           du -sh "${{ github.workspace }}/gui/release" || true
 
       - name: Upload build artifacts
+        if: ${{ env.SKIP_BUILD != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: qms-macos-release-${{ matrix.arch_label }}
@@ -254,7 +488,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload DMG to GitHub Release
-        if: ${{ inputs.version != 'local' }}
+        if: ${{ env.SKIP_BUILD != 'true' && inputs.version != 'local' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ inputs.version }}

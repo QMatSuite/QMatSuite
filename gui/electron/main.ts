@@ -407,6 +407,75 @@ async function ensureRuntimeReady(): Promise<boolean> {
 }
 
 /**
+ * Stage bundled engines and pseudo libraries from app resources to AppData.
+ *
+ * In the "full" variant, the DMG/installer includes engines/ and libraries/
+ * directories inside process.resourcesPath. On macOS (drag-to-Applications
+ * install), there is no installer script to copy these at install time, so
+ * we stage them on first launch.
+ *
+ * On Windows, the NSIS customInstall macro handles this during install, so
+ * this function is a no-op for win32 (but runs harmlessly if called).
+ *
+ * Staging is idempotent: a marker file (.bundled-staged-<version>) prevents
+ * re-copying on subsequent launches.
+ */
+async function stageBundledEngines(): Promise<void> {
+  if (!app.isPackaged) return;
+
+  const appDataDir = getAppDataDir();
+  const resourcesDir = process.resourcesPath;
+
+  // Check for bundled QE engine
+  const bundledQeDir = path.join(resourcesDir, 'engines', 'qe', 'bundled-7.5');
+  const bundledQeBin = process.platform === 'win32'
+    ? path.join(bundledQeDir, 'bin', 'pw.exe')
+    : path.join(bundledQeDir, 'bin', 'pw.x');
+
+  if (fs.existsSync(bundledQeBin)) {
+    const targetQeDir = path.join(appDataDir, 'engines', 'qe', 'bundled-7.5');
+    const marker = path.join(targetQeDir, '.bundled-staged-7.5');
+
+    if (!fs.existsSync(marker)) {
+      console.log('[main] Staging bundled QE engine to AppData...');
+      try {
+        fs.mkdirSync(targetQeDir, { recursive: true });
+        fs.cpSync(bundledQeDir, targetQeDir, { recursive: true });
+        fs.writeFileSync(marker, new Date().toISOString(), 'utf-8');
+        console.log('[main] QE engine staged to', targetQeDir);
+      } catch (err) {
+        console.error('[main] Failed to stage bundled QE engine:', err);
+      }
+    }
+  }
+
+  // Check for bundled SSSP pseudo library (three-level layout)
+  const bundledSsspDir = path.join(
+    resourcesDir, 'libraries', 'pseudo', 'SSSP', 'efficiency', '1.3.0'
+  );
+  const bundledSsspHead = path.join(bundledSsspDir, 'head.json');
+
+  if (fs.existsSync(bundledSsspHead)) {
+    const targetSsspDir = path.join(
+      appDataDir, 'libraries', 'pseudo', 'SSSP', 'efficiency', '1.3.0'
+    );
+    const marker = path.join(targetSsspDir, '.bundled-staged-1.3.0');
+
+    if (!fs.existsSync(marker)) {
+      console.log('[main] Staging bundled SSSP library to AppData...');
+      try {
+        fs.mkdirSync(targetSsspDir, { recursive: true });
+        fs.cpSync(bundledSsspDir, targetSsspDir, { recursive: true });
+        fs.writeFileSync(marker, new Date().toISOString(), 'utf-8');
+        console.log('[main] SSSP library staged to', targetSsspDir);
+      } catch (err) {
+        console.error('[main] Failed to stage bundled SSSP library:', err);
+      }
+    }
+  }
+}
+
+/**
  * Find the Python interpreter
  *
  * Search order:
@@ -1243,6 +1312,10 @@ app.whenReady().then(() => {
     if (!runtimePrepared && !app.isPackaged) {
       console.log('[main] Runtime not prepared; continuing with development/system Python');
     }
+
+    // Stage bundled engines/pseudo from app resources to AppData (full variant).
+    // Non-blocking: runs before daemon spawn so engine discovery finds them.
+    await stageBundledEngines();
 
     const daemonStarted = spawnDaemon();
     if (!daemonStarted) {
