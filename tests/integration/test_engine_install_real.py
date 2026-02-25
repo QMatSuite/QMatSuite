@@ -83,18 +83,19 @@ def test_toolchain_checksums_txt_format() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    not os.environ.get("QMATSUITE_TEST_ENGINE_INSTALL"),
-    reason="Set QMATSUITE_TEST_ENGINE_INSTALL=1 to run real engine install tests",
-)
 @pytest.mark.integration
 @pytest.mark.network
-@pytest.mark.slow
-def test_xtb_conda_install_full_pipeline(tmp_path) -> None:
-    """Install xTB via conda, verify it works, then uninstall."""
+def test_xtb_conda_install_full_pipeline(tmp_path, monkeypatch) -> None:
+    """Install xTB via conda, assert key executables exist, then uninstall and assert removal.
+
+    Uses tmp_path (fresh per-run, pytest keeps last 3) so the install dir
+    survives the test for post-failure inspection.
+    """
+    import subprocess
+
     from qmatsuite.api.engines import install_engine, uninstall_engine
 
-    os.environ["QMATSUITE_HOME"] = str(tmp_path)
+    monkeypatch.setenv("QMATSUITE_HOME", str(tmp_path))
 
     events: list[dict] = []
 
@@ -103,34 +104,59 @@ def test_xtb_conda_install_full_pipeline(tmp_path) -> None:
 
     result = install_engine("xtb", source="conda", on_progress=recorder)
     installation = result["installation"]
+    install_id = installation.get("id") or installation.get("installation_id")
 
-    # Verify micromamba and env exist
+    # ── Post-install: micromamba bootstrap ──────────────────────────────────
     micromamba_bin = tmp_path / "micromamba" / "bin"
-    assert micromamba_bin.exists(), "micromamba bin dir not found"
+    assert micromamba_bin.exists(), f"micromamba bin dir not found (tmp: {tmp_path})"
 
-    # Verify registration
+    # ── Post-install: registry entry ─────────────────────────────────────────
     engines_json = tmp_path / "config" / "engines.json"
-    assert engines_json.exists(), "engines.json not written"
+    assert engines_json.exists(), f"engines.json not written (tmp: {tmp_path})"
 
-    # Verify progress was reported
+    # ── Post-install: progress events ────────────────────────────────────────
     stages = [e.get("stage") for e in events if "stage" in e]
     assert len(stages) > 0, "No progress stage events received"
 
-    # Verify xtb binary works
+    # ── Post-install: xtb binary exists and is executable ────────────────────
     install_path = installation.get("path")
-    if install_path:
-        import subprocess
+    assert install_path, f"installation dict missing 'path': {installation}"
+    xtb_bin = os.path.join(install_path, "xtb")
+    assert os.path.isfile(xtb_bin), (
+        f"xtb binary not found at {xtb_bin} (install_path={install_path})"
+    )
+    assert os.access(xtb_bin, os.X_OK), f"xtb binary is not executable: {xtb_bin}"
 
-        xtb_bin = os.path.join(install_path, "xtb")
-        if os.path.isfile(xtb_bin):
-            proc = subprocess.run(
-                [xtb_bin, "--version"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-            )
-            assert proc.returncode == 0 or "version" in (proc.stdout + proc.stderr).lower()
+    # ── Post-install: xtb --version succeeds ─────────────────────────────────
+    proc = subprocess.run(
+        [xtb_bin, "--version"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert proc.returncode == 0 or "version" in (proc.stdout + proc.stderr).lower(), (
+        f"xtb --version failed (rc={proc.returncode}):\n"
+        f"stdout: {proc.stdout}\nstderr: {proc.stderr}"
+    )
 
-    # Cleanup
-    install_id = installation["id"]
-    uninstall_engine("xtb", install_id)
+    # ── Uninstall ─────────────────────────────────────────────────────────────
+    assert install_id, f"No installation id in result: {installation}"
+    uninstall_result = uninstall_engine("xtb", install_id)
+    assert uninstall_result.get("removed") is True, f"Unexpected uninstall result: {uninstall_result}"
+
+    # ── Post-uninstall: xtb binary is gone ───────────────────────────────────
+    assert not os.path.exists(xtb_bin), (
+        f"xtb binary still exists after uninstall: {xtb_bin}"
+    )
+
+    # ── Post-uninstall: registry entry is removed ────────────────────────────
+    import json as _json
+
+    with open(engines_json) as f:
+        registry_data = _json.load(f)
+    xtb_installs = registry_data.get("engines", {}).get("xtb", {}).get("installations", [])
+    ids_remaining = [e.get("id") for e in xtb_installs]
+    assert install_id not in ids_remaining, (
+        f"Installation '{install_id}' still listed in engines.json after uninstall. "
+        f"Remaining: {ids_remaining}"
+    )

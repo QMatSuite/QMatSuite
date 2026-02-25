@@ -14,9 +14,9 @@
 | Python runtime bundling (conda-pack in-app) | ✅ v1.2.0 (Step 8) |
 | macOS code signing + notarization | ✅ v1.2.0 (Step 5) |
 | Windows code signing (Azure Trusted Signing) | ✅ v1.2.0 (Step 5) |
-| Engine registry (`engines.json`) | 🔲 Not yet implemented |
-| Micromamba integration for engine management | 🔲 Not yet implemented |
-| Engine manager GUI | 🔲 Not yet implemented |
+| Engine registry (`engines.json`) | ✅ Implemented (engines.json CRUD, discovery, 6 source types) |
+| Micromamba integration for engine management | ✅ Implemented (bootstrap, env create/remove, SHA256 verify) |
+| Engine manager GUI | ✅ Implemented (install, uninstall, verify, configure-path, progress bar) |
 | qmatsuite-full release (QE + SSSP bundled) | 🔲 Not yet implemented |
 | Auto-update | Partial (configured but has full-screen error when no release exists) |
 | Linux AppImage | 🔲 Not yet implemented |
@@ -789,7 +789,7 @@ When the engine manager runs discovery (on app launch or user request):
 
 ### 3.6 Micromamba Integration
 
-🔲 Not yet implemented. Design retained for future release.
+✅ Implemented. See `src/qmatsuite/core/engines/micromamba.py`.
 
 **What**: QMatSuite ships with or auto-downloads [micromamba](https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html) (~5MB statically-linked binary) for one-click engine installation.
 
@@ -879,6 +879,18 @@ Python engines are NOT dependencies of the main `qmatsuite` package. They each g
 | Engine | Repo | Variants | Notes |
 |--------|------|---------|-------|
 | QE | `qmatsuite-toolchain` | OpenMP-only, MPI-enabled | See §1.4 for dual variant strategy |
+
+**Auto-source selection** (`source="auto"` in `install_engine()`):
+
+When the user clicks "Install" without specifying a source, the selection logic is:
+
+| Engine | Platform | Selected source | Rationale |
+|--------|----------|----------------|-----------|
+| QE | macOS (arm64, x64) | `github_release` | Signed, platform-optimized toolchain binary |
+| QE | Windows x64 | `github_release` | Same — pre-built OneAPI+MSMPI binary |
+| QE | Linux x64 | `conda` | No toolchain release for Linux yet |
+| xTB, LAMMPS, CP2K, etc. | Any | `conda` | conda-forge packages via micromamba |
+| VASP, ORCA, Gaussian, Yambo | Any | Error | User must provide path ("Configure Path") |
 
 ### 3.7 QE Version Management
 
@@ -1019,7 +1031,12 @@ The engine manager needs TWO package sources:
 
 3. Download to <cache_dir>/downloads/
 
-4. Verify SHA256 checksum (from .sha256 sidecar file in release assets)
+4. Verify SHA256 checksum:
+   - Primary: `checksums.txt` (standard `sha256sum` output format: `<hash>  <filename>`).
+     Toolchain releases publish this file; the engine installer parses it to
+     extract per-asset hashes.
+   - Fallback: per-asset `.sha256` sidecar files (used by micromamba releases).
+   - If neither exists, a warning is logged and verification is skipped.
 
 5. Extract to <app_data>/engines/qe/github-7.5-openmp/bin/
 
@@ -1037,29 +1054,39 @@ The engine manager needs TWO package sources:
 
 ### 3.10 Integration with Existing Code
 
-The unified registry replaces the QE-specific two-state resolver while preserving the contract:
+The unified registry augments the QE resolver with a registry-first lookup, evolving from a two-state to a **three-state** model:
 
-**Current flow** (QE only):
+**QE resolver (three-state, as implemented):**
 ```
 qe_resolver.resolve_qe_bin_dir()
-  -> State 1: settings.qe.bin_dir
-  -> State 2: find_internal_qe_bin_dir() (scan .qmatsuite/engines/qe/)
+  -> State 1 (Registry):  EngineRegistry.get_active("qe")         — highest priority
+  -> State 2 (Settings):  settings.qe.bin_dir                     — backward compatibility
+  -> State 3 (Auto-scan): find_internal_qe_bin_dir()              — legacy fallback
+       scans .qmatsuite/engines/qe/**/bin/
   -> Error
 ```
 
-**Target flow** (all engines):
+**Other engines** follow a simpler two-tier pattern:
 ```
-engine_registry.get_active_installation(engine_family)
-  -> Look up engines.json for active installation
-  -> Return path + env_vars
-  -> If not found: raise EngineNotInstalledError with actionable message
+resolve_active_binary("<engine>", binary_name="<binary>")
+  -> Tier 1 (Registry): EngineRegistry.get_active("<engine>")
+  -> Tier 2 (Fallback):  shutil.which("<binary>")
 ```
-
-The `qe_resolver.py` two-state model becomes a specialization of the general registry:
-- State 1 (external) → `user_path` source type in engines.json
-- State 2 (internal) → `bundled` or `micromamba` source type in engines.json
 
 **Verification hook in handlers**: Each engine handler already catches `FileNotFoundError`. The registry adds a pre-flight check before subprocess invocation — verify the registered path still exists and the binary is executable.
+
+### 3.11 Install Progress Reporting
+
+Engine installation is async via the `JobManager` (single-worker `ThreadPoolExecutor`). The frontend polls `get_job_status` every 2 seconds. Jobs report progress through these fields on the `Job` dataclass:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `progress_pct` | `float \| None` | Overall completion percentage (0–100) |
+| `progress_bytes` | `int \| None` | Bytes downloaded so far |
+| `progress_total` | `int \| None` | Total expected bytes |
+| `progress_stage` | `str \| None` | Human-readable stage label (e.g., "Bootstrapping micromamba", "Installing xTB via conda") |
+
+Download phases (GitHub Release binary, micromamba bootstrap) report byte-level progress via an `on_progress` callback that updates the job's fields. Conda install phases stream `micromamba create` subprocess stdout line-by-line as `log_line` events — the last line is exposed as `last_log_line`. The frontend renders a determinate progress bar when `progress_pct` is available, falling back to an indeterminate animation when only stage info is present.
 
 ---
 

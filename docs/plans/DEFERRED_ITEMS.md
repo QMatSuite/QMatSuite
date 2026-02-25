@@ -237,3 +237,28 @@ Do not reopen unless regressions are discovered.
 - Currently QE-only binary discovery in `qe_resolver.py` with two-state model
 - No unified registry across all engines, no micromamba integration
 - **Fix**: Implement `engines.json` registry + discovery pipeline. See design doc §3
+
+---
+
+## 7. Performance — High Priority
+
+### P1: Cache invalidation gap (12 missing handlers)
+- **Source**: Performance Audit 2026-02-24
+- Only 4 of ~16 mutation handlers call `invalidate_cache()`. Missing handlers:
+  `rename_structure`, `delete_structure`, `rename_calculation`, `update_step_params`,
+  `apply_presets_to_step`, `add_step`, `delete_step`, `change_calculation_structure`,
+  `set_common_card`, `set_pseudo_mapping`, `reset_step_params`, `update_calculation_species_map`
+- Cross-request caching is unsafe until all mutation handlers invalidate
+- **Risk**: HIGH — enabling cross-request caching without fixing this causes stale data bugs
+- **Fix**: Audit all mutation handlers, add `invalidate_cache()` calls, then enable cross-request ResourceIndex caching
+
+### P2: ResourceIndex O(n) directory walks
+- **Source**: Performance Audit F001/F002
+- `build_resource_index()` walks entire project directory tree on every RPC call
+- Quick win (done): request-scoped sharing avoids redundant builds within a single `list(detail=True)` call
+- **Fix**: Incremental index with filesystem watcher or manifest-based invalidation
+
+### P3: Electron IPC serialization overhead
+- **Source**: Performance Audit F024/F025
+- Large `list_calculations(detail=True)` responses serialize/deserialize twice (daemon→main, main→renderer)
+- **Fix**: Consider direct daemon↔renderer communication or streaming responses

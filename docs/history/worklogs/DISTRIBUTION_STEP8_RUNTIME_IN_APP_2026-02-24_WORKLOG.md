@@ -148,7 +148,7 @@ is dramatically better (instant launch, no extraction overlay).
 ### Problem
 
 Running `conda-unpack` in CI patches all hardcoded paths to the CI runner's paths
-(e.g. `/Users/runner/work/.../gui/runtime/`). When the app is installed on a user's
+(e.g. `<HOME>/work/.../gui/runtime/`). When the app is installed on a user's
 machine at `/Applications/QMatSuite.app/Contents/Resources/runtime/`, those paths
 would be wrong.
 

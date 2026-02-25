@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import platform
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,24 @@ from qmatsuite.core.engines.engine_installer import (
     uninstall_engine as uninstall_engine_kernel,
 )
 from qmatsuite.core.engines.engine_registry import EngineRegistry
+
+
+# Platforms for which we publish pre-built QE binaries via qmatsuite-toolchain.
+_QE_TOOLCHAIN_PLATFORMS: set[tuple[str, str]] = {
+    ("darwin", "arm64"),
+    ("darwin", "aarch64"),
+    ("darwin", "x86_64"),
+    ("darwin", "amd64"),
+    ("windows", "amd64"),
+    ("windows", "x86_64"),
+}
+
+
+def _qe_github_release_available() -> bool:
+    """Return True if a QE toolchain binary is published for the current platform."""
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    return (system, machine) in _QE_TOOLCHAIN_PLATFORMS
 
 
 def _make_user_installation_id(prefix: str, seed: str) -> str:
@@ -185,9 +204,13 @@ def install_engine(
 
     selected_source = (source or "auto").strip().lower()
     if selected_source == "auto":
-        if ENGINE_META[family].get("conda_package"):
+        if family == "qe" and _qe_github_release_available():
+            # Prefer signed, platform-optimized toolchain binary on macOS/Windows.
+            selected_source = "github_release"
+        elif ENGINE_META[family].get("conda_package"):
             selected_source = "conda"
         elif family == "qe":
+            # Fallback for platforms without toolchain binaries (e.g. Linux).
             selected_source = "github_release"
         else:
             raise ValueError(

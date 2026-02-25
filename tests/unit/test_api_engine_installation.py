@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from qmatsuite.api.engines import (
+    _qe_github_release_available,
     install_engine,
     list_installable_engines,
     uninstall_engine,
@@ -77,3 +78,95 @@ def test_list_installable_engines_passthrough(monkeypatch: pytest.MonkeyPatch) -
     )
     items = list_installable_engines()
     assert items == [{"engine": "xtb", "manual_only": False}]
+
+
+# ---------------------------------------------------------------------------
+# Auto-source selection tests
+# ---------------------------------------------------------------------------
+
+
+def _stub_github_release(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
+    """Patch both resolve + install for github_release path, returning a tracker dict."""
+    called: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "qmatsuite.api.engines.resolve_qe_github_release_asset",
+        lambda version=None, variant="openmp": {
+            "asset_url": "https://example.com/qe.zip",
+            "checksum_url": "",
+        },
+    )
+    monkeypatch.setattr(
+        "qmatsuite.api.engines.install_engine_github_release",
+        lambda family, asset_url, checksum_url=None, expected_sha256=None, on_progress=None: (
+            called.update(source="github_release", family=family)
+            or {"id": "github-7.5", "source": "github_release"}
+        ),
+    )
+    return called
+
+
+def _stub_conda(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
+    """Patch install_engine_conda, returning a tracker dict."""
+    called: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "qmatsuite.api.engines.install_engine_conda",
+        lambda engine_family, version=None, on_progress=None: (
+            called.update(source="conda", engine_family=engine_family)
+            or {"id": "conda-latest", "source": "micromamba"}
+        ),
+    )
+    return called
+
+
+def test_auto_source_qe_macos_arm64_prefers_github_release(monkeypatch: pytest.MonkeyPatch) -> None:
+    """On macOS arm64, auto should select github_release for QE."""
+    monkeypatch.setattr("qmatsuite.api.engines.platform.system", lambda: "Darwin")
+    monkeypatch.setattr("qmatsuite.api.engines.platform.machine", lambda: "arm64")
+    assert _qe_github_release_available() is True
+
+    gh_called = _stub_github_release(monkeypatch)
+    _stub_conda(monkeypatch)  # also stub conda so it doesn't explode if reached
+
+    result = install_engine("qe", source="auto")
+    assert result["source"] == "github_release"
+    assert gh_called.get("source") == "github_release"
+
+
+def test_auto_source_qe_windows_x64_prefers_github_release(monkeypatch: pytest.MonkeyPatch) -> None:
+    """On Windows x64, auto should select github_release for QE."""
+    monkeypatch.setattr("qmatsuite.api.engines.platform.system", lambda: "Windows")
+    monkeypatch.setattr("qmatsuite.api.engines.platform.machine", lambda: "AMD64")
+    assert _qe_github_release_available() is True
+
+    gh_called = _stub_github_release(monkeypatch)
+    _stub_conda(monkeypatch)
+
+    result = install_engine("qe", source="auto")
+    assert result["source"] == "github_release"
+    assert gh_called.get("source") == "github_release"
+
+
+def test_auto_source_qe_linux_x64_falls_back_to_conda(monkeypatch: pytest.MonkeyPatch) -> None:
+    """On Linux x64, no toolchain release → auto falls back to conda for QE."""
+    monkeypatch.setattr("qmatsuite.api.engines.platform.system", lambda: "Linux")
+    monkeypatch.setattr("qmatsuite.api.engines.platform.machine", lambda: "x86_64")
+    assert _qe_github_release_available() is False
+
+    conda_called = _stub_conda(monkeypatch)
+    result = install_engine("qe", source="auto")
+    assert result["source"] == "conda"
+    assert conda_called.get("source") == "conda"
+
+
+def test_auto_source_xtb_always_uses_conda(monkeypatch: pytest.MonkeyPatch) -> None:
+    """xTB should always use conda regardless of platform."""
+    # Even on a platform with QE toolchain binaries, xTB goes via conda.
+    monkeypatch.setattr("qmatsuite.api.engines.platform.system", lambda: "Darwin")
+    monkeypatch.setattr("qmatsuite.api.engines.platform.machine", lambda: "arm64")
+
+    conda_called = _stub_conda(monkeypatch)
+    result = install_engine("xtb", source="auto")
+    assert result["source"] == "conda"
+    assert conda_called.get("source") == "conda"
