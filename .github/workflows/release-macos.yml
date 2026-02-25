@@ -18,13 +18,28 @@ on:
         required: true
         type: boolean
         default: false
+      wait_for_staple:
+        description: "Wait for notarization and staple (up to 15 min per DMG)"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 jobs:
   build-macos:
-    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+            arch_label: arm64
+          - os: macos-13
+            arch: x64
+            arch_label: x64
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash
@@ -38,6 +53,12 @@ jobs:
         if: ${{ inputs.notarize && !inputs.sign }}
         run: |
           echo "Invalid workflow inputs: notarize=true requires sign=true."
+          exit 1
+
+      - name: Validate staple inputs
+        if: ${{ inputs.wait_for_staple && !inputs.notarize }}
+        run: |
+          echo "Invalid workflow inputs: wait_for_staple=true requires notarize=true."
           exit 1
 
       - name: Set up Node
@@ -121,7 +142,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: |
           ulimit -n 65536
-          npx electron-builder --mac dmg --arm64 --config electron-builder.json5 --publish never
+          npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
       - name: Import Apple signing certificate
         if: ${{ inputs.sign }}
@@ -146,10 +167,10 @@ jobs:
           CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
         run: |
           ulimit -n 65536
-          npx electron-builder --mac dmg --arm64 --config electron-builder.json5 --publish never
+          npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
-      - name: Notarize and staple DMG
-        if: ${{ inputs.notarize }}
+      - name: Submit notarization (fire-and-forget)
+        if: ${{ inputs.notarize && !inputs.wait_for_staple }}
         env:
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
@@ -165,10 +186,57 @@ jobs:
             echo "DMG not found in gui/release"
             exit 1
           fi
+          echo "Submitting notarization (fire-and-forget) for ${{ matrix.arch_label }}..."
           xcrun notarytool submit "$DMG_PATH" \
             --issuer "$APPLE_NOTARY_ISSUER_ID" \
             --key-id "$APPLE_NOTARY_KEY_ID" \
             --key "$key_file"
+          echo "Notarization submitted. DMG will be uploaded without waiting for approval."
+
+      - name: Submit notarization, wait, and staple
+        id: notarize_wait
+        if: ${{ inputs.notarize && inputs.wait_for_staple }}
+        continue-on-error: true
+        env:
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.private_keys
+          key_file="$HOME/.private_keys/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
+          printf '%s' "$APPLE_NOTARY_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          DMG_PATH=$(find "${{ github.workspace }}/gui/release" -name "*.dmg" | head -1)
+          if [[ -z "${DMG_PATH}" ]]; then
+            echo "DMG not found in gui/release"
+            exit 1
+          fi
+          echo "Submitting notarization (wait mode, 15 min timeout) for ${{ matrix.arch_label }}..."
+          if xcrun notarytool submit "$DMG_PATH" \
+            --issuer "$APPLE_NOTARY_ISSUER_ID" \
+            --key-id "$APPLE_NOTARY_KEY_ID" \
+            --key "$key_file" \
+            --wait --timeout 15m; then
+            echo "Notarization approved — stapling DMG..."
+            xcrun stapler staple "$DMG_PATH"
+            echo "stapled=true" >> "$GITHUB_OUTPUT"
+            echo "DMG stapled successfully."
+          else
+            echo "::warning::Notarization did not complete within 15 minutes for ${{ matrix.arch_label }}. DMG will be uploaded without stapling. To staple manually: xcrun stapler staple \"$(basename "$DMG_PATH")\""
+            echo "stapled=false" >> "$GITHUB_OUTPUT"
+            # Exit 0 so continue-on-error doesn't mask the actual status
+            exit 1
+          fi
+
+      - name: Report notarization result
+        if: ${{ inputs.notarize && inputs.wait_for_staple }}
+        run: |
+          if [[ "${{ steps.notarize_wait.outputs.stapled }}" == "true" ]]; then
+            echo "✅ ${{ matrix.arch_label }} DMG: notarized and stapled"
+          else
+            echo "⚠️ ${{ matrix.arch_label }} DMG: notarization incomplete — uploaded without stapling"
+          fi
 
       - name: Print output artifacts
         run: |
@@ -178,7 +246,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: qms-macos-release
+          name: qms-macos-release-${{ matrix.arch_label }}
           path: |
             gui/release/*.dmg
             gui/release/**/latest-mac.yml

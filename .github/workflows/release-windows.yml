@@ -125,21 +125,95 @@ jobs:
           "ACCOUNT  = '${{ vars.TRUSTEDSIGN_ACCOUNT }}'"
           "PROFILE  = '${{ vars.TRUSTEDSIGN_CERT_PROFILE }}'"
 
-      - name: Sign Windows artifacts (Trusted Signing)
+      - name: Collect unsigned files for signing
+        id: collect_unsigned
         if: ${{ inputs.sign }}
+        shell: pwsh
+        run: |
+          $releaseDir = "${{ github.workspace }}\gui\release"
+          $stagingDir = "$env:RUNNER_TEMP\sign-staging"
+          $originalsFile = "$env:RUNNER_TEMP\unsigned_originals.txt"
+
+          New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
+          $originals = @()
+
+          $candidates = Get-ChildItem -Path $releaseDir -Recurse -Include *.exe,*.dll,*.pyd -File
+          $totalCount = $candidates.Count
+          $signedCount = 0
+          $unsignedCount = 0
+
+          foreach ($file in $candidates) {
+              $sig = Get-AuthenticodeSignature -FilePath $file.FullName
+              if ($sig.Status -eq "Valid") {
+                  Write-Host "[SKIP] Already signed: $($file.FullName)"
+                  $signedCount++
+              } else {
+                  # Create a flat filename from the relative path to avoid collisions
+                  $relPath = $file.FullName.Substring($releaseDir.Length + 1)
+                  $flatName = $relPath -replace '[\\\/]', '_'
+                  Copy-Item -Path $file.FullName -Destination (Join-Path $stagingDir $flatName)
+                  $originals += "$($file.FullName)|$flatName"
+                  Write-Host "[SIGN] Unsigned: $($file.FullName) -> $flatName"
+                  $unsignedCount++
+              }
+          }
+
+          Write-Host ""
+          Write-Host "=== Signing Summary ==="
+          Write-Host "Total candidates: $totalCount"
+          Write-Host "Already signed (skipped): $signedCount"
+          Write-Host "Unsigned (will sign): $unsignedCount"
+
+          if ($unsignedCount -gt 0) {
+              $originals | Out-File -FilePath $originalsFile -Encoding utf8
+              "has_unsigned=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+              "has_unsigned=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          }
+
+          # Export staging dir for the signing step
+          "SIGN_STAGING_DIR=$stagingDir" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Sign unsigned artifacts (Trusted Signing)
+        if: ${{ inputs.sign && steps.collect_unsigned.outputs.has_unsigned == 'true' }}
         continue-on-error: false
         uses: Azure/trusted-signing-action@v0
         with:
           endpoint: ${{ vars.TRUSTEDSIGN_ENDPOINT }}
           trusted-signing-account-name: ${{ vars.TRUSTEDSIGN_ACCOUNT }}
           certificate-profile-name: ${{ vars.TRUSTEDSIGN_CERT_PROFILE }}
-          files-folder: ${{ github.workspace }}\\gui\\release
+          files-folder: ${{ env.SIGN_STAGING_DIR }}
           files-folder-filter: exe,dll,pyd
-          files-folder-recurse: true
+          files-folder-recurse: false
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
 
+      - name: Copy signed files back to release dir
+        if: ${{ inputs.sign && steps.collect_unsigned.outputs.has_unsigned == 'true' }}
+        shell: pwsh
+        run: |
+          $originalsFile = "$env:RUNNER_TEMP\unsigned_originals.txt"
+          $stagingDir = $env:SIGN_STAGING_DIR
+
+          $lines = Get-Content -Path $originalsFile
+          $copiedCount = 0
+          foreach ($line in $lines) {
+              if ([string]::IsNullOrWhiteSpace($line)) { continue }
+              $parts = $line.Split('|', 2)
+              $originalPath = $parts[0]
+              $flatName = $parts[1]
+              $signedFile = Join-Path $stagingDir $flatName
+              if (Test-Path $signedFile) {
+                  Copy-Item -Path $signedFile -Destination $originalPath -Force
+                  Write-Host "[RESTORED] $flatName -> $originalPath"
+                  $copiedCount++
+              } else {
+                  Write-Host "::warning::Signed file not found in staging: $flatName"
+              }
+          }
+          Write-Host ""
+          Write-Host "Restored $copiedCount signed files to release directory."
 
       - name: Print output artifacts
         run: |
