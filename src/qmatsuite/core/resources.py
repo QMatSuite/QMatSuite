@@ -144,24 +144,31 @@ class _MonotonicUlidGenerator:
         return ''.join(reversed(result))
 
 
-# Global monotonic generator instance
-_monotonic_generator = _MonotonicUlidGenerator()
+# Lazy monotonic generator — deferred until first ULID is needed
+_monotonic_generator: _MonotonicUlidGenerator | None = None
+
+
+def _get_generator() -> _MonotonicUlidGenerator:
+    global _monotonic_generator
+    if _monotonic_generator is None:
+        _monotonic_generator = _MonotonicUlidGenerator()
+    return _monotonic_generator
 
 
 def generate_resource_id() -> str:
     """
     Create a new ULID string, guaranteed unique within this process.
-    
+
     Uses a monotonic counter to prevent collisions when generating
     multiple ULIDs within the same millisecond (common in CI environments).
-    
+
     The generated ULID is compatible with the ULID specification and
     can be parsed by the ulid-py library.
-    
+
     Returns:
         26-character ULID string (uppercase)
     """
-    return _monotonic_generator.generate()
+    return _get_generator().generate()
 
 
 def slugify(value: str, fallback: str = "resource") -> str:

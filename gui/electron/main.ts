@@ -200,39 +200,59 @@ function configureAutoUpdater(): void {
 }
 
 /**
- * Append a log message to the project's log file
+ * Buffered log writer — batches log lines and flushes periodically or when
+ * the buffer reaches a size threshold, avoiding per-message sync I/O.
  */
-function appendToLogFile(message: string): void {
-  if (!currentProjectPath) return;
-  
-  const logPath = path.join(currentProjectPath, LOG_FILE_NAME);
-  const timestamp = new Date().toISOString();
-  const logLine = `[${timestamp}] ${message}\n`;
-  
-  try {
-    fs.appendFileSync(logPath, logLine);
-  } catch (err) {
-    // Silently ignore log file errors
+class LogBuffer {
+  private buffer: string[] = [];
+  private flushTimer: NodeJS.Timeout | null = null;
+  private readonly maxLines = 500;
+  private readonly flushIntervalMs = 500;
+
+  append(message: string): void {
+    if (!currentProjectPath) return;
+    const timestamp = new Date().toISOString();
+    this.buffer.push(`[${timestamp}] ${message}`);
+    if (this.buffer.length >= this.maxLines) {
+      this.flush();
+    } else if (!this.flushTimer) {
+      this.flushTimer = setTimeout(() => this.flush(), this.flushIntervalMs);
+    }
+  }
+
+  flush(): void {
+    if (this.flushTimer) { clearTimeout(this.flushTimer); this.flushTimer = null; }
+    if (this.buffer.length === 0 || !currentProjectPath) return;
+    const logPath = path.join(currentProjectPath, LOG_FILE_NAME);
+    const content = this.buffer.join('\n') + '\n';
+    this.buffer = [];
+    fs.appendFile(logPath, content, () => {}); // async, fire-and-forget
+  }
+
+  flushSync(): void {
+    if (this.flushTimer) { clearTimeout(this.flushTimer); this.flushTimer = null; }
+    if (this.buffer.length === 0 || !currentProjectPath) return;
+    const logPath = path.join(currentProjectPath, LOG_FILE_NAME);
+    const content = this.buffer.join('\n') + '\n';
+    this.buffer = [];
+    try { fs.appendFileSync(logPath, content); } catch { /* ignore */ }
   }
 }
 
+const logBuffer = new LogBuffer();
+
 /**
- * Read logs from the project's log file
+ * Read logs from the project's log file (async to avoid blocking main thread)
  */
-function readLogFile(projectPath: string, tailLines: number = 500): string[] {
+async function readLogFile(projectPath: string, tailLines: number = 500): Promise<string[]> {
   const logPath = path.join(projectPath, LOG_FILE_NAME);
-  
+
   try {
-    if (!fs.existsSync(logPath)) {
-      return [];
-    }
-    
-    const content = fs.readFileSync(logPath, 'utf-8');
+    await fs.promises.access(logPath);
+    const content = await fs.promises.readFile(logPath, 'utf-8');
     const lines = content.split('\n').filter(line => line.trim());
-    
-    // Return last N lines
     return lines.slice(-tailLines);
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -533,7 +553,7 @@ function spawnDaemon(): boolean {
     // Forward to renderer for debug panel
     safeSend('daemon-log', message);
     // Append to log file
-    appendToLogFile(message);
+    logBuffer.append(message);
   });
   
   // Also capture daemon stdout (Python print statements, tracebacks, etc.)
@@ -599,10 +619,18 @@ function spawnDaemon(): boolean {
 function handleDaemonLine(line: string): void {
   // Skip empty lines
   if (!line.trim()) return;
-  
+
   try {
-    const response: QMSResponse = JSON.parse(line);
-    
+    const parsed = JSON.parse(line);
+
+    // Handle daemon readiness notification (F008)
+    if (parsed.method === '__ready__') {
+      daemonStatus.connected = true;
+      safeSend('daemon-status', { ...daemonStatus });
+      return;
+    }
+
+    const response: QMSResponse = parsed;
     const pending = pendingRequests.get(response.id);
     if (pending) {
       clearTimeout(pending.timeoutId);
@@ -773,7 +801,7 @@ async function shutdownDaemon(): Promise<void> {
  * Handle qms-request IPC from renderer
  */
 ipcMain.handle('qms-request', async (_event, request: QMSRequest): Promise<QMSResponse> => {
-  console.log(`[main] IPC request: ${request.type} (${request.id})`);
+  if (!app.isPackaged) console.log(`[main] IPC request: ${request.type} (${request.id})`);
 
   if (process.env.E2E_TEST_MODE === 'true') {
     const mockedQueue = e2eRpcMocks.get(request.type);
@@ -790,7 +818,7 @@ ipcMain.handle('qms-request', async (_event, request: QMSRequest): Promise<QMSRe
   
   try {
     const response = await sendDaemonRequest(request);
-    console.log(`[main] IPC response: ${request.type} ok=${response.ok}`);
+    if (!app.isPackaged) console.log(`[main] IPC response: ${request.type} ok=${response.ok}`);
     return response;
   } catch (e) {
     const error = e as Error;
@@ -1180,14 +1208,18 @@ app.on('activate', () => {
 app.on('before-quit', async (event) => {
   // Only handle once - prevent infinite loop
   if (isQuitting) return;
+
+  // Flush any buffered log lines before exit
+  logBuffer.flushSync();
+
   if (!daemonProcess) {
     // No daemon to clean up, allow quit
     return;
   }
-  
+
   isQuitting = true;
   event.preventDefault();
-  
+
   console.log('[main] App quitting, shutting down daemon...');
   await shutdownDaemon();
   app.quit();

@@ -12,7 +12,7 @@
  * For CHARACTER enums, writes quoted values by default.
  */
 
-import { useCallback, useState, useMemo, useEffect } from 'react';
+import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 import type { QEParameterMeta } from '../../hooks/useEngineParameterMetadata';
 import { normalizeQeScalar, quoteSingle } from '../../utils/qeStringUtils';
 import './ParameterValueEditor.css';
@@ -154,7 +154,22 @@ export function ParameterValueEditor({
   const handleChange = useCallback((newValue: string) => {
     onChange(coerceForType(newValue));
   }, [onChange, coerceForType]);
-  
+
+  // Debounced text input: local state + 300ms delay before propagating to parent
+  const [localInputValue, setLocalInputValue] = useState(stringValue);
+  useEffect(() => { setLocalInputValue(stringValue); }, [stringValue]);
+  const debouncedChange = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => { if (debouncedChange.current) clearTimeout(debouncedChange.current); }, []);
+  const handleDebouncedInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    setLocalInputValue(newVal);
+    if (debouncedChange.current) clearTimeout(debouncedChange.current);
+    debouncedChange.current = setTimeout(() => { handleChange(newVal); }, 300);
+  }, [handleChange]);
+  const flushDebounce = useCallback(() => {
+    if (debouncedChange.current) { clearTimeout(debouncedChange.current); handleChange(localInputValue); }
+  }, [handleChange, localInputValue]);
+
   // Handle enum dropdown change
   const handleEnumChange = useCallback((selectedValue: string) => {
     if (selectedValue === '') {
@@ -284,10 +299,9 @@ export function ParameterValueEditor({
       <input
         type={inputType}
         className={`parameter-value-editor parameter-value-editor--${paramType.toLowerCase()} ${useRawMode ? 'parameter-value-editor--raw' : ''}`}
-        value={stringValue}
-        onChange={(e) => {
-          handleChange(e.target.value);
-        }}
+        value={localInputValue}
+        onChange={handleDebouncedInputChange}
+        onBlur={flushDebounce}
         placeholder={inputPlaceholder}
         disabled={disabled}
         {...(testIdSuffix ? { 'data-testid': `qms-param-input-${testIdSuffix}` } : {})}

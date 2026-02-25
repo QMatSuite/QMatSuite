@@ -155,7 +155,7 @@ class JobExecutor:
                 )
 
                 if should_skip:
-                    logger.info(f"[EXECUTOR] Job {job.id} SKIPPED (already done, inputs unchanged)")
+                    logger.info("[EXECUTOR] Job %s SKIPPED (already done, inputs unchanged)", job.id)
                     results.append(JobResult(
                         job_id=job.id,
                         success=True,
@@ -164,7 +164,7 @@ class JobExecutor:
                     continue
 
                 # Execute the job
-                logger.info(f"[EXECUTOR] Executing job {job.id} (engine={job.engine})")
+                logger.info("[EXECUTOR] Executing job %s (engine=%s)", job.id, job.engine)
                 job_result = self._execute_job(job, calculation)
                 
                 # Post-process: handle relax output if job succeeded
@@ -182,15 +182,15 @@ class JobExecutor:
                     break  # Stop on first failure
             else:
                 # Has scans: expand and execute variants
-                logger.info(f"[EXECUTOR] Job {job.id} has scan dimensions, expanding variants")
+                logger.info("[EXECUTOR] Job %s has scan dimensions, expanding variants", job.id)
                 variants = expand_variants(scan_dimensions)
-                logger.info(f"[EXECUTOR] Expanded to {len(variants)} variants")
+                logger.info("[EXECUTOR] Expanded to %d variants", len(variants))
                 
                 # Execute each variant
                 variant_results: List[JobResult] = []
                 for variant_assignments in variants:
                     variant_key = compute_variant_key(variant_assignments)
-                    logger.info(f"[EXECUTOR] Executing variant {variant_key} for job {job.id}")
+                    logger.info("[EXECUTOR] Executing variant %s for job %s", variant_key, job.id)
                     
                     # Check skip for this variant (using effective fingerprint)
                     should_skip_variant = self._should_skip_variant(
@@ -202,7 +202,7 @@ class JobExecutor:
                     )
                     
                     if should_skip_variant:
-                        logger.info(f"[EXECUTOR] Variant {variant_key} SKIPPED")
+                        logger.info("[EXECUTOR] Variant %s SKIPPED", variant_key)
                         variant_results.append(JobResult(
                             job_id=job.id,
                             success=True,
@@ -337,7 +337,7 @@ class JobExecutor:
                     step_doc = StepDoc.load(step_file)
                     step_docs[step_ulid] = step_doc.to_dict()
                 except Exception as e:
-                    logger.debug(f"Failed to load step doc for {step_ulid}: {e}")
+                    logger.debug("Failed to load step doc for %s: %s", step_ulid, e)
                     continue
         
         if not step_docs:
@@ -348,7 +348,7 @@ class JobExecutor:
             dimensions = collect_scan_dimensions(job.step_ulids, step_docs)
             return dimensions
         except Exception as e:
-            logger.warning(f"Failed to collect scan dimensions for job {job.id}: {e}")
+            logger.warning("Failed to collect scan dimensions for job %s: %s", job.id, e)
             return []
     
     def _should_skip_variant(
@@ -429,7 +429,7 @@ class JobExecutor:
                 if entry.step_sha != effective_sha:
                     return False
             except Exception as e:
-                logger.debug(f"Failed to compute effective SHA for variant: {e}")
+                logger.debug("Failed to compute effective SHA for variant: %s", e)
                 return False
         
         return True
@@ -480,7 +480,7 @@ class JobExecutor:
                 archive_action = ArchiveToSlotAction(variant_key=variant_key)
                 archive_action.execute(job_result, context)
             except Exception as e:
-                logger.warning(f"Failed to archive variant {variant_key}: {e}")
+                logger.warning("Failed to archive variant %s: %s", variant_key, e)
         
         return job_result
     
@@ -514,7 +514,7 @@ class JobExecutor:
             if step_type_spec and is_relax_step_type(step_type_spec):
                 cleaned = clean_generated_structure(calc_dir, step_ulid)
                 if cleaned:
-                    logger.info(f"[EXECUTOR] Pre-cleaned generated structure for relax step {step_ulid} in job {job.id}")
+                    logger.info("[EXECUTOR] Pre-cleaned generated structure for relax step %s in job %s", step_ulid, job.id)
     
     def _find_step_by_ulid(self, calculation: "Calculation", step_ulid: str) -> Optional["Step"]:
         """Find step in calculation by ULID."""
@@ -574,7 +574,7 @@ class JobExecutor:
                     run_context=run_context,
                 )
                 if artifact_path:
-                    logger.info(f"[EXECUTOR] Processed relax artifact for step {step_ulid}: {artifact_path}")
+                    logger.info("[EXECUTOR] Processed relax artifact for step %s: %s", step_ulid, artifact_path)
             except Exception as e:
                 logger.error(f"[EXECUTOR] Failed to process relax artifact for step {step_ulid}: {e}", exc_info=True)
                 # Don't fail the job, but log the error
@@ -691,7 +691,7 @@ class JobExecutor:
         if handler is None:
             # No handler registered - return placeholder result
             # In a real integration, this would call the actual engine
-            logger.warning(f"[EXECUTOR] No handler for engine '{engine}', job {job.id} not executed")
+            logger.warning("[EXECUTOR] No handler for engine '%s', job %s not executed", engine, job.id)
             return JobResult(
                 job_id=job.id,
                 success=False,

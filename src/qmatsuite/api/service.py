@@ -3420,6 +3420,17 @@ class QMSService:
                 project = Project.open(self._service.project_root)
                 results: list = []
 
+                # Build shared context once for detail mode (F001+F002: request-scoped sharing)
+                if detail:
+                    from qmatsuite.core.resolution import build_resource_index
+                    from qmatsuite.core.project_utils import load_project_config
+                    from qmatsuite.core.resolution import make_structure_selector_resolver
+                    _shared_config = load_project_config(self._service.project_root)
+                    _shared_resolver = make_structure_selector_resolver(self._service.project_root, config=_shared_config)
+                    _shared_index = build_resource_index(self._service.project_root)
+                else:
+                    _shared_index = _shared_config = _shared_resolver = None
+
                 for calc_resolved in calc_resolved_list:
                     try:
                         # Get calculation directory
@@ -3447,7 +3458,12 @@ class QMSService:
                         if status is None or dto.status == status:
                             if detail:
                                 try:
-                                    results.append(self.get_detail(dto.calc_ulid))
+                                    results.append(self._get_detail_with_shared_context(
+                                        dto.calc_ulid,
+                                        index=_shared_index,
+                                        config=_shared_config,
+                                        resolver=_shared_resolver,
+                                    ))
                                 except Exception:
                                     results.append(dto.to_dict())
                             else:
@@ -4392,137 +4408,172 @@ class QMSService:
                 APIError: If calculation not found
             """
             try:
-                from qmatsuite.core.resolution import require_calculation, resolve_structure
-                from qmatsuite.core.models import load_calculation
+                from qmatsuite.core.resolution import build_resource_index
                 from qmatsuite.core.project_utils import load_project_config
                 from qmatsuite.core.resolution import make_structure_selector_resolver
-                from qmatsuite.io.structure_io import read_structure
-                from qmatsuite.calculation.structure_steps import StructureStepSpec
 
-                # Resolve calculation
-                calc_resolved = require_calculation(self._service.project_root, selector)
-
-                # Get calculation directory and yaml path
-                if calc_resolved.absolute_path.name == "calculation.yaml":
-                    calc_dir = calc_resolved.absolute_path.parent
-                    calc_yaml = calc_resolved.absolute_path
-                else:
-                    calc_dir = calc_resolved.absolute_path
-                    calc_yaml = calc_dir / "calculation.yaml"
-
-                # Load config
                 config = load_project_config(self._service.project_root)
                 resolver = make_structure_selector_resolver(self._service.project_root, config=config)
+                index = build_resource_index(self._service.project_root)
 
-                # Load calculation model
-                calc_model = load_calculation(calc_yaml, project_root=self._service.project_root, resolve_structure_selector=resolver)
-
-                # Get structure info
-                structure_name = None
-                structure_ulid = calc_model.structure_ulid
-                structure_elements = []
-
-                if structure_ulid:
-                    try:
-                        struct_resolved = resolve_structure(self._service.project_root, structure_ulid, config=config)
-                        structure_name = struct_resolved.meta.name if struct_resolved.meta else None
-                        if struct_resolved.absolute_path.exists():
-                            structure = read_structure(struct_resolved.absolute_path)
-                            structure_elements = sorted(set(str(el) for el in structure.composition.elements))
-                    except Exception:
-                        pass
-
-                # Build step summaries
-                # Use ResourceIndex to resolve step paths (step files are named by slug, not ULID)
-                from qmatsuite.core.resolution import build_resource_index, resolve_step
-                step_index = build_resource_index(self._service.project_root)
-                calc_ulid_for_resolve = calc_resolved.meta.ulid if calc_resolved.meta else selector
-
-                step_summaries = []
-                for entry in calc_model.steps:
-                    step_ulid = entry.step_ulid
-
-                    # Resolve step to get actual file path
-                    step_path = None
-                    step_resolved = None
-                    try:
-                        step_resolved = resolve_step(
-                            self._service.project_root,
-                            calc_ulid_for_resolve,
-                            step_ulid,
-                            config=config,
-                            index=step_index,
-                        )
-                        step_path = step_resolved.absolute_path
-                    except Exception:
-                        # If resolution fails, step is missing
-                        pass
-
-                    # Use entry.step_type_spec (SPEC type from calculation.yaml) as primary
-                    step_type_spec = entry.step_type_spec
-                    step_name = step_resolved.meta.name if step_resolved and step_resolved.meta else step_ulid
-                    step_status = "pending"
-
-                    if step_path and step_path.exists():
-                        try:
-                            spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolver)
-                            # Only use spec.step_type_spec if entry didn't have one
-                            if not step_type_spec:
-                                step_type_spec = spec.step_type_spec
-                            step_name = spec.meta.name if spec.meta else step_name
-                            step_status = spec.status if hasattr(spec, "status") else "pending"
-                        except Exception:
-                            pass
-
-                    # Convert step_type_spec to step_type_gen for response
-                    step_type_gen = None
-                    if step_type_spec:
-                        try:
-                            from qmatsuite.api import get_step_type_gen
-                            step_type_gen = get_step_type_gen(step_type_spec)
-                        except (KeyError, ValueError):
-                            pass
-                    
-                    # Derive step_file (YAML filename) and slug for GUI
-                    step_file = step_path.name if step_path else None
-                    step_slug = step_resolved.meta.slug if step_resolved and step_resolved.meta else None
-
-                    step_summaries.append({
-                        "ulid": step_ulid,  # Backwards compat
-                        "step_ulid": step_ulid,
-                        "step_type_spec": step_type_spec,
-                        "step_type_gen": step_type_gen if step_type_gen else step_type_spec,
-                        "type": step_type_gen if step_type_gen else step_type_spec,  # Backwards compat alias
-                        "name": step_name,
-                        "slug": step_slug or step_name,
-                        "step_file": step_file or f"{step_name}.step.yaml",
-                        "status": step_status,
-                        "missing": not (step_path and step_path.exists()),
-                    })
-
-                calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else selector
-                return {
-                    "calc_ulid": calc_ulid,
-                    "ulid": calc_ulid,
-                    "calculation_id": calc_ulid,
-                    "name": calc_resolved.meta.name if calc_resolved.meta else selector,
-                    "slug": calc_resolved.meta.slug if calc_resolved.meta else None,
-                    "path": str(calc_dir.relative_to(self._service.project_root)),
-                    "absolute_path": str(calc_dir),
-                    "structure": structure_name,
-                    "structure_ulid": structure_ulid,
-                    "structure_name": structure_name,
-                    "structure_elements": structure_elements,
-                    "engine_family": getattr(calc_model, 'engine_family', None),
-                    "steps": step_summaries,
-                    "n_steps": len(step_summaries),
-                    "mode": calc_model.mode.value if hasattr(calc_model.mode, "value") else str(calc_model.mode) if calc_model.mode else "normal",
-                    "species_map": getattr(calc_model, 'species_map', None),
-                }
+                return self._get_detail_with_shared_context(
+                    selector, index=index, config=config, resolver=resolver,
+                )
             except Exception as e:
                 if isinstance(e, APIError):
                     raise
                 raise map_kernel_exception(e)
+
+        def _get_detail_with_shared_context(
+            self,
+            selector: str,
+            *,
+            index,
+            config: dict,
+            resolver,
+        ) -> dict:
+            """
+            Internal: get_detail using pre-built shared context.
+
+            Avoids redundant build_resource_index / load_project_config calls
+            when called in a loop (e.g. list(detail=True)).
+            """
+            from qmatsuite.core.resolution import require_calculation, resolve_structure, resolve_step
+            from qmatsuite.core.models import load_calculation
+            from qmatsuite.io.structure_io import read_structure
+            from qmatsuite.calculation.structure_steps import StructureStepSpec
+
+            # Resolve calculation
+            calc_resolved = require_calculation(self._service.project_root, selector)
+
+            # Get calculation directory and yaml path
+            if calc_resolved.absolute_path.name == "calculation.yaml":
+                calc_dir = calc_resolved.absolute_path.parent
+                calc_yaml = calc_resolved.absolute_path
+            else:
+                calc_dir = calc_resolved.absolute_path
+                calc_yaml = calc_dir / "calculation.yaml"
+
+            # Load calculation model
+            calc_model = load_calculation(calc_yaml, project_root=self._service.project_root, resolve_structure_selector=resolver)
+
+            # Get structure info
+            structure_name = None
+            structure_ulid = calc_model.structure_ulid
+            structure_elements = []
+
+            if structure_ulid:
+                try:
+                    struct_resolved = resolve_structure(self._service.project_root, structure_ulid, config=config)
+                    structure_name = struct_resolved.meta.name if struct_resolved.meta else None
+                    if struct_resolved.absolute_path.exists():
+                        structure = read_structure(struct_resolved.absolute_path)
+                        structure_elements = sorted(set(str(el) for el in structure.composition.elements))
+                except Exception:
+                    pass
+
+            calc_ulid_for_resolve = calc_resolved.meta.ulid if calc_resolved.meta else selector
+
+            # Batch-read all step YAML files (F006: avoid per-step from_yaml in the loop)
+            calc_steps_dir = calc_dir / "steps"
+            step_specs_by_ulid: dict = {}
+            if calc_steps_dir.exists():
+                for sf in calc_steps_dir.glob("*.step.yaml"):
+                    try:
+                        spec = StructureStepSpec.from_yaml(sf, resolve_structure_selector=resolver)
+                        if spec.meta and spec.meta.ulid:
+                            step_specs_by_ulid[spec.meta.ulid] = (sf, spec)
+                    except Exception:
+                        pass
+
+            step_summaries = []
+            for entry in calc_model.steps:
+                step_ulid = entry.step_ulid
+
+                # Resolve step to get actual file path
+                step_path = None
+                step_resolved = None
+                try:
+                    step_resolved = resolve_step(
+                        self._service.project_root,
+                        calc_ulid_for_resolve,
+                        step_ulid,
+                        config=config,
+                        index=index,
+                    )
+                    step_path = step_resolved.absolute_path
+                except Exception:
+                    pass
+
+                # Use entry.step_type_spec (SPEC type from calculation.yaml) as primary
+                step_type_spec = entry.step_type_spec
+                step_name = step_resolved.meta.name if step_resolved and step_resolved.meta else step_ulid
+                step_status = "pending"
+
+                # Use batch-loaded spec if available, else fall back to individual read
+                if step_ulid in step_specs_by_ulid:
+                    _sf, spec = step_specs_by_ulid[step_ulid]
+                    if not step_type_spec:
+                        step_type_spec = spec.step_type_spec
+                    step_name = spec.meta.name if spec.meta else step_name
+                    step_status = spec.status if hasattr(spec, "status") else "pending"
+                    if step_path is None:
+                        step_path = _sf
+                elif step_path and step_path.exists():
+                    try:
+                        spec = StructureStepSpec.from_yaml(step_path, resolve_structure_selector=resolver)
+                        if not step_type_spec:
+                            step_type_spec = spec.step_type_spec
+                        step_name = spec.meta.name if spec.meta else step_name
+                        step_status = spec.status if hasattr(spec, "status") else "pending"
+                    except Exception:
+                        pass
+
+                # Convert step_type_spec to step_type_gen for response
+                step_type_gen = None
+                if step_type_spec:
+                    try:
+                        from qmatsuite.api import get_step_type_gen
+                        step_type_gen = get_step_type_gen(step_type_spec)
+                    except (KeyError, ValueError):
+                        pass
+
+                # Derive step_file (YAML filename) and slug for GUI
+                step_file = step_path.name if step_path else None
+                step_slug = step_resolved.meta.slug if step_resolved and step_resolved.meta else None
+
+                step_summaries.append({
+                    "ulid": step_ulid,  # Backwards compat
+                    "step_ulid": step_ulid,
+                    "step_type_spec": step_type_spec,
+                    "step_type_gen": step_type_gen if step_type_gen else step_type_spec,
+                    "type": step_type_gen if step_type_gen else step_type_spec,  # Backwards compat alias
+                    "name": step_name,
+                    "slug": step_slug or step_name,
+                    "step_file": step_file or f"{step_name}.step.yaml",
+                    "status": step_status,
+                    "missing": not (step_path and step_path.exists()),
+                })
+
+            calc_ulid = calc_resolved.meta.ulid if calc_resolved.meta else selector
+            return {
+                "calc_ulid": calc_ulid,
+                "ulid": calc_ulid,
+                "calculation_id": calc_ulid,
+                "name": calc_resolved.meta.name if calc_resolved.meta else selector,
+                "slug": calc_resolved.meta.slug if calc_resolved.meta else None,
+                "path": str(calc_dir.relative_to(self._service.project_root)),
+                "absolute_path": str(calc_dir),
+                "structure": structure_name,
+                "structure_ulid": structure_ulid,
+                "structure_name": structure_name,
+                "structure_elements": structure_elements,
+                "engine_family": getattr(calc_model, 'engine_family', None),
+                "steps": step_summaries,
+                "n_steps": len(step_summaries),
+                "mode": calc_model.mode.value if hasattr(calc_model.mode, "value") else str(calc_model.mode) if calc_model.mode else "normal",
+                "species_map": getattr(calc_model, 'species_map', None),
+            }
 
         def set_structure(
             self,

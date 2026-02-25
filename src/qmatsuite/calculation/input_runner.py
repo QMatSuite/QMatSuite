@@ -245,9 +245,9 @@ def prepare_input_step(
             import logging
             logger = logging.getLogger(__name__)
             
-            logger.info(f"[PREPARE_INPUT_STEP] Wannier90 step detected: step_type_spec={step_type_spec}")
-        logger.debug(f"[PREPARE_INPUT_STEP] input_file: {input_file}")
-        logger.debug(f"[PREPARE_INPUT_STEP] working_dir: {working_dir}")
+            logger.info("[PREPARE_INPUT_STEP] Wannier90 step detected: step_type_spec=%s", step_type_spec)
+        logger.debug("[PREPARE_INPUT_STEP] input_file: %s", input_file)
+        logger.debug("[PREPARE_INPUT_STEP] working_dir: %s", working_dir)
         
         # For Wannier90 steps, the input file is already generated correctly (e.g., .win, .pw2wan)
         # Just ensure it's in the working directory
@@ -263,7 +263,7 @@ def prepare_input_step(
         
         # Resolve to absolute path for validation
         input_path_resolved = input_path.resolve()
-        logger.debug(f"[PREPARE_INPUT_STEP] input_path_resolved: {input_path_resolved}")
+        logger.debug("[PREPARE_INPUT_STEP] input_path_resolved: %s", input_path_resolved)
         
         # Safety check: ensure it's not a directory
         if input_path_resolved.exists() and input_path_resolved.is_dir():
@@ -289,15 +289,15 @@ def prepare_input_step(
         else:
             working_dir_input = working_dir / input_path.name
         
-        logger.debug(f"[PREPARE_INPUT_STEP] working_dir_input: {working_dir_input}")
+        logger.debug("[PREPARE_INPUT_STEP] working_dir_input: %s", working_dir_input)
         
         # Copy to working directory if different
         if input_path_resolved != working_dir_input.resolve():
             import shutil
-            logger.debug(f"[PREPARE_INPUT_STEP] Copying {input_path_resolved} to {working_dir_input}")
+            logger.debug("[PREPARE_INPUT_STEP] Copying %s to %s", input_path_resolved, working_dir_input)
             shutil.copy2(input_path_resolved, working_dir_input)
         
-        logger.debug(f"[PREPARE_INPUT_STEP] Wannier90 step prepared: {working_dir_input.name}")
+        logger.debug("[PREPARE_INPUT_STEP] Wannier90 step prepared: %s", working_dir_input.name)
         
         # Return PreparedInputStep with original and modified pointing to same file
         return PreparedInputStep(
@@ -446,12 +446,12 @@ def run_prepared_step(
             try:
                 # Try to make it relative to working_dir
                 rel_path = prepared_step.modified_input.relative_to(prepared_step.working_dir.resolve())
-                logger.debug(f"[RUN_PREPARED_STEP] pw2wannier: converted to relative: {rel_path}")
+                logger.debug("[RUN_PREPARED_STEP] pw2wannier: converted to relative: %s", rel_path)
                 input_file_for_command = rel_path
             except ValueError:
                 # Not relative, keep absolute
                 input_file_for_command = prepared_step.modified_input
-                logger.debug(f"[RUN_PREPARED_STEP] pw2wannier: using absolute path")
+                logger.debug("[RUN_PREPARED_STEP] pw2wannier: using absolute path")
         else:
             input_file_for_command = prepared_step.modified_input
     else:

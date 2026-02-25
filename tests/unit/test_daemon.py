@@ -585,17 +585,22 @@ class TestQMSDaemonMainLoop:
         ]
         stdin = StringIO("\n".join(requests) + "\n")
         stdout = StringIO()
-        
+
         daemon = QMSDaemon(stdin=stdin, stdout=stdout, stderr=StringIO())
         daemon.run()
-        
-        # Check output
+
+        # Check output: __ready__ notification + 2 ping responses
         stdout.seek(0)
         lines = stdout.read().strip().split("\n")
-        
-        assert len(lines) == 2
-        
-        for line in lines:
+
+        assert len(lines) == 3
+
+        # First line is the __ready__ notification
+        ready = json.loads(lines[0])
+        assert ready["method"] == "__ready__"
+
+        # Remaining lines are ping responses
+        for line in lines[1:]:
             response = json.loads(line)
             assert response["ok"] is True
             assert response["data"]["pong"] is True
@@ -615,9 +620,9 @@ class TestQMSDaemonMainLoop:
         
         stdout.seek(0)
         lines = stdout.read().strip().split("\n")
-        
-        # Should have processed ping and shutdown, but not the third ping
-        assert len(lines) == 2
+
+        # Should have __ready__ notification + ping + shutdown, but not the third ping
+        assert len(lines) == 3
 
 
 class TestQMSDaemonLogging:

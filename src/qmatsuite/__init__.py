@@ -40,7 +40,9 @@ def _make_dataclass_compat() -> None:
 
 _make_dataclass_compat()
 
-# Public API exports
+# Public API exports — import order matters: project.model and calculation modules
+# must load before .api to bootstrap the import graph and prevent circular import
+# failures in CLI subprocess paths (qmatsuite.cli.main -> api.qe_io -> drivers -> ...).
 from .project.model import Project, ProjectSettings, StructureRef, CalculationRef
 from .calculation.calculation import Calculation
 from .calculation.runner import CalculationRunner

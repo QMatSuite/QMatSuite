@@ -353,17 +353,10 @@ export function useQMSClient(): QMSClient {
     }
   }, []);
   
-  // Check connection on mount
+  // Check connection on mount (event-driven updates handle ongoing status)
   useEffect(() => {
     checkConnection();
     refreshDaemonStatus();
-    
-    // Periodically check connection
-    const interval = setInterval(() => {
-      checkConnection();
-    }, 5000);
-    
-    return () => clearInterval(interval);
   }, [checkConnection, refreshDaemonStatus]);
   
   // =============================================================================

@@ -124,7 +124,7 @@ def _handle_qe_output(
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
     )
-    logger.info(f"[RELAX_ARTIFACT] Processed QE output for step {spec.step_ulid}")
+    logger.info("[RELAX_ARTIFACT] Processed QE output for step %s", spec.step_ulid)
     return artifact_path
 
 
@@ -167,7 +167,7 @@ def _handle_pyscf_results(
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
     )
-    logger.info(f"[RELAX_ARTIFACT] Processed PySCF results for step {spec.step_ulid}")
+    logger.info("[RELAX_ARTIFACT] Processed PySCF results for step %s", spec.step_ulid)
     return artifact_path
 
 
@@ -236,7 +236,7 @@ def _handle_orca_xyz(
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
     )
-    logger.info(f"[RELAX_ARTIFACT] Processed ORCA output for step {spec.step_ulid}")
+    logger.info("[RELAX_ARTIFACT] Processed ORCA output for step %s", spec.step_ulid)
     return artifact_path
 
 
@@ -265,7 +265,7 @@ def _handle_lammps_data(
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
     )
-    logger.info(f"[RELAX_ARTIFACT] Processed LAMMPS output for step {spec.step_ulid}")
+    logger.info("[RELAX_ARTIFACT] Processed LAMMPS output for step %s", spec.step_ulid)
     return artifact_path
 
 
@@ -356,7 +356,7 @@ def _handle_xtb_xyz(
         calculation_ulid=run_context.get("calculation_ulid", ""),
         input_structure_ulid=run_context.get("input_structure_ulid", ""),
     )
-    logger.info(f"[RELAX_ARTIFACT] Processed xTB output for step {spec.step_ulid}")
+    logger.info("[RELAX_ARTIFACT] Processed xTB output for step %s", spec.step_ulid)
     return artifact_path
 
 
@@ -394,7 +394,7 @@ def process_relax_artifact(
     
     handler = RELAX_ARTIFACT_HANDLERS.get(spec.artifact_type)
     if handler is None:
-        logger.warning(f"[RELAX_ARTIFACT] No handler for artifact_type: {spec.artifact_type}")
+        logger.warning("[RELAX_ARTIFACT] No handler for artifact_type: %s", spec.artifact_type)
         return None
     
     try:
@@ -460,7 +460,7 @@ def write_generated_structure(
     }
     
     artifact_path.write_text(json.dumps(structure_dict, indent=2))
-    logger.info(f"[RELAX_ARTIFACTS] Wrote generated structure to {artifact_path}")
+    logger.info("[RELAX_ARTIFACTS] Wrote generated structure to %s", artifact_path)
     
     return artifact_path
 
@@ -513,7 +513,7 @@ def clean_generated_structure(calc_dir: Path, step_ulid: str) -> bool:
     artifact_path = get_generated_structure_path(calc_dir, step_ulid)
     if artifact_path.exists():
         artifact_path.unlink()
-        logger.info(f"[RELAX_ARTIFACTS] Cleaned {artifact_path}")
+        logger.info("[RELAX_ARTIFACTS] Cleaned %s", artifact_path)
         return True
     return False
 

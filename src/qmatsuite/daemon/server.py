@@ -487,7 +487,11 @@ class QMSDaemon:
         """
         self._running = True
         self.log("Daemon started, waiting for requests...")
-        
+
+        # Emit readiness notification so Electron knows the daemon is ready
+        self.stdout.write('{"jsonrpc":"2.0","method":"__ready__","params":{}}\n')
+        self.stdout.flush()
+
         try:
             while self._running:
                 try:
