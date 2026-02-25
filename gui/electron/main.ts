@@ -1313,10 +1313,6 @@ app.whenReady().then(() => {
       console.log('[main] Runtime not prepared; continuing with development/system Python');
     }
 
-    // Stage bundled engines/pseudo from app resources to AppData (full variant).
-    // Non-blocking: runs before daemon spawn so engine discovery finds them.
-    await stageBundledEngines();
-
     const daemonStarted = spawnDaemon();
     if (!daemonStarted) {
       console.error('[main] Failed to start daemon - continuing with UI');
@@ -1327,5 +1323,11 @@ app.whenReady().then(() => {
         // Silent by design: offline users should not see startup failures.
       });
     }
+
+    // Stage bundled engines/pseudo from app resources to AppData (full variant).
+    // Fire-and-forget: window + daemon are already up, user is not blocked.
+    stageBundledEngines().catch((err) => {
+      console.error('[main] Background engine staging failed:', err);
+    });
   })();
 });

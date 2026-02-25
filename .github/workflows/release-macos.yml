@@ -45,9 +45,13 @@ jobs:
           - os: macos-14
             arch: arm64
             arch_label: arm64
-          - os: macos-13
+            qe_release_tag: "qe-7.5-macos-arm64-openmp-20260225-0c4bfdb"
+            qe_asset: "qe-7.5-macos-arm64-openmp.zip"
+          - os: macos-15-intel
             arch: x64
             arch_label: x64
+            qe_release_tag: "qe-7.5-macos-x86_64-openmp-20260225-90c770d"
+            qe_asset: "qe-7.5-macos-x86_64-openmp.zip"
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -62,35 +66,25 @@ jobs:
         id: flags
         run: |
           variant="${{ inputs.variant }}"
-          arch="${{ matrix.arch }}"
-
-          # Full variant only available on arm64 (no Intel QE binary yet)
-          if [[ "$arch" == "arm64" && ("$variant" == "full" || "$variant" == "both") ]]; then
+          if [[ "$variant" == "full" || "$variant" == "both" ]]; then
             echo "build_full=true" >> "$GITHUB_OUTPUT"
           else
             echo "build_full=false" >> "$GITHUB_OUTPUT"
           fi
-
           if [[ "$variant" == "lite" || "$variant" == "both" ]]; then
             echo "build_lite=true" >> "$GITHUB_OUTPUT"
           else
             echo "build_lite=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Skip x64 when variant=full
-        if: ${{ matrix.arch == 'x64' && inputs.variant == 'full' }}
-        run: |
-          echo "::notice::Skipping x64 — full variant only available on arm64 (no Intel QE binary)"
-          echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
-
       - name: Validate signing inputs
-        if: ${{ env.SKIP_BUILD != 'true' && inputs.notarize && !inputs.sign }}
+        if: ${{ inputs.notarize && !inputs.sign }}
         run: |
           echo "Invalid workflow inputs: notarize=true requires sign=true."
           exit 1
 
       - name: Validate staple inputs
-        if: ${{ env.SKIP_BUILD != 'true' && inputs.wait_for_staple && !inputs.notarize }}
+        if: ${{ inputs.wait_for_staple && !inputs.notarize }}
         run: |
           echo "Invalid workflow inputs: wait_for_staple=true requires notarize=true."
           exit 1
@@ -98,13 +92,13 @@ jobs:
       # ── Fail-fast: download QE + SSSP before expensive runtime build ──
 
       - name: Download QE binary from toolchain release
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          QE_RELEASE_TAG="qe-7.5-macos-arm64-openmp-20260223-10d20bf"
-          QE_ASSET="qe-7.5-macos-arm64-openmp.zip"
+          QE_RELEASE_TAG="${{ matrix.qe_release_tag }}"
+          QE_ASSET="${{ matrix.qe_asset }}"
 
           echo "Downloading QE binary from toolchain release: ${QE_RELEASE_TAG}..."
           gh release download "${QE_RELEASE_TAG}" \
@@ -134,7 +128,7 @@ jobs:
           echo "QE_BUNDLE_DIR=$QE_BIN_DIR/.." >> "$GITHUB_ENV"
 
       - name: Download SSSP from qmatsuite-assets
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -171,19 +165,19 @@ jobs:
       # ── Standard build steps (shared by lite and full) ──
 
       - name: Set up Node
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
       - name: Set up Python
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Set up micromamba
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         uses: mamba-org/setup-micromamba@v2
         with:
           init-shell: bash
@@ -191,7 +185,7 @@ jobs:
           cache-environment: false
 
       - name: Build runtime environment
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         run: |
           set -euo pipefail
           micromamba create -y -p "$RUNTIME_ENV_PREFIX" -c conda-forge python=3.12 pip
@@ -208,7 +202,7 @@ jobs:
           head -n 5 /tmp/qms_help.txt
 
       - name: Build relocatable runtime with conda-pack
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         run: |
           set -euo pipefail
           pip install conda-pack
@@ -238,17 +232,17 @@ jobs:
           find "${{ github.workspace }}/gui/runtime" -type f | wc -l
 
       - name: Install GUI dependencies
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         working-directory: gui
         run: npm ci
 
       - name: Build GUI assets
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         working-directory: gui
         run: npm run build:e2e
 
       - name: Import Apple signing certificate
-        if: ${{ env.SKIP_BUILD != 'true' && inputs.sign }}
+        if: ${{ inputs.sign }}
         env:
           APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -266,23 +260,23 @@ jobs:
       # ── Prepare holding directory for DMGs ──
 
       - name: Create DMG holding directory
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         run: mkdir -p "$RUNNER_TEMP/dmg-hold"
 
       # ── Build lite DMG ──
 
       - name: Clean release outputs (lite)
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_lite == 'true' }}
+        if: ${{ steps.flags.outputs.build_lite == 'true' }}
         run: rm -rf "${{ github.workspace }}/gui/release"
 
       - name: Ensure no extra engines/libraries staged (lite)
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_lite == 'true' }}
+        if: ${{ steps.flags.outputs.build_lite == 'true' }}
         run: |
           rm -rf "${{ github.workspace }}/gui/engines"
           rm -rf "${{ github.workspace }}/gui/libraries"
 
       - name: Build lite DMG (unsigned)
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_lite == 'true' && !inputs.sign }}
+        if: ${{ steps.flags.outputs.build_lite == 'true' && !inputs.sign }}
         working-directory: gui
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -291,7 +285,7 @@ jobs:
           npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
       - name: Build lite DMG (signed)
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_lite == 'true' && inputs.sign }}
+        if: ${{ steps.flags.outputs.build_lite == 'true' && inputs.sign }}
         working-directory: gui
         env:
           CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
@@ -300,7 +294,7 @@ jobs:
           npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
       - name: Rename and hold lite DMG
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_lite == 'true' }}
+        if: ${{ steps.flags.outputs.build_lite == 'true' }}
         run: |
           set -euo pipefail
           cd "${{ github.workspace }}/gui/release"
@@ -316,10 +310,10 @@ jobs:
           echo "Lite DMG moved to holding directory"
           ls -la "$RUNNER_TEMP/dmg-hold/"
 
-      # ── Build full DMG (arm64 only) ──
+      # ── Build full DMG ──
 
       - name: Stage QE + SSSP for full build
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
         run: |
           set -euo pipefail
           echo "Staging QE binary into gui/engines/..."
@@ -337,11 +331,11 @@ jobs:
           du -sh "${{ github.workspace }}/gui/libraries/pseudo"
 
       - name: Clean release outputs (full)
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
         run: rm -rf "${{ github.workspace }}/gui/release"
 
       - name: Build full DMG (unsigned)
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' && !inputs.sign }}
+        if: ${{ steps.flags.outputs.build_full == 'true' && !inputs.sign }}
         working-directory: gui
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -350,7 +344,7 @@ jobs:
           npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
       - name: Build full DMG (signed)
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' && inputs.sign }}
+        if: ${{ steps.flags.outputs.build_full == 'true' && inputs.sign }}
         working-directory: gui
         env:
           CSC_NAME: "${{ secrets.DEVELOPER_NAME }} (${{ secrets.APPLE_TEAM_ID }})"
@@ -359,20 +353,20 @@ jobs:
           npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
 
       - name: Rename and hold full DMG
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
         run: |
           set -euo pipefail
           cd "${{ github.workspace }}/gui/release"
-          # Rename: QMatSuite-macOS-{version}.dmg -> QMatSuite-Full-macOS-{version}-arm64.dmg
+          # Rename: QMatSuite-macOS-{version}.dmg -> QMatSuite-Full-macOS-{version}-{arch}.dmg
           for f in QMatSuite-macOS-*.dmg; do
             new_name="${f/QMatSuite-macOS-/QMatSuite-Full-macOS-}"
-            new_name="${new_name%.dmg}-arm64.dmg"
+            new_name="${new_name%.dmg}-${{ matrix.arch_label }}.dmg"
             mv "$f" "$new_name"
             echo "Renamed $f -> $new_name"
           done
           for f in QMatSuite-macOS-*.dmg.blockmap; do
             new_name="${f/QMatSuite-macOS-/QMatSuite-Full-macOS-}"
-            new_name="${new_name%.dmg.blockmap}-arm64.dmg.blockmap"
+            new_name="${new_name%.dmg.blockmap}-${{ matrix.arch_label }}.dmg.blockmap"
             mv "$f" "$new_name"
           done
           mv QMatSuite-*.dmg QMatSuite-*.dmg.blockmap "$RUNNER_TEMP/dmg-hold/" 2>/dev/null || true
@@ -382,7 +376,7 @@ jobs:
           ls -la "$RUNNER_TEMP/dmg-hold/"
 
       - name: Remove staged engines/libraries
-        if: ${{ env.SKIP_BUILD != 'true' && steps.flags.outputs.build_full == 'true' }}
+        if: ${{ steps.flags.outputs.build_full == 'true' }}
         run: |
           rm -rf "${{ github.workspace }}/gui/engines"
           rm -rf "${{ github.workspace }}/gui/libraries"
@@ -390,7 +384,7 @@ jobs:
       # ── Collect all DMGs back into gui/release/ ──
 
       - name: Collect DMGs into release directory
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         run: |
           rm -rf "${{ github.workspace }}/gui/release"
           mkdir -p "${{ github.workspace }}/gui/release"
@@ -401,7 +395,7 @@ jobs:
       # ── Notarization ──
 
       - name: Submit notarization (fire-and-forget)
-        if: ${{ env.SKIP_BUILD != 'true' && inputs.notarize && !inputs.wait_for_staple }}
+        if: ${{ inputs.notarize && !inputs.wait_for_staple }}
         env:
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
@@ -423,7 +417,7 @@ jobs:
 
       - name: Submit notarization, wait, and staple
         id: notarize_wait
-        if: ${{ env.SKIP_BUILD != 'true' && inputs.notarize && inputs.wait_for_staple }}
+        if: ${{ inputs.notarize && inputs.wait_for_staple }}
         continue-on-error: true
         env:
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
@@ -460,7 +454,7 @@ jobs:
           fi
 
       - name: Report notarization result
-        if: ${{ env.SKIP_BUILD != 'true' && inputs.notarize && inputs.wait_for_staple }}
+        if: ${{ inputs.notarize && inputs.wait_for_staple }}
         run: |
           if [[ "${{ steps.notarize_wait.outputs.stapled }}" == "true" ]]; then
             echo "✅ ${{ matrix.arch_label }}: all DMGs notarized and stapled"
@@ -471,13 +465,13 @@ jobs:
       # ── Upload ──
 
       - name: Print output artifacts
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         run: |
           find "${{ github.workspace }}/gui/release" -maxdepth 4 -type f \( -name "*.dmg" -o -name "latest-mac.yml" -o -name "*.blockmap" \) -print
           du -sh "${{ github.workspace }}/gui/release" || true
 
       - name: Upload build artifacts
-        if: ${{ env.SKIP_BUILD != 'true' }}
+
         uses: actions/upload-artifact@v4
         with:
           name: qms-macos-release-${{ matrix.arch_label }}
@@ -488,7 +482,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload DMG to GitHub Release
-        if: ${{ env.SKIP_BUILD != 'true' && inputs.version != 'local' }}
+        if: ${{ inputs.version != 'local' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ inputs.version }}
