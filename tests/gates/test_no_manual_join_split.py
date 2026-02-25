@@ -27,6 +27,7 @@ SCAN_DIRS = [
 # Files to skip (canonical implementation)
 ALLOWLIST_PATTERNS = [
     # Canonical implementation of split functions
+    "src/qmatsuite/core/step_type_convert.py",
     "src/qmatsuite/workflow/step_type_convert.py",
     # Legacy archive
     "src/qmatsuite/_vault/*",

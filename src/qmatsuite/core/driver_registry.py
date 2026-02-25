@@ -27,7 +27,7 @@ from qmatsuite.core.driver_exceptions import (
     UnknownStepTypeError,
 )
 from qmatsuite.core.driver_protocol import EngineDriver, StepTypeSpec
-from qmatsuite.workflow.step_type_convert import spec_from
+from qmatsuite.core.step_type_convert import spec_from
 
 if TYPE_CHECKING:
     from qmatsuite.execution.job_graph import Job

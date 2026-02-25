@@ -33,6 +33,11 @@ from qmatsuite.core.models import (
 from qmatsuite.core.exceptions import (
     LegacyProjectError, MissingArtifactError,
 )
+# Step Type Convert
+from qmatsuite.core.step_type_convert import (
+    ENGINE_PREFIXES, spec_from, gen_from, prefix_from,
+    is_spec, is_gen, normalize_to_gen,
+)
 # Driver Protocol
 from qmatsuite.core.driver_registry import DriverRegistry
 from qmatsuite.core.driver_exceptions import (

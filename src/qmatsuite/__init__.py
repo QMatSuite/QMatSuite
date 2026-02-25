@@ -7,10 +7,11 @@ A modern Python-based GUI and calculation engine for Quantum ESPRESSO and relate
 from __future__ import annotations
 
 import dataclasses
+import importlib
 import sys
 from typing import Any, Callable
 
-__version__ = "1.0.1"
+__version__ = "1.2.0"
 __author__ = "QMatSuite Developers"
 
 
@@ -40,13 +41,30 @@ def _make_dataclass_compat() -> None:
 
 _make_dataclass_compat()
 
-# Public API exports — import order matters: project.model and calculation modules
-# must load before .api to bootstrap the import graph and prevent circular import
-# failures in CLI subprocess paths (qmatsuite.cli.main -> api.qe_io -> drivers -> ...).
-from .project.model import Project, ProjectSettings, StructureRef, CalculationRef
-from .calculation.calculation import Calculation
-from .calculation.runner import CalculationRunner
+# Only QMSService is imported eagerly (needed by daemon).
+# All other public names are lazy-loaded on first access.
 from .api import QMSService
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "Project": (".project.model", "Project"),
+    "ProjectSettings": (".project.model", "ProjectSettings"),
+    "StructureRef": (".project.model", "StructureRef"),
+    "CalculationRef": (".project.model", "CalculationRef"),
+    "Calculation": (".calculation.calculation", "Calculation"),
+    "CalculationRunner": (".calculation.runner", "CalculationRunner"),
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _LAZY_IMPORTS:
+        module_path, attr = _LAZY_IMPORTS[name]
+        module = importlib.import_module(module_path, __name__)
+        value = getattr(module, attr)
+        # Cache on the module so __getattr__ is not called again
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "Project",

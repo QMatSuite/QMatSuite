@@ -1489,7 +1489,7 @@ Actual installed sizes measured from the project's `.venv/` (Python 3.12, macOS 
 | scipy 1.17.0 | Scientific computing | 78.5 MB | Yes (Fortran) | Transitive via pymatgen; direct use lazy (1 place) |
 | pymatgen 2024.10.3 | Materials science | 19.2 MB | Yes (via spglib) | CORE — module-level imports (can be made lazy) |
 | matplotlib 3.10.8 | Plotting | 25.0 MB | Yes (Agg backend) | CORE — module-level import (can be made lazy) |
-| ~~ase 3.27.0~~ | ~~Atomic simulation~~ | ~~11.3 MB~~ | ~~No~~ | ✅ **Removed in v1.1.0** |
+| ase 3.27.0 | Atomic simulation (traj parser) | 11.3 MB | No | LAZY — trajectory I/O only |
 | plotext 5.3.2 | Terminal plotting | 0.7 MB | No | LAZY — MCP renderer only |
 | PyYAML 6.0.3 | YAML parsing | 0.8 MB | Yes (C loader) | CORE |
 | typer 0.21.1 | CLI framework | 0.4 MB | No | CORE |

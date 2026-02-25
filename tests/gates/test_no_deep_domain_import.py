@@ -56,8 +56,9 @@ _DAG_VIOLATION_FILES: Set[str] = {
     "core/templates.py",
     "core/selectors.py",
     # core (L0) → workflow (L1)
-    "core/driver_registry.py",
     "core/calc_identity.py",
+    # core (L0) → execution (L2) — TYPE_CHECKING imports for Job/JobResult
+    "core/driver_registry.py",
     # core (L0) → execution (L2)
     "core/driver_protocol.py",
     # core (L0) → analysis (L2)
