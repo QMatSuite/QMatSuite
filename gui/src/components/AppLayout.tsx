@@ -123,6 +123,7 @@ export default function AppLayout() {
     }
 
     await project.refreshSummary();
+    await project.fetchStructures();
     const calculationsList = await project.fetchCalculations();
 
     let newWf = calculationsList?.find(w => w.calc_ulid === calculationId);
