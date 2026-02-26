@@ -785,6 +785,7 @@ export interface QMSCommandMap {
   "engine.list": {
     payload: {
       installed_only?: boolean;
+      refresh?: boolean;
     };
     result: {
       engines: EngineStatusEntry[];

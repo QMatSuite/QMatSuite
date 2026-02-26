@@ -72,10 +72,24 @@ def _engine_installed_via_fallback(engine_family: str) -> bool:
     return shutil.which(primary) is not None
 
 
-def list_engines(installed_only: bool = False) -> List[Dict[str, Any]]:
-    """Return install status for all engines with registry-first detection."""
+def list_engines(
+    installed_only: bool = False,
+    refresh: bool = False,
+) -> List[Dict[str, Any]]:
+    """Return install status for all engines with registry-first detection.
+
+    Fast path (P31): loads engines.json directly when it already has
+    discovered engines, avoiding a full 60s+ re-scan on every call.
+    Full ``discover()`` runs when *refresh* is True, or the cache is
+    empty/missing.
+    """
     registry = EngineRegistry()
-    data = registry.discover(persist=True)
+    if refresh:
+        data = registry.discover(persist=True)
+    else:
+        data = registry.load()
+        if not data.get("engines"):
+            data = registry.discover(persist=True)
     engines = data.get("engines", {})
 
     out: List[Dict[str, Any]] = []

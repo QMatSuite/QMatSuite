@@ -1412,7 +1412,8 @@ class QMSDaemon:
         from qmatsuite.api.engines import list_engines as api_list_engines
 
         installed_only = bool(payload.get("installed_only", False))
-        items = api_list_engines(installed_only=installed_only)
+        refresh = bool(payload.get("refresh", False))
+        items = api_list_engines(installed_only=installed_only, refresh=refresh)
         result: Dict[str, Any] = {
             "engines": items,
             "count": len(items),

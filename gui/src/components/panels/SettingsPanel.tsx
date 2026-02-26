@@ -447,14 +447,14 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
     return () => clearInterval(timer);
   }, [Object.keys(pendingJobs).length > 0]);
 
-  const refreshEngineData = useCallback(async () => {
+  const refreshEngineData = useCallback(async (discover: boolean = false) => {
     if (!qms?.state.isConnected) return;
 
     setIsLoading(true);
     setError(null);
     try {
       const [listResp, installableResp] = await Promise.all([
-        qms.listEngines(false),
+        qms.listEngines(false, discover),
         qms.listInstallableEngines(),
       ]);
 
@@ -554,7 +554,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
       setPendingJobs(nextJobs);
       setRowNotices((prev) => ({ ...prev, ...notices }));
       if (needsRefresh) {
-        await refreshEngineData();
+        await refreshEngineData(true);
       }
     };
 
@@ -607,7 +607,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
       return next;
     });
     setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Install completed' } }));
-    await refreshEngineData();
+    await refreshEngineData(true);
   }, [qms, refreshEngineData]);
 
   const handleUninstall = useCallback(async (engine: string, installationId: string) => {
@@ -632,7 +632,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
     }
 
     setRowNotices((prev) => ({ ...prev, [engine]: { tone: 'ok', text: 'Uninstall completed' } }));
-    await refreshEngineData();
+    await refreshEngineData(true);
   }, [qms, refreshEngineData]);
 
   const handleVerify = useCallback(async (engine: string) => {
@@ -694,7 +694,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
       ...prev,
       [engine]: { tone: 'ok', text: `Active installation set to ${installationId}` },
     }));
-    await refreshEngineData();
+    await refreshEngineData(true);
   }, [qms, refreshEngineData]);
 
   const handleConfigurePath = useCallback(async (engine: string) => {
@@ -721,7 +721,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
       ...prev,
       [engine]: { tone: 'ok', text: `Registered path: ${selectedPath}` },
     }));
-    await refreshEngineData();
+    await refreshEngineData(true);
   }, [qms, refreshEngineData]);
 
   return (
@@ -733,7 +733,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
         </h3>
         <button
           className="settings-btn settings-btn--sm"
-          onClick={() => void refreshEngineData()}
+          onClick={() => void refreshEngineData(true)}
           disabled={isLoading}
           data-testid="qms-engine-manager-refresh"
         >

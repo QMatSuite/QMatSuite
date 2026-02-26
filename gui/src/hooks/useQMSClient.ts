@@ -52,7 +52,7 @@ export interface QMSClient {
   rebuildProjectRegistry: (projectRoot: string) => Promise<QMSResponse<QMSResult<'rebuild_project_registry'>>>;
   listJobs: (filter?: { status?: JobStatus; job_type?: string }) => Promise<QMSResponse<{ jobs: JobSummary[]; count: number }>>;
   listEngineFamilies: () => Promise<QMSResponse<QMSResult<'list_engine_families'>>>;
-  listEngines: (installedOnly?: boolean) => Promise<QMSResponse<QMSResult<'engine.list'>>>;
+  listEngines: (installedOnly?: boolean, refresh?: boolean) => Promise<QMSResponse<QMSResult<'engine.list'>>>;
   listInstallableEngines: () => Promise<QMSResponse<QMSResult<'engine.list_installable'>>>;
   installEngine: (
     engineFamily: string,
@@ -400,7 +400,8 @@ export function useQMSClient(): QMSClient {
   );
 
   const listEngines = useCallback(
-    (installedOnly: boolean = false) => call('engine.list', { installed_only: installedOnly }),
+    (installedOnly: boolean = false, refresh: boolean = false) =>
+      call('engine.list', { installed_only: installedOnly, refresh }),
     [call]
   );
 

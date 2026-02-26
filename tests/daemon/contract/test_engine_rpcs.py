@@ -118,7 +118,7 @@ class TestEngineRegistryRPCs:
     def test_engine_list_happy_path(self, daemon: QMSDaemon, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "qmatsuite.api.engines.list_engines",
-            lambda installed_only=False: [
+            lambda installed_only=False, refresh=False: [
                 {"engine": "qe", "installed": True, "active_source": "bundled", "installations": []},
                 {"engine": "xtb", "installed": False, "active_source": None, "installations": []},
             ],
