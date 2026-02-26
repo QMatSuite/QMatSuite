@@ -368,8 +368,8 @@ class TestInspectResourceStatus:
 class TestToolCount:
     """Test that all 27 tools are registered."""
 
-    def test_32_tools(self):
-        """Verify 32 tools registered (27 P4 + 2 Phase 2A + 1 generate_kpath + 1 cleanup_project + 1 list_calculations)."""
+    def test_38_tools(self):
+        """Verify 38 tools registered (32 previous + 6 engine management)."""
         from qmatsuite.mcp import server  # noqa: F401
         from qmatsuite.mcp.app import mcp
 
@@ -378,8 +378,8 @@ class TestToolCount:
             tools = loop.run_until_complete(mcp.get_tools())
         finally:
             loop.close()
-        assert len(tools) == 32, (
-            f"Expected 32 tools, got {len(tools)}: {sorted(tools.keys())}"
+        assert len(tools) == 38, (
+            f"Expected 38 tools, got {len(tools)}: {sorted(tools.keys())}"
         )
 
         # Verify P2 tools

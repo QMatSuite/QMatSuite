@@ -89,6 +89,7 @@ analyze_app = typer.Typer(
 
 history_app = typer.Typer(help="View and manage project history.", no_args_is_help=True)
 engine_app = typer.Typer(help="Manage engine installations and paths.", no_args_is_help=True)
+mcp_app = typer.Typer(help="MCP server configuration.", no_args_is_help=True)
 
 app.add_typer(init_app, name="init")
 app.add_typer(rename_app, name="rename")
@@ -98,6 +99,7 @@ app.add_typer(run_app, name="run")
 app.add_typer(analyze_app, name="analyze")
 app.add_typer(history_app, name="history")
 app.add_typer(engine_app, name="engine")
+app.add_typer(mcp_app, name="mcp")
 
 
 def _svc_from_cwd(cwd: Optional[Path] = None) -> "QMSService":
@@ -1633,6 +1635,141 @@ def engine_path(
         typer.echo(f"path: {installation['path']}")
     if installation.get("python_executable"):
         typer.echo(f"python_executable: {installation['python_executable']}")
+
+
+# ---------------------------------------------------------------------------
+# MCP configuration
+# ---------------------------------------------------------------------------
+
+@mcp_app.command("config")
+def mcp_config(
+    agent: str = typer.Option(
+        "claude",
+        "--agent",
+        help="Target agent ecosystem: claude, codex, or gemini.",
+    ),
+    scope: str = typer.Option(
+        "project",
+        "--scope",
+        help="Config scope: project or user.",
+    ),
+    project: Optional[str] = typer.Option(
+        None,
+        "--project",
+        help="Project path to set as QMATSUITE_PROJECT env var.",
+    ),
+    write: bool = typer.Option(
+        False,
+        "--write",
+        help="Write config to the appropriate file instead of stdout.",
+    ),
+) -> None:
+    """Generate MCP server configuration for AI agent ecosystems.
+
+    Supports Claude Code, OpenAI Codex CLI, and Google Gemini CLI.
+    By default prints to stdout; use --write to write to the correct config file.
+    """
+    import sys as _sys
+
+    agent_key = (agent or "claude").strip().lower()
+    scope_key = (scope or "project").strip().lower()
+
+    if agent_key not in ("claude", "codex", "gemini"):
+        raise typer.BadParameter(f"Unknown agent '{agent}'. Expected: claude, codex, gemini.")
+    if scope_key not in ("project", "user"):
+        raise typer.BadParameter(f"Unknown scope '{scope}'. Expected: project, user.")
+
+    command = _sys.executable
+    args = ["-m", "qmatsuite.mcp.server"]
+
+    env_block: dict[str, str] | None = None
+    if project:
+        env_block = {"QMATSUITE_PROJECT": str(Path(project).resolve())}
+
+    if agent_key in ("claude", "gemini"):
+        server_entry: dict = {"command": command, "args": args}
+        if agent_key == "claude":
+            server_entry["type"] = "stdio"
+        if env_block:
+            server_entry["env"] = env_block
+        config_obj = {"mcpServers": {"qmatsuite": server_entry}}
+        config_text = json.dumps(config_obj, indent=2) + "\n"
+
+        if write:
+            if agent_key == "claude":
+                target_path = Path.cwd() / ".mcp.json" if scope_key == "project" else Path.home() / ".claude.json"
+            else:
+                target_path = Path.cwd() / ".gemini" / "settings.json" if scope_key == "project" else Path.home() / ".gemini" / "settings.json"
+            _mcp_config_write_json(target_path, config_obj)
+            typer.secho(f"Written to {target_path}", fg=typer.colors.GREEN)
+        else:
+            typer.echo(config_text, nl=False)
+
+    elif agent_key == "codex":
+        # Generate TOML-like string without requiring tomli_w dependency
+        lines = ["[mcp_servers.qmatsuite]"]
+        lines.append(f'command = "{command}"')
+        args_str = ", ".join(f'"{a}"' for a in args)
+        lines.append(f"args = [{args_str}]")
+        if env_block:
+            lines.append("")
+            lines.append("[mcp_servers.qmatsuite.env]")
+            for k, v in env_block.items():
+                lines.append(f'{k} = "{v}"')
+        config_text = "\n".join(lines) + "\n"
+
+        if write:
+            if scope_key == "project":
+                target_path = Path.cwd() / ".codex" / "config.toml"
+            else:
+                target_path = Path.home() / ".codex" / "config.toml"
+            _mcp_config_write_toml(target_path, config_text)
+            typer.secho(f"Written to {target_path}", fg=typer.colors.GREEN)
+        else:
+            typer.echo(config_text, nl=False)
+
+
+def _mcp_config_write_json(target: Path, config: dict) -> None:
+    """Write or merge MCP config into a JSON file."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    existing: dict = {}
+    if target.exists():
+        try:
+            existing = json.loads(target.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            existing = {}
+    servers = existing.setdefault("mcpServers", {})
+    servers["qmatsuite"] = config["mcpServers"]["qmatsuite"]
+    target.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+
+def _mcp_config_write_toml(target: Path, new_section: str) -> None:
+    """Write or merge MCP config into a TOML file."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        existing = target.read_text(encoding="utf-8")
+        # Replace existing section or append
+        marker = "[mcp_servers.qmatsuite]"
+        if marker in existing:
+            # Find the section and replace until next [section] or EOF
+            idx = existing.index(marker)
+            # Find the next top-level section header after this one
+            rest = existing[idx + len(marker):]
+            import re
+            m = re.search(r'\n\[(?!mcp_servers\.qmatsuite)', rest)
+            if m:
+                end_idx = idx + len(marker) + m.start()
+                existing = existing[:idx] + new_section.rstrip("\n") + existing[end_idx:]
+            else:
+                existing = existing[:idx] + new_section.rstrip("\n") + "\n"
+            target.write_text(existing, encoding="utf-8")
+        else:
+            # Append
+            if not existing.endswith("\n"):
+                existing += "\n"
+            target.write_text(existing + "\n" + new_section, encoding="utf-8")
+    else:
+        target.write_text(new_section, encoding="utf-8")
 
 
 @run_app.command(

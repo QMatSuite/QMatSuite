@@ -190,8 +190,8 @@ class TestContextHints:
         # Either auto-resolved (mentions "auto-resolved") or manual (mentions "set_species_map")
         assert "species_map" in hint.lower() or "auto-resolved" in hint.lower()
 
-    def test_tool_count_32(self):
-        """Verify 32 tools registered (27 P4 + 2 Phase 2A + 1 generate_kpath + 1 cleanup_project + 1 list_calculations)."""
+    def test_tool_count_38(self):
+        """Verify 38 tools registered (32 previous + 6 engine management)."""
         from qmatsuite.mcp import server  # noqa: F401 — triggers registration
         from qmatsuite.mcp.app import mcp
 
@@ -200,8 +200,8 @@ class TestContextHints:
             tools = loop.run_until_complete(mcp.get_tools())
         finally:
             loop.close()
-        assert len(tools) == 32, (
-            f"Expected 32 tools, got {len(tools)}: {sorted(tools.keys())}"
+        assert len(tools) == 38, (
+            f"Expected 38 tools, got {len(tools)}: {sorted(tools.keys())}"
         )
 
         # Verify the P1 tools exist

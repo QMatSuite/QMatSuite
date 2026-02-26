@@ -49,6 +49,68 @@ python -m pytest tests/ -v --tb=short
 Extended tests still live under `extended-tests/`; they continue to work when
 invoked from the repository root and benefit from the same editable install.
 
+### AI Agent Quick Start (MCP)
+
+QMatSuite exposes an MCP (Model Context Protocol) server so AI agents can
+manage projects, install engines, run calculations, and retrieve results
+programmatically.
+
+**Automatic setup** (recommended):
+
+```bash
+# Claude Code (project-scoped, default)
+qms mcp config --write
+
+# OpenAI Codex CLI
+qms mcp config --agent codex --write
+
+# Google Gemini CLI
+qms mcp config --agent gemini --write
+```
+
+Add `--scope user` for global (user-level) configuration, or
+`--project /path/to/project` to set a default project directory.
+
+<details>
+<summary>Manual configuration</summary>
+
+**Claude Code** — create `.mcp.json` in your project root:
+```json
+{
+  "mcpServers": {
+    "qmatsuite": {
+      "type": "stdio",
+      "command": "/path/to/.venv/bin/python",
+      "args": ["-m", "qmatsuite.mcp.server"]
+    }
+  }
+}
+```
+
+**OpenAI Codex CLI** — add to `.codex/config.toml`:
+```toml
+[mcp_servers.qmatsuite]
+command = "/path/to/.venv/bin/python"
+args = ["-m", "qmatsuite.mcp.server"]
+```
+
+**Google Gemini CLI** — add to `.gemini/settings.json`:
+```json
+{
+  "mcpServers": {
+    "qmatsuite": {
+      "command": "/path/to/.venv/bin/python",
+      "args": ["-m", "qmatsuite.mcp.server"]
+    }
+  }
+}
+```
+</details>
+
+**Available tool categories**: project management, engine discovery and
+installation, workflow configuration, structure import, calculation execution,
+results analysis, k-path generation, and demo store.
+
 ### Command-Line Interface (Typer CLI)
 
 The new runtime exposes a Typer-powered CLI named `qms`. Key commands:

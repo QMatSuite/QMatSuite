@@ -70,6 +70,14 @@ def _register_tools() -> None:
     # Stage P1b: project health
     import qmatsuite.mcp.tools.cleanup_project  # noqa: F401
 
+    # Engine management tools
+    import qmatsuite.mcp.tools.install_engine  # noqa: F401
+    import qmatsuite.mcp.tools.list_installable_engines  # noqa: F401
+    import qmatsuite.mcp.tools.verify_engine  # noqa: F401
+    import qmatsuite.mcp.tools.register_engine_path  # noqa: F401
+    import qmatsuite.mcp.tools.uninstall_engine  # noqa: F401
+    import qmatsuite.mcp.tools.set_active_engine  # noqa: F401
+
     # Stage 2A: analysis & visualization tools
     import qmatsuite.mcp.tools.list_analyses  # noqa: F401
     import qmatsuite.mcp.tools.plot_analysis  # noqa: F401

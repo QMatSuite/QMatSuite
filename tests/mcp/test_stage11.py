@@ -303,8 +303,8 @@ class TestRealQEScenarios:
 class TestToolRegistration:
     """Test 7: All 22 tools registered."""
 
-    def test_all_32_tools_registered(self):
-        """Verify all 32 tools are registered in the FastMCP server."""
+    def test_all_38_tools_registered(self):
+        """Verify all 38 tools are registered in the FastMCP server."""
         from qmatsuite.mcp import server  # noqa: F401 — triggers registration
         from qmatsuite.mcp.app import mcp
 
@@ -313,8 +313,8 @@ class TestToolRegistration:
             tools = loop.run_until_complete(mcp.get_tools())
         finally:
             loop.close()
-        assert len(tools) == 32, (
-            f"Expected 32 tools, got {len(tools)}: {sorted(tools.keys())}"
+        assert len(tools) == 38, (
+            f"Expected 38 tools, got {len(tools)}: {sorted(tools.keys())}"
         )
 
         expected_names = {
@@ -350,6 +350,12 @@ class TestToolRegistration:
             "plot_analysis",
             "generate_kpath",
             "cleanup_project",
+            "install_engine",
+            "list_installable_engines",
+            "verify_engine",
+            "register_engine_path",
+            "uninstall_engine",
+            "set_active_engine",
         }
         actual_names = set(tools.keys())
         assert actual_names == expected_names, (
