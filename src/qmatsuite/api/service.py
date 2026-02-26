@@ -4625,6 +4625,47 @@ class QMSService:
                 calc_model.structure_ulid = struct_resolved.meta.ulid
                 calc_model.structure_name = struct_resolved.meta.name
                 calc_model.structure = struct_resolved.meta.slug
+
+                # Rebuild species_map for the new structure's elements
+                try:
+                    from qmatsuite.io import read_structure as _read_struct
+                    new_struct = _read_struct(struct_resolved.absolute_path)
+                    new_elements = sorted(set(str(el) for el in new_struct.composition.elements))
+
+                    old_map = calc_model.species_map or {}
+                    new_map: dict[str, dict] = {}
+                    for elem in new_elements:
+                        if elem in old_map:
+                            new_map[elem] = old_map[elem]
+                        else:
+                            new_map[elem] = {"mass": 0.0, "pseudopot": ""}
+
+                    # Try to auto-match SSSP for elements missing a pseudo
+                    try:
+                        from qmatsuite.pseudo.layout import iter_installed_libraries
+                        from qmatsuite.core.paths import home_pseudo_libraries_dir
+                        import json as _json
+
+                        for lib in iter_installed_libraries(home_pseudo_libraries_dir()):
+                            if lib.library_key.lower() != "sssp":
+                                continue
+                            for cutoffs_file in lib.install_dir.glob("*cutoffs*.json"):
+                                cutoffs = _json.loads(cutoffs_file.read_text())
+                                for elem in new_elements:
+                                    if new_map[elem].get("pseudopot"):
+                                        continue
+                                    elem_data = cutoffs.get(elem, {})
+                                    fname = elem_data.get("filename", "")
+                                    if fname and (lib.install_dir / fname).exists():
+                                        new_map[elem]["pseudopot"] = fname
+                                break  # one cutoffs file per library is enough
+                    except Exception:
+                        pass
+
+                    calc_model.species_map = new_map
+                except Exception:
+                    pass  # If structure read fails, leave species_map unchanged
+
                 save_calculation(calc_model, calc_yaml)
 
                 warnings = []
