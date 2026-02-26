@@ -794,9 +794,8 @@ class QMSService:
                 if ".." in str(artifact_path):
                     raise ValidationError(f"Security violation: artifact path '{artifact_path}' contains path traversal attempt")
 
-                # Normalize to filename only
-                artifact_path_normalized = artifact_path_obj.name
-                file_path = raw_dir_resolved / artifact_path_normalized
+                # Use relative path (security ensured by is_relative_to check below)
+                file_path = raw_dir_resolved / str(artifact_path_obj)
 
                 # Security: Ensure resolved path is under raw_dir
                 try:
