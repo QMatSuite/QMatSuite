@@ -1022,7 +1022,7 @@ class QMSDaemon:
             status = QMSService.Pseudo.get_library_status(library_id)
             return {
                 "ok": True,
-                "data": status,
+                "data": status.to_dict(),
             }
         except Exception as e:
             return {
