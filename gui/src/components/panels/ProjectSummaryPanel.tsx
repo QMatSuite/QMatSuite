@@ -103,7 +103,7 @@ export function ProjectSummaryPanel({
           <div className="welcome-icon">⚛️</div>
           <h2 className="welcome-title" data-testid="qms-welcome-title">Welcome to QMatSuite</h2>
           <p className="welcome-subtitle">
-            Manage Quantum ESPRESSO calculations with ease
+            Manage computational materials science workflows
           </p>
           
           <div className="welcome-actions">
@@ -129,7 +129,7 @@ export function ProjectSummaryPanel({
                 <span className="welcome-button__icon">✨</span>
                 <span className="welcome-button__content">
                   <span className="welcome-button__title">Create New Project</span>
-                  <span className="welcome-button__desc">Start a new QE calculation project</span>
+                  <span className="welcome-button__desc">Start a new calculation project</span>
                 </span>
               </button>
             )}

@@ -273,7 +273,7 @@ export const Sidebar = memo(function Sidebar({
           <button
             className={`sidebar__tab ${currentView === 'settings' ? 'active' : ''}`}
             onClick={() => onViewChange('settings')}
-            title="Configure QE paths and app settings"
+            title="Configure engine paths and app settings"
             data-testid="qms-nav-settings"
           >
             <span className="sidebar__tab-icon">⚙️</span>
