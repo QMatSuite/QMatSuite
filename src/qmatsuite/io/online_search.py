@@ -44,12 +44,48 @@ OPTIMADE_BASES = [
 OPTIMADE_DEFAULT_BASE = OPTIMADE_BASES[0]
 
 
+_ELEMENT_NAME_CACHE: Optional[dict[str, str]] = None
+
+
+def _element_name_to_symbol(name: str) -> Optional[str]:
+    """Return element symbol if *name* is a recognised element long name, else None."""
+    global _ELEMENT_NAME_CACHE
+    if _ELEMENT_NAME_CACHE is None:
+        try:
+            from pymatgen.core import Element
+            _ELEMENT_NAME_CACHE = {
+                el.long_name.lower(): el.symbol for el in Element
+            }
+        except Exception:
+            _ELEMENT_NAME_CACHE = {}
+    return _ELEMENT_NAME_CACHE.get(name.lower().strip())
+
+
+def _looks_like_formula(text: str) -> bool:
+    """Heuristic: True if *text* looks like a chemical formula rather than a word.
+
+    A formula contains digits, mixed-case mid-word (e.g. "NaCl"), or is <=2 chars.
+    A plain word like "titanium" is all-lowercase (or all-uppercase) and > 2 chars
+    with no digits.
+    """
+    if len(text) <= 2:
+        return True
+    if re.search(r'\d', text):
+        return True
+    # Mixed case with uppercase after position 0 ⇒ formula-like (e.g. "NaCl", "MoS")
+    if re.search(r'(?<=[a-z])[A-Z]', text):
+        return True
+    return False
+
+
 def normalize_formula(formula: str) -> str:
     """
     Normalize chemical formula for OPTIMADE search.
-    
+
     Handles case-insensitive input and capitalizes element symbols properly.
-    
+    If the input is an element long name (e.g. "titanium"), returns the
+    symbol directly instead of mis-parsing via the formula regex.
+
     Examples:
         "Si" -> "Si"
         "si" -> "Si"
@@ -57,13 +93,30 @@ def normalize_formula(formula: str) -> str:
         "mos2" -> "MoS2"
         "SiO2" -> "SiO2"
         "Si O2" -> "SiO2"
+        "titanium" -> "Ti"
+        "Oxygen" -> "O"
     """
     # Remove spaces
     formula = re.sub(r'\s+', '', formula)
     # Basic validation - should contain at least one letter
     if not re.search(r'[A-Za-z]', formula):
         raise ValueError(f"Invalid formula: {formula}")
-    
+
+    # Check if the input is an element long name (e.g. "titanium" → "Ti")
+    sym = _element_name_to_symbol(formula)
+    if sym is not None:
+        return sym
+
+    # If it doesn't look like a formula (long all-alpha word), return as-is.
+    # Exception: try Composition first in case it's a valid formula (e.g. "nacl").
+    if not _looks_like_formula(formula):
+        try:
+            from pymatgen.core import Composition
+            comp = Composition(formula)
+            return comp.reduced_formula
+        except Exception:
+            return formula
+
     # Capitalize first letter of each element symbol
     # Pattern: element symbol (1-2 letters) followed by optional number
     # This handles: Si, MoS2, SiO2, etc.
@@ -76,10 +129,10 @@ def normalize_formula(formula: str) -> str:
         elif len(elem) == 2:
             elem = elem[0].upper() + elem[1].lower()
         return elem + num
-    
+
     # Match element symbols (1-2 letters) followed by optional numbers
     formula = re.sub(r'([A-Za-z]{1,2})(\d*)', capitalize_element, formula)
-    
+
     return formula
 
 
