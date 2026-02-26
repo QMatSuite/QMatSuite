@@ -1,0 +1,20 @@
+=== Agent Test Matrix Results ===
+Run ID:  run_20260221_145901
+Run Dir: <REPO_ROOT>/.tmp/agent_mcp_test/run_20260221_145901
+Date:    Sat Feb 21 15:40:46 EST 2026
+
+[PASS] Task 00  task_00_na_scf              WORKLOG=✗  PROJECT=✓  TRACE=50 lines
+[PASS] Task 01  task_01_si_scf              WORKLOG=✗  PROJECT=✓  TRACE=38 lines
+[PASS] Task 02  task_02_si_bands            WORKLOG=✗  PROJECT=✓  TRACE=131 lines
+[PASS] Task 03  task_03_si_dos              WORKLOG=✗  PROJECT=✓  TRACE=40 lines
+[PASS] Task 04  task_04_si_relax_bands      WORKLOG=✗  PROJECT=✓  TRACE=111 lines
+[PASS] Task 05  task_05_al_scf              WORKLOG=✗  PROJECT=✓  TRACE=34 lines
+[PASS] Task 06  task_06_fe_magnetic         WORKLOG=✗  PROJECT=✓  TRACE=53 lines
+[PASS] Task 07  task_07_bad_config          WORKLOG=✗  PROJECT=✓  TRACE=32 lines
+[PASS] Task 08  task_08_water_xtb           WORKLOG=✗  PROJECT=✓  TRACE=37 lines
+
+SSSP downloaded: ✓
+Tasks with worklog: 0/9
+Tasks with project: 9/9
+
+OVERALL: PASS (all 9 tasks created projects)

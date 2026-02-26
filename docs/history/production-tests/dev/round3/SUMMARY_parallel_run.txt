@@ -1,0 +1,28 @@
+=== Agent Test Matrix Results ===
+Run ID:  run_20260221_165410
+Run Dir: <REPO_ROOT>/.tmp/agent_mcp_test/run_20260221_165410
+Date:    Sat Feb 21 16:59:29 EST 2026
+
+[PASS] Task 00  task_00_na_scf              WORKLOG=✗  PROJECT=✓  TRACE=36 lines
+[PASS] Task 01  task_01_si_scf              WORKLOG=✗  PROJECT=✓  TRACE=25 lines
+[PASS] Task 02  task_02_si_bands            WORKLOG=✗  PROJECT=✓  TRACE=31 lines
+[PASS] Task 03  task_03_si_dos              WORKLOG=✗  PROJECT=✓  TRACE=25 lines
+[PASS] Task 04  task_04_si_relax_bands      WORKLOG=✗  PROJECT=✓  TRACE=60 lines
+[PASS] Task 05  task_05_al_scf              WORKLOG=✗  PROJECT=✓  TRACE=34 lines
+[PASS] Task 06  task_06_fe_magnetic         WORKLOG=✗  PROJECT=✓  TRACE=45 lines
+[PASS] Task 07  task_07_bad_config          WORKLOG=✗  PROJECT=✓  TRACE=28 lines
+[PASS] Task 08  task_08_water_xtb           WORKLOG=✗  PROJECT=✓  TRACE=22 lines
+[PASS] Task 09  task_09_fe_magnetization_check  WORKLOG=✗  PROJECT=✓  TRACE=39 lines
+[PASS] Task 10  task_10_xtb_promote         WORKLOG=✗  PROJECT=✓  TRACE=23 lines
+[PASS] Task 11  task_11_si_vc_relax         WORKLOG=✗  PROJECT=✓  TRACE=34 lines
+[PASS] Task 12  task_12_orca_water          WORKLOG=✗  PROJECT=✓  TRACE=18 lines
+[PASS] Task 13  task_13_failing_scf         WORKLOG=✗  PROJECT=✓  TRACE=38 lines
+[PASS] Task 14  task_14_al_dos              WORKLOG=✗  PROJECT=✓  TRACE=56 lines
+[PASS] Task 15  task_15_mg_hcp_scf          WORKLOG=✗  PROJECT=✓  TRACE=34 lines
+[PASS] Task 16  task_16_si_convergence      WORKLOG=✗  PROJECT=✓  TRACE=34 lines
+
+SSSP downloaded: ✓
+Tasks with worklog: 0/17
+Tasks with project: 17/17
+
+OVERALL: PASS (all 17 tasks created projects)
