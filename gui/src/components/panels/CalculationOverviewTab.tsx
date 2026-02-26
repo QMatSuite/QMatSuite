@@ -472,14 +472,14 @@ function CompactStepList({
             <option value="">Select step type...</option>
             {stepPalette?.base_steps.map((step) => (
               <option key={step.gen} value={step.gen}>
-                {step.description || step.gen.toUpperCase()}
+                {`[${step.gen.toUpperCase()}] ${step.description || step.gen}`}
               </option>
             ))}
             {stepPalette && Object.entries(stepPalette.companion_steps).map(([engine, steps]) => (
               <optgroup key={engine} label={engine.toUpperCase()}>
                 {steps.map((step) => (
                   <option key={step.gen} value={step.gen}>
-                    {step.description || step.gen}
+                    {`[${step.gen.toUpperCase()}] ${step.description || step.gen}`}
                   </option>
                 ))}
               </optgroup>
