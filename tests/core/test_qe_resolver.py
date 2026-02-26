@@ -140,51 +140,60 @@ def test_find_internal_qe_bin_dir_with_meta_json():
             qe_resolver.home_qe_engines_dir = original_func
 
 
-def test_resolve_qe_bin_dir_external(tmp_path):
+def test_resolve_qe_bin_dir_external(tmp_path, monkeypatch):
     """Test resolution with external QE (settings.qe.bin_dir set)."""
+    from qmatsuite.drivers.qe.engine import qe_resolver as _qr
+    monkeypatch.setattr(_qr, "_resolve_qe_bin_dir_from_registry", lambda: None)
+
     bin_dir = tmp_path / "external" / "bin"
     bin_dir.mkdir(parents=True)
     (bin_dir / "pw.x").touch()
-    
+
     settings = QMatSuiteSettings(
         qe=QEConfig(bin_dir=str(bin_dir.resolve()))
     )
-    
+
     result = resolve_qe_bin_dir(settings)
     assert result == bin_dir.resolve()
 
 
-def test_resolve_qe_bin_dir_external_invalid(tmp_path):
+def test_resolve_qe_bin_dir_external_invalid(tmp_path, monkeypatch):
     """Test resolution fails when external QE bin_dir is invalid."""
+    from qmatsuite.drivers.qe.engine import qe_resolver as _qr
+    monkeypatch.setattr(_qr, "_resolve_qe_bin_dir_from_registry", lambda: None)
+
     bin_dir = tmp_path / "invalid" / "bin"
     bin_dir.mkdir(parents=True)
     # No pw.x
-    
+
     settings = QMatSuiteSettings(
         qe=QEConfig(bin_dir=str(bin_dir.resolve()))
     )
-    
+
     with pytest.raises(RuntimeError, match="invalid or missing pw executable"):
         resolve_qe_bin_dir(settings)
 
 
-def test_resolve_qe_bin_dir_internal(tmp_path):
+def test_resolve_qe_bin_dir_internal(tmp_path, monkeypatch):
     """Test resolution with internal QE (settings.qe.bin_dir is null)."""
+    from qmatsuite.drivers.qe.engine import qe_resolver as _qr
+    monkeypatch.setattr(_qr, "_resolve_qe_bin_dir_from_registry", lambda: None)
+
     engines_base = tmp_path / ".qmatsuite" / "engines" / "qe"
     engines_base.mkdir(parents=True, exist_ok=True)
-    
+
     engine_dir = engines_base / "test-engine"
     bin_dir = engine_dir / "bin"
     bin_dir.mkdir(parents=True)
     (bin_dir / "pw.x").touch()
-    
+
     settings = QMatSuiteSettings(qe=QEConfig(bin_dir=None))
-    
+
     # Temporarily patch home_qe_engines_dir
     from qmatsuite.core.engines import qe_resolver
     original_func = qe_resolver.home_qe_engines_dir
     qe_resolver.home_qe_engines_dir = lambda: engines_base
-    
+
     try:
         result = resolve_qe_bin_dir(settings)
         assert result == bin_dir.resolve()
@@ -228,19 +237,22 @@ def test_resolve_qe_bin_dir_registry_active(tmp_path, monkeypatch):
     assert result == bin_dir.resolve()
 
 
-def test_resolve_qe_bin_dir_no_qe():
+def test_resolve_qe_bin_dir_no_qe(monkeypatch):
     """Test resolution fails when no QE is available."""
+    from qmatsuite.drivers.qe.engine import qe_resolver as _qr
+    monkeypatch.setattr(_qr, "_resolve_qe_bin_dir_from_registry", lambda: None)
+
     settings = QMatSuiteSettings(qe=QEConfig(bin_dir=None))
-    
+
     # Temporarily patch to return empty engines dir
     from qmatsuite.core.engines import qe_resolver
     original_func = qe_resolver.home_qe_engines_dir
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         empty_engines = Path(tmpdir) / "engines" / "qe"
         empty_engines.mkdir(parents=True, exist_ok=True)
         qe_resolver.home_qe_engines_dir = lambda: empty_engines
-        
+
         try:
             with pytest.raises(RuntimeError, match="No internal QE found"):
                 resolve_qe_bin_dir(settings)

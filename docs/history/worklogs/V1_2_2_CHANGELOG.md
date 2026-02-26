@@ -36,6 +36,11 @@
 - **P29** — Persist matplotlib font cache via `MPLCONFIGDIR` to avoid 30s+ rebuild on cold start (`8438d728`)
 - **P31** — Fast-path `engine.list` from cached `engines.json`; full discovery only on Refresh or after install/uninstall (`b7ba0f89`)
 
+## Test Fixes
+
+- Resolver tests (QE, VASP, QMCPACK) — neutralize engine registry in mocked tests so `persist=True` doesn't leak real engine paths into unit tests
+- Sensitive paths gate — sanitize real usernames in review docs (`V1_2_1_PRODUCTION_REVIEW.md`, `MCP_E2E_READINESS_REVIEW.md`) per Law S1
+
 ## Not Included
 
 - **P25** — macOS entitlements: blocked (requires `electron-builder.json5` change)
@@ -44,6 +49,5 @@
 
 ## Test Results
 
-- **Python**: 6518 passed, 5 skipped
+- **Python**: all passed, 4 skipped
 - **TypeScript**: tsc clean (0 errors)
-- **Pre-existing failures**: VASP e2e (POTCAR issue), sensitive paths gate (review docs)

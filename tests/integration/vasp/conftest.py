@@ -35,6 +35,9 @@ def use_fake_vasp(monkeypatch, tmp_path):
     """Fixture to use fake_vasp instead of real VASP and mock POTCAR directory."""
     fake_vasp = str(FAKE_VASP_BIN)
     monkeypatch.setenv("QMATS_VASP_STD_BIN", fake_vasp)
+    # Neutralize registry so env var takes effect (registry has higher priority)
+    import qmatsuite.core.engines.vasp_resolver as _vr
+    monkeypatch.setattr(_vr, "_get_registry_vasp_bin", lambda variant="std": None)
     
     # Mock get_potcar_dir to return a fake POTCAR directory
     fake_potcar_dir = tmp_path / "fake_potcar" / "potpaw_PBE.64"

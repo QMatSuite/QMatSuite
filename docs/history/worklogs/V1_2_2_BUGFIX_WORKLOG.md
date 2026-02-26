@@ -138,3 +138,17 @@
 
 ### P25 — macOS entitlements
 **Status**: BLOCKED — requires electron-builder.json5 change (user ban)
+
+### Post-Fix: Test Failures — Resolver Registry Isolation + Sensitive Paths
+**Root Cause**: P35 (`persist=True`) writes real engine paths to `engines.json`. All resolvers
+(QE, VASP, QMCPACK) check the registry first, bypassing test mocks on env vars/filesystem.
+Additionally, review docs contained real usernames violating Law S1.
+
+**Fixes applied**:
+- `tests/unit/test_vasp_registry.py` — Added `_neutralize_registry` autouse fixture to `TestVASPResolver`
+- `tests/integration/vasp/conftest.py` — Monkeypatch `_get_registry_vasp_bin` in `use_fake_vasp`
+- `tests/core/test_qe_resolver.py` — Monkeypatch `_resolve_qe_bin_dir_from_registry` in 4 tests
+- `tests/drivers/qmcpack/test_qmcpack_driver.py` — Added `_neutralize_registry` autouse fixture to `TestQMCPACKResolver`
+- `docs/history/reviews/V1_2_1_PRODUCTION_REVIEW.md` — Replaced real macOS home paths with `~/...` (3 lines)
+- `docs/history/reviews/MCP_E2E_READINESS_REVIEW.md` — Replaced real dev path with `<REPO_ROOT>/...` (1 line)
+**Tests**: 47 targeted tests pass

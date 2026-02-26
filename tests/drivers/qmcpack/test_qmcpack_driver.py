@@ -370,6 +370,17 @@ class TestQMCPACKEngineRegistry:
 class TestQMCPACKResolver:
     """Tests for QMCPACK binary resolver."""
 
+    @pytest.fixture(autouse=True)
+    def _neutralize_registry(self, monkeypatch):
+        """Prevent registry from returning real engines during unit tests."""
+        import qmatsuite.core.engines.qmcpack_resolver as _qr
+        original = _qr.resolve_qmcpack_bin  # noqa: F841 - keep reference
+        # Neutralize the registry lookup inside resolve_qmcpack_bin
+        monkeypatch.setattr(
+            "qmatsuite.core.engines.engine_registry.resolve_active_binary",
+            lambda engine_family, binary_name=None: None,
+        )
+
     def test_resolver_env_var(self, tmp_path, monkeypatch):
         """Test resolver with QMATS_QMCPACK_BIN environment variable."""
         from qmatsuite.core.engines.qmcpack_resolver import resolve_qmcpack_bin

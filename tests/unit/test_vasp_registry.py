@@ -130,20 +130,26 @@ class TestVASPGenToSpecMapping:
 
 class TestVASPResolver:
     """Test VASP binary and POTCAR resolution - MOCK TESTS (CI 必跑)."""
-    
+
+    @pytest.fixture(autouse=True)
+    def _neutralize_registry(self, monkeypatch):
+        """Prevent registry from returning real engines during unit tests."""
+        import qmatsuite.core.engines.vasp_resolver as resolver_mod
+        monkeypatch.setattr(resolver_mod, "_get_registry_vasp_bin", lambda variant="std": None)
+
     def test_resolve_vasp_bin_finds_binary_from_env(self, monkeypatch, tmp_path):
         """Test resolver finds VASP via environment variable."""
         # Create fake binary
         fake_bin = tmp_path / "fake_vasp_std"
         fake_bin.write_text("#!/bin/bash\necho fake")
         fake_bin.chmod(0o755)
-        
+
         monkeypatch.setenv("QMATS_VASP_STD_BIN", str(fake_bin))
-        
+
         from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
         result = resolve_vasp_bin("std")
         assert result == fake_bin
-    
+
     def test_resolve_vasp_bin_finds_binary_from_repo_root(self, monkeypatch, tmp_path):
         """Test resolver finds VASP in .qmatsuite/ directory."""
         # Create fake repo structure
@@ -152,21 +158,21 @@ class TestVASPResolver:
         fake_bin = vasp_dir / "vasp_std"
         fake_bin.write_text("#!/bin/bash\necho fake")
         fake_bin.chmod(0o755)
-        
+
         # Clear env var and mock repo root
         monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)
-        
+
         import qmatsuite.core.engines.vasp_resolver as resolver_mod
         monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
-        
+
         from qmatsuite.core.engines.vasp_resolver import resolve_vasp_bin
         result = resolve_vasp_bin("std")
         assert result == fake_bin
-    
+
     def test_resolve_vasp_bin_raises_when_not_found(self, monkeypatch, tmp_path):
         """Test resolver raises RuntimeError when VASP not found."""
         monkeypatch.delenv("QMATS_VASP_STD_BIN", raising=False)
-        
+
         import qmatsuite.core.engines.vasp_resolver as resolver_mod
         monkeypatch.setattr(resolver_mod, '_get_repo_root', lambda: tmp_path)
         

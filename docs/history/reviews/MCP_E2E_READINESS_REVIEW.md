@@ -308,7 +308,7 @@ The API layer is fully implemented. The **only** missing piece is the MCP tool w
 | 3 | `QMATSUITE_ELECTRON=1` set | Platform-specific (e.g., `~/Library/Application Support/QMatSuite`) |
 | 4 | Fallback (pip install from PyPI) | `~/.qmatsuite` |
 
-**Current dev setup verified:** `get_app_data_dir()` returns `/Users/hh7465/QMatSuite/.qmatsuite` (tier 2, dev mode).
+**Current dev setup verified:** `get_app_data_dir()` returns `<REPO_ROOT>/.qmatsuite` (tier 2, dev mode).
 
 **Engine storage paths relative to `get_app_data_dir()`:**
 

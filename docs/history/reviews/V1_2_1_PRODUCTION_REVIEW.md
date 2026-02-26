@@ -916,7 +916,7 @@ These are displayed sequentially, creating a very long scrollable page with redu
 - Then each engine takes 2-3 more lines in the info section (name + supported steps)
 - QE is buried in alphabetical order instead of being first (since it's installed and most used)
 - No visual hierarchy — all engines look the same regardless of installation status
-- QE HOME path shows real user path (`/Users/mac18/Library/...`) — potential sensitive info leak (see P23)
+- QE HOME path shows real user path (`~/Library/...`) — potential sensitive info leak (see P23)
 
 ### Proposed Fix
 
@@ -1169,7 +1169,7 @@ The calculation list container likely has `overflow: hidden` or a fixed height t
 
 The Settings > Engine Info section for QE shows:
 ```
-QE HOME    /Users/mac18/Library/Application Support/QMatSuite/engines/qe/bundled-7.5
+QE HOME    ~/Library/Application Support/QMatSuite/engines/qe/bundled-7.5
 ```
 
 This displays a real username (`mac18`) in the UI. While this is the local machine and not committed to git, it's poor practice:
@@ -1207,7 +1207,7 @@ Clicking "Volume (DEV)" shows:
 ```
 Error: Wannier90 3D fixtures directory not found. Attempted paths: repo_derived:
 /Applications/QMatSuite.app/.../tests/data/wannier_3d_test dev_fallback:
-/Users/mac18/QMatSuite/tests/data/wannier_3d_test Please set QMATSUITE_WANNIER_3D_FIXTURES
+~/QMatSuite/tests/data/wannier_3d_test Please set QMATSUITE_WANNIER_3D_FIXTURES
 environment variable or ensure fixtures exist.
 ```
 
