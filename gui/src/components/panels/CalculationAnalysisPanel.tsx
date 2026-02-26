@@ -235,8 +235,10 @@ export function CalculationAnalysisPanel({
       setShiftToFermi(false);
       if (!matched.length) {
         setSelectedObjectType(null);
+        setViewMode('raw');
         return;
       }
+      setViewMode('analysis');
       setSelectedObjectType((previous) => (previous && matched.includes(previous) ? previous : matched[0]));
     };
 
