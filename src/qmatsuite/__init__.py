@@ -11,7 +11,7 @@ import importlib
 import sys
 from typing import Any, Callable
 
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 __author__ = "QMatSuite Developers"
 
 
