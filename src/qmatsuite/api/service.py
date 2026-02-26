@@ -8662,7 +8662,7 @@ class QMSService:
         demos = []
         for snapshot_path in sorted(demo_dir.glob("*.yml")):
             try:
-                with open(snapshot_path, "r") as f:
+                with open(snapshot_path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f)
 
                 # Top-level meta contains display fields (title, subtitle, tags)
