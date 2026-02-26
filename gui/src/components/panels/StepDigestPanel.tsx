@@ -1,3 +1,11 @@
+import { useState } from 'react';
+
+/** Keys shown in the always-visible summary row. */
+const PRIMARY_KEYS = new Set([
+  'total_energy_ry', 'total_energy_ev', 'total_energy_ha',
+  'converged', 'band_gap_ev', 'fermi_energy_ev', 'n_iterations',
+]);
+
 interface StepDigestPanelProps {
   loading: boolean;
   error: string | null;
@@ -13,6 +21,8 @@ export function StepDigestPanel({
   digestSha,
   engine,
 }: StepDigestPanelProps) {
+  const [expanded, setExpanded] = useState(false);
+
   if (loading) {
     return <div className="analysis-digest analysis-surface__placeholder">Loading step digest...</div>;
   }
@@ -29,6 +39,10 @@ export function StepDigestPanel({
     );
   }
 
+  const entries = Object.entries(digest);
+  const primary = entries.filter(([k]) => PRIMARY_KEYS.has(k));
+  const secondary = entries.filter(([k]) => !PRIMARY_KEYS.has(k));
+
   return (
     <div className="analysis-digest">
       <div className="analysis-digest__header">
@@ -40,7 +54,13 @@ export function StepDigestPanel({
       </div>
       <table className="analysis-digest__table">
         <tbody>
-          {Object.entries(digest).map(([key, value]) => (
+          {primary.map(([key, value]) => (
+            <tr key={key}>
+              <th>{key}</th>
+              <td>{formatDigestValue(value)}</td>
+            </tr>
+          ))}
+          {expanded && secondary.map(([key, value]) => (
             <tr key={key}>
               <th>{key}</th>
               <td>{formatDigestValue(value)}</td>
@@ -48,6 +68,14 @@ export function StepDigestPanel({
           ))}
         </tbody>
       </table>
+      {secondary.length > 0 && (
+        <button
+          className="analysis-digest__toggle"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? 'Hide details' : `Show ${secondary.length} more fields`}
+        </button>
+      )}
     </div>
   );
 }
