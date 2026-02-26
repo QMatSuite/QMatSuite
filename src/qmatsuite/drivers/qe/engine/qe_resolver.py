@@ -97,14 +97,18 @@ def validate_qe_bin_dir(bin_dir: Path) -> None:
 
 def find_internal_qe_bin_dir() -> Optional[Path]:
     """
-    Find internal QE bin directory by auto-selecting from .qmatsuite/engines/qe/**/bin.
-    
+    Find internal QE bin directory by auto-selecting from engines/qe/**/bin.
+
+    Uses ``home_engines_dir() / "qe"`` — the same base path as
+    :class:`EngineRegistry`, so bundled installs staged to AppData
+    are found on all platforms.
+
     Selection rule (deterministic):
-    1. Find all directories matching .qmatsuite/engines/qe/**/bin that contain pw* (pw.x or pw.x.exe)
+    1. Find all directories matching engines/qe/**/bin that contain pw* (pw.x or pw.x.exe)
     2. Primary sort: by parent engine folder mtime (most recent first)
        - If META.json exists in parent folder, use created_at/version from it if available
     3. Secondary sort (tie-break): lexicographically highest full path
-    
+
     Returns:
         Path to selected internal QE bin directory, or None if none found
     """

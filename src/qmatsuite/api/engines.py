@@ -75,7 +75,7 @@ def _engine_installed_via_fallback(engine_family: str) -> bool:
 def list_engines(installed_only: bool = False) -> List[Dict[str, Any]]:
     """Return install status for all engines with registry-first detection."""
     registry = EngineRegistry()
-    data = registry.discover(persist=False)
+    data = registry.discover(persist=True)
     engines = data.get("engines", {})
 
     out: List[Dict[str, Any]] = []
