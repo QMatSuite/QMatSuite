@@ -49,5 +49,5 @@
 
 ## Test Results
 
-- **Python**: all passed, 4 skipped
+- **Python**: 6535 passed, 5 skipped (4 expected + 1 COD server unreachable)
 - **TypeScript**: tsc clean (0 errors)
