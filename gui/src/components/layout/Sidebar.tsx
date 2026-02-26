@@ -280,6 +280,7 @@ export const Sidebar = memo(function Sidebar({
             {!isCollapsed && 'Settings'}
           </button>
           {/* DEV ONLY: Volume Viewer Sandbox */}
+          {import.meta.env.DEV && (
           <button
             className={`sidebar__tab ${currentView === 'dev-volume' ? 'active' : ''}`}
             onClick={() => onViewChange('dev-volume')}
@@ -290,6 +291,7 @@ export const Sidebar = memo(function Sidebar({
             <span className="sidebar__tab-icon">🧊</span>
             {!isCollapsed && 'Volume (DEV)'}
           </button>
+          )}
         </div>
       </div>
       

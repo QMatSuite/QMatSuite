@@ -737,7 +737,7 @@ export default function AppLayout() {
         );
 
       case 'dev-volume':
-        return <VolumeViewerSandbox />;
+        return import.meta.env.DEV ? <VolumeViewerSandbox /> : null;
 
       default:
         return null;
@@ -870,7 +870,7 @@ export default function AppLayout() {
               {shell.currentView === 'history' && 'History'}
               {shell.currentView === 'resources' && 'Resources'}
               {shell.currentView === 'settings' && 'Settings'}
-              {shell.currentView === 'dev-volume' && 'Volume Viewer (DEV)'}
+              {import.meta.env.DEV && shell.currentView === 'dev-volume' && 'Volume Viewer (DEV)'}
             </h2>
             <div className="app-header__actions">
               <button
