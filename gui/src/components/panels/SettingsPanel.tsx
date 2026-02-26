@@ -26,6 +26,11 @@ import type {
 import { getVisibleLogLines, getVisibleLogText } from '../../utils/logFilter';
 import './SettingsPanel.css';
 
+/** Replace the user home-directory prefix with `~` to avoid leaking usernames in screenshots. */
+function sanitizePath(raw: string): string {
+  return raw.replace(/^(\/Users\/[^/]+|\/home\/[^/]+|C:\\Users\\[^\\]+)/, '~');
+}
+
 // Online Structures Settings Section Component
 interface OnlineStructuresSettingsSectionProps {
   qms: ReturnType<typeof useQMSClient>;
@@ -719,7 +724,7 @@ function EngineManagementSection({ qms, engineDisplayNames }: EngineManagementSe
     }
     setRowNotices((prev) => ({
       ...prev,
-      [engine]: { tone: 'ok', text: `Registered path: ${selectedPath}` },
+      [engine]: { tone: 'ok', text: `Registered path: ${sanitizePath(selectedPath)}` },
     }));
     await refreshEngineData(true);
   }, [qms, refreshEngineData]);
@@ -1215,7 +1220,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                       <div className="qe-details">
                         <div className="detail-row">
                           <span className="detail-label">QE Home</span>
-                          <code className="detail-value detail-value--path">{qeInfo.qe_home}</code>
+                          <code className="detail-value detail-value--path">{sanitizePath(qeInfo.qe_home)}</code>
                         </div>
                         
                         {qeInfo.version && (
@@ -1291,7 +1296,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                       <span className="status-text">Using internal QE</span>
                       {qeEngineInfo.current_bin_dir && (
                         <code className="detail-value detail-value--path" style={{ display: 'block', marginTop: '0.5rem' }}>
-                          {qeEngineInfo.current_bin_dir}
+                          {sanitizePath(qeEngineInfo.current_bin_dir)}
                         </code>
                       )}
                     </div>
@@ -1300,7 +1305,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                       <span className="status-text">Using external QE</span>
                       {qeEngineInfo.current_bin_dir && (
                         <code className="detail-value detail-value--path" style={{ display: 'block', marginTop: '0.5rem' }}>
-                          {qeEngineInfo.current_bin_dir}
+                          {sanitizePath(qeEngineInfo.current_bin_dir)}
                         </code>
                       )}
                     </div>
@@ -1399,7 +1404,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                 <div className="internal-engines-list">
                   {qeEngineInfo.internal_engines.map((eng, idx) => (
                     <div key={idx} className="internal-engine-item">
-                      <code className="detail-value detail-value--path">{eng.bin_dir}</code>
+                      <code className="detail-value detail-value--path">{sanitizePath(eng.bin_dir)}</code>
                     </div>
                   ))}
                 </div>
@@ -1439,7 +1444,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
               </div>
               <div className="detail-row">
                 <span className="detail-label">Python Path</span>
-                <code className="detail-value detail-value--path">{envInfo.python_executable}</code>
+                <code className="detail-value detail-value--path">{sanitizePath(envInfo.python_executable)}</code>
               </div>
               <div className="detail-row">
                 <span className="detail-label">QMS Version</span>
