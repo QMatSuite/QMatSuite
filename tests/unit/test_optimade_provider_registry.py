@@ -68,10 +68,10 @@ class TestProviderRegistry:
             mock_response.raise_for_status = Mock()
             mock_get.return_value = mock_response
             
-            # Mock cache to return None (cache miss)
+            # Mock cache to return None (cache miss); use refresh=True to force fetch
             with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=None):
                 with patch('qmatsuite.io.providers.optimade._save_registry_cache') as mock_save:
-                    providers = fetch_optimade_registry(refresh=False)
+                    providers = fetch_optimade_registry(refresh=True)
                     
                     # Should include curated defaults + registry providers
                     provider_ids = [p.provider_key for p in providers]
@@ -129,23 +129,21 @@ class TestProviderRegistry:
                 provider_ids = [p.provider_key for p in providers]
                 assert "aflow" in provider_ids
     
-    def test_fetch_registry_cache_expired(self):
-        """Test that expired cache triggers fresh fetch."""
-        # Mock cache to return None (expired cache - TTL check happens inside _load_registry_cache)
-        mock_response_data = {"data": []}
-        
+    def test_fetch_registry_cache_expired_returns_defaults(self):
+        """Test that expired cache (None) returns curated defaults without network call."""
+        # With no cache and refresh=False, should return curated defaults instantly
+        # (lazy-load: avoid blocking HTTP on startup)
         with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=None):
             with patch('qmatsuite.io.providers.optimade.requests.get') as mock_get:
-                mock_response = Mock()
-                mock_response.json.return_value = mock_response_data
-                mock_response.raise_for_status = Mock()
-                mock_get.return_value = mock_response
-                
-                with patch('qmatsuite.io.providers.optimade._save_registry_cache'):
-                    providers = fetch_optimade_registry(refresh=False)
-                    
-                    # Should fetch fresh (network call made) because cache returned None
-                    assert mock_get.called, "Expected network call when cache is expired (returns None)"
+                providers = fetch_optimade_registry(refresh=False)
+
+                # Should NOT make a network call
+                assert not mock_get.called, "Should not fetch when cache is missing and refresh=False"
+
+                # Should return curated defaults
+                provider_ids = [p.provider_key for p in providers]
+                assert "mp" in provider_ids
+                assert "cod" in provider_ids
     
     def test_fetch_registry_refresh_force(self):
         """Test that refresh=True forces fresh fetch even with valid cache."""
@@ -201,7 +199,7 @@ class TestProviderRegistry:
             
             with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=None):
                 with patch('qmatsuite.io.providers.optimade._save_registry_cache'):
-                    providers = get_providers_with_settings(user_settings, refresh_registry=False)
+                    providers = get_providers_with_settings(user_settings, refresh_registry=True)
 
                     # Check settings applied
                     mp_provider = next(p for p in providers if p.provider_key == "mp")
@@ -234,7 +232,7 @@ class TestProviderRegistry:
             
             with patch('qmatsuite.io.providers.optimade._load_registry_cache', return_value=None):
                 with patch('qmatsuite.io.providers.optimade._save_registry_cache'):
-                    providers = fetch_optimade_registry(refresh=False)
+                    providers = fetch_optimade_registry(refresh=True)
                     
                     newprovider = next((p for p in providers if p.provider_key == "newprovider"), None)
                     assert newprovider is not None

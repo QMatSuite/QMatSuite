@@ -251,8 +251,13 @@ def fetch_optimade_registry(
             except Exception as e:
                 logger.warning(f"Failed to load cached providers: {e}, fetching fresh")
                 # Fall through to fetch fresh
-    
-    # Fetch from registry
+        else:
+            # No cache and not refreshing: return curated defaults immediately.
+            # This avoids a blocking HTTP fetch on Settings page load / startup.
+            logger.info("No registry cache; returning curated defaults (use refresh=True to fetch)")
+            return CURATED_DEFAULT_PROVIDERS.copy()
+
+    # Fetch from registry (only when refresh=True or cache parse failed)
     try:
         response = requests.get(OPTIMADE_REGISTRY_URL, timeout=10)
         response.raise_for_status()
