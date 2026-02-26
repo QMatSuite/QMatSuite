@@ -7,7 +7,7 @@
  * - AppShell / Sidebar / StatusBar / header / ErrorBoundary / dialogs
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useQMSClient, useDaemonStatus } from '../hooks';
 import { useJobs } from '../hooks/useJobs';
 import { useAppShell, useProject, useStructure, useCalculation } from '../contexts';
@@ -747,8 +747,16 @@ export default function AppLayout() {
   const showUpdaterBanner = Boolean(
     shell.updaterState &&
     !shell.updaterDismissed &&
-    ['available', 'downloading', 'downloaded', 'error'].includes(shell.updaterState.state),
+    ['available', 'downloading', 'downloaded', 'error', 'not-available'].includes(shell.updaterState.state),
   );
+
+  // Auto-dismiss "up to date" banner after 5 seconds
+  useEffect(() => {
+    if (shell.updaterState?.state === 'not-available') {
+      const timer = setTimeout(() => shell.setUpdaterDismissed(true), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [shell.updaterState?.state]);
 
   return (
     <>
@@ -799,11 +807,13 @@ export default function AppLayout() {
             <div className="updater-banner" data-testid="qms-updater-banner">
               <div className="updater-banner__content">
                 <div className="updater-banner__title">
-                  {shell.updaterState.state === 'error'
-                    ? 'Update check failed'
-                    : shell.updaterState.state === 'downloaded'
-                      ? `Update ${shell.updaterState.version || ''} is ready`
-                      : `Update available${shell.updaterState.version ? `: v${shell.updaterState.version}` : ''}`}
+                  {shell.updaterState.state === 'not-available'
+                    ? 'You are up to date'
+                    : shell.updaterState.state === 'error'
+                      ? 'Update check failed'
+                      : shell.updaterState.state === 'downloaded'
+                        ? `Update ${shell.updaterState.version || ''} is ready`
+                        : `Update available${shell.updaterState.version ? `: v${shell.updaterState.version}` : ''}`}
                 </div>
                 {shell.updaterState.message && (
                   <div className="updater-banner__message">{shell.updaterState.message}</div>
