@@ -5225,8 +5225,43 @@ class QMSDaemon:
         return str(value)
 
 
+def _set_mplconfigdir():
+    """P29: Persist matplotlib font cache to avoid 30s+ rebuild on cold start.
+
+    Must run before any matplotlib import.  Uses only stdlib so the daemon
+    kernel-import ban (Law K1) is not violated.
+    """
+    import os as _os
+    from pathlib import Path as _Path
+
+    if _os.environ.get("MPLCONFIGDIR"):
+        return  # Already set by user or Electron wrapper
+
+    # Mirror the resolution order from core/paths.get_cache_dir() using
+    # only env vars / stdlib (daemon must NOT import qmatsuite.core).
+    qms_home = _os.environ.get("QMATSUITE_HOME")
+    if qms_home:
+        base = _Path(qms_home)
+    elif _os.environ.get("QMATSUITE_ELECTRON") == "1":
+        # Electron bundle: use platform app-data
+        import sys
+        if sys.platform == "darwin":
+            base = _Path.home() / "Library" / "Application Support" / "QMatSuite"
+        elif sys.platform == "win32":
+            base = _Path(_os.environ.get("APPDATA", _Path.home() / "AppData" / "Roaming")) / "QMatSuite"
+        else:
+            base = _Path(_os.environ.get("XDG_DATA_HOME", _Path.home() / ".local" / "share")) / "QMatSuite"
+    else:
+        base = _Path.home() / ".qmatsuite"
+
+    mpl_dir = base / "cache" / "matplotlib"
+    mpl_dir.mkdir(parents=True, exist_ok=True)
+    _os.environ["MPLCONFIGDIR"] = str(mpl_dir)
+
+
 def main():
     """Entry point for qms-daemon command."""
+    _set_mplconfigdir()
     daemon = QMSDaemon()
     daemon.run()
 
