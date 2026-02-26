@@ -298,7 +298,7 @@ export const Sidebar = memo(function Sidebar({
       
       {/* Footer with collapse toggle */}
       <div className="sidebar__footer">
-        {!isCollapsed && <span className="sidebar__version">QMatSuite v2.0.0</span>}
+        {!isCollapsed && <span className="sidebar__version">QMatSuite v{__APP_VERSION__}</span>}
         <button
           className="sidebar__collapse-btn"
           onClick={handleToggleCollapse}
