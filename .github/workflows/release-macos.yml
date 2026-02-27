@@ -407,7 +407,24 @@ jobs:
           ulimit -n 65536
           # Verify
           echo "kern.maxfilesperproc=$(sysctl -n kern.maxfilesperproc) | ulimit -n=$(ulimit -n)"
-          npx electron-builder --mac dmg --${{ matrix.arch }} --config electron-builder.json5 --publish never
+
+          # x64: skip codesigning vendored engine/library files to avoid 5h+ timeout
+          # on macos-15-intel runners (see docs/history/reviews/RELEASE_MACOS_27_X64_TIMEOUT.md)
+          BUILDER_CONFIG="electron-builder.json5"
+          if [[ "${{ matrix.arch }}" == "x64" ]]; then
+            python3 -c "
+          import json, re
+          text = open('electron-builder.json5').read()
+          text = re.sub(r'//.*$', '', text, flags=re.MULTILINE)
+          cfg = json.loads(text)
+          cfg['mac']['signIgnore'] = ['engines/**', 'libraries/**']
+          json.dump(cfg, open('electron-builder-x64.json5', 'w'), indent=2)
+          "
+            BUILDER_CONFIG="electron-builder-x64.json5"
+            echo "Using x64 config with signIgnore for engines/** and libraries/**"
+          fi
+
+          npx electron-builder --mac dmg --${{ matrix.arch }} --config "$BUILDER_CONFIG" --publish never
 
       - name: Rename and hold full DMG
         if: ${{ steps.flags.outputs.build_full == 'true' }}
