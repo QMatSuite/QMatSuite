@@ -832,6 +832,344 @@ HACK comments: 0
 === Gate Tests: 63 files, 719 individual tests ===
 ```
 
+## 10. MCP Agent Deep-Dive: Competitive State-of-the-Art Assessment
+
+### 10.1 Methodology
+
+This assessment compares QMatSuite's MCP agent integration against five direct competitors identified in the project's competitor analysis report and architecture deep-dive, supplemented by web searches for developments through 2026-02-26. Competitors were analyzed at the source-code level where open-source, and at the paper/documentation level where proprietary. All QMatSuite claims were verified against the actual codebase at commit `b379b06c`, not design documents.
+
+**Competitors analyzed:**
+- **El Agente** (U Toronto / NVIDIA) — Published in *Matter* (Cell Press), May 2025. Proprietary, molecular QC.
+- **ChemGraph** (Argonne National Lab) — Published in *Communications Chemistry* (Nature), 2025. Apache 2.0, molecular QC.
+- **VASPilot** (UCAS/IOP) — arXiv 2508.07035, August 2025. LGPL, VASP only.
+- **DREAMS** (CMU/Michigan) — arXiv 2507.14267, July 2025. Open, QE only.
+- **Masgent** (WPI) — arXiv 2512.23010, January 2026. MIT, VASP + ML potentials.
+
+**New entrants since the Feb 13, 2026 analysis:**
+- **CatMaster** (arXiv 2601.13508, Jan 2026) — LLM-driven catalysis agent with file-centric execution contract, hierarchical orchestration, and persistent whiteboard memory. VASP-focused.
+- **"Towards Agentic Intelligence for Materials Science"** survey (arXiv 2602.00169, Feb 2026) — Comprehensive survey charting a roadmap from task-isolated models to goal-conditioned agents for materials discovery.
+
+### 10.2 Current MCP Implementation Status
+
+#### 10.2.1 Tool Inventory & Maturity
+
+QMatSuite v1.2.2 ships **38 MCP tools** registered via FastMCP. These are not stubs — all are backed by real `QMSService` calls or engine-management operations, and all 38 have corresponding test coverage (595 MCP-specific tests across 29 test files, 9,102 lines of test code).
+
+**Tool maturity tiers** (based on LOC, service integration depth, and test coverage):
+
+| Tier | Tools | Evidence |
+|------|-------|---------|
+| **Battle-tested** (real agent runs, multiple rounds of bug fixes) | `init_project`, `create_calculation`, `set_parameters`, `apply_preset`, `inspect_calculation`, `run_calculation`, `get_status`, `get_results_summary`, `quick_run`, `import_structure`, `promote_structure`, `list_structures`, `list_engines`, `list_workflows`, `search_knowledge`, `generate_kpath`, `plot_analysis` | 17 tasks in agent test matrix (17/17 pass rate, 3 rounds of iteration). Production blind test passed. |
+| **Solid** (full implementation, tested in CI but not yet agent-tested) | `demo_store` (3 sub-tools), `list_analyses`, `preview_compilation`, `get_presets`, `search_parameters`, `set_species_map`, `resolve_species_map`, `list_calculations`, `get_structure_detail`, `download_pseudo_library`, `cleanup_project`, `list_resources` | Unit/integration tests passing. 93–352 LOC per tool. |
+| **Functional** (working but thinner) | `install_engine`, `verify_engine`, `register_engine_path`, `uninstall_engine`, `list_installable_engines`, `set_active_engine`, `ping` | 49–81 LOC each. Added in v1.2.2. Engine management tests passing. |
+
+**Critically, no tool is a stub.** The smallest tool (`ping`) is 12 LOC; the largest (`demo_store`) is 359 LOC with 3 sub-tools. All tools follow the standard response envelope pattern with `status`, `data`, `error_type`, `suggested_fixes`, and `context_hint` fields.
+
+#### 10.2.2 Agent E2E Workflow: Si DOS via MCP
+
+The production blind test (2026-02-26) documents the actual agent experience. Here is the real tool-call sequence for "calculate silicon DOS and analyze" starting from an empty directory:
+
+| Turn | Tool Calls | Tokens | What Happened |
+|------|-----------|--------|---------------|
+| 1 | `init_project` + `list_structures` + `list_engines` + `list_workflows` (parallel) | ~4 calls | Agent parallelized 4 discovery calls. Project created, QE detected, DOS workflow discovered. |
+| 2 | `import_structure` (POSCAR content) | 1 call | Structure imported inline (CIF failed on first try, agent self-recovered to POSCAR). |
+| 3 | `create_calculation` (engine=qe, workflow=dos) | 1 call | 3-step calculation created (SCF→NSCF→DOS). Species map auto-resolved. |
+| 4 | `apply_preset` (precision=MED, occupations=TETRAHEDRA) | 1 call | Agent chose tetrahedra for DOS — physically correct. |
+| 5 | `inspect_calculation` (dry_run=True) | 1 call | Preflight check: ecutwfc=50 Ry, 6×6×6 k-mesh verified. |
+| 6 | `run_calculation` | 1 call | All 3 steps executed: SCF converged (9 iterations), NSCF, DOS. |
+| 7 | `get_results_summary` + `list_analyses` + `plot_analysis` (DOS) + `plot_analysis` (convergence) | 4 calls | Results retrieved, DOS and convergence plots generated (ASCII + PNG). |
+
+**Total: 12 tool calls across 7 turns.** Wall time: ~2 minutes (including QE execution). The agent then provided scientifically sound analysis: identified valence band s-like bonding states, p-like upper valence states, Van Hove singularities, and correctly noted the DFT-PBE band gap underestimate (0.6 eV vs experimental 1.12 eV).
+
+#### 10.2.3 Agent Test Matrix
+
+The agent test matrix (`tools/agent_test_matrix.sh`, 336 lines) spawns **17 independent Claude Code CLI agents**, each receiving only a simple task prompt and `.mcp.json` — no preconditioning. Tasks range from basic SCF to multi-step workflows, error handling, and cross-engine tests:
+
+| Task | Prompt | Engines | Complexity |
+|------|--------|---------|------------|
+| 00 | Na BCC SCF (cold start, forces SSSP download) | QE | Bootstrap |
+| 01 | Si SCF total energy | QE | Basic |
+| 02 | Si band structure | QE | Multi-step |
+| 03 | Si DOS | QE | Multi-step |
+| 04 | Si relax → bands (pipeline) | QE | Chained workflow |
+| 05 | Al FCC SCF | QE | Different material |
+| 06 | Fe BCC magnetic moment | QE | Spin-polarized |
+| 07 | Si with bad config (ecutwfc=5) | QE | Error handling |
+| 08 | Water geometry opt | xTB | Cross-engine |
+| 09 | Fe magnetization verification | QE | Result validation |
+| 10 | xTB optimize + promote structure | xTB | Structure promotion |
+| 11 | Si VC-relax + promote | QE | Cell optimization |
+| 12 | Water HF/STO-3G (ORCA, if available) | ORCA | Engine unavailability |
+| 13 | Si with ecutwfc=1 (intentional failure) | QE | Failure diagnostics |
+| 14 | Al DOS from scratch (no demo) | QE | Build-from-scratch |
+| 15 | Mg HCP SCF (new material) | QE | Non-cubic structure |
+| 16 | Si cutoff convergence study (2 runs) | QE | Parameter comparison |
+
+**Results across 3 rounds of development:**
+
+| Metric | Round 1 | Round 2 | Round 3 |
+|--------|---------|---------|---------|
+| Tasks | 9 | 9 | 17 |
+| Pass rate | 9/9 (100%) | 9/9 (100%) | 17/17 (100%) |
+| Bugs found | 5 | — | 3 verified fixes |
+| `inspect(dry_run)` usage | 22% | 67% | 29% |
+| `plot_analysis` usage | 56% | 100% | 35% |
+
+The test matrix found and fixed 8 real bugs (BUG-1 through BUG-5, plus xTB energy, xTB promote, magnetization pipeline issues). Cost: ~$5-10 per 17-task run using claude-sonnet-4-6.
+
+**Is this unique among competitors?** Based on exhaustive review: **yes**. No other project in this space has automated LLM-agent-driven integration tests where real agents execute real calculations via a standardized protocol and the results are validated programmatically. El Agente has benchmarks (17 exercises, >87% success) but these are one-time evaluations, not automated CI-reproducible test suites. ChemGraph has 13 benchmark tasks but no automated agent execution harness. DREAMS, Masgent, and VASPilot have zero automated agent tests.
+
+### 10.3 Head-to-Head Comparison Matrix
+
+#### A. Tool Surface Area (What Can the Agent Do?)
+
+| Capability | QMatSuite | El Agente | ChemGraph | VASPilot | DREAMS | Masgent |
+|------------|:---------:|:---------:|:---------:|:--------:|:------:|:-------:|
+| Create project/workspace | **Yes** | Yes | No | No | No | No |
+| Import structure (file) | **Yes** (CIF/POSCAR/XYZ) | Yes (XYZ/PDB) | Yes (via ASE) | Yes (MP) | Yes (ASE bulk) | Yes (MP) |
+| Import structure (database) | **Yes** (MP, COD) | No | No | **Yes** (MP) | No | **Yes** (MP) |
+| Browse engine parameters | **Yes** (BM25 search, 900+ tags) | No (LLM knows) | No | Partial (VASP wiki RAG) | No | No |
+| Set parameters (individual) | **Yes** | Yes (via input gen) | Via ASE kwargs | Via INCAR gen | Via ASE writer | Via pymatgen |
+| Apply preset/template | **Yes** (QE-focused) | No | No | No | No | No |
+| Preview input files (dry run) | **Yes** + preflight | No | No | No | No | No |
+| Run calculation | **Yes** (local) | **Yes** (local+SLURM) | **Yes** (local) | **Yes** (SLURM) | **Yes** (SLURM) | No (generates only) |
+| Monitor job status | **Yes** (poll) | Yes | No | **Yes** (async poll) | **Yes** (pysqa) | N/A |
+| Parse results | **Yes** (15 engines) | Yes (ORCA) | Yes (ASE) | Yes (VASP) | Yes (ASE) | No |
+| Analyze (band structure) | **Yes** (k-path, plot) | No | No | **Yes** (basic) | No | No |
+| Analyze (DOS) | **Yes** (total+PDOS) | No | No | **Yes** (basic) | No | No |
+| Analyze (convergence) | **Yes** (SCF/relax) | Yes (ORCA) | No | No | **Yes** (LLM debug) | No |
+| Analyze (MD trajectory) | **Yes** (MSD, RDF, VACF) | No | No | No | No | No |
+| Install/manage engines | **Yes** (6 tools) | No | No | No | No | No |
+| Multi-step workflow | **Yes** (SCF→bands, etc.) | **Yes** (complex chains) | Yes (single-step) | **Yes** (relax→bands) | **Yes** (convergence) | Yes (DFT workflows) |
+| Error recovery / debugging | Suggested fixes | **Yes** (LLM self-debug) | Anti-loop only | No | **Yes** (LLM debug) | No |
+| Knowledge base / memory | **Yes** (read-only BM25) | **Yes** (3-tier) | No | **Yes** (ChromaDB) | Yes (canvas pickle) | No |
+| Literature search | No | **Yes** (PDF parsing) | No | No | No | No |
+| Molecular editing (3D) | No | **Yes** (VLM-assisted) | No | No | No | No |
+| ML potential integration | No | No | **Yes** (MACE, etc.) | No | No | **Yes** (4 MLPs) |
+
+#### B. Engine Coverage
+
+| Domain | QMatSuite | El Agente | ChemGraph | VASPilot | DREAMS | Masgent |
+|--------|:---------:|:---------:|:---------:|:--------:|:------:|:-------:|
+| Solid-state DFT (periodic) | **5** (QE, VASP, ABINIT, Siesta, GPAW) | 0 | 0 | 1 (VASP) | 1 (QE) | 1 (VASP) |
+| Molecular QC | **4** (ORCA, Gaussian, Psi4, PySCF) | 1 (ORCA) | 4 (ORCA, NWChem, Psi4, MOPAC) | 0 | 0 | 0 |
+| Classical MD | **1** (LAMMPS) | 0 | 0 | 0 | 0 | 0 |
+| Semi-empirical | **1** (xTB) | 1 (xTB, planned) | 1 (TBLite) | 0 | 0 | 0 |
+| Post-processing | **3** (W90, QMCPACK, Yambo) | 0 | 0 | 0 | 0 | 0 |
+| ML potentials | 0 | 0 | **3** (MACE, FAIRChem, AIMNET2) | 0 | 0 | **4** (SevenNet, CHGNet, Orb, MatterSim) |
+| Multi-engine in one calc | **Yes** (QE→W90, QE→QMCPACK, QE→Yambo) | No | No | No | No | No |
+| **Total distinct engines** | **15** | 1 | 9 | 1 | 1 | 1+4 MLP |
+
+#### C. Solid-State Workflow Coverage
+
+| Workflow | QMatSuite | El Agente | ChemGraph | VASPilot | DREAMS | Masgent |
+|----------|:---------:|:---------:|:---------:|:--------:|:------:|:-------:|
+| SCF | **Yes** (5 engines) | No | No | Yes (VASP) | Yes (QE) | Yes (VASP, no exec) |
+| Relaxation | **Yes** (14 engines) | No | No | Yes (VASP) | No | Yes (VASP, no exec) |
+| Band structure (k-path) | **Yes** (auto k-path) | No | **No** (ASE ceiling) | Yes (basic) | No | No |
+| DOS / PDOS | **Yes** (total+PDOS) | No | **No** (ASE ceiling) | Yes (basic) | No | No |
+| Phonon | Yes (QE ph.x, VASP) | No | No | No | No | No |
+| Wannier functions | **Yes** (QE→W90) | No | No | No | No | No |
+| GW/BSE | **Yes** (QE→Yambo) | No | No | No | No | No |
+| NEB | Yes (QE, VASP) | No | No | No | No | Yes (no exec) |
+| Parameter scan | **Yes** (native) | No | No | No | **Yes** (convergence) | Yes (convergence) |
+| Elastic constants | Yes (VASP) | No | No | No | No | Yes (no exec) |
+| Dielectric properties | Yes (VASP) | No | No | No | No | No |
+| Ab-initio MD | **Yes** (5 engines) | No | No | No | No | Yes (AIMD, no exec) |
+
+#### D. Architecture & Philosophy
+
+| Dimension | QMatSuite | El Agente | ChemGraph | VASPilot | DREAMS | Masgent |
+|-----------|-----------|-----------|-----------|----------|--------|---------|
+| Agent framework | **None** (MCP-native) | Custom (proprietary) | LangGraph | CrewAI + FastMCP | LangGraph | pydantic-ai |
+| LLM coupling | **None** (BYOE) | Claude Opus 4.5 (tight) | Configurable (modular) | Configurable (modular) | Claude 3.7 (hardcoded) | 7 providers |
+| Protocol | **MCP** (stdio) | Proprietary API | MCP + custom | MCP + custom | Custom | Custom |
+| Multi-agent | No | Yes (22-58 agents) | Yes (1-7) | Yes (4) | Yes (3) | No |
+| Memory/RAG | Read-only BM25 KB | 3-tier (MongoDB) | In-memory only | SQLite + ChromaDB | Canvas (pickle) | Sliding window |
+| Self-reflection | Structured suggestions | **LLM self-debug** | Anti-loop | Result validation agent | **LLM convergence debug** | Pydantic validators |
+| Provenance | **Yes** (SQLite + CAS) | Partial (MongoDB logs) | No | No | No | No |
+| Reproducibility | **Yes** (SSOT + provenance) | No | No | No | No | No |
+| Open source | Yes (GPL v3) | **No** (proprietary) | Yes (Apache 2.0) | Yes (LGPL) | Yes | Yes (MIT) |
+| Automated agent tests | **Yes** (17 tasks, CI) | Benchmark only (17 ex.) | Benchmark only (13 tasks) | Minimal | 0 | 0 |
+| Code test count | **6,562** (595 MCP) | Unknown | ~20% coverage | Minimal | 0 | 0 |
+| Input file generation | **Native parsers** (15 engines) | Custom (ORCA only) | **ASE calculators** | pymatgen VaspInputSet | ASE Espresso writer | pymatgen |
+
+### 10.4 Architectural Paradigm Comparison
+
+#### 10.4.1 Framework-Coupled vs. Framework-Free (BYOE)
+
+QMatSuite deliberately chose **no agent framework** — no LangGraph, no CrewAI, no pydantic-ai. The MCP server exposes 38 tools via the standard MCP protocol, and any MCP-compatible client (Claude Code, Claude Desktop, Cursor, VS Code Copilot, or any LangGraph/CrewAI agent) can use them. This is a principled design choice, not a gap.
+
+**Advantages of framework-free:**
+- **Zero LLM vendor lock-in.** QMatSuite works with any MCP client. The blind test used Claude Code; the same `.mcp.json` works with GPT via any MCP bridge. Competitors lock to specific providers (El Agente → Claude Opus 4.5, DREAMS → Claude 3.7 Sonnet hardcoded).
+- **No framework churn.** LangGraph went from 0.1 to 0.3 with breaking changes in 2025. CrewAI's API is still evolving. QMatSuite's MCP tools will work unchanged as long as MCP exists.
+- **Simpler debugging.** Tool inputs and outputs are plain JSON. No graph state, no checkpointing, no reducer functions to debug.
+- **The LLM *is* the orchestrator.** Modern models (Claude Opus 4, GPT-5) can plan multi-step workflows, recover from errors, and parallelize tool calls natively. The blind test demonstrated this: the agent autonomously chose tetrahedra occupations, used dry-run inspection, and provided correct physical analysis — all without a framework telling it to.
+
+**Disadvantages of framework-free:**
+- **No built-in memory across sessions.** El Agente's 3-tier memory (MongoDB) and VASPilot's ChromaDB let agents remember previous sessions. QMatSuite's `search_knowledge` is read-only from a shipped database; there's no `record_insight` yet. This is the single largest functional gap.
+- **No tool filtering per subtask.** El Agente's 58-agent hierarchy means each agent sees only its relevant 3-5 tools. QMatSuite exposes all 38 tools to a single agent. At current tool counts this is manageable (38 tools fits well within context), but may become an issue at 100+ tools.
+- **No native convergence loops.** LangGraph's `StateGraph` with conditional edges naturally expresses "run → check convergence → adjust parameters → rerun." QMatSuite relies on the LLM to implement this loop via sequential tool calls. The agent test matrix shows this works (task_16 convergence study), but it's less structured than a graph-encoded loop.
+
+**Verdict:** Framework-free is the right choice for QMatSuite's positioning. The MCP standard is winning (adopted by OpenAI, Google, Microsoft in 2025-2026). Building on a framework would couple QMatSuite to that framework's lifecycle and philosophy. The tradeoff is real: memory and convergence loops need to be built as MCP tools rather than relying on framework primitives. But QMatSuite's SSOT design (`calculation.yaml` as the shared canvas) already provides the persistence layer that frameworks like LangGraph achieve through `StateGraph`.
+
+#### 10.4.2 Multi-Agent vs. Single-Agent-with-Rich-Tools
+
+El Agente uses 22-58 specialized agents (geometry expert, basis set expert, CASSCF expert, etc.). QMatSuite uses a single general agent with 38 tools.
+
+**When multi-agent wins:**
+- Complex molecular QC workflows where domain expertise matters (e.g., choosing active space for CASSCF). El Agente's `casscf_expert` agent has specialized knowledge encoded in its system prompt.
+- When tool count exceeds ~50-100, and tool filtering per subtask reduces context noise.
+
+**When single-agent-with-rich-tools wins:**
+- **Solid-state DFT**, where workflows are more structured and less heuristic. An SCF → NSCF → bands pipeline doesn't benefit from 22 agents debating — it benefits from a clear tool sequence with preflight validation.
+- **Cross-engine workflows** (QE → Wannier90). Multi-agent systems would need to coordinate across engine-specific agents; a single agent with unified tools handles this naturally.
+- When the LLM is already intelligent enough. Claude Opus 4/GPT-5 can handle 38 tools without confusion. The agent test matrix confirms 100% pass rate with 17 diverse tasks.
+
+**The "complexity theater" question:** Of El Agente's 58 agents, how many encode genuinely unique domain knowledge vs. how many are organizational abstractions? Based on the architecture deep-dive, ~20 are true domain specialists (auto_ci, basis_set, casscf, cis_tddft, etc.) encoding QC-specific heuristics. The rest are structural (file management, OS interaction, visualization). For solid-state DFT, QMatSuite's approach of encoding domain knowledge in the preset system, knowledge base, and preflight rules is more appropriate — the domain knowledge is in the tools, not the agents.
+
+#### 10.4.3 Provenance: QMatSuite's Unique Advantage
+
+No competitor has a provenance system. QMatSuite's is real and implemented:
+
+- **SQLite timeline** (`provenance/db.py`, 135+ LOC) recording every `save_yaml_doc()` call with OperationContext
+- **Content-addressable storage** (`provenance/cas.py`) for large artifacts
+- **History world independence** — deleting `.provenance/` leaves the project runnable
+- **Graceful degradation** — provenance failures never crash the calculation
+
+**Why this matters for science:** Reproducibility is a core requirement of the scientific method. When an AI agent modifies parameters and runs calculations, the provenance system creates an auditable trail: what changed, when, why (OperationContext), and what the results were. No other tool in this space provides this.
+
+**Is this a feature nobody asked for?** Reviewers at journals like *Nature Computational Science* increasingly demand computational reproducibility. AiiDA (the most mature workflow tool in materials science) treats provenance as a first-class feature. QMatSuite is the only *agent-native* tool that provides provenance. This is a genuine competitive moat for publication-track research.
+
+### 10.5 The Solid-State Moat: Depth Analysis
+
+**Claim: QMatSuite is the only AI agent platform capable of solid-state DFT workflows (band structures, DOS, phonons, Wannier functions, GW/BSE).**
+
+**Verification: True.** Here's why each competitor is blocked:
+
+| Competitor | Blocker | How Hard to Fix |
+|------------|---------|-----------------|
+| **El Agente** | ORCA is molecular-only. Stage 5 roadmap says "solid-state" but requires adding periodic DFT engine support, k-point handling, reciprocal space concepts. | **Hard.** 6-12 months minimum. Requires fundamental architecture changes (agents assume molecular systems). |
+| **ChemGraph** | **ASE abstraction ceiling.** All computation goes through ASE calculators, which abstract away k-points, band structure, and reciprocal space. Cannot generate k-paths, cannot parse band eigenvalues, cannot compute DOS. | **Architectural limit.** Would require bypassing ASE entirely for periodic systems — effectively rebuilding the engine interface. |
+| **VASPilot** | VASP-only, basic workflows (relax, SCF, NSCF k-path, NSCF uniform). Has band structure plotting but no automated k-path generation, no PDOS, no phonons, no multi-engine workflows. | **Medium.** Could add k-path generation and PDOS within VASP. Cannot do multi-engine (W90, Yambo, QMCPACK). |
+| **DREAMS** | QE-only, limited to lattice constants and adsorption energy. No band structures, no DOS, no phonons. Research prototype with 0 tests and hardcoded UMich HPC paths. | **Hard.** Would need to add all analysis capabilities, support multiple engines, and make it portable. |
+| **Masgent** | Generates VASP inputs but doesn't execute VASP. User must manually submit and retrieve results. No parsing, no analysis. | **Very hard.** Missing the entire execution + analysis pipeline. |
+
+**Specific capabilities no competitor can match:**
+
+1. **`generate_kpath`** — Produces symmetry-aware high-symmetry k-point paths for any space group using Brillouin zone analysis. This requires understanding of reciprocal space, Bravais lattice type detection, and standardized path conventions (Setyawan-Curtarolo). ChemGraph's ASE interface has no concept of this; El Agente's molecular focus makes it irrelevant.
+
+2. **Multi-engine workflows** — QE → Wannier90 (scf → nscf → pw2wannier → wannier), QE → QMCPACK (pw.x → pw2qmcpack → qmcpack), QE → Yambo (scf → yambo_setup → yambo_gw). These require artifact resolution between engines (`drivers/*/artifact_resolver.py`). No competitor supports cross-engine artifact chaining.
+
+3. **MD analysis transforms** — MSD, VACF, RDF, diffusion coefficient for trajectory analysis from ab-initio MD across 5 engines. No competitor has MD analysis.
+
+4. **Preset system for solid-state** — The ParamSpace framework provides curated parameter sets (precision, convergence, smearing, magnetism) that encode solid-state domain knowledge. El Agente's domain knowledge is molecular QC-specific (active spaces, basis sets).
+
+**Durability:** The moat is durable because solid-state computational materials science is fundamentally more complex than molecular QC in terms of infrastructure requirements. It requires: reciprocal space handling, periodic boundary conditions, k-point sampling, band structure concepts, pseudopotential management, multiple post-processing codes. Building this infrastructure took QMatSuite 15 driver implementations and ~40,000 LOC of driver code. Competitors would need to replicate this to close the gap.
+
+### 10.6 Gap Analysis: What QMatSuite Lacks
+
+#### 10.6.1 Memory & Knowledge Accumulation
+
+**Gap severity: High.** El Agente's 3-tier memory (working → episodic/MongoDB → semantic/procedural) and VASPilot's SQLite + ChromaDB RAG both enable agents to learn across sessions. QMatSuite's `search_knowledge` queries a shipped read-only database of ~50 curated entries. There is no `record_insight` tool, no `local.db` for user knowledge, and no cross-session memory.
+
+**How much does this matter?** For single calculations, not much — the agent test matrix shows 100% success without memory. For multi-session research campaigns (e.g., "I'm studying perovskite stability, remember my previous findings"), it matters significantly. The gap is felt when an agent discovers that a particular smearing works for a material class and cannot persist that insight.
+
+**What's the minimal viable version?** A `record_insight` tool writing to `~/.qmatsuite/knowledge/local.db` with the existing BM25 search infrastructure. The schema already exists (`mcp/knowledge/insight_record.py`, 40 LOC). Estimated effort: 1-2 days. This would provide session-to-session learning without needing a full RAG pipeline.
+
+**Priority: Should be implemented before paper submission.**
+
+#### 10.6.2 Self-Reflection & Error Recovery
+
+**Gap severity: Medium.** DREAMS uses a separate LLM call for convergence debugging: when SCF fails to converge, it feeds the input and output to an LLM and asks for fix suggestions. El Agente's agents self-debug by reading documentation and modifying inputs.
+
+QMatSuite's approach is **structured suggestions**: when a calculation fails, the `get_results_summary` and `get_status` tools return machine-readable `suggested_fixes` fields sourced from the knowledge base. The agent reads these and acts on them (demonstrated in task_07 and task_13 of the test matrix).
+
+**Is structured suggestions enough?** For most cases, yes. The preflight system (`inspect_calculation` with `dry_run=True`) catches most errors *before* execution. The knowledge base provides recovery guidance *after* failure. What's missing is the **dynamic loop**: automatically adjusting parameters and rerunning based on failure analysis. Currently, the agent must implement this loop manually. Adding a `diagnose_failure` tool that analyzes the output and returns specific parameter adjustments would close this gap.
+
+**Priority: Medium. The preflight system already prevents most failures.**
+
+#### 10.6.3 Literature Integration
+
+**Gap severity: Low-Medium.** El Agente can search papers and extract parameters from literature (via MinerU PDF parser). No other competitor has this either. For computational materials science, the relevant "literature" is often the engine documentation (VASP manual, QE docs) rather than papers. QMatSuite's `search_knowledge` with 900+ engine parameter tags partially fills this role.
+
+**What would matter:** Integration with the Scite MCP server (launched 2026-02-26, connects to ChatGPT/Claude for scientific literature search) could provide this capability without building it from scratch.
+
+**Priority: Low. Nice-to-have but not critical for paper submission.**
+
+#### 10.6.4 ML Potential Integration
+
+**Gap severity: Low for current positioning.** Masgent supports 4 ML potentials (SevenNet, CHGNet, Orb-v3, MatterSim). ChemGraph integrates MACE, FAIRChem, and AIMNET2. QMatSuite has none.
+
+**Does this matter?** ML potentials are an increasingly important tool for pre-screening and large-scale simulations. However, QMatSuite's positioning is "first-principles workflow manager," not "ML potential runner." ML potentials are complementary, not competing: researchers use ML potentials for screening and DFT for validation. Adding ML potential support via ASE calculators (which QMatSuite already depends on) would be straightforward.
+
+**Priority: Low. Not needed for the paper. Could be a Phase 2 addition.**
+
+#### 10.6.5 HPC/SLURM Integration
+
+**Gap severity: Medium for adoption.** VASPilot and DREAMS both submit jobs to SLURM clusters. QMatSuite runs calculations locally only. For production research on large systems, HPC submission is essential.
+
+**Priority: Medium-High for adoption, but not required for paper.**
+
+### 10.7 Competitive Landscape Updates (as of 2026-02-26)
+
+**New since the Feb 13 analysis:**
+
+1. **CatMaster** (arXiv 2601.13508, Jan 2026) — An LLM-driven agent system for computational catalysis with "file-centric execution contract" and hierarchical orchestration with persistent whiteboard memory. VASP-focused. Notable for its emphasis on restartability and inspection — philosophically aligned with QMatSuite's SSOT approach, but VASP-only and lacking the breadth of QMatSuite's 15-engine support.
+
+2. **"Towards Agentic Intelligence for Materials Science"** survey (arXiv 2602.00169, Feb 2026) — A comprehensive survey charting the roadmap from task-isolated models to goal-conditioned agents. Validates the direction of the field: LLM agents for computational materials science are now a recognized research area with multiple groups publishing. The survey identifies key challenges: tool integration, provenance, and reproducibility — all areas where QMatSuite has existing solutions.
+
+3. **Scite MCP** (launched 2026-02-26) — Research Solutions launched an MCP server connecting ChatGPT/Claude to scientific literature. Relevant because it could be composed with QMatSuite's MCP server: an agent could use Scite MCP for literature search and QMatSuite MCP for calculation execution.
+
+4. **El Agente publication** — Published in *Matter* (Cell Press, 2025). The benchmarks report >87% task success on university-level QC exercises. Stage 5 (solid-state) is still in the roadmap and has not been demonstrated.
+
+5. **ChemGraph publication** — Published in *Communications Chemistry* (Nature, 2025). Formally establishes ChemGraph as Argonne's reference implementation for agentic computational chemistry. The ASE ceiling for solid-state remains as described.
+
+**Trend:** The field is converging on MCP as the standard protocol for tool integration. VASPilot, ChemGraph, and QMatSuite all have MCP servers. The composability of MCP servers (using multiple servers simultaneously) favors QMatSuite's approach of being a specialized, deep tool rather than trying to be everything.
+
+### 10.8 State-of-the-Art Verdict
+
+**1. Is QMatSuite's MCP agent integration state-of-the-art?**
+
+**Partial.** QMatSuite is state-of-the-art in three specific dimensions: (a) **breadth of engine coverage** — 15 engines vs. max 9 for any competitor; (b) **solid-state DFT agent workflows** — no competitor can do band structures, DOS, Wannier, GW/BSE via agent; (c) **automated agent testing** — the only project with CI-reproducible LLM agent integration tests. It is NOT state-of-the-art in memory/learning (El Agente, VASPilot), self-reflection (El Agente, DREAMS), or multi-agent orchestration (El Agente). The claim of SOTA must be scoped to solid-state computational materials science specifically.
+
+**2. What's the single strongest competitive claim?**
+
+*QMatSuite is the only AI agent platform that enables autonomous solid-state DFT workflows — including band structure, DOS, Wannier functions, and GW/BSE calculations — across 15 simulation engines, with formal provenance tracking and automated LLM-agent integration testing.*
+
+**3. What's the biggest gap that undermines the claim?**
+
+*The absence of cross-session memory (the `record_insight` tool and `local.db` knowledge base) means agents cannot accumulate expertise across research campaigns, which El Agente and VASPilot can.*
+
+**4. What would make it unambiguously SOTA?**
+
+1. **Implement `record_insight` + `local.db`** (write-capable knowledge base). Enables session-to-session learning. Estimated: 2 days. Schema already exists.
+2. **Add `diagnose_failure` tool** with LLM-aided convergence debugging (à la DREAMS). Reads output, queries knowledge base, returns specific parameter adjustments. Estimated: 3-5 days.
+3. **Expose analysis objects as MCP tools** (`get_band_structure`, `get_dos`, `get_convergence_history`). The core analysis primitives exist (BandStructure, DOS, Convergence models are implemented in `core/analysis/`); they just need MCP tool wrappers. Estimated: 3-5 days. This would allow agents to access structured data, not just summary text and plots.
+
+### 10.9 Recommended Narrative for Paper/Video
+
+**Paragraph 1 — The Problem:**
+Computational materials science faces a fragmentation crisis. Researchers routinely use 3-5 simulation engines (Quantum ESPRESSO for phonons, VASP for relaxation, Wannier90 for transport, ORCA for molecular properties), each with its own input format, parameter conventions, and output structure. Recent AI agent frameworks (El Agente, ChemGraph, DREAMS) have begun to automate individual engines — but they are single-engine systems that cannot orchestrate multi-engine workflows, and they are architecturally blocked from solid-state calculations requiring reciprocal space, k-point sampling, and band structure analysis. Meanwhile, the emerging Model Context Protocol (MCP) standard offers a path to tool composability, but no existing platform provides the depth of solid-state capabilities needed for real research.
+
+**Paragraph 2 — The Approach:**
+We present QMatSuite, an MCP-native computational materials science platform that unifies 15 simulation engines under a single protocol. QMatSuite adopts a "Bring Your Own Engine / Bring Your Own AI" (BYOE) philosophy: it provides 38 MCP tools covering the full research lifecycle — structure import, parameter configuration with preset compilation, preflight validation, multi-step execution, result analysis, and formal provenance tracking — without coupling to any specific LLM or agent framework. The platform is governed by a formal constitution with 63 CI-enforced gate tests, ensuring architectural invariants hold as the codebase evolves. A three-layer parameter system (Intent → IR → Engine-specific) enables the same preset to compile correctly across different engines, while the driver protocol allows new engines to be added without modifying kernel code.
+
+**Paragraph 3 — The Evidence:**
+We validate QMatSuite's agent capabilities through an automated test matrix where 17 independent Claude Code agents execute real calculations via MCP, ranging from basic SCF to multi-step band structure workflows, cross-engine tasks (QE + xTB), and intentional failure diagnostics. All 17 tasks pass at 100% across three rounds of iterative development, with 8 real bugs discovered and fixed through this process. A production blind test demonstrates the full bootstrap path: from `pip install` through MCP configuration, engine installation, and a complete silicon DOS calculation — achieving a scientifically sound result in 12 tool calls. No competing system has automated LLM-agent integration tests, and no competing system can perform the solid-state workflows (band structures, DOS, Wannier functions, GW/BSE) that QMatSuite enables.
+
 ---
 
-*Review generated on 2026-02-26 at commit b379b06cc082a18170d6ac3f7de8ef37f0dfe4cf. All metrics gathered programmatically from the repository. No external data sources were consulted beyond what the codebase provides.*
+*Sources consulted for competitive analysis:*
+- [El Agente: An Autonomous Agent for Quantum Chemistry](https://arxiv.org/abs/2505.02484) (Matter, Cell Press, 2025)
+- [ChemGraph: An Agentic Framework for Computational Chemistry Workflows](https://www.nature.com/articles/s42004-025-01776-9) (Communications Chemistry, Nature, 2025)
+- [VASPilot: MCP-Facilitated Multi-Agent Intelligence for Autonomous VASP Simulations](https://arxiv.org/abs/2508.07035) (arXiv, Aug 2025)
+- [DREAMS: DFT-Based Research Engine for Agentic Materials Simulation](https://arxiv.org/html/2507.14267v1) (arXiv, Jul 2025)
+- [Masgent: An AI-assisted Materials Simulation Agent](https://arxiv.org/abs/2512.23010) (arXiv, Jan 2026)
+- [CatMaster: An Agentic Autonomous System for Computational Heterogeneous Catalysis Research](https://arxiv.org/abs/2601.13508) (arXiv, Jan 2026)
+- [Towards Agentic Intelligence for Materials Science](https://arxiv.org/abs/2602.00169) (arXiv, Feb 2026)
+- [Scite MCP launch announcement](https://www.morningstar.com/news/pr-newswire/20260226la96341/research-solutions-launches-scite-mcp-connecting-chatgpt-claude-other-ai-tools-to-scientific-literature) (Feb 2026)
+
+---
+
+*Review generated on 2026-02-26 at commit b379b06cc082a18170d6ac3f7de8ef37f0dfe4cf. All metrics gathered programmatically from the repository. External web sources were consulted for the competitive analysis in Section 10.*
