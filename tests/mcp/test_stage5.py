@@ -204,18 +204,18 @@ class TestKnowledgeConsultation:
 
     @pytest.fixture(autouse=True)
     def _patch_knowledge(self, tmp_path, monkeypatch):
-        """Patch the search_knowledge tool to use a temp DB."""
+        """Patch the knowledge store singleton to use a temp DB."""
         from qmatsuite.mcp.knowledge.store import KnowledgeStore
         from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
-        import qmatsuite.mcp.tools.search_knowledge as mod
+        import qmatsuite.mcp.knowledge as knowledge_mod
 
         db_path = tmp_path / "knowledge" / "test.db"
         build_builtin_db(output_path=db_path)
         s = KnowledgeStore(db_path=db_path)
-        monkeypatch.setattr(mod, "_store", s)
+        monkeypatch.setattr(knowledge_mod, "_store", s)
         yield
         s.close()
-        monkeypatch.setattr(mod, "_store", None)
+        monkeypatch.setattr(knowledge_mod, "_store", None)
 
     def test_knowledge_before_configuration(self):
         """search_knowledge for metal smearing tips returns actionable results."""

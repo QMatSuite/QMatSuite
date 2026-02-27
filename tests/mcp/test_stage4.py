@@ -215,14 +215,14 @@ class TestSearch:
 class TestMCPTool:
     @pytest.fixture(autouse=True)
     def _patch_store(self, populated_db, monkeypatch):
-        """Patch the search_knowledge tool to use our temp DB."""
-        import qmatsuite.mcp.tools.search_knowledge as mod
+        """Patch the knowledge store singleton to use our temp DB."""
+        import qmatsuite.mcp.knowledge as knowledge_mod
 
         s = KnowledgeStore(db_path=populated_db)
-        monkeypatch.setattr(mod, "_store", s)
+        monkeypatch.setattr(knowledge_mod, "_store", s)
         yield
         s.close()
-        monkeypatch.setattr(mod, "_store", None)
+        monkeypatch.setattr(knowledge_mod, "_store", None)
 
     def test_envelope_structure(self):
         """Tool returns standard MCP envelope with status/data/context_hint."""

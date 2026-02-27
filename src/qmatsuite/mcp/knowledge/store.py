@@ -1,10 +1,11 @@
-"""KnowledgeStore — search and query interface for the knowledge database."""
+"""KnowledgeStore — search, query, and write interface for the knowledge database."""
 
 from __future__ import annotations
 
 import json
 import re
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -35,6 +36,30 @@ _CONFIDENCE_WEIGHT = {"high": 3.0, "medium": 2.0, "low": 1.0}
 # Grade ordering for tie-breaking (higher = more authoritative).
 _GRADE_ORDER = {"principle": 4, "finding": 3, "observation": 2, "bookkeeping": 1}
 
+# Trust weights by source_type (multiplier in ranking formula).
+TRUST_WEIGHTS = {
+    "builtin": 1.0,
+    "local": 1.0,
+    "literature": 0.9,
+    "docs": 0.85,
+    "mailinglist": 0.7,
+    "tutorial": 0.7,
+    "community": 0.6,
+}
+_DEFAULT_TRUST = 0.5
+
+# Contradiction threshold: entries reaching this count are set to "under_review".
+_CONTRADICTION_THRESHOLD = 3
+
+# Scope fields used for contradiction matching.
+_SCOPE_FIELDS = ("scope_engine", "scope_workflow", "scope_system_type", "scope_method")
+
+# Valid grades for the add() method.
+_VALID_GRADES = frozenset(_GRADE_ORDER.keys())
+
+# Grades that get promoted to the knowledge DB.
+_PROMOTABLE_GRADES = frozenset({"finding", "principle"})
+
 
 def _default_db_path() -> Path:
     """Return the default builtin.db path under .qmatsuite/knowledge/."""
@@ -43,20 +68,35 @@ def _default_db_path() -> Path:
     return get_qmatsuite_home_root() / "knowledge" / "builtin.db"
 
 
+def _local_db_path() -> Path:
+    """Return the default local.db path under .qmatsuite/knowledge/."""
+    from qmatsuite.core.paths import get_qmatsuite_home_root
+
+    return get_qmatsuite_home_root() / "knowledge" / "local.db"
+
+
 class KnowledgeStore:
-    """Read-only search interface over a knowledge SQLite database.
+    """Search and write interface over builtin + local knowledge databases.
 
     Parameters
     ----------
     db_path : Path | None
-        Explicit database path.  When *None*, falls back to
-        ``~/.qmatsuite/knowledge/builtin.db`` and lazily creates the
-        schema if needed.
+        Explicit builtin database path.  When *None*, falls back to
+        ``~/.qmatsuite/knowledge/builtin.db``.
+    local_db_path : Path | None
+        Explicit local database path.  When *None*, no local DB is used.
+        The local DB is created lazily on first write.
     """
 
-    def __init__(self, db_path: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        db_path: Optional[Path] = None,
+        local_db_path: Optional[Path] = None,
+    ) -> None:
         self._db_path = db_path or _default_db_path()
+        self._local_db_path = local_db_path
         self._conn: Optional[sqlite3.Connection] = None
+        self._local_conn: Optional[sqlite3.Connection] = None
 
     # -- connection management ------------------------------------------------
 
@@ -66,15 +106,33 @@ class KnowledgeStore:
             self._conn = init_db(self._db_path)
         return self._conn
 
+    @property
+    def local_conn(self) -> sqlite3.Connection:
+        """Lazy-init local.db connection — creates the file on first access."""
+        if self._local_conn is None:
+            if self._local_db_path is None:
+                raise RuntimeError("No local_db_path configured for writes")
+            self._local_conn = init_db(self._local_db_path)
+        return self._local_conn
+
+    def _has_local_db(self) -> bool:
+        """Return True if local.db file exists (for read-only checks)."""
+        if self._local_conn is not None:
+            return True
+        return self._local_db_path is not None and self._local_db_path.exists()
+
     def close(self) -> None:
         if self._conn is not None:
             self._conn.close()
             self._conn = None
+        if self._local_conn is not None:
+            self._local_conn.close()
+            self._local_conn = None
 
     # -- public API -----------------------------------------------------------
 
     def count(self) -> int:
-        """Return total number of active insights."""
+        """Return total number of active insights in builtin DB."""
         row = self.conn.execute(
             "SELECT COUNT(*) FROM insights WHERE status = 'active'"
         ).fetchone()
@@ -85,9 +143,101 @@ class KnowledgeStore:
         row = self.conn.execute(
             "SELECT * FROM insights WHERE id = ?", (insight_id,)
         ).fetchone()
-        if row is None:
-            return None
-        return dict(row)
+        if row is not None:
+            return dict(row)
+        # Check local DB
+        if self._has_local_db():
+            local = self.local_conn.execute(
+                "SELECT * FROM insights WHERE id = ?", (insight_id,)
+            ).fetchone()
+            if local is not None:
+                return dict(local)
+        return None
+
+    def add(self, record) -> dict:
+        """Add an insight record to the knowledge store.
+
+        Parameters
+        ----------
+        record : InsightRecord
+            The insight to add.
+
+        Returns
+        -------
+        dict
+            ``{"promoted": bool, "insight_id": str|None, "contradictions": list}``
+
+        Raises
+        ------
+        ValueError
+            If grade is invalid or content is empty.
+        """
+        if record.grade not in _VALID_GRADES:
+            raise ValueError(
+                f"Invalid grade {record.grade!r}; must be one of {sorted(_VALID_GRADES)}"
+            )
+        if not record.content or not record.content.strip():
+            raise ValueError("Content must be non-empty")
+
+        # Grades below finding are journal-only (caller handles journal write).
+        if record.grade not in _PROMOTABLE_GRADES:
+            return {"promoted": False, "insight_id": None, "contradictions": []}
+
+        import ulid as _ulid
+
+        insight_id = str(_ulid.new())
+        now = datetime.now(timezone.utc).isoformat()
+
+        scope_engine = record.scope.get("engine", "*")
+        scope_workflow = record.scope.get("workflow", "*")
+        scope_system_type = record.scope.get("system_type", "*")
+        scope_method = record.scope.get("method", "*")
+
+        tags_json = json.dumps(record.tags) if record.tags else "[]"
+
+        # Write to local DB (creates file if needed).
+        self.local_conn.execute(
+            """
+            INSERT INTO insights (
+                id, grade,
+                scope_engine, scope_workflow, scope_system_type, scope_method,
+                content, confidence,
+                source_type, source_origin, provenance_ref,
+                created_by, tags,
+                status, contradiction_count, upvotes,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, 0, ?, ?)
+            """,
+            (
+                insight_id,
+                record.grade,
+                scope_engine,
+                scope_workflow,
+                scope_system_type,
+                scope_method,
+                record.content,
+                "medium",
+                "local",
+                None,
+                None,
+                record.created_by,
+                tags_json,
+                now,
+                now,
+            ),
+        )
+        self.local_conn.commit()
+
+        # Contradiction detection
+        contradictions = self._detect_contradictions(
+            insight_id, scope_engine, scope_workflow, scope_system_type, scope_method,
+        )
+
+        return {
+            "promoted": True,
+            "insight_id": insight_id,
+            "contradictions": contradictions,
+        }
 
     def search(
         self,
@@ -103,39 +253,135 @@ class KnowledgeStore:
     ) -> list[dict]:
         """Full-text + scope-filtered search with ranked results.
 
-        Ranking formula: ``confidence_weight × bm25_rank``, with grade
-        used as a secondary sort (principles above findings).
+        Searches both builtin and local databases, merges results with
+        trust-weighted ranking: ``confidence_weight * bm25_rank * trust_weight``.
         """
         limit = max(1, min(limit, 50))
 
+        kwargs = dict(
+            engine=engine,
+            workflow=workflow,
+            system_type=system_type,
+            method=method,
+            grade_min=grade_min,
+            confidence_min=confidence_min,
+            limit=limit,
+        )
+
         if query_text.strip():
-            return self._fts_search(
-                query_text,
-                engine=engine,
-                workflow=workflow,
-                system_type=system_type,
-                method=method,
-                grade_min=grade_min,
-                confidence_min=confidence_min,
-                limit=limit,
-            )
+            results = self._fts_search(query_text, conn=self.conn, **kwargs)
+            # Also search local DB if it exists
+            if self._has_local_db():
+                local_results = self._fts_search(
+                    query_text, conn=self.local_conn, **kwargs,
+                )
+                results.extend(local_results)
+            # Re-rank merged results with trust weights
+            self._apply_trust_ranking(results)
+            results = results[:limit]
         else:
-            return self._scope_search(
-                engine=engine,
-                workflow=workflow,
-                system_type=system_type,
-                method=method,
-                grade_min=grade_min,
-                confidence_min=confidence_min,
-                limit=limit,
+            results = self._scope_search(conn=self.conn, **kwargs)
+            if self._has_local_db():
+                local_results = self._scope_search(conn=self.local_conn, **kwargs)
+                results.extend(local_results)
+            # Sort merged results
+            results.sort(
+                key=lambda r: (
+                    _GRADE_ORDER.get(r.get("grade", ""), 0),
+                    _CONFIDENCE_WEIGHT.get(r.get("confidence", "medium"), 2.0),
+                ),
+                reverse=True,
             )
+            results = results[:limit]
+
+        # Annotate entries under review
+        for r in results:
+            if r.get("contradiction_count", 0) >= _CONTRADICTION_THRESHOLD:
+                r["content"] = "[UNDER REVIEW] " + r["content"]
+
+        return results
 
     # -- internal helpers -----------------------------------------------------
+
+    def _detect_contradictions(
+        self,
+        new_id: str,
+        scope_engine: str,
+        scope_workflow: str,
+        scope_system_type: str,
+        scope_method: str,
+    ) -> list[dict]:
+        """Check both DBs for contradiction candidates and increment counts.
+
+        Only scope fields where BOTH the new entry AND the existing entry are
+        non-wildcard participate in matching.
+        """
+        new_scopes = {
+            "scope_engine": scope_engine,
+            "scope_workflow": scope_workflow,
+            "scope_system_type": scope_system_type,
+            "scope_method": scope_method,
+        }
+
+        # Only non-wildcard fields from the new entry participate.
+        non_wildcard = {k: v for k, v in new_scopes.items() if v != "*"}
+        if not non_wildcard:
+            return []  # All wildcards — nothing to contradict
+
+        contradictions: list[dict] = []
+
+        for db_conn, db_name in self._active_dbs():
+            # Build query: find active entries where the matching scope fields
+            # are also non-wildcard AND equal to the new entry's values.
+            where_parts = ["status = 'active'", "id != ?"]
+            params: list = [new_id]
+
+            for field, value in non_wildcard.items():
+                where_parts.append(f"({field} = ? AND {field} != '*')")
+                params.append(value)
+
+            sql = f"SELECT id, contradiction_count, content FROM insights WHERE {' AND '.join(where_parts)}"
+            rows = db_conn.execute(sql, params).fetchall()
+
+            for row in rows:
+                entry_id = row[0]
+                old_count = row[1]
+                new_count = old_count + 1
+
+                update_sql = "UPDATE insights SET contradiction_count = ?"
+                update_params: list = [new_count]
+
+                if new_count >= _CONTRADICTION_THRESHOLD:
+                    update_sql += ", status = 'under_review'"
+
+                update_sql += " WHERE id = ?"
+                update_params.append(entry_id)
+
+                db_conn.execute(update_sql, update_params)
+                db_conn.commit()
+
+                contradictions.append({
+                    "id": entry_id,
+                    "db": db_name,
+                    "new_contradiction_count": new_count,
+                    "flagged_for_review": new_count >= _CONTRADICTION_THRESHOLD,
+                    "content_preview": row[2][:100] if row[2] else "",
+                })
+
+        return contradictions
+
+    def _active_dbs(self) -> list[tuple[sqlite3.Connection, str]]:
+        """Return list of (conn, name) for all active databases."""
+        dbs = [(self.conn, "builtin")]
+        if self._has_local_db():
+            dbs.append((self.local_conn, "local"))
+        return dbs
 
     def _fts_search(
         self,
         query_text: str,
         *,
+        conn: sqlite3.Connection,
         engine: str,
         workflow: str,
         system_type: str,
@@ -144,7 +390,7 @@ class KnowledgeStore:
         confidence_min: str,
         limit: int,
     ) -> list[dict]:
-        """FTS5-based search with scope filters."""
+        """FTS5-based search with scope filters on a single connection."""
         safe_query = _sanitize_fts_query(query_text)
         if not safe_query.strip():
             return []  # All tokens were stripped — nothing to match
@@ -167,29 +413,19 @@ class KnowledgeStore:
         sql += " ORDER BY rank LIMIT ?"
         params.append(limit)
 
-        rows = self.conn.execute(sql, params).fetchall()
+        rows = conn.execute(sql, params).fetchall()
         results = [dict(r) for r in rows]
 
-        # Re-rank: confidence_weight × abs(bm25_rank), then grade
+        # Attach raw rank for trust-weight re-ranking
         for r in results:
-            cw = _CONFIDENCE_WEIGHT.get(r.get("confidence", "medium"), 2.0)
-            r["_score"] = cw * abs(r.get("rank", 0))
-
-        results.sort(
-            key=lambda r: (r["_score"], _GRADE_ORDER.get(r.get("grade", ""), 0)),
-            reverse=True,
-        )
-
-        # Clean up internal keys
-        for r in results:
-            r.pop("_score", None)
-            r.pop("rank", None)
+            r["_raw_rank"] = abs(r.get("rank", 0))
 
         return results
 
     def _scope_search(
         self,
         *,
+        conn: sqlite3.Connection,
         engine: str,
         workflow: str,
         system_type: str,
@@ -198,7 +434,7 @@ class KnowledgeStore:
         confidence_min: str,
         limit: int,
     ) -> list[dict]:
-        """Non-FTS search using only scope filters."""
+        """Non-FTS search using only scope filters on a single connection."""
         sql = "SELECT i.* FROM insights i WHERE i.status = 'active'"
         params: list = []
 
@@ -210,8 +446,28 @@ class KnowledgeStore:
         sql += " ORDER BY i.grade DESC, i.confidence DESC LIMIT ?"
         params.append(limit)
 
-        rows = self.conn.execute(sql, params).fetchall()
+        rows = conn.execute(sql, params).fetchall()
         return [dict(r) for r in rows]
+
+    @staticmethod
+    def _apply_trust_ranking(results: list[dict]) -> None:
+        """Re-rank FTS results using trust-weighted scoring, in-place."""
+        for r in results:
+            cw = _CONFIDENCE_WEIGHT.get(r.get("confidence", "medium"), 2.0)
+            raw_rank = r.pop("_raw_rank", abs(r.get("rank", 0)))
+            tw = TRUST_WEIGHTS.get(r.get("source_type", "local"), _DEFAULT_TRUST)
+            r["_score"] = cw * raw_rank * tw
+
+        results.sort(
+            key=lambda r: (r["_score"], _GRADE_ORDER.get(r.get("grade", ""), 0)),
+            reverse=True,
+        )
+
+        # Clean up internal keys
+        for r in results:
+            r.pop("_score", None)
+            r.pop("rank", None)
+            r.pop("_raw_rank", None)
 
     @staticmethod
     def _add_scope_filters(

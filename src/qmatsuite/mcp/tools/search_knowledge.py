@@ -5,24 +5,6 @@ from __future__ import annotations
 from qmatsuite.mcp.app import mcp
 from qmatsuite.mcp.envelope import make_response
 
-# Module-level singleton (lazy-initialized).
-_store = None
-
-
-def _get_store():
-    global _store
-    if _store is None:
-        from qmatsuite.mcp.knowledge.store import KnowledgeStore
-        from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
-
-        store = KnowledgeStore()
-        if store.count() == 0:
-            store.close()
-            build_builtin_db()
-            store = KnowledgeStore()
-        _store = store
-    return _store
-
 
 @mcp.tool
 def search_knowledge(
@@ -39,6 +21,7 @@ def search_knowledge(
 
     Uses BM25 full-text search over curated insights covering convergence,
     smearing, error recovery, workflow guidance, and method-specific tips.
+    Searches both builtin and agent-recorded (local) knowledge.
 
     Args:
         query: Free-text search query (e.g. 'SCF not converging',
@@ -53,7 +36,9 @@ def search_knowledge(
         confidence_min: Minimum confidence filter ('low', 'medium', 'high').
         limit: Maximum number of results (default 10, max 50).
     """
-    store = _get_store()
+    from qmatsuite.mcp.knowledge import get_knowledge_store
+
+    store = get_knowledge_store()
     results = store.search(
         query,
         engine=engine,
@@ -80,6 +65,9 @@ def search_knowledge(
             "tags": r["tags"],
             "source_type": r["source_type"],
         }
+        cc = r.get("contradiction_count", 0)
+        if cc > 0:
+            item["contradiction_count"] = cc
         items.append(item)
 
     if items:

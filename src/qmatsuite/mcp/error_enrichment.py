@@ -234,9 +234,9 @@ def _fixes_for_oom(engine: str) -> list[dict]:
 def _query_knowledge_for_error(error_type: str, engine: str) -> str:
     """Query the knowledge base for context matching this error pattern."""
     try:
-        from qmatsuite.mcp.knowledge.store import KnowledgeStore
+        from qmatsuite.mcp.knowledge import get_knowledge_store
 
-        store = KnowledgeStore()
+        store = get_knowledge_store()
         if store.count() == 0:
             return ""
 
