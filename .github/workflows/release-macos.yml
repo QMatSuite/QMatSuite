@@ -417,7 +417,7 @@ jobs:
           lines = open('electron-builder.json5').readlines()
           text = ''.join(l for l in lines if not l.lstrip().startswith('//'))
           cfg = json.loads(text)
-          cfg['mac']['signIgnore'] = ['engines/**', 'libraries/**']
+          cfg['mac']['signIgnore'] = ['/engines/', '/libraries/']
           json.dump(cfg, open('electron-builder-x64.json5', 'w'), indent=2)
           "
             BUILDER_CONFIG="electron-builder-x64.json5"

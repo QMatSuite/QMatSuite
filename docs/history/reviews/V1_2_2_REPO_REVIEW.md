@@ -129,7 +129,7 @@ Primary: Computational materials scientists and quantum chemists who use multipl
 | `core/` | 22,072 | 14.4% | Kernel: YAML I/O, driver protocol, registry, analysis |
 | `api/` | 14,706 | 9.6% | Unified service facade (143 methods) |
 | `calculation/` | 10,488 | 6.8% | Calculation lifecycle management |
-| `mcp/` | 8,072 | 5.2% | MCP server + 38 tools |
+| `mcp/` | 8,072 | 5.2% | MCP server + 40 tools |
 | `presets/` | 6,797 | 4.4% | ParamSpace, compiler, detector, dimensions |
 | `engine/` | 6,774 | 4.4% | Engine management, installation |
 | `daemon/` | 6,018 | 3.9% | WebSocket daemon server (121 RPC handlers) |
@@ -203,7 +203,7 @@ The unified API facade is `QMSService` in `src/qmatsuite/api/service.py` (9,207 
 
 - **GUI** (Electron): Communicates with the Python daemon via Electron IPC → WebSocket. The daemon (`src/qmatsuite/daemon/server.py`) exposes 121 RPC handlers that delegate to `QMSService`.
 - **CLI** (Typer): 40+ commands in `src/qmatsuite/cli/`. Note: the CLI has **31 TODO markers** indicating ongoing migration from direct core imports to the `QMSService` facade. This is the most significant architectural debt.
-- **MCP**: 38 tools registered in `src/qmatsuite/mcp/server.py` via FastMCP. Tools delegate to `QMSService`.
+- **MCP**: 40 tools registered in `src/qmatsuite/mcp/server.py` via FastMCP. Tools delegate to `QMSService`.
 - **Daemon**: WebSocket server with JSON-RPC protocol, stdin/stdout communication with Electron main process.
 
 **Layer violation check**: The MCP layer has ~20 direct imports from `qmatsuite.core.*` (project_utils, resolution, engines, analysis, resources, pseudo_config, paths). These are noted as pragmatic exceptions, not architectural violations per se — the MCP tools need resolution utilities that aren't fully surfaced through the API facade yet. The daemon shows minimal core imports (1 comment reference to context detection). The CLI frontend has the most significant bypass pattern with its 31 TODOs.
@@ -320,7 +320,7 @@ This governance model — constitutionally governed software with CI-enforced in
 
 ### 5.3 MCP / Agent Features
 
-**38 MCP tools** registered across categories:
+**40 MCP tools** registered across categories:
 
 | Category | Tools |
 |----------|-------|
@@ -494,7 +494,7 @@ Based on the competitor analysis report and codebase review:
 | Statement of need | Partial (in design docs) | Write concise statement for paper |
 | Installation instructions | Yes (README, pyproject.toml) | Clean up README |
 | Example usage | Yes (demos, CLI help) | Add user tutorial |
-| Tests | Yes (6,562 tests, 70% coverage) | Fix collection error |
+| Tests | Yes (6,655 tests, 70% coverage) | ~~Fix collection error~~ Fixed |
 | Community guidelines | Missing | Add CONTRIBUTING.md |
 | API documentation | Missing | Generate from docstrings |
 | License | Yes (GPL v3) | OK |
@@ -549,8 +549,8 @@ Based on the competitor analysis report and codebase review:
 For a project primarily developed by a single author (with AI assistance), the scale is remarkable:
 - 153K+ lines of Python, 34K+ lines of TypeScript
 - 15 engine drivers with 107 step types
-- 6,562 tests with 0 failures
-- 121 daemon RPC handlers, 38 MCP tools, 40+ CLI commands
+- 6,655 tests with 0 failures
+- 121 daemon RPC handlers, 40 MCP tools, 40+ CLI commands
 - 74 demo projects covering all engines
 - 63 gate tests enforcing constitutional invariants
 - 5 CI/CD workflows with multi-OS testing
@@ -594,7 +594,7 @@ QMatSuite/
 │   ├── io/              # I/O providers, generators, parsers
 │   ├── ir/              # Intermediate representation
 │   ├── legacy/          # Legacy code (270 LOC)
-│   ├── mcp/             # MCP server + 38 tools
+│   ├── mcp/             # MCP server + 40 tools
 │   ├── parsers/         # Output parsers
 │   ├── presets/         # ParamSpace framework
 │   ├── project/         # Project management
@@ -667,7 +667,7 @@ QMatSuite/
 | 35 | plot_analysis | plot_analysis.py | Generate analysis plot |
 | 36 | generate_kpath | generate_kpath.py | Generate k-point path |
 
-(36 tool files; 38 `@mcp.tool` decorators including some files with multiple tools)
+(38 tool files; 40 `@mcp.tool` decorators including some files with multiple tools)
 
 ## Appendix C: Complete Step Type Registry
 
@@ -853,14 +853,14 @@ This assessment compares QMatSuite's MCP agent integration against five direct c
 
 #### 10.2.1 Tool Inventory & Maturity
 
-QMatSuite v1.2.2 ships **38 MCP tools** registered via FastMCP. These are not stubs — all are backed by real `QMSService` calls or engine-management operations, and all 38 have corresponding test coverage (595 MCP-specific tests across 29 test files, 9,102 lines of test code).
+QMatSuite v1.2.2 ships **40 MCP tools** registered via FastMCP. These are not stubs — all are backed by real `QMSService` calls or engine-management operations, and all 40 have corresponding test coverage (663 MCP-specific tests across 29 test files).
 
 **Tool maturity tiers** (based on LOC, service integration depth, and test coverage):
 
 | Tier | Tools | Evidence |
 |------|-------|---------|
 | **Battle-tested** (real agent runs, multiple rounds of bug fixes) | `init_project`, `create_calculation`, `set_parameters`, `apply_preset`, `inspect_calculation`, `run_calculation`, `get_status`, `get_results_summary`, `quick_run`, `import_structure`, `promote_structure`, `list_structures`, `list_engines`, `list_workflows`, `search_knowledge`, `generate_kpath`, `plot_analysis` | 17 tasks in agent test matrix (17/17 pass rate, 3 rounds of iteration). Production blind test passed. |
-| **Solid** (full implementation, tested in CI but not yet agent-tested) | `demo_store` (3 sub-tools), `list_analyses`, `preview_compilation`, `get_presets`, `search_parameters`, `set_species_map`, `resolve_species_map`, `list_calculations`, `get_structure_detail`, `download_pseudo_library`, `cleanup_project`, `list_resources` | Unit/integration tests passing. 93–352 LOC per tool. |
+| **Solid** (full implementation, tested in CI but not yet agent-tested) | `demo_store` (3 sub-tools), `list_analyses`, `preview_compilation`, `get_presets`, `search_parameters`, `set_species_map`, `resolve_species_map`, `list_calculations`, `get_structure_detail`, `download_pseudo_library`, `cleanup_project`, `list_resources`, `record_insight`, `record_intent` | Unit/integration tests passing. 93–352 LOC per tool. `record_insight` + `record_intent` added 2026-02-27 with 30 dedicated tests. |
 | **Functional** (working but thinner) | `install_engine`, `verify_engine`, `register_engine_path`, `uninstall_engine`, `list_installable_engines`, `set_active_engine`, `ping` | 49–81 LOC each. Added in v1.2.2. Engine management tests passing. |
 
 **Critically, no tool is a stub.** The smallest tool (`ping`) is 12 LOC; the largest (`demo_store`) is 359 LOC with 3 sub-tools. All tools follow the standard response envelope pattern with `status`, `data`, `error_type`, `suggested_fixes`, and `context_hint` fields.
@@ -985,20 +985,20 @@ The test matrix found and fixed 8 real bugs (BUG-1 through BUG-5, plus xTB energ
 | LLM coupling | **None** (BYOE) | Claude Opus 4.5 (tight) | Configurable (modular) | Configurable (modular) | Claude 3.7 (hardcoded) | 7 providers |
 | Protocol | **MCP** (stdio) | Proprietary API | MCP + custom | MCP + custom | Custom | Custom |
 | Multi-agent | No | Yes (22-58 agents) | Yes (1-7) | Yes (4) | Yes (3) | No |
-| Memory/RAG | Read-only BM25 KB | 3-tier (MongoDB) | In-memory only | SQLite + ChromaDB | Canvas (pickle) | Sliding window |
+| Memory/RAG | **4-layer cognitive memory** (context hints + SSOT + provenance + knowledge R/W with grade-gated promotion, trust weights, contradiction detection) | 3-tier (MongoDB) | In-memory only | SQLite + ChromaDB | Canvas (pickle) | Sliding window |
 | Self-reflection | Structured suggestions | **LLM self-debug** | Anti-loop | Result validation agent | **LLM convergence debug** | Pydantic validators |
 | Provenance | **Yes** (SQLite + CAS) | Partial (MongoDB logs) | No | No | No | No |
 | Reproducibility | **Yes** (SSOT + provenance) | No | No | No | No | No |
 | Open source | Yes (GPL v3) | **No** (proprietary) | Yes (Apache 2.0) | Yes (LGPL) | Yes | Yes (MIT) |
 | Automated agent tests | **Yes** (17 tasks, CI) | Benchmark only (17 ex.) | Benchmark only (13 tasks) | Minimal | 0 | 0 |
-| Code test count | **6,562** (595 MCP) | Unknown | ~20% coverage | Minimal | 0 | 0 |
+| Code test count | **6,655** (663 MCP) | Unknown | ~20% coverage | Minimal | 0 | 0 |
 | Input file generation | **Native parsers** (15 engines) | Custom (ORCA only) | **ASE calculators** | pymatgen VaspInputSet | ASE Espresso writer | pymatgen |
 
 ### 10.4 Architectural Paradigm Comparison
 
 #### 10.4.1 Framework-Coupled vs. Framework-Free (BYOE)
 
-QMatSuite deliberately chose **no agent framework** — no LangGraph, no CrewAI, no pydantic-ai. The MCP server exposes 38 tools via the standard MCP protocol, and any MCP-compatible client (Claude Code, Claude Desktop, Cursor, VS Code Copilot, or any LangGraph/CrewAI agent) can use them. This is a principled design choice, not a gap.
+QMatSuite deliberately chose **no agent framework** — no LangGraph, no CrewAI, no pydantic-ai. The MCP server exposes 40 tools via the standard MCP protocol, and any MCP-compatible client (Claude Code, Claude Desktop, Cursor, VS Code Copilot, or any LangGraph/CrewAI agent) can use them. This is a principled design choice, not a gap.
 
 **Advantages of framework-free:**
 - **Zero LLM vendor lock-in.** QMatSuite works with any MCP client. The blind test used Claude Code; the same `.mcp.json` works with GPT via any MCP bridge. Competitors lock to specific providers (El Agente → Claude Opus 4.5, DREAMS → Claude 3.7 Sonnet hardcoded).
@@ -1007,15 +1007,15 @@ QMatSuite deliberately chose **no agent framework** — no LangGraph, no CrewAI,
 - **The LLM *is* the orchestrator.** Modern models (Claude Opus 4, GPT-5) can plan multi-step workflows, recover from errors, and parallelize tool calls natively. The blind test demonstrated this: the agent autonomously chose tetrahedra occupations, used dry-run inspection, and provided correct physical analysis — all without a framework telling it to.
 
 **Disadvantages of framework-free:**
-- **No built-in memory across sessions.** El Agente's 3-tier memory (MongoDB) and VASPilot's ChromaDB let agents remember previous sessions. QMatSuite's `search_knowledge` is read-only from a shipped database; there's no `record_insight` yet. This is the single largest functional gap.
-- **No tool filtering per subtask.** El Agente's 58-agent hierarchy means each agent sees only its relevant 3-5 tools. QMatSuite exposes all 38 tools to a single agent. At current tool counts this is manageable (38 tools fits well within context), but may become an issue at 100+ tools.
+- **Memory across sessions is now implemented but lacks confidence decay.** El Agente's 3-tier memory (MongoDB) and VASPilot's ChromaDB let agents write knowledge freely but without quality control. QMatSuite's `record_insight` (implemented 2026-02-27) writes to `local.db` with grade-gated promotion, trust-weighted search, and contradiction detection — quality controls no competitor has. The remaining gap is confidence decay logic (Phase 2), not basic write capability. ~~*[Original text: "QMatSuite's `search_knowledge` is read-only from a shipped database; there's no `record_insight` yet. This is the single largest functional gap."]*~~
+- **No tool filtering per subtask.** El Agente's 58-agent hierarchy means each agent sees only its relevant 3-5 tools. QMatSuite exposes all 40 tools to a single agent. At current tool counts this is manageable (40 tools fits well within context), but may become an issue at 100+ tools.
 - **No native convergence loops.** LangGraph's `StateGraph` with conditional edges naturally expresses "run → check convergence → adjust parameters → rerun." QMatSuite relies on the LLM to implement this loop via sequential tool calls. The agent test matrix shows this works (task_16 convergence study), but it's less structured than a graph-encoded loop.
 
 **Verdict:** Framework-free is the right choice for QMatSuite's positioning. The MCP standard is winning (adopted by OpenAI, Google, Microsoft in 2025-2026). Building on a framework would couple QMatSuite to that framework's lifecycle and philosophy. The tradeoff is real: memory and convergence loops need to be built as MCP tools rather than relying on framework primitives. But QMatSuite's SSOT design (`calculation.yaml` as the shared canvas) already provides the persistence layer that frameworks like LangGraph achieve through `StateGraph`.
 
 #### 10.4.2 Multi-Agent vs. Single-Agent-with-Rich-Tools
 
-El Agente uses 22-58 specialized agents (geometry expert, basis set expert, CASSCF expert, etc.). QMatSuite uses a single general agent with 38 tools.
+El Agente uses 22-58 specialized agents (geometry expert, basis set expert, CASSCF expert, etc.). QMatSuite uses a single general agent with 40 tools.
 
 **When multi-agent wins:**
 - Complex molecular QC workflows where domain expertise matters (e.g., choosing active space for CASSCF). El Agente's `casscf_expert` agent has specialized knowledge encoded in its system prompt.
@@ -1024,7 +1024,7 @@ El Agente uses 22-58 specialized agents (geometry expert, basis set expert, CASS
 **When single-agent-with-rich-tools wins:**
 - **Solid-state DFT**, where workflows are more structured and less heuristic. An SCF → NSCF → bands pipeline doesn't benefit from 22 agents debating — it benefits from a clear tool sequence with preflight validation.
 - **Cross-engine workflows** (QE → Wannier90). Multi-agent systems would need to coordinate across engine-specific agents; a single agent with unified tools handles this naturally.
-- When the LLM is already intelligent enough. Claude Opus 4/GPT-5 can handle 38 tools without confusion. The agent test matrix confirms 100% pass rate with 17 diverse tasks.
+- When the LLM is already intelligent enough. Claude Opus 4/GPT-5 can handle 40 tools without confusion. The agent test matrix confirms 100% pass rate with 17 diverse tasks.
 
 **The "complexity theater" question:** Of El Agente's 58 agents, how many encode genuinely unique domain knowledge vs. how many are organizational abstractions? Based on the architecture deep-dive, ~20 are true domain specialists (auto_ci, basis_set, casscf, cis_tddft, etc.) encoding QC-specific heuristics. The rest are structural (file management, OS interaction, visualization). For solid-state DFT, QMatSuite's approach of encoding domain knowledge in the preset system, knowledge base, and preflight rules is more appropriate — the domain knowledge is in the tools, not the agents.
 
@@ -1071,13 +1071,20 @@ No competitor has a provenance system. QMatSuite's is real and implemented:
 
 #### 10.6.1 Memory & Knowledge Accumulation
 
-**Gap severity: High.** El Agente's 3-tier memory (working → episodic/MongoDB → semantic/procedural) and VASPilot's SQLite + ChromaDB RAG both enable agents to learn across sessions. QMatSuite's `search_knowledge` queries a shipped read-only database of ~50 curated entries. There is no `record_insight` tool, no `local.db` for user knowledge, and no cross-session memory.
+~~**Gap severity: High.**~~ **Gap severity: Low-Medium** (updated 2026-02-27). ~~El Agente's 3-tier memory (working → episodic/MongoDB → semantic/procedural) and VASPilot's SQLite + ChromaDB RAG both enable agents to learn across sessions. QMatSuite's `search_knowledge` queries a shipped read-only database of ~50 curated entries. There is no `record_insight` tool, no `local.db` for user knowledge, and no cross-session memory.~~
 
-**How much does this matter?** For single calculations, not much — the agent test matrix shows 100% success without memory. For multi-session research campaigns (e.g., "I'm studying perovskite stability, remember my previous findings"), it matters significantly. The gap is felt when an agent discovers that a particular smearing works for a material class and cannot persist that insight.
+**[2026-02-27 UPDATE]**: The knowledge write path is now implemented:
+- `record_insight` tool writes to `local.db` with grade-gated promotion (finding/principle → knowledge DB, observation/bookkeeping → journal only). 30 dedicated tests.
+- `record_intent` tool records agent planning decisions in the provenance journal.
+- Trust-weighted search ranking: `score = confidence_weight * bm25_rank * trust_weight` across both `builtin.db` and `local.db`.
+- Contradiction detection: scope-based bilateral non-wildcard matching; entries reaching threshold are flagged `under_review`.
+- `local.db` is created lazily on first write (no empty file for read-only users).
 
-**What's the minimal viable version?** A `record_insight` tool writing to `~/.qmatsuite/knowledge/local.db` with the existing BM25 search infrastructure. The schema already exists (`mcp/knowledge/insight_record.py`, 40 LOC). Estimated effort: 1-2 days. This would provide session-to-session learning without needing a full RAG pipeline.
+**Remaining gap**: Confidence decay logic (entries not validated in 6+ months), active re-validation prompts, automatic promotion from provenance. These are Phase 2 features — basic write + quality control is in place.
 
-**Priority: Should be implemented before paper submission.**
+**How much does this matter?** For single calculations, not at all. For multi-session research campaigns, agents can now persist distilled conclusions via `record_insight` and retrieve them via `search_knowledge`. The gap is reduced to decay/staleness management for long-running research programs.
+
+**Priority: ~~Should be implemented before paper submission.~~ Write path done. Decay logic is Phase 2.**
 
 #### 10.6.2 Self-Reflection & Error Recovery
 
@@ -1131,7 +1138,7 @@ QMatSuite's approach is **structured suggestions**: when a calculation fails, th
 
 **1. Is QMatSuite's MCP agent integration state-of-the-art?**
 
-**Partial.** QMatSuite is state-of-the-art in three specific dimensions: (a) **breadth of engine coverage** — 15 engines vs. max 9 for any competitor; (b) **solid-state DFT agent workflows** — no competitor can do band structures, DOS, Wannier, GW/BSE via agent; (c) **automated agent testing** — the only project with CI-reproducible LLM agent integration tests. It is NOT state-of-the-art in memory/learning (El Agente, VASPilot), self-reflection (El Agente, DREAMS), or multi-agent orchestration (El Agente). The claim of SOTA must be scoped to solid-state computational materials science specifically.
+**Partial.** QMatSuite is state-of-the-art in three specific dimensions: (a) **breadth of engine coverage** — 15 engines vs. max 9 for any competitor; (b) **solid-state DFT agent workflows** — no competitor can do band structures, DOS, Wannier, GW/BSE via agent; (c) **automated agent testing** — the only project with CI-reproducible LLM agent integration tests. ~~It is NOT state-of-the-art in memory/learning (El Agente, VASPilot)~~ **[2026-02-27 UPDATE]**: With `record_insight`, trust-weighted search, and contradiction detection now implemented, QMatSuite's knowledge system is arguably more rigorous than competitors' (quality-controlled writes vs. free writes without validation). It is not yet state-of-the-art in self-reflection (El Agente, DREAMS) or multi-agent orchestration (El Agente). The claim of SOTA must be scoped to solid-state computational materials science specifically.
 
 **2. What's the single strongest competitive claim?**
 
@@ -1139,13 +1146,15 @@ QMatSuite's approach is **structured suggestions**: when a calculation fails, th
 
 **3. What's the biggest gap that undermines the claim?**
 
-*The absence of cross-session memory (the `record_insight` tool and `local.db` knowledge base) means agents cannot accumulate expertise across research campaigns, which El Agente and VASPilot can.*
+~~*The absence of cross-session memory (the `record_insight` tool and `local.db` knowledge base) means agents cannot accumulate expertise across research campaigns, which El Agente and VASPilot can.*~~
+
+**[2026-02-27 UPDATE]**: With `record_insight` and `local.db` now implemented, the biggest remaining gap is **HPC/SLURM integration** — agents cannot submit calculations to remote clusters, which limits QMatSuite to local execution. For production research on large systems, this is the most significant missing capability. Secondary gap: no `diagnose_failure` tool for proactive agent-initiated failure diagnosis (passive error enrichment covers 80% of cases).
 
 **4. What would make it unambiguously SOTA?**
 
-1. **Implement `record_insight` + `local.db`** (write-capable knowledge base). Enables session-to-session learning. Estimated: 2 days. Schema already exists.
-2. **Add `diagnose_failure` tool** with LLM-aided convergence debugging (à la DREAMS). Reads output, queries knowledge base, returns specific parameter adjustments. Estimated: 3-5 days.
-3. **Expose analysis objects as MCP tools** (`get_band_structure`, `get_dos`, `get_convergence_history`). The core analysis primitives exist (BandStructure, DOS, Convergence models are implemented in `core/analysis/`); they just need MCP tool wrappers. Estimated: 3-5 days. This would allow agents to access structured data, not just summary text and plots.
+1. ~~**Implement `record_insight` + `local.db`**~~ **[DONE 2026-02-27]**: `record_insight` + `record_intent` tools implemented with grade-gated promotion, trust-weighted multi-DB search, and contradiction detection. 30 tests, 40 total MCP tools.
+2. **Add `diagnose_failure` tool** with LLM-aided convergence debugging (à la DREAMS). Reads output, queries knowledge base, returns specific parameter adjustments. Estimated: 3-5 days. *Deferred: passive error enrichment covers 80% of cases (see DEFERRED_ITEMS.md D1).*
+3. **Enhance `plot_analysis` with structured data** in response (band gap values, Fermi energy, convergence series) so agents can do quantitative comparison, not just visual inspection. Estimated: 3-5 days. *Deferred: see DEFERRED_ITEMS.md D2.*
 
 ### 10.9 Recommended Narrative for Paper/Video
 
@@ -1153,7 +1162,7 @@ QMatSuite's approach is **structured suggestions**: when a calculation fails, th
 Computational materials science faces a fragmentation crisis. Researchers routinely use 3-5 simulation engines (Quantum ESPRESSO for phonons, VASP for relaxation, Wannier90 for transport, ORCA for molecular properties), each with its own input format, parameter conventions, and output structure. Recent AI agent frameworks (El Agente, ChemGraph, DREAMS) have begun to automate individual engines — but they are single-engine systems that cannot orchestrate multi-engine workflows, and they are architecturally blocked from solid-state calculations requiring reciprocal space, k-point sampling, and band structure analysis. Meanwhile, the emerging Model Context Protocol (MCP) standard offers a path to tool composability, but no existing platform provides the depth of solid-state capabilities needed for real research.
 
 **Paragraph 2 — The Approach:**
-We present QMatSuite, an MCP-native computational materials science platform that unifies 15 simulation engines under a single protocol. QMatSuite adopts a "Bring Your Own Engine / Bring Your Own AI" (BYOE) philosophy: it provides 38 MCP tools covering the full research lifecycle — structure import, parameter configuration with preset compilation, preflight validation, multi-step execution, result analysis, and formal provenance tracking — without coupling to any specific LLM or agent framework. The platform is governed by a formal constitution with 63 CI-enforced gate tests, ensuring architectural invariants hold as the codebase evolves. A three-layer parameter system (Intent → IR → Engine-specific) enables the same preset to compile correctly across different engines, while the driver protocol allows new engines to be added without modifying kernel code.
+We present QMatSuite, an MCP-native computational materials science platform that unifies 15 simulation engines under a single protocol. QMatSuite adopts a "Bring Your Own Engine / Bring Your Own AI" (BYOE) philosophy: it provides 40 MCP tools covering the full research lifecycle — structure import, parameter configuration with preset compilation, preflight validation, multi-step execution, result analysis, and formal provenance tracking — without coupling to any specific LLM or agent framework. The platform is governed by a formal constitution with 63 CI-enforced gate tests, ensuring architectural invariants hold as the codebase evolves. A three-layer parameter system (Intent → IR → Engine-specific) enables the same preset to compile correctly across different engines, while the driver protocol allows new engines to be added without modifying kernel code.
 
 **Paragraph 3 — The Evidence:**
 We validate QMatSuite's agent capabilities through an automated test matrix where 17 independent Claude Code agents execute real calculations via MCP, ranging from basic SCF to multi-step band structure workflows, cross-engine tasks (QE + xTB), and intentional failure diagnostics. All 17 tasks pass at 100% across three rounds of iterative development, with 8 real bugs discovered and fixed through this process. A production blind test demonstrates the full bootstrap path: from `pip install` through MCP configuration, engine installation, and a complete silicon DOS calculation — achieving a scientifically sound result in 12 tool calls. No competing system has automated LLM-agent integration tests, and no competing system can perform the solid-state workflows (band structures, DOS, Wannier functions, GW/BSE) that QMatSuite enables.
@@ -1180,7 +1189,7 @@ and constitutional enforcement.
 | **L1** | Agent Context | Working memory | `mcp/envelope.py`, 35/36 tool files with `context_hint` | 61 (envelope) | — | **Fully implemented** |
 | **L2** | Present-Tense SSOT | Lab notebook | `calculation.yaml` + `step.yaml`, fresh-read on every tool call | — (kernel) | 63 gate tests | **Fully implemented** |
 | **L3** | Provenance | Episodic memory | `provenance/` (13 files) + `core/journal.py` | 3,602 | 58 (42 unit + 16 gate) | **Fully implemented** |
-| **L4** | Knowledge Base | Semantic memory | `mcp/knowledge/` (6 files) | 1,389 | 20 | **Phase 1 only (read)** |
+| **L4** | Knowledge Base | Semantic memory | `mcp/knowledge/` (6 files) + `tools/record_insight.py`, `tools/record_intent.py` | ~1,700 | 50 | **Read/write with grade-gated promotion** *(updated 2026-02-27)* |
 
 **Total memory infrastructure**: 5,052 LOC, 78 tests (excluding kernel SSOT code).
 
@@ -1336,7 +1345,14 @@ enable writes.
 | BM25 ranking with confidence weighting and grade ordering | `store.py` lines 153–188 | — |
 | 45 curated builtin entries across 9 categories | `knowledge/builtin_entries.py` | 902 |
 | Idempotent builder with deterministic ULIDs | `knowledge/build_builtin.py` | 105 |
-| `search_knowledge` MCP tool with scope filtering | `tools/search_knowledge.py` | 109 |
+| `search_knowledge` MCP tool with scope filtering, multi-DB search | `tools/search_knowledge.py` | 109 |
+| `record_insight` MCP tool with grade-gated promotion | `tools/record_insight.py` | ~130 |
+| `record_intent` MCP tool (journal-only) | `tools/record_intent.py` | ~80 |
+| Trust-weighted ranking (source_type multiplier) | `knowledge/store.py` TRUST_WEIGHTS | — |
+| Contradiction detection (scope-based, bilateral non-wildcard) | `knowledge/store.py` _detect_contradictions | — |
+| Multi-DB search (builtin + local) | `knowledge/store.py` search() | — |
+| `local.db` lazy creation on first write | `knowledge/store.py` local_conn property | — |
+| Shared knowledge store singleton | `knowledge/__init__.py` get_knowledge_store() | — |
 | Error enrichment queries knowledge for fix context | `error_enrichment.py` lines 234–257 | — |
 | Provenance auto-recording of all runs and operations | `provenance/recording.py` | 451 |
 | Journal with before/after snapshots | `core/journal.py` | 369 |
@@ -1344,25 +1360,31 @@ enable writes.
 
 #### Schema Exists, Logic Not Implemented
 
+*[2026-02-27 UPDATE: Several items moved to "Implemented and Active" above.]*
+
 | Field/Feature | Schema Location | What's Missing |
 |---------------|-----------------|----------------|
-| `contradiction_count` | `schema.py` line 37 (always 0) | No increment logic when new results contradict |
+| ~~`contradiction_count`~~ | ~~`schema.py` line 37~~ | **[RESOLVED 2026-02-27]** Increment logic implemented in `store.py:_detect_contradictions()` |
 | `last_validated` | `schema.py` line 36 (set at build time only) | No update when observations confirm |
 | `superseded_by`, `deprecated_reason`, `merged_into` | `schema.py` lines 40–42 | No lifecycle management logic |
 | `upvotes` | `schema.py` line 43 (always 0) | No voting mechanism |
-| `source_type` trust weighting | `schema.py` line 29 | All sources treated equally in ranking; designed weights (builtin=1.0, literature=0.9, etc.) not coded |
-| `InsightRecord` dataclass | `insight_record.py` (40 LOC) | Input contract for `record_insight`; no save path |
+| ~~`source_type` trust weighting~~ | ~~`schema.py` line 29~~ | **[RESOLVED 2026-02-27]** Trust weights implemented: builtin=1.0, literature=0.9, docs=0.85, community=0.6 |
+| ~~`InsightRecord` dataclass~~ | ~~`insight_record.py`~~ | **[RESOLVED 2026-02-27]** Used by `record_insight` tool, save path via `KnowledgeStore.add()` |
+| Active confidence decay | Design §7.5 | Entries not validated in 6+ months should lose confidence (Phase 2) |
+| Automatic promotion from provenance | Design §7.6 | Manual `record_insight` path exists; no automatic trigger from provenance records |
 
 #### Designed Only (No Code)
 
+*[2026-02-27 UPDATE: `record_insight`, `record_intent`, and `local.db` moved to "Implemented and Active".]*
+
 | Feature | Design Reference | Description |
 |---------|-----------------|-------------|
-| `record_insight` tool | AGENT_INTEGRATION_DESIGN §7.6 | Agent records distilled conclusions from analysis; writes to `local.db` |
-| `record_intent` tool | AGENT_INTEGRATION_DESIGN §7.6 | Agent records research question before running calculations |
-| `local.db` user knowledge database | AGENT_INTEGRATION_DESIGN §7.9 | Separate from `builtin.db`; agent-authored, project-scoped |
+| ~~`record_insight` tool~~ | ~~AGENT_INTEGRATION_DESIGN §7.6~~ | **[RESOLVED 2026-02-27]** Implemented with grade-gated promotion, journal write for all grades |
+| ~~`record_intent` tool~~ | ~~AGENT_INTEGRATION_DESIGN §7.6~~ | **[RESOLVED 2026-02-27]** Implemented as journal-only write |
+| ~~`local.db` user knowledge database~~ | ~~AGENT_INTEGRATION_DESIGN §7.9~~ | **[RESOLVED 2026-02-27]** Created lazily on first `record_insight` write |
 | Multi-pack knowledge search | AGENT_INTEGRATION_DESIGN §7.9 | Search across builtin + local + literature + community packs |
-| Active confidence decay | AGENT_INTEGRATION_DESIGN §7.5 | Entries not validated in 6+ months flagged for review |
-| Automatic promotion (provenance → knowledge) | AGENT_INTEGRATION_DESIGN §7.6 | Grade ≥ finding triggers write to knowledge DB |
+| ~~Active confidence decay~~ | AGENT_INTEGRATION_DESIGN §7.5 | Moved to "Schema Exists" — basic contradiction detection implemented, time-based decay is Phase 2 |
+| Automatic promotion (provenance → knowledge) | AGENT_INTEGRATION_DESIGN §7.6 | Manual `record_insight` path exists; no automatic trigger |
 | Community contribution packs | AGENT_INTEGRATION_DESIGN §7.9 | Pack download/update/upload mechanism |
 
 ### 10A.5 The Knowledge Poisoning Defense: Unique Contribution
@@ -1378,9 +1400,9 @@ through a **computational epistemology** framework:
    schema enforces this distinction (field in all 45 entries).
 
 2. **Contradiction detection**: `contradiction_count` increments when new
-   results conflict with an existing entry. At threshold (design says 3),
+   results conflict with an existing entry. At threshold (3),
    the entry is flagged `under_review` and the agent is prompted to
-   re-evaluate. *Schema field exists; increment logic not yet coded.*
+   re-evaluate. *~~Schema field exists; increment logic not yet coded.~~* **[RESOLVED 2026-02-27]** Increment logic implemented with scope-based bilateral non-wildcard matching.
 
 3. **Confidence decay**: Entries start at creation confidence (builtin:
    0.85–0.95, agent findings: 0.6–0.8). Confidence decreases with
@@ -1393,33 +1415,25 @@ through a **computational epistemology** framework:
    exist; lifecycle logic not yet coded.*
 
 5. **Source traceability**: Every knowledge entry has `source_type`,
-   `source_origin`, `provenance_ref`, and `created_by`. When `record_insight`
+   `source_origin`, `provenance_ref`, and `created_by`. ~~When `record_insight`
    is implemented, each insight will link to the specific runs that produced
-   it. *Schema fields populated for builtin entries; provenance linking
-   not yet active.*
+   it.~~ **[2026-02-27 UPDATE]**: `record_insight` writes journal entries linking insights to `calc_ulid`. Trust weights by `source_type` are active in search ranking. *Provenance auto-linking from run records to insights is Phase 2.*
 
-**Paper-worthy contribution**: Even as a design with Phase 1 implementation,
-this framework is novel. The question "how should an AI agent manage the
+**Paper-worthy contribution**: ~~Even as a design with Phase 1 implementation,~~
+this framework is novel and now operational. The question "how should an AI agent manage the
 quality and validity of learned domain knowledge?" has not been addressed by
-any competing system. The schema and infrastructure are in place; the
-remaining work is the write path and decay logic.
+any competing system. The schema, infrastructure, and write path are in place; the
+remaining work is ~~the write path and~~ decay logic. **[2026-02-27 UPDATE]**: Write path implemented with 30 tests. Grade-gated promotion, trust-weighted search, and contradiction detection are all active.
 
 ### 10A.6 Revised Gap Assessment
 
 **Original (Section 10.6.1)**: "Gap severity: High. No cross-session memory."
 
-**Revised**: "Gap severity: **Medium.** QMatSuite has three layers of
-persistent, cross-session memory: SSOT (Layer 2), provenance with
-append-only journal (Layer 3, 3,602 LOC, 58 tests), and a read-only
-knowledge base (Layer 4, 45 entries with FTS5 search). The actual gap is
-the absence of the agent-authored write path (`record_insight` +
-`local.db`), which prevents agents from accumulating distilled expertise
-across research campaigns. The schema and quality infrastructure for this
-write path already exist (22-column schema, `InsightRecord` dataclass,
-grade hierarchy, contradiction tracking fields). The gap is *narrow*
-(write path + decay logic) rather than *systemic* (no memory architecture)."
+**Revised (10A, pre-implementation)**: "Gap severity: **Medium.**" — see original text below.
 
-**What changes in the competitive framing**:
+**Revised (2026-02-27, post-implementation)**: "Gap severity: **Low-Medium.** QMatSuite has four fully operational layers of persistent, cross-session memory: SSOT (Layer 2), provenance with append-only journal (Layer 3, 3,602 LOC, 58 tests), and a **read/write** knowledge base (Layer 4, 45 builtin entries + agent-authored local entries with FTS5 search, trust-weighted ranking, grade-gated promotion, and contradiction detection). The remaining gap is confidence decay logic (time-based staleness, active re-validation) — Phase 2 features that require real usage data to calibrate."
+
+~~**What changes in the competitive framing**:
 - El Agente and VASPilot *can* write agent knowledge today — but without
   quality control, traceability, or contradiction detection.
 - QMatSuite *cannot* write agent knowledge today — but has the quality
@@ -1427,34 +1441,45 @@ grade hierarchy, contradiction tracking fields). The gap is *narrow*
 - The honest comparison: El Agente has **more convenient memory** (write
   freely); QMatSuite has **more rigorous memory** (provenance-traced,
   append-only, constitutionally governed). Neither is unambiguously
-  superior — they optimize for different things.
+  superior — they optimize for different things.~~
+
+**What changes in the competitive framing (2026-02-27)**:
+- El Agente and VASPilot *can* write agent knowledge — but without
+  quality control, traceability, or contradiction detection.
+- QMatSuite *can now also* write agent knowledge — **with** grade-gated
+  promotion, trust-weighted search, contradiction detection, and full
+  journal provenance. Every insight is traceable to a calculation ULID.
+- The honest comparison: El Agente has **more convenient memory** (write
+  freely, 3-tier MongoDB); QMatSuite has **more rigorous memory**
+  (quality-controlled writes, provenance-traced, constitutionally governed).
+  QMatSuite's quality controls are unique in the field.
 
 ### 10A.7 Revised SOTA Verdict
 
-The correction does not change the overall SOTA verdict from Section 10.8
+~~The correction does not change the overall SOTA verdict from Section 10.8
 ("Partial — scoped to solid-state computational materials science"), but
-it significantly **softens the biggest weakness cited**:
+it significantly **softens the biggest weakness cited**:~~
 
-1. **"No cross-session memory" was the stated biggest gap.** This is
+**[2026-02-27 UPDATE]**: The knowledge write path is now implemented. This **closes the biggest weakness cited** in the original review.
+
+1. ~~**"No cross-session memory" was the stated biggest gap.** This is
    factually incorrect. The correct statement is: "No agent-authored
-   semantic knowledge accumulation." Three other memory layers provide
-   cross-session persistence.
+   semantic knowledge accumulation."~~ **[RESOLVED]**: `record_insight` tool implemented with grade-gated promotion to `local.db`, trust-weighted multi-DB search, and contradiction detection. `record_intent` tool records agent planning. 30 dedicated tests, all passing.
 
-2. **The knowledge write path gap is estimated at 2 days of implementation**
-   (Section 10.8 point 4). The schema, database, search, ranking, and
-   quality fields are already in place. The missing piece is a tool that
-   calls `KnowledgeStore.add()` (not yet written) and connects to the
-   `InsightRecord` dataclass.
+2. ~~**The knowledge write path gap is estimated at 2 days of implementation.**~~
+   **[RESOLVED]**: `KnowledgeStore.add()` is implemented. The full write path
+   (record_insight → InsightRecord → KnowledgeStore.add → local.db + journal)
+   is operational.
 
-3. **The narrative should shift** from "QMatSuite lacks memory" to
-   "QMatSuite's memory model prioritizes scientific rigor over convenience —
-   provenance is episodic memory, SSOT is externalized working memory,
-   and the knowledge base is designed with quality controls that no
-   competitor has considered. The write path for agent-authored knowledge
-   is the last piece."
+3. **The narrative shift is complete**: from "QMatSuite lacks memory" to
+   "QMatSuite implements a four-layer cognitive memory architecture with
+   quality-controlled knowledge accumulation — provenance is episodic memory,
+   SSOT is externalized working memory, and the knowledge base supports
+   read/write with grade-gated promotion, trust-weighted ranking, and
+   contradiction detection. No competing system has knowledge quality controls."
 
 **Updated recommended narrative for Paragraph 2** (supplement to Section
-10.9): After describing the 38 MCP tools, add: *"The platform implements
+10.9): After describing the 40 MCP tools, add: *"The platform implements
 a four-layer cognitive memory architecture — stateless tool returns with
 context guidance (Layer 1), YAML-based externalized working memory
 re-read from disk on every tool call (Layer 2), an append-only provenance
@@ -1481,3 +1506,5 @@ problem that no competing system has identified."*
 ---
 
 *Review generated on 2026-02-26 at commit b379b06cc082a18170d6ac3f7de8ef37f0dfe4cf. Section 10A addendum generated on 2026-02-27. All metrics gathered programmatically from the repository. External web sources were consulted for the competitive analysis in Section 10.*
+
+*Section 10, 10A updated on 2026-02-27 to reflect knowledge write path implementation (record_insight, record_intent, trust weights, contradiction detection). Tool count: 40. Test count: 6,655. See WORKLOG_KNOWLEDGE_WRITE_PATH.md.*

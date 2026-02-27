@@ -872,3 +872,44 @@ The agent can work around the missing `qms mcp config` by writing the JSON manua
 | Contract crawler | `tests/contract_crawler/` |
 | Agent matrix tests | `.tmp/agent_mcp_test/` |
 | Design doc | `docs/design/AGENT_INTEGRATION_DESIGN.md` |
+
+---
+
+## Implementation Status Updates
+
+### 2026-02-25: Engine Management MCP Tools [RESOLVED]
+
+All 9 previously-missing engine management MCP tools were implemented:
+`install_engine`, `list_installable_engines`, `verify_engine`, `register_engine_path`, `uninstall_engine`, `set_active_engine`.
+
+- Tool count: 32 → 38 (at time of engine management implementation)
+- Part 3 ("The Critical Gap"), Part 5 gap #3-5, #12-15: **all resolved**
+- Part 6 Phase A and B: **fully implemented**
+- Part 7 litmus test Step 4: **unblocked**
+- MCP test files: 26 → 29
+
+### 2026-02-27: Knowledge Write Path [RESOLVED]
+
+The knowledge write path was implemented, adding 2 new MCP tools:
+
+| Gap | Status | Implementation |
+|-----|--------|---------------|
+| `record_insight` tool | **[RESOLVED]** | `src/qmatsuite/mcp/tools/record_insight.py` — grade-gated promotion (finding/principle → local.db, observation/bookkeeping → journal only), contradiction detection, trust-weighted search |
+| `record_intent` tool | **[RESOLVED]** | `src/qmatsuite/mcp/tools/record_intent.py` — journal-only write for agent planning audit trail |
+| Trust-weighted search ranking | **[RESOLVED]** | `source_type → weight` multiplier in BM25 scoring (builtin=1.0, literature=0.9, docs=0.85, community=0.6) |
+| Multi-DB search (builtin + local) | **[RESOLVED]** | `KnowledgeStore` searches both databases, merges results with trust weights |
+| Shared knowledge store singleton | **[RESOLVED]** | `knowledge/__init__.py:get_knowledge_store()` — used by `search_knowledge` tool and `error_enrichment` |
+| Contradiction detection | **[RESOLVED]** | Scope-based bilateral non-wildcard matching; threshold flagging to `under_review` status |
+| `local.db` lazy creation | **[RESOLVED]** | Created on first write only, no empty file for read-only users |
+
+- Tool count: 38 → **40**
+- MCP test files: 29 (+ `test_knowledge_write.py`)
+- MCP tests collected: **663** (pytest `--collect-only`)
+- Total tests: **6,655 passed**, 5 skipped, 0 failures
+- 30 new tests in `tests/mcp/test_knowledge_write.py`
+
+### Remaining from this review (not yet addressed)
+
+- Part 6 Phase C1: `qms mcp config` CLI command — not yet implemented
+- Part 6 Phase C2: Agent bootstrap documentation — not yet written
+- Part 6 Phase C3: Global MCP config template — not yet created

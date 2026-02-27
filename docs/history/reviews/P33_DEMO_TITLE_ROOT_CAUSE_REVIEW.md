@@ -18,6 +18,146 @@ Dev testing missed it because no test validates title format or step path canoni
 
 ---
 
+## Demo Store Pipeline Overview
+
+Understanding P33 requires understanding the full demo store pipeline — a 6-stage system that goes far beyond "generate YAML from corpus". The pipeline generates demos, runs them on real engines, captures analysis outputs as reference packs, and validates everything end-to-end.
+
+### Architecture Diagram
+
+```
+Stage 1: CORPUS (Layer 1)                    Stage 2: GENERATION (Layer 1 → Layer 2)
+─────────────────────────────                ────────────────────────────────────────
+tests/inputformat/samples/                   tools/demo_store/generate_all.py
+  <engine>/<case>/                             ├─ Strategy 1: preserve existing demo
+    case.yaml          ──────────────────────→ ├─ Strategy 2: direct_snapshot (Python engines)
+    *.inp, *.abi, etc.                         └─ Strategy 3: full translator pipeline
+    corpus_index.yaml (124 entries)                    │
+                                                       ↓
+                                               resources/demo_projects/
+                                                 52× <demo_slug>.yml
+                                                 .generator_manifest.json
+
+Stage 3: COMPILATION & REPLAY               Stage 4: REAL-RUN + REF PACK CAPTURE
+────────────────────────────────             ────────────────────────────────────────
+demo_store/compiler.py                       tools/demo_store/generate_ref_packs_realrun.py
+  snapshot → AuthoringOps IR                   ├─ QMSService.create_demo_project()
+    (InitProject, ImportStructure,             ├─ svc.run.run_calculation()  (real engine)
+     CreateCalculation, AddStep,               ├─ svc.analysis.get_analysis()
+     SetField × N, ConfigureSpeciesMap)        └─ write ref_packs/<slug>/{manifest,*.json}
+            │                                          │
+            ↓                                          ↓
+demo_store/replay.py                         resources/demo_projects/ref_packs/
+  ops → QMSService calls                       52 directories, 124 JSON files
+  → Live project on disk                       (convergence, bands, dos, trajectory, field3d)
+
+Stage 5: ROUNDTRIP VERIFICATION              Stage 6: ANALYSIS RESWEEP
+────────────────────────────────             ────────────────────────────────────────
+demo_store/roundtrip.py                      tools/demo_store/analysis_resweep.py
+  Original snapshot                            Re-parse preserved workdirs
+    → compile → replay → re-export             Expected analysis count vs actual
+    → canonicalize (strip ULIDs, managed keys) Coverage report per engine/demo
+    → deep diff ≈ original                     .tmp/analysis_resweep_results.json
+```
+
+### Stage-by-Stage Detail
+
+**Stage 1 — Corpus (Layer 1)**: 124 corpus cases across 15 engines at `tests/inputformat/samples/`. Each case has a `case.yaml` (title, description, step types, demo eligibility) and raw engine input files. 52 cases are `demo_eligible: true` and have a `demo_slug`. The `corpus_index.yaml` is the authoritative index. Governed by `docs/laws/L2/DEMO_STORE_SPEC.md`.
+
+**Stage 2 — Generation (Layer 1 → Layer 2)**: `generate_all.py` reads the corpus index, selects eligible cases, and produces 52 demo YAML snapshots. Each snapshot is a complete `ProjectSnapshot` containing project metadata, structures (lattice/species/coordinates), calculations (step sequences, parameters), pseudo info, and gallery metadata (title, subtitle, difficulty, tags). ULIDs are deterministic (SHA-256 seeded from demo_slug). A `.generator_manifest.json` tracks checksums for idempotency verification.
+
+**Stage 3 — Compilation & Replay**: The compiler (`compiler.py`) breaks a snapshot into fine-grained `AuthoringOp` instructions — one per scalar leaf parameter. 8 op types: `InitProject`, `ImportStructure`, `CreateCalculation`, `AddStep`, `SetField`, `UnsetField`, `ReplaceMap`, `ConfigureSpeciesMap`. The replayer (`replay.py`) executes these ops via `QMSService` methods — the same API endpoints the GUI uses. This validates that every demo can be reconstructed through the public API, not just by unpacking YAML.
+
+**Stage 4 — Real-Run + Ref Pack Capture**: `generate_ref_packs_realrun.py` materializes all 52 demos, runs them on real engine binaries (QE 7.5, VASP 6.5.0, ABINIT 10.4.7, CP2K 2026.1, ORCA 6.1.1, etc.), parses the outputs, and serializes analysis results as `CanonicalPrimitiveBundle` JSON files. Each ref pack directory has a `manifest.json` with SHA-256 checksums per analysis type. This is the most expensive stage (~15 min total, all 52 demos).
+
+**Stage 5 — Roundtrip Verification**: `roundtrip.py` verifies that `snapshot → compile → replay → re-export → canonicalize ≈ original`. Canonicalization strips ULIDs, paths, timestamps, and engine-specific managed keys (QE: `outdir`, `pseudo_dir`, `prefix`, `restart_mode`, `wfcdir`; VASP: `SYSTEM`; CP2K: `PROJECT_NAME`; Siesta: `SystemLabel`). Differences are reported with JSON pointer paths.
+
+**Stage 6 — Analysis Resweep**: `analysis_resweep.py` re-runs analysis providers over preserved workdirs (from Stage 4) and compares expected vs actual analysis type counts. Each engine's driver declares `ANALYSIS_CAPABILITIES`; the resweep validates that the parser actually produces all expected analysis types. Reports coverage gaps, parser failures, and missing evidence files.
+
+### Current Statistics (as of 2026-02-20 audit)
+
+| Metric | Value |
+|--------|-------|
+| **Layer 1 — Corpus** | |
+| Total corpus cases indexed | 124 |
+| Demo-eligible cases | 52 |
+| Engines with corpus cases | 15 |
+| Engines with 0 standalone demos | 2 (Yambo, W90 — require prior DFT data) |
+| **Layer 2 — Demo Snapshots** | |
+| Total demo .yml files | 52 |
+| Generator version | 1.0.0 |
+| Manifest checksum coverage | 52/52 (100%) |
+| **Ref Packs** | |
+| Total ref pack directories | 52 |
+| Total analysis JSON files | 72 (excluding 52 manifests) |
+| Ref pack generator version | 3.0.0 (realrun) |
+| **Analysis Coverage by Type** | |
+| Convergence | 44/52 demos (85%) |
+| Trajectory | 13/52 demos (25%) |
+| Bands | 7/52 demos (13%) |
+| DOS | 4/52 demos (8%) |
+| Field3D | 4/52 demos (8%) — VASP only |
+| **Real-Run Results (Feb 20)** | |
+| Demos executed | 52/52 (100% success) |
+| Run failures | 0 |
+| Timeout candidates (>10 min) | 0 |
+| Slowest demo | cp2k_h2o_geo_opt (171.8s) |
+| **Demo Distribution by Engine** | |
+| QE | 15 demos (29%) |
+| VASP | 5 demos (10%) |
+| ABINIT, CP2K, Gaussian, GPAW, LAMMPS, ORCA, Psi4, PySCF, Siesta, xTB | 3 each (6%) |
+| QMCPACK | 2 demos (4%) |
+| Yambo, W90 | 0 demos (only reachable via QE composite workflows) |
+
+### Ref Pack Coverage Matrix
+
+Engines with richest analysis coverage:
+
+| Engine | Demos | Convergence | Bands | DOS | Trajectory | Field3D |
+|--------|:-----:|:-----------:|:-----:|:---:|:----------:|:-------:|
+| VASP | 5 | 5 | 1 | 1 | 1 | 4 |
+| QE | 15 | 11 | 2 | 2 | 1 | — |
+| ABINIT | 3 | 2 | 1 | — | 1 | — |
+| CP2K | 3 | 3 | — | — | 2 | — |
+| Siesta | 3 | 2 | 1 | — | 1 | — |
+| GPAW | 3 | 3 | 1 | — | — | — |
+| Gaussian | 3 | 3 | — | — | 1 | — |
+| LAMMPS | 3 | — | — | — | 3 | — |
+| xTB | 3 | — | — | — | 3 | — |
+| ORCA | 3 | 3 | — | — | — | — |
+| Psi4 | 3 | 3 | — | — | — | — |
+| PySCF | 3 | 3 | — | — | — | — |
+| QMCPACK | 2 | 2 | — | — | — | — |
+
+### Gate Tests Enforcing the Pipeline
+
+| Gate Test | What It Enforces |
+|-----------|-----------------|
+| `tests/gates/test_demo_generated.py` | All 52 demos have manifest entries; checksums match files |
+| `tests/gates/test_corpus_index.py` | Corpus/index agreement; slug uniqueness; redistributable assets present |
+| `tests/gates/test_demo_integrity.py` | All demos have `engine_family`; `step_type_spec` prefix matches engine |
+| `tests/gates/test_ref_packs.py` | Ref pack manifests valid JSON; all files exist; SHA-256 checksums match |
+| `tests/integrity/backend/test_demo_lifecycle.py` | Demos load as ProjectSnapshot; materialize; gallery metadata exists |
+
+### Governance Rules (from `DEMO_STORE_SPEC.md`)
+
+- **Single writer**: Only `generate_all.py` writes to `resources/demo_projects/` — no hand-editing Layer 2
+- **Route-1 only**: Layer 2 may only contain end-to-end runnable demos
+- **Filename stability**: `si_bands_demo.yml` and `si_dos_demo.yml` filenames must survive (GUI e2e tests depend on them)
+- **Integrity suite excluded from default pytest**: Run explicitly with `pytest tests/integrity/backend/`
+
+### P33 Impact on the Pipeline
+
+The 4 affected demos passed **every stage** of this pipeline:
+- Stage 2: Generated successfully (bad titles are valid strings)
+- Stage 3: Compiled and replayed (flat paths don't prevent compilation)
+- Stage 4: Ran on real QE engine, produced ref packs (execution doesn't need canonical paths)
+- Stage 5: Roundtrip passed (flat paths are preserved identically)
+- Stage 6: Analysis resweep matched expectations
+
+The bug only manifests in the **GUI step-detail resolution** — which is outside the pipeline's validation scope. Every backend stage treats step paths as opaque strings. The GUI is the first consumer that actually parses the path format to locate a calculation.
+
+---
+
 ## Affected Files
 
 | Demo File | Title | Step Path Format | Functional? |
@@ -180,7 +320,25 @@ rm src/qmatsuite/resources/demo_projects/qe_si_bands_alt.yml
 python tools/demo_store/generate_all.py
 ```
 
-### Step 3: Add gate tests (2 tests)
+### Step 3: Re-run ref pack generation for the 4 demos
+
+After `generate_all.py` produces new Layer 2 files, the ref packs for these 4 demos must be regenerated. The existing ref packs reference old checksums and were generated from the broken demos.
+
+```bash
+python tools/demo_store/generate_ref_packs_realrun.py --only=qe_si_scf,qe_si_vc_relax,qe_si_dos_alt,qe_si_bands_alt
+```
+
+This runs Stages 3-4 of the pipeline: materialize → run on QE → capture analysis → write new ref packs with updated SHA-256 checksums.
+
+**Current ref pack state for the 4 affected demos**:
+- `qe_si_scf`: convergence (1 type)
+- `qe_si_vc_relax`: convergence + trajectory (2 types)
+- `qe_si_dos_alt`: convergence + dos (2 types)
+- `qe_si_bands_alt`: convergence + bands (2 types)
+
+These ref packs should be preserved or improved after regeneration.
+
+### Step 4: Add gate tests (2 tests)
 
 **Test 1 — Step path canonicality** (in `tests/gates/test_demo_integrity.py`):
 ```python
@@ -205,7 +363,7 @@ def test_title_no_numeric_prefix(demo_path):
         f"Title starts with digit in {demo_path.name}: '{title}'"
 ```
 
-### Step 4 (optional): Guard the preserve strategy
+### Step 5 (optional): Guard the preserve strategy
 
 In `generate_all.py`, add a validation step after preserve:
 ```python

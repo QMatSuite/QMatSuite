@@ -1,6 +1,6 @@
 # QMatSuite — Deferred Items (Canonical Backlog)
 
-Last updated: 2026-02-21 (MCP Phase 1 close-out)
+Last updated: 2026-02-27 (post-knowledge-write-path implementation)
 
 Consolidates all deferred items from MCP Stage 1–11 worklogs, agent test matrix Rounds 1–3,
 demo store audit, and launch-related planning. Organized by domain and priority.
@@ -185,7 +185,75 @@ Do not reopen unless regressions are discovered.
 
 ---
 
-## 5. MCP — Phase 2+ (Future)
+## 5. Post-Knowledge-Write-Path — Evaluated and Deferred
+
+*Items explicitly evaluated during the knowledge write path implementation (2026-02-27) and deferred with clear triggers.*
+
+### D1: `diagnose_failure` MCP tool
+- **What**: Standalone tool for agent-initiated failure diagnosis. Reads engine output + queries knowledge base + returns structured diagnosis with specific parameter adjustments.
+- **Why deferred**: The passive error enrichment (`error_enrichment.py`) already covers 80% of cases — it queries knowledge on failure and returns `suggested_fixes` in error responses. Agent test matrix shows 100% pass rate without a dedicated tool.
+- **Trigger**: If agent test matrix reveals failure-recovery scenarios that passive enrichment can't handle (e.g., agent needs to diagnose a failure from a previous session where the error response is no longer in context).
+- **Effort**: 2-3 days.
+
+### D2: `plot_analysis` structured data + step-type filtering
+- **What**: Enhance `plot_analysis` to (a) include structured numerical data alongside plots (band gap value, Fermi energy, eigenvalue arrays, convergence series) and (b) accept gen step type as filter parameter.
+- **Why deferred**: Current `plot_analysis` works for visual inspection. Agents can extract key numbers from `get_results_summary`. This is QMatSuite's unified analysis tool — NOT a proliferation of specialized tools (`get_band_structure`, `get_dos`, etc.).
+- **Trigger**: When agent tasks require quantitative comparison (e.g., "is the band gap of structure A larger than B?" needs numbers, not plots).
+- **Effort**: 3-5 days.
+
+### D3: Full confidence decay logic
+- **What**: Time-based confidence decay (entries not validated in 6+ months lose confidence), confirming observations increase confidence, active re-validation prompts.
+- **Why deferred**: Basic contradiction flag is sufficient for launch; decay needs real usage data to calibrate thresholds.
+- **Trigger**: Users accumulate 50+ local knowledge entries and stale ones cause problems.
+- **Effort**: 3-5 days.
+
+### D4: HPC / SLURM integration
+- **What**: Submit calculations to remote clusters via SLURM/PBS. VASPilot and DREAMS both support this.
+- **Why deferred**: Not needed for paper; local execution sufficient for proof-of-concept and agent testing.
+- **Trigger**: First external users with HPC needs.
+- **Effort**: 2-4 weeks (new subsystem).
+
+### D5: Literature integration
+- **What**: Search papers, extract parameters from published work. Could compose with Scite MCP server (launched 2026-02-26) rather than building from scratch.
+- **Why deferred**: Low priority for paper; QMatSuite's knowledge base + engine tag search covers most "what parameter should I use?" questions.
+- **Trigger**: When Scite MCP or similar becomes mature enough to compose with.
+- **Effort**: 1 week if composing with external MCP server, 3-4 weeks if building in-house.
+
+### D6: ML potential integration
+- **What**: Support MACE, CHGNet, SevenNet etc. as engines. Could add via ASE calculator interface.
+- **Why deferred**: QMatSuite's positioning is first-principles workflows, not ML screening. Complementary, not competing.
+- **Trigger**: User demand or if "first-principles + ML" workflow becomes a common use case.
+- **Effort**: 1-2 weeks per potential.
+
+### D7: Multi-pack knowledge search
+- **What**: Search across builtin + local + literature + community packs (same schema, separate .db files).
+- **Why deferred**: No knowledge packs exist yet beyond builtin. Architecture supports it.
+- **Trigger**: When literature or community packs are created.
+- **Effort**: 2-3 days (infrastructure exists, just needs pack management).
+
+### D8: Community knowledge contribution
+- **What**: Users upload findings (provenance stripped, scope/content/confidence preserved). Voting/curation mechanism.
+- **Why deferred**: No user base yet.
+- **Trigger**: 50+ active users.
+- **Effort**: 2-3 weeks.
+
+### D9: CLI migration to QMSService API
+- **What**: 31 TODOs in CLI code for migrating to service API.
+- **Why deferred**: CLI works. MCP is the primary agent interface.
+- **Trigger**: If CLI becomes a user-facing tool (not just developer utility).
+- **Effort**: 1-2 weeks.
+
+### D10: `export_reasoning_trace` tool
+- **What**: Export intent -> configuration -> execution -> insight chain as structured report for paper Supporting Information.
+- **Why deferred**: `record_intent` and `record_insight` now exist, so raw data is being captured. Export formatting is lower priority.
+- **Trigger**: First paper submission that needs SI.
+- **Effort**: 2-3 days.
+
+---
+
+## 6. MCP — Phase 2+ (Future)
+
+*Note: D5 (literature integration), D6 (ML potentials), D7 (multi-pack search), D8 (community contributions) overlap with these items. See Section 5 for evaluated deferral rationale.*
 
 ### F1: Preflight for ORCA, CP2K, ABINIT, Gaussian, LAMMPS
 - Full preflight checker implementations for all remaining engines
@@ -212,7 +280,7 @@ Do not reopen unless regressions are discovered.
 
 ---
 
-## 6. Non-MCP — Architecture & Infrastructure
+## 7. Non-MCP — Architecture & Infrastructure
 
 ### A1: Cross-platform paths.py migration
 - **Source**: Distribution design (2026-02-21)
@@ -240,7 +308,7 @@ Do not reopen unless regressions are discovered.
 
 ---
 
-## 7. Performance — High Priority
+## 8. Performance — High Priority
 
 ### P1: Cache invalidation gap (12 missing handlers)
 - **Source**: Performance Audit 2026-02-24
