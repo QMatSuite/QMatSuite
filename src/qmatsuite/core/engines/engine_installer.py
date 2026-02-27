@@ -213,6 +213,36 @@ def _verify_python_engine(python_executable: Path, module_name: str) -> str:
     return version or "unknown"
 
 
+def _pip_install_requirements(python_executable: Path, requirements: dict[str, str]) -> None:
+    """Install pip packages into a conda environment's Python."""
+    if not requirements:
+        return
+    pip_packages = list(requirements.keys())
+    result = subprocess.run(
+        [str(python_executable), "-m", "pip", "install", "--no-input", *pip_packages],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"pip install failed for {pip_packages}: {(result.stderr or '').strip()}")
+
+
+def _verify_pip_requirements(python_executable: Path, requirements: dict[str, str]) -> None:
+    """Verify all pip requirements are importable."""
+    for pip_name, import_name in requirements.items():
+        result = subprocess.run(
+            [str(python_executable), "-c", f"import {import_name}"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"pip dep '{pip_name}' (import: {import_name}) not importable")
+
+
 def _normalize_engine(engine_family: str) -> str:
     family = (engine_family or "").strip().lower()
     if family not in ENGINE_META:
@@ -497,6 +527,12 @@ def install_engine_conda(
             if not pyexe:
                 raise RuntimeError(f"Python executable not found in environment: {env_dir}")
             detected_version = _verify_python_engine(pyexe, str(meta.get("python_import") or ""))
+            pip_reqs = meta.get("pip_requirements", {})
+            if pip_reqs:
+                if on_progress:
+                    on_progress(stage="Installing pip requirements")
+                _pip_install_requirements(pyexe, pip_reqs)
+                _verify_pip_requirements(pyexe, pip_reqs)
             installation = {
                 "id": "",
                 "source": "micromamba",

@@ -19,6 +19,24 @@ _FORMAT_EXT: dict[str, str] = {
 }
 
 
+def _unescape_content(text: str) -> str:
+    """Decode double-encoded escape sequences from MCP JSON transport.
+
+    If the text contains literal backslash-n but no real newlines,
+    decode common C escape sequences. If real newlines already exist,
+    leave the text untouched.
+    """
+    if "\n" not in text and "\\n" in text:
+        text = (
+            text
+            .replace("\\r\\n", "\r\n")
+            .replace("\\n", "\n")
+            .replace("\\r", "\r")
+            .replace("\\t", "\t")
+        )
+    return text
+
+
 @mcp.tool
 def import_structure(
     file_path: str = "",
@@ -61,6 +79,7 @@ def import_structure(
                 f"File not found: {file_path}",
             )
     elif file_content:
+        file_content = _unescape_content(file_content)
         fmt = format.lower()
         ext = _FORMAT_EXT.get(fmt, ".cif")
         tmp_file = tempfile.NamedTemporaryFile(

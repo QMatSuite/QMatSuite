@@ -139,6 +139,8 @@ def test_python_engine_install_adds_python_package(
 
     monkeypatch.setattr(engine_installer, "create_env", fake_create_env)
     monkeypatch.setattr(engine_installer, "_verify_python_engine", lambda _py, _mod: "2.7.0")
+    monkeypatch.setattr(engine_installer, "_pip_install_requirements", lambda _py, _reqs: None)
+    monkeypatch.setattr(engine_installer, "_verify_pip_requirements", lambda _py, _reqs: None)
 
     installation = engine_installer.install_engine_conda("pyscf", version="2.7", app_data_dir=home)
 

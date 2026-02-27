@@ -28,6 +28,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": "conda-forge",
         "env_vars": {},
         "bundleable": True,
+        "pip_requirements": {},
     },
     "vasp": {
         "display_name": "VASP",
@@ -42,6 +43,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": None,
         "env_vars": {"VASP_PP_PATH": "Path to POTCAR library"},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "xtb": {
         "display_name": "xTB",
@@ -56,6 +58,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": "conda-forge",
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "lammps": {
         "display_name": "LAMMPS",
@@ -70,6 +73,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": "conda-forge",
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "orca": {
         "display_name": "ORCA",
@@ -84,6 +88,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": None,
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "gaussian": {
         "display_name": "Gaussian",
@@ -101,6 +106,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
             "GAUSS_SCRDIR": "Gaussian scratch directory",
         },
         "bundleable": False,
+        "pip_requirements": {},
     },
     "abinit": {
         "display_name": "ABINIT",
@@ -115,6 +121,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": "conda-forge",
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "cp2k": {
         "display_name": "CP2K",
@@ -130,6 +137,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": "conda-forge",
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "siesta": {
         "display_name": "Siesta",
@@ -144,6 +152,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": "conda-forge",
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "w90": {
         "display_name": "Wannier90",
@@ -158,6 +167,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": None,
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "yambo": {
         "display_name": "Yambo",
@@ -172,6 +182,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": None,
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "qmcpack": {
         "display_name": "QMCPACK",
@@ -186,6 +197,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": "conda-forge",
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "pyscf": {
         "display_name": "PySCF",
@@ -201,6 +213,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": "conda-forge",
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {"pyberny": "berny", "geometric": "geometric"},
     },
     "psi4": {
         "display_name": "Psi4",
@@ -216,6 +229,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": "conda-forge",
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
     "gpaw": {
         "display_name": "GPAW",
@@ -231,6 +245,7 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "conda_channel": "conda-forge",
         "env_vars": {},
         "bundleable": False,
+        "pip_requirements": {},
     },
 }
 

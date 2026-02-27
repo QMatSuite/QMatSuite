@@ -7,6 +7,7 @@ import logging
 import platform
 import re
 import shutil
+import subprocess
 import stat
 from datetime import datetime, timezone
 from pathlib import Path
@@ -491,7 +492,15 @@ class EngineRegistry:
             ok, version = self._check_python_import(pyexe, module)
             if ok and version:
                 installation["version"] = version
-            return ok, None if ok else f"python import failed for {module}"
+            if not ok:
+                return False, f"python import failed for {module}"
+            # Verify pip requirements
+            pip_reqs = meta.get("pip_requirements", {})
+            for pip_name, import_name in pip_reqs.items():
+                dep_ok, _ = self._check_python_import(pyexe, import_name)
+                if not dep_ok:
+                    return False, f"pip dependency '{pip_name}' (import: {import_name}) not importable"
+            return True, None
 
         base_path = Path(str(installation.get("path") or ""))
         if not base_path.exists():

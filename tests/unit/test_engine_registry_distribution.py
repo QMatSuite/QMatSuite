@@ -49,6 +49,8 @@ def test_engine_meta_completeness() -> None:
         assert meta.get("display_name")
         assert meta.get("engine_type") in {"binary", "python"}
         assert "required_binaries" in meta
+        assert "pip_requirements" in meta, f"{name} missing pip_requirements"
+        assert isinstance(meta["pip_requirements"], dict), f"{name} pip_requirements must be dict"
 
 
 def test_engine_meta_binaries_match_runtime_sources() -> None:
