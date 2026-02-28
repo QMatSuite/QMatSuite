@@ -1,6 +1,6 @@
 case_id: si_bands_alt
 engine: qe
-title: 7 Si Bandstructure
+title: Silicon band structure (PBE)
 description: 'Band structure calculation for silicon using DFT-PBE with SSSP precision
   pseudopotentials. Runs a 4-step workflow: SCF, NSCF, bands.x k-path calculation,
   and bands.x post-processing.'

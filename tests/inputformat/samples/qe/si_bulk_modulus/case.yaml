@@ -1,6 +1,6 @@
 case_id: si_bulk_modulus
 engine: qe
-title: 15 Bulk Modulus Si
+title: Silicon bulk modulus (EOS scan)
 description: SCF → SCF → SCF
 workflow_tags:
 - scf

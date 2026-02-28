@@ -2,17 +2,17 @@ version: 1
 project:
   meta:
     ulid: 01KSBS45TZ0EACD82CMNW168GB
-    name: 03_Si_vc_relax
-    slug: 03_si_vc_relax
+    name: Silicon variable-cell relaxation
+    slug: silicon-variable-cell-relaxation
     path: .
     kind: project
   settings: {}
 structures:
 - meta:
-    ulid: 01KX9B5G5VKK03CAD5VXQBDMCH
-    name: si.vc_relax
-    slug: si-vc_relax
-    path: structures/si-vc_relax.json
+    ulid: 01KR7J20V0YXNH2KYH7EDRMF7V
+    name: Si
+    slug: si
+    path: structures/si.json
     kind: structure
   data:
     '@module': pymatgen.core.structure
@@ -39,7 +39,7 @@ structures:
       alpha: 59.99999999999999
       beta: 59.99999999999999
       gamma: 59.99999999999999
-      volume: 101.6547120797008
+      volume: 101.65471207970074
     properties: {}
     sites:
     - species:
@@ -70,62 +70,51 @@ structures:
       - 1.85212023822
 calculations:
 - meta:
-    ulid: 01KQJ3AV24JGV4JX9JCF7TD1JD
-    name: Si Vc Relax
-    slug: si-vc-relax
-    path: calculations/si-vc-relax
+    ulid: 01KP37PJBWPD6KBTHXAVTQMRJZ
+    name: Silicon variable-cell relaxation
+    slug: silicon-variable-cell-relaxation
+    path: calculations/silicon-variable-cell-relaxation
     kind: calculation
   mode: normal
   working_dir: raw
   engine_family: qe
   steps:
   - meta:
-      name: si.vc_relax
-      slug: si-vc_relax
-      path: si.vc_relax.step.yaml
+      name: relax
+      slug: relax
+      path: calculations/silicon-variable-cell-relaxation/steps/relax.step.yaml
       kind: step
-      ulid: 01K2VWN0C8JRJRZVQNKNQ94WJ8
+      ulid: 01K1XYCKJ14PW22DBTBG6DFJWT
     parameters:
       CONTROL:
         calculation: vc-relax
         etot_conv_thr: 1.0e-05
         forc_conv_thr: 0.0001
       SYSTEM:
+        ibrav: 2
+        celldm(1): 14
+        nat: 2
+        ntyp: 1
         ecutwfc: 30
       ELECTRONS:
         conv_thr: 1.0e-07
       CELL:
         cell_dofree: ibrav
-    input_name: si.vc_relax.in
-    cards:
-      K_POINTS:
-        option: automatic
-        data:
-        - - '4'
-          - '4'
-          - '4'
-          - '0'
-          - '0'
-          - '0'
-    species_overrides:
-      Si:
-        mass: 28.0855
     step_type_spec: qe_relax
-  structure_ulid: 01KX9B5G5VKK03CAD5VXQBDMCH
+  structure_ulid: 01KR7J20V0YXNH2KYH7EDRMF7V
   species_map:
     Si:
-      mass: 28.0855
       pseudopot: Si.pbe-n-rrkjus_psl.1.0.0.UPF
+      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
       pseudo_sha256: 669fb75395a9d26973b0ea1ce8223bbcb30d3396c5d48bf5e794d1243c52375a
       pseudo_sha_family: 9d5fdea5cc45742d1254e8023b481a202b0022642b381478e6195db3d81e2723
-      pseudo_basename: Si.pbe-n-rrkjus_psl.1.0.0.UPF
 pseudo:
   directory: pseudo
   files:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
   ulid: qe_si_vc_relax
-  title: 3 Si Vc Relax
+  title: Silicon variable-cell relaxation
   subtitle: PBE variable-cell relaxation of Si optimizing lattice and atomic positions
   description: Variable-cell relaxation of silicon using DFT-PBE to optimize both atomic positions and lattice parameters.
     The cell degree of freedom is constrained to ibrav symmetry (isotropic volume change).
@@ -156,5 +145,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_vc_relax
-  corpus_checksum: 3a5c21ffe715c523d3c48f1344892b1fc1c8f419d2f569ac11b36e56fd785dc8
-  reference_artifacts: null
+  corpus_checksum: dec5ceabe751a84d811367e378832fb3f843279bac387c84e4b87b2b4d1393dd

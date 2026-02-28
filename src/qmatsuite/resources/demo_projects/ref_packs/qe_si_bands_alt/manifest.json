@@ -1,17 +1,17 @@
 {
   "demo_slug": "qe_si_bands_alt",
   "engine": "qe",
-  "generated_at": "2026-02-21T01:49:29.897683+00:00",
+  "generated_at": "2026-02-27T15:03:42.266066+00:00",
   "generator_version": "3.0.0",
   "source": "realrun",
   "object_types": {
     "bands": {
       "file": "bands.json",
-      "sha256": "401d11bbf11ddea4395b8ebf5b9affbd3cd60693de880668433c02bca26a40ab"
+      "sha256": "8e851f0f22b8cde094a20dc61893474c50e31cc2f73f50962239a702f6488027"
     },
     "convergence": {
       "file": "convergence.json",
-      "sha256": "88898f2fb8448355505f2c00c83969da321b1141b437f25aa6f58e82be9ac329"
+      "sha256": "df4eeee1e34fad3e3d3cab83333bffb0e3e56b3c9f85f27172cc586ae929bd90"
     }
   }
 }

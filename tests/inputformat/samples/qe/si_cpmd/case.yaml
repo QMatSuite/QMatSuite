@@ -1,6 +1,6 @@
 case_id: si_cpmd
 engine: qe
-title: 19 Si Cpmd  4 Bomd Nvt
+title: Silicon CPMD (Born-Oppenheimer MD)
 description: custom → custom → custom
 workflow_tags:
 - scf

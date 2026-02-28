@@ -1,6 +1,6 @@
 case_id: si_scf
 engine: qe
-title: 0 Si Scf
+title: Silicon SCF (LDA)
 description: SCF calculation for silicon crystal using the LDA (PZ) functional. Computes
   the ground-state total energy of the diamond-cubic Si unit cell.
 workflow_tags:

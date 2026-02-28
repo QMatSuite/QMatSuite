@@ -1,6 +1,6 @@
 case_id: nmr_gipaw
 engine: qe
-title: 12 Nmr Gipaw  2 Benzene
+title: Benzene NMR chemical shifts (GIPAW)
 description: SCF → GIPAW
 workflow_tags:
 - scf

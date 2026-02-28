@@ -1,6 +1,6 @@
 case_id: si_phonon
 engine: qe
-title: 09 Si Phonon  3 Phonon Dispersion
+title: Silicon phonon dispersion
 description: SCF → Phonon → q2r → matdyn → custom
 workflow_tags:
 - scf

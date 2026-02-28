@@ -1,6 +1,6 @@
 case_id: si_vc_relax
 engine: qe
-title: 3 Si Vc Relax
+title: Silicon variable-cell relaxation
 description: Variable-cell relaxation of silicon using DFT-PBE to optimize both atomic
   positions and lattice parameters. The cell degree of freedom is constrained to ibrav
   symmetry (isotropic volume change).

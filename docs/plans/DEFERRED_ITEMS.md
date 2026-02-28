@@ -251,6 +251,15 @@ Do not reopen unless regressions are discovered.
 
 ---
 
+## 11. Engine Registry Redesign (Discovery / Select / Verify separation)
+- **Spec**: docs/design/ENGINE_REGISTRY_SPEC.md
+- **Effort**: 3-5 days
+- **Priority**: Post-launch
+- **Trigger**: When BYOE becomes a common use case or when users need MPI/OpenMP configuration persistence
+- **Current workaround**: Environment variables (QMS_MPI_COMMAND, QMS_MPI_CORES) for MPI; manual engine path swapping for BYOE
+
+---
+
 ## 6. MCP — Phase 2+ (Future)
 
 *Note: D5 (literature integration), D6 (ML potentials), D7 (multi-pack search), D8 (community contributions) overlap with these items. See Section 5 for evaluated deferral rationale.*

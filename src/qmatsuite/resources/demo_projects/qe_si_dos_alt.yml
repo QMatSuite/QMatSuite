@@ -2,8 +2,8 @@ version: 1
 project:
   meta:
     ulid: 01KK251Q30G8ZH03RS2W1B4PX9
-    name: 4 Si Dos
-    slug: 4-si-dos
+    name: Silicon density of states (PBE)
+    slug: silicon-density-of-states-pbe
     path: .
     kind: project
   settings: {}
@@ -70,10 +70,10 @@ structures:
       - 1.3773039781619374
 calculations:
 - meta:
-    ulid: 01KDNHB2AX3JKE1CWS2AAAHS7T
-    name: 4 Si Dos
-    slug: 4-si-dos
-    path: calculations/4-si-dos
+    ulid: 01K0HVRZX3HWFVM2H9HC0GHPZP
+    name: Silicon density of states (PBE)
+    slug: silicon-density-of-states-pbe
+    path: calculations/silicon-density-of-states-pbe
     kind: calculation
   mode: normal
   working_dir: raw
@@ -82,9 +82,9 @@ calculations:
   - meta:
       name: scf
       slug: scf
-      path: calculations/4-si-dos/steps/scf.step.yaml
+      path: calculations/silicon-density-of-states-pbe/steps/scf.step.yaml
       kind: step
-      ulid: 01KQHY537FBBA78XTAAJ9S4X87
+      ulid: 01K82ETSGMWVH9827RAFP9DVPQ
     parameters:
       CONTROL:
         calculation: scf
@@ -97,12 +97,22 @@ calculations:
       ELECTRONS:
         conv_thr: 1.0e-08
     step_type_spec: qe_scf
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '8'
+          - '8'
+          - '8'
+          - '0'
+          - '0'
+          - '0'
   - meta:
       name: nscf
       slug: nscf
-      path: calculations/4-si-dos/steps/nscf.step.yaml
+      path: calculations/silicon-density-of-states-pbe/steps/nscf.step.yaml
       kind: step
-      ulid: 01KA2EPNGD597MWAVZB9RW6W4E
+      ulid: 01KBKT6YVH57JF56YWC1WYRQKF
     parameters:
       CONTROL:
         calculation: nscf
@@ -116,12 +126,22 @@ calculations:
       ELECTRONS:
         conv_thr: 1.0e-08
     step_type_spec: qe_nscf
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '12'
+          - '12'
+          - '12'
+          - '0'
+          - '0'
+          - '0'
   - meta:
       name: dos
       slug: dos
-      path: calculations/4-si-dos/steps/dos.step.yaml
+      path: calculations/silicon-density-of-states-pbe/steps/dos.step.yaml
       kind: step
-      ulid: 01KDZRWQZS39ZWHQXEQ1YGKXP4
+      ulid: 01KAB587RA5WRC5X03K6AHSV5W
     parameters:
       DOS:
         fildos: si.dos.dat
@@ -141,7 +161,7 @@ pseudo:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
   ulid: qe_si_dos_alt
-  title: 4 Si Dos
+  title: Silicon density of states (PBE)
   subtitle: PBE density of states for Si with tetrahedron k-sampling
   description: 'Density of states calculation for silicon using DFT-PBE with SSSP precision pseudopotentials. Runs a 3-step
     workflow: SCF, NSCF with tetrahedra k-sampling, and dos.x post-processing.'
@@ -172,4 +192,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_dos_alt
-  corpus_checksum: 0715ae6cabbd03065ad30e8512a63f5b01959cc82fb4c2fd48f501282a91d832
+  corpus_checksum: c838ba8da95af15c03d85e0f5310381453a8303f4cdd6f2217ea52538ad4592d

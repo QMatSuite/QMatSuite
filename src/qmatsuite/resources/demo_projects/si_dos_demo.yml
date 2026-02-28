@@ -192,7 +192,7 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_dos
-  corpus_checksum: 1944dd00251ce1088f131c64a42974cdeb8d32c696d073cf9ba07eeabdc85592
+  corpus_checksum: 1c0f064853c5f6ac569b1841bdc55693fdb7cbf8eee38150973cf8af88fcef74
   reference_artifacts:
     dos: si_dos_demo.dos.json
     scf: si_dos_demo.scf.json

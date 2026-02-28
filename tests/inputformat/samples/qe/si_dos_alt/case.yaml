@@ -1,6 +1,6 @@
 case_id: si_dos_alt
 engine: qe
-title: 4 Si Dos
+title: Silicon density of states (PBE)
 description: 'Density of states calculation for silicon using DFT-PBE with SSSP precision
   pseudopotentials. Runs a 3-step workflow: SCF, NSCF with tetrahedra k-sampling,
   and dos.x post-processing.'

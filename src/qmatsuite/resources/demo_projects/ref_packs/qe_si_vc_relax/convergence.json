@@ -28,10 +28,10 @@
   "provenance_meta": {
     "schema_version": "1.0",
     "object_type": "convergence",
-    "run_ulid": "01KHYY6QM8AQDP6VRJZM3D632W",
-    "calc_ulid": "01KHYY6QHMABFS1DV7Q186FG33",
+    "run_ulid": "01KJFT2HZ3ZYTYHHBH4EWXS6FG",
+    "calc_ulid": "01KJFT2HXW3JM3AB3NF6M5FNER",
     "step_ulids": [
-      "01KHYY6QHMABFS1DV7Q186FG34"
+      "01KJFT2HXW3JM3AB3NF6M5FNES"
     ],
     "gen_steps": [
       "relax"
@@ -40,8 +40,8 @@
     "source_files": [
       {
         "path": "raw/relax.out",
-        "size_bytes": 88710,
-        "mtime": 1771638631.266335
+        "size_bytes": 96780,
+        "mtime": 1772204726.6832178
       }
     ],
     "parser_name": "qe_convergence",
@@ -407,7 +407,7 @@
         -306.6430006827507,
         -307.0492537539949,
         -307.6864124446526,
-        -308.03961460544235,
+        -308.0396144693854,
         -308.57559279045086,
         -308.956351786035,
         -309.5029262209046,
@@ -731,7 +731,7 @@
       -306.6430006827507,
       -307.0492537539949,
       -307.6864124446526,
-      -308.03961460544235,
+      -308.0396144693854,
       -308.57559279045086,
       -308.956351786035,
       -309.5029262209046,

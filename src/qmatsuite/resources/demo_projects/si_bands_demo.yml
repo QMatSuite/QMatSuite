@@ -238,7 +238,7 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_bands
-  corpus_checksum: cf2f600b46b21001a188770e5a118960e5a78ab5e7cda0460ca0ab7bb3b93e0e
+  corpus_checksum: b9030fc5f81ac121a2762ffd7da38dc694bea567a08cf4223f94607d5d4dd3ee
   reference_artifacts:
     bands: si_bands_demo.bands.json
     scf: si_bands_demo.scf.json

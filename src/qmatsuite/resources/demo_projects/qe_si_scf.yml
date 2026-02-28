@@ -2,17 +2,17 @@ version: 1
 project:
   meta:
     ulid: 01KMDVVNMVW50TF4ZVQBX5DTK2
-    name: 00_Si_scf
-    slug: 00_si_scf
+    name: Silicon SCF (LDA)
+    slug: silicon-scf-lda
     path: .
     kind: project
   settings: {}
 structures:
 - meta:
-    ulid: 01KERVZ5DHJXVNACJWJ071D9M9
-    name: si.scf
-    slug: si-scf
-    path: structures/si-scf.json
+    ulid: 01KEY09CQXND8TVB8V5WVGFFPF
+    name: Si
+    slug: si
+    path: structures/si.json
     kind: structure
   data:
     '@module': pymatgen.core.structure
@@ -70,56 +70,45 @@ structures:
       - 1.3494018878460001
 calculations:
 - meta:
-    ulid: 01KDW2VAC0VJ884DTEBF98KVA7
-    name: Si Scf
-    slug: si-scf
-    path: calculations/si-scf
+    ulid: 01KP9GDB6XMZESVS76X1B2DATH
+    name: Silicon SCF (LDA)
+    slug: silicon-scf-lda
+    path: calculations/silicon-scf-lda
     kind: calculation
   mode: normal
   working_dir: raw
   engine_family: qe
   steps:
   - meta:
-      name: si.scf
-      slug: si-scf
-      path: si.scf.step.yaml
+      name: scf
+      slug: scf
+      path: calculations/silicon-scf-lda/steps/scf.step.yaml
       kind: step
-      ulid: 01KX0DZGDEMA08656KKM85FCKB
+      ulid: 01KBGZ7MMN7CDZN6JQY69W2PGK
     parameters:
       CONTROL:
         calculation: scf
       SYSTEM:
-        ecutwfc: 30.0
-    input_name: si.scf.in
-    cards:
-      K_POINTS:
-        option: automatic
-        data:
-        - - '6'
-          - '6'
-          - '6'
-          - '0'
-          - '0'
-          - '0'
-    species_overrides:
-      Si:
-        mass: 28.086
+        ibrav: 2
+        celldm(1): 10.2
+        nat: 2
+        ntyp: 1
+        ecutwfc: 20.0
     step_type_spec: qe_scf
-  structure_ulid: 01KERVZ5DHJXVNACJWJ071D9M9
+  structure_ulid: 01KEY09CQXND8TVB8V5WVGFFPF
   species_map:
     Si:
-      mass: 28.086
       pseudopot: Si.pz-vbc.UPF
+      pseudo_basename: Si.pz-vbc.UPF
       pseudo_sha256: e8d933754cd51c6bb4b2a809151f89e0647e53d878bab88d26e1b5a5d68d5217
       pseudo_sha_family: c8d1220e55c39e8931ab3d7bd1437a93fb934b41113061f5371e6a67b2b0e60d
-      pseudo_basename: Si.pz-vbc.UPF
 pseudo:
   directory: pseudo
   files:
   - Si.pz-vbc.UPF
 meta:
   ulid: qe_si_scf
-  title: 0 Si Scf
+  title: Silicon SCF (LDA)
   subtitle: LDA ground-state total energy for diamond-cubic silicon
   description: SCF calculation for silicon crystal using the LDA (PZ) functional. Computes the ground-state total energy of
     the diamond-cubic Si unit cell.
@@ -150,6 +139,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_scf
-  corpus_checksum: f0bc8d9c2de16e967d698ccc76ab94fe623ef0869c750c1cea87e64fafe05409
-  reference_artifacts:
-    scf: 00_Si_scf.scf.json
+  corpus_checksum: 0e20cc0c15629c05437772e98de481bff9fc9cc401085e49d1203c7c0a7436e9

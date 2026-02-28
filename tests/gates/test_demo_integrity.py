@@ -4,7 +4,10 @@ Gate: Law EF6 — Demo Integrity.
 Every demo snapshot must have:
 1. engine_family explicitly set on each calculation.
 2. Every step's step_type_spec prefix matches engine_family or a companion engine.
+3. Every step path must be canonical: calculations/*/steps/*.step.yaml.
+4. Every demo title must not start with a digit (no numeric prefixes).
 """
+import re
 import yaml
 from pathlib import Path
 import pytest
@@ -75,3 +78,43 @@ def test_demo_step_type_spec_matches_engine_family():
     assert not violations, f"EF6 violation — step_type_spec/engine_family mismatch:\n" + "\n".join(violations)
 
 
+_CANONICAL_STEP_PATH_RE = re.compile(r"^calculations/[^/]+/steps/[^/]+\.step\.yaml$")
+
+
+def test_demo_step_paths_are_canonical():
+    """Every step's meta.path must match calculations/*/steps/*.step.yaml."""
+    violations = []
+    for yml_path in sorted(DEMO_DIR.glob("*.yml")):
+        data = _load_demo(yml_path)
+        for calc in data.get("calculations", []):
+            for step in calc.get("steps", []):
+                step_path = step.get("meta", {}).get("path", "")
+                if not _CANONICAL_STEP_PATH_RE.match(step_path):
+                    step_name = step.get("meta", {}).get("name", "?")
+                    violations.append(
+                        f"  {yml_path.name}: step '{step_name}' has non-canonical "
+                        f"path '{step_path}'"
+                    )
+
+    assert not violations, (
+        "P33 violation — step paths must be canonical "
+        "(calculations/*/steps/*.step.yaml):\n" + "\n".join(violations)
+    )
+
+
+_NUMERIC_PREFIX_RE = re.compile(r"^\d+\s")
+
+
+def test_demo_titles_no_numeric_prefix():
+    """Demo meta.title must not start with a legacy numeric prefix (digits + space)."""
+    violations = []
+    for yml_path in sorted(DEMO_DIR.glob("*.yml")):
+        data = _load_demo(yml_path)
+        title = data.get("meta", {}).get("title", "")
+        if _NUMERIC_PREFIX_RE.match(title):
+            violations.append(f"  {yml_path.name}: title starts with numeric prefix: '{title}'")
+
+    assert not violations, (
+        "P33 violation — demo titles must not start with a numeric prefix:\n"
+        + "\n".join(violations)
+    )

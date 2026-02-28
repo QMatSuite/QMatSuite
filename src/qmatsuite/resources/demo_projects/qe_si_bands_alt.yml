@@ -2,8 +2,8 @@ version: 1
 project:
   meta:
     ulid: 01KYGMF3NACQG8XPJ1GEFT7VNK
-    name: 7 Si Bandstructure
-    slug: 7-si-bandstructure
+    name: Silicon band structure (PBE)
+    slug: silicon-band-structure-pbe
     path: .
     kind: project
   settings: {}
@@ -70,10 +70,10 @@ structures:
       - 1.3773039781619374
 calculations:
 - meta:
-    ulid: 01KJNEXGX0XCZT74X40QN4BN7B
-    name: 7 Si Bandstructure
-    slug: 7-si-bandstructure
-    path: calculations/7-si-bandstructure
+    ulid: 01KPQBPS53BP2ET71X84EAMR2H
+    name: Silicon band structure (PBE)
+    slug: silicon-band-structure-pbe
+    path: calculations/silicon-band-structure-pbe
     kind: calculation
   mode: normal
   working_dir: raw
@@ -82,9 +82,9 @@ calculations:
   - meta:
       name: scf
       slug: scf
-      path: calculations/7-si-bandstructure/steps/scf.step.yaml
+      path: calculations/silicon-band-structure-pbe/steps/scf.step.yaml
       kind: step
-      ulid: 01KV669ENV5TXB763G0KMCDE0W
+      ulid: 01KY99F06FXR9QBQ4VFHR7T0DT
     parameters:
       CONTROL:
         calculation: scf
@@ -99,12 +99,22 @@ calculations:
       ELECTRONS:
         conv_thr: 1.0e-08
     step_type_spec: qe_scf
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '8'
+          - '8'
+          - '8'
+          - '0'
+          - '0'
+          - '0'
   - meta:
       name: nscf
       slug: nscf
-      path: calculations/7-si-bandstructure/steps/nscf.step.yaml
+      path: calculations/silicon-band-structure-pbe/steps/nscf.step.yaml
       kind: step
-      ulid: 01K78F7T2BJKMX05HYZNC7BBDH
+      ulid: 01KWBVP968FE1K36HQ4J6DSWV0
     parameters:
       CONTROL:
         calculation: nscf
@@ -120,12 +130,22 @@ calculations:
       ELECTRONS:
         conv_thr: 1.0e-08
     step_type_spec: qe_nscf
+    cards:
+      K_POINTS:
+        option: automatic
+        data:
+        - - '12'
+          - '12'
+          - '12'
+          - '0'
+          - '0'
+          - '0'
   - meta:
       name: bandspw
       slug: bandspw
-      path: calculations/7-si-bandstructure/steps/bandspw.step.yaml
+      path: calculations/silicon-band-structure-pbe/steps/bandspw.step.yaml
       kind: step
-      ulid: 01KNM27XQK6N50WATCYHJNYK4T
+      ulid: 01K7D1XY1CD0TZHW1T635S75W9
     parameters:
       CONTROL:
         calculation: bands
@@ -140,12 +160,37 @@ calculations:
       ELECTRONS:
         conv_thr: 1.0e-08
     step_type_spec: qe_bandspw
+    cards:
+      K_POINTS:
+        option: crystal_b
+        data:
+        - - 5
+        - - '0.0000'
+          - '0.5000'
+          - '0.0000'
+          - '20'
+        - - '0.0000'
+          - '0.0000'
+          - '0.0000'
+          - '30'
+        - - '-0.500'
+          - '0.0000'
+          - '-0.500'
+          - '10'
+        - - '-0.375'
+          - '0.2500'
+          - '-0.375'
+          - '30'
+        - - '0.0000'
+          - '0.0000'
+          - '0.0000'
+          - '20'
   - meta:
       name: bands
       slug: bands
-      path: calculations/7-si-bandstructure/steps/bands.step.yaml
+      path: calculations/silicon-band-structure-pbe/steps/bands.step.yaml
       kind: step
-      ulid: 01KNV5672F5552PEBNMA06EXW6
+      ulid: 01KT0TCZ38WY01VZ04Y026YX8C
     parameters:
       BANDS:
         filband: si.bands.dat
@@ -163,7 +208,7 @@ pseudo:
   - Si.pbe-n-rrkjus_psl.1.0.0.UPF
 meta:
   ulid: qe_si_bands_alt
-  title: 7 Si Bandstructure
+  title: Silicon band structure (PBE)
   subtitle: PBE band structure along L-Γ-X-U-Γ for Si with SSSP precision pseudos
   description: 'Band structure calculation for silicon using DFT-PBE with SSSP precision pseudopotentials. Runs a 4-step workflow:
     SCF, NSCF, bands.x k-path calculation, and bands.x post-processing.'
@@ -194,4 +239,4 @@ meta:
   generator_version: 1.0.0
   corpus_engine: qe
   corpus_case_id: si_bands_alt
-  corpus_checksum: a2aaae00d5d2051ca0523f4673096a0716a2c272b90ccb3b55fc47089bd13468
+  corpus_checksum: e7f0824e0efce89b7d20a5dcd17e8f6616172c58acf5123a9fc0ba81eef3a28f

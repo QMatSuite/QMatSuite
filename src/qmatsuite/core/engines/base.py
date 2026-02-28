@@ -5,10 +5,16 @@ This module defines the abstract base class for all computational engines
 (Quantum ESPRESSO, Wannier90, LAMMPS, etc.).
 """
 
+import os
+import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass
+
+
+class EngineConfigError(Exception):
+    """Raised when engine configuration is invalid."""
 
 
 @dataclass
@@ -21,10 +27,27 @@ class EngineConfig:
     mpi_cores: int = 1
     omp_threads: int = 1
     environment: Dict[str, str] = None
-    
+
     def __post_init__(self):
         if self.environment is None:
             self.environment = {}
+        # Environment variables override instance config (highest priority)
+        env_cores = os.environ.get("QMS_MPI_CORES", "")
+        if env_cores.isdigit():
+            self.mpi_cores = int(env_cores)
+        env_cmd = os.environ.get("QMS_MPI_COMMAND")
+        if env_cmd:
+            self.mpi_command = env_cmd
+        # Validate: MPI mode requires mpi_command to exist in PATH
+        if self.mpi_cores > 1:
+            if not self.mpi_command:
+                self.mpi_command = "mpirun"
+            if not shutil.which(self.mpi_command):
+                raise EngineConfigError(
+                    f"QMS_MPI_CORES={self.mpi_cores} but '{self.mpi_command}' not found in PATH. "
+                    f"Either install MPI (e.g., `brew install open-mpi`) or "
+                    f"unset QMS_MPI_CORES to run in serial mode."
+                )
 
 
 class Engine(ABC):
