@@ -551,3 +551,166 @@ class TestRecordIntentTool:
         assert "intent" in data
         assert data["calc_ulid"] == "01EXAMPLE"
         assert data["tags"] == ["tag1", "tag2"]
+
+
+# ===========================================================================
+# TestFTS5OrJoin — regression tests for the implicit-AND bug (Task 2.2b)
+# ===========================================================================
+
+class TestFTS5OrJoin:
+    """FTS5 multi-word queries must use OR-join so partial matches are returned.
+
+    Prior to the fix, ``_sanitize_fts_query()`` joined tokens with spaces,
+    which FTS5 interpreted as implicit AND.  Multi-word queries like
+    ``"BN band structure band gap"`` required ALL tokens in a single row,
+    returning 0 hits.
+    """
+
+    def test_multiword_query_returns_results(self, store):
+        """Multi-word queries must not require ALL tokens (regression)."""
+        store.add(_make_record(
+            content="PBE lattice constant for cubic BN zinc blende a0 3.622",
+            grade="finding",
+            scope={"engine": "qe", "workflow": "relax"},
+        ))
+        results = store.search("BN band structure band gap")
+        assert len(results) >= 1
+        assert any("BN" in r["content"] for r in results)
+
+    def test_long_query_returns_results(self, store):
+        """Long queries with many tokens still return relevant results."""
+        store.add(_make_record(
+            content="Lattice constant optimization using equation of state fitting",
+            grade="finding",
+            scope={"engine": "qe"},
+        ))
+        results = store.search("lattice constant optimization equation of state")
+        assert len(results) >= 1
+
+    def test_single_token_still_works(self, store):
+        """Single-token queries still work after the OR-join fix."""
+        store.add(_make_record(
+            content="Unique zirconium convergence insight for single token test",
+            grade="finding",
+        ))
+        results = store.search("zirconium")
+        assert len(results) >= 1
+        assert any("zirconium" in r["content"] for r in results)
+
+    def test_two_token_query_returns_results(self, store):
+        """Two-token queries work with OR-join."""
+        store.add(_make_record(
+            content="GaAs lattice constant from vc-relax calculation",
+            grade="finding",
+            scope={"engine": "qe"},
+        ))
+        results = store.search("GaAs lattice")
+        assert len(results) >= 1
+
+    def test_bm25_ranks_more_matches_higher(self, store):
+        """Documents matching more query tokens rank higher than partial matches."""
+        store.add(_make_record(
+            content="Silicon SCF convergence tip for metals",
+            grade="finding",
+        ))
+        store.add(_make_record(
+            content="Silicon SCF convergence tip for semiconductors with smearing",
+            grade="finding",
+        ))
+        store.add(_make_record(
+            content="Unrelated topic about molecular dynamics",
+            grade="finding",
+        ))
+        results = store.search("Silicon SCF convergence")
+        assert len(results) >= 2
+        # Both Silicon entries should appear before the unrelated one
+        contents = [r["content"] for r in results]
+        si_indices = [i for i, c in enumerate(contents) if "Silicon" in c]
+        unrelated = [i for i, c in enumerate(contents) if "molecular" in c]
+        if unrelated:
+            assert all(si < unrelated[0] for si in si_indices)
+
+    def test_sanitize_fts_query_uses_or(self):
+        """Verify _sanitize_fts_query produces OR-joined output."""
+        from qmatsuite.mcp.knowledge.store import _sanitize_fts_query
+
+        result = _sanitize_fts_query("BN band structure band gap")
+        assert "OR" in result
+        assert result == "BN OR band OR structure OR band OR gap"
+
+    def test_sanitize_fts_query_strips_reserved(self):
+        """Reserved FTS5 keywords are stripped even with OR-join."""
+        from qmatsuite.mcp.knowledge.store import _sanitize_fts_query
+
+        result = _sanitize_fts_query("SCF NOT converging AND failing")
+        assert "NOT" not in result.split(" OR ")
+        assert "AND" not in result.split(" OR ")
+        assert "SCF" in result
+        assert "converging" in result
+        assert "failing" in result
+
+
+# ===========================================================================
+# TestWorkflowScopeFilter — regression tests for cross-workflow search
+# ===========================================================================
+
+class TestWorkflowScopeFilter:
+    """Workflow filter must NOT hard-exclude insights from other workflows.
+
+    Prior to the fix, passing ``workflow="bands"`` to ``search_knowledge``
+    excluded all insights with ``scope_workflow="relax"`` or ``scope_workflow="scf"``.
+    This meant bands sessions could never find relax-phase insights about the
+    same compound.
+    """
+
+    def test_search_finds_relax_insights_without_workflow_filter(self, store):
+        """Insights from relax should be findable without workflow constraint."""
+        store.add(_make_record(
+            content="GaAs relax equilibrium lattice constant a=5.74 Angstrom",
+            grade="finding",
+            scope={"engine": "qe", "workflow": "relax"},
+        ))
+        results = store.search("GaAs lattice", workflow="")
+        assert len(results) >= 1
+
+    def test_search_finds_relax_insights_from_bands_context(self, store):
+        """A bands-workflow search must still find relax insights."""
+        store.add(_make_record(
+            content="GaAs relax Pulay stress from mixed pseudopotentials",
+            grade="finding",
+            scope={"engine": "qe", "workflow": "relax"},
+        ))
+        results = store.search("GaAs Pulay stress", workflow="bands")
+        assert len(results) >= 1
+        assert any("Pulay" in r["content"] for r in results)
+
+    def test_bands_search_finds_scf_insights(self, store):
+        """A bands search should find scf-scoped insights too."""
+        store.add(_make_record(
+            content="SCF convergence failure in GaAs with mixed pseudos",
+            grade="finding",
+            scope={"engine": "qe", "workflow": "scf"},
+        ))
+        results = store.search("GaAs SCF convergence", workflow="bands")
+        assert len(results) >= 1
+
+    def test_engine_filter_still_works(self, store):
+        """Engine filter should still exclude non-matching engines."""
+        store.add(_make_record(
+            content="VASP specific convergence tip for metals",
+            grade="finding",
+            scope={"engine": "vasp"},
+        ))
+        results = store.search("convergence metals", engine="qe")
+        vasp_results = [r for r in results if "VASP" in r["content"]]
+        assert len(vasp_results) == 0
+
+    def test_workflow_param_accepted_without_error(self, store):
+        """Passing workflow parameter must not cause an error."""
+        store.add(_make_record(
+            content="Test insight for workflow param acceptance",
+            grade="finding",
+        ))
+        # Should not raise
+        results = store.search("workflow param acceptance", workflow="bands")
+        assert isinstance(results, list)

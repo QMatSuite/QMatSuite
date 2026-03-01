@@ -423,3 +423,95 @@ Note: Modest scaling expected — 2-atom Si cell at ecutwfc=30 Ry is too small t
 - Linking: `libmpi.40.dylib`, `libmpi_usempif08.40.dylib`, `libmpi_usempi_ignore_tkr.40.dylib`, `libmpi_mpifh.40.dylib` (Open MPI)
 - Startup header: "Parallel version (MPI), running on 1 processors"
 - System mpirun: `/opt/homebrew/Caskroom/miniforge/base/bin/mpirun` (Open MPI 5.0.8)
+
+### Phase 4: MPI Rerun of III-V Timeouts (2026-02-28)
+
+Reran 3 previously timed-out III-V tasks with MPI-12 parallelism (`QMS_MPI_CORES=12`, `QMS_MPI_COMMAND=mpirun`), sequential execution (`--max-parallel 1`), 2h timeout per task.
+
+#### Preparation
+
+1. Cleaned exactly the 3 stale timeout folders (preserved old traces as `*_attempt1.jsonl`):
+   - `relax_GaAs/`: removed calculations/, structures/, pseudo/, .provenance/, project.qms.yml, timeout.flag
+   - `relax_AlAs/`: same cleanup
+   - `bands_GaAs/`: same cleanup
+   - Kept `.mcp.json` for MCP server configuration
+2. All other 37 task folders left untouched
+
+#### MPI Verification
+
+All 3 tasks confirmed running with MPI-12:
+- QE output headers: "Parallel version (MPI), running on 12 processors"
+- Binary: `.qmatsuite/engines/parallel_q_e/q-e-qe-7.5/bin/pw.x`
+- Process monitoring: 12 pw.x processes at 95-100% CPU each
+
+#### Results
+
+| Task | Attempt | Pseudopotentials | ecutwfc | Wall Time | a_calc (A) | Error (%) | Outcome |
+|------|---------|-----------------|---------|-----------|-----------|----------|---------|
+| relax_GaAs | 1 | Ga:PAW + As:NC (mixed) | 60 Ry | 52m | 5.381 | 4.81 | Pulay stress, -517 kbar |
+| relax_GaAs | 2 | Ga:USPP + As:USPP (GBRV) | 60 Ry | 6m34s | 5.751 | 1.73 | Converged, P=-0.33 kbar |
+| relax_AlAs | 1 | Al:PAW + As:NC (mixed) | 60 Ry | 5m48s | 5.386 | 4.86 | Pulay stress, ~580 kbar |
+| relax_AlAs | 2 | Al:PAW + As:NC (mixed) | 100 Ry | 11m59s | 5.729 | 1.20 | Converged, P=0.02 kbar |
+| bands_GaAs | 1a | Ga:PAW + As:NC (mixed) | 50 Ry | — | — | — | bands diverged (nbnd=16) |
+| bands_GaAs | 1b | same | 50 Ry | 13m12s | gap=0.43 eV | — | Fixed nbnd=72, converged |
+
+#### Self-Correction Strategies
+
+1. **relax_GaAs agent**: Diagnosed mixed PAW+NC pseudopotentials as root cause. Switched to consistent GBRV USPP library (ga_pbe_v1.4.uspp.F.UPF + as_pbe_v1.uspp.F.UPF). Wall time dropped 8x (52m → 6.5m), lattice error dropped from 4.8% to 1.7%.
+2. **relax_AlAs agent**: Diagnosed Pulay stress from insufficient cutoff. Raised ecutwfc from 60 to 100 Ry (ecutrho 480→1000). Lattice error dropped from 4.9% to 1.2%.
+3. **bands_GaAs agent**: First attempt failed with "too many bands not converged" (nbnd=16 insufficient for 112-electron system). Increased nbnd from 16 to 72. Band structure converged, gap = 0.43 eV (direct at Gamma), consistent with PBE literature.
+
+#### Timing Comparison: Serial vs MPI-12
+
+| Task | Serial (run 1, 1 core) | MPI-12 (this run) | Speedup |
+|------|----------------------|-------------------|---------|
+| relax_GaAs calc1 | 1h43m (prev run) | 52m | ~2x |
+| relax_GaAs calc2 | — (timed out) | 6m34s | N/A |
+| relax_AlAs calc1 | 1h31m (prev run) | 5m48s | ~16x |
+| bands_GaAs bands | 1h48m (prev run) | 13m12s | ~8x |
+
+Note: relax_GaAs calc1 shows only 2x speedup because the MPI run used different input parameters (same mixed pseudos but agent chose different mixing_mode). The real comparison is between the serial timeout at >2h and the complete 2-attempt MPI run finishing in ~59m total.
+
+#### Final 40/40 Benchmark Statistics
+
+```
+Total tasks:              40/40 (0 timeouts)
+Lattice MARE:             0.93%
+Lattice pass rate (2%):   22/24
+Band gap MAE:             1.94 eV
+Gap type accuracy:        9/10
+Magnetic MARE:            3.5%
+Mean rounds:              1.2
+Mean tool calls/task:     32.2
+```
+
+Output files:
+- `<TMPDIR>/bench/paper_tables.md` — paper-ready tables with all 40 results
+- `<TMPDIR>/bench/statistics.json` — machine-readable statistics
+- `<TMPDIR>/bench/summary_table.md` — compact summary
+- `<TMPDIR>/bench/failure_analysis.md` — empty (no failures)
+
+### Organic Knowledge Distillation (Discovery)
+
+**Date**: 2026-02-28
+
+During the knowledge system review, we discovered that **all 43 benchmark agents spontaneously used the knowledge system** without any prompt instruction to do so:
+
+- `search_knowledge`: 60 calls across all agents (agents searched before starting)
+- `record_insight`: 57 calls (agents recorded findings after completion)
+- `record_intent`: 54 calls (agents declared intentions before acting)
+- 17 insights promoted to persistent `local.db` at `grade=finding`
+- ~40 additional insights recorded at lower grades (journal-only, not promoted)
+
+**This is a key paper finding**: agents naturally engage with the knowledge infrastructure when it is available via MCP tools, without being instructed to do so. The knowledge system's discoverability through standard MCP tool listing was sufficient for agents to understand its purpose and use it appropriately.
+
+**17 promoted findings** cover:
+- Lattice constants for 8 systems (Al, Si, Mo, Ag, Li, NaCl, MgO + zone folding note for BN)
+- Magnetic moments for 3 systems (Fe, Ni, Co)
+- Band gaps for 2 systems (diamond C, GaAs)
+- xTB geometries for 2 molecules (H2O, NH3)
+- Computational lessons: MP smearing for alkali metals (Li), mixed PAW+NC Pulay stress (GaAs), ecutwfc sensitivity (AlAs)
+
+**Evidence preserved**: `local_db_after_task1.db` in `<TMPDIR>/bench/run_20260227_112901/`
+
+Full review: `<TMPDIR>/knowledge_review/KNOWLEDGE_REVIEW.md`

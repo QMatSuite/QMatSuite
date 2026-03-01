@@ -39,25 +39,30 @@ class TestFTS5SanitizationKernel:
         assert '"' not in result
 
     def test_sanitize_strips_boolean_ops(self):
-        """FTS5 boolean operators (AND, OR, NOT, NEAR) are removed."""
+        """FTS5 boolean operators (AND, NOT, NEAR) from user input are removed.
+
+        The sanitizer adds its own OR between tokens, but user-supplied
+        AND/NOT/NEAR keywords are stripped to prevent unintended FTS5 semantics.
+        """
         from qmatsuite.mcp.knowledge.store import _sanitize_fts_query
 
         result = _sanitize_fts_query("NOT convergence OR crash AND error NEAR fix")
-        assert "NOT" not in result.split()
-        assert "OR" not in result.split()
-        assert "AND" not in result.split()
-        assert "NEAR" not in result.split()
-        assert "convergence" in result
-        assert "crash" in result
-        assert "error" in result
-        assert "fix" in result
+        # Split by " OR " to get the actual tokens
+        tokens = [t.strip() for t in result.split(" OR ")]
+        assert "NOT" not in tokens
+        assert "AND" not in tokens
+        assert "NEAR" not in tokens
+        assert "convergence" in tokens
+        assert "crash" in tokens
+        assert "error" in tokens
+        assert "fix" in tokens
 
     def test_sanitize_preserves_alphanumeric(self):
-        """Normal alphanumeric tokens with underscores are preserved."""
+        """Normal alphanumeric tokens with underscores are preserved, OR-joined."""
         from qmatsuite.mcp.knowledge.store import _sanitize_fts_query
 
         result = _sanitize_fts_query("ecutwfc conv_thr mixing_beta")
-        assert result == "ecutwfc conv_thr mixing_beta"
+        assert result == "ecutwfc OR conv_thr OR mixing_beta"
 
     def test_sanitize_empty_input(self):
         """Empty or all-special-char input returns empty string."""

@@ -19,16 +19,20 @@ _FTS5_RESERVED = frozenset({"AND", "OR", "NOT", "NEAR"})
 
 
 def _sanitize_fts_query(raw: str) -> str:
-    """Strip FTS5 operators/punctuation; keep only word tokens.
+    """Strip FTS5 operators/punctuation; keep only word tokens joined with OR.
 
     FTS5 interprets ``-`` as NOT, ``"`` as phrase delimiter, and words like
     AND/OR/NOT/NEAR as boolean operators.  This helper strips all of them so
     that user queries such as ``"Quantum-ESPRESSO"`` or ``"SCF non-convergence"``
     never trigger FTS5 syntax errors.
+
+    Tokens are joined with OR so that multi-word queries return documents
+    matching *any* token.  BM25 ranking naturally scores documents matching
+    more tokens higher, so the most relevant results appear first.
     """
     tokens = _FTS5_TOKEN_RE.findall(raw)
     tokens = [t for t in tokens if t.upper() not in _FTS5_RESERVED]
-    return " ".join(tokens)
+    return " OR ".join(tokens)
 
 # Confidence weights for ranking (higher = more trusted).
 _CONFIDENCE_WEIGHT = {"high": 3.0, "medium": 2.0, "low": 1.0}
@@ -484,9 +488,9 @@ class KnowledgeStore:
         if engine:
             sql += " AND (i.scope_engine = ? OR i.scope_engine = '*')"
             params.append(engine.lower())
-        if workflow:
-            sql += " AND (i.scope_workflow = ? OR i.scope_workflow = '*')"
-            params.append(workflow.lower())
+        # workflow is intentionally NOT used as a hard filter.
+        # Insights are general knowledge — a bands session should find relax
+        # insights about the same compound.  BM25 ranking handles relevance.
         if system_type:
             sql += " AND (i.scope_system_type = ? OR i.scope_system_type = '*')"
             params.append(system_type.lower())
