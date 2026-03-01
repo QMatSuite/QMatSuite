@@ -279,7 +279,7 @@ No direct timing comparison available (Wannier90 only, no QE SCF), but the 2-ato
 
 | Property | QMatSuite-managed (ACTIVE) | System build |
 |----------|---------------------------|--------------|
-| Path | `.qmatsuite/engines/qe/q-e-qe-7.5/bin` | `/Users/hh7465/src/q-e-qe-7.5/bin` |
+| Path | `.qmatsuite/engines/qe/q-e-qe-7.5/bin` | `$HOME/src/q-e-qe-7.5/bin` |
 | Version | 7.5 | 7.5 |
 | Compiler | h5fc (HDF5 wrapper for gfortran) | mpif90 (Open MPI wrapper) |
 | DFLAGS | `-D__FFTW` | `-D__MPI -D__MPI_MODULE -D__FFTW3` |
@@ -356,7 +356,7 @@ With primitive cell (2 atoms): additional ~4-8x speedup from fewer bands/electro
   **Impact:** bands_GaAs would have succeeded (pw.x finished at 1h48m)
 
 - [ ] **R7: Quick fix for immediate rerun — switch active QE to system build**
-  Change `engines.json` active QE from `q-e-qe-7.5` to `system-pw.x` (path: `/Users/hh7465/src/q-e-qe-7.5/PW/src`).
+  Change `engines.json` active QE from `q-e-qe-7.5` to `system-pw.x` (path: `$HOME/src/q-e-qe-7.5/PW/src`).
   Then set `mpi_command: "mpirun"` and `mpi_cores: 4` in EngineConfig.
   With the system MPI build + 4 cores, all 3 timeouts would complete in <30 min each.
   **Estimated effort:** ~15 minutes

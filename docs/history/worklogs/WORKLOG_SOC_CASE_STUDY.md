@@ -16,7 +16,7 @@
 ## Pre-flight
 
 ### QE Status
-- QE installed: `pw.x` at `/Users/hh7465/src/q-e-qe-7.5/bin/pw.x`
+- QE installed: `pw.x` at `$HOME/src/q-e-qe-7.5/bin/pw.x`
 - `qms engine verify qe`: OK
 - **Single-core only** — no MPI parallelization configured
 
@@ -67,7 +67,7 @@
 ```
 
 ### .mcp.json Setup
-- shared_project: absolute python path (`/Users/hh7465/QMatSuite/.venv/bin/python`), standard MCP instructions ✓
+- shared_project: absolute python path (`$HOME/QMatSuite/.venv/bin/python`), standard MCP instructions ✓
 - control_project: same + `"env": {"QMATSUITE_HOME": ".../control_qms_home"}` ✓
 - No `.claude/` or `CLAUDE.md` in either project directory ✓
 
