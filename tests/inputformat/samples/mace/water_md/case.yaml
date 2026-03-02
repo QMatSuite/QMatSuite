@@ -1,0 +1,81 @@
+case_id: water_md
+engine: mace
+title: Water MACE Molecular Dynamics
+description: MACE-MP foundation model NVT molecular dynamics for a water molecule
+  in a box, using Langevin thermostat at 300 K.
+workflow_tags:
+- md
+- mlp
+- molecular
+species:
+- O
+- H
+functional: MACE-MP-0
+demo_eligible: true
+step_type_gen: md
+step_type_spec: mace_md
+required_engine: mace
+availability: open_source
+demo_slug: mace_water_md
+asset_policy: none
+recommended_analysis: trajectory
+difficulty: beginner
+parser_mode: direct_snapshot
+inline_parameters:
+  model: medium
+  device: cpu
+  default_dtype: float64
+  md_ensemble: NVT
+  md_timestep: 0.5
+  md_nsteps: 100
+  md_temperature: 300.0
+  md_friction: 0.01
+  md_log_interval: 5
+inline_structure:
+  type: structure
+  species:
+  - O
+  - H
+  - H
+  lattice:
+  - - 10.0
+    - 0.0
+    - 0.0
+  - - 0.0
+    - 10.0
+    - 0.0
+  - - 0.0
+    - 0.0
+    - 10.0
+  frac_coords:
+  - - 0.5
+    - 0.5
+    - 0.5
+  - - 0.5
+    - 0.5967
+    - 0.5
+  - - 0.5
+    - 0.4673
+    - 0.0757
+subtitle: Water molecule NVT dynamics at 300 K with MACE-MP and Langevin thermostat
+tags:
+- mace
+- molecular
+- md
+- mlp
+- water
+- tutorial
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)
+system_class: molecular
+periodicity: periodic
+method: mlp-mace-mp
+property_of_interest: trajectory
+spin_treatment: nonmagnetic
+estimated_runtime_s: 5.0
+n_steps: 1
+step_summary: MD
+available_analysis:
+- trajectory

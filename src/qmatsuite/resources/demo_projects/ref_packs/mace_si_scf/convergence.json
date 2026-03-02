@@ -1,0 +1,127 @@
+{
+  "bundle_kind": "canonical",
+  "object_type": "convergence",
+  "render_meta": {
+    "axis_labels": {
+      "x": "Step",
+      "y": "Energy"
+    },
+    "units": {
+      "x": "",
+      "y": "eV"
+    },
+    "series_labels": [
+      "SCF Energy",
+      "SCF dE",
+      "Ionic Energy",
+      "Ionic Max Force"
+    ],
+    "reference_energy": null,
+    "reference_position": null,
+    "markers": [],
+    "extra": {
+      "n_ionic_steps": 1,
+      "converged": true,
+      "algorithm": "MACE-ML"
+    }
+  },
+  "provenance_meta": {
+    "schema_version": "1.0",
+    "object_type": "convergence",
+    "run_ulid": "01KJP0BMM52Y94571YZK1YPSMH",
+    "calc_ulid": "01KJP0BMKCAEFZF9QHAA7VH2F5",
+    "step_ulids": [
+      "01KJP0BMKCAEFZF9QHAA7VH2F6"
+    ],
+    "gen_steps": [
+      "scf"
+    ],
+    "engine_name": "mace",
+    "source_files": [
+      {
+        "path": "raw/01KJP0BMKCAEFZF9QHAA7VH2F6/results.json",
+        "size_bytes": 1050,
+        "mtime": 1772412590.796751
+      }
+    ],
+    "parser_name": "mace_convergence",
+    "parser_version": "1.0",
+    "warnings": [],
+    "manifest_snapshot": null
+  },
+  "series": [
+    {
+      "x": [
+        0.0
+      ],
+      "y": [
+        -10.676190475713428
+      ],
+      "x_label": "SCF Step",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "SCF Energy"
+    },
+    {
+      "x": [
+        0.0
+      ],
+      "y": [
+        0.0
+      ],
+      "x_label": "SCF Step",
+      "y_label": "dE",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "SCF dE"
+    },
+    {
+      "x": [
+        0.0
+      ],
+      "y": [
+        -10.676190475713428
+      ],
+      "x_label": "Ionic Step",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "Ionic Energy"
+    },
+    {
+      "x": [
+        0.0
+      ],
+      "y": [
+        1.2483935986025227e-16
+      ],
+      "x_label": "Ionic Step",
+      "y_label": "Max Force",
+      "x_unit": "",
+      "y_unit": "eV/A",
+      "name": "Ionic Max Force"
+    }
+  ],
+  "geometry_frames": null,
+  "arrays": {
+    "scf_step": [
+      0
+    ],
+    "scf_energy": [
+      -10.676190475713428
+    ],
+    "scf_de": [
+      0.0
+    ],
+    "ionic_step": [
+      0
+    ],
+    "ionic_energy": [
+      -10.676190475713428
+    ],
+    "ionic_max_force": [
+      1.2483935986025227e-16
+    ]
+  }
+}

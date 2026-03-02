@@ -1,0 +1,26 @@
+{
+  "calc_type": "relax",
+  "success": true,
+  "total_energy_eV": -10.5432,
+  "energy_per_atom_eV": -5.2716,
+  "forces_eV_per_ang": [
+    [0.001, -0.002, 0.0003],
+    [-0.001, 0.002, -0.0003]
+  ],
+  "max_force_eV_per_ang": 0.0023,
+  "converged": true,
+  "n_opt_steps": 12,
+  "n_atoms": 2,
+  "model_name": "medium",
+  "wall_time_s": 1.23,
+  "final_species": ["Si", "Si"],
+  "final_positions": [
+    [0.0, 0.0, 0.0],
+    [1.3773, 1.3773, 1.3773]
+  ],
+  "final_cell": [
+    [-2.7546, 0.0, 2.7546],
+    [0.0, 2.7546, 2.7546],
+    [-2.7546, 2.7546, 0.0]
+  ]
+}

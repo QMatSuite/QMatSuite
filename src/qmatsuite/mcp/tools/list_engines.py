@@ -23,6 +23,7 @@ _SYNTAX_FAMILIES: dict[str, str] = {
     "gpaw": "Python script",
     "psi4": "Python script",
     "pyscf": "Python script",
+    "mace": "Python script",
 }
 
 
@@ -42,6 +43,7 @@ def _count_parameters(engine: str) -> int:
         # Standard tag-based engines
         _TAG_ENGINES = {
             "vasp", "abinit", "cp2k", "w90", "xtb", "yambo", "qmcpack",
+            "mace",
         }
         _KEYWORD_ENGINES = {"orca", "gaussian"}
         _COMMAND_ENGINES = {"lammps"}

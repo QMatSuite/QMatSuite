@@ -1,0 +1,89 @@
+case_id: perovskite_relax
+engine: mace
+title: CaTiO3 Perovskite MACE Relaxation
+description: MACE-MP foundation model geometry optimization for cubic perovskite CaTiO3,
+  testing multi-element oxide relaxation with variable-cell filter.
+workflow_tags:
+- relax
+- mlp
+- solid
+- oxide
+species:
+- Ca
+- Ti
+- O
+functional: MACE-MP-0
+demo_eligible: false
+step_type_gen: relax
+step_type_spec: mace_relax
+required_engine: mace
+availability: open_source
+demo_slug: null
+asset_policy: none
+recommended_analysis: convergence
+difficulty: intermediate
+parser_mode: direct_snapshot
+inline_parameters:
+  model: medium
+  device: cpu
+  default_dtype: float64
+  optimizer: BFGS
+  fmax: 0.02
+  max_steps: 300
+  relax_cell: true
+  cell_filter: FrechetCellFilter
+inline_structure:
+  type: structure
+  species:
+  - Ca
+  - Ti
+  - O
+  - O
+  - O
+  lattice:
+  - - 3.84
+    - 0.0
+    - 0.0
+  - - 0.0
+    - 3.84
+    - 0.0
+  - - 0.0
+    - 0.0
+    - 3.84
+  frac_coords:
+  - - 0.0
+    - 0.0
+    - 0.0
+  - - 0.5
+    - 0.5
+    - 0.5
+  - - 0.5
+    - 0.5
+    - 0.0
+  - - 0.5
+    - 0.0
+    - 0.5
+  - - 0.0
+    - 0.5
+    - 0.5
+subtitle: Cubic CaTiO3 variable-cell relaxation with MACE-MP and FrechetCellFilter
+tags:
+- mace
+- solid
+- relax
+- mlp
+- perovskite
+- oxide
+exclusion_reason: Parser/writer test case only
+attribution: null
+system_class: crystal
+periodicity: periodic
+method: mlp-mace-mp
+property_of_interest: relaxed_geometry
+spin_treatment: nonmagnetic
+estimated_runtime_s: 10.0
+n_steps: 1
+step_summary: VC-Relax
+available_analysis:
+- convergence
+- trajectory

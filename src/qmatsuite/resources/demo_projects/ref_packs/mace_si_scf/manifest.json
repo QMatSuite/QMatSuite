@@ -1,0 +1,13 @@
+{
+  "demo_slug": "mace_si_scf",
+  "engine": "mace",
+  "generated_at": "2026-03-02T00:49:51.251982+00:00",
+  "generator_version": "3.0.0",
+  "source": "realrun",
+  "object_types": {
+    "convergence": {
+      "file": "convergence.json",
+      "sha256": "f77e7346ddedff5746f00f497ea553a5cc4a5279be9df3947d604bde60d71657"
+    }
+  }
+}

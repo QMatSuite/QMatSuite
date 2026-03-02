@@ -1,0 +1,75 @@
+case_id: si_relax
+engine: mace
+title: Silicon MACE Relaxation
+description: MACE-MP foundation model geometry optimization for distorted diamond-cubic
+  silicon, using BFGS optimizer with force convergence criterion.
+workflow_tags:
+- relax
+- mlp
+- solid
+species:
+- Si
+functional: MACE-MP-0
+demo_eligible: true
+step_type_gen: relax
+step_type_spec: mace_relax
+required_engine: mace
+availability: open_source
+demo_slug: mace_si_relax
+asset_policy: none
+recommended_analysis: convergence
+difficulty: beginner
+parser_mode: direct_snapshot
+inline_parameters:
+  model: medium
+  device: cpu
+  default_dtype: float64
+  optimizer: BFGS
+  fmax: 0.01
+  max_steps: 200
+  relax_cell: false
+inline_structure:
+  type: structure
+  species:
+  - Si
+  - Si
+  lattice:
+  - - -2.8
+    - 0.0
+    - 2.8
+  - - 0.0
+    - 2.7
+    - 2.7
+  - - -2.75
+    - 2.75
+    - 0.0
+  frac_coords:
+  - - 0.0
+    - 0.0
+    - 0.0
+  - - 0.26
+    - 0.24
+    - 0.25
+subtitle: Distorted Si relaxation with MACE-MP medium model and BFGS optimizer
+tags:
+- mace
+- solid
+- relax
+- mlp
+- Si
+- tutorial
+exclusion_reason: null
+attribution:
+  source: Constructed for QMatSuite test coverage
+  license: MIT (QMatSuite)
+system_class: crystal
+periodicity: periodic
+method: mlp-mace-mp
+property_of_interest: relaxed_geometry
+spin_treatment: nonmagnetic
+estimated_runtime_s: 2.0
+n_steps: 1
+step_summary: Relax
+available_analysis:
+- convergence
+- trajectory

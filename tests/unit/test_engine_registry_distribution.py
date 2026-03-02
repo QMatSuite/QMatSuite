@@ -42,6 +42,7 @@ def test_engine_meta_completeness() -> None:
         "pyscf",
         "psi4",
         "gpaw",
+        "mace",
     }
     assert set(ENGINE_META.keys()) == expected
 

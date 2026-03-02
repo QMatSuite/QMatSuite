@@ -1,0 +1,113 @@
+version: 1
+project:
+  meta:
+    ulid: 01KD3Y8WKE7KKFH438GFAXARD9
+    name: Silicon MACE Single-Point
+    slug: silicon-mace-single-point
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01K28F5TGCFK2KYTRH9X8BJA6Z
+    name: Si
+    slug: si
+    path: structures/si.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - -2.7546
+        - 0.0
+        - 2.7546
+      - - 0.0
+        - 2.7546
+        - 2.7546
+      - - -2.7546
+        - 2.7546
+        - 0.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 3.8955926789129274
+      b: 3.8955926789129274
+      c: 3.8955926789129274
+      alpha: 59.99999999999999
+      beta: 59.99999999999999
+      gamma: 59.99999999999999
+      volume: 41.802824334671975
+    properties: {}
+    sites:
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.0
+      - 0.0
+      - 0.0
+      properties: {}
+      label: Si
+      xyz:
+      - 0.0
+      - 0.0
+      - 0.0
+    - species:
+      - element: Si
+        occu: 1
+      abc:
+      - 0.25
+      - 0.25
+      - 0.25
+      properties: {}
+      label: Si
+      xyz:
+      - -1.3773
+      - 1.3773
+      - 1.3773
+calculations:
+- meta:
+    ulid: 01KB20QFSHSVZPTW8Q39SK4Z0N
+    name: Silicon MACE Single-Point
+    slug: silicon-mace-single-point
+    path: calculations/silicon-mace-single-point
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: mace
+  steps:
+  - meta:
+      name: scf
+      slug: scf
+      path: calculations/silicon-mace-single-point/steps/scf.step.yaml
+      kind: step
+      ulid: 01KBSKKVAC5JWPC07SZZTKW0YT
+    parameters:
+      model: medium
+      device: cpu
+      default_dtype: float64
+      compute_stress: true
+    step_type_spec: mace_scf
+  structure_ulid: 01K28F5TGCFK2KYTRH9X8BJA6Z
+meta:
+  ulid: mace_si_scf
+  title: Silicon MACE Single-Point
+  subtitle: Diamond-cubic Si energy/forces/stress with MACE-MP medium model
+  tags:
+  - mace
+  - solid
+  - scf
+  - mlp
+  - Si
+  - tutorial
+  recommended_analysis: scf
+  difficulty: beginner
+  required_engine: mace
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: mace
+  corpus_case_id: si_scf
+  corpus_checksum: 9bea81e3e6ef5a797ff9a8a49df5d09c27537f609720d9ca90cd7f118d42f544

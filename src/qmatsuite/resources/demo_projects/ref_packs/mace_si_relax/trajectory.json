@@ -1,0 +1,312 @@
+{
+  "bundle_kind": "canonical",
+  "object_type": "trajectory",
+  "render_meta": {
+    "axis_labels": {
+      "x": "Iteration",
+      "y": "Observable"
+    },
+    "units": {
+      "x": "",
+      "y": ""
+    },
+    "series_labels": [
+      "Total Energy",
+      "Max Force"
+    ],
+    "reference_energy": null,
+    "reference_position": null,
+    "markers": [],
+    "extra": {
+      "trajectory_type": "relax",
+      "n_frames": 4,
+      "n_atoms": 2,
+      "n_images": null
+    }
+  },
+  "provenance_meta": {
+    "schema_version": "1.0",
+    "object_type": "trajectory",
+    "run_ulid": null,
+    "calc_ulid": null,
+    "step_ulids": [],
+    "gen_steps": [],
+    "engine_name": "mace",
+    "source_files": [
+      {
+        "path": "/Users/hh7465/QMatSuite/.tmp/refpack_runs/mace_si_relax/mace_si_relax/calculations/silicon-mace-relaxation/raw/01KJP0BHH6GFZ8X6BSBY934KXX/trajectory.jsonl",
+        "size_bytes": 1836,
+        "mtime": 1772412588.1945472
+      }
+    ],
+    "parser_name": "MACETrajectoryParser",
+    "parser_version": "1.0",
+    "warnings": [],
+    "manifest_snapshot": null
+  },
+  "series": [
+    {
+      "x": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "y": [
+        -10.671665812496098,
+        -10.671665812496098,
+        -10.671770936179549,
+        -10.67197586324053
+      ],
+      "x_label": "Iteration",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "Total Energy"
+    },
+    {
+      "x": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "y": [
+        0.06370642058385724,
+        0.06370642058385724,
+        0.05180223878697635,
+        0.0017706465253699995
+      ],
+      "x_label": "Iteration",
+      "y_label": "Max Force",
+      "x_unit": "",
+      "y_unit": "eV/\u00c5",
+      "name": "Max Force"
+    }
+  ],
+  "geometry_frames": {
+    "frames": [
+      {
+        "positions": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            -1.4155,
+            1.3355000000000001,
+            1.376
+          ]
+        ],
+        "species": [
+          "Si",
+          "Si"
+        ],
+        "cell": [
+          [
+            -2.8,
+            0.0,
+            2.8
+          ],
+          [
+            0.0,
+            2.7,
+            2.7
+          ],
+          [
+            -2.75,
+            2.75,
+            0.0
+          ]
+        ],
+        "pbc": [
+          true,
+          true,
+          true
+        ],
+        "forces": [
+          [
+            -0.0466930421693697,
+            -0.04243434803632192,
+            0.008808742436299775
+          ],
+          [
+            0.046693042169369675,
+            0.04243434803632201,
+            -0.00880874243629981
+          ]
+        ],
+        "velocities": null
+      },
+      {
+        "positions": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            -1.4155,
+            1.3355000000000001,
+            1.376
+          ]
+        ],
+        "species": [
+          "Si",
+          "Si"
+        ],
+        "cell": [
+          [
+            -2.8,
+            0.0,
+            2.8
+          ],
+          [
+            0.0,
+            2.7,
+            2.7
+          ],
+          [
+            -2.75,
+            2.75,
+            0.0
+          ]
+        ],
+        "pbc": [
+          true,
+          true,
+          true
+        ],
+        "forces": [
+          [
+            -0.0466930421693697,
+            -0.04243434803632192,
+            0.008808742436299775
+          ],
+          [
+            0.046693042169369675,
+            0.04243434803632201,
+            -0.00880874243629981
+          ]
+        ],
+        "velocities": null
+      },
+      {
+        "positions": [
+          [
+            -0.0006670434595624243,
+            -0.0006062049719474561,
+            0.00012583917766142535
+          ],
+          [
+            -1.4148329565404376,
+            1.3361062049719477,
+            1.3758741608223384
+          ]
+        ],
+        "species": [
+          "Si",
+          "Si"
+        ],
+        "cell": [
+          [
+            -2.8,
+            0.0,
+            2.8
+          ],
+          [
+            0.0,
+            2.7,
+            2.7
+          ],
+          [
+            -2.75,
+            2.75,
+            0.0
+          ]
+        ],
+        "pbc": [
+          true,
+          true,
+          true
+        ],
+        "forces": [
+          [
+            -0.0379192785414256,
+            -0.03450113810621898,
+            0.007434495787630902
+          ],
+          [
+            0.0379192785414256,
+            0.03450113810621898,
+            -0.007434495787630932
+          ]
+        ],
+        "velocities": null
+      },
+      {
+        "positions": [
+          [
+            -0.003566206157728965,
+            -0.0032440293720289544,
+            0.0006942495717917113
+          ],
+          [
+            -1.4119337938422714,
+            1.3387440293720294,
+            1.3753057504282078
+          ]
+        ],
+        "species": [
+          "Si",
+          "Si"
+        ],
+        "cell": [
+          [
+            -2.8,
+            0.0,
+            2.8
+          ],
+          [
+            0.0,
+            2.7,
+            2.7
+          ],
+          [
+            -2.75,
+            2.75,
+            0.0
+          ]
+        ],
+        "pbc": [
+          true,
+          true,
+          true
+        ],
+        "forces": [
+          [
+            0.00034805004800570437,
+            0.00013474077377867346,
+            0.0017308654499323325
+          ],
+          [
+            -0.0003480500480057408,
+            -0.00013474077377868127,
+            -0.0017308654499323672
+          ]
+        ],
+        "velocities": null
+      }
+    ],
+    "time": null,
+    "iteration": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "image_indices": null
+  },
+  "arrays": {}
+}

@@ -1,8 +1,8 @@
 {
   "generator_version": "1.0.0",
-  "generated_at": "2026-02-27T15:14:31Z",
+  "generated_at": "2026-03-02T00:38:21Z",
   "corpus_root": "tests/inputformat/samples",
-  "corpus_index_checksum": "bcd08ed1992563478f1abca7d3b387c858e914f36e61af067887932bcbf17593",
+  "corpus_index_checksum": "01a0612a25cc8d5bea452aefab585d81b6f0a221f0643fd22acd63cd0b0ae448",
   "demos": {
     "abinit_si_bands": {
       "engine": "abinit",
@@ -281,7 +281,7 @@
       "corpus_path": "tests/inputformat/samples/qe/fe_dos",
       "corpus_checksum": "488c2cde2d6743f1959e7a34901068f302e4f5b98395efc5afe7be459cd2414c",
       "output_file": "resources/demo_projects/qe_fe_scf.yml",
-      "output_checksum": "1d552d24eaf834b68b977ecce1f9c636a815586ab42f35b2e6818ff579390759",
+      "output_checksum": "82e4b6959d09f7bd6cd9d0300789af7aa6e07c682937814aad838a4f8f7b6d00",
       "asset_policy": "redistributable"
     },
     "qe_graphene_bands": {
@@ -523,6 +523,36 @@
       "output_file": "resources/demo_projects/xtb_water_opt.yml",
       "output_checksum": "45365620b8ce0f242228c8a7c03cb26da8941a5b8112133309e007394c9dc9a4",
       "asset_policy": "none"
+    },
+    "mace_si_scf": {
+      "engine": "mace",
+      "case_id": "si_scf",
+      "dir_name": "si_scf",
+      "corpus_path": "tests/inputformat/samples/mace/si_scf",
+      "corpus_checksum": "9bea81e3e6ef5a797ff9a8a49df5d09c27537f609720d9ca90cd7f118d42f544",
+      "output_file": "resources/demo_projects/mace_si_scf.yml",
+      "output_checksum": "4f9e7f7d9522f35fd09a05fa0f16eb6a71c07897b127bec78678f7703cff6a42",
+      "asset_policy": "redistributable"
+    },
+    "mace_si_relax": {
+      "engine": "mace",
+      "case_id": "si_relax",
+      "dir_name": "si_relax",
+      "corpus_path": "tests/inputformat/samples/mace/si_relax",
+      "corpus_checksum": "161f034775d6b60779d87d62b0e301a8bf01c11a30f071258b87a58125e2311d",
+      "output_file": "resources/demo_projects/mace_si_relax.yml",
+      "output_checksum": "ba132c835b2fb972a4c040f3b9467324a765556255b2d58f5aaaaa372a781131",
+      "asset_policy": "redistributable"
+    },
+    "mace_water_md": {
+      "engine": "mace",
+      "case_id": "water_md",
+      "dir_name": "water_md",
+      "corpus_path": "tests/inputformat/samples/mace/water_md",
+      "corpus_checksum": "d38470742ee660bb98fb459398fbacc34bc9d7ecebec77d1ec1a0161db2f65a9",
+      "output_file": "resources/demo_projects/mace_water_md.yml",
+      "output_checksum": "57d73ddb83ba2f2d02069ca30abbe80d6604f8c16a761f5c9a83b71c33528c78",
+      "asset_policy": "redistributable"
     }
   }
 }

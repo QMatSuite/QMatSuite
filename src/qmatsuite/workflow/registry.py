@@ -855,6 +855,41 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
     ),
 
     # -------------------------------------------------------------------------
+    # MACE engine (ML interatomic potentials)
+    # -------------------------------------------------------------------------
+    "mace_scf": StepTypeSpec(
+        step_type_spec="mace_scf",
+        step_type_gen="scf",
+        engine="mace",
+        executable="python",
+        description="MACE single-point energy/forces/stress calculation",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+    "mace_relax": StepTypeSpec(
+        step_type_spec="mace_relax",
+        step_type_gen="relax",
+        engine="mace",
+        executable="python",
+        description="MACE geometry relaxation via ASE optimizer",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+        is_structure_transform=True,
+    ),
+    "mace_md": StepTypeSpec(
+        step_type_spec="mace_md",
+        step_type_gen="md",
+        engine="mace",
+        executable="python",
+        description="MACE molecular dynamics via ASE",
+        requires_structure=True,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
+
+    # -------------------------------------------------------------------------
     # Yambo engine (MBPT: GW, BSE, TDDFT)
     # -------------------------------------------------------------------------
     "yambo_setup": StepTypeSpec(
@@ -1309,7 +1344,7 @@ def normalize_step_type_to_gen(step_type_spec: str) -> str:
         return spec.step_type_gen
 
     # Fallback: strip known engine prefixes (e.g., "qe_vc-relax" -> "vc-relax")
-    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_", "gpaw_", "siesta_", "xtb_", "yambo_", "abinit_", "gaussian_")
+    ENGINE_PREFIXES = ("qe_", "pyscf_", "orca_", "vasp_", "lammps_", "cp2k_", "w90_", "gpaw_", "siesta_", "xtb_", "yambo_", "abinit_", "gaussian_", "mace_")
     lower = normalized.lower()
     for prefix in ENGINE_PREFIXES:
         if lower.startswith(prefix):

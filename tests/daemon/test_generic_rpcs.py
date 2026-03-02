@@ -12,9 +12,9 @@ import qmatsuite.drivers
 class TestListEngineFamilies:
     """Test list_engine_families RPC."""
 
-    def test_returns_all_15_engines(self):
+    def test_returns_all_16_engines(self):
         engines = sorted(DriverRegistry.get_all_engines())
-        assert len(engines) == 15
+        assert len(engines) == 16
 
     def test_engine_has_required_fields(self):
         for family in DriverRegistry.get_all_engines():

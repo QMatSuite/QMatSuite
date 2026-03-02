@@ -1,0 +1,131 @@
+version: 1
+project:
+  meta:
+    ulid: 01KYTM73PCNZZBRXXA2P562N0N
+    name: Water MACE Molecular Dynamics
+    slug: water-mace-molecular-dynamics
+    path: .
+    kind: project
+  settings: {}
+structures:
+- meta:
+    ulid: 01KB0WHTXQKY50D2DJ0WCQK2MC
+    name: HO
+    slug: ho
+    path: structures/ho.json
+    kind: structure
+  data:
+    '@module': pymatgen.core.structure
+    '@class': Structure
+    charge: 0
+    lattice:
+      matrix:
+      - - 10.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 10.0
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 10.0
+      pbc:
+      - true
+      - true
+      - true
+      a: 10.0
+      b: 10.0
+      c: 10.0
+      alpha: 90.0
+      beta: 90.0
+      gamma: 90.0
+      volume: 1000.0000000000007
+    properties: {}
+    sites:
+    - species:
+      - element: O
+        occu: 1
+      abc:
+      - 0.5
+      - 0.5
+      - 0.5
+      properties: {}
+      label: O
+      xyz:
+      - 5.0
+      - 5.0
+      - 5.0
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.5
+      - 0.5967
+      - 0.5
+      properties: {}
+      label: H
+      xyz:
+      - 5.0
+      - 5.9670000000000005
+      - 5.0
+    - species:
+      - element: H
+        occu: 1
+      abc:
+      - 0.5
+      - 0.4673
+      - 0.0757
+      properties: {}
+      label: H
+      xyz:
+      - 5.0
+      - 4.673
+      - 0.757
+calculations:
+- meta:
+    ulid: 01KHSQ643JWWXC5WE7FQJN4X6X
+    name: Water MACE Molecular Dynamics
+    slug: water-mace-molecular-dynamics
+    path: calculations/water-mace-molecular-dynamics
+    kind: calculation
+  mode: normal
+  working_dir: raw
+  engine_family: mace
+  steps:
+  - meta:
+      name: md
+      slug: md
+      path: calculations/water-mace-molecular-dynamics/steps/md.step.yaml
+      kind: step
+      ulid: 01KWY9DTSR7MWNSN4305Q5718D
+    parameters:
+      model: medium
+      device: cpu
+      default_dtype: float64
+      md_ensemble: NVT
+      md_timestep: 0.5
+      md_nsteps: 100
+      md_temperature: 300.0
+      md_friction: 0.01
+      md_log_interval: 5
+    step_type_spec: mace_md
+  structure_ulid: 01KB0WHTXQKY50D2DJ0WCQK2MC
+meta:
+  ulid: mace_water_md
+  title: Water MACE Molecular Dynamics
+  subtitle: Water molecule NVT dynamics at 300 K with MACE-MP and Langevin thermostat
+  tags:
+  - mace
+  - molecular
+  - md
+  - mlp
+  - water
+  - tutorial
+  recommended_analysis: trajectory
+  difficulty: beginner
+  required_engine: mace
+  availability: open_source
+  generator_version: 1.0.0
+  corpus_engine: mace
+  corpus_case_id: water_md
+  corpus_checksum: d38470742ee660bb98fb459398fbacc34bc9d7ecebec77d1ec1a0161db2f65a9

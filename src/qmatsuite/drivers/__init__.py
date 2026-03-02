@@ -62,6 +62,9 @@ from qmatsuite.drivers import abinit
 # Gaussian driver (molecular quantum chemistry)
 from qmatsuite.drivers import gaussian
 
+# MACE driver (ML interatomic potential)
+from qmatsuite.drivers import mace
+
 # Note: All major drivers have been migrated
 
 logger.debug("Driver packages imported")

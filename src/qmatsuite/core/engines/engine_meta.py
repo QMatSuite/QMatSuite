@@ -247,6 +247,22 @@ ENGINE_META: Dict[str, Dict[str, Any]] = {
         "bundleable": False,
         "pip_requirements": {},
     },
+    "mace": {
+        "display_name": "MACE",
+        "engine_type": "python",
+        "required_binaries": [],
+        "optional_binaries": [],
+        "primary_binary_unix": None,
+        "primary_binary_windows": None,
+        "python_import": "mace",
+        "version_command": "import mace; print(mace.__version__)",
+        "version_regex": None,
+        "conda_package": None,
+        "conda_channel": None,
+        "env_vars": {},
+        "bundleable": False,
+        "pip_requirements": {"mace-torch": "mace"},
+    },
 }
 
 

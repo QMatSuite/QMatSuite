@@ -490,6 +490,91 @@ DOS-bands consistency is excellent: mean |delta| = 0.05 eV (excluding InSb, wher
 
 PBE band gap error correlates strongly with the experimental gap magnitude: narrower-gap compounds show larger fractional errors. This is a fundamental limitation of semilocal DFT, not a computational artifact. The two band-inverted compounds (InAs, InSb) represent the extreme case where PBE qualitatively fails, predicting metallic behavior instead of narrow-gap semiconductors.
 
+### 5.8 Efficiency Beyond Wall Time
+
+Wall time is a poor proxy for knowledge transfer efficiency because it is dominated by QE compute time, which is identical regardless of whether the agent knew the correct methodology from the start. A 20×20×20 SOC NSCF calculation takes the same time whether the agent discovered SOC after 5 failed attempts or applied it immediately. Better metrics are iteration count (`run_calculation` calls), failure count, and first-attempt success rate.
+
+#### 5.8.1 2.2b vs 2.2c: Compound-Matched Iteration Comparison
+
+For bands sessions (clean comparison — no methodology confound from EOS `quick_run` tool):
+
+| Compound | 2.2b QE runs | 2.2c run_calc | Δ | 2.2b wall | 2.2c wall | Δ wall | 2.2b tools | 2.2c tools |
+|----------|-------------|--------------|---|---------|---------|--------|----------|----------|
+| GaAs | 3 | 3 | 0 | 35m | 29m | -6m | 66 | 84 |
+| SiC | 2 | 2 | 0 | 5m | 4m | -1m | 46 | 40 |
+| AlAs | 1 | 2 | +1 | 4m | 19m | +15m | 41 | 43 |
+| BN | 1 | 2 | +1 | 7m | 6m | -1m | 41 | 39 |
+| GaP | 4 | 2 | **-2** | 14m | 23m | +9m | 66 | 50 |
+| InP | 1 | 1 | 0 | 14m | 12m | -2m | 38 | 39 |
+| AlN | 2 | 2 | 0 | 10m | 7m | -3m | 39 | 44 |
+| InAs | 2 | 2 | 0 | 77m | 26m | **-51m** | 54 | 52 |
+| **Total** | **16** | **16** | **0** | **166m** | **126m** | **-40m** | **391** | **391** |
+
+**Key finding**: Aggregate iteration count is identical (16 vs 16). Knowledge transfer did NOT reduce the number of calculation attempts for band structure workflows. However, wall time dropped by 40 min (24%), driven almost entirely by InAs bands (77→26 min). The InAs improvement came not from fewer iterations but from **avoiding the wrong path**: the 2.2b agent spent ~50 min attempting SOC as a workaround for InAs band inversion, while the 2.2c agent correctly identified band inversion as an inherent PBE limitation and stopped.
+
+For relax sessions, 3 of 8 2.2b sessions used EOS methodology (`quick_run` tool, 7-8 QE runs each) while all 2.2c sessions used vc-relax (`run_calculation`, 1-4 calls). This methodology divergence prevents direct iteration-count comparison for relax. The methodology shift itself may be meaningful — 2.2c agents had knowledge about vc-relax convergence protocols from seed knowledge, potentially favoring vc-relax over EOS.
+
+#### 5.8.2 DOS: First-Attempt Success Analysis
+
+The DOS phase has the cleanest efficiency data because `metrics_dos.json` explicitly records failures, retries, and API time:
+
+| Session | Compound | Total Runs | Failures | Retries | API min | Wall min | Searched? | First-Try |
+|---------|----------|-----------|---------|---------|---------|---------|----------|-----------|
+| 33 | GaN | 2 | 1 | 1 | 5.4 | 9.8 | No | Retry |
+| 34 | AlSb | 1 | 0 | 0 | 3.3 | 8.5 | Yes | Success |
+| 35 | InSb | 2 | 0 | 0 | 6.3 | 39.5 | Yes | Refinement |
+| 36 | ZnS | 2 | 1 | 1 | 7.0 | 14.0 | No | Retry |
+| 37 | CdTe | 1 | 0 | 0 | 5.2 | 9.3 | Yes | Success |
+| 38 | MgO | 1 | 0 | 0 | 3.4 | 4.4 | No | Success |
+| 39 | CaO | 2 | 1 | 1 | 3.9 | 9.6 | Yes | Retry* |
+| 40 | PbTe | 2 | 0 | 0 | 7.8 | 76.8 | Yes | Refinement |
+
+*CaO failed first, then used retrieved ZnS nbnd knowledge to diagnose and fix the failure. The retry WAS knowledge-assisted.
+
+**Failure distribution by search behavior** (DOS phase only, N=8):
+
+| | Searched (N=5) | Not Searched (N=3) |
+|---|---|---|
+| First-try success | 2 (40%) | 1 (33%) |
+| Refinement (deliberate, no failure) | 2 (40%) | 0 (0%) |
+| Retry (failure-driven) | 1 (20%) | 2 (67%) |
+
+Sessions that searched had a 20% failure rate vs 67% for non-searching sessions. N=8 is too small for statistical significance, but the direction is suggestive: agents that consult the knowledge base are less likely to encounter failures. The one searched session that failed (CaO) was the only session that used knowledge to FIX its failure — without the ZnS nbnd lesson, the CaO failure might have taken longer to resolve.
+
+**API time vs wall time**: Agent reasoning accounted for only 25% of total wall time (42.3 min API / 171.9 min wall). The remaining 75% was QE compute. PbTe DOS is the extreme: 7.8 min of agent reasoning, 69 min of QE compute (10% agent / 90% compute). This confirms that wall time is a poor efficiency metric — the agent's contribution is a small fraction.
+
+#### 5.8.3 PbTe Deep Comparison: Bands (S32) vs DOS (S40)
+
+PbTe is the strongest individual case study for knowledge transfer efficiency:
+
+| Metric | PbTe Bands (S32) | PbTe DOS (S40) | Change |
+|--------|-----------------|----------------|--------|
+| run_calculation calls | 48 | 2 | **-96%** |
+| Failures | Multiple (SSSP SOC, K_POINTS, S-matrix) | 0 | **Eliminated** |
+| Tool calls | 125 | 47 | -62% |
+| Wall time | 85 min | 76.8 min | -10% |
+| API time | N/A | 7.8 min | — |
+| search_knowledge | 1 call (seed only) | 1 call (seed + session) | — |
+| Correct methodology first? | No (SSSP → discovered no FR → PseudoDojo) | **Yes** (PseudoDojo NC-FR from start) | — |
+
+The 48→2 reduction in `run_calculation` calls (-96%) is the single most dramatic efficiency gain in the entire experiment series. The bands agent endured multiple failure cycles: SSSP pseudos lacked SOC support, K_POINTS format errors with non-collinear wavefunctions, S-matrix convergence issues. Each failure required diagnosis, parameter modification, and re-execution. The DOS agent skipped the entire discovery process because:
+1. **Knowledge DB** provided the finding: PbTe requires SOC, gap ~0.094 eV at L point
+2. **Project state** provided exact parameters from `PbTe_bands_SOC_v3`: `noncolin=.true.`, `lspinorb=.true.`, `ecutwfc=60`, `mixing_beta=0.3`, PseudoDojo NC-FR pseudopotentials
+
+Wall time decreased by only 10% (85→76.8 min) because the large SOC NSCF calculation on a 20×20×20 k-mesh dominates both sessions. The efficiency gain is entirely in agent iteration overhead, not compute time.
+
+#### 5.8.4 Summary: What Efficiency Metrics Show
+
+| Metric | Shows Improvement? | Interpretation |
+|--------|-------------------|---------------|
+| Wall time | No aggregate trend | Dominated by QE compute; wrong metric |
+| Iteration count (run_calc) | No aggregate trend (2.2b=2.2c=16 for bands) | Compound difficulty dominates aggregate |
+| Iteration count (case-specific) | **Yes**: PbTe 48→2, InAs 77→26 min | Knowledge avoids catastrophic wrong paths |
+| First-try failure rate (DOS) | Suggestive: 20% (searched) vs 67% (not searched) | N=8, not significant, but directionally correct |
+| API time (DOS only) | Agent is 25% of wall time | Real efficiency domain is agent reasoning, not compute |
+
+Knowledge transfer improves efficiency by **eliminating wrong-path exploration**, not by reducing the number of iterations for routine calculations. The value is concentrated in "hard" sessions where the correct methodology is non-obvious (SOC for heavy elements, consistent pseudopotentials for mixed compounds). For "easy" sessions (SiC, BN, MgO), knowledge transfer provides no measurable efficiency gain because the agent gets the methodology right without help.
+
 ---
 
 ## 6. Infrastructure Discoveries
@@ -551,18 +636,14 @@ All calculations used Quantum ESPRESSO. QMatSuite supports 15 engines, but the k
 
 ### 7.4 No Aggregate Learning Curve, but Targeted Efficiency Gains
 
-Knowledge transfer does not yet produce a measurable aggregate learning curve. Total wall time did NOT decrease across phases:
-- 2.2c: 254 min (16 sessions)
-- 2.2c-ext: 297 min (+17%, 16 sessions)
-- DOS: 172 min (8 sessions, not directly comparable)
+Knowledge transfer does not produce a measurable aggregate learning curve in either wall time or iteration count. Total wall time and `run_calculation` calls did NOT decrease across phases:
+- 2.2b bands total: 166 min, 16 QE runs
+- 2.2c bands total: 126 min, 16 run_calculation calls (same iteration count, 24% less time)
+- ext + DOS: higher iteration counts due to harder compounds
 
-Wall times are dominated by compound-specific difficulty (PbTe 85 min, CdTe 54 min, InAs 27 min) and stochastic agent behavior, not by knowledge accumulation. Each compound presents unique challenges (SOC requirements, pseudopotential compatibility, convergence quirks), so aggregate metrics wash out compound-specific gains.
+Aggregate metrics are dominated by compound-specific difficulty and stochastic agent behavior. However, iteration-based metrics (§5.8) tell a more nuanced story: knowledge transfer eliminates wrong-path exploration for specific hard compounds, reducing PbTe from 48→2 `run_calculation` calls (-96%) and InAs from 77→26 min wall time (-66%). The efficiency gain is concentrated where it matters most — sessions where the correct methodology is non-obvious. For easy compounds, knowledge transfer provides no measurable benefit because the agent succeeds without help.
 
-However, for specific compounds where prior sessions documented non-obvious failure modes, subsequent sessions show dramatic efficiency improvements:
-- **InAs bands**: 77 min (2.2b) → 26 min (2.2c) — **66% reduction**. The 2.2c agent used PBE bias knowledge to correctly diagnose mixed-pseudo artifacts, avoiding the trial-and-error that consumed 77 min in 2.2b.
-- **PbTe DOS** (session 40): Went directly to the correct SOC methodology (PseudoDojo NC-FR pseudos, `lspinorb=.true.`, `noncolin=.true.`) on the first attempt, combining knowledge DB (SOC gap expectation) with project state (exact parameters from PbTe_bands_SOC_v3). The bands session (session 32) had taken 85 min of trial-and-error to discover this methodology; the DOS session avoided that entirely.
-
-The value of knowledge transfer is in **avoiding catastrophic wrong paths** (mixed pseudos, missing SOC, wrong cell_dofree), not in incremental speedups for routine calculations. This "insurance" value is difficult to quantify in aggregate statistics but can save 30--60 min per session when it matters.
+The value of knowledge transfer is **insurance against catastrophic wrong paths** (missing SOC, mixed pseudopotentials, wrong cell_dofree), not incremental speedup for routine calculations. See §5.8 for the full compound-matched comparison, first-attempt success analysis, and PbTe deep dive.
 
 ### 7.5 Search Rate Below 65%
 

@@ -1,0 +1,174 @@
+{
+  "bundle_kind": "canonical",
+  "object_type": "convergence",
+  "render_meta": {
+    "axis_labels": {
+      "x": "Step",
+      "y": "Energy"
+    },
+    "units": {
+      "x": "",
+      "y": "eV"
+    },
+    "series_labels": [
+      "SCF Energy",
+      "SCF dE",
+      "Ionic Energy",
+      "Ionic Max Force"
+    ],
+    "reference_energy": null,
+    "reference_position": null,
+    "markers": [],
+    "extra": {
+      "n_ionic_steps": 4,
+      "converged": true,
+      "algorithm": "MACE-ML"
+    }
+  },
+  "provenance_meta": {
+    "schema_version": "1.0",
+    "object_type": "convergence",
+    "run_ulid": "01KJP0BHWFWJMJZJQS936FJSVA",
+    "calc_ulid": "01KJP0BHH6GFZ8X6BSBY934KXW",
+    "step_ulids": [
+      "01KJP0BHH6GFZ8X6BSBY934KXX"
+    ],
+    "gen_steps": [
+      "relax"
+    ],
+    "engine_name": "mace",
+    "source_files": [
+      {
+        "path": "raw/01KJP0BHH6GFZ8X6BSBY934KXX/results.json",
+        "size_bytes": 956,
+        "mtime": 1772412588.194927
+      },
+      {
+        "path": "raw/01KJP0BHH6GFZ8X6BSBY934KXX/trajectory.jsonl",
+        "size_bytes": 1836,
+        "mtime": 1772412588.1945472
+      }
+    ],
+    "parser_name": "mace_convergence",
+    "parser_version": "1.0",
+    "warnings": [],
+    "manifest_snapshot": null
+  },
+  "series": [
+    {
+      "x": [
+        0.0,
+        1.0,
+        2.0,
+        3.0
+      ],
+      "y": [
+        -10.671665812496098,
+        -10.671665812496098,
+        -10.671770936179549,
+        -10.67197586324053
+      ],
+      "x_label": "SCF Step",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "SCF Energy"
+    },
+    {
+      "x": [
+        0.0,
+        1.0,
+        2.0,
+        3.0
+      ],
+      "y": [
+        0.0,
+        0.0,
+        -0.00010512368345061418,
+        -0.00020492706098096392
+      ],
+      "x_label": "SCF Step",
+      "y_label": "dE",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "SCF dE"
+    },
+    {
+      "x": [
+        0.0,
+        1.0,
+        2.0,
+        3.0
+      ],
+      "y": [
+        -10.671665812496098,
+        -10.671665812496098,
+        -10.671770936179549,
+        -10.67197586324053
+      ],
+      "x_label": "Ionic Step",
+      "y_label": "Energy",
+      "x_unit": "",
+      "y_unit": "eV",
+      "name": "Ionic Energy"
+    },
+    {
+      "x": [
+        0.0,
+        1.0,
+        2.0,
+        3.0
+      ],
+      "y": [
+        0.06370642058385724,
+        0.06370642058385724,
+        0.05180223878697635,
+        0.0017706465253699995
+      ],
+      "x_label": "Ionic Step",
+      "y_label": "Max Force",
+      "x_unit": "",
+      "y_unit": "eV/A",
+      "name": "Ionic Max Force"
+    }
+  ],
+  "geometry_frames": null,
+  "arrays": {
+    "scf_step": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "scf_energy": [
+      -10.671665812496098,
+      -10.671665812496098,
+      -10.671770936179549,
+      -10.67197586324053
+    ],
+    "scf_de": [
+      0.0,
+      0.0,
+      -0.00010512368345061418,
+      -0.00020492706098096392
+    ],
+    "ionic_step": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "ionic_energy": [
+      -10.671665812496098,
+      -10.671665812496098,
+      -10.671770936179549,
+      -10.67197586324053
+    ],
+    "ionic_max_force": [
+      0.06370642058385724,
+      0.06370642058385724,
+      0.05180223878697635,
+      0.0017706465253699995
+    ]
+  }
+}

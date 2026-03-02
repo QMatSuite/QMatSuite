@@ -28,14 +28,14 @@ def test_make_error_shape():
 # list_engines
 # ---------------------------------------------------------------------------
 
-def test_list_engines_returns_all_15():
+def test_list_engines_returns_all_16():
     from qmatsuite.mcp.tools.list_engines import list_engines
 
     result = list_engines.fn()
     assert result["status"] == "success"
     data = result["data"]
-    assert data["total"] == 15
-    assert len(data["engines"]) == 15
+    assert data["total"] == 16
+    assert len(data["engines"]) == 16
 
 
 def test_list_engines_entry_shape():

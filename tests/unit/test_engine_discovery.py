@@ -40,7 +40,7 @@ class TestEngineProbeRegistry:
     def test_all_known_engines_have_probes(self):
         names = get_registered_engine_names()
         expected = {
-            "cp2k", "gpaw", "lammps", "orca", "psi4",
+            "cp2k", "gpaw", "lammps", "mace", "orca", "psi4",
             "pyscf", "qe", "qmcpack", "siesta", "vasp", "w90", "xtb",
             "yambo", "abinit", "gaussian",
         }
