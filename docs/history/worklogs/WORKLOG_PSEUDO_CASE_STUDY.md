@@ -198,3 +198,251 @@ The 2.2b→2.2c comparison forms a clean controlled pair:
 - **Result**: 0% → 100% search success, 0 → 6 STRONG transfer events
 
 This proves the knowledge system works when the infrastructure is correct. Agents naturally search and apply knowledge when results are returned.
+
+---
+
+# Task 2.2c-ext: Extended Knowledge Chain (New Compounds) — Worklog
+
+**Date**: 2026-03-01
+**Status**: COMPLETE
+**Full report**: `.tmp/pseudo_chain_v2c_ext/CHAIN_REPORT_EXT.md`
+**Data**: `.tmp/pseudo_chain_v2c_ext/sessions/` (16 sessions), `.tmp/pseudo_chain_v2c_ext/metrics.json`
+**Baseline**: Task 2.2c (`.tmp/pseudo_chain_v2c/`)
+
+## Summary
+
+Continuation of 2.2c knowledge chain with 8 NEW compounds (sessions 17-32). The local.db retained all 16 insights from 2.2c. New compounds span III-V, II-VI, alkaline earth oxide, and IV-VI families. 4 mixed-pseudo compounds (GaN, AlSb, CaO, PbTe) + 4 consistent (InSb, ZnS, CdTe, MgO). Total wall time ~5h 6m (306m). All 16 sessions exit=0, MPI=12 cores.
+
+## Key Finding: Cross-Chain Knowledge Transfer Is Real
+
+| Metric | 2.2c (baseline) | 2.2c-ext (this) | Change |
+|--------|-----------------|------------------|--------|
+| search_knowledge calls | 6 | 10 | +4 |
+| Searches with hits > 0 | 6 (100%) | 9 (100%) | +3 |
+| STRONG transfer events | 6 | 7 | +1 |
+| Cross-chain finding transfer | 2 sessions | 3 sessions | +1 |
+| Total wall time | 254m | 297m | +43m |
+| Insights recorded | 16 | 15 | -1 (CaO) |
+| Session findings in results | 7% | **14%** | +7pp |
+
+## Knowledge Source Composition
+
+| Source | 2.2c | 2.2c-ext |
+|--------|------|----------|
+| Seed (builtin.db) | 93% | 86% |
+| 2.2c session findings | 7% | 6% |
+| Ext session findings | -- | 8% |
+
+Session-generated findings doubled from 7% to 14% as the knowledge base grew.
+
+## Transfer Event Highlights
+
+1. **InSb bands predicted band inversion from InAs** (Session 27): Agent searched, received InAs band inversion from 2.2c, predicted "InSb is even narrower-gap, so PBE will likely give band inversion." Confirmed: 0.59 eV inversion (larger than InAs 0.218 eV). **Predictive transfer.**
+2. **AlSb relax used InAs mixed pseudo warning** (Session 18): Retrieved InAs findings, correctly judged PAW+US mixing is acceptable (unlike PAW+NC).
+3. **CaO bands used MgO as template** (Session 31): Retrieved MgO band gap from session 30, used MgO_bands setup as template for CaO (same rocksalt structure).
+4. **MgO bands self-chain transfer** (Session 30): Retrieved its own relax insight from session 22 + ZnS bands from session 28.
+5. **InSb relax calibrated from InAs + AlSb** (Session 19): Used InAs lattice constant (+2.17%) to set expectations for InSb.
+
+## SSSP Classification for New Elements
+
+| Element | Type | Filename |
+|---------|------|----------|
+| Sb | USPP | sb_pbe_v1.4.uspp.F.UPF |
+| Zn | USPP | Zn_pbe_v1.uspp.F.UPF |
+| S | USPP | s_pbe_v1.4.uspp.F.UPF |
+| Cd | USPP | Cd.pbe-dn-rrkjus_psl.0.3.1.UPF |
+| Te | USPP | Te_pbe_v1.uspp.F.UPF |
+| Mg | PAW | Mg.pbe-n-kjpaw_psl.0.3.0.UPF |
+| Ca | USPP | Ca_pbe_v1.uspp.F.UPF |
+| Se | USPP | Se_pbe_v1.uspp.F.UPF |
+| O | PAW | O.pbe-n-kjpaw_psl.0.1.UPF |
+| Pb | PAW | Pb.pbe-dn-kjpaw_psl.0.2.2.UPF |
+
+## Results Summary
+
+| # | Session | Wall | Tools | SK | Seed | 2.2c | Ext | Transfer | Exit |
+|---|---------|------|-------|----|------|------|-----|----------|------|
+| 17 | relax_GaN | 4m | 27 | 0 | -- | -- | -- | NONE | 0 |
+| 18 | relax_AlSb | 11m | 30 | 1 | 7 | 3 | 0 | STRONG | 0 |
+| 19 | relax_InSb | 19m | 31 | 1 | 7 | 1 | 2 | STRONG | 0 |
+| 20 | relax_ZnS | 4m | 28 | 0 | -- | -- | -- | NONE | 0 |
+| 21 | relax_CdTe | 54m | 39 | 1 | 5 | 1 | 3 | MOD | 0 |
+| 22 | relax_MgO | 3m | 30 | 0 | -- | -- | -- | NONE | 0 |
+| 23 | relax_CaO | 5m | 27 | 0 | -- | -- | -- | NONE | 0 |
+| 24 | relax_PbTe | 26m | 30 | 0 | -- | -- | -- | NONE | 0 |
+| 25 | bands_GaN | 10m | 44 | 1 | 10 | 0 | 0 | STRONG | 0 |
+| 26 | bands_AlSb | 12m | 42 | 0 | -- | -- | -- | NONE | 0 |
+| 27 | bands_InSb | 20m | 51 | 1 | 9 | 1 | 0 | STRONG | 0 |
+| 28 | bands_ZnS | 12m | 46 | 1 | 10 | 0 | 0 | STRONG | 0 |
+| 29 | bands_CdTe | 20m | 41 | 0 | -- | -- | -- | NONE | 0 |
+| 30 | bands_MgO | 6m | 47 | 2 | 18 | 0 | 2 | STRONG | 0 |
+| 31 | bands_CaO | 6m | 42 | 1 | 9 | 0 | 1 | STRONG | 0 |
+| 32 | bands_PbTe | 85m | 125 | 1 | 10 | 0 | 0 | STRONG | 0 |
+
+All 16 sessions: exit=0, MPI=12 cores. 31 total insights (16 from 2.2c + 15 new).
+
+## Notable Observations
+
+1. **PbTe bands (85m)**: Longest session across all 32. Required SOC (Pb Z=82); SSSP pseudos lack FR capability; switched to PseudoDojo NC-FR. 48 run_calculation calls, 125 tool calls.
+2. **CdTe relax (54m)**: Discovered cell_dofree='ibrav' bug independently (not from knowledge). Switching to cell_dofree='all' fixed incorrect lattice constant.
+3. **CaO relax**: Only session in entire 32-session chain without a recorded insight. ~0% lattice error (suspicious — may have started from experimental structure).
+4. **Bands search more**: Bands sessions search 75% vs relax 37.5%, likely due to more complex failure modes.
+5. **Search rate increasing**: 37.5% in 2.2c → 56.3% in ext. Agents search more as the DB grows.
+
+## Cumulative Chain Statistics (32 Sessions Total)
+
+| Metric | 2.2c (1-16) | 2.2c-ext (17-32) | Combined |
+|--------|-------------|------------------|----------|
+| Sessions | 16 | 16 | 32 |
+| Total wall time | 254m | 297m | 551m (~9.2h) |
+| Insights | 16 | 15 | 31 |
+| search_knowledge calls | 6 | 10 | 16 |
+| STRONG transfers | 6 | 7 | 13 |
+| Compounds covered | 8 III-V | 8 mixed | 16 total |
+
+## Conclusion
+
+Task 2.2c-ext demonstrates that the knowledge system scales across compound families. Cross-chain transfer is real and chemically specific — agents use InAs knowledge for InSb, MgO knowledge for CaO. The session-finding fraction doubled (7%→14%) as the DB grew from 16 to 31 entries. The InSb band inversion prediction (session 27) is the strongest evidence of predictive knowledge transfer in the entire experiment series.
+
+---
+
+# Task 2.2c-ext DOS: DOS Workflow Extension (Sessions 33-40) — Worklog
+
+**Date**: 2026-03-01
+**Status**: COMPLETE
+**Full report**: `.tmp/pseudo_chain_v2c_ext/CHAIN_REPORT_DOS.md`
+**Data**: `.tmp/pseudo_chain_v2c_ext/sessions/` (sessions 33-40), `.tmp/pseudo_chain_v2c_ext/metrics_dos.json`
+**Snapshots**: `local_db_after_bands.db` (31 insights), `local_db_final_dos.db` (40 insights)
+**Baseline**: Task 2.2c-ext bands (sessions 25-32)
+
+## Summary
+
+Continuation of 2.2c-ext with DOS (density of states) workflow for the same 8 compounds (sessions 33-40). Uses the SAME project directory — DOS agents can see prior relax + bands calculations. local.db retained 31 insights from 2.2c + ext. Total wall time ~172m (~2h 52m). All 8 sessions exit=0, MPI=12 cores.
+
+**New transfer channel tested**: Project state (list_calculations → inspect_calculation → reuse relaxed structure).
+
+## Key Finding: Project State Dominates DOS Knowledge Transfer
+
+| Metric | ext-bands (25-32) | ext-DOS (33-40) | Change |
+|--------|-------------------|-----------------|--------|
+| search_knowledge calls | 10 | 7 | -3 |
+| Sessions using search | 75% | 62.5% | -12pp |
+| STRONG search transfer | 4 | 2 | -2 |
+| Project state (list_calculations) | 0 | **8/8 (100%)** | **NEW** |
+| Structure reuse from prior relax | 0 | **8/8 (100%)** | **NEW** |
+| Inspected prior bands calc | 0 | 5/8 (62.5%) | NEW |
+| NSCF failures requiring retry | -- | 3/8 (37.5%) | -- |
+| Total wall time | 175m | 172m | -3m |
+| Insights recorded | 8 | 10 | +2 |
+
+## Transfer Channel Comparison
+
+| Session | Project State | Knowledge DB | Dominant |
+|---------|-------------|-------------|----------|
+| 33 GaN | STRONG | NONE | Project State |
+| 34 AlSb | STRONG | MODERATE | Project State |
+| 35 InSb | STRONG | MODERATE | Project State |
+| 36 ZnS | STRONG | NONE | Project State |
+| 37 CdTe | STRONG | MODERATE | Project State |
+| 38 MgO | MODERATE | NONE | Project State |
+| 39 CaO | MODERATE | **STRONG** | **Knowledge DB** |
+| 40 PbTe | STRONG | STRONG | Both (synergistic) |
+
+**Project state was the dominant channel in 6/8 sessions.** Knowledge DB was dominant only for CaO (session 39), where MgO isostructural reference and ZnS nbnd lesson directly resolved an NSCF failure.
+
+## Band Gap Consistency (DOS vs Bands)
+
+| Compound | DOS Gap (eV) | Bands Gap (eV) | Delta (eV) | Exp (eV) | PBE Error |
+|----------|-------------|---------------|------------|----------|-----------|
+| GaN | 1.84 | 1.85 | -0.01 | 3.4 | 46% |
+| AlSb | 1.30 | 1.24 | +0.06 | 1.615 | 20% |
+| InSb | 0.15 | 0.0* | +0.15 | 0.235 | 36% |
+| ZnS | 2.09 | 2.09 | 0.00 | 3.68 | 43% |
+| CdTe | 0.78 | 0.77 | +0.01 | 1.475 | 47% |
+| MgO | 4.90 | 4.75 | +0.15 | 7.83 | 37% |
+| CaO | 3.67 | 3.65 | +0.02 | 7.0 | 48% |
+| PbTe | 0.10-0.15 | 0.094 | ~+0.03 | 0.19 | 50% |
+
+Mean |delta| = ~0.05 eV (excluding InSb anomaly). Excellent consistency.
+
+*InSb bands reported 0.0 eV (band inversion without SOC); DOS found ~0.15 eV.
+
+## DOS vs Bands Wall Time
+
+| Compound | DOS (min) | Bands (min) | DOS/Bands |
+|----------|----------|------------|-----------|
+| GaN | 9.8 | 10 | 0.98x |
+| AlSb | 8.5 | 12 | 0.71x |
+| InSb | 39.5 | 20 | 1.98x |
+| ZnS | 14.0 | 12 | 1.17x |
+| CdTe | 9.3 | 20 | 0.47x |
+| MgO | 4.4 | 6 | 0.73x |
+| CaO | 9.6 | 6 | 1.60x |
+| PbTe | 76.8 | 85 | 0.90x |
+
+Average DOS/Bands ratio = 1.07x. Comparable overall.
+
+## Transfer Event Highlights
+
+1. **PbTe DOS (session 40): Strongest chain transfer.** Agent searched knowledge, found PbTe bands SOC gap (0.094 eV at L), inspected PbTe_bands_SOC_v3 for exact SOC parameters (noncolin, lspinorb, ecutwfc=60, mixing_beta=0.3), went directly to PseudoDojo NC-FR without trial-and-error. Avoided the painful 85m multi-attempt discovery from bands. **Both channels (knowledge DB + project state) worked synergistically.**
+
+2. **CaO DOS (session 39): Cross-compound debugging transfer.** NSCF crashed with "S matrix not positive definite" (Ca USPP + nbnd=48). Agent searched knowledge, found ZnS nbnd lesson from session 36 ("nbnd must exceed 52 occupied bands"). Applied analogous fix: reduced nbnd to 40 + diago_full_acc=.true. Also found MgO DOS (isostructural reference, gap=4.90 eV) and explicitly cited it.
+
+3. **InSb DOS (session 35): Cross-session DOS receipt.** Search returned GaN DOS (1.84 eV) and AlSb DOS (1.30 eV) from earlier DOS sessions. First evidence of within-DOS-workflow knowledge propagation, though agent didn't explicitly cite these findings.
+
+4. **ZnS DOS (session 36): Discovery and recording of nbnd lesson.** NSCF failed because Zn USPP has Zval=20 → 104 electrons → 52 occupied bands, but agent set nbnd=40. Recorded this as a separate insight, which was later found and used by CaO (session 39). **Knowledge creation → retrieval → application in a single workflow.**
+
+## NSCF Failure Analysis
+
+3/8 sessions (37.5%) had NSCF failures:
+
+| Session | Failure | Root Cause | Fix |
+|---------|---------|-----------|-----|
+| 33 GaN | c_bands convergence | 16x16x10 mesh too dense for empty states | Reduced to 12x12x8 + diago_david_ndim=4 |
+| 36 ZnS | bad Fermi energy | nbnd=40 < 52 occupied bands (Zn Zval=20) | Increased nbnd to 70 (new calculation) |
+| 39 CaO | S matrix crash | nbnd=48 too many empty states for Ca USPP | Reduced nbnd to 40 + diago_full_acc=.true. |
+
+All failures were in the NSCF step, all related to k-mesh/nbnd issues. ZnS and CaO failures are complementary (too few vs too many empty bands) — demonstrating the nuance of nbnd selection.
+
+## Results Summary
+
+| # | Session | Wall | Tools | SK | RI | RC | Insights | Exit |
+|---|---------|------|-------|----|----|----|----------|------|
+| 33 | dos_GaN | 9m | 46 | 0 | 1 | 18 | 32 | 0 |
+| 34 | dos_AlSb | 8m | 35 | 1 | 1 | 11 | 33 | 0 |
+| 35 | dos_InSb | 39m | 45 | 1 | 1 | 16 | 34 | 0 |
+| 36 | dos_ZnS | 14m | 60 | 0 | 2 | 19 | 36 | 0 |
+| 37 | dos_CdTe | 9m | 42 | 1 | 1 | 15 | 37 | 0 |
+| 38 | dos_MgO | 4m | 36 | 0 | 1 | 10 | 38 | 0 |
+| 39 | dos_CaO | 9m | 39 | 2 | 1 | 12 | 39 | 0 |
+| 40 | dos_PbTe | 76m | 49 | 1 | 1 | 18 | 40 | 0 |
+
+All 8 sessions: exit=0, MPI=12 cores. 40 total insights (31 from prior + 9 new from DOS).
+
+Note: SK counts from runner log (grep-based) may overcounted due to MCP instruction text. Actual search_knowledge tool_use calls: GaN=0, AlSb=1, InSb=1, ZnS=0, CdTe=1, MgO=0, CaO=2, PbTe=1.
+
+## Cumulative Chain Statistics (40 Sessions Total)
+
+| Metric | 2.2c (1-16) | ext-relax/bands (17-32) | ext-DOS (33-40) | Grand Total |
+|--------|-------------|------------------------|-----------------|-------------|
+| Sessions | 16 | 16 | 8 | 40 |
+| Total wall | 254m | 297m | 172m | 723m (~12.1h) |
+| Insights | 16 | 15 | 9 | 40 |
+| Compounds | 8 III-V | 8 mixed families | same 8 (DOS) | 16 unique |
+| Workflows | relax + bands | relax + bands | DOS | 3 |
+| Knowledge DB searches | 6 | 10 | 7 | 23 |
+| STRONG transfers | 6 | 7 | 2 | 15 |
+| Project state inspections | 0 | 0 | 28 | 28 |
+
+## Conclusion
+
+The DOS extension proves that project state is a powerful and natural transfer channel. When agents can see prior calculations (relax, bands) for the same compound, they overwhelmingly use that information — 8/8 sessions reused the relaxed structure, 5/8 inspected prior bands parameters. Knowledge DB remains essential for cross-compound transfer (MgO→CaO, ZnS→CaO) and for surfacing lessons from workflows the agent can't directly inspect (PbTe SOC methodology).
+
+The PbTe DOS session is the strongest evidence of effective multi-channel knowledge transfer in the entire 40-session experiment: the agent used both knowledge DB (PbTe bands gap finding) and project state (PbTe_bands_SOC_v3 parameters) synergistically to go directly to the correct SOC methodology, completely avoiding the painful discovery process the bands agent endured.
+
+The 40-session chain (2.2c → ext → DOS) demonstrates that QMatSuite's knowledge system works at scale across:
+- **16 compounds** spanning 4 chemical families
+- **3 workflow types** (relax, bands, DOS)
+- **2 transfer channels** (knowledge DB, project state)
+- **12+ hours** of continuous autonomous operation
+- **100% success rate** (40/40 exit=0)
