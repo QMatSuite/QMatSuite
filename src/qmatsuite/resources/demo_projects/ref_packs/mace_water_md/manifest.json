@@ -7,7 +7,7 @@
   "object_types": {
     "trajectory": {
       "file": "trajectory.json",
-      "sha256": "84124b7d17ccbcbd41ae9ff8c5b5e76f4da8df72997ccec01c1841167b18a393"
+      "sha256": "4be2e67de11aa947e889f798cf25045db5ac07ee41fe0a10cefb72b401b508f8"
     }
   }
 }

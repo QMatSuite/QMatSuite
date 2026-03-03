@@ -35,7 +35,7 @@
     "engine_name": "mace",
     "source_files": [
       {
-        "path": "/Users/hh7465/QMatSuite/.tmp/refpack_runs/mace_water_md/mace_water_md/calculations/water-mace-molecular-dynamics/raw/01KJP0BQ4RMW01GDR7XY2MSHCP/trajectory.jsonl",
+        "path": "<TMPDIR>/refpack_runs/mace_water_md/mace_water_md/calculations/water-mace-molecular-dynamics/raw/01KJP0BQ4RMW01GDR7XY2MSHCP/trajectory.jsonl",
         "size_bytes": 65805,
         "mtime": 1772412604.036614
       }

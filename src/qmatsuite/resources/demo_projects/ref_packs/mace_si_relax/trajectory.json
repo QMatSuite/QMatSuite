@@ -34,7 +34,7 @@
     "engine_name": "mace",
     "source_files": [
       {
-        "path": "/Users/hh7465/QMatSuite/.tmp/refpack_runs/mace_si_relax/mace_si_relax/calculations/silicon-mace-relaxation/raw/01KJP0BHH6GFZ8X6BSBY934KXX/trajectory.jsonl",
+        "path": "<TMPDIR>/refpack_runs/mace_si_relax/mace_si_relax/calculations/silicon-mace-relaxation/raw/01KJP0BHH6GFZ8X6BSBY934KXX/trajectory.jsonl",
         "size_bytes": 1836,
         "mtime": 1772412588.1945472
       }

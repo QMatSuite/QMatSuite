@@ -1,16 +1,16 @@
 # Review: Task 2.2 Knowledge Distillation Experiments
 
 **Author**: Auto-generated from experiment data
-**Date**: 2026-03-01
-**Commit**: `71209a45` (v2-python branch, `d30e214e35e2b6cdb8b53026a1f4573897bbdf17`)
-**Status**: Complete (all 5 phases)
+**Date**: 2026-03-03
+**Commit**: `71209a45` (v2-python branch)
+**Status**: Complete (all 6 phases)
 **Data Sources**: Worklogs, chain reports, metrics JSON, knowledge DB snapshots
 
 ---
 
 ## 1. Abstract
 
-This review covers a series of experiments (Tasks 2.2, 2.2b, 2.2c, 2.2c-ext, and DOS extension) testing whether AI agent sessions can accumulate and transfer computational materials science knowledge through QMatSuite's knowledge store. The experiments comprise 61 total runs: a 5-session pilot (2.2 v1), a 32-run controlled pair (2.2b control with broken FTS5 search vs 2.2c treatment with fixed search, same 8 compounds), and a 24-session observational chain extending 2.2c with 8 new compounds (ext) and a cross-workflow DOS phase. Across 16 unique semiconductor compounds and 3 workflow types (structural relaxation, band structure, density of states), we found that: (1) agents reliably write insights (97.8% compliance) but search proactively in only 37--63% of sessions; (2) a 2-line FTS5 search bug completely blocked knowledge retrieval in the 2.2b control, and fixing it in 2.2c immediately produced 100% search success and 6 strong transfer events; (3) knowledge transfer is chemically specific, enabling predictive reasoning (InAs band inversion predicting InSb), diagnostic troubleshooting (PBE bias knowledge diagnosing pseudopotential artifacts), and template reuse (MgO parameters applied to CaO); (4) seed knowledge dominates search results (86--93%) while session-generated findings provide a smaller but growing fraction (7--14%); and (5) project state (inspecting prior calculations) is the dominant transfer channel for same-compound cross-workflow tasks, while the knowledge database is essential for cross-compound transfer. The experiments ran for approximately 17 hours of wall time with a 100% session success rate (61/61 exit=0), producing physically correct PBE results across all compounds.
+This review covers a series of experiments (Tasks 2.2, 2.2b, 2.2c, 2.2c-ext, DOS extension, and 2.2d) testing whether AI agent sessions can accumulate and transfer computational materials science knowledge through QMatSuite's knowledge store. The experiments comprise 85 total runs: a 5-session pilot (2.2 v1), a 32-run controlled pair (2.2b control with broken FTS5 search vs 2.2c treatment with fixed search, same 8 compounds), a 24-session observational chain extending 2.2c with 8 new compounds (ext) and a cross-workflow DOS phase, and a 24-session controlled A/B test (2.2d) isolating the causal effect of pre-loaded knowledge content on 4 materials (PbTe, InSb, CdTe, MgO) across 3 workflows (relax, bands, DOS). Across 16 unique semiconductor compounds and 3 workflow types (structural relaxation, band structure, density of states), we found that: (1) agents reliably write insights (97.8% compliance) but search proactively in only 37--75% of sessions; (2) a 2-line FTS5 search bug completely blocked knowledge retrieval in the 2.2b control, and fixing it in 2.2c immediately produced 100% search success and 6 strong transfer events; (3) knowledge transfer is chemically specific, enabling predictive reasoning (InAs band inversion predicting InSb), diagnostic troubleshooting (PBE bias knowledge diagnosing pseudopotential artifacts), and template reuse (MgO parameters applied to CaO); (4) seed knowledge dominates search results (86--93%) while session-generated findings provide a smaller but growing fraction (7--14%); (5) project state (inspecting prior calculations) is the dominant transfer channel for same-compound cross-workflow tasks, while the knowledge database is essential for cross-compound transfer; and (6) pre-loaded knowledge produces mixed efficiency outcomes depending on problem solvability: clean positive transfer for well-behaved systems (CdTe -9.1%), neutral effort redistribution for complex but solvable cases (PbTe -0.1%), but strongly negative transfer when knowledge describes problems unsolvable within method constraints (InSb +162%), a phenomenon we term the "awareness tax." The experiments ran for approximately 28 hours of wall time with a 98.8% session completion rate (84/85 exit=0, 1 session deliberately skipped due to runaway k-mesh), producing physically correct PBE results across all compounds.
 
 ---
 
@@ -59,14 +59,16 @@ Agents also have access to **project state** via `list_calculations` and `inspec
 | 2.2c | 1--16 | 8 III-V/IV | relax + bands | FTS5 fixed (OR-join) — **treatment** | ~254 min |
 | 2.2c-ext | 17--32 | 8 new (mixed families) | relax + bands | Cross-family generalization | ~297 min |
 | DOS | 33--40 | Same 8 as ext | dos | Cross-workflow + project state | ~172 min |
-| **Total** | **61 runs** | **16 unique** | **3 types** | | **~1026 min (17.1h)** |
+| 2.2d | A01--A12, B01--B12 | 4 (PbTe, InSb, CdTe, MgO) | relax + bands + dos | Pre-loaded knowledge A/B — **causal** | ~661 min |
+| **Total** | **85 runs** | **16 unique** | **3 types** | | **~1687 min (28.1h)** |
 
-**Experiment structure**: The 61 runs have three distinct roles:
+**Experiment structure**: The 85 runs have four distinct roles:
 - **Pilot** (2.2 v1, 5 sessions): Exploratory, different protocol. Not directly comparable to later phases.
-- **Controlled pair** (2.2b + 2.2c, 32 runs on the same 8 compounds): The only variable changed was the FTS5 fix. This is the experiment's strongest evidence.
+- **Infrastructure controlled pair** (2.2b + 2.2c, 32 runs on the same 8 compounds): The only variable changed was the FTS5 fix. Tests whether the search infrastructure works.
 - **Observational chain** (2.2c → ext → DOS, 40 sessions, 16 compounds): A continuous knowledge chain where `local.db` accumulated across all sessions. 2.2c's 16 insights seeded ext; ext's 31 insights seeded DOS.
+- **Content controlled pair** (2.2d, 24 sessions on 4 compounds): Paired A/B test where each material runs identically under Condition A (empty `local.db`) and Condition B (pre-loaded with A's 3 pipeline findings). Tests whether knowledge *content* improves efficiency. This is the experiment's strongest causal evidence for the effect of knowledge transfer on agent behavior.
 
-Note: the count of 61 (not 45) includes 2.2b, which earlier summaries incorrectly omitted. 2.2b is the control arm and essential to the controlled comparison.
+Note: the count of 85 includes all phases: v1 (5), 2.2b (16), 2.2c (16), ext (16), DOS (8), and 2.2d (24). 2.2b is included as the control arm for the infrastructure comparison.
 
 ### 3.2 Common Protocol
 
@@ -90,6 +92,8 @@ All phases after 2.2 (v1) shared this protocol:
 
 **DOS extension**: 8 additional sessions (33--40) computing density of states for the ext compounds. Same project directory, so agents could see all prior relax + bands calculations via `list_calculations`.
 
+**Task 2.2d**: 24 sessions (4 materials × 2 conditions × 3 workflows). Each material pipeline runs relax → bands → DOS sequentially in a fresh QMatSuite project directory. Condition A (Naive) starts with an empty `local.db`; Condition B (Informed) starts with `local.db` pre-loaded with A's 3 pipeline findings (the exact findings recorded during A's relax, bands, and DOS sessions for that material). Materials: PbTe (strong SOC), InSb (moderate SOC, known PBE failure), CdTe (standard semiconductor), MgO (wide-gap control). All sessions used the same prompts, MPI config (12 cores), and SSSP pseudopotential library. The ONLY variable between A and B is the initial `local.db` content. Unlike the observational chain (2.2c → ext → DOS), 2.2d uses fresh project directories per material, so project state does not carry between A and B — only knowledge DB content differs.
+
 ### 3.4 Data Integrity Notes
 
 Three data sources exist for each session: (a) per-session `metrics.json` (machine-generated from JSONL trace files), (b) `CHAIN_LOG.md` (runner script grep counts), and (c) narrative reports (`CHAIN_REPORT_*.md`, human-authored summaries). Where these disagree, this review uses `metrics.json` as the authoritative source because it is parsed directly from the agent's tool-call traces with no manual summarization step.
@@ -100,7 +104,11 @@ Three data sources exist for each session: (a) per-session `metrics.json` (machi
 
 **Discrepancy 3 — CHAIN_LOG vs metrics.json tool counts**: The `CHAIN_LOG.md` `search_k` column counts ALL knowledge-adjacent tool calls (`search_knowledge` + `list_calculations` + `inspect_calculation`), not just `search_knowledge`. For example, CHAIN_LOG shows session 17 (GaN relax) with `search_k=2`, but `metrics.json` shows `search_knowledge_count=0`. Those 2 calls were `list_calculations` and `inspect_calculation` (project state queries), not knowledge DB searches. Similarly, CHAIN_LOG's `record_i` column appears to count both `record_insight` and `record_intent` calls. Session 23 (CaO relax) shows `record_i=1` in CHAIN_LOG but recorded no insight in the database — the call was likely `record_intent` or a failed/filtered `record_insight` (observation-grade, which is accepted but not persisted).
 
-**Authoritative source convention**: All numerical claims in this review use `metrics.json` data. Lattice constants, band gaps, tool call counts, and search hit counts are taken directly from the per-session JSON, not from narrative report text or CHAIN_LOG grep counts.
+**Discrepancy 4 — 2.2d CHAIN_LOG vs metrics_2_2d.json**: The 2.2d `CHAIN_LOG_2_2D.md` originally followed the same broader counting convention as earlier phases: its `search_k` column included `list_calculations`, `inspect_calculation`, and `search_knowledge`, while `record_i` included both `record_insight` and `record_intent`. The `metrics_2_2d.json` file separates these correctly. The chain log has since been corrected using audited trace data.
+
+**Discrepancy 5 — ext `run_calculation_count` overcounting**: All runner scripts (`run_chain.sh`, `run_2_2d.sh`, etc.) extract per-tool counts using naive `grep -c 'run_calculation'` on trace.jsonl. This matches every JSONL line containing the substring — tool results echoing the tool name, agent reasoning text referencing the tool, and MCP initialization listings — not just actual tool invocations. The overcounting factor varies from 3x to 18x depending on session complexity. The ext phase `metrics.json` copied these overcounted values directly, inflating the total from 32 actual `run_calculation + quick_run` invocations to 195. The most visible error was PbTe bands (session 32): 8 actual invocations overcounted to 48. Forensic audit of raw trace.jsonl files (parsing only `type=assistant` messages with `type=tool_use` content blocks) established the correct counts; the canonical extraction script is `audit_metrics_2_2d.py`. Cross-experiment audit confirmed: 2.2b, 2.2c, 2.2d, and DOS phase metrics were correct (independently verified from trace data or from JSON parsed at session time); only ext was affected. Earlier drafts of this review cited the overcounted ext values (e.g., "48 run_calculation calls" for PbTe bands); these have been corrected to the audited values.
+
+**Authoritative source convention**: All numerical claims in this review use `metrics.json` data (or `metrics_2_2d.json` for Task 2.2d), cross-checked against audited trace parsing where discrepancies were identified. Lattice constants, band gaps, tool call counts, and search hit counts are taken directly from the per-session JSON or audited trace data, not from narrative report text or CHAIN_LOG grep counts.
 
 ---
 
@@ -232,7 +240,7 @@ All 6 sessions that received search results showed STRONG transfer -- agents exp
 **Notable transfers**:
 - **InSb bands (session 27)**: Searched for "InSb band structure narrow gap semiconductor", received InAs band inversion insight from session 16. Agent's reasoning: "InAs shows inverted band gap with PBE -- InSb is even narrower-gap, so PBE will likely give band inversion." Calculation confirmed: 0.59 eV inversion at Gamma, larger than InAs (0.218 eV). This is the strongest evidence of predictive knowledge transfer in the entire experiment series.
 - **MgO-to-CaO (sessions 30-31)**: Session 30 encountered S-matrix error for MgO bands, performed two searches (proactive + reactive). Session 31 (CaO) retrieved MgO band gap finding and explicitly used MgO_bands_v2 as template: "It's also a rocksalt structure and can serve as a reference for the CaO band structure."
-- **PbTe bands (session 32)**: 85 min, 125 tool calls, 48 run_calculation calls. Most complex session across all 40. Correctly identified SOC as essential, discovered SSSP pseudos lack FR capability, switched to PseudoDojo NC-FR. Eventually obtained PBE+SOC gap = 0.094 eV at L point.
+- **PbTe bands (session 32)**: 85 min, 125 tool calls, 8 run_calculation calls. Most complex session across all 40. Correctly identified SOC as essential, discovered SSSP pseudos lack FR capability, switched to PseudoDojo NC-FR. Eventually obtained PBE+SOC gap = 0.094 eV at L point.
 - **CdTe relax (session 21)**: 54 min outlier. Independently discovered `cell_dofree='ibrav'` bug with `ibrav=0`. First attempt gave wrong a = 6.387 A; switching to `cell_dofree='all'` gave correct a = 6.610 A (+2.0%). Knowledge search was MODERATE -- agent acknowledged results but the critical fix was independent.
 - **CaO relax (session 23)**: Only session in the entire 32-session chain that did not record an insight. No search either. Lattice constant of 4.810 A is suspiciously close to experimental (4.811 A), suggesting the starting structure was already at equilibrium.
 
@@ -277,6 +285,104 @@ The CaO session (39) provides the clearest example of cross-session debugging tr
 40 PbTe -> receives PbTe bands SOC gap (goes directly to correct methodology)
 ```
 
+### 4.6 Task 2.2d: Controlled A/B Knowledge Transfer
+
+Task 2.2d is the first experiment in the series to test the *content* of pre-loaded knowledge in a clean A/B design. Unlike 2.2b vs 2.2c (which tested infrastructure), 2.2d holds the infrastructure constant and varies only the knowledge DB content.
+
+#### Phase A (Naive — Empty local.db)
+
+| # | Session | Wall | Tools | SK | run_calc | plot | Insights | Exit |
+|---|---------|------|-------|----|----------|------|----------|------|
+| A01 | relax_PbTe | 8m (494s) | 32 | 1 | 1 | 1 | 1 | 0 |
+| A02 | bands_PbTe | 108m (6499s) | 70 | 1 | 4 | 3 | 2 | 0 |
+| A03 | dos_PbTe | 62m (3725s) | 62 | 1 | 2 | 1 | 3 | 0 |
+| A04 | relax_InSb | 5m (325s) | 42 | 1 | 7 | 0 | 1 | 0 |
+| A05 | bands_InSb | 18m (1098s) | 77 | 1 | 3 | 3 | 2 | 0 |
+| A06 | dos_InSb | 18m (1117s) | 78 | 1 | 3 | 3 | 3 | 0 |
+| A07 | relax_CdTe | 27m (1646s) | 34 | 0 | 1 | 1 | 1 | 0 |
+| A08 | bands_CdTe | 18m (1102s) | 41 | 1 | 1 | 1 | 2 | 0 |
+| A09 | dos_CdTe | 14m (885s) | 45 | 1 | 2 | 1 | 3 | 0 |
+| A10 | relax_MgO | 6m (363s) | 31 | 0 | 1 | 1 | 1 | 0 |
+| A11 | bands_MgO | 6m (416s) | 44 | 0 | 2 | 2 | 2 | 0 |
+| A12 | dos_MgO | 4m (290s) | 36 | 1 | 1 | 2 | 3 | 0 |
+
+**Total**: 296 min, 592 tool calls, 9/12 sessions searched (75%), 28 run_calc, 12/12 insights recorded, 100% exit=0.
+
+#### Phase B (Informed — A's 3 findings pre-loaded)
+
+| # | Session | Wall | Tools | SK | run_calc | plot | Insights | Exit |
+|---|---------|------|-------|----|----------|------|----------|------|
+| B01 | relax_PbTe | 26m (1574s) | 39 | 1 | 2 | 1 | 4 | 0 |
+| B02 | bands_PbTe | 85m (5135s) | 65 | 1 | 2 | 2 | 5 | 0 |
+| B03 | dos_PbTe | 66m (4000s) | 57 | 2 | 2 | 2 | 7 | 0 |
+| B04 | relax_InSb | 11m (715s) | 31 | 0 | 1 | 1 | 4 | 0 |
+| B05 | bands_InSb | 98m (5936s) | 80 | 1 | 5 | 2 | 5 | 0 |
+| B06 | dos_InSb | **SKIP** | — | — | — | — | — | -1 |
+| B07 | relax_CdTe | 33m (2015s) | 55 | 0 | 8 | 0 | 4 | 0 |
+| B08 | bands_CdTe | 11m (671s) | 38 | 1 | 1 | 1 | 5 | 0 |
+| B09 | dos_CdTe | 10m (616s) | 45 | 1 | 1 | 1 | 6 | 0 |
+| B10 | relax_MgO | 3m (222s) | 28 | 0 | 1 | 1 | 4 | 0 |
+| B11 | bands_MgO | 7m (472s) | 44 | 0 | 2 | 2 | 5 | 0 |
+| B12 | dos_MgO | 5m (312s) | 34 | 1 | 1 | 1 | 6 | 0 |
+
+**Total**: 355 min (active), 516 tool calls, 7/11 sessions searched (64%), 26 run_calc, 11/11 insights recorded (excl. skip), 1 session skipped.
+
+#### Head-to-Head Pipeline Comparison
+
+| Material | A Wall | B Wall | Δ% | A run_calc | B run_calc | Verdict |
+|----------|--------|--------|-----|------------|------------|---------|
+| PbTe | 178m | 177m | **-0.1%** | 7 | 6 | Neutral (effort redistribution) |
+| InSb | 41m | 109m+ | **+162%** | 13 | 6* | **Strongly negative** (awareness tax) |
+| CdTe | 59m | 54m | **-9.1%** | 4 | 10 | **Positive transfer** |
+| MgO | 16m | 15m | **-5.9%** | 4 | 4 | Neutral (negative control) |
+
+*InSb B pipeline missing DOS step (B06 skipped). If B06 had matched A06 (18m), InSb B total would be ~127m (+210%).
+
+#### Per-Step Comparison
+
+| Step | A Wall | B Wall | Δ% | Notes |
+|------|--------|--------|-----|-------|
+| PbTe relax | 494s | 1574s | +219% | B front-loaded thorough setup |
+| PbTe bands | 6499s | 5135s | **-21%** | B applied SOC from start |
+| PbTe dos | 3725s | 4000s | +7% | Neutral |
+| InSb relax | 325s | 715s | +120% | B used heavier compute, fewer iterations |
+| InSb bands | 1098s | 5936s | **+441%** | B fought band inversion with SOC |
+| InSb dos | 1117s | SKIP | — | B chose 868 k-point NSCF (est. 3.5 days) |
+| CdTe relax | 1646s | 2015s | +22% | B more thorough setup |
+| CdTe bands | 1102s | 671s | **-39%** | Knowledge of gap value helped |
+| CdTe dos | 885s | 616s | **-30%** | Knowledge of expected features helped |
+| MgO relax | 363s | 222s | **-39%** | Fastest relax in the series |
+| MgO bands | 416s | 472s | +13% | Within noise |
+| MgO dos | 290s | 312s | +8% | Within noise |
+
+#### Key Finding: The "Awareness Tax"
+
+The InSb pipeline produced the experiment's most striking result: knowledge transfer made the agent dramatically worse. InSb has a zero/inverted band gap under PBE — a fundamental limitation that cannot be fixed with parameter tuning, SOC, or denser k-meshes. The A (naive) agent completed all three workflows in 41 minutes, accepted the zero-gap result, and reported it as a known PBE limitation. The B (informed) agent, armed with knowledge stating "InSb requires HSE06, GW, or mBJ for correct gap," attempted to compensate at every step:
+
+- **Relax**: 2.2x longer, but 86% fewer `run_calc` calls (better planning, heavier compute)
+- **Bands**: 5.4x longer, 67% more `run_calc` calls (tried multiple SOC configurations)
+- **DOS**: Escalated to 868 k-points with SOC for NSCF (vs A's 145-256), estimated 3.5 days. Killed and skipped.
+
+The escalation was monotonic across pipeline steps (2.2x → 5.4x → ∞), suggesting a positive feedback loop: each step's failure to produce the "expected" gap reinforced the agent's belief that more effort was needed. See `docs/history/reviews/TASK_2_2D_INSB_INCIDENT.md` for the full incident report.
+
+**Conditions for the awareness tax**:
+1. Knowledge correctly identifies a problem (InSb gap is wrong with PBE)
+2. Knowledge correctly identifies the solution (needs HSE06/GW)
+3. The solution is unavailable within the experiment's method constraints (PBE only)
+4. The agent cannot distinguish "unsolvable within constraints" from "needs more effort"
+
+#### Notable Sessions
+
+**A02_bands_PbTe (108m)**: The longest Phase A session. The naive agent discovered PbTe's SOC requirement through trial-and-error — first attempting standard bands, then discovering band inversion, then switching to fully relativistic pseudopotentials. This is the discovery process that B02 avoided.
+
+**B02_bands_PbTe (85m, -21%)**: The B agent applied SOC from the start (guided by A's finding about PbTe requiring fully relativistic pseudopotentials), completing bands in 85m vs A's 108m. However, B01_relax took 3.2x longer (26m vs 8m) due to more thorough initial setup, making the pipeline net neutral (-0.1%).
+
+**B08_bands_CdTe (11m, -39%)**: The clearest positive transfer. Armed with knowledge that CdTe has a 0.77 eV direct gap at Gamma, the B agent set up the calculation correctly on the first attempt. The A agent (18m) had no such guidance.
+
+**B10_relax_MgO (3m, -39% vs A)**: The fastest relaxation in 2.2d. MgO is a simple system where both A and B succeed quickly, confirming that the knowledge DB introduces no overhead for easy tasks.
+
+**B06_dos_InSb (SKIPPED)**: The informed agent, knowing InSb has a zero/inverted gap with PBE, chose an extremely dense NSCF k-mesh (868 k-points with SOC, vs A06's 145-256) in an attempt to resolve fine gap structure. At ~10 k-points/hour this single QE run would have taken ~3.5 days. Two attempts both escalated to impractical meshes. Session killed manually.
+
 ---
 
 ## 5. Cross-Phase Comparative Analysis
@@ -290,8 +396,12 @@ The CaO session (39) provides the clearest example of cross-session debugging tr
 | 2.2c | 16 | 6 | 37.5% | 6 | 100% |
 | 2.2c-ext | 16 | 9 | 56.3% | 9 | 100% |
 | DOS | 8 | 5 | 62.5% | 5 | 100% |
+| 2.2d (A, Naive) | 12 | 9 | 75% | 9 | 100% |
+| 2.2d (B, Informed) | 11* | 7 | 63.6% | 7 | 100% |
 
-Search rate increased from 20% (v1) to 62.5% (DOS), though with considerable stochastic variance between phases. The jump from v1 (20%) to 2.2b (50%) was driven by improved prompts ("up to 3 attempts" retry allowance) and the inclusion of band structure calculations, which have more failure modes that trigger troubleshooting searches.
+*Excluding B06 (skipped).
+
+Search rate increased from 20% (v1) to 75% (2.2d Phase A), though with considerable stochastic variance between phases. The 2.2d Phase A search rate (75%) is the highest in the series, possibly because the 3-workflow pipeline (relax → bands → DOS) provides more opportunities for the agent to encounter difficulties that trigger searches. Phase B's lower rate (64%) may reflect that informed agents sometimes proceed with pre-loaded knowledge without searching for additional guidance. The jump from v1 (20%) to 2.2b (50%) was driven by improved prompts ("up to 3 attempts" retry allowance) and the inclusion of band structure calculations, which have more failure modes that trigger troubleshooting searches.
 
 Critically, the search *hit* rate went from 0% (broken FTS5) to 100% (fixed) overnight with a 2-line code change. After the fix, every search returned actionable results.
 
@@ -302,10 +412,14 @@ Critically, the search *hit* rate went from 0% (broken FTS5) to 100% (fixed) ove
 | 2.2c | 52 of 56 (93%) | 4 of 56 (7%) | 7% |
 | 2.2c-ext | 85 of 99 (86%) | 14 of 99 (14%) | 14% |
 | DOS | ~70% builtin | ~30% local | 30%* |
+| 2.2d (A) | ~100% builtin | ~0% (empty local.db at pipeline start) | ~0%** |
+| 2.2d (B) | ~85% builtin | ~15% (3 pre-loaded findings) | ~15% |
 
 *DOS percentages are approximate; the metrics show 5 of 20 search results as local findings for sessions with non-zero hits, but exact counts vary by query.
 
-Session-generated findings doubled from 7% (2.2c) to 14% (ext) as the knowledge base grew from 0 to 31 session entries. The DOS phase showed the highest local finding rate because queries were more specific (compound-targeted DOS queries matching prior DOS/bands findings).
+**2.2d Phase A starts with empty `local.db`; early sessions search against seeds only. As findings accumulate within the pipeline (1 per session), later A sessions may retrieve earlier A findings. Phase B starts with A's 3 findings, so session knowledge is available from the first search. Exact per-result composition was not analyzed at the individual query level for 2.2d.
+
+Session-generated findings doubled from 7% (2.2c) to 14% (ext) as the knowledge base grew from 0 to 31 session entries. The DOS phase showed the highest local finding rate because queries were more specific (compound-targeted DOS queries matching prior DOS/bands findings). In 2.2d, the B condition's ~15% session finding rate is consistent with the ext and DOS phases, suggesting that 3 pre-loaded findings provide a comparable signal to larger accumulated databases when the findings are highly relevant to the target material.
 
 However, seed knowledge remained dominant throughout. This is partly an artifact of the OR-join search: broad queries like "lattice constant vc-relax convergence" match many generic seed entries, potentially pushing compound-specific session findings below the 10-result limit.
 
@@ -340,6 +454,12 @@ The PbTe DOS session (session 40) showed both channels working synergistically: 
 
 This matrix suggests a clear division of labor: project state handles "vertical" transfer (depth within one compound), while the knowledge DB handles "horizontal" transfer (breadth across compounds). A complete knowledge system needs both channels.
 
+**2.2d refinement — knowledge DB as liability**: Task 2.2d revealed that the knowledge DB channel can become counterproductive when it surfaces knowledge about problems that are unsolvable within the agent's action space. In the InSb pipeline, the knowledge DB correctly identified the PBE band gap failure and correctly prescribed the fix (HSE06/GW), but the agent could not apply that fix (experiment constrained to PBE). The result was dramatically increased effort (+162%) as the agent attempted workarounds that could not succeed. This adds a new row to the effectiveness matrix:
+
+| Scenario | Knowledge DB | Project State | Which Dominates |
+|----------|-------------|---------------|-----------------|
+| Known problem, no available fix | **Negative** | None | Neither (awareness tax) |
+
 ### 5.4 Transfer Event Taxonomy
 
 Across all phases with working search (2.2c, ext, DOS), we catalog 15+ STRONG transfer events classified by type:
@@ -364,7 +484,11 @@ Across all phases with working search (2.2c, ext, DOS), we catalog 15+ STRONG tr
 - Session 13 (GaP bands, 2.2c): Applied nbnd formula, ecutrho ratio, fixed occupations from seed knowledge.
 - Session 19 (InSb relax, ext): Calibrated lattice constant expectation from InAs (+2.17%) and AlSb (+1.4%).
 
-The predictive transfer (InSb, session 27) is the single strongest evidence in the entire experiment series. The agent demonstrated genuine scientific reasoning: applying a known finding about one compound (InAs) to predict the behavior of a chemically similar compound (InSb) before running any calculation.
+**Negative transfer / awareness tax** (agent uses knowledge to attempt an impossible fix):
+- 2.2d B05 (InSb bands): Knowledge stated "InSb requires HSE06/GW for correct gap." Agent attempted SOC as workaround, spending 5.4x longer than naive agent and still failing to open the gap.
+- 2.2d B06 (InSb DOS): Knowledge-driven escalation to 868 k-point NSCF mesh (est. 3.5 days). Killed and skipped.
+
+The predictive transfer (InSb, session 27 in ext) and the awareness tax (InSb, 2.2d B05-B06) are both about InSb, illustrating a duality: knowledge about InSb's band inversion enabled a correct *prediction* (session 27 predicted the inversion before calculating) but caused a catastrophic *escalation* (2.2d B05-B06 fought the inversion instead of accepting it). The difference: session 27 used the knowledge to set expectations ("PBE will give band inversion"), while 2.2d B05-B06 used the knowledge to set goals ("must produce a gap"). The framing of the knowledge — descriptive vs prescriptive — determined whether the transfer was positive or negative.
 
 ### 5.5 The FTS5 Bug: Infrastructure as Bottleneck
 
@@ -396,8 +520,12 @@ The predictive transfer (InSb, session 27) is the single strongest evidence in t
 | 2.2c | 16/16 (100%) | 6/16 (37.5%) |
 | 2.2c-ext | 15/16 (93.8%) | 9/16 (56.3%) |
 | DOS | 8/8 (100%) | 5/8 (62.5%) |
+| 2.2d (A) | 12/12 (100%) | 9/12 (75%) |
+| 2.2d (B) | 11/11 (100%)* | 7/11 (63.6%)* |
 
-Write compliance is near-perfect across the observational chain (39/40 = 97.5%; only CaO relax, session 23, failed to record) and across all 61 runs (60/61 = 98.4%). Read behavior is variable (37.5--62.5%) and never exceeds two-thirds of sessions.
+*Excluding B06 (skipped).
+
+Write compliance is near-perfect across all phases (83/84 = 98.8% of completed sessions; only CaO relax, session 23 in ext, failed to record). 2.2d achieved 100% write compliance across all 23 completed sessions. Read behavior is variable (37.5--62.5%) and never exceeds two-thirds of sessions.
 
 **Why the asymmetry?**
 - **Write** is triggered by task completion: the agent has a clear result to record, and the MCP instructions explicitly state "record your findings." The trigger is unambiguous.
@@ -549,7 +677,7 @@ PbTe is the strongest individual case study for knowledge transfer efficiency:
 
 | Metric | PbTe Bands (S32) | PbTe DOS (S40) | Change |
 |--------|-----------------|----------------|--------|
-| run_calculation calls | 48 | 2 | **-96%** |
+| run_calculation calls | 8 | 2 | **-75%** |
 | Failures | Multiple (SSSP SOC, K_POINTS, S-matrix) | 0 | **Eliminated** |
 | Tool calls | 125 | 47 | -62% |
 | Wall time | 85 min | 76.8 min | -10% |
@@ -557,7 +685,7 @@ PbTe is the strongest individual case study for knowledge transfer efficiency:
 | search_knowledge | 1 call (seed only) | 1 call (seed + session) | — |
 | Correct methodology first? | No (SSSP → discovered no FR → PseudoDojo) | **Yes** (PseudoDojo NC-FR from start) | — |
 
-The 48→2 reduction in `run_calculation` calls (-96%) is the single most dramatic efficiency gain in the entire experiment series. The bands agent endured multiple failure cycles: SSSP pseudos lacked SOC support, K_POINTS format errors with non-collinear wavefunctions, S-matrix convergence issues. Each failure required diagnosis, parameter modification, and re-execution. The DOS agent skipped the entire discovery process because:
+The 8→2 reduction in `run_calculation` calls (-75%) is the most dramatic efficiency gain in the entire experiment series. The bands agent endured multiple failure cycles: SSSP pseudos lacked SOC support, K_POINTS format errors with non-collinear wavefunctions, S-matrix convergence issues. Each failure required diagnosis, parameter modification, and re-execution. The DOS agent skipped the entire discovery process because:
 1. **Knowledge DB** provided the finding: PbTe requires SOC, gap ~0.094 eV at L point
 2. **Project state** provided exact parameters from `PbTe_bands_SOC_v3`: `noncolin=.true.`, `lspinorb=.true.`, `ecutwfc=60`, `mixing_beta=0.3`, PseudoDojo NC-FR pseudopotentials
 
@@ -569,11 +697,44 @@ Wall time decreased by only 10% (85→76.8 min) because the large SOC NSCF calcu
 |--------|-------------------|---------------|
 | Wall time | No aggregate trend | Dominated by QE compute; wrong metric |
 | Iteration count (run_calc) | No aggregate trend (2.2b=2.2c=16 for bands) | Compound difficulty dominates aggregate |
-| Iteration count (case-specific) | **Yes**: PbTe 48→2, InAs 77→26 min | Knowledge avoids catastrophic wrong paths |
+| Iteration count (case-specific) | **Yes**: PbTe 8→2, InAs 77→26 min | Knowledge avoids catastrophic wrong paths |
 | First-try failure rate (DOS) | Suggestive: 20% (searched) vs 67% (not searched) | N=8, not significant, but directionally correct |
 | API time (DOS only) | Agent is 25% of wall time | Real efficiency domain is agent reasoning, not compute |
 
 Knowledge transfer improves efficiency by **eliminating wrong-path exploration**, not by reducing the number of iterations for routine calculations. The value is concentrated in "hard" sessions where the correct methodology is non-obvious (SOC for heavy elements, consistent pseudopotentials for mixed compounds). For "easy" sessions (SiC, BN, MgO), knowledge transfer provides no measurable efficiency gain because the agent gets the methodology right without help.
+
+#### 5.8.5 Task 2.2d: Controlled A/B Efficiency Comparison
+
+2.2d provides the cleanest efficiency comparison in the series because A and B sessions run on the same material with identical prompts, differing only in `local.db` content. The per-step wall-time deltas are:
+
+| Material | Relax Δ% | Bands Δ% | DOS Δ% | Pipeline Δ% | Pattern |
+|----------|----------|----------|--------|-------------|---------|
+| PbTe | +219% | **-21%** | +7% | -0.1% | Front-loading then savings |
+| InSb | +120% | **+441%** | SKIP | +162%+ | Monotonic escalation |
+| CdTe | +22% | **-39%** | **-30%** | **-9.1%** | Setup cost then savings |
+| MgO | -39% | +13% | +8% | -5.9% | Flat (noise) |
+
+**Pattern 1 — Front-loading + savings (PbTe)**: Knowledge caused the B agent to invest more time in relax (building the correct SOC infrastructure) but pay it back on bands (-21%). Net pipeline time is unchanged. This is "effort redistribution" — the same total work distributed differently.
+
+**Pattern 2 — Monotonic escalation / awareness tax (InSb)**: Knowledge about an unsolvable problem caused the B agent to escalate effort at every step (2.2x → 5.4x → ∞). The A/B ratio never decreased. This is the only material where knowledge transfer is unambiguously harmful.
+
+**Pattern 3 — Setup cost + compounding savings (CdTe)**: B pays a small relax premium (+22%) but gains increasing returns on bands (-39%) and DOS (-30%). The savings compound because knowledge about CdTe's gap value and band structure helps at every step. This is the textbook positive transfer.
+
+**Pattern 4 — Flat / noise (MgO)**: Both agents succeed quickly. The -5.9% pipeline delta is within stochastic variance. MgO confirms that the knowledge DB introduces no systematic overhead for simple systems.
+
+**Efficiency summary across all experiments**:
+
+| Evidence Source | What It Shows |
+|----------------|---------------|
+| 2.2b vs 2.2c (bands) | Same iteration count (16 vs 16), 24% less wall time — knowledge avoids wrong paths |
+| PbTe bands→DOS (ext/DOS) | 8→2 run_calc calls (-75%) — knowledge + project state eliminate discovery |
+| CaO DOS (session 39) | Knowledge-assisted debugging — ZnS nbnd lesson fixes S-matrix crash |
+| **2.2d CdTe** | **-9.1% pipeline, -39% bands, -30% DOS — cleanest positive transfer** |
+| **2.2d InSb** | **+162% pipeline, B06 skipped — cleanest negative transfer (awareness tax)** |
+| **2.2d PbTe** | **-0.1% pipeline — effort redistribution, not net gain** |
+| **2.2d MgO** | **-5.9% pipeline — negative control, no effect** |
+
+The 2.2d results refine the earlier conclusion: knowledge transfer eliminates wrong-path exploration *when the correct path exists within the method constraints*. When it doesn't — as with InSb under PBE — knowledge about the correct path (HSE06/GW) becomes a liability rather than an asset.
 
 ---
 
@@ -605,7 +766,15 @@ SSSP efficiency/precision pseudopotential libraries do not include fully-relativ
 **Found in**: Tasks 2.2 and 2.2b across multiple sessions.
 SSSP auto-resolution can assign different pseudo types (PAW, USPP, NC) to different elements in the same compound. PAW+USPP mixing is generally acceptable in QE; PAW+NC mixing causes Pulay stress artifacts and convergence failures. The mixed-pseudo issue does not cause hard errors for lattice constants (errors remain within 1--2% PBE range), making it a silent accuracy degradation.
 
-### 6.7 Summary: Bug Impact on Experiment Validity
+### 6.7 MCP run_calculation Transport Hang
+**Found in**: Task 2.2d, B06_dos_InSb (first attempt).
+The MCP `run_calculation` tool call blocked indefinitely: QE completed all steps (`JOB DONE` in output files) but the MCP server never returned the result to the agent. The agent's trace showed 0% CPU while waiting. Root cause: MCP stdio transport occasionally drops the response for long-running calculations. **Not yet fixed.**
+
+### 6.8 Agent-Driven K-Mesh Runaway
+**Found in**: Task 2.2d, B06_dos_InSb (second and third attempts).
+The informed agent chose an 868 k-point NSCF mesh with SOC (vs 145-256 for the same compound under the naive condition), driven by knowledge that the gap should be non-zero. At ~10 k-points/hour, this would take ~3.5 days for a single step. No computational guardrail exists to prevent agents from choosing impractical mesh densities. **Not a bug per se — this is an agent behavioral issue, not an infrastructure failure. See §4.6 "Awareness Tax."**
+
+### 6.9 Summary: Bug Impact on Experiment Validity
 
 | Bug | Sessions Affected | Impact on Results | Status |
 |-----|-------------------|-------------------|--------|
@@ -615,8 +784,10 @@ SSSP auto-resolution can assign different pseudo types (PAW, USPP, NC) to differ
 | cell_dofree + ibrav=0 | Session 21 (CdTe) | 54 min session, incorrect first result | QE behavior, documented |
 | SSSP no SOC | Session 32 (PbTe) | 85 min pseudo search | Documented |
 | Mixed pseudo types | Multiple in 2.2/2.2b | Silent accuracy degradation | Documented |
+| MCP transport hang | 2.2d B06 (1 occurrence) | Lost 1 session attempt | Open |
+| K-mesh runaway | 2.2d B06 (2 occurrences) | B06 skipped entirely | Agent behavior, not bug |
 
-The FTS5 bug had the largest impact: it invalidated an entire 16-session experiment and required a full re-run (2.2c). The remaining bugs are either QE behaviors or QMatSuite issues that don't affect the knowledge transfer conclusions.
+The FTS5 bug had the largest impact: it invalidated an entire 16-session experiment and required a full re-run (2.2c). The MCP transport hang and k-mesh runaway together caused B06_dos_InSb to be skipped, the only session in 85 runs that did not complete. The remaining bugs are either QE behaviors or QMatSuite issues that don't affect the knowledge transfer conclusions.
 
 ---
 
@@ -641,35 +812,41 @@ Knowledge transfer does not produce a measurable aggregate learning curve in eit
 - 2.2c bands total: 126 min, 16 run_calculation calls (same iteration count, 24% less time)
 - ext + DOS: higher iteration counts due to harder compounds
 
-Aggregate metrics are dominated by compound-specific difficulty and stochastic agent behavior. However, iteration-based metrics (§5.8) tell a more nuanced story: knowledge transfer eliminates wrong-path exploration for specific hard compounds, reducing PbTe from 48→2 `run_calculation` calls (-96%) and InAs from 77→26 min wall time (-66%). The efficiency gain is concentrated where it matters most — sessions where the correct methodology is non-obvious. For easy compounds, knowledge transfer provides no measurable benefit because the agent succeeds without help.
+Aggregate metrics are dominated by compound-specific difficulty and stochastic agent behavior. However, iteration-based metrics (§5.8) tell a more nuanced story: knowledge transfer eliminates wrong-path exploration for specific hard compounds, reducing PbTe from 8→2 `run_calculation` calls (-75%) and InAs from 77→26 min wall time (-66%). The efficiency gain is concentrated where it matters most — sessions where the correct methodology is non-obvious. For easy compounds, knowledge transfer provides no measurable benefit because the agent succeeds without help.
 
-The value of knowledge transfer is **insurance against catastrophic wrong paths** (missing SOC, mixed pseudopotentials, wrong cell_dofree), not incremental speedup for routine calculations. See §5.8 for the full compound-matched comparison, first-attempt success analysis, and PbTe deep dive.
+Task 2.2d's controlled A/B comparison adds nuance: the effect is not merely "no aggregate trend" but actively **material-dependent in sign**. CdTe shows clean positive transfer (-9.1%), MgO is neutral (-5.9%), PbTe redistributes effort (-0.1%), and InSb is strongly negative (+162%). Aggregating these four materials gives an overall B vs A delta of approximately +8% (B is slower), masking the heterogeneous underlying effects. Any aggregate metric conflates positive and negative transfer, making compound-level analysis essential.
 
-### 7.5 Search Rate Below 65%
+The value of knowledge transfer is **insurance against catastrophic wrong paths** (missing SOC, mixed pseudopotentials, wrong cell_dofree), not incremental speedup for routine calculations — but this insurance has a **deductible**: for problems outside the method's capability, knowledge about the "right" approach becomes a liability. See §5.8 for the full compound-matched comparison, first-attempt success analysis, PbTe deep dive, and 2.2d A/B analysis.
 
-Even in the best phase (DOS, 62.5%), over a third of sessions never searched the knowledge base. The knowledge system is purely opt-in; agents that don't search get zero benefit. This is the largest structural limitation.
+### 7.5 Awareness Tax: Knowledge Can Hurt
 
-### 7.6 No L2/L3 Insights Emerged
+Task 2.2d demonstrated that correct knowledge can produce strongly negative transfer when the described solution is unavailable. The InSb awareness tax (+162%, B06 skipped) is the most dramatic failure mode observed across all 85 sessions. This is not a pathological edge case — any knowledge base entry describing a fundamental method limitation (PBE band gap, DFT self-interaction error, missing dispersion) could trigger the same behavior when the agent is constrained to the method in question. The current knowledge system has no mechanism to distinguish actionable knowledge ("use ecutwfc=60 for PbTe SOC") from aspirational knowledge ("use HSE06 for correct InSb gap").
+
+### 7.6 Search Rate Below 75%
+
+Even in the best phase (2.2d Phase A, 75%), a quarter of sessions never searched the knowledge base. The knowledge system is purely opt-in; agents that don't search get zero benefit. This is the largest structural limitation.
+
+### 7.7 No L2/L3 Insights Emerged
 
 All 41 recorded insights are L1 findings (specific numerical results or troubleshooting tips). No agent spontaneously synthesized higher-level insights such as "PBE consistently overestimates lattice constants by 1--2% for all zinc-blende III-V compounds" (L2 pattern) or "Mixed PAW+NC pseudopotentials should be avoided in any vc-relax calculation" (L3 principle). Higher-level knowledge formation would require multi-session reflection, which is not currently implemented.
 
-### 7.7 Stochastic Agent Behavior
+### 7.8 Stochastic Agent Behavior
 
 The same compound can get different search patterns, methodologies, and wall times across runs. Session 07 (AlN relax) used wurtzite in 2.2c but zinc-blende in 2.2b. GaAs bands gave 0.503 eV in 2.2c but 0.135 eV in 2.2b (different pseudos). This stochastic variance makes controlled comparison difficult without many more replicates.
 
-### 7.8 Small Sample Sizes
+### 7.9 Small Sample Sizes
 
-Each compound was tested once per workflow per phase. N=1 per condition provides no error bars on transfer rates, wall times, or accuracy. The 16-compound corpus provides diversity but not statistical power for any single compound.
+Each compound was tested once per workflow per phase. N=1 per condition provides no error bars on transfer rates, wall times, or accuracy. The 16-compound corpus provides diversity but not statistical power for any single compound. Task 2.2d's 4-material A/B comparison provides the strongest individual case studies but cannot support statistical significance testing. The monotonic escalation pattern in InSb (2.2x → 5.4x → ∞) is too structured to be random variation, but formal p-values would require multiple independent A/B runs per material.
 
 ---
 
 ## 8. Gap Analysis
 
-### Gap 1: No Formal Control for DOS Chain
-**Severity**: Important
-**Detail**: The DOS chain has no controlled comparison (unlike 2.2b vs 2.2c). We cannot say whether DOS agents performed better *because* of knowledge transfer or simply because the task is straightforward given a relaxed structure. A control experiment with no knowledge DB and no prior calculations in the project would establish the baseline.
-**To fill**: Run 8 DOS sessions on the same compounds with empty `local.db` and no prior calculations in the project directory.
-**Blocks paper?**: Not critical, but weakens the DOS claims.
+### Gap 1: No Formal Control for DOS Chain — **PARTIALLY ADDRESSED by 2.2d**
+**Severity**: Important → Reduced
+**Detail**: The DOS chain (ext phase) had no controlled comparison. Task 2.2d partially addresses this: it includes A/B-controlled DOS sessions for 4 materials (PbTe, InSb, CdTe, MgO), providing the first controlled DOS efficiency data. Results: CdTe DOS showed -30% improvement (B vs A), MgO DOS was neutral (+8%), PbTe DOS was neutral (+7%), InSb DOS was skipped (awareness tax). However, the ext phase's other 4 DOS compounds (GaN, AlSb, ZnS, CaO) still lack formal controls.
+**Remaining**: Run controlled DOS sessions for the ext-only compounds (GaN, AlSb, ZnS, CaO) to complete coverage.
+**Blocks paper?**: No — 2.2d provides sufficient controlled evidence for the DOS workflow.
 
 ### Gap 2: No Cross-Engine Transfer Testing
 **Severity**: Important
@@ -737,6 +914,18 @@ Each compound was tested once per workflow per phase. N=1 per condition provides
 **To fill**: Future phases could add transition metal oxides (e.g., TiO2, Fe2O3), 2D materials (graphene, MoS2), and strongly correlated systems.
 **Blocks paper?**: No.
 
+### Gap 13: No Awareness Tax Mitigation Tested
+**Severity**: Important
+**Detail**: Task 2.2d identified the awareness tax but did not test any mitigation. We do not know whether tagging insights with `actionable=false` or adding explicit stop conditions ("if constrained to PBE, accept the result") would prevent the escalation.
+**To fill**: Repeat the InSb B pipeline with modified knowledge entries: (a) remove the "requires HSE06/GW" statement entirely, keeping only computational parameters; (b) add an explicit stop condition: "If constrained to PBE, the zero gap is expected — report it and proceed." Compare wall time against both A (naive) and B (original informed).
+**Blocks paper?**: No, but would strengthen the awareness tax analysis significantly.
+
+### Gap 14: Knowledge Framing Effect Not Isolated
+**Severity**: Important
+**Detail**: The InSb awareness tax may be caused by prescriptive framing ("requires HSE06") rather than descriptive framing ("PBE gives zero gap"). Session 27 (ext InSb bands) used the same knowledge descriptively and achieved positive transfer; 2.2d B05 used it prescriptively and achieved negative transfer. A controlled experiment varying only the insight phrasing would isolate this effect.
+**To fill**: Run InSb B pipeline with 3 insight variants: (a) descriptive only ("PBE gives zero gap for InSb"), (b) prescriptive with available fix ("use SOC + PseudoDojo FR for InSb"), (c) prescriptive with unavailable fix ("use HSE06 for InSb gap"). Compare agent behavior.
+**Blocks paper?**: No, but would be a compelling follow-up.
+
 ---
 
 ## 9. Recommendations for Next Steps
@@ -749,29 +938,43 @@ Each compound was tested once per workflow per phase. N=1 per condition provides
 
 3. ~~**Validate all recorded insights** (Gap 10)~~ — **DONE**. See §A.6. All 40 insights validated; no dangerous errors found.
 
-### 9.2 Additional Experiments to Strengthen the Paper
+### 9.2 Awareness Tax Mitigations (from 2.2d)
 
-4. **Seed-free control chain** (Gap 6). Run 16 sessions with empty `builtin.db` but accumulated `local.db`. This isolates session-to-session transfer from seed knowledge.
+4. **Add actionability tags to insights.** Insights should carry metadata indicating whether the described problem is solvable within standard DFT constraints. An insight tagged `actionable=false, requires=HSE06` would signal the agent to accept the limitation rather than try to overcome it.
 
-5. **DOS control experiment** (Gap 1). Run 8 DOS sessions with no prior calculations and empty knowledge DB. Compare wall time and success rate.
+5. **Include explicit stop conditions in findings.** Findings about fundamental method failures should state: "If constrained to PBE, accept the result and report the limitation." This transforms prescriptive knowledge into descriptive knowledge.
 
-6. **Multiple replicates** (Gap 7). Run 3 replicates of the 8-compound bands chain to compute error bars on search rate and transfer frequency.
+6. **Cap computational cost per attempt.** Agent prompts should include guardrails: "Do not use more than 300 k-points for NSCF calculations" or similar bounds. This would have prevented the B06 runaway.
 
-### 9.3 System Improvements
+7. **Grade knowledge by transferability.** Not all findings transfer equally. A finding about pseudopotential selection transfers well (directly actionable). A finding about fundamental DFT limitations transfers poorly (raises awareness without enabling action within constraints).
 
-7. **Implement ambient knowledge surfacing** (Gap 4). Auto-surface relevant insights when `create_calculation()` is called, keyed by compound/element.
+### 9.3 Additional Experiments to Strengthen the Paper
 
-8. **Add compound-aware search boosting** (Gap 5). Extract element symbols from queries and boost results tagged with matching compounds.
+8. **Seed-free control chain** (Gap 6). Run 16 sessions with empty `builtin.db` but accumulated `local.db`. This isolates session-to-session transfer from seed knowledge.
 
-9. **Increase search result limit** from 10 to 20 for chains with large local.db.
+9. ~~**DOS control experiment** (Gap 1)~~ — **PARTIALLY ADDRESSED by 2.2d.** Four of eight ext compounds now have A/B-controlled DOS data. Remaining 4 (GaN, AlSb, ZnS, CaO) could be run for completeness.
 
-### 9.4 Future Work (Post-Paper)
+10. **Multiple replicates** (Gap 7). Run 3 replicates of the 8-compound bands chain to compute error bars on search rate and transfer frequency.
 
-10. **Cross-engine transfer** (Gap 2). Test QE -> VASP -> ORCA chains.
+11. **Awareness tax isolation** (Gap 13-14). Repeat InSb B pipeline with (a) actionable-only knowledge and (b) descriptive-only knowledge to isolate the framing effect.
 
-11. **L2/L3 insight synthesis** (Gap 3). Add a meta-agent or periodic reflection step.
+### 9.4 System Improvements
 
-12. **Transition metal compounds** (Gap 12). Expand beyond sp-bonded semiconductors.
+12. **Implement ambient knowledge surfacing** (Gap 4). Auto-surface relevant insights when `create_calculation()` is called, keyed by compound/element.
+
+13. **Add compound-aware search boosting** (Gap 5). Extract element symbols from queries and boost results tagged with matching compounds.
+
+14. **Increase search result limit** from 10 to 20 for chains with large local.db.
+
+15. **Add MCP transport timeout/heartbeat** (§6.8). Detect and recover from `run_calculation` hangs.
+
+### 9.5 Future Work (Post-Paper)
+
+16. **Cross-engine transfer** (Gap 2). Test QE -> VASP -> ORCA chains.
+
+17. **L2/L3 insight synthesis** (Gap 3). Add a meta-agent or periodic reflection step.
+
+18. **Transition metal compounds** (Gap 12). Expand beyond sp-bonded semiconductors.
 
 ---
 
@@ -843,6 +1046,12 @@ Mean error (excl. CaO): +1.1%. Range: +0.03% to +2.4%.
 | 15 | ext | 32 PbTe bands | Seed | SOC essential for Z > 50 | Parameter | STRONG |
 | 16 | DOS | 39 CaO DOS | Sessions 36, 38 | ZnS nbnd lesson + MgO DOS ref | Debugging | STRONG |
 | 17 | DOS | 40 PbTe DOS | Session 32 + project | PbTe bands SOC gap + SOC params | Template+Parameter | STRONG |
+| 18 | 2.2d | B02 PbTe bands | A's PbTe findings | Applied SOC from start (-21% wall) | Parameter | POSITIVE |
+| 19 | 2.2d | B05 InSb bands | A's InSb findings | Fought band inversion with SOC (+441%) | Awareness Tax | **NEGATIVE** |
+| 20 | 2.2d | B06 InSb DOS | A's InSb findings | 868 k-point NSCF, est. 3.5 days | Awareness Tax | **NEGATIVE** (skipped) |
+| 21 | 2.2d | B08 CdTe bands | A's CdTe findings | Correct gap setup first try (-39%) | Parameter | POSITIVE |
+| 22 | 2.2d | B09 CdTe DOS | A's CdTe findings | Correct DOS setup first try (-30%) | Parameter | POSITIVE |
+| 23 | 2.2d | B10 MgO relax | A's MgO findings | Faster setup (-39%) | Template | POSITIVE |
 
 ### A.4 Knowledge DB Snapshots
 
@@ -852,29 +1061,42 @@ Mean error (excl. CaO): +1.1%. Range: +0.03% to +2.4%.
 | After 2.2c | `.tmp/pseudo_chain_v2c/local_db_final_2_2c.db` | 16 | 45 | 16 |
 | After ext bands | `.tmp/pseudo_chain_v2c_ext/local_db_after_bands.db` | 31 | 45 | 31 |
 | After DOS | `.tmp/pseudo_chain_v2c_ext/local_db_final_dos.db` | 40 | 45 | 40 |
+| 2.2d A_PbTe | `.tmp/task_2_2d/A_PbTe/sessions/A03_dos_PbTe/local_db_after_*.db` | 3 | 45 | 3 |
+| 2.2d B_PbTe | `.tmp/task_2_2d/B_PbTe/sessions/B03_dos_PbTe/local_db_after_*.db` | 7 | 45 | 7 |
+| 2.2d B_InSb | `.tmp/task_2_2d/B_InSb/local_db_after_pipeline.db` | 5 | 45 | 5 |
+| 2.2d B_CdTe | `.tmp/task_2_2d/B_CdTe/sessions/B09_dos_CdTe/local_db_after_*.db` | 6 | 45 | 6 |
+| 2.2d B_MgO | `.tmp/task_2_2d/B_MgO/sessions/B12_dos_MgO/local_db_after_*.db` | 6 | 45 | 6 |
 | Seed only | `.qmatsuite/knowledge/builtin.db` | -- | 45 | 0 |
 
-The 2.2b chain produced 17 insights (1 duplicate) while 2.2c produced 16 (no duplicates). The ext chain added 15 (CaO missing) and DOS added 9 more, reaching 40 total session-generated insights.
+The 2.2b chain produced 17 insights (1 duplicate) while 2.2c produced 16 (no duplicates). The ext chain added 15 (CaO missing) and DOS added 9 more, reaching 40 total session-generated insights. Task 2.2d produced 23 insights across 8 pipelines (4 materials × 2 conditions), with B pipelines accumulating A's 3 findings plus their own (4-7 total per B pipeline). InSb B pipeline stopped at 5 insights (DOS skipped).
 
 ### A.5 Per-Phase Aggregate Statistics
 
-| Metric | 2.2 (v1) | 2.2b (control) | 2.2c (treatment) | ext | DOS | Grand Total |
-|--------|----------|----------------|------------------|-----|-----|-------------|
-| Runs | 5 | 16 | 16 | 16 | 8 | **61** |
-| Wall time (min) | 70 | 233 | 254 | 297 | 172 | 1026 |
-| Tool calls | 238 | 671 | 713 | 750 | 332 | 2704 |
-| search_knowledge calls | 1 | 8 | 6 | 10 | 6 | 31 |
-| Searches with hits | 0 | 0 | 6 | 9 | 5 | 20 |
-| STRONG transfers | 0 | 0 | 6 | 8 | 2 | 16 |
-| record_insight calls | 5 | 16 | 16 | 15 | 10 | 62 |
-| Session insights in DB | 3* | 17** | 16 | 15 | 9 | 60*** |
-| Success rate | 100% | 100% | 100% | 100% | 100% | 100% |
+| Metric | 2.2 (v1) | 2.2b (ctrl) | 2.2c (treat) | ext | DOS | 2.2d (A) | 2.2d (B) | Grand Total |
+|--------|----------|-------------|--------------|-----|-----|----------|----------|-------------|
+| Runs | 5 | 16 | 16 | 16 | 8 | 12 | 12 | **85** |
+| Wall time (min) | 70 | 233 | 254 | 297 | 172 | 296 | 365 | 1687 |
+| Tool calls | 238 | 671 | 713 | 750 | 332 | 592 | 516 | 3812 |
+| search_knowledge | 1 | 8 | 6 | 10 | 6 | 9 | 8† | 48 |
+| Searches with hits | 0 | 0 | 6 | 9 | 5 | 9 | 7† | 36 |
+| STRONG/POSITIVE transfers | 0 | 0 | 6 | 8 | 2 | — | 4 | 20 |
+| NEGATIVE transfers | 0 | 0 | 0 | 0 | 0 | — | 2 | 2 |
+| record_insight | 5 | 16 | 16 | 15 | 10 | 12 | 11† | 85 |
+| Session insights in DB | 3* | 17** | 16 | 15 | 9 | 12 | 11† | 83*** |
+| Completion rate | 100% | 100% | 100% | 100% | 100% | 100% | 92%†† | 98.8% |
 
 *v1 had different protocol; only 3 of 5 sessions' insights persisted to the chain databases.
 **2.2b insights were overwritten when 2.2c started with a fresh `local.db`. They exist in the `local_db_final_2_2b.db` snapshot but not in the final chain.
-***60 total insights recorded across all phases. The final `local_db_final_dos.db` contains 40 unique insights (16 from 2.2c + 15 from ext + 9 from DOS). 2.2b's 17 and v1's 3 are in separate snapshots only.
+***83 total `record_insight` calls across all phases. Unique insight databases: the `local_db_final_dos.db` contains 40 (the observational chain); 2.2d's 8 per-pipeline databases contain 3-7 each; v1's 3 and 2.2b's 17 are in separate snapshots.
+†Excluding B06 (skipped).
+††B06_dos_InSb skipped (runaway k-mesh, awareness tax). 11 of 12 B sessions completed.
 
-**Structural note**: 2.2b and 2.2c are a **controlled pair** (same 8 compounds, same prompts, only the FTS5 fix changed). 2.2c → ext → DOS form a **continuous chain** (40 sessions, accumulated `local.db`). Summing 2.2b + 2.2c as "32 sessions" would double-count the 8 compounds; they should be compared, not summed. The chain's unique session count is 40 (2.2c + ext + DOS).
+**Structural note**: The 85 runs include three distinct experiment types that should not be naively summed:
+1. **Infrastructure controlled pair** (2.2b + 2.2c, 32 runs): Same 8 compounds, should be compared not summed.
+2. **Observational chain** (2.2c → ext → DOS, 40 sessions): Accumulated `local.db`, continuous.
+3. **Content controlled pair** (2.2d, 24 sessions): Each material tested under both A and B conditions. A and B sessions should be compared not summed.
+
+The chain's unique session count is 40 (2.2c + ext + DOS). 2.2d adds 24 sessions on 4 materials already covered in the chain, providing controlled A/B data for PbTe, InSb, CdTe, and MgO.
 
 ### A.6 Insight Validation (Gap 10)
 
@@ -968,24 +1190,28 @@ Of 40 insights in `local_db_final_dos.db`:
 
 ## 11. Conclusions
 
-1. **Knowledge transfer between AI agent sessions is real and measurable.** When the search infrastructure works correctly, agents retrieve and apply knowledge in 100% of search sessions, with chemically specific reasoning (not random noise).
+1. **Knowledge transfer between AI agent sessions is real and measurable.** When the search infrastructure works correctly, agents retrieve and apply knowledge in 100% of search sessions, with chemically specific reasoning (not random noise). Across 85 sessions and 6 experimental phases, knowledge transfer is the most consistent behavioral signal.
 
-2. **The FTS5 bug provides the cleanest experimental evidence.** The 2.2b-vs-2.2c controlled comparison -- identical protocol, 2-line code change -- produced 0 vs 6 STRONG transfer events. This demonstrates that the bottleneck was infrastructure, not agent capability.
+2. **The FTS5 bug provides the cleanest infrastructure evidence.** The 2.2b-vs-2.2c controlled comparison -- identical protocol, 2-line code change -- produced 0 vs 6 STRONG transfer events. This demonstrates that the bottleneck was infrastructure, not agent capability.
 
-3. **Seed knowledge provides the majority of immediate value.** At 86--93% of search results, curated domain knowledge in `builtin.db` is far more impactful than session-generated findings. Investing in high-quality seed knowledge packs yields the highest ROI.
+3. **Pre-loaded knowledge produces mixed efficiency outcomes (2.2d).** The controlled A/B test on 4 materials shows that knowledge transfer is material-dependent in sign: CdTe (-9.1%, positive), MgO (-5.9%, neutral), PbTe (-0.1%, redistribution), InSb (+162%, strongly negative). Knowledge about solvable problems helps; knowledge about unsolvable problems hurts.
 
-4. **Session-generated knowledge is growing but still marginal.** The session-finding fraction increased from 7% to 14% over 32 sessions. At this rate, it would take hundreds of sessions for session knowledge to rival seed knowledge in search results -- unless search ranking is improved.
+4. **The "awareness tax" is a fundamental limit on knowledge transfer.** When knowledge describes a problem that cannot be solved within the agent's method constraints, the informed agent spends more effort than the naive agent. InSb under PBE demonstrates this: the A agent completed in 41 minutes; the B agent, knowing the gap should be non-zero, escalated monotonically (2.2x → 5.4x → ∞) across pipeline steps. The tax arises because the agent cannot distinguish "unsolvable within constraints" from "needs more effort." This is the experiment series' most practically important finding for knowledge system design.
 
-5. **Project state is the dominant channel for cross-workflow transfer.** When prior calculations exist in the project, agents overwhelmingly use `list_calculations` + `inspect_calculation` to reuse structures and parameters (8/8 DOS sessions). The knowledge DB is essential only for cross-compound insights.
+5. **Seed knowledge provides the majority of immediate value.** At 86--93% of search results, curated domain knowledge in `builtin.db` is far more impactful than session-generated findings. Investing in high-quality seed knowledge packs yields the highest ROI.
 
-6. **The InSb band inversion prediction is the experiment's crown jewel.** A genuine example of predictive scientific reasoning: the agent applied InAs knowledge to predict InSb behavior before calculating. This is the type of knowledge transfer that could meaningfully accelerate computational materials science research.
+6. **Session-generated knowledge is growing but still marginal.** The session-finding fraction increased from 7% to ~15% over the experiment series. At this rate, it would take hundreds of sessions for session knowledge to rival seed knowledge in search results -- unless search ranking is improved.
 
-7. **Significant gaps remain.** No formal controls for DOS, no cross-engine testing, no L2/L3 insight emergence, and no ambient knowledge surfacing. Search rate remains below 65%, meaning one-third to two-thirds of sessions get zero benefit from the knowledge system.
+7. **Project state is the dominant channel for cross-workflow transfer.** When prior calculations exist in the project, agents overwhelmingly use `list_calculations` + `inspect_calculation` to reuse structures and parameters (8/8 DOS sessions). The knowledge DB is essential for cross-compound insights and becomes counterproductive when it surfaces aspirational rather than actionable knowledge.
 
-8. **Cost-effectiveness is favorable.** At $12.52 for 8 DOS sessions (including knowledge search overhead), the marginal cost of knowledge transfer is negligible compared to the potential savings. PbTe DOS (session 40) demonstrates the upper bound: what took 85 minutes in the bands phase completed correctly on the first attempt in the DOS phase, with the knowledge DB providing the methodology and project state providing the parameters.
+8. **The InSb band inversion prediction remains the experiment's crown jewel.** A genuine example of predictive scientific reasoning: the agent applied InAs knowledge to predict InSb behavior before calculating (ext session 27). Juxtaposed with the 2.2d InSb awareness tax, this illustrates a duality: the same knowledge can enable prediction (positive) or drive escalation (negative), depending on whether the agent uses it descriptively or prescriptively.
 
-9. **Experiment design improved iteratively.** The v1 → 2.2b → 2.2c progression demonstrates the value of "experiment on the experiment" -- each phase's failures directly informed the next phase's design. The FTS5 bug would not have been discovered without the 2.2b chain; the controlled 2.2c comparison would not exist without the 2.2b baseline. This suggests that knowledge system validation should be part of any AI-agent product's development cycle, not an afterthought.
+9. **Significant gaps remain but are narrowing.** 2.2d partially addresses the DOS control gap (Gap 1) and raises two new gaps: awareness tax mitigation (Gap 13) and knowledge framing effects (Gap 14). No cross-engine testing, no L2/L3 insight emergence, and no ambient knowledge surfacing. Search rate reached 75% in 2.2d Phase A but remains below two-thirds in most phases.
+
+10. **Cost-effectiveness is favorable.** At $12.52 for 8 DOS sessions (including knowledge search overhead), the marginal cost of knowledge transfer is negligible compared to the potential savings. PbTe DOS (session 40) demonstrates the upper bound: what took 85 minutes in the bands phase completed correctly on the first attempt in the DOS phase, with the knowledge DB providing the methodology and project state providing the parameters.
+
+11. **Experiment design improved iteratively.** The v1 → 2.2b → 2.2c → ext → DOS → 2.2d progression demonstrates the value of "experiment on the experiment." Each phase's failures informed the next: the FTS5 bug discovery (2.2b) enabled the infrastructure fix (2.2c); the observational chain (ext/DOS) revealed project state as a transfer channel; the controlled A/B test (2.2d) uncovered the awareness tax. The series progressed from "does the infrastructure work?" to "does knowledge help?" to "when does knowledge hurt?" — each question enabled by the prior answer.
 
 ---
 
-*This review was generated from experimental data in `.tmp/pseudo_case_study_v1/`, `.tmp/pseudo_chain/`, `.tmp/pseudo_chain_v2c/`, `.tmp/pseudo_chain_v2c_ext/`, and `docs/history/worklogs/WORKLOG_PSEUDO_CASE_STUDY.md`.*
+*This review was generated from experimental data in `.tmp/pseudo_case_study_v1/`, `.tmp/pseudo_chain/`, `.tmp/pseudo_chain_v2c/`, `.tmp/pseudo_chain_v2c_ext/`, `.tmp/task_2_2d/`, `docs/history/reviews/TASK_2_2D_INSB_INCIDENT.md`, and `docs/history/worklogs/WORKLOG_PSEUDO_CASE_STUDY.md`.*

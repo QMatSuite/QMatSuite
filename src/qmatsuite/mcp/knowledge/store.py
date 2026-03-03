@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import random
 import re
 import sqlite3
 from datetime import datetime, timezone
@@ -38,7 +40,7 @@ def _sanitize_fts_query(raw: str) -> str:
 _CONFIDENCE_WEIGHT = {"high": 3.0, "medium": 2.0, "low": 1.0}
 
 # Grade ordering for tie-breaking (higher = more authoritative).
-_GRADE_ORDER = {"principle": 4, "finding": 3, "observation": 2, "bookkeeping": 1}
+_GRADE_ORDER = {"principle": 5, "pattern": 4, "finding": 3, "observation": 2, "bookkeeping": 1}
 
 # Trust weights by source_type (multiplier in ranking formula).
 TRUST_WEIGHTS = {
@@ -62,7 +64,33 @@ _SCOPE_FIELDS = ("scope_engine", "scope_workflow", "scope_system_type", "scope_m
 _VALID_GRADES = frozenset(_GRADE_ORDER.keys())
 
 # Grades that get promoted to the knowledge DB.
-_PROMOTABLE_GRADES = frozenset({"finding", "principle"})
+_PROMOTABLE_GRADES = frozenset({"finding", "pattern", "principle"})
+
+
+def _builtin_enabled() -> bool:
+    """Return True unless QMS_KNOWLEDGE_BUILTIN is explicitly set to '0'."""
+    return os.environ.get("QMS_KNOWLEDGE_BUILTIN", "1") != "0"
+
+
+# Number of result slots reserved for local (session-generated) insights.
+LOCAL_RESERVED_SLOTS = 3
+
+
+def _merge_with_reserved_slots(
+    local_results: list[dict],
+    builtin_results: list[dict],
+    limit: int,
+    reserved: int = LOCAL_RESERVED_SLOTS,
+) -> list[dict]:
+    """Merge local and builtin results, reserving *reserved* slots for local.
+
+    Local entries come first (up to *reserved*), then builtin entries fill
+    the remaining slots up to *limit*.
+    """
+    local_take = local_results[: min(reserved, len(local_results))]
+    remaining = limit - len(local_take)
+    builtin_take = builtin_results[:max(0, remaining)]
+    return local_take + builtin_take
 
 
 def _default_db_path() -> Path:
@@ -199,6 +227,19 @@ class KnowledgeStore:
 
         tags_json = json.dumps(record.tags) if record.tags else "[]"
 
+        # Build provenance metadata
+        metadata = {
+            "agent_model": os.environ.get("QMS_AGENT_MODEL", "unknown"),
+            "created_at": now,
+        }
+        if record.source_calculation:
+            metadata["source_calculation"] = record.source_calculation
+        if record.references:
+            metadata["references"] = record.references
+        if record.citations:
+            metadata["citations"] = record.citations
+        metadata_json = json.dumps(metadata)
+
         # Write to local DB (creates file if needed).
         self.local_conn.execute(
             """
@@ -208,9 +249,9 @@ class KnowledgeStore:
                 content, confidence,
                 source_type, source_origin, provenance_ref,
                 created_by, tags,
-                status, contradiction_count, upvotes,
+                status, contradiction_count, upvotes, metadata,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, 0, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, 0, ?, ?, ?)
             """,
             (
                 insight_id,
@@ -226,6 +267,7 @@ class KnowledgeStore:
                 None,
                 record.created_by,
                 tags_json,
+                metadata_json,
                 now,
                 now,
             ),
@@ -242,6 +284,81 @@ class KnowledgeStore:
             "insight_id": insight_id,
             "contradictions": contradictions,
         }
+
+    def list_by_grade(self, grade: str, limit: int = 20, compound: str = "") -> dict:
+        """List insights from local.db by grade, ordered by created_at DESC."""
+        if not self._has_local_db():
+            return {"grade": grade, "total": 0, "insights": []}
+        sql = "SELECT * FROM insights WHERE grade = ? AND status = 'active'"
+        params: list = [grade]
+        if compound:
+            sql += " AND tags LIKE ?"
+            params.append(f"%{compound}%")
+        count_sql = sql.replace("SELECT *", "SELECT COUNT(*)")
+        total = self.local_conn.execute(count_sql, params).fetchone()[0]
+        sql += " ORDER BY created_at DESC LIMIT ?"
+        params.append(max(1, min(limit, 100)))
+        rows = self.local_conn.execute(sql, params).fetchall()
+        return {"grade": grade, "total": total, "insights": [dict(r) for r in rows]}
+
+    def resolve_short_id(self, prefix: str) -> str:
+        """Resolve a short ID prefix to the full ULID.
+
+        Raises ValueError if no match or ambiguous match.
+        """
+        if not self._has_local_db():
+            raise ValueError(f"No insight found matching prefix '{prefix}'")
+        rows = self.local_conn.execute(
+            "SELECT id FROM insights WHERE id LIKE ? || '%'",
+            (prefix,),
+        ).fetchall()
+        if len(rows) == 0:
+            raise ValueError(f"No insight found matching prefix '{prefix}'")
+        if len(rows) > 1:
+            raise ValueError(
+                f"Ambiguous prefix '{prefix}' matches {len(rows)} insights; use longer prefix"
+            )
+        return rows[0][0]
+
+    def apply_citations(self, citations: list[dict]) -> dict[str, int]:
+        """Update vote counters for cited insights in local.db.
+
+        Parameters
+        ----------
+        citations : list[dict]
+            Each dict has ``{"id": str, "vote": "up"|"down"}``.
+
+        Returns
+        -------
+        dict
+            ``{"applied_up": int, "applied_down": int, "skipped": int}``
+        """
+        applied_up = 0
+        applied_down = 0
+        skipped = 0
+        if not self._has_local_db():
+            return {"applied_up": 0, "applied_down": 0, "skipped": len(citations)}
+        for cit in citations:
+            cit_id = cit.get("id", "")
+            vote = cit.get("vote", "")
+            if vote not in ("up", "down"):
+                skipped += 1
+                continue
+            col = "upvotes" if vote == "up" else "downvotes"
+            cur = self.local_conn.execute(
+                f"UPDATE insights SET {col} = {col} + 1 WHERE id = ?",  # noqa: S608
+                (cit_id,),
+            )
+            if cur.rowcount > 0:
+                if vote == "up":
+                    applied_up += 1
+                else:
+                    applied_down += 1
+            else:
+                skipped += 1
+        if applied_up or applied_down:
+            self.local_conn.commit()
+        return {"applied_up": applied_up, "applied_down": applied_down, "skipped": skipped}
 
     def search(
         self,
@@ -273,30 +390,31 @@ class KnowledgeStore:
         )
 
         if query_text.strip():
-            results = self._fts_search(query_text, conn=self.conn, **kwargs)
-            # Also search local DB if it exists
+            builtin_results: list[dict] = []
+            if _builtin_enabled():
+                builtin_results = self._fts_search(query_text, conn=self.conn, **kwargs)
+                self._apply_trust_ranking(builtin_results)
+            local_results: list[dict] = []
             if self._has_local_db():
                 local_results = self._fts_search(
                     query_text, conn=self.local_conn, **kwargs,
                 )
-                results.extend(local_results)
-            # Re-rank merged results with trust weights
-            self._apply_trust_ranking(results)
-            results = results[:limit]
+                self._apply_trust_ranking(local_results)
+            results = _merge_with_reserved_slots(local_results, builtin_results, limit)
         else:
-            results = self._scope_search(conn=self.conn, **kwargs)
+            builtin_results = []
+            if _builtin_enabled():
+                builtin_results = self._scope_search(conn=self.conn, **kwargs)
+            local_results = []
             if self._has_local_db():
                 local_results = self._scope_search(conn=self.local_conn, **kwargs)
-                results.extend(local_results)
-            # Sort merged results
-            results.sort(
-                key=lambda r: (
-                    _GRADE_ORDER.get(r.get("grade", ""), 0),
-                    _CONFIDENCE_WEIGHT.get(r.get("confidence", "medium"), 2.0),
-                ),
-                reverse=True,
+            _sort_scope = lambda r: (
+                _GRADE_ORDER.get(r.get("grade", ""), 0),
+                _CONFIDENCE_WEIGHT.get(r.get("confidence", "medium"), 2.0),
             )
-            results = results[:limit]
+            builtin_results.sort(key=_sort_scope, reverse=True)
+            local_results.sort(key=_sort_scope, reverse=True)
+            results = _merge_with_reserved_slots(local_results, builtin_results, limit)
 
         # Annotate entries under review
         for r in results:
@@ -304,6 +422,110 @@ class KnowledgeStore:
                 r["content"] = "[UNDER REVIEW] " + r["content"]
 
         return results
+
+    # -- nudge helpers --------------------------------------------------------
+
+    def _count_pending(self, grade: str) -> tuple[int, str | None]:
+        """Count insights of `grade` since last higher-grade synthesis.
+
+        Returns (count, last_higher_timestamp_or_None).
+        """
+        higher = {"finding": "pattern", "pattern": "principle"}
+        higher_grade = higher.get(grade)
+        if not higher_grade:
+            return 0, None
+        if not self._has_local_db():
+            return 0, None
+        row = self.local_conn.execute(
+            "SELECT MAX(created_at) FROM insights WHERE grade = ? AND status = 'active'",
+            (higher_grade,),
+        ).fetchone()
+        last_higher = row[0] if row and row[0] else None
+        count = self.local_conn.execute(
+            "SELECT COUNT(*) FROM insights WHERE grade = ? AND status = 'active'"
+            " AND created_at > COALESCE(?, '1970-01-01')",
+            (grade, last_higher),
+        ).fetchone()[0]
+        return count, last_higher
+
+    def _maybe_nudge(self, tone: str = "strong") -> list[str]:
+        """Return synthesis nudge messages if thresholds are met.
+
+        Both L3→L4 (finding→pattern) and L4→L5 (pattern→principle) can fire
+        simultaneously. L5 nudge listed first (higher priority).
+
+        Args:
+            tone: "soft" for search context, "strong" for record response.
+        """
+        p = float(os.environ.get("QMS_NUDGE_PROBABILITY", "1.0"))
+        if random.random() >= p:
+            return []
+
+        nudges: list[str] = []
+        # L4→L5: patterns → principles
+        pending_patterns, _ = self._count_pending("pattern")
+        if pending_patterns >= 3:
+            if tone == "soft":
+                nudges.append(
+                    f"\u2139\ufe0f {pending_patterns} patterns pending synthesis. "
+                    "Consider reviewing with list_insights(grade='pattern') "
+                    "when your current task is complete."
+                )
+            else:
+                nudges.append(
+                    f"\U0001f4ca Knowledge synthesis checkpoint: {pending_patterns} new patterns "
+                    "since last principle synthesis. Synthesizing principles is part of your "
+                    "research program. Use list_insights(grade='pattern') to review, then "
+                    "record_insight(grade='principle', references=[...]). It's okay to skip "
+                    "if patterns don't yet show a clear principle."
+                )
+        # L3→L4: findings → patterns
+        pending_findings, _ = self._count_pending("finding")
+        if pending_findings >= 8:
+            if tone == "soft":
+                nudges.append(
+                    f"\u2139\ufe0f {pending_findings} findings pending synthesis. "
+                    "Consider reviewing with list_insights(grade='finding') "
+                    "when your current task is complete."
+                )
+            else:
+                nudges.append(
+                    f"\U0001f4ca Knowledge synthesis checkpoint: {pending_findings} new findings "
+                    "since last pattern synthesis. Synthesizing patterns is part of your "
+                    "research program. Use list_insights(grade='finding') to review, then "
+                    "record_insight(grade='pattern', references=[...]). It's okay to skip "
+                    "if findings don't yet show a clear pattern."
+                )
+        return nudges
+
+    def list_pending(self, grade: str, limit: int = 20, compound: str = "") -> dict:
+        """List insights of `grade` since last higher-grade synthesis."""
+        if not self._has_local_db():
+            return {"grade": grade, "total_pending": 0, "since": None, "insights": []}
+        higher = {"finding": "pattern", "pattern": "principle"}
+        higher_grade = higher.get(grade)
+        # Get timestamp of last higher-grade synthesis
+        last_higher = None
+        if higher_grade:
+            row = self.local_conn.execute(
+                "SELECT MAX(created_at) FROM insights WHERE grade = ? AND status = 'active'",
+                (higher_grade,),
+            ).fetchone()
+            last_higher = row[0] if row and row[0] else None
+        sql = "SELECT * FROM insights WHERE grade = ? AND status = 'active'"
+        params: list = [grade]
+        if last_higher:
+            sql += " AND created_at > ?"
+            params.append(last_higher)
+        if compound:
+            sql += " AND tags LIKE ?"
+            params.append(f"%{compound}%")
+        count_sql = sql.replace("SELECT *", "SELECT COUNT(*)")
+        total = self.local_conn.execute(count_sql, params).fetchone()[0]
+        sql += " ORDER BY created_at DESC LIMIT ?"
+        params.append(max(1, min(limit, 100)))
+        rows = self.local_conn.execute(sql, params).fetchall()
+        return {"grade": grade, "total_pending": total, "since": last_higher, "insights": [dict(r) for r in rows]}
 
     # -- internal helpers -----------------------------------------------------
 

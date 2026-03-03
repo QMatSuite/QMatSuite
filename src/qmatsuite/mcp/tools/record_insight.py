@@ -9,7 +9,7 @@ import ulid
 from qmatsuite.mcp.app import mcp
 from qmatsuite.mcp.envelope import make_response, make_error
 
-_VALID_GRADES = {"bookkeeping", "observation", "finding", "principle"}
+_VALID_GRADES = {"bookkeeping", "observation", "finding", "pattern", "principle"}
 
 
 def _parse_tags(tags_str: str) -> list[str]:
@@ -38,15 +38,18 @@ def record_insight(
     scope_method: str = "*",
     tags: str = "",
     calc_ulid: str = "",
+    source_calculation: str = "",
+    references: str = "",
+    citations: str = "",
 ) -> dict:
     """Record an agent-authored insight into the QMatSuite knowledge base.
 
-    All grades are recorded in the provenance journal. Findings and principles
-    are additionally promoted into the searchable knowledge database.
+    All grades are recorded in the provenance journal. Findings, patterns, and
+    principles are additionally promoted into the searchable knowledge database.
 
     Args:
         content: Distilled conclusion (short, enters knowledge base if promoted).
-        grade: Quality tier — bookkeeping, observation, finding, or principle.
+        grade: Quality tier — bookkeeping, observation, finding, pattern, or principle.
         reasoning: Detailed thought process (provenance only, not indexed).
         scope_engine: Engine scope (e.g. 'qe', 'vasp') or '*' for all.
         scope_workflow: Workflow scope (e.g. 'scf', 'relax') or '*' for all.
@@ -54,6 +57,12 @@ def record_insight(
         scope_method: Method scope (e.g. 'dft+u', 'hse') or '*' for all.
         tags: Comma-separated or JSON array of tags for FTS indexing.
         calc_ulid: Optional link to a source calculation ULID.
+        source_calculation: Optional ULID of the calculation that produced this insight.
+        references: Comma-separated or JSON array of insight IDs this entry builds upon.
+            Required for 'pattern' and 'principle' grades.
+        citations: Optional. Comma-separated pairs of "ULID:up" or "ULID:down" indicating
+            which prior insights influenced this one and whether they were helpful.
+            Example: "01AAA:up,01BBB:down". Invalid entries are warned but not rejected.
     """
     # Validate inputs
     if not content or not content.strip():
@@ -71,6 +80,69 @@ def record_insight(
         )
 
     parsed_tags = _parse_tags(tags)
+    parsed_references = _parse_tags(references)  # reuse comma/JSON parser
+
+    # Resolve short ID prefixes to full ULIDs
+    if parsed_references:
+        try:
+            from qmatsuite.mcp.knowledge import get_knowledge_store
+
+            _store = get_knowledge_store()
+            resolved_refs = []
+            for ref_id in parsed_references:
+                try:
+                    resolved_refs.append(_store.resolve_short_id(ref_id))
+                except ValueError:
+                    resolved_refs.append(ref_id)  # keep original, will warn later
+            parsed_references = resolved_refs
+        except Exception:
+            pass  # non-fatal
+
+    # Enforce: pattern and principle require at least one reference
+    if grade in ("pattern", "principle") and not parsed_references:
+        grade_to_review = {"pattern": "finding", "principle": "pattern"}[grade]
+        return make_error(
+            error_type="VALIDATION_ERROR",
+            message=f"grade '{grade}' requires at least one reference ID",
+            context_hint=(
+                f"Use list_insights(grade='{grade_to_review}') to review {grade_to_review}s, "
+                "then pass their IDs as references."
+            ),
+        )
+
+    # Validate referenced IDs (warn-only if not found)
+    ref_warnings: list[str] = []
+    if parsed_references:
+        try:
+            from qmatsuite.mcp.knowledge import get_knowledge_store
+
+            _store = get_knowledge_store()
+            for ref_id in parsed_references:
+                if not _store.get_by_id(ref_id):
+                    ref_warnings.append(f"Referenced insight {ref_id} not found in DB")
+        except Exception:
+            pass  # non-fatal
+
+    # Parse citations
+    parsed_citations: list[dict] = []
+    citation_warnings: list[str] = []
+    if citations and citations.strip():
+        for pair in citations.split(","):
+            pair = pair.strip()
+            if not pair:
+                continue
+            parts = pair.rsplit(":", 1)
+            if len(parts) == 2 and parts[1] in ("up", "down"):
+                cit_id = parts[0]
+                try:
+                    from qmatsuite.mcp.knowledge import get_knowledge_store
+
+                    cit_id = get_knowledge_store().resolve_short_id(cit_id)
+                except (ValueError, Exception):
+                    pass  # keep original, non-fatal
+                parsed_citations.append({"id": cit_id, "vote": parts[1]})
+            else:
+                citation_warnings.append(f"Invalid citation format: {pair!r} (expected 'ULID:up' or 'ULID:down')")
 
     # Write to journal (ALL grades)
     journal_recorded = False
@@ -93,6 +165,8 @@ def record_insight(
                 "scope_system_type": scope_system_type,
                 "scope_method": scope_method,
                 "tags": parsed_tags,
+                "references": parsed_references,
+                "source_calculation": source_calculation,
             },
             summary=f"Agent insight: {content[:80]}",
         )
@@ -106,8 +180,9 @@ def record_insight(
     promoted = False
     insight_id = None
     contradictions: list[dict] = []
+    citation_result: dict = {}
 
-    if grade in ("finding", "principle"):
+    if grade in ("finding", "pattern", "principle"):
         try:
             from qmatsuite.mcp.knowledge import get_knowledge_store
             from qmatsuite.mcp.knowledge.insight_record import InsightRecord
@@ -125,6 +200,9 @@ def record_insight(
                 run_refs=[calc_ulid] if calc_ulid else [],
                 tags=parsed_tags,
                 created_by="agent",
+                source_calculation=source_calculation or None,
+                references=parsed_references,
+                citations=parsed_citations,
             )
 
             store = get_knowledge_store()
@@ -132,8 +210,34 @@ def record_insight(
             promoted = result["promoted"]
             insight_id = result.get("insight_id")
             contradictions = result.get("contradictions", [])
+
+            # Apply citation votes to cited insights
+            if parsed_citations:
+                citation_result = store.apply_citations(parsed_citations)
         except Exception:
             pass  # Knowledge store failure is non-fatal
+
+    # Apply citations even for non-promoted grades (citations are independent)
+    citation_summary = ""
+    if parsed_citations and not promoted:
+        try:
+            from qmatsuite.mcp.knowledge import get_knowledge_store
+
+            citation_result = get_knowledge_store().apply_citations(parsed_citations)
+        except Exception:
+            pass
+    if parsed_citations:
+        applied_up = citation_result.get("applied_up", 0)
+        applied_down = citation_result.get("applied_down", 0)
+        skipped = citation_result.get("skipped", 0)
+        parts = []
+        if applied_up or applied_down:
+            parts.append(f"{applied_up} helpful, {applied_down} not")
+        if skipped:
+            parts.append(f"{skipped} skipped (builtin or unknown)")
+        citation_summary = f"Cited {len(parsed_citations)} insight(s)"
+        if parts:
+            citation_summary += f" ({', '.join(parts)})"
 
     # Build context hint
     if promoted:
@@ -144,23 +248,41 @@ def record_insight(
                 hint += f" WARNING: {len(flagged)} existing entry(s) flagged for review due to contradictions."
             else:
                 hint += f" Note: {len(contradictions)} potential contradiction(s) detected."
-    elif grade in ("finding", "principle"):
+    elif grade in ("finding", "pattern", "principle"):
         hint = "Insight recorded in journal but knowledge store write failed."
     else:
         hint = (
             "Observation recorded in journal. "
             "Record more observations, then consolidate into a finding with "
-            "record_insight(grade='finding')."
+            "record_insight(grade='finding'). After several findings, synthesize "
+            "a pattern with record_insight(grade='pattern', references=[...])."
         )
 
+    # Append synthesis nudge if thresholds met
+    if promoted:
+        try:
+            from qmatsuite.mcp.knowledge import get_knowledge_store
+
+            nudges = get_knowledge_store()._maybe_nudge(tone="strong")
+            if nudges:
+                hint += "\n\n" + "\n\n".join(nudges)
+        except Exception:
+            pass
+
+    all_warnings = ref_warnings + citation_warnings
+    data = {
+        "insight_id": insight_id[:14] if insight_id else None,
+        "journal_entry_ulid": journal_entry_ulid,
+        "promoted": promoted,
+        "journal_recorded": journal_recorded,
+        "grade": grade,
+        "contradictions": contradictions,
+    }
+    if citation_summary:
+        data["citation_summary"] = citation_summary
+
     return make_response(
-        {
-            "insight_id": insight_id,
-            "journal_entry_ulid": journal_entry_ulid,
-            "promoted": promoted,
-            "journal_recorded": journal_recorded,
-            "grade": grade,
-            "contradictions": contradictions,
-        },
+        data,
         context_hint=hint,
+        warnings=all_warnings if all_warnings else None,
     )

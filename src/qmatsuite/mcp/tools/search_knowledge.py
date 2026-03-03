@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from qmatsuite.mcp.app import mcp
 from qmatsuite.mcp.envelope import make_response
 
@@ -54,7 +56,7 @@ def search_knowledge(
     items = []
     for r in results:
         item = {
-            "id": r["id"],
+            "id": r["id"][:14],
             "grade": r["grade"],
             "scope_engine": r["scope_engine"],
             "scope_workflow": r["scope_workflow"],
@@ -62,8 +64,11 @@ def search_knowledge(
             "scope_method": r["scope_method"],
             "content": r["content"][:300] + ("..." if len(r["content"]) > 300 else ""),
             "confidence": r["confidence"],
-            "tags": r["tags"],
+            "tags": json.loads(r["tags"]) if r.get("tags") else [],
             "source_type": r["source_type"],
+            "upvotes": r.get("upvotes", 0),
+            "downvotes": r.get("downvotes", 0),
+            "metadata": json.loads(r["metadata"]) if r.get("metadata") else {},
         }
         cc = r.get("contradiction_count", 0)
         if cc > 0:
@@ -77,6 +82,14 @@ def search_knowledge(
         )
     else:
         hint = "No matching knowledge found. Try broader search terms or remove filters."
+
+    # Append synthesis context note via soft nudge
+    try:
+        nudges = store._maybe_nudge(tone="soft")
+        if nudges:
+            hint += " " + " ".join(nudges)
+    except Exception:
+        pass
 
     return make_response(
         {

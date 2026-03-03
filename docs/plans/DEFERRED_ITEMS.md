@@ -249,6 +249,31 @@ Do not reopen unless regressions are discovered.
 - **Trigger**: First paper submission that needs SI.
 - **Effort**: 2-3 days.
 
+### D11: Journal → Provenance Architecture Migration (A1)
+- **Status**: Deferred to post-experiment
+- **Priority**: MANDATORY before paper submission
+- **Estimated effort**: L (~150 lines code + ~30 test changes)
+- **What**: Replace the three-layer architecture (global JSONL journal + per-project provenance + global knowledge) with a two-layer architecture (per-project provenance + global knowledge). Specifically:
+  - `record_insight` L1/L2: write to per-project provenance (currently: global journal)
+  - `record_insight` L3-L5: write to per-project provenance + global local.db (currently: global journal + local.db)
+  - `record_intent`: write to per-project provenance (currently: global journal)
+  - `save_yaml_doc`: remove redundant journal write (already dual-writes to provenance)
+- **Why deferred**:
+  1. **GUI dependency**: Daemon has 2 RPC endpoints (`_handle_list_journal_entries`, `_handle_get_journal_entry` in `daemon/server.py:4717-4767`) that serve journal data to GUI timeline view. Removing journal writes breaks GUI.
+  2. **Cross-boundary blast radius**: Changes touch daemon/server.py, yaml_io.py, record_insight.py, record_intent.py, plus 20+ tests.
+  3. **No experiment impact**: Experiments use L3-L5 in local.db + references + source_calculation for provenance chain. Journal location of L1/L2 and intents doesn't affect knowledge transfer measurements.
+- **Why mandatory before paper**: Paper claims "full provenance from principle to calculation." Current architecture has L1/L2 and intents in a global unindexed JSONL file with no project context. Target architecture puts everything in queryable per-project SQLite. The claim is technically true via local.db references, but the architecture should match the claim cleanly.
+- **Implementation plan**: See `docs/design/MCP_KNOWLEDGE_SYSTEM_SPEC.md` §14.
+  1. Add `get_project_root()` to `record_insight.py` and `record_intent.py`
+  2. Replace journal writes with `record_operation_event()` using `OperationType.CUSTOM` + structured payload
+  3. Handle `ProjectNotFoundError` gracefully (provenance_recorded: false)
+  4. Replace daemon RPC endpoints with provenance queries
+  5. Remove journal write from `save_yaml_doc()` (line 211-239)
+  6. Update response format: remove `journal_entry_ulid`, add `provenance_recorded`
+  7. Update 20+ tests
+- **Dependencies**: None. Can be done independently after R1-R10.
+- **Trigger**: After experiments complete, before paper submission.
+
 ---
 
 ## 11. Engine Registry Redesign (Discovery / Select / Verify separation)
@@ -339,3 +364,44 @@ Do not reopen unless regressions are discovered.
 - **Source**: Performance Audit F024/F025
 - Large `list_calculations(detail=True)` responses serialize/deserialize twice (daemon→main, main→renderer)
 - **Fix**: Consider direct daemon↔renderer communication or streaming responses
+
+---
+
+## 9. Knowledge System — Deferred from Naive Agent Review
+
+### G5: Structured Knowledge Usage Tracking
+
+**Status**: Deferred — workaround in place via preamble guidance
+**Priority**: Optional enhancement, not needed for experiments
+**Estimated effort**: M (~50 lines)
+
+#### What
+
+No structured field links search results → intent → calculation → insight.
+The chain "I searched, found X, used X to set parameter Y, got result Z"
+exists only in free text (intent body + citation votes), not as structured
+data.
+
+#### Current workaround
+
+1. Preamble step 2 tells agent: "record_intent — state your plan,
+   referencing knowledge entries you'll use"
+2. Agent writes IDs in intent free text (post-hoc parseable via regex)
+3. Citation votes on record_insight provide structured confirm/contradict
+   signal
+
+#### Why deferred
+
+- Citation votes + intent text provide sufficient signal for paper's
+  knowledge transfer analysis
+- Structured tracking would require schema additions to record_intent
+  (knowledge_consulted field) and record_insight (knowledge_used field)
+- These additions cross into A1 territory (architecture migration)
+
+#### If implemented later
+
+- Add `knowledge_consulted: str` to record_intent (comma-separated IDs)
+- Add `knowledge_used: str` to record_insight (IDs actually used, beyond
+  citations which are post-hoc evaluation)
+- Link: search_result_ids → intent.knowledge_consulted → insight.knowledge_used
+  → insight.citations (confirm/contradict)

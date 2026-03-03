@@ -89,7 +89,7 @@ class TestBuiltinContent:
 
     def test_entries_have_valid_schema(self):
         """Every entry has the required fields with valid values."""
-        valid_grades = {"bookkeeping", "observation", "finding", "principle"}
+        valid_grades = {"bookkeeping", "observation", "finding", "pattern", "principle"}
         valid_confidences = {"low", "medium", "high"}
         valid_source_types = {
             "local", "builtin", "literature", "docs",

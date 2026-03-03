@@ -22,7 +22,7 @@ class InsightRecord:
     Attributes:
         content: Distilled conclusion (enters knowledge base if grade >= finding).
         reasoning: Thought process / evidence chain (provenance only, not indexed).
-        grade: Quality tier — bookkeeping | observation | finding | principle.
+        grade: Quality tier — bookkeeping | observation | finding | pattern | principle.
         scope: Scope dimensions, e.g. ``{"engine": "qe", "workflow": "scf"}``.
         run_refs: Associated calculation ULIDs that produced this insight.
         tags: Freeform tag list for FTS indexing.
@@ -38,3 +38,6 @@ class InsightRecord:
     tags: list[str] = field(default_factory=list)
     intent_id: str | None = None
     created_by: str = "agent"
+    source_calculation: str | None = None
+    references: list[str] = field(default_factory=list)
+    citations: list[dict] = field(default_factory=list)

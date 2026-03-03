@@ -98,6 +98,7 @@ def get_results_summary(calc_ulid: str, step: int = -1) -> dict:
             f" Use promote_structure(calc_ulid='{calc_ulid}') to extract "
             "the relaxed geometry as a new structure."
         )
+    hint += " Record what you learned with record_insight(grade='finding')."
     return make_response(summary, context_hint=hint)
 
 

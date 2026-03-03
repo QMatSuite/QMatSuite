@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS insights (
     last_validated TEXT,
     contradiction_count INTEGER DEFAULT 0,
     upvotes INTEGER DEFAULT 0,
+    downvotes INTEGER DEFAULT 0,
+    metadata TEXT DEFAULT '{}',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (superseded_by) REFERENCES insights(id)
@@ -69,6 +71,22 @@ CREATE INDEX IF NOT EXISTS idx_insights_confidence ON insights(confidence);
 """
 
 
+def _migrate_metadata_column(conn: sqlite3.Connection) -> None:
+    """Add ``metadata`` column to existing databases that lack it."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(insights)").fetchall()}
+    if "metadata" not in cols:
+        conn.execute("ALTER TABLE insights ADD COLUMN metadata TEXT DEFAULT '{}'")
+        conn.commit()
+
+
+def _migrate_downvotes_column(conn: sqlite3.Connection) -> None:
+    """Add ``downvotes`` column to existing databases that lack it."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(insights)").fetchall()}
+    if "downvotes" not in cols:
+        conn.execute("ALTER TABLE insights ADD COLUMN downvotes INTEGER DEFAULT 0")
+        conn.commit()
+
+
 def init_db(db_path: Path) -> sqlite3.Connection:
     """Create or open a knowledge database, ensuring the schema exists.
 
@@ -81,4 +99,6 @@ def init_db(db_path: Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA_DDL)
     conn.commit()
+    _migrate_metadata_column(conn)
+    _migrate_downvotes_column(conn)
     return conn
