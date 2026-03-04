@@ -1085,38 +1085,37 @@ class TestMCPInstructions:
         assert mcp.instructions is not None
         assert len(mcp.instructions) > 0
 
-    def test_instructions_mention_all_grades(self):
-        """Instructions mention all 5 grades."""
+    def test_instructions_mention_core_grades(self):
+        """Instructions mention the three promoted grades."""
         from qmatsuite.mcp.app import mcp
 
         text = mcp.instructions
-        for grade in ("bookkeeping", "observation", "finding", "pattern", "principle"):
+        for grade in ("finding", "pattern", "principle"):
             assert grade in text, f"Missing grade: {grade}"
 
     def test_instructions_workflow(self):
-        """Preamble includes numbered workflow with search, intent, record."""
+        """Preamble describes both calculation and synthesis modes."""
         from qmatsuite.mcp.app import mcp
 
         text = mcp.instructions
-        assert "WORKFLOW FOR EVERY TASK" in text
+        assert "CALCULATION MODE" in text
+        assert "KNOWLEDGE SYNTHESIS MODE" in text
         assert "search_knowledge" in text
-        assert "record_intent" in text
         assert "record_insight" in text
 
     def test_instructions_citation_semantics(self):
-        """Preamble explains citation CONFIRMS/CONTRADICTS semantics."""
+        """Preamble explains record vs report guidance."""
         from qmatsuite.mcp.app import mcp
 
         text = mcp.instructions
-        assert "CONFIRMS" in text
-        assert "CONTRADICTS" in text
+        assert "WHEN TO RECORD" in text
 
     def test_instructions_upvotes_downvotes(self):
-        """Preamble explains upvotes/downvotes meaning for search consumers."""
+        """Preamble mentions vote mechanism for knowledge evolution."""
         from qmatsuite.mcp.app import mcp
 
         text = mcp.instructions
-        assert "upvotes/downvotes" in text
+        assert "vote entries up or down" in text
 
 
 # ===========================================================================

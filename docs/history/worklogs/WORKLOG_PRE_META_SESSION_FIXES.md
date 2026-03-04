@@ -57,10 +57,26 @@ Previously buried in `metadata` JSON blob. The meta-session needs it to cross-re
 - `list_insights.py` — both recent and pending mode item dicts
 - `search_knowledge.py` — search results item dict
 
+## Change 5: Dual-Mode Preamble
+
+Replaced the single-workflow preamble in `src/qmatsuite/mcp/app.py` with a dual-mode structure:
+
+- **CALCULATION MODE** — explicit step sequence for computing properties
+- **KNOWLEDGE SYNTHESIS MODE** — explicit step sequence for reviewing/synthesizing findings into patterns/principles
+- **WHEN TO RECORD vs REPORT** — guidance on synthesis threshold (chemical family/structural class vs premature 3-point patterns)
+- Removed: citations section, bookkeeping/observation from grades list, nudge response instruction
+
+**Tests updated** (`TestMCPInstructions`):
+- `test_instructions_mention_all_grades` → `test_instructions_mention_core_grades` (only finding/pattern/principle required)
+- `test_instructions_workflow` → checks CALCULATION MODE and KNOWLEDGE SYNTHESIS MODE headers
+- `test_instructions_citation_semantics` → checks WHEN TO RECORD guidance
+- `test_instructions_upvotes_downvotes` → checks "vote entries up or down" phrase
+
 ## Verification
 
 ```
-746 passed, 0 failed, 486 warnings (57.31s)
+746 passed (pre-meta session changes 1-4)
+104 passed (test_knowledge_write.py, all changes including preamble)
 ```
 
 12 nudge-related tests removed (was ~758 tests in MCP suite).
