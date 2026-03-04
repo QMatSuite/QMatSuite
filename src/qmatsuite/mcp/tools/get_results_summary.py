@@ -92,13 +92,19 @@ def get_results_summary(calc_ulid: str, step: int = -1) -> dict:
     # --- build compact summary ---
     summary = _build_summary(digest_data, step_idx, step_type_gen, run_ulid)
 
-    hint = f"Use inspect_calculation(calc_ulid='{calc_ulid}') for parameter details."
     if step_type_gen in {"relax", "minimize"}:
-        hint += (
-            f" Use promote_structure(calc_ulid='{calc_ulid}') to extract "
-            "the relaxed geometry as a new structure."
+        hint = (
+            f"Results ready. Use promote_structure(calc_ulid='{calc_ulid}') "
+            "to extract the relaxed geometry for use in subsequent calculations. "
+            "Then record key numerical findings (lattice constants, errors vs experiment) "
+            "with record_insight(grade='finding') for cross-compound comparison."
         )
-    hint += " Record what you learned with record_insight(grade='finding')."
+    else:
+        hint = (
+            "Results ready. Record key numerical findings (band gaps, k-point locations, "
+            "direct/indirect) with record_insight(grade='finding') "
+            "for cross-compound comparison in future sessions."
+        )
     return make_response(summary, context_hint=hint)
 
 

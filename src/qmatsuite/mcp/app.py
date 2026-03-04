@@ -23,7 +23,9 @@ WORKFLOW FOR EVERY TASK:
 
 KNOWLEDGE GRADES (5 levels):
   bookkeeping/observation — preliminary notes (not searchable)
-  finding — verified result from one calculation (promoted to knowledge DB)
+  finding → verified result from one calculation (promoted to knowledge DB)
+            Include specific numerical values so future sessions can
+            compare across compounds.
   pattern — trend across multiple findings (requires references to findings)
   principle — general rule from patterns (requires references to patterns)
 
@@ -35,6 +37,10 @@ CITATIONS — when recording insights:
 
 Search results show upvotes/downvotes from prior sessions. High downvotes
 suggest the knowledge may be unreliable — verify before relying on it.
+
+Before starting new calculations:
+- Search the knowledge base for relevant prior findings
+- Check if similar compounds or workflows have been studied before
 """
 
 mcp = FastMCP("QMatSuite", instructions=_MCP_INSTRUCTIONS)

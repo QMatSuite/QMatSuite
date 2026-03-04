@@ -448,6 +448,39 @@ class KnowledgeStore:
         ).fetchone()[0]
         return count, last_higher
 
+    def _pending_compounds(self, grade: str) -> str:
+        """Extract unique tags from pending insights of a given grade.
+
+        Returns a comma-separated string of tag values, or "multiple compounds"
+        if no tags are found.
+        """
+        higher = {"finding": "pattern", "pattern": "principle"}
+        higher_grade = higher.get(grade)
+        if not higher_grade or not self._has_local_db():
+            return "multiple compounds"
+        row = self.local_conn.execute(
+            "SELECT MAX(created_at) FROM insights WHERE grade = ? AND status = 'active'",
+            (higher_grade,),
+        ).fetchone()
+        last_higher = row[0] if row and row[0] else None
+        rows = self.local_conn.execute(
+            "SELECT tags FROM insights WHERE grade = ? AND status = 'active'"
+            " AND created_at > COALESCE(?, '1970-01-01')",
+            (grade, last_higher),
+        ).fetchall()
+        compounds: set[str] = set()
+        for r in rows:
+            tags_json = r[0]
+            if tags_json:
+                try:
+                    tags = json.loads(tags_json)
+                    compounds.update(
+                        t.strip() for t in tags if isinstance(t, str) and t.strip()
+                    )
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        return ", ".join(sorted(compounds)) if compounds else "multiple compounds"
+
     def _maybe_nudge(self, tone: str = "strong") -> list[str]:
         """Return synthesis nudge messages if thresholds are met.
 
@@ -473,11 +506,12 @@ class KnowledgeStore:
                 )
             else:
                 nudges.append(
-                    f"\U0001f4ca Knowledge synthesis checkpoint: {pending_patterns} new patterns "
-                    "since last principle synthesis. Synthesizing principles is part of your "
-                    "research program. Use list_insights(grade='pattern') to review, then "
+                    f"\U0001f4ca Principle synthesis checkpoint: you have {pending_patterns} patterns "
+                    "pending. Consider whether a common physical or chemical mechanism unifies "
+                    "them, or whether they suggest a general guideline for computational practice. "
+                    "Use list_insights(grade='pattern') to review, then "
                     "record_insight(grade='principle', references=[...]). It's okay to skip "
-                    "if patterns don't yet show a clear principle."
+                    "if no unifying mechanism is apparent yet."
                 )
         # L3→L4: findings → patterns
         pending_findings, _ = self._count_pending("finding")
@@ -489,12 +523,15 @@ class KnowledgeStore:
                     "when your current task is complete."
                 )
             else:
+                compounds_str = self._pending_compounds("finding")
                 nudges.append(
                     f"\U0001f4ca Knowledge synthesis checkpoint: {pending_findings} new findings "
-                    "since last pattern synthesis. Synthesizing patterns is part of your "
-                    "research program. Use list_insights(grade='finding') to review, then "
+                    f"since last pattern synthesis, covering {compounds_str}. "
+                    "Look for systematic trends \u2014 how do computed properties vary across "
+                    "related compounds? What physical or chemical factors might explain "
+                    "the variation? Use list_insights(grade='finding') to review, then "
                     "record_insight(grade='pattern', references=[...]). It's okay to skip "
-                    "if findings don't yet show a clear pattern."
+                    "if no clear trend is apparent yet."
                 )
         return nudges
 
