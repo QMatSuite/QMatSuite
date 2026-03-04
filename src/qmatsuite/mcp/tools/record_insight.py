@@ -258,20 +258,9 @@ def record_insight(
             "a pattern with record_insight(grade='pattern', references=[...])."
         )
 
-    # Append synthesis nudge if thresholds met
-    if promoted:
-        try:
-            from qmatsuite.mcp.knowledge import get_knowledge_store
-
-            nudges = get_knowledge_store()._maybe_nudge(tone="strong")
-            if nudges:
-                hint += "\n\n" + "\n\n".join(nudges)
-        except Exception:
-            pass
-
     all_warnings = ref_warnings + citation_warnings
     data = {
-        "insight_id": insight_id[:14] if insight_id else None,
+        "insight_id": insight_id if insight_id else None,
         "journal_entry_ulid": journal_entry_ulid,
         "promoted": promoted,
         "journal_recorded": journal_recorded,

@@ -1074,171 +1074,6 @@ class TestListInsights:
 
 
 # ===========================================================================
-# TestNudge (Change 2) — 7 tests
-# ===========================================================================
-
-class TestNudge:
-    def test_nudge_at_8_findings(self, store):
-        """8 findings, 0 patterns → nudge list mentions 'pattern'."""
-        for i in range(8):
-            store.add(_make_record(content=f"Finding {i} for nudge test", grade="finding"))
-        nudges = store._maybe_nudge()
-        assert len(nudges) >= 1
-        assert any("pattern" in n.lower() for n in nudges)
-
-    def test_no_nudge_below_threshold(self, store):
-        """5 findings → no nudge."""
-        for i in range(5):
-            store.add(_make_record(content=f"Finding {i} below threshold", grade="finding"))
-        assert store._maybe_nudge() == []
-
-    def test_sliding_window_resets_after_pattern(self, store):
-        """10 findings + 1 pattern → only findings AFTER pattern count."""
-        for i in range(10):
-            store.add(_make_record(content=f"Finding {i} with patterns", grade="finding"))
-        store.add(_make_record(content="Pattern exists", grade="pattern"))
-        nudges = store._maybe_nudge()
-        # No L3→L4 nudge since 0 findings after pattern synthesis
-        finding_nudges = [n for n in nudges if "finding" in n.lower()]
-        assert len(finding_nudges) == 0
-
-    def test_l2_to_l3_nudge(self, store):
-        """3 patterns, 0 principles → nudge mentions 'principle'."""
-        for i in range(3):
-            store.add(_make_record(content=f"Pattern {i} for L2-L3", grade="pattern"))
-        nudges = store._maybe_nudge()
-        assert len(nudges) >= 1
-        assert any("principle" in n.lower() for n in nudges)
-
-    def test_dual_nudge_both_fire(self, store):
-        """Both thresholds met → both L4→L5 and L3→L4 fire.
-
-        Patterns must be added first so that findings are "since last pattern".
-        """
-        for i in range(3):
-            store.add(_make_record(content=f"Pattern {i} dual threshold", grade="pattern"))
-        for i in range(8):
-            store.add(_make_record(content=f"Finding {i} dual threshold", grade="finding"))
-        nudges = store._maybe_nudge()
-        assert len(nudges) == 2
-        # L5 nudge first (higher priority)
-        assert "principle" in nudges[0].lower()
-        assert "finding" in nudges[1].lower()
-
-    def test_soft_tone(self, store):
-        """Soft tone uses ℹ️ prefix and gentler language."""
-        for i in range(8):
-            store.add(_make_record(content=f"Finding {i} soft tone", grade="finding"))
-        nudges = store._maybe_nudge(tone="soft")
-        assert len(nudges) >= 1
-        assert "pending synthesis" in nudges[0].lower()
-
-    def test_strong_tone(self, store):
-        """Strong tone uses 📊 prefix and directive language."""
-        for i in range(8):
-            store.add(_make_record(content=f"Finding {i} strong tone", grade="finding"))
-        nudges = store._maybe_nudge(tone="strong")
-        assert len(nudges) >= 1
-        assert "checkpoint" in nudges[0].lower()
-
-    def test_stochastic_nudge_off(self, store, monkeypatch):
-        """QMS_NUDGE_PROBABILITY=0 suppresses all nudges."""
-        monkeypatch.setenv("QMS_NUDGE_PROBABILITY", "0")
-        for i in range(8):
-            store.add(_make_record(content=f"Finding {i} stochastic off", grade="finding"))
-        nudges = store._maybe_nudge()
-        assert nudges == []
-
-    def test_nudge_in_tool_response(self, store, tmp_path, monkeypatch):
-        """Via record_insight.fn(), verify nudge appears in context_hint."""
-        import qmatsuite.mcp.knowledge as knowledge_mod
-
-        monkeypatch.setattr(knowledge_mod, "_store", store)
-        from qmatsuite.core.journal import Journal, set_journal, reset_journal
-
-        journal = Journal(journal_dir=tmp_path / "journal_nudge")
-        set_journal(journal)
-        try:
-            from qmatsuite.mcp.tools.record_insight import record_insight
-
-            # Record 7 findings first
-            for i in range(7):
-                store.add(_make_record(
-                    content=f"Finding {i} for tool nudge", grade="finding",
-                ))
-            # The 8th finding triggers nudge
-            result = record_insight.fn(
-                content="8th finding for tool nudge",
-                grade="finding",
-            )
-            assert result["status"] == "success"
-            assert "pattern" in result["context_hint"].lower()
-        finally:
-            monkeypatch.setattr(knowledge_mod, "_store", None)
-            reset_journal()
-
-
-# ===========================================================================
-# TestSearchContext (Change 4) — 4 tests
-# ===========================================================================
-
-class TestSearchContext:
-    @pytest.fixture(autouse=True)
-    def _patch_deps(self, store, tmp_path, monkeypatch):
-        """Patch the knowledge store singleton."""
-        import qmatsuite.mcp.knowledge as knowledge_mod
-
-        monkeypatch.setattr(knowledge_mod, "_store", store)
-        yield
-        monkeypatch.setattr(knowledge_mod, "_store", None)
-
-    def test_findings_context_note(self, store):
-        """8+ findings, 0 patterns → context_hint mentions patterns."""
-        for i in range(8):
-            store.add(_make_record(content=f"Finding {i} search ctx", grade="finding"))
-        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
-
-        result = search_knowledge.fn(query="Finding search ctx")
-        assert "finding" in result["context_hint"].lower()
-        assert "pending synthesis" in result["context_hint"].lower()
-
-    def test_patterns_context_note(self, store):
-        """3+ patterns, 0 principles → context_hint mentions principles."""
-        for i in range(3):
-            store.add(_make_record(content=f"Pattern {i} search ctx", grade="pattern"))
-        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
-
-        result = search_knowledge.fn(query="Pattern search ctx")
-        assert "pattern" in result["context_hint"].lower()
-        assert "pending synthesis" in result["context_hint"].lower()
-
-    def test_no_context_below_threshold(self, store):
-        """3 findings → no context note."""
-        for i in range(3):
-            store.add(_make_record(content=f"Few findings ctx {i}", grade="finding"))
-        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
-
-        result = search_knowledge.fn(query="Few findings ctx")
-        assert "pending synthesis" not in result["context_hint"].lower()
-
-    def test_both_nudges_in_context(self, store):
-        """Both thresholds met → both nudges in context (soft tone).
-
-        Patterns added first so findings are "since last pattern".
-        """
-        for i in range(3):
-            store.add(_make_record(content=f"Dual pattern ctx {i}", grade="pattern"))
-        for i in range(8):
-            store.add(_make_record(content=f"Dual threshold ctx {i}", grade="finding"))
-        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
-
-        result = search_knowledge.fn(query="Dual threshold ctx")
-        hint = result["context_hint"].lower()
-        assert "pattern" in hint
-        assert "finding" in hint
-
-
-# ===========================================================================
 # TestMCPInstructions (Change 5) — 2 tests
 # ===========================================================================
 
@@ -1310,7 +1145,7 @@ class TestFullSynthesisFlow:
         from qmatsuite.mcp.tools.record_insight import record_insight
 
         store = self._store
-        finding_ids = []  # short IDs (10-char) from tool responses
+        finding_ids = []  # full ULIDs from tool responses
 
         # 1. Record 8 findings (wildcard scope avoids contradiction detection)
         for i in range(8):
@@ -1322,19 +1157,16 @@ class TestFullSynthesisFlow:
             assert result["status"] == "success"
             finding_ids.append(result["data"]["insight_id"])
 
-        # R7: verify short IDs are 14 chars
+        # Verify full ULIDs (26 chars)
         for fid in finding_ids:
-            assert len(fid) == 14
+            assert len(fid) == 26
 
-        # 2. Verify nudge fires on 8th
-        assert "pattern" in result["context_hint"].lower()
-
-        # 3. Call list_by_grade and verify (full ULIDs from store)
+        # 2. Call list_by_grade and verify
         data = store.list_by_grade("finding")
         assert data["total"] == 8
         listed_ids = [r["id"] for r in data["insights"]]
         for fid in finding_ids:
-            assert any(lid.startswith(fid) for lid in listed_ids)
+            assert fid in listed_ids
 
         # 4. Record 1 pattern with references to all findings (short IDs, R8 resolves)
         refs_str = ",".join(finding_ids)
@@ -1613,13 +1445,13 @@ class TestShortIds:
         monkeypatch.setattr(knowledge_mod, "_store", None)
         reset_journal()
 
-    def test_short_id_length_is_14(self):
-        """record_insight returns 14-char short IDs."""
+    def test_full_ulid_length_is_26(self):
+        """record_insight returns full 26-char ULIDs."""
         from qmatsuite.mcp.tools.record_insight import record_insight
 
-        result = record_insight.fn(content="Short ID test", grade="finding")
+        result = record_insight.fn(content="Full ULID test", grade="finding")
         assert result["status"] == "success"
-        assert len(result["data"]["insight_id"]) == 14
+        assert len(result["data"]["insight_id"]) == 26
 
     def test_resolve_short_id_exact(self):
         """10-char prefix resolves to full 26-char ULID."""
@@ -1647,29 +1479,28 @@ class TestShortIds:
         finally:
             s.close()
 
-    def test_record_insight_with_short_references(self):
-        """Pass 10-char refs from record_insight, verify stored metadata has full ULIDs."""
+    def test_record_insight_with_full_references(self):
+        """Pass full ULID refs from record_insight, verify stored metadata has full ULIDs."""
         from qmatsuite.mcp.tools.record_insight import record_insight
 
         # Record two findings
-        r1 = record_insight.fn(content="Finding 1 for short ref test", grade="finding")
-        r2 = record_insight.fn(content="Finding 2 for short ref test", grade="finding")
-        short1 = r1["data"]["insight_id"]
-        short2 = r2["data"]["insight_id"]
-        assert len(short1) == 14
-        assert len(short2) == 14
+        r1 = record_insight.fn(content="Finding 1 for ref test", grade="finding")
+        r2 = record_insight.fn(content="Finding 2 for ref test", grade="finding")
+        ref1 = r1["data"]["insight_id"]
+        ref2 = r2["data"]["insight_id"]
+        assert len(ref1) == 26
+        assert len(ref2) == 26
 
-        # Record pattern referencing short IDs
+        # Record pattern referencing full ULIDs
         result = record_insight.fn(
-            content="Pattern from short refs",
+            content="Pattern from full refs",
             grade="pattern",
-            references=f"{short1},{short2}",
+            references=f"{ref1},{ref2}",
         )
         assert result["status"] == "success"
         # Verify stored references are full ULIDs
         pid = result["data"]["insight_id"]
-        full_pid = self._store.resolve_short_id(pid)
-        row = self._store.get_by_id(full_pid)
+        row = self._store.get_by_id(pid)
         meta = json.loads(row["metadata"])
         assert len(meta["references"]) == 2
         for ref in meta["references"]:

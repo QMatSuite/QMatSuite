@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import random
 import re
 import sqlite3
 from datetime import datetime, timezone
@@ -289,7 +288,7 @@ class KnowledgeStore:
         """List insights from local.db by grade, ordered by created_at DESC."""
         if not self._has_local_db():
             return {"grade": grade, "total": 0, "insights": []}
-        sql = "SELECT * FROM insights WHERE grade = ? AND status = 'active'"
+        sql = "SELECT * FROM insights WHERE grade = ? AND status IN ('active', 'under_review')"
         params: list = [grade]
         if compound:
             sql += " AND tags LIKE ?"
@@ -423,118 +422,6 @@ class KnowledgeStore:
 
         return results
 
-    # -- nudge helpers --------------------------------------------------------
-
-    def _count_pending(self, grade: str) -> tuple[int, str | None]:
-        """Count insights of `grade` since last higher-grade synthesis.
-
-        Returns (count, last_higher_timestamp_or_None).
-        """
-        higher = {"finding": "pattern", "pattern": "principle"}
-        higher_grade = higher.get(grade)
-        if not higher_grade:
-            return 0, None
-        if not self._has_local_db():
-            return 0, None
-        row = self.local_conn.execute(
-            "SELECT MAX(created_at) FROM insights WHERE grade = ?",
-            (higher_grade,),
-        ).fetchone()
-        last_higher = row[0] if row and row[0] else None
-        count = self.local_conn.execute(
-            "SELECT COUNT(*) FROM insights WHERE grade = ?"
-            " AND created_at > COALESCE(?, '1970-01-01')",
-            (grade, last_higher),
-        ).fetchone()[0]
-        return count, last_higher
-
-    def _pending_compounds(self, grade: str) -> str:
-        """Extract unique tags from pending insights of a given grade.
-
-        Returns a comma-separated string of tag values, or "multiple compounds"
-        if no tags are found.
-        """
-        higher = {"finding": "pattern", "pattern": "principle"}
-        higher_grade = higher.get(grade)
-        if not higher_grade or not self._has_local_db():
-            return "multiple compounds"
-        row = self.local_conn.execute(
-            "SELECT MAX(created_at) FROM insights WHERE grade = ?",
-            (higher_grade,),
-        ).fetchone()
-        last_higher = row[0] if row and row[0] else None
-        rows = self.local_conn.execute(
-            "SELECT tags FROM insights WHERE grade = ?"
-            " AND created_at > COALESCE(?, '1970-01-01')",
-            (grade, last_higher),
-        ).fetchall()
-        compounds: set[str] = set()
-        for r in rows:
-            tags_json = r[0]
-            if tags_json:
-                try:
-                    tags = json.loads(tags_json)
-                    compounds.update(
-                        t.strip() for t in tags if isinstance(t, str) and t.strip()
-                    )
-                except (json.JSONDecodeError, TypeError):
-                    pass
-        return ", ".join(sorted(compounds)) if compounds else "multiple compounds"
-
-    def _maybe_nudge(self, tone: str = "strong") -> list[str]:
-        """Return synthesis nudge messages if thresholds are met.
-
-        Both L3→L4 (finding→pattern) and L4→L5 (pattern→principle) can fire
-        simultaneously. L5 nudge listed first (higher priority).
-
-        Args:
-            tone: "soft" for search context, "strong" for record response.
-        """
-        p = float(os.environ.get("QMS_NUDGE_PROBABILITY", "1.0"))
-        if random.random() >= p:
-            return []
-
-        nudges: list[str] = []
-        # L4→L5: patterns → principles
-        pending_patterns, _ = self._count_pending("pattern")
-        if pending_patterns >= 3:
-            if tone == "soft":
-                nudges.append(
-                    f"\u2139\ufe0f {pending_patterns} patterns pending synthesis. "
-                    "Consider reviewing with list_insights(grade='pattern') "
-                    "when your current task is complete."
-                )
-            else:
-                nudges.append(
-                    f"\U0001f4ca Principle synthesis checkpoint: you have {pending_patterns} patterns "
-                    "pending. Consider whether a common physical or chemical mechanism unifies "
-                    "them, or whether they suggest a general guideline for computational practice. "
-                    "Use list_insights(grade='pattern') to review, then "
-                    "record_insight(grade='principle', references=[...]). It's okay to skip "
-                    "if no unifying mechanism is apparent yet."
-                )
-        # L3→L4: findings → patterns
-        pending_findings, _ = self._count_pending("finding")
-        if pending_findings >= 8:
-            if tone == "soft":
-                nudges.append(
-                    f"\u2139\ufe0f {pending_findings} findings pending synthesis. "
-                    "Consider reviewing with list_insights(grade='finding') "
-                    "when your current task is complete."
-                )
-            else:
-                compounds_str = self._pending_compounds("finding")
-                nudges.append(
-                    f"\U0001f4ca Knowledge synthesis checkpoint: {pending_findings} new findings "
-                    f"since last pattern synthesis, covering {compounds_str}. "
-                    "Look for systematic trends \u2014 how do computed properties vary across "
-                    "related compounds? What physical or chemical factors might explain "
-                    "the variation? Use list_insights(grade='finding') to review, then "
-                    "record_insight(grade='pattern', references=[...]). It's okay to skip "
-                    "if no clear trend is apparent yet."
-                )
-        return nudges
-
     def list_pending(self, grade: str, limit: int = 20, compound: str = "") -> dict:
         """List insights of `grade` since last higher-grade synthesis."""
         if not self._has_local_db():
@@ -664,7 +551,7 @@ class KnowledgeStore:
             FROM insights_fts f
             JOIN insights i ON i.rowid = f.rowid
             WHERE insights_fts MATCH ?
-              AND i.status = 'active'
+              AND i.status IN ('active', 'under_review')
         """
         params: list = [safe_query]
 
@@ -698,7 +585,7 @@ class KnowledgeStore:
         limit: int,
     ) -> list[dict]:
         """Non-FTS search using only scope filters on a single connection."""
-        sql = "SELECT i.* FROM insights i WHERE i.status = 'active'"
+        sql = "SELECT i.* FROM insights i WHERE i.status IN ('active', 'under_review')"
         params: list = []
 
         sql, params = self._add_scope_filters(

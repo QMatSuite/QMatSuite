@@ -53,15 +53,17 @@ def list_insights(
         # Enrich with parsed metadata
         items = []
         for r in data["insights"]:
+            meta = json.loads(r["metadata"]) if r.get("metadata") else {}
             item = {
-                "id": r["id"][:14],
+                "id": r["id"],
                 "grade": r["grade"],
                 "content": r["content"],
                 "tags": json.loads(r["tags"]) if r.get("tags") else [],
                 "created_at": r["created_at"],
                 "upvotes": r.get("upvotes", 0),
                 "downvotes": r.get("downvotes", 0),
-                "metadata": json.loads(r["metadata"]) if r.get("metadata") else {},
+                "metadata": meta,
+                "source_calculation": meta.get("source_calculation"),
             }
             items.append(item)
 
@@ -85,15 +87,17 @@ def list_insights(
         data = store.list_pending(grade, limit=limit, compound=compound)
         items = []
         for r in data["insights"]:
+            meta = json.loads(r["metadata"]) if r.get("metadata") else {}
             item = {
-                "id": r["id"][:14],
+                "id": r["id"],
                 "grade": r["grade"],
                 "content": r["content"],
                 "tags": json.loads(r["tags"]) if r.get("tags") else [],
                 "created_at": r["created_at"],
                 "upvotes": r.get("upvotes", 0),
                 "downvotes": r.get("downvotes", 0),
-                "metadata": json.loads(r["metadata"]) if r.get("metadata") else {},
+                "metadata": meta,
+                "source_calculation": meta.get("source_calculation"),
             }
             items.append(item)
 

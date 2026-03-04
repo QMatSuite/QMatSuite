@@ -55,8 +55,9 @@ def search_knowledge(
     # Truncate content in list view to 300 chars.
     items = []
     for r in results:
+        meta = json.loads(r["metadata"]) if r.get("metadata") else {}
         item = {
-            "id": r["id"][:14],
+            "id": r["id"],
             "grade": r["grade"],
             "scope_engine": r["scope_engine"],
             "scope_workflow": r["scope_workflow"],
@@ -68,7 +69,8 @@ def search_knowledge(
             "source_type": r["source_type"],
             "upvotes": r.get("upvotes", 0),
             "downvotes": r.get("downvotes", 0),
-            "metadata": json.loads(r["metadata"]) if r.get("metadata") else {},
+            "metadata": meta,
+            "source_calculation": meta.get("source_calculation"),
         }
         cc = r.get("contradiction_count", 0)
         if cc > 0:
@@ -82,14 +84,6 @@ def search_knowledge(
         )
     else:
         hint = "No matching knowledge found. Try broader search terms or remove filters."
-
-    # Append synthesis context note via soft nudge
-    try:
-        nudges = store._maybe_nudge(tone="soft")
-        if nudges:
-            hint += " " + " ".join(nudges)
-    except Exception:
-        pass
 
     return make_response(
         {
