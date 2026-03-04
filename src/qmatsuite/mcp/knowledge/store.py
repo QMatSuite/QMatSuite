@@ -437,12 +437,12 @@ class KnowledgeStore:
         if not self._has_local_db():
             return 0, None
         row = self.local_conn.execute(
-            "SELECT MAX(created_at) FROM insights WHERE grade = ? AND status = 'active'",
+            "SELECT MAX(created_at) FROM insights WHERE grade = ?",
             (higher_grade,),
         ).fetchone()
         last_higher = row[0] if row and row[0] else None
         count = self.local_conn.execute(
-            "SELECT COUNT(*) FROM insights WHERE grade = ? AND status = 'active'"
+            "SELECT COUNT(*) FROM insights WHERE grade = ?"
             " AND created_at > COALESCE(?, '1970-01-01')",
             (grade, last_higher),
         ).fetchone()[0]
@@ -459,12 +459,12 @@ class KnowledgeStore:
         if not higher_grade or not self._has_local_db():
             return "multiple compounds"
         row = self.local_conn.execute(
-            "SELECT MAX(created_at) FROM insights WHERE grade = ? AND status = 'active'",
+            "SELECT MAX(created_at) FROM insights WHERE grade = ?",
             (higher_grade,),
         ).fetchone()
         last_higher = row[0] if row and row[0] else None
         rows = self.local_conn.execute(
-            "SELECT tags FROM insights WHERE grade = ? AND status = 'active'"
+            "SELECT tags FROM insights WHERE grade = ?"
             " AND created_at > COALESCE(?, '1970-01-01')",
             (grade, last_higher),
         ).fetchall()
@@ -545,11 +545,11 @@ class KnowledgeStore:
         last_higher = None
         if higher_grade:
             row = self.local_conn.execute(
-                "SELECT MAX(created_at) FROM insights WHERE grade = ? AND status = 'active'",
+                "SELECT MAX(created_at) FROM insights WHERE grade = ?",
                 (higher_grade,),
             ).fetchone()
             last_higher = row[0] if row and row[0] else None
-        sql = "SELECT * FROM insights WHERE grade = ? AND status = 'active'"
+        sql = "SELECT * FROM insights WHERE grade = ?"
         params: list = [grade]
         if last_higher:
             sql += " AND created_at > ?"
