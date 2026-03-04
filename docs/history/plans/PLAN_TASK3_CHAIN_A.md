@@ -50,6 +50,8 @@ The orchestrating agent should read these before execution:
 
 **Total**: 38 sessions (19 relax + 19 bands)
 
+**Estimated wall time**: 6-19 hours total (10-30 min per session depending on compound complexity and number of attempts). The orchestrating agent should expect the full chain to complete within ~24 hours.
+
 ### Design Rationale
 
 - All zincblende (F-43m) — eliminates structure variation as a variable
@@ -128,12 +130,20 @@ Copy from a previous experiment (e.g., `.tmp/pseudo_chain_v2c/project/.mcp.json`
 
 ### Session Execution
 
+All relative paths in the script (`.tmp/task3_chain_a/...`, `.qmatsuite/knowledge/...`) are relative to REPO_ROOT. The script must anchor to the repo root before the session loop:
+
+```bash
+# Anchor all paths to repo root
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$REPO_ROOT"
+```
+
 For each session:
 
 ```bash
 SESSION_NAME="{NN}_{workflow}_{compound}"
-SESSION_DIR=".tmp/task3_chain_a/sessions/$SESSION_NAME"
-PROJECT_DIR=".tmp/task3_chain_a/project"
+SESSION_DIR="$REPO_ROOT/.tmp/task3_chain_a/sessions/$SESSION_NAME"
+PROJECT_DIR="$REPO_ROOT/.tmp/task3_chain_a/project"
 
 mkdir -p "$SESSION_DIR"
 
@@ -165,14 +175,17 @@ echo "exit: $exit_code" >> "$SESSION_DIR/timing.txt"
 After EACH session (automated in script):
 
 ```bash
+# Return to repo root for absolute path resolution
+cd "$REPO_ROOT"
+
 # 1. Snapshot local.db
-cp .qmatsuite/knowledge/local.db "$SESSION_DIR/local_db_snapshot.db" 2>/dev/null || echo "no local.db yet"
+cp "$REPO_ROOT/.qmatsuite/knowledge/local.db" "$SESSION_DIR/local_db_snapshot.db" 2>/dev/null || echo "no local.db yet"
 
 # 2. Count insights total
-insight_count=$(sqlite3 .qmatsuite/knowledge/local.db "SELECT COUNT(*) FROM insights;" 2>/dev/null || echo "0")
+insight_count=$(sqlite3 "$REPO_ROOT/.qmatsuite/knowledge/local.db" "SELECT COUNT(*) FROM insights;" 2>/dev/null || echo "0")
 
 # 3. Count by grade (critical: watch for pattern/principle emergence)
-grade_counts=$(sqlite3 .qmatsuite/knowledge/local.db "SELECT grade, COUNT(*) FROM insights GROUP BY grade;" 2>/dev/null || echo "none")
+grade_counts=$(sqlite3 "$REPO_ROOT/.qmatsuite/knowledge/local.db" "SELECT grade, COUNT(*) FROM insights GROUP BY grade;" 2>/dev/null || echo "none")
 
 # 4. Trace stats
 tool_calls=$(grep -c '"tool_use"' "$SESSION_DIR/trace.jsonl" 2>/dev/null || echo 0)
@@ -188,7 +201,7 @@ mpi_check=$(find "$PROJECT_DIR" -name "*.out" -newer "$SESSION_DIR/timing.txt" 2
 builtin_leak=$(grep -c '"source_type".*"builtin"' "$SESSION_DIR/trace.jsonl" 2>/dev/null || echo "0")
 
 # 7. Append to CHAIN_LOG.md
-cat >> ".tmp/task3_chain_a/CHAIN_LOG.md" << EOF
+cat >> "$REPO_ROOT/.tmp/task3_chain_a/CHAIN_LOG.md" << EOF
 
 ## Session $SESSION_NAME
 - Wall time: $start_time -> $end_time
