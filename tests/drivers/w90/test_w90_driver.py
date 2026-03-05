@@ -26,6 +26,7 @@ class TestW90Driver:
         assert "w90_wannier" in spec_ids
         # wannierprep IS in this driver (W90 engine)
         assert "w90_wannierprep" in spec_ids
+        assert "w90_postwannier" in spec_ids
 
         for spec in specs:
             assert spec.engine == "w90"
@@ -51,7 +52,11 @@ class TestW90Driver:
         """W90 has wannier mapping (SSOT for Wannier steps)."""
         driver = W90Driver()
         mat_map = driver.get_materialization_map()
-        assert mat_map == {"wannierprep": "w90_wannierprep", "wannier": "w90_wannier"}
+        assert mat_map == {
+            "wannierprep": "w90_wannierprep",
+            "wannier": "w90_wannier",
+            "postwannier": "w90_postwannier",
+        }
 
 
 class TestW90Registration:
@@ -70,6 +75,12 @@ class TestW90Registration:
         import qmatsuite.drivers
 
         assert DriverRegistry.is_step_type_registered("w90_wannier")
+
+    def test_w90_postwannier_registered(self):
+        """w90_postwannier step type should be in registry."""
+        import qmatsuite.drivers
+
+        assert DriverRegistry.is_step_type_registered("w90_postwannier")
 
     def test_wannierprep_in_w90(self):
         """wannierprep should be registered with W90 engine."""
@@ -153,4 +164,3 @@ class TestW90Recipe:
         assert "num_bands = 8" in content
         assert "mp_grid = 4 4 4" in content
         assert "Si:sp3" in content
-

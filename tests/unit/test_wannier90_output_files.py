@@ -260,5 +260,61 @@ exit 0
             assert result_pw2wan.output_file == (working_dir / "pw2wannier.out")
 
 
+class TestPostWannierPrimaryOutput:
+    """Test that postwannier primary artifact is <seed>.wpout."""
+
+    @pytest.fixture
+    def mock_qe_setup(self, tmp_path):
+        """Create mock QE installation with postw90.x."""
+        mock_qe_home = tmp_path / "qe_home"
+        mock_bin = mock_qe_home / "bin"
+        mock_bin.mkdir(parents=True)
+        (mock_bin / "pw.x").touch()
+
+        mock_exe = mock_bin / "postw90.x"
+        script_content = """#!/bin/bash
+seed="$1"
+touch "$(pwd)/${seed}.wpout"
+echo "postw90 done" >&1
+exit 0
+"""
+        mock_exe.write_text(script_content)
+        mock_exe.chmod(0o755)
+        return mock_qe_home
+
+    def test_w90_postwannier_primary_output_is_seed_wpout(self, tmp_path, mock_qe_setup):
+        """w90_postwannier should succeed only when <seed>.wpout exists."""
+        config = EngineConfig(
+            name="qe",
+            qe_home=mock_qe_setup,
+        )
+
+        with patch.object(QuantumEspressoEngine, "get_executable_path") as mock_get_exe:
+            mock_get_exe.return_value = mock_qe_setup / "bin" / "postw90.x"
+
+            engine = QuantumEspressoEngine(config)
+            runner = QECalculationRunner(engine)
+
+            working_dir = tmp_path / "work"
+            working_dir.mkdir()
+
+            input_file = working_dir / "fe.win"
+            input_file.write_text("berry = .true.\n")
+
+            result = runner.run_step(
+                input_file=input_file,
+                working_dir=working_dir,
+                step_type_spec="w90_postwannier",
+            )
+
+            expected_output = working_dir / "fe.wpout"
+            assert result.success is True
+            assert result.return_code == 0
+            assert result.output_file == expected_output
+            assert expected_output.exists()
+            assert (working_dir / "postwannier.out").exists()
+            assert (working_dir / "postwannier.err").exists()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

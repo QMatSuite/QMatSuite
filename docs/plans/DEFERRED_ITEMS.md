@@ -258,6 +258,34 @@ Do not reopen unless regressions are discovered.
   - `record_insight` L3-L5: write to per-project provenance + global local.db (currently: global journal + local.db)
   - `record_intent`: write to per-project provenance (currently: global journal)
   - `save_yaml_doc`: remove redundant journal write (already dual-writes to provenance)
+
+---
+
+## 6. QE-Wannier MCP Deferred (2026-03-04)
+
+### D12: P0-D — Step-engine-aware analysis + AHC parser
+- **Status**: Deferred by request (2026-03-04)
+- **What**:
+  - Make `list_analyses` / analysis resolution use per-step engine (SPEC owner), not calculation engine only.
+  - Add `postw90` (`*.wpout`) AHC parsing and MCP-facing analysis object.
+- **Why deferred**:
+  - Current priority is execution-path completion (MCP-only QE→Wannier→postw90 run path) and parameter truthfulness.
+  - AHC parsing/analysis output can be added after run path is stable.
+- **Trigger**:
+  - Need MCP-native tensor extraction/reporting from `postw90` without manual file parsing.
+
+### D13: P0-MPI — MCP launch-mode override contract
+- **Status**: Deferred by request (2026-03-04)
+- **What**:
+  - Add explicit MCP launch controls (auto/serial/mpi + per-run overrides) across run tools.
+  - Surface per-step effective launch telemetry in status/results.
+- **Why deferred**:
+  - Immediate requirement is that QE/Wannier executables obey existing global MPI env policy consistently.
+  - Fine-grained agent opt-in/opt-out launch policy can be introduced as a follow-up contract change.
+- **Current behavior (documented)**:
+  - `EngineConfig` reads `QMS_MPI_CORES` / `QMS_MPI_COMMAND` from process env at engine init.
+  - QE runtime command builder applies MPI wrapper globally when `mpi_cores > 1`.
+  - No MCP API-level per-run serial/mpi override is available yet.
 - **Why deferred**:
   1. **GUI dependency**: Daemon has 2 RPC endpoints (`_handle_list_journal_entries`, `_handle_get_journal_entry` in `daemon/server.py:4717-4767`) that serve journal data to GUI timeline view. Removing journal writes breaks GUI.
   2. **Cross-boundary blast radius**: Changes touch daemon/server.py, yaml_io.py, record_insight.py, record_intent.py, plus 20+ tests.

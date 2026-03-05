@@ -28,7 +28,7 @@ SKIP_PATTERNS = [
 
 # Known engine prefixes and gen steps (for detecting mapping dicts)
 ENGINE_PREFIXES = {"qe", "vasp", "pyscf", "orca", "lammps", "cp2k", "w90"}
-COMMON_GEN_STEPS = {"scf", "nscf", "relax", "md", "dos", "bands", "bandspw", "wannierprep", "pw2wannier", "wannier", "ph"}
+COMMON_GEN_STEPS = {"scf", "nscf", "relax", "md", "dos", "bands", "bandspw", "wannierprep", "pw2wannier", "wannier", "postwannier", "ph"}
 
 # Payload keys that indicate this is NOT a mapping dict
 PAYLOAD_KEYS = {

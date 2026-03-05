@@ -49,6 +49,11 @@ class TestQEFamilyMaterialization:
         """PUBLIC key 'pw2wannier' materializes to 'qe_pw2wannier' for QE family."""
         result = materialize_public_step_key("pw2wannier", "qe")
         assert result == "qe_pw2wannier"
+
+    def test_postwannier_materializes_to_w90_postwannier(self):
+        """PUBLIC key 'postwannier' materializes through QE companion routing."""
+        result = materialize_public_step_key("postwannier", "qe")
+        assert result == "w90_postwannier"
     
     def test_workflow_template_scf_materializes(self):
         """Workflow template 'scf' materializes correctly for QE family."""
@@ -65,20 +70,19 @@ class TestQEFamilyMaterialization:
         result = materialize_workflow(["scf", "bandspw", "bands"], "qe")
         assert result == ["qe_scf", "qe_bandspw", "qe_bands"]
     
-    def test_workflow_template_wannier_qe_parts_materialize(self):
-        """QE parts of Wannier workflow materialize correctly for QE family.
-
-        Note: 'wannier' step belongs to w90 engine, not qe.
-        Only qe-native steps (scf, nscf, pw2wannier) can be materialized with qe.
-        """
-        result = materialize_workflow(["scf", "nscf", "pw2wannier"], "qe")
-        assert result == ["qe_scf", "qe_nscf", "qe_pw2wannier"]
+    def test_workflow_template_wannier_materializes_with_companions(self):
+        """Wannier workflow materializes with QE + W90 companion routing."""
+        result = materialize_workflow(
+            ["scf", "nscf", "wannierprep", "pw2wannier", "wannier"],
+            "qe",
+        )
+        assert result == ["qe_scf", "qe_nscf", "w90_wannierprep", "qe_pw2wannier", "w90_wannier"]
     
     def test_zero_one_mapping_invariant(self):
         """Each PUBLIC step key maps to at most one MACHINE step type for QE family (0-1 rule)."""
         # Test that each PUBLIC key maps to exactly one MACHINE type or None
         # Note: 'wannier' belongs to w90 engine, not qe
-        public_keys = ["scf", "nscf", "dos", "bandspw", "bands", "pw2wannier"]
+        public_keys = ["scf", "nscf", "dos", "bandspw", "bands", "pw2wannier", "postwannier"]
         for public_key in public_keys:
             result = materialize_public_step_key(public_key, "qe")
             # Result should be a single machine type string or None (not a list)
@@ -128,4 +132,3 @@ class TestUnsupportedFamilyMaterialization:
         # DOS workflow fails (includes unsupported steps)
         with pytest.raises(ValueError, match="not supported"):
             materialize_workflow(["scf", "nscf", "dos"], "pyscf")
-

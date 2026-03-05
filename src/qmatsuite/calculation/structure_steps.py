@@ -212,6 +212,61 @@ STEP_TYPE_TO_CALCULATION = {
 }
 
 
+_WANNIER_PARAM_WRAPPERS = frozenset({
+    "parameters",
+    "wannier90",
+    "w90",
+    "WANNIER90",
+    "W90",
+    "inputpp",
+    "INPUTPP",
+})
+
+
+def _extract_wannier_flat_params(params: Any) -> Dict[str, Any]:
+    """Flatten common wrapper namespaces for Wannier-family steps.
+
+    Keeps top-level keys intact and merges known wrapper dicts without dropping
+    unknown parameters. This allows transparent passthrough in materialization.
+    """
+    if not isinstance(params, dict):
+        return {}
+
+    flat: Dict[str, Any] = {}
+
+    # Prefer explicit "parameters" namespace first (set_parameters tool default).
+    explicit_params = params.get("parameters")
+    if isinstance(explicit_params, dict):
+        flat.update(explicit_params)
+
+    # Merge known wrapper namespaces used by legacy inputs and direct engine syntax.
+    for wrapper in ("wannier90", "w90", "WANNIER90", "W90", "inputpp", "INPUTPP"):
+        wrapped = params.get(wrapper)
+        if isinstance(wrapped, dict):
+            flat.update(wrapped)
+
+    # Keep top-level keys (except wrapper/control namespaces) as-is.
+    for key, value in params.items():
+        if key in _WANNIER_PARAM_WRAPPERS or key == "cards":
+            continue
+        flat[key] = value
+
+    return flat
+
+
+def _collect_passthrough_params(params: Dict[str, Any], reserved_keys: set[str]) -> Dict[str, Any]:
+    """Collect unhandled parameters for transparent passthrough rendering."""
+    reserved_lower = {k.lower() for k in reserved_keys}
+    extra: Dict[str, Any] = {}
+    for key, value in params.items():
+        if key.lower() in reserved_lower:
+            continue
+        if value is None:
+            continue
+        extra[key] = value
+    return extra
+
+
 def generate_qe_input_from_structure(
     structure: PMGStructure | PMGMolecule,
     step_type_gen: str,
@@ -849,7 +904,7 @@ def materialize_step_spec(
     step_type_lower = (spec_obj.step_type_spec or "scf").lower()
     # Convert to GEN type for comparison (e.g., "qe_pw2wannier" -> "pw2wannier")
     step_type_gen = _normalize_step_type_to_gen(step_type_lower)
-    WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "pw2wannier", "pw2qmcpack"}
+    WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "postwannier", "pw2wannier", "pw2qmcpack"}
     
     # Phase 3C: Check if calculation is PySCF - PySCF steps should NOT go through QE input generation
     # PySCF engine builds input dynamically from structure + parameters
@@ -897,55 +952,41 @@ def materialize_step_spec(
         )
 
         # Generate Wannier90 input file based on step type (using GEN type)
-        if step_type_gen == "wannierprep" or step_type_gen == "wannier":
+        if step_type_gen in {"wannierprep", "wannier", "postwannier"}:
             # Generate .win file
-            from qmatsuite.io.wannier90_input import Wannier90Input
-            
-            # Resolve structure for Wannier90 input
-            structure = _resolve_structure_for_spec(
-                spec_obj,
-                resolved_spec_path,
-                calculation_dir=calculation_dir,
-                project=project,
-                project_root=project_root,
-            )
-            
-            # Extract parameters from spec
+            from qmatsuite.io.wannier90_input import Wannier90Input, generate_kpoints_from_mp_grid
+
             params = spec_obj.parameters or {}
-            # Flatten nested parameters if needed (step parameters may be nested)
-            flat_params = {}
-            if isinstance(params, dict):
-                for key, value in params.items():
-                    if isinstance(value, dict):
-                        flat_params.update(value)
-                    else:
-                        flat_params[key] = value
-            
-            # Create Wannier90Input from spec parameters
-            w90_input = Wannier90Input()
-            # For wannier step (not wannierprep), auto-detect seedname from the prior
-            # wannierprep step's .win file. This ensures the wannier step uses the same
-            # seedname as wannierprep, so it reads the .amn/.mmn/.eig files produced
-            # by pw2wannier under the matching seedname.
-            if step_type_gen == "wannier":
-                win_files = list(output_dir.glob("*.win"))
+            flat_params = _extract_wannier_flat_params(params)
+
+            existing_win_path: Optional[Path] = None
+            if step_type_gen in {"wannier", "postwannier"}:
+                win_files = sorted(output_dir.glob("*.win"))
                 if win_files:
-                    detected_seedname = win_files[0].stem
-                    w90_input.seedname = detected_seedname
-                    logger.info(
-                        f"[SEEDNAME_SYNC] Auto-detected seedname '{detected_seedname}' from .win file "
-                        f"for wannier step (overriding slug '{spec_obj.meta.slug}')"
-                    )
-                else:
-                    w90_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
+                    existing_win_path = win_files[0]
+
+            if existing_win_path:
+                try:
+                    w90_input = Wannier90Input.from_file(existing_win_path)
+                except Exception:
+                    w90_input = Wannier90Input()
+                detected_seedname = existing_win_path.stem
+                w90_input.seedname = detected_seedname
+                logger.info(
+                    f"[SEEDNAME_SYNC] Auto-detected seedname '{detected_seedname}' from existing .win "
+                    f"for {step_type_gen} step"
+                )
             else:
-                w90_input.seedname = flat_params.get("seedname", spec_obj.meta.slug or "wannier")
+                w90_input = Wannier90Input()
+                w90_input.seedname = str(flat_params.get("seedname", spec_obj.meta.slug or "wannier"))
+
             if "num_wann" in flat_params and flat_params["num_wann"] is not None:
                 w90_input.num_wann = int(flat_params["num_wann"])
             if "num_bands" in flat_params and flat_params["num_bands"] is not None:
                 w90_input.num_bands = int(flat_params["num_bands"])
             if "num_iter" in flat_params and flat_params["num_iter"] is not None:
                 w90_input.num_iter = int(flat_params["num_iter"])
+
             explicit_mp_grid = False
             if "mp_grid" in flat_params and flat_params["mp_grid"] is not None:
                 mp_grid = flat_params["mp_grid"]
@@ -957,34 +998,31 @@ def materialize_step_spec(
                         except ValueError:
                             mp_grid = None
                 if isinstance(mp_grid, (list, tuple)):
-                    # Filter out None values and convert to int.
                     normalized = [int(x) for x in mp_grid if x is not None]
                     if len(normalized) >= 3:
                         w90_input.mp_grid = normalized[:3]
                         explicit_mp_grid = True
-            
-            # CRITICAL: K-points must match NSCF exactly (order and values) for pw2wannier.
-            # Priority: 1) YAML-stored kpoints (parsed from corpus, guaranteed to match NSCF)
-            #           2) Extract from nscf.in at runtime (if YAML kpoints not available)
-            #           3) Generate from mp_grid (last resort, order may differ)
+
+            # Support explicit structured kpoints in both flat and wrapped form.
             yaml_kpoints = None
-            # Check both original params and flat_params for kpoints.
-            # The flattening loop expands dict values via .update(), so
-            # params["kpoints"]["points"] becomes flat_params["points"] but
-            # flat_params["kpoints"] is lost. Use original params first.
-            kp_data = params.get("kpoints") or flat_params.get("kpoints")
+            kp_data = flat_params.get("kpoints")
+            if kp_data is None and isinstance(params, dict):
+                kp_data = params.get("kpoints")
+
             if isinstance(kp_data, dict) and "points" in kp_data:
                 points = kp_data["points"]
                 if isinstance(points, list) and len(points) > 0:
                     yaml_kpoints = [[float(c) for c in pt] for pt in points]
+            elif isinstance(kp_data, list) and kp_data and isinstance(kp_data[0], (list, tuple)):
+                yaml_kpoints = [[float(c) for c in pt[:3]] for pt in kp_data]
 
             if yaml_kpoints:
                 w90_input.kpoints = yaml_kpoints
                 logger.info(
-                    f"[MATERIALIZE_STEP_SPEC] Using {len(yaml_kpoints)} kpoints from YAML params "
+                    f"[MATERIALIZE_STEP_SPEC] Using {len(yaml_kpoints)} kpoints from step parameters "
                     f"(preserving order for pw2wannier compatibility)"
                 )
-            else:
+            elif not w90_input.kpoints:
                 # Fallback: extract from materialized nscf.in
                 from qmatsuite.calculation.wannier90_kpoints import (
                     extract_kpoints_from_nscf_step,
@@ -996,7 +1034,7 @@ def materialize_step_spec(
                 )
                 if nscf_kpoints:
                     w90_input.kpoints = nscf_kpoints
-                    if not explicit_mp_grid:
+                    if not explicit_mp_grid and not w90_input.mp_grid:
                         inferred_mp_grid = infer_mp_grid_from_kpoints(nscf_kpoints)
                         if inferred_mp_grid is not None:
                             w90_input.mp_grid = inferred_mp_grid
@@ -1009,13 +1047,11 @@ def materialize_step_spec(
                     )
                 elif w90_input.mp_grid:
                     logger.warning(
-                        f"[MATERIALIZE_STEP_SPEC] No kpoints in YAML or nscf step. "
+                        f"[MATERIALIZE_STEP_SPEC] No kpoints in step params or nscf step. "
                         f"Generating from mp_grid={w90_input.mp_grid}, order may not match nscf."
                     )
-                    from qmatsuite.io.wannier90_input import generate_kpoints_from_mp_grid
                     w90_input.kpoints = generate_kpoints_from_mp_grid(w90_input.mp_grid)
 
-            # Consistency check: verify count matches mp_grid if both are set
             if w90_input.kpoints and w90_input.mp_grid:
                 expected_count = w90_input.mp_grid[0] * w90_input.mp_grid[1] * w90_input.mp_grid[2]
                 if len(w90_input.kpoints) != expected_count:
@@ -1024,6 +1060,7 @@ def materialize_step_spec(
                         f"have {len(w90_input.kpoints)} kpoints, but mp_grid={w90_input.mp_grid} "
                         f"expects {expected_count}. This may cause pw2wannier errors."
                     )
+
             if "projections" in flat_params and flat_params["projections"] is not None:
                 proj_val = flat_params["projections"]
                 if isinstance(proj_val, list):
@@ -1036,19 +1073,64 @@ def materialize_step_spec(
                     w90_input.projections_block = "\n".join(str(p) for p in proj_block_val)
                 else:
                     w90_input.projections_block = str(proj_block_val)
-            
-            # Add structure data
+
+            if "length_unit" in flat_params and flat_params["length_unit"] is not None:
+                w90_input.length_unit = str(flat_params["length_unit"])
+
+            if "unit_cell_cart" in flat_params and flat_params["unit_cell_cart"] is not None:
+                uc = flat_params["unit_cell_cart"]
+                if isinstance(uc, (list, tuple)):
+                    w90_input.unit_cell_cart = [[float(v) for v in row[:3]] for row in uc[:3]]
+
+            if "atoms_frac" in flat_params and flat_params["atoms_frac"] is not None:
+                atoms_frac = flat_params["atoms_frac"]
+                if isinstance(atoms_frac, (list, tuple)):
+                    normalized_atoms = []
+                    for atom in atoms_frac:
+                        if isinstance(atom, (list, tuple)) and len(atom) >= 4:
+                            normalized_atoms.append([
+                                str(atom[0]),
+                                float(atom[1]),
+                                float(atom[2]),
+                                float(atom[3]),
+                            ])
+                    if normalized_atoms:
+                        w90_input.atoms_frac = normalized_atoms
+
+            if "atoms_cart" in flat_params and flat_params["atoms_cart"] is not None:
+                atoms_cart = flat_params["atoms_cart"]
+                if isinstance(atoms_cart, (list, tuple)):
+                    normalized_atoms = []
+                    for atom in atoms_cart:
+                        if isinstance(atom, (list, tuple)) and len(atom) >= 4:
+                            normalized_atoms.append([
+                                str(atom[0]),
+                                float(atom[1]),
+                                float(atom[2]),
+                                float(atom[3]),
+                            ])
+                    if normalized_atoms:
+                        w90_input.atoms_cart = normalized_atoms
+
+            # For brand-new .win generation, inject structure information.
+            structure = None
+            if step_type_gen == "wannierprep" or existing_win_path is None:
+                structure = _resolve_structure_for_spec(
+                    spec_obj,
+                    resolved_spec_path,
+                    calculation_dir=calculation_dir,
+                    project=project,
+                    project_root=project_root,
+                )
+
             if structure:
-                # Wannier90 unit_cell_cart MUST be in Angstrom (not Bohr)
-                # Structure.lattice.matrix is always in Angstrom in pymatgen
                 lattice = structure.lattice
                 w90_input.unit_cell_cart = [
                     [float(lattice.matrix[i][j]) for j in range(3)]
                     for i in range(3)
                 ]
                 w90_input.length_unit = "ang"
-                
-                # Atoms in fractional coordinates (must come from structure.frac_coords)
+
                 w90_input.atoms_frac = []
                 for site in structure.sites:
                     w90_input.atoms_frac.append([
@@ -1057,9 +1139,8 @@ def materialize_step_spec(
                         float(site.frac_coords[1]),
                         float(site.frac_coords[2]),
                     ])
-                
+
                 # Consistency assertion: verify unit_cell_cart * atoms_frac ≈ cartesian coords
-                # This ensures we're writing the correct lattice matrix
                 import numpy as np
                 lattice_matrix = np.array(w90_input.unit_cell_cart)
                 for i, site in enumerate(structure.sites):
@@ -1079,61 +1160,55 @@ def materialize_step_spec(
                             f"This indicates a bug in lattice/coordinate handling. "
                             f"structure.lattice.matrix should be in Angstrom and structure.coords should be cartesian."
                         )
-            
-            # Generate filename - ALWAYS use seedname.win (Wannier90 requirement)
-            # Do NOT use input_name override for Wannier90 steps
+
+            passthrough_reserved = {
+                "seedname", "num_wann", "num_bands", "num_iter",
+                "mp_grid", "kpoints",
+                "projections", "projections_block",
+                "unit_cell_cart", "atoms_frac", "atoms_cart", "length_unit",
+            }
+            w90_input.extra_parameters.update(
+                _collect_passthrough_params(flat_params, passthrough_reserved)
+            )
+
             seedname = w90_input.seedname
             filename = f"{seedname}.win"
-            
-            # Safety check: ensure filename is valid
-            if not filename or filename == '.' or filename == './':
+
+            if not filename or filename == "." or filename == "./":
                 raise ValueError(
                     f"Invalid Wannier90 input filename: '{filename}'. "
                     f"Seedname was: {seedname}"
                 )
-            
-            generated_input = output_dir / filename
-            generated_input = generated_input.resolve()
-            
-            # Safety check: ensure we're not creating a directory
+
+            generated_input = (output_dir / filename).resolve()
             if generated_input.exists() and generated_input.is_dir():
                 raise ValueError(
                     f"Generated input path is a directory: {generated_input}. "
                     f"This should not happen. Filename was: {filename}"
                 )
-            
-            # Write .win file
+
             generated_input.parent.mkdir(parents=True, exist_ok=True)
             w90_input.write(generated_input)
             logger.info(
                 f"[MATERIALIZE_STEP_SPEC] Generated Wannier90 .win file: {generated_input}"
             )
-            
-            # Return relative path from calculation_dir if possible (for Step.input_file)
-            # Otherwise return absolute path
+
             if calculation_dir:
                 calc_dir_path = Path(calculation_dir).resolve()
                 try:
                     rel_path = generated_input.relative_to(calc_dir_path)
                     return calc_dir_path / rel_path, spec_obj
                 except ValueError:
-                    # Not relative to calculation_dir, return absolute
                     pass
-            
+
             return generated_input, spec_obj
-        
+
         elif step_type_gen == "pw2wannier":
             # Generate .pw2wan file
             from qmatsuite.io.wannier90_input import Pw2Wannier90Input
-            
+
             params = spec_obj.parameters or {}
-            flat_params = {}
-            if isinstance(params, dict):
-                for key, value in params.items():
-                    if isinstance(value, dict):
-                        flat_params.update(value)
-                    else:
-                        flat_params[key] = value
+            flat_params = _extract_wannier_flat_params(params)
             
             # Load calculation context for prefix/outdir injection
             calc_prefix = None
@@ -1179,6 +1254,37 @@ def materialize_step_spec(
             else:
                 pw2wan_input.prefix = flat_params.get("prefix", "pwscf")
             pw2wan_input.outdir = calc_outdir
+
+            def _to_bool(value: Any) -> bool:
+                if isinstance(value, bool):
+                    return value
+                if isinstance(value, (int, float)):
+                    return bool(value)
+                if isinstance(value, str):
+                    return value.strip().lower() in {"1", "true", ".true.", "t", "yes", "y"}
+                return bool(value)
+
+            if "write_mmn" in flat_params and flat_params["write_mmn"] is not None:
+                pw2wan_input.write_mmn = _to_bool(flat_params["write_mmn"])
+            if "write_amn" in flat_params and flat_params["write_amn"] is not None:
+                pw2wan_input.write_amn = _to_bool(flat_params["write_amn"])
+            if "write_unk" in flat_params and flat_params["write_unk"] is not None:
+                pw2wan_input.write_unk = _to_bool(flat_params["write_unk"])
+            if "write_uHu" in flat_params and flat_params["write_uHu"] is not None:
+                pw2wan_input.write_uHu = _to_bool(flat_params["write_uHu"])
+            if "write_dmn" in flat_params and flat_params["write_dmn"] is not None:
+                pw2wan_input.write_dmn = _to_bool(flat_params["write_dmn"])
+            if "spin_component" in flat_params and flat_params["spin_component"] is not None:
+                pw2wan_input.spin_component = str(flat_params["spin_component"])
+
+            passthrough_reserved = {
+                "seedname", "prefix", "outdir",
+                "write_mmn", "write_amn", "write_unk", "write_uHu", "write_dmn",
+                "spin_component",
+            }
+            pw2wan_input.extra_parameters.update(
+                _collect_passthrough_params(flat_params, passthrough_reserved)
+            )
             
             # Generate filename - Use standard QE naming: pw2wan.in (not seedname.pw2wan)
             # The seedname inside the file (e.g., 'diamond') controls output file names (diamond.mmn, etc.)

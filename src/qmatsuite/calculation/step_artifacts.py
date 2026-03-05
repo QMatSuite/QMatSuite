@@ -85,6 +85,16 @@ def _wannier_artifacts(step_type_spec: str, params: Dict[str, Any], raw_dir: Pat
     return [f"{seedname}.wout"]
 
 
+def _postwannier_artifacts(step_type_spec: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
+    """Artifacts for postwannier step."""
+    seedname = _get_wannier90_seedname(params)
+    if not seedname:
+        return []
+
+    # Primary artifact: <seed>.wpout (postw90 output)
+    return [f"{seedname}.wpout"]
+
+
 def _bands_artifacts(step_type_spec: str, params: Dict[str, Any], raw_dir: Path) -> List[str]:
     """Artifacts for bands step."""
     filband = _get_bands_filband(params)
@@ -119,6 +129,7 @@ STEP_ARTIFACT_RULES: Dict[str, ArtifactRule] = {
     "wannierprep": _wannierprep_artifacts,
     "pw2wannier": _pw2wannier_artifacts,
     "wannier": _wannier_artifacts,
+    "postwannier": _postwannier_artifacts,
     "bands": _bands_artifacts,
 }
 
@@ -240,4 +251,3 @@ def get_default_artifact(
     
     # Step 3: No default
     return None
-

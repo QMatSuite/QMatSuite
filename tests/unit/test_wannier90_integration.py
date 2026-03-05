@@ -51,6 +51,15 @@ class TestStepTypeRegistration:
         assert spec.executable == "wannier90.x"
         assert spec.engine == "w90"
 
+    def test_postwannier_in_registry(self):
+        """postwannier should be in step type registry."""
+        registry = StepTypeRegistry()
+        spec = registry.get_for_engine("postwannier", "w90")
+        assert spec is not None
+        assert spec.step_type_gen == "postwannier"
+        assert spec.executable == "postw90.x"
+        assert spec.engine == "w90"
+
 
 class TestWannier90Input:
     """Test .win file generation and parsing."""
@@ -259,10 +268,12 @@ class TestEngineExecutableMap:
         assert "wannierprep" in QuantumEspressoEngine.EXECUTABLE_MAP
         assert "pw2wannier" in QuantumEspressoEngine.EXECUTABLE_MAP
         assert "wannier" in QuantumEspressoEngine.EXECUTABLE_MAP
+        assert "postwannier" in QuantumEspressoEngine.EXECUTABLE_MAP
 
         assert QuantumEspressoEngine.EXECUTABLE_MAP["wannierprep"] == "wannier90.x"
         assert QuantumEspressoEngine.EXECUTABLE_MAP["pw2wannier"] == "pw2wannier90.x"
         assert QuantumEspressoEngine.EXECUTABLE_MAP["wannier"] == "wannier90.x"
+        assert QuantumEspressoEngine.EXECUTABLE_MAP["postwannier"] == "postw90.x"
 
 
 class TestDemoGeneration:

@@ -63,6 +63,20 @@ class TestWannier90Artifacts:
         assert "test.amn" in artifacts
         assert "test.mmn" in artifacts
         assert "test.eig" in artifacts
+
+    def test_postwannier_artifacts(self, tmp_path):
+        """Test postwannier step artifacts."""
+        params = {"seedname": "fe_soc"}
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+
+        (raw_dir / "fe_soc.wpout").write_text("postw90 output")
+
+        artifacts = get_step_artifacts("postwannier", params, raw_dir)
+        assert "fe_soc.wpout" in artifacts
+
+        default = get_default_artifact("postwannier", params, raw_dir, artifacts)
+        assert default == "fe_soc.wpout"
     
     def test_wannier90_nested_params(self, tmp_path):
         """Test Wannier90 artifacts with nested parameters."""
@@ -252,5 +266,4 @@ class TestStepArtifactsIntegration:
         all_artifacts = w90_artifacts + ["wannier.out"]
         default = get_default_artifact("wannier", w90_params, raw_dir, all_artifacts)
         assert default == "diamond.wout"
-
 

@@ -238,7 +238,7 @@ def prepare_input_step(
     # Wannier90 steps: skip QE input processing, just copy/move the file
     # Convert spec types to gen types for comparison
     from qmatsuite.workflow.step_type_convert import gen_from, is_spec
-    WANNIER90_GEN_STEPS = {"wannierprep", "wannier", "pw2wannier"}
+    WANNIER90_GEN_STEPS = {"wannierprep", "wannier", "postwannier", "pw2wannier"}
     if step_type_spec:
         step_type_gen = gen_from(step_type_spec) if is_spec(step_type_spec) else step_type_spec
         if step_type_gen.lower() in WANNIER90_GEN_STEPS:
@@ -894,5 +894,4 @@ def parameter_dict_to_overrides(
             )
 
     return overrides
-
 

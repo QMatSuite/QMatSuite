@@ -26,10 +26,10 @@
 - **Evidence**:
   - **Code path**: `_local_db_path()` (store.py:103) → `get_qmatsuite_home_root()` (paths.py:147) → `get_app_data_dir()` (paths.py:94-115)
   - **Resolution logic**: Priority 1: `QMATSUITE_HOME` env var. Priority 2: Dev mode (walks up from `Path(__file__).resolve().parent` looking for `pyproject.toml` + `src/qmatsuite`). Priority 3: Electron mode. Priority 4: `~/.qmatsuite`
-  - **Critical detail**: `_try_find_repo_root()` (paths.py:30-51) walks up from the **installed code location** (`src/qmatsuite/core/paths.py`), NOT from `cwd`. Since the venv Python runs from `/Users/hh7465/QMatSuite/.venv/bin/python` with the package installed in editable mode, `Path(__file__)` resolves to `/Users/hh7465/QMatSuite/src/qmatsuite/core/paths.py`. Walking up finds `pyproject.toml` at `/Users/hh7465/QMatSuite/`.
-  - **Result**: `local.db` resolves to `/Users/hh7465/QMatSuite/.qmatsuite/knowledge/local.db` — same as the script's `$REPO_ROOT/.qmatsuite/knowledge/local.db`
+- **Critical detail**: `_try_find_repo_root()` (paths.py:30-51) walks up from the **installed code location** (`src/qmatsuite/core/paths.py`), NOT from `cwd`. Since the venv Python runs from `<repo_root>/.venv/bin/python` with the package installed in editable mode, `Path(__file__)` resolves to `<repo_root>/src/qmatsuite/core/paths.py`. Walking up finds `pyproject.toml` at `<repo_root>/`.
+- **Result**: `local.db` resolves to `<repo_root>/.qmatsuite/knowledge/local.db` — same as the script's `$REPO_ROOT/.qmatsuite/knowledge/local.db`
   - **The `cd "$PROJECT_DIR"` in the script (line 349) does NOT affect path resolution** — the MCP server uses code location, not cwd.
-  - **.mcp.json verification** (project/.mcp.json): `command` points to `/Users/hh7465/QMatSuite/.venv/bin/python`, `QMS_KNOWLEDGE_BUILTIN: "0"` is set.
+- **.mcp.json verification** (project/.mcp.json): `command` points to `<repo_root>/.venv/bin/python`, `QMS_KNOWLEDGE_BUILTIN: "0"` is set.
   - **Empirical confirmation**: CHAIN_LOG shows insight counts incrementing correctly:
     - Session 01: insight_count = 1 (finding|1)
     - Session 02: insight_count = 2 (finding|2)

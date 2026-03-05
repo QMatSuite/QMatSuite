@@ -130,6 +130,17 @@ class TestWannier90EngineOwnership:
         assert spec.step_type_spec == "w90_wannier", f"wannier must have spec type w90_wannier, got {spec.step_type_spec}"
         assert spec.engine == "w90", f"wannier must be owned by w90 engine, got {spec.engine}"
 
+    def test_postwannier_owned_by_w90(self):
+        """postwannier must be owned by w90 engine."""
+        from qmatsuite.workflow.registry import get_registry
+        registry = get_registry()
+        spec = registry.get("postwannier")
+        assert spec is not None, "postwannier must be registered"
+        assert spec.step_type_spec == "w90_postwannier", (
+            f"postwannier must have spec type w90_postwannier, got {spec.step_type_spec}"
+        )
+        assert spec.engine == "w90", f"postwannier must be owned by w90 engine, got {spec.engine}"
+
     def test_pw2wannier_owned_by_qe(self):
         """pw2wannier must be owned by qe engine (not w90)."""
         from qmatsuite.workflow.registry import get_registry
@@ -139,4 +150,3 @@ class TestWannier90EngineOwnership:
         assert spec is not None, "pw2wannier must be registered"
         assert spec.step_type_spec == "qe_pw2wannier", f"pw2wannier must have spec type qe_pw2wannier, got {spec.step_type_spec}"
         assert spec.engine == "qe", f"pw2wannier must be owned by qe engine, got {spec.engine}"
-

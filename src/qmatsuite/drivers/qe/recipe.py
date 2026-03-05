@@ -91,12 +91,12 @@ class QERecipe(BaseRecipe):
                 deps=[],  # Conservative: no explicit deps, use prefix selection
                 fingerprint=fingerprint,
                 metadata={
-                    # W90 companion steps (wannierprep, wannier) use QE binaries
+                    # W90 companion steps (wannierprep, wannier, postwannier) use QE binaries
                 # (wannier90.x from QE's external/) and are run by the QE
                 # handler.  Route them to "qe" so the executor dispatches
                 # correctly instead of sending them to the standalone W90
                 # handler which expects prebaked .amn/.mmn/.eig.
-                "engine": "qe" if gen_type in ("wannierprep", "wannier", "pw2wannier") else (spec.engine if spec else "qe"),
+                    "engine": "qe" if gen_type in ("wannierprep", "wannier", "pw2wannier", "postwannier") else (spec.engine if spec else "qe"),
                     "step_type_spec": spec.step_type_spec if spec else None,
                     "step_type_gen": gen_type,
                     "scratch_dir": calc_raw_dir / "outdir",
@@ -105,4 +105,3 @@ class QERecipe(BaseRecipe):
             jobs.append(job)
 
         return JobGraph(jobs=jobs)
-

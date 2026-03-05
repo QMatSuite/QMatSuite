@@ -31,7 +31,7 @@ class W90Driver(BaseEngineDriver):
 
     PREFIX: str = "w90"
     SUPPORTED_GEN_STEPS: frozenset[str] = frozenset({
-        "wannierprep", "wannier"
+        "wannierprep", "wannier", "postwannier"
     })
     ENGINE_ROLE: str = "postprocessing"
     COMPANION_ENGINES: frozenset = frozenset()
@@ -84,6 +84,14 @@ class W90Driver(BaseEngineDriver):
                 description="Wannier90 MLWF construction",
                 category="postprocess",
                 mpi_aware=False,  # wannier90.x is typically serial
+            ),
+            StepTypeSpec(
+                step_type_spec="w90_postwannier",
+                engine="w90",
+                executable="postw90.x",
+                description="Wannier90 post-processing (Berry/AHC/interpolation)",
+                category="postprocess",
+                mpi_aware=False,
             ),
         ]
 
@@ -181,6 +189,7 @@ class W90Driver(BaseEngineDriver):
             "w90_eig": "*.eig",
             "w90_win": "*.win",
             "w90_wout": "*.wout",
+            "w90_wpout": "*.wpout",
             "w90_hr": "*_hr.dat",
             "w90_tb": "*_tb.dat",
             "w90_centres": "*_centres.xyz",
@@ -194,4 +203,3 @@ class W90Driver(BaseEngineDriver):
 
         matches = list(workdir.glob(pattern))
         return matches[0] if matches else None
-

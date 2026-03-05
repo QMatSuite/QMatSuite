@@ -143,6 +143,7 @@ class TestSupportedSteps:
         """Get generalized steps supported by w90 family."""
         supported = get_supported_generalized_steps("w90")
         assert "wannier" in supported
+        assert "postwannier" in supported
 
     def test_get_engine_families_for_step(self):
         """Get engine families that support a generalized step."""
@@ -153,3 +154,5 @@ class TestSupportedSteps:
         families = get_engine_families_for_step("wannier")
         assert "w90" in families  # wannier is now in w90 driver
 
+        families = get_engine_families_for_step("postwannier")
+        assert "w90" in families

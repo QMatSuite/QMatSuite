@@ -201,6 +201,29 @@ class TestWorkflowService:
         assert template is not None
         assert template.id == "bands"
         assert template.step_sequence == ("scf", "bandspw", "bands")
+
+    def test_get_template_wannier(self, service):
+        """get_template returns corrected Wannier workflow with wannierprep."""
+        template = service.get_template("wannier")
+
+        assert template is not None
+        assert template.id == "wannier"
+        assert template.step_sequence == ("scf", "nscf", "wannierprep", "pw2wannier", "wannier")
+
+    def test_get_template_wannier_properties_calc(self, service):
+        """get_template returns extended post-Wannier workflow."""
+        template = service.get_template("wannier_properties_calc")
+
+        assert template is not None
+        assert template.id == "wannier_properties_calc"
+        assert template.step_sequence == (
+            "scf",
+            "nscf",
+            "wannierprep",
+            "pw2wannier",
+            "wannier",
+            "postwannier",
+        )
     
     def test_get_template_unknown_returns_none(self, service):
         """get_template returns None for unknown workflow."""
@@ -758,4 +781,3 @@ class TestWorkflowValidation:
         errors = [i for i in issues if i.severity == "error"]
         assert len(errors) == 1
         assert "dos" in errors[0].message
-

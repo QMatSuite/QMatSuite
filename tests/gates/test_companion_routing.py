@@ -49,6 +49,9 @@ def test_companion_routing_for_qe():
     result = DriverRegistry.resolve_companion_step("qe", "wannier")
     assert result == "w90_wannier", f"Expected 'w90_wannier', got '{result}'"
 
+    result = DriverRegistry.resolve_companion_step("qe", "postwannier")
+    assert result == "w90_postwannier", f"Expected 'w90_postwannier', got '{result}'"
+
     # qmcpack is a companion of QE
     result = DriverRegistry.resolve_companion_step("qe", "vmc")
     assert result == "qmcpack_vmc", f"Expected 'qmcpack_vmc', got '{result}'"
@@ -78,6 +81,5 @@ def test_base_steps_still_resolve():
     assert DriverRegistry.resolve_companion_step("qe", "scf") == "qe_scf"
     assert DriverRegistry.resolve_companion_step("vasp", "scf") == "vasp_scf"
     assert DriverRegistry.resolve_companion_step("orca", "scf") == "orca_scf"
-
 
 

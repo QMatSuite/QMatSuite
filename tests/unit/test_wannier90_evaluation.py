@@ -73,6 +73,20 @@ class TestWannier90StepsDoNotParseEnergy:
         assert call_count["count"] == 0
         assert step_status == StepStatus.SUCCESS
         assert metrics == {}
+
+        # Test w90_postwannier
+        call_count["count"] = 0
+        step_status, message, metrics = evaluate_step_result(
+            mode=StepMode.NORMAL,
+            step_type_spec="w90_postwannier",
+            output_text="",
+            reference_file=None,
+            step_result_return_code=0,
+        )
+
+        assert call_count["count"] == 0
+        assert step_status == StepStatus.SUCCESS
+        assert metrics == {}
         
         # Verify QE steps DO call extract_energy_metrics_from_text
         call_count["count"] = 0
@@ -135,4 +149,3 @@ class TestParseScfOutputTextDoesNotReadPath:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

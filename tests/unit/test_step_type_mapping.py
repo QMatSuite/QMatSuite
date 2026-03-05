@@ -102,6 +102,7 @@ class TestStepTypeRegistryLookup:
             ("scf", "pyscf", "pyscf_scf"),
             ("scf", "orca", "orca_scf"),
             ("wannier", "w90", "w90_wannier"),
+            ("postwannier", "w90", "w90_postwannier"),
         ]
 
         for gen_type, engine, expected_spec in test_cases:

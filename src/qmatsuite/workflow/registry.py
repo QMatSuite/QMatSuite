@@ -353,6 +353,16 @@ _STEP_TYPES: Dict[str, StepTypeSpec] = {
         requires_charge_density=False,  # Needs .mmn/.amn/.eig files
         produces_charge_density=False,
     ),
+    "w90_postwannier": StepTypeSpec(
+        step_type_spec="w90_postwannier",
+        step_type_gen="postwannier",
+        engine="w90",
+        executable="postw90.x",
+        description="Wannier90 post-processing (e.g., Berry/AHC properties)",
+        requires_structure=False,
+        requires_charge_density=False,
+        produces_charge_density=False,
+    ),
     
     # -------------------------------------------------------------------------
     # PySCF step types (molecular quantum chemistry)
@@ -1420,4 +1430,3 @@ def resolve_engine_for_step(
         )
     
     return spec.engine
-

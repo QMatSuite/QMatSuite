@@ -62,6 +62,7 @@ class QuantumEspressoEngine(Engine):
         "wannierprep": "wannier90.x",
         "pw2wannier": "pw2wannier90.x",
         "wannier": "wannier90.x",
+        "postwannier": "postw90.x",
         # QMCPACK interface
         "pw2qmcpack": "pw2qmcpack.x",
     }
@@ -389,6 +390,10 @@ class QuantumEspressoEngine(Engine):
             # wannier90.x seedname
             seedname = input_file.stem
             command.append(seedname)
+        elif step_gen_type == "postwannier":
+            # postw90.x seedname
+            seedname = input_file.stem
+            command.append(seedname)
         elif step_gen_type == "pw2wannier":
             # pw2wannier90.x -i input.in (use -i flag, NOT stdin)
             # IMPORTANT: Use relative path from working_dir to avoid path issues
@@ -442,7 +447,7 @@ class QuantumEspressoEngine(Engine):
         """
         # These Wannier90 steps use command-line arguments, not stdin
         # pw2wannier uses -i flag to avoid Errno 21 issues with stdin redirection
-        no_stdin_steps = {"wannierprep", "wannier", "pw2wannier"}
+        no_stdin_steps = {"wannierprep", "wannier", "postwannier", "pw2wannier"}
         return step_type_gen not in no_stdin_steps
     
     def detect_module_from_input(self, input_file: Path) -> QEModule:
@@ -622,4 +627,3 @@ class QuantumEspressoEngine(Engine):
             environment=environment,
             stop_on_error=stop_on_error
         )
-

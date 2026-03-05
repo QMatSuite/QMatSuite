@@ -30,6 +30,7 @@ class GenStepRegistry:
         "wannierprep",
         "pw2wannier",
         "wannier",
+        "postwannier",
         # QE->QMCPACK interface
         "pw2qmcpack",
         # Phonon
@@ -75,4 +76,3 @@ class GenStepRegistry:
     def get_all(cls) -> FrozenSet[str]:
         """Get all registered GEN steps."""
         return cls.GEN_STEPS
-

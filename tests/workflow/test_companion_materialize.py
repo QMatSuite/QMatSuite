@@ -26,6 +26,7 @@ class TestMaterializePublicStepKey:
         """W90 steps resolve through QE's companion allowlist."""
         assert materialize_public_step_key("wannierprep", "qe") == "w90_wannierprep"
         assert materialize_public_step_key("wannier", "qe") == "w90_wannier"
+        assert materialize_public_step_key("postwannier", "qe") == "w90_postwannier"
 
     def test_companion_step_qmcpack_via_qe(self):
         """QMCPACK steps resolve through QE's companion allowlist."""
@@ -61,8 +62,18 @@ class TestMaterializeWorkflow:
 
     def test_qe_with_companion_steps(self):
         """QE workflow with W90 companion steps."""
-        result = materialize_workflow(["scf", "nscf", "wannierprep", "wannier"], "qe")
-        assert result == ["qe_scf", "qe_nscf", "w90_wannierprep", "w90_wannier"]
+        result = materialize_workflow(
+            ["scf", "nscf", "wannierprep", "pw2wannier", "wannier", "postwannier"],
+            "qe",
+        )
+        assert result == [
+            "qe_scf",
+            "qe_nscf",
+            "w90_wannierprep",
+            "qe_pw2wannier",
+            "w90_wannier",
+            "w90_postwannier",
+        ]
 
     def test_vasp_basic_workflow(self):
         result = materialize_workflow(["scf", "nscf", "relax"], "vasp")
@@ -72,6 +83,5 @@ class TestMaterializeWorkflow:
         """Unsupported step (not in base or companions, not zero-mapped) raises."""
         with pytest.raises(ValueError, match="not supported"):
             materialize_workflow(["scf", "nonexistent"], "qe")
-
 
 

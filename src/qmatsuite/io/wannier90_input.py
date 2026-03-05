@@ -13,6 +13,18 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import re
 
 
+def _format_fortran_value(value: Any) -> str:
+    """Render a Python value into a simple Fortran/W90-friendly scalar string."""
+    if isinstance(value, bool):
+        return ".true." if value else ".false."
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        if all(not isinstance(v, (list, tuple, dict)) for v in value):
+            return " ".join(str(v) for v in value)
+    return str(value)
+
+
 @dataclass
 class Wannier90Input:
     """
@@ -91,12 +103,7 @@ class Wannier90Input:
             # Skip QE namelist parameters that shouldn't be in .win file
             if key.lower() in ("outdir", "pseudo_dir", "prefix", "control", "system", "electrons"):
                 continue
-            if isinstance(value, bool):
-                val_str = ".true." if value else ".false."
-            elif isinstance(value, str):
-                val_str = value
-            else:
-                val_str = str(value)
+            val_str = _format_fortran_value(value)
             lines.append(f"{key} = {val_str}")
         
         if self.extra_parameters:
@@ -350,6 +357,7 @@ class Pw2Wannier90Input:
     write_uHu: bool = False
     write_dmn: bool = False
     spin_component: str = "none"  # 'none', 'up', 'down'
+    extra_parameters: Dict[str, Any] = field(default_factory=dict)
     
     def to_string(self) -> str:
         """
@@ -372,6 +380,14 @@ class Pw2Wannier90Input:
             lines.append(f"   write_uHu = .true.")
         if self.write_dmn:
             lines.append(f"   write_dmn = .true.")
+        reserved = {
+            "outdir", "prefix", "seedname", "spin_component",
+            "write_mmn", "write_amn", "write_unk", "write_uhu", "write_dmn",
+        }
+        for key, value in self.extra_parameters.items():
+            if key.lower() in reserved or value is None:
+                continue
+            lines.append(f"   {key} = {_format_fortran_value(value)}")
         lines.append("/")
         # Add trailing newline to match reference format
         return "\n".join(lines) + "\n"
@@ -416,7 +432,9 @@ class Pw2Wannier90Input:
                     obj.write_amn = value.lower() in (".true.", "true", "t")
                 elif key == "write_unk":
                     obj.write_unk = value.lower() in (".true.", "true", "t")
-        
+                else:
+                    obj.extra_parameters[key] = value
+
         return obj
 
 
@@ -440,4 +458,3 @@ def generate_kpoints_from_mp_grid(mp_grid: List[int]) -> List[List[float]]:
                 kpoints.append(kpt)
     
     return kpoints
-

@@ -187,6 +187,134 @@ def test_pw2wannier90_generates_pw2wan_file(temp_dir, simple_structure):
     assert "test" in content, "seedname should be in pw2wan input content"
 
 
+def test_wannier90_win_passthrough_parameters(temp_dir, simple_structure):
+    """Unknown W90 keys should be transparently passed through to .win."""
+    meta = ResourceMeta(ulid="01TEST",
+        name="wannier",
+        slug="wannier",
+        path="steps/wannier.step.yaml",
+        kind="step",
+    )
+
+    structures_dir = temp_dir / "structures"
+    structures_dir.mkdir(parents=True)
+    structure_file = structures_dir / "structure.json"
+    simple_structure.to(fmt="json", filename=str(structure_file))
+
+    spec = StructureStepSpec(
+        meta=meta,
+        structure=str(structure_file),
+        step_type_spec="w90_wannier",
+        parameters={
+            "parameters": {
+                "seedname": "si_soc",
+                "num_wann": 4,
+                "spinors": True,
+                "auto_projections": True,
+                "berry": True,
+                "berry_task": "'ahc'",
+                "fermi_energy": 12.5,
+            }
+        },
+    )
+
+    generated_input, _ = materialize_step_spec(
+        spec=spec,
+        output_dir=temp_dir / "raw",
+        project_root=temp_dir,
+    )
+
+    content = generated_input.read_text()
+    assert "spinors = .true." in content
+    assert "auto_projections = .true." in content
+    assert "berry = .true." in content
+    assert "berry_task = 'ahc'" in content
+    assert "fermi_energy = 12.5" in content
+
+
+def test_pw2wannier90_passthrough_inputpp_parameters(temp_dir, simple_structure):
+    """Unknown INPUTPP keys should be transparently passed through to pw2wan.in."""
+    meta = ResourceMeta(ulid="01TEST",
+        name="pw2wannier90",
+        slug="pw2wannier90",
+        path="steps/pw2wannier90.step.yaml",
+        kind="step",
+    )
+
+    structures_dir = temp_dir / "structures"
+    structures_dir.mkdir(parents=True)
+    structure_file = structures_dir / "structure.json"
+    simple_structure.to(fmt="json", filename=str(structure_file))
+
+    spec = StructureStepSpec(
+        meta=meta,
+        structure=str(structure_file),
+        step_type_spec="qe_pw2wannier",
+        parameters={
+            "parameters": {
+                "seedname": "fe_soc",
+                "write_unk": True,
+                "scdm_proj": True,
+                "scdm_entanglement": "'isolated'",
+            }
+        },
+    )
+
+    generated_input, _ = materialize_step_spec(
+        spec=spec,
+        output_dir=temp_dir / "raw",
+        project_root=temp_dir,
+    )
+
+    content = generated_input.read_text()
+    assert "write_unk = .true." in content
+    assert "scdm_proj = .true." in content
+    assert "scdm_entanglement = 'isolated'" in content
+
+
+def test_postwannier_reuses_existing_seed_win(temp_dir, simple_structure):
+    """postwannier should reuse existing seedname .win and overlay new parameters."""
+    raw_dir = temp_dir / "raw"
+    raw_dir.mkdir(parents=True)
+    existing = raw_dir / "fe.win"
+    existing.write_text("num_wann        = 18\nnum_iter        = 200\n")
+
+    meta = ResourceMeta(ulid="01TEST",
+        name="postwannier",
+        slug="postwannier",
+        path="steps/postwannier.step.yaml",
+        kind="step",
+    )
+
+    structures_dir = temp_dir / "structures"
+    structures_dir.mkdir(parents=True)
+    structure_file = structures_dir / "structure.json"
+    simple_structure.to(fmt="json", filename=str(structure_file))
+
+    spec = StructureStepSpec(
+        meta=meta,
+        structure=str(structure_file),
+        step_type_spec="w90_postwannier",
+        parameters={
+            "parameters": {
+                "berry": True,
+                "berry_task": "'ahc'",
+            }
+        },
+    )
+
+    generated_input, _ = materialize_step_spec(
+        spec=spec,
+        output_dir=raw_dir,
+        project_root=temp_dir,
+    )
+
+    assert generated_input.name == "fe.win"
+    content = generated_input.read_text()
+    assert "num_wann        = 18" in content
+    assert "berry = .true." in content
+    assert "berry_task = 'ahc'" in content
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

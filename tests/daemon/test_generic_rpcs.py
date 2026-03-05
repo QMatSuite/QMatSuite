@@ -73,8 +73,10 @@ class TestResolveCompanionStep:
     def test_qe_wannierprep(self):
         assert DriverRegistry.resolve_companion_step("qe", "wannierprep") == "w90_wannierprep"
 
+    def test_qe_postwannier(self):
+        assert DriverRegistry.resolve_companion_step("qe", "postwannier") == "w90_postwannier"
+
     def test_vasp_no_companions(self):
         assert DriverRegistry.resolve_companion_step("vasp", "wannierprep") is None
-
 
 

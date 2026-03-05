@@ -96,7 +96,7 @@ def evaluate_step_result(
     # A. Wannier90 steps should NOT extract energy metrics (no QE output format)
     # Handle both GEN types (wannierprep) and SPEC types (w90_wannierprep, qe_pw2wannier)
     from qmatsuite.workflow.step_type_convert import gen_from
-    wannier90_gen_types = {"wannierprep", "wannier", "pw2wannier", "wannier90", "postw90"}
+    wannier90_gen_types = {"wannierprep", "wannier", "postwannier", "pw2wannier", "wannier90", "postw90"}
     step_type_str = step_type_spec.lower() if step_type_spec else ""
     # Use canonical gen_from() to extract GEN from SPEC (handles both formats)
     step_type_gen = gen_from(step_type_str)
@@ -163,4 +163,3 @@ def evaluate_step_result(
             return StepStatus.FAILED, strict_msg, metrics
 
     return StepStatus.SUCCESS, msg, metrics
-

@@ -14,8 +14,8 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Step types that don't have "JOB DONE" markers but have other success indicators
-# Wannier90 types are kept as hardcoded set since they're legacy and will be migrated later
-WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "pw2wannier", "wannier90", "postw90"}
+# Wannier-family types are kept as hardcoded set since they're legacy and will be migrated later
+WANNIER90_STEP_TYPES = {"wannierprep", "wannier", "postwannier", "pw2wannier", "wannier90", "postw90"}
 
 
 def is_vasp_step(step_type_spec: str) -> bool:
@@ -51,9 +51,13 @@ def primary_output_path(calc_raw_dir: Path, step_kind: str, step_doc: Optional[d
         Path to primary output file, or None if cannot be determined
     """
     step_kind_lower = step_kind.lower()
+    from qmatsuite.workflow.public import gen_from
+    step_gen = gen_from(step_kind_lower)
     
-    if step_kind_lower in WANNIER90_STEP_TYPES:
-        # Wannier90 steps: output is <seedname>.wout
+    if step_gen in WANNIER90_STEP_TYPES:
+        # Wannier-family steps:
+        # - wannierprep/wannier -> <seed>.wout
+        # - postwannier/postw90 -> <seed>.wpout
         # Try to extract seedname from step doc or use default
         seedname = "wannier"
         if step_doc:
@@ -73,8 +77,9 @@ def primary_output_path(calc_raw_dir: Path, step_kind: str, step_doc: Optional[d
                 if isinstance(section, dict) and "seedname" in section:
                     seedname = str(section["seedname"])
                     break
-        
-        output_path = calc_raw_dir / f"{seedname}.wout"
+
+        output_suffix = ".wpout" if step_gen in {"postwannier", "postw90"} else ".wout"
+        output_path = calc_raw_dir / f"{seedname}{output_suffix}"
         return output_path if output_path.exists() else None
     
     # QE steps: output is typically <input_stem>.out
@@ -225,7 +230,10 @@ def is_step_done(calc_dir: Path, step_kind: str, calc_raw_dir: Optional[Path] = 
         return False
     
     # Check content based on step type
-    if step_kind_lower in WANNIER90_STEP_TYPES:
+    from qmatsuite.workflow.public import gen_from
+    step_gen = gen_from(step_kind_lower)
+
+    if step_gen in WANNIER90_STEP_TYPES:
         # Wannier90: just check file exists (minimal check)
         # Could enhance to check for "Exiting..." or specific completion markers
         logger.debug(f"Step {step_kind}: Wannier90 output exists: {output_path}")
@@ -243,4 +251,3 @@ def is_step_done(calc_dir: Path, step_kind: str, calc_raw_dir: Optional[Path] = 
     except Exception as e:
         logger.warning(f"Step {step_kind}: Error reading output file {output_path}: {e}")
         return False
-

@@ -313,6 +313,9 @@ class QECalculationRunner:
             # - Primary artifact: <seed>.wout (for GUI display of main output)
             # - Stdout capture: wannierprep.out / wannier.out (may be empty, but always written)
             primary_output_file = working_dir / f"{input_stem}.wout"
+        elif step_gen_type == "postwannier":
+            # postw90: primary artifact is <seed>.wpout
+            primary_output_file = working_dir / f"{input_stem}.wpout"
         elif step_gen_type == "pw2wannier":
             # pw2wannier90: primary output is the stdout capture
             primary_output_file = stdout_capture_path
@@ -406,6 +409,7 @@ class QECalculationRunner:
                 # wannierprep: wannier90.x -pp seedname
                 # wannier: wannier90.x seedname
                 # pw2wannier: pw2wannier90.x -i pw2wan.in
+                # postwannier: postw90.x seedname
                 logger.debug(f"[RUN_STEP] Using command-line arguments for {step_type_spec} (no stdin)")
                 logger.debug(f"[RUN_STEP] Command: {' '.join(command)}")
                 logger.debug(f"[RUN_STEP] Working dir: {working_dir}")
@@ -581,6 +585,24 @@ class QECalculationRunner:
                     logger.error(f"[RUN_STEP] {error_msg}")
                 else:
                     logger.info(f"[RUN_STEP] pw2wannier succeeded (return_code=0)")
+
+            elif step_gen_type == "postwannier":
+                # postw90: returncode==0 AND <seed>.wpout must exist
+                input_stem = input_file.stem if isinstance(input_file, Path) else Path(input_file).stem
+                wpout_file = working_dir / f"{input_stem}.wpout"
+                if return_code == 0:
+                    if not wpout_file.exists():
+                        success = False
+                        error_msg = f"postwannier return_code=0 but required artifact {wpout_file.name} does not exist"
+                        logger.error(f"[RUN_STEP] {error_msg}")
+                    else:
+                        logger.debug(f"[RUN_STEP] postwannier succeeded: {wpout_file.name} exists")
+                else:
+                    success = False
+                    error_msg = f"postwannier failed with return code {return_code}"
+                    if stderr:
+                        stderr_preview = stderr[-500:] if len(stderr) > 500 else stderr
+                        error_msg += f"\n\nStderr:\n{stderr_preview}"
             
             else:
                 # QE steps: use return_code and optional parsing
@@ -593,7 +615,7 @@ class QECalculationRunner:
             
             # Parse output if successful (only for QE steps that support it)
             parsed_output = None
-            if success and step_gen_type not in ("wannierprep", "wannier", "pw2wannier"):
+            if success and step_gen_type not in ("wannierprep", "wannier", "postwannier", "pw2wannier"):
                 # Only parse QE output files, not Wannier90
                 if primary_output_file.exists():
                     try:
@@ -607,8 +629,8 @@ class QECalculationRunner:
             # - stderr_file: Stderr capture file (always step_gen_type.err)
             # Note: output_file should always be set to the expected path, even if file doesn't exist (e.g., execution failed)
             result_output_file = None
-            if step_gen_type in ("wannierprep", "wannier"):
-                # Wannier90: primary artifact is <seed>.wout (only if exists, otherwise None)
+            if step_gen_type in ("wannierprep", "wannier", "postwannier"):
+                # Wannier-family: primary artifact is seed output (.wout or .wpout)
                 if primary_output_file.exists():
                     result_output_file = primary_output_file
             elif step_gen_type == "pw2wannier":
@@ -737,4 +759,3 @@ class QECalculationRunner:
             total_time=time.time() - calculation_start,
             error=None if all(r.success for r in step_results) else "Some steps failed"
         )
-

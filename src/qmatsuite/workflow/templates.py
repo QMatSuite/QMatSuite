@@ -111,7 +111,13 @@ _WORKFLOWS: Dict[str, WorkflowTemplate] = {
         id="wannier",
         name="Wannierization",
         description="Maximally localized Wannier functions",
-        step_sequence=("scf", "nscf", "pw2wannier", "wannier"),  # Public generalized step keys
+        step_sequence=("scf", "nscf", "wannierprep", "pw2wannier", "wannier"),  # Public generalized step keys
+    ),
+    "wannier_properties_calc": WorkflowTemplate(
+        id="wannier_properties_calc",
+        name="Wannier Properties",
+        description="Wannierization followed by post-Wannier property evaluation",
+        step_sequence=("scf", "nscf", "wannierprep", "pw2wannier", "wannier", "postwannier"),
     ),
     "scf_mp2": WorkflowTemplate(
         id="scf_mp2",
@@ -643,4 +649,3 @@ def reset_workflow_service() -> None:
     """Reset global service (for testing)."""
     global _service
     _service = None
-
