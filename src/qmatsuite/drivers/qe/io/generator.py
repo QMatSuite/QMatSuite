@@ -63,22 +63,45 @@ class QEInputGenerator:
 
         data = card.data
         
-        # For K_POINTS with crystal_b, crystal_c, tpiba_b, tpiba_c formats,
-        # ensure the count line is present (first line should be a single integer)
+        # For QE list-style K_POINTS modes (all except automatic/gamma),
+        # ensure the count line is present (first line should be a single integer).
         if card.card_type == QECardType.K_POINTS and card.option:
-            opt_lower = card.option.lower()
-            needs_count = any(fmt in opt_lower for fmt in ["crystal_b", "crystal_c", "tpiba_b", "tpiba_c"])
+            opt_lower = card.option.strip().lower()
+            needs_count = opt_lower in {
+                "tpiba",
+                "crystal",
+                "tpiba_b",
+                "crystal_b",
+                "tpiba_c",
+                "crystal_c",
+            }
             if needs_count and data:
-                # Check if first row is already a count (single integer)
+                # Check if first row is already a count (single integer), including
+                # string forms (e.g., "64") commonly found in YAML.
                 first_row = data[0]
-                is_count_line = (
-                    isinstance(first_row, list) and len(first_row) == 1 and isinstance(first_row[0], (int, float))
-                ) or isinstance(first_row, (int, float))
+                first_value: Any | None = None
+                if isinstance(first_row, list) and len(first_row) == 1:
+                    first_value = first_row[0]
+                elif isinstance(first_row, (int, float, str)):
+                    first_value = first_row
+
+                is_count_line = False
+                if isinstance(first_value, (int, float)):
+                    is_count_line = True
+                elif isinstance(first_value, str):
+                    try:
+                        int(first_value.strip())
+                        is_count_line = True
+                    except ValueError:
+                        pass
                 
                 if not is_count_line:
-                    # Need to add count line - count the k-path segments (rows with 4 elements: kx, ky, kz, npts)
-                    n_segments = sum(1 for row in data if isinstance(row, list) and len(row) >= 4)
-                    data = [[n_segments]] + list(data)
+                    # Need to add count line - count explicit k-point rows
+                    # (rows with at least kx, ky, kz, w/npts columns).
+                    n_points = sum(
+                        1 for row in data if isinstance(row, (list, tuple)) and len(row) >= 4
+                    )
+                    data = [[n_points]] + list(data)
                 # else: count line is already present, use it as-is
 
         for line_data in data:
