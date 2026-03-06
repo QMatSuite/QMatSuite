@@ -984,8 +984,13 @@ def materialize_step_spec(
                 w90_input.num_wann = int(flat_params["num_wann"])
             if "num_bands" in flat_params and flat_params["num_bands"] is not None:
                 w90_input.num_bands = int(flat_params["num_bands"])
+            # postwannier must NOT override num_iter — it's a wannierisation
+            # parameter that belongs to the wannier step.  Both steps share
+            # the same .win file; letting postwannier set num_iter (typically 0)
+            # corrupts the wannier step's spread-minimisation setting.
             if "num_iter" in flat_params and flat_params["num_iter"] is not None:
-                w90_input.num_iter = int(flat_params["num_iter"])
+                if step_type_gen != "postwannier":
+                    w90_input.num_iter = int(flat_params["num_iter"])
 
             explicit_mp_grid = False
             if "mp_grid" in flat_params and flat_params["mp_grid"] is not None:

@@ -312,8 +312,110 @@ def test_postwannier_reuses_existing_seed_win(temp_dir, simple_structure):
     assert generated_input.name == "fe.win"
     content = generated_input.read_text()
     assert "num_wann        = 18" in content
+    assert "num_iter        = 200" in content  # must survive postwannier overlay
     assert "berry = .true." in content
     assert "berry_task = 'ahc'" in content
+
+
+def test_postwannier_preserves_num_iter_from_wannier(temp_dir, simple_structure):
+    """postwannier must NOT overwrite num_iter in shared .win file.
+
+    The wannier step writes num_iter (e.g. 200) for spread minimisation.
+    postwannier shares the same .win and may have num_iter=0 in its
+    parameters (postw90.x doesn't need iterations).  The materialiser
+    must preserve the wannier step's value.
+    """
+    raw_dir = temp_dir / "raw"
+    raw_dir.mkdir(parents=True)
+
+    # Simulate .win written by the wannier step
+    existing = raw_dir / "fe.win"
+    existing.write_text("num_wann        = 18\nnum_iter        = 200\n")
+
+    structures_dir = temp_dir / "structures"
+    structures_dir.mkdir(parents=True)
+    structure_file = structures_dir / "structure.json"
+    simple_structure.to(fmt="json", filename=str(structure_file))
+
+    meta = ResourceMeta(
+        ulid="01TEST",
+        name="postwannier",
+        slug="postwannier",
+        path="steps/postwannier.step.yaml",
+        kind="step",
+    )
+
+    # postwannier step explicitly sets num_iter=0 (agent thinks postw90
+    # doesn't need iterations) — this must NOT corrupt the .win file.
+    spec = StructureStepSpec(
+        meta=meta,
+        structure=str(structure_file),
+        step_type_spec="w90_postwannier",
+        parameters={
+            "parameters": {
+                "berry": True,
+                "berry_task": "'ahc'",
+                "num_iter": 0,
+            }
+        },
+    )
+
+    generated_input, _ = materialize_step_spec(
+        spec=spec,
+        output_dir=raw_dir,
+        project_root=temp_dir,
+    )
+
+    content = generated_input.read_text()
+    assert "num_iter        = 200" in content, (
+        f"postwannier overwrote num_iter — expected 200, got:\n{content}"
+    )
+    assert "berry = .true." in content
+
+
+def test_postwannier_preserves_num_iter_when_not_set(temp_dir, simple_structure):
+    """postwannier without num_iter in params preserves existing .win value."""
+    raw_dir = temp_dir / "raw"
+    raw_dir.mkdir(parents=True)
+
+    existing = raw_dir / "fe.win"
+    existing.write_text("num_wann        = 18\nnum_iter        = 200\n")
+
+    structures_dir = temp_dir / "structures"
+    structures_dir.mkdir(parents=True)
+    structure_file = structures_dir / "structure.json"
+    simple_structure.to(fmt="json", filename=str(structure_file))
+
+    meta = ResourceMeta(
+        ulid="01TEST",
+        name="postwannier",
+        slug="postwannier",
+        path="steps/postwannier.step.yaml",
+        kind="step",
+    )
+
+    spec = StructureStepSpec(
+        meta=meta,
+        structure=str(structure_file),
+        step_type_spec="w90_postwannier",
+        parameters={
+            "parameters": {
+                "berry": True,
+                "berry_task": "'ahc'",
+            }
+        },
+    )
+
+    generated_input, _ = materialize_step_spec(
+        spec=spec,
+        output_dir=raw_dir,
+        project_root=temp_dir,
+    )
+
+    content = generated_input.read_text()
+    assert "num_iter        = 200" in content, (
+        f"postwannier lost num_iter — expected 200, got:\n{content}"
+    )
 
 
 if __name__ == "__main__":
