@@ -91,8 +91,11 @@ class TestEnrichmentClassification:
     @pytest.fixture(autouse=True)
     def _patch_knowledge(self, tmp_path, monkeypatch):
         """Patch KnowledgeStore to use a temp DB."""
-        from qmatsuite.mcp.knowledge.store import KnowledgeStore
         from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
+        from qmatsuite.mcp.knowledge import reset_knowledge_store
+
+        # Reset singleton so the patched path takes effect
+        reset_knowledge_store()
 
         db_path = tmp_path / "knowledge" / "test.db"
         build_builtin_db(output_path=db_path)
@@ -101,6 +104,11 @@ class TestEnrichmentClassification:
             "qmatsuite.mcp.knowledge.store._default_db_path",
             lambda: db_path,
         )
+
+        yield
+
+        # Clean up singleton after each test
+        reset_knowledge_store()
 
     def test_scf_not_converged(self):
         """Digest with converged=False, n_iterations>0 → SCF_NOT_CONVERGED."""

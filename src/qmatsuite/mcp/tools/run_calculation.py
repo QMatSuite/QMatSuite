@@ -129,6 +129,31 @@ def run_calculation(calc_ulid: str, run_mode: str = "incremental") -> dict:
                 f" For the relaxed geometry, use promote_structure(calc_ulid='{result_dto.calc_ulid}') "
                 "to extract and register it as a new structure."
             )
+
+        # --- Success hint: always nudge recording, hard tone after recovery ---
+        try:
+            from qmatsuite.provenance.query import query_runs
+            from qmatsuite.mcp.project import get_project_root
+
+            runs = query_runs(get_project_root(), calc_ulid=calc_ulid, limit=2)
+            prior = [r for r in runs if r["run_ulid"] != result_dto.run_ulid]
+            if prior and prior[0]["status"] == "failed":
+                hint += (
+                    " \u26a0\ufe0f You just recovered from a failed run. "
+                    "MUST record what went wrong and how you fixed it with "
+                    "record_insight(grade='finding', tags='error-recovery') "
+                    "before continuing \u2014 this knowledge prevents future sessions "
+                    "from hitting the same problem."
+                )
+            else:
+                hint += (
+                    " Run succeeded. If you learned something new about parameters, "
+                    "workflow, or methodology during this run, record it with "
+                    "record_insight(grade='finding') so future sessions benefit."
+                )
+        except Exception:
+            pass  # Graceful degradation
+
         return make_response(payload, context_hint=hint)
 
     # --- Failed: enrich with diagnostics + suggested_fixes ---

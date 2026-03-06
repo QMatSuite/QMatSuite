@@ -134,3 +134,77 @@ context_hint now starts with "Tip: use search_knowledge(query='<workflow>') to c
 | Gates | 733 passed, 2 skipped | 733 passed, 2 skipped | 0 |
 | MCP | 746 passed | 754 passed | +8 new |
 | Full | — | 6864 passed, 4 skipped | 0 failures |
+
+---
+
+## Round 3: Resolution-Moment Insight Hint
+
+**Date:** 2026-03-06
+**Ref:** Chain A (38 sessions) — agents record 0 findings on the failure path despite 6+ error-enrichment hints per session. Error hints fire during "fix mode" and are 100% ignored.
+
+### Problem
+
+The resolution moment — when a previously-failed calculation succeeds — is the ideal time to prompt insight recording because:
+- The fix is verified (success response confirms it)
+- Success response has the agent's attention (not in panicked fix-mode)
+- Error details are still in context
+
+### Change R1: Prior-Failure Detection in `run_calculation`
+
+**File:** `src/qmatsuite/mcp/tools/run_calculation.py`
+
+After existing hint construction and before `return make_response(...)` on the success path, queries provenance for the 2 most recent runs of this calc. If the prior run (not the current one) had `status == "failed"`, appends resolution-moment hint prompting `record_insight(grade='finding', tags='error-recovery')`.
+
+Graceful degradation: outer try/except catches import errors, missing `.provenance/`, or DB issues — never crashes the success path.
+
+### Change R2: Preamble Workflow Update
+
+**File:** `src/qmatsuite/mcp/app.py`
+
+- Both Fast and Normal track workflows now show explicit failure-recovery loop: `run_calculation → check result: on failure → fix → run again; on success → record findings + error-recovery insights`
+- Multiple-insights text reworded: "a session may produce several: the numerical result, each error encountered and its resolution, and any methodology lessons"
+
+### Tests
+
+**File:** `tests/mcp/test_resolution_hint.py` (5 tests, real QE execution)
+
+| Test | Scenario | Expected |
+|------|----------|----------|
+| `test_first_success_no_resolution_hint` | First run succeeds | No resolution hint |
+| `test_success_after_failure_has_resolution_hint` | Bad ecutwfc → QE crash → fix → succeed | Hint fires |
+| `test_no_hint_when_previous_success` | QE crash → fix → succeed → succeed again | Hint on 2nd, not 3rd |
+| `test_consecutive_successes_no_hint` | Two consecutive successes | No hint on 2nd |
+| `test_no_provenance_no_crash` | Remove `.provenance/` dir | Succeeds, no hint, no crash |
+
+### Design note: failure mechanism
+
+Bad pseudo filenames (e.g., `NONEXISTENT.UPF`) cause failures in the pseudo pipeline
+BEFORE the runner starts, so provenance never records the failed run. Tests use
+`ecutwfc=-1.0` instead, which makes QE crash during execution — this failure IS
+recorded in provenance via `_complete_provenance_recording(status=FAILED)`.
+
+### Round 3b: Two-tone hint + fix pre-existing failures
+
+**Date:** 2026-03-06
+
+Changed resolution hint from "only fire on failure→success" to "always fire on every
+success, with different tone based on prior failure."
+
+- **Hard tone** (after recovery): "⚠️ You just recovered from a failed run. MUST record..."
+- **Soft tone** (all other successes): "Run succeeded. If you learned something new..."
+
+Also fixed 3 pre-existing test failures:
+- **Gate S1**: sanitized `/Users/<user>/` paths in `REVIEW_MCP_PRE_EXPERIMENT_READINESS.md`
+- **scope_engine (9 tests)**: added `_migrate_stale_schema()` in `schema.py` — detects
+  old 7-column prototype `insights` table, drops and recreates with current schema
+- **test_stage6 singleton leak**: added `reset_knowledge_store()` before/after
+  `_patch_knowledge` fixture so the `_store` singleton doesn't leak between tests
+
+### Verification
+
+| Suite | Result |
+|-------|--------|
+| Success hint tests | 5 passed |
+| MCP suite | 759 passed |
+| Gate tests | 733 passed, 2 skipped |
+| Full suite | 6868 passed, 4 skipped, 1 error (pre-existing QMCPACK) |

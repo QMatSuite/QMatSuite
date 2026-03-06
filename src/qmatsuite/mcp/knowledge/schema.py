@@ -87,6 +87,39 @@ def _migrate_downvotes_column(conn: sqlite3.Connection) -> None:
         conn.commit()
 
 
+def _migrate_stale_schema(conn: sqlite3.Connection) -> None:
+    """Drop and recreate insights if it uses the old prototype schema.
+
+    The old 7-column schema (id, content, grade, status, metadata,
+    created_at, updated_at) is missing scope columns needed by the
+    current DDL indexes and FTS triggers.  Detect this by checking
+    for the ``scope_engine`` column; if absent, drop everything and
+    let the DDL recreate from scratch.
+    """
+    rows = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='insights'"
+    ).fetchall()
+    if not rows:
+        return  # Table doesn't exist yet — nothing to migrate
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(insights)").fetchall()}
+    if "scope_engine" in cols:
+        return  # Current schema — no migration needed
+    # Old prototype schema: drop all related objects
+    conn.executescript("""
+        DROP TRIGGER IF EXISTS insights_ai;
+        DROP TRIGGER IF EXISTS insights_ad;
+        DROP TRIGGER IF EXISTS insights_au;
+        DROP INDEX IF EXISTS idx_insights_grade;
+        DROP INDEX IF EXISTS idx_insights_scope;
+        DROP INDEX IF EXISTS idx_insights_source;
+        DROP INDEX IF EXISTS idx_insights_status;
+        DROP INDEX IF EXISTS idx_insights_confidence;
+        DROP TABLE IF EXISTS insights_fts;
+        DROP TABLE IF EXISTS insights;
+    """)
+    conn.commit()
+
+
 def init_db(db_path: Path) -> sqlite3.Connection:
     """Create or open a knowledge database, ensuring the schema exists.
 
@@ -97,6 +130,7 @@ def init_db(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
+    _migrate_stale_schema(conn)
     conn.executescript(SCHEMA_DDL)
     conn.commit()
     _migrate_metadata_column(conn)

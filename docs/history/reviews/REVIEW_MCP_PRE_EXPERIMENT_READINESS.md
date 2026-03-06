@@ -590,8 +590,8 @@ hint = (
 
 | Claim | Source | Location |
 |-------|--------|----------|
-| GPT agent: 403 tool calls, 0 record_insight | GPT trace JSONL | `/Users/hh7465/gpt_agent_test/task_4_final_conversation_trace_detailed.jsonl` |
-| GPT agent: 11 run_calculation, 3 k-point failures | GPT postmortem | `/Users/hh7465/gpt_agent_test/task_4_trace_postmortem_report.md` |
+| GPT agent: 403 tool calls, 0 record_insight | GPT trace JSONL | `$HOME/gpt_agent_test/task_4_final_conversation_trace_detailed.jsonl` |
+| GPT agent: 11 run_calculation, 3 k-point failures | GPT postmortem | `$HOME/gpt_agent_test/task_4_trace_postmortem_report.md` |
 | GPT agent saw context_hint mentioning record_insight, ignored it | GPT trace line 652 | Trace JSONL |
 | Chain A: 1 finding per session, 0 list_insights calls | Chain A audit | `.tmp/task3_chain_a/AUDIT_NUDGE_RESPONSE.md` |
 | Chain A: nudge 100% ignored, fired at 93-96% session completion | Nudge audit | `.tmp/task3_chain_a/AUDIT_NUDGE_RESPONSE.md` |
