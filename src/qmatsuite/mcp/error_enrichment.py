@@ -50,8 +50,11 @@ def enrich_run_error(
     message = _build_message(error_type, diagnostics, step_messages)
 
     hint = (
-        f"Use set_parameters(calc_ulid='{calc_ulid}', params=...) to apply a fix, "
-        f"then run_calculation(calc_ulid='{calc_ulid}') to retry."
+        f"Consider recording this error and its resolution with "
+        f"record_insight(grade='finding', content='<error and fix>', "
+        f"tags='error-recovery') so future sessions can avoid it. "
+        f"Then use set_parameters(calc_ulid='{calc_ulid}', params=...) to apply a fix, "
+        f"and run_calculation(calc_ulid='{calc_ulid}') to retry."
     )
 
     return make_error(

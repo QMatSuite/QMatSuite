@@ -110,16 +110,22 @@ def create_calculation(
         except Exception:
             pass
 
+    search_tip = (
+        f"Tip: use search_knowledge(query='{workflow}') to check for "
+        f"known issues before configuring. "
+    )
     if species_map_resolved:
         hint = (
-            f"Species map auto-resolved. "
+            search_tip
+            + f"Species map auto-resolved. "
             f"Use apply_preset or set_parameters to configure, "
             f"then inspect_calculation(calc_ulid='{calc_ulid}') to review, "
             f"then run_calculation(calc_ulid='{calc_ulid}') to execute."
         )
     else:
         hint = (
-            f"IMPORTANT: For engines using pseudopotentials (QE, ABINIT, Siesta, VASP), "
+            search_tip
+            + f"IMPORTANT: For engines using pseudopotentials (QE, ABINIT, Siesta, VASP), "
             f"call auto_resolve_species_map(calc_ulid='{calc_ulid}') or "
             f"set_species_map(calc_ulid='{calc_ulid}', species_map=...) first. "
             f"Then use apply_preset or set_parameters to configure, "

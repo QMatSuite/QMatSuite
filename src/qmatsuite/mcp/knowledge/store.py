@@ -415,10 +415,8 @@ class KnowledgeStore:
             local_results.sort(key=_sort_scope, reverse=True)
             results = _merge_with_reserved_slots(local_results, builtin_results, limit)
 
-        # Annotate entries under review
-        for r in results:
-            if r.get("contradiction_count", 0) >= _CONTRADICTION_THRESHOLD:
-                r["content"] = "[UNDER REVIEW] " + r["content"]
+        # Note: contradiction_count is already exposed in each result dict;
+        # no content prefix — let the agent decide how to weigh it.
 
         return results
 

@@ -80,3 +80,57 @@ Replaced the single-workflow preamble in `src/qmatsuite/mcp/app.py` with a dual-
 ```
 
 12 nudge-related tests removed (was ~758 tests in MCP suite).
+
+---
+
+## Round 2: Pre-Experiment Behavioral Hints (M1-M6)
+
+**Date:** 2026-03-06
+**Ref:** `docs/history/reviews/REVIEW_MCP_PRE_EXPERIMENT_READINESS.md`
+
+Pre-experiment review identified 6 behavioral gaps that would cause
+experiments to produce thin, purely numerical knowledge. All gaps were in
+context_hint text and preamble wording.
+
+### Change M1: Record-Failure Prompt in Error Enrichment
+
+**File:** `src/qmatsuite/mcp/error_enrichment.py`
+Error hint now says "Consider recording this error...record_insight(grade='finding',...tags='error-recovery')" before suggesting fix+retry. Previously only said "fix and retry" — failures were never recorded.
+
+### Change M2: Encourage Additional Insights After Recording
+
+**File:** `src/qmatsuite/mcp/tools/record_insight.py`
+Promoted-insight hint changed from "Insight recorded in knowledge base. Use search_knowledge() to verify it's findable." (dead-end termination signal) to "Insight recorded. If this session produced additional findings (methodology lessons, error workarounds, parameter guidance), record each as a separate insight."
+
+### Change M3: Methodology in Finding Definition
+
+**File:** `src/qmatsuite/mcp/app.py`
+Finding grade definition expanded: "verified result from one calculation, OR a methodology lesson learned from a failure or workaround."
+
+### Change M4b: Remove [UNDER REVIEW] Prefix from Search Results
+
+**File:** `src/qmatsuite/mcp/knowledge/store.py`
+Removed the code that prepended `[UNDER REVIEW]` to content for entries with high contradiction_count. The contradiction_count field is already exposed in each result dict.
+
+### Change M5: Multiple-Insights Guidance in Preamble
+
+**File:** `src/qmatsuite/mcp/app.py`
+Added: "Record each distinct finding as a separate insight — a session may produce one or several (numerical result, methodology lesson, error workaround). Include specific numbers and context."
+
+### Change M6: Search-Knowledge Hint in create_calculation
+
+**File:** `src/qmatsuite/mcp/tools/create_calculation.py`
+context_hint now starts with "Tip: use search_knowledge(query='<workflow>') to check for known issues before configuring."
+
+### Tests
+
+- Updated `test_search_annotates_under_review` → `test_search_does_not_prefix_under_review`
+- Added `tests/mcp/test_behavioral_hints.py` (8 tests covering M1-M6)
+
+### Verification
+
+| Suite | Before | After | Delta |
+|-------|--------|-------|-------|
+| Gates | 733 passed, 2 skipped | 733 passed, 2 skipped | 0 |
+| MCP | 746 passed | 754 passed | +8 new |
+| Full | — | 6864 passed, 4 skipped | 0 failures |

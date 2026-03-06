@@ -377,8 +377,13 @@ class TestContradictionDetection:
         ).fetchone()
         assert row[0] == 0
 
-    def test_search_annotates_under_review(self, store):
-        """Entries with contradiction_count >= threshold show [UNDER REVIEW] prefix."""
+    def test_search_does_not_prefix_under_review(self, store):
+        """Entries with high contradiction_count must NOT get [UNDER REVIEW] prefix.
+
+        The contradiction_count field is already exposed in each result dict;
+        the agent can weigh it.  Prefixing content would pollute the insight
+        text returned to the agent and bias its behaviour.
+        """
         _insert_entry(
             store.conn,
             content="Entry that is under review for contradictions",
@@ -389,7 +394,8 @@ class TestContradictionDetection:
         results = store.search("under review contradictions")
         matched = [r for r in results if "UR001" == r.get("id")]
         assert len(matched) == 1
-        assert matched[0]["content"].startswith("[UNDER REVIEW]")
+        assert not matched[0]["content"].startswith("[UNDER REVIEW]")
+        assert matched[0]["content"] == "Entry that is under review for contradictions"
 
 
 # ===========================================================================

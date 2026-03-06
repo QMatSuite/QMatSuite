@@ -31,11 +31,16 @@ KNOWLEDGE SYNTHESIS MODE — when asked to review or summarize:
   when needed (source_calculation field links findings to calculations).
 
 KNOWLEDGE GRADES:
-  finding   → verified result from one calculation
+  finding   → verified result from one calculation, OR a methodology
+              lesson learned from a failure or workaround
   pattern   → recurring trend across multiple findings
               (requires references to supporting finding IDs)
   principle → general rule distilled from multiple patterns
               (requires references to supporting pattern IDs)
+
+Record each distinct finding as a separate insight — a session may
+produce one or several (numerical result, methodology lesson,
+error workaround). Include specific numbers and context.
 
 WHEN TO RECORD vs REPORT:
   Always give the user an honest summary of what you observe,

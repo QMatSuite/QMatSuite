@@ -241,7 +241,11 @@ def record_insight(
 
     # Build context hint
     if promoted:
-        hint = "Insight recorded in knowledge base. Use search_knowledge() to verify it's findable."
+        hint = (
+            "Insight recorded. If this session produced additional findings "
+            "(methodology lessons, error workarounds, parameter guidance), "
+            "record each as a separate insight."
+        )
         if contradictions:
             flagged = [c for c in contradictions if c.get("flagged_for_review")]
             if flagged:
