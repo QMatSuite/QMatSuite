@@ -208,3 +208,52 @@ Also fixed 3 pre-existing test failures:
 | MCP suite | 759 passed |
 | Gate tests | 733 passed, 2 skipped |
 | Full suite | 6868 passed, 4 skipped, 1 error (pre-existing QMCPACK) |
+
+---
+
+## Round 4: num_iter Overwrite Bug + Exp2 CLAUDE.md
+
+**Date:** 2026-03-06
+
+### Change N1: Prevent postwannier from overwriting num_iter
+
+**Problem:** In `wannier_properties_calc` workflows, wannier (step 4) and postwannier
+(step 5) share the same `.win` file in `raw/`. If the agent sets `num_iter=0` on
+postwannier (postw90.x doesn't need iterations), the materialiser overwrites the
+wannier step's `num_iter=200` → zero spread minimisation → AHC=0.
+
+**File:** `src/qmatsuite/calculation/structure_steps.py` — 1 location (line ~987)
+
+Added guard: `if step_type_gen != "postwannier":` around the `num_iter` override.
+Postwannier inherits num_iter from the existing .win file written by the wannier step.
+
+**Tests added** (2 new + 1 strengthened in `tests/unit/test_wannier90_step_materialization.py`):
+- `test_postwannier_preserves_num_iter_from_wannier` — postwannier with explicit num_iter=0 → .win still has 200
+- `test_postwannier_preserves_num_iter_when_not_set` — postwannier without num_iter → .win still has 200
+- `test_postwannier_reuses_existing_seed_win` — added `assert "num_iter = 200"` assertion
+
+### Change N2: Exp2 CLAUDE_TEMPLATE.md
+
+**File:** `.tmp/paper_experiments/exp2_ab_control/CLAUDE_TEMPLATE.md` (new, gitignored)
+
+Agent-facing rules copied as CLAUDE.md into every project directory:
+- MCP-only engine execution (no direct Bash)
+- Mandatory insight recording for every error recovery
+- K_POINTS guidance (automatic mesh + explicit crystal list)
+- Run mode guidance (full vs incremental)
+
+### Change N3: run_exp2.sh CLAUDE.md lifecycle
+
+**File:** `.tmp/paper_experiments/exp2_ab_control/run_exp2.sh` (gitignored)
+
+- Added CLAUDE_TEMPLATE.md verification and initial copy to all project dirs
+- Pre-session: `rm -rf .claude/` + fresh copy of CLAUDE_TEMPLATE.md → CLAUDE.md
+- Post-session: `rm -rf .claude/` only (CLAUDE.md preserved on disk, refreshed next session)
+- Removed CLAUDE.md deletion from both pre-session and post-session cleanup
+
+### Verification
+
+| Suite | Result |
+|-------|--------|
+| W90 materialization | 8 passed |
+| Full suite | 6870 passed, 4 skipped, 1 error (pre-existing QMCPACK) |
