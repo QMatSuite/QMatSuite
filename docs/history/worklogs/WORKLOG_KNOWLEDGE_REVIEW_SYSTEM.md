@@ -225,7 +225,18 @@ Run_06 showed the agent accepting methodology recommendations at face value with
 - `tests/mcp/test_knowledge_write.py`: 104 passed
 - `tests/` (full): 6904 passed, 4 skipped, 1 pre-existing error (QMCPACK integration)
 
-### Complete Final Preamble (as of Phase 8)
+### Phase 9: Sharpen REASON step
+
+Replaced methodology-specific REASON with a general "disentangle parts" instruction: separate data from conclusions, check convergence independently of literature values, search each part separately.
+
+- **app.py**: Updated REASON paragraph
+- **spec**: Updated §7 preamble with same text
+
+### Phase 9 Test Results
+
+- 138 passed (34 review + 104 write), 0 failed
+
+### Complete Final Preamble (as of Phase 9)
 
 ```
 CALCULATION MODE — when asked to compute properties:
@@ -262,12 +273,13 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
      Do NOT cite from memory — citations must come from sources you
      read in this session.
 
-     REASON (for methodology recommendations): Think about what the
-     parameter controls and whether the recommended value ensures accuracy
-     in the region that matters for the target property. Consider whether
-     an alternative choice would be more physically consistent. Be wary
-     of parameter choices that match literature values without demonstrating
-     convergence — accidental error cancellation can masquerade as agreement.
+     REASON (for every finding — disentangle its parts):
+     A finding may contain data, conclusions, and recommendations that
+     are independently correct or wrong. Separate them. For numerical
+     data: ignore the literature value and ask where results converge —
+     an outlier that matches a reference is not convergence. For each
+     conclusion: does it follow from the data? Does it hold up against
+     literature? Each part may need its own search.
 
      CONFIRM (fallback): Only if the finding is tool-specific (e.g.,
      YAML serialization quirks) where no external literature applies,
