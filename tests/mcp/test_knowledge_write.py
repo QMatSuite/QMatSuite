@@ -831,6 +831,32 @@ class TestReservedSlots:
         keys = [m["key"] for m in merged]
         assert keys == ["L1", "L2", "B0", "B1", "B2"]
 
+    def test_merge_backfills_when_builtin_empty(self):
+        """When builtin is empty, local results backfill beyond reserved slots."""
+        local = [{"key": f"L{i}"} for i in range(10)]
+        builtin: list[dict] = []
+        merged = _merge_with_reserved_slots(local, builtin, limit=15, reserved=3)
+        assert len(merged) == 10  # all 10 local, not capped at 3
+
+    def test_merge_normal_with_builtin(self):
+        """With builtin present, reserved slots are respected."""
+        local = [{"key": f"L{i}"} for i in range(5)]
+        builtin = [{"key": f"B{i}"} for i in range(10)]
+        merged = _merge_with_reserved_slots(local, builtin, limit=15, reserved=3)
+        # 3 local (reserved) + 10 builtin + 2 backfill = 15
+        assert len(merged) == 15
+        keys = [m["key"] for m in merged]
+        assert keys[:3] == ["L0", "L1", "L2"]
+        assert keys[3:13] == [f"B{i}" for i in range(10)]
+        assert keys[13:] == ["L3", "L4"]
+
+    def test_merge_backfill_respects_limit(self):
+        """Backfill must not exceed limit."""
+        local = [{"key": f"L{i}"} for i in range(20)]
+        builtin: list[dict] = []
+        merged = _merge_with_reserved_slots(local, builtin, limit=15, reserved=3)
+        assert len(merged) == 15
+
 
 # ===========================================================================
 # TestPatternGrade (Change 3) — 4 tests

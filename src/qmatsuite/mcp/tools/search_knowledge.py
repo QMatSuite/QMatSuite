@@ -52,7 +52,7 @@ def search_knowledge(
         limit=limit,
     )
 
-    # Truncate content in list view to 300 chars.
+    # Truncate content in list view to 500 chars.
     items = []
     for r in results:
         meta = json.loads(r["metadata"]) if r.get("metadata") else {}
@@ -63,7 +63,7 @@ def search_knowledge(
             "scope_workflow": r["scope_workflow"],
             "scope_system_type": r["scope_system_type"],
             "scope_method": r["scope_method"],
-            "content": r["content"][:300] + ("..." if len(r["content"]) > 300 else ""),
+            "content": r["content"][:500] + ("..." if len(r["content"]) > 500 else ""),
             "confidence": r["confidence"],
             "tags": json.loads(r["tags"]) if r.get("tags") else [],
             "source_type": r["source_type"],

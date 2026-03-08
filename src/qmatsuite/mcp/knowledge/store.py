@@ -87,12 +87,18 @@ def _merge_with_reserved_slots(
     """Merge local and builtin results, reserving *reserved* slots for local.
 
     Local entries come first (up to *reserved*), then builtin entries fill
-    the remaining slots up to *limit*.
+    the remaining slots up to *limit*.  If builtin doesn't fill the remaining
+    slots, backfill from additional local results.
     """
     local_take = local_results[: min(reserved, len(local_results))]
     remaining = limit - len(local_take)
     builtin_take = builtin_results[:max(0, remaining)]
-    return local_take + builtin_take
+    merged = local_take + builtin_take
+    # Backfill: if slots remain, take more local results
+    if len(merged) < limit and len(local_results) > len(local_take):
+        backfill = local_results[len(local_take) : len(local_take) + limit - len(merged)]
+        merged.extend(backfill)
+    return merged
 
 
 def _default_db_path() -> Path:

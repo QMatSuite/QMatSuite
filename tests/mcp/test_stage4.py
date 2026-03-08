@@ -254,9 +254,9 @@ class TestMCPTool:
         assert "No matching" in result["context_hint"]
 
     def test_content_truncation(self):
-        """Content in results is truncated to ~300 chars."""
+        """Content in results is truncated to ~500 chars."""
         from qmatsuite.mcp.tools.search_knowledge import search_knowledge
 
         result = search_knowledge.fn(query="SCF")
         for item in result["data"]["results"]:
-            assert len(item["content"]) <= 303  # 300 + "..."
+            assert len(item["content"]) <= 503  # 500 + "..."

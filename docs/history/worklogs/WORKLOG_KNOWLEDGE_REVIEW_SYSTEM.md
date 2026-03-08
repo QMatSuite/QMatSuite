@@ -395,3 +395,29 @@ Before starting new calculations:
 - Search the knowledge base for relevant prior findings
 - Check if similar compounds or workflows have been studied before
 ```
+
+---
+
+## Run 18 Bug Fixes
+
+### Bug 1: 3-result cap when builtin disabled (CRITICAL)
+
+`_merge_with_reserved_slots` reserved 3 slots for local, filled remaining 12 from builtin.
+With `QMS_KNOWLEDGE_BUILTIN=0`, builtin is empty → only 3 results returned, 12 slots wasted.
+
+**Fix**: Backfill remaining slots from local when builtin doesn't fill them.
+
+**File**: `src/qmatsuite/mcp/knowledge/store.py`
+
+**Tests added** (3):
+- `test_merge_backfills_when_builtin_empty` — 10 local, 0 builtin, limit=15 → returns all 10
+- `test_merge_normal_with_builtin` — 5 local, 10 builtin, limit=15, reserved=3 → 3+10+2 backfill = 15
+- `test_merge_backfill_respects_limit` — 20 local, 0 builtin, limit=15 → returns 15
+
+### Bug 2: 300-char content truncation too short
+
+Search results truncated at 300 chars, cutting off important context from findings.
+
+**Fix**: `search_knowledge.py` — change 300 → 500 chars.
+
+**Test updated**: `test_content_truncation` in `test_stage4.py` — assert ≤503 (was 303).
