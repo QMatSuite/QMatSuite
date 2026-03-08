@@ -270,7 +270,11 @@ Simplified the conclusions/recommendations bullet — removed the "best practice
 
 Split two bullets into three: (1) numerical data — "fresh eyes" + "overfitting not convergence", (2) new parameter recommendations bullet — search tutorials for concrete examples, (3) conclusions — search directly, test falsifiable claims.
 
-### Complete Final Preamble (as of Phase 12)
+### Phase 14: PREPARATION step to gather tutorial input files before review
+
+Added step 0 (PREPARATION) before the review loop: search for raw calculation input files from official tutorials/databases, locate and scrape actual input files (GitHub, supplementary data, example directories), inspect parameter values as ground truth. Removed redundant "look for actual input files" from parameter bullet (now covered by step 0).
+
+### Complete Final Preamble (as of Phase 14)
 
 ```
 CALCULATION MODE — when asked to compute properties:
@@ -298,6 +302,17 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
   search the web to verify claims against documentation, tutorials,
   papers, or other reputable sources.
 
+  0. PREPARATION: Before reviewing, search for raw calculation input
+     files from official tutorials or databases related to these
+     findings — same material and task, same task on a similar
+     material, or same computational method. Try your very best to
+     locate and scrape the actual input files (typically on GitHub,
+     in supplementary data, or in example directories — not just
+     documentation prose). Download and inspect parameter values.
+     These serve as ground truth for reviewing parameter
+     recommendations. When citing input files, quote a relevant
+     block of parameters as the excerpt.
+
   1. list_insights(status='under_review') — see unreviewed findings
   2. For each finding, disentangle its parts — data, conclusions, and
      recommendations may be independently correct or wrong:
@@ -308,9 +323,7 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
      - For parameter recommendations: search for tutorials and examples
        that use such parameter. Check exact calculation details —
        concrete numerical examples often reveal whether a recommendation
-       is standard practice or an outlier. If a tutorial page lacks
-       specific values, look for the actual input files (often on
-       GitHub or in supplementary data).
+       is standard practice or an outlier.
      - For each conclusion or recommendation: search for it directly —
        treat it as a claim to be tested. Falsifiable claims should be
        checked against external sources, not just reasoned about. Does
