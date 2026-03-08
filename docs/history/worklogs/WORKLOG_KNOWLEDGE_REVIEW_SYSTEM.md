@@ -274,7 +274,11 @@ Split two bullets into three: (1) numerical data — "fresh eyes" + "overfitting
 
 Added step 0 (PREPARATION) before the review loop: search for raw calculation input files from official tutorials/databases, locate and scrape actual input files (GitHub, supplementary data, example directories), inspect parameter values as ground truth. Removed redundant "look for actual input files" from parameter bullet (now covered by step 0).
 
-### Complete Final Preamble (as of Phase 14)
+### Phase 15: No middle ground — partially correct = deprecate and split
+
+Rewrote verdict section: "A finding is either completely correct or it is not. There is no middle ground." DEPRECATE now explicitly instructs writing "one or more precise replacement findings that separate the correct parts from the incorrect parts."
+
+### Complete Final Preamble (as of Phase 15)
 
 ```
 CALCULATION MODE — when asked to compute properties:
@@ -333,18 +337,22 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
 
      Then determine the verdict for the finding AS A WHOLE:
 
-     VERIFY (preferred): If all parts hold up and you found supporting
-     documentation, use verdict='verified' with the URL and a verbatim
-     excerpt (50+ chars).
+     A finding is either completely correct or it is not. There is
+     no middle ground.
 
-     CONFIRM (fallback): Only if the finding is purely tool-specific
-     (e.g., YAML serialization quirks) or you genuinely cannot find
-     relevant sources after searching.
+     VERIFY (preferred): The finding is completely correct AND you
+     found supporting documentation. Use verdict='verified' with
+     the URL and a verbatim excerpt (50+ chars).
 
-     DEPRECATE: If any part is incorrect, outdated, or superseded —
-     deprecate the whole finding. If partially correct, write a
-     corrected version and verify it:
-       record_insight(corrected content) →
+     CONFIRM: The finding is completely correct but purely
+     tool-specific or you cannot find external sources after searching.
+
+     DEPRECATE: The finding is not completely correct — even if
+     partially correct. Deprecate the whole finding, then write one
+     or more precise replacement findings that separate the correct
+     parts from the incorrect parts. Verify or confirm each
+     replacement independently:
+       record_insight(precise corrected content) →
        review_insight(old_id, verdict='deprecated', superseded_by=new_id) →
        review_insight(new_id, verdict='verified', citation_url=..., citation_excerpt=...)
 
