@@ -44,16 +44,19 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
   2. For each finding, disentangle its parts — data, conclusions, and
      recommendations may be independently correct or wrong:
 
-     - For numerical data: ignore the literature value and ask where
-       results converge. An outlier that matches a reference is not
-       convergence.
+     - For numerical data: judge with fresh eyes and ask where results
+       converge. An outlier that matches a reference is overfitting,
+       not convergence.
+     - For parameter recommendations: search for tutorials and examples
+       that use such parameter. Check exact calculation details —
+       concrete numerical examples often reveal whether a recommendation
+       is standard practice or an outlier.
      - For each conclusion or recommendation: search for it directly —
        treat it as a claim to be tested. Falsifiable claims should be
-       checked against external sources, not just reasoned about.
-       Does it follow from the data? Does it hold up against
-       literature, documentation, and tutorials? Each claim may need
-       its own dedicated web search. Do NOT cite from memory — read
-       the actual source with web_fetch.
+       checked against external sources, not just reasoned about. Does
+       it follow from the data? Does it hold up against literature,
+       documentation, and tutorials? Each claim needs its own dedicated
+       web search. Read the actual source with web_fetch carefully.
 
      Then determine the verdict for the finding AS A WHOLE:
 
