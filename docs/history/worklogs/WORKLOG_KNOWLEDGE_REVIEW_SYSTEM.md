@@ -171,3 +171,14 @@ Asymmetry audit (confirmed without verified):
 
 - `tests/mcp/test_knowledge_review.py`: 28 passed
 - `tests/mcp/` (full): 787 passed, 0 failed
+
+### Phase 5: superseded_by inherits citation → auto-verify
+
+- **store.py** `update_status()`: When `superseded_by` is given with a citation, the replacement insight gets `verified` (not `confirmed`) with the citation propagated to its `metadata.review.citation`. Without citation, stays `confirmed`.
+- **spec**: Updated behavior matrix (§3.2) with citation-conditional rows, added citation propagation note to §3.3, updated revise workflow (§3.5).
+- **test_knowledge_review.py**: +2 tests (30 total) — `test_superseded_by_with_citation_auto_verifies`, `test_superseded_by_without_citation_stays_confirmed`
+
+### Phase 5 Test Results
+
+- `tests/mcp/test_knowledge_review.py`: 30 passed
+- `tests/` (full): 6900 passed, 4 skipped, 1 pre-existing error (QMCPACK integration)

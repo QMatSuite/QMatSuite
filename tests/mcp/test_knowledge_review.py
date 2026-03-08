@@ -179,7 +179,7 @@ class TestReviewInsight:
         assert row["deprecated_reason"] == "Incorrect methodology"
 
     def test_deprecate_with_superseded_by(self):
-        """Deprecate with superseded_by → old deprecated, new confirmed."""
+        """Deprecate with superseded_by (no citation) → old deprecated, new confirmed."""
         from qmatsuite.mcp.tools.review_insight import review_insight
         from qmatsuite.mcp.tools.record_insight import record_insight
 
@@ -208,6 +208,65 @@ class TestReviewInsight:
             "SELECT status FROM insights WHERE id = ?", (new_id,)
         ).fetchone()
         assert new_row["status"] == "confirmed"
+
+    def test_superseded_by_with_citation_auto_verifies(self):
+        """Deprecate with superseded_by + citation → old deprecated, new verified with citation."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        r_old = record_insight.fn(content="Old finding to replace", grade="finding")
+        r_new = record_insight.fn(content="Corrected replacement", grade="finding")
+        old_id = r_old["data"]["insight_id"]
+        new_id = r_new["data"]["insight_id"]
+
+        citation = "https://example.com/valid-ref"
+        result = review_insight.fn(
+            insight_id=old_id,
+            verdict="deprecated",
+            reasoning="Literature contradicts this",
+            superseded_by=new_id,
+            citation=citation,
+        )
+        assert result["status"] == "success"
+        assert result["data"]["superseded_by_status"] == "verified"
+
+        old_row = self._store.local_conn.execute(
+            "SELECT status FROM insights WHERE id = ?", (old_id,)
+        ).fetchone()
+        assert old_row["status"] == "deprecated"
+
+        new_row = self._store.local_conn.execute(
+            "SELECT status, metadata FROM insights WHERE id = ?", (new_id,)
+        ).fetchone()
+        assert new_row["status"] == "verified"
+        meta = json.loads(new_row["metadata"])
+        assert meta["review"]["citation"] == citation
+
+    def test_superseded_by_without_citation_stays_confirmed(self):
+        """Deprecate with superseded_by, no citation → new confirmed (no citation)."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        r_old = record_insight.fn(content="Old finding no cit", grade="finding")
+        r_new = record_insight.fn(content="New replacement no cit", grade="finding")
+        old_id = r_old["data"]["insight_id"]
+        new_id = r_new["data"]["insight_id"]
+
+        result = review_insight.fn(
+            insight_id=old_id,
+            verdict="deprecated",
+            reasoning="Outdated approach",
+            superseded_by=new_id,
+        )
+        assert result["status"] == "success"
+        assert result["data"]["superseded_by_status"] == "confirmed"
+
+        new_row = self._store.local_conn.execute(
+            "SELECT status, metadata FROM insights WHERE id = ?", (new_id,)
+        ).fetchone()
+        assert new_row["status"] == "confirmed"
+        meta = json.loads(new_row["metadata"])
+        assert "citation" not in meta.get("review", {})
 
     def test_confirm_with_superseded_by(self):
         """Confirm with superseded_by → both confirmed."""

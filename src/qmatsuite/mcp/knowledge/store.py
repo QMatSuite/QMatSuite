@@ -452,26 +452,30 @@ class KnowledgeStore:
             "new_status": verdict,
         }
 
-        # If superseded_by given, also confirm the replacement
+        # If superseded_by given, confirm (or verify) the replacement
         if superseded_by:
             new_row = conn.execute(
                 "SELECT metadata FROM insights WHERE id = ?", (superseded_by,)
             ).fetchone()
             if new_row is None:
                 raise ValueError(f"Superseding insight {superseded_by} not found in local.db")
+            new_status = "verified" if citation else "confirmed"
             new_meta = json.loads(new_row["metadata"] or "{}")
-            new_meta["review"] = {
-                "verdict": "confirmed",
-                "reasoning": f"Confirmed as replacement for {insight_id}",
+            new_review: dict = {
+                "verdict": new_status,
+                "reasoning": f"{new_status.title()} as replacement for {insight_id}",
                 "reviewed_at": now,
             }
+            if citation:
+                new_review["citation"] = citation
+            new_meta["review"] = new_review
             conn.execute(
-                "UPDATE insights SET status = 'confirmed', last_validated = ?, "
+                "UPDATE insights SET status = ?, last_validated = ?, "
                 "metadata = ?, updated_at = ? WHERE id = ?",
-                (now, json.dumps(new_meta), now, superseded_by),
+                (new_status, now, json.dumps(new_meta), now, superseded_by),
             )
             result["superseded_by"] = superseded_by
-            result["superseded_by_status"] = "confirmed"
+            result["superseded_by_status"] = new_status
 
         conn.commit()
         return result

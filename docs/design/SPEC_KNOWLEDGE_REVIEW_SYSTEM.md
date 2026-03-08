@@ -58,9 +58,10 @@ review_insight(
 | verified | empty | → `verified`, update `last_validated`, store citation | — |
 | verified | has ULID | → `verified`, update `last_validated`, store citation | → `confirmed` |
 | deprecated | empty | → `deprecated`, write `deprecated_reason` | — |
-| deprecated | has ULID | → `deprecated`, write `deprecated_reason` + `superseded_by` | → `confirmed` |
+| deprecated | has ULID, no citation | → `deprecated`, write `deprecated_reason` + `superseded_by` | → `confirmed` |
+| deprecated | has ULID, citation given | → `deprecated`, write `deprecated_reason` + `superseded_by` | → `verified` (citation inherited) |
 
-Note: `superseded_by` always sets the replacement to `confirmed`, never `verified`. Verification requires an explicit `review_insight(verdict='verified', citation=...)` call on the replacement.
+Note: When `superseded_by` is given with a citation, the citation proves both that the old insight is wrong and that the replacement is correct — so the replacement is auto-verified with the same citation. Without a citation, the replacement gets `confirmed`.
 
 ### 3.3 Columns Written
 
@@ -72,6 +73,8 @@ All existing columns, no schema change:
 - `last_validated` — ISO timestamp (on confirm/verify)
 - `updated_at` — always updated
 - `metadata.review` — `{"verdict": "...", "reasoning": "...", "reviewed_at": "...", "citation": "..."}`
+
+When `superseded_by` is given with a citation, the citation propagates to the replacement insight's `metadata.review.citation`.
 
 ### 3.4 Validation
 
@@ -90,9 +93,10 @@ Step 1: record_insight(content='corrected version', grade='finding', ...)
         → new insight, status = under_review
 
 Step 2: review_insight(insight_id=old_id, verdict='deprecated',
-                       superseded_by=new_id, reasoning='...')
+                       superseded_by=new_id, reasoning='...',
+                       citation='https://...')           # optional
         → old: deprecated + superseded_by=new_id
-        → new: confirmed (automatically, because superseded_by given)
+        → new: verified (if citation given) or confirmed (if no citation)
 ```
 
 ---
