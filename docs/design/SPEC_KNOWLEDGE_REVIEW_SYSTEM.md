@@ -187,6 +187,13 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
      Do NOT cite from memory — citations must come from sources you
      read in this session.
 
+     REASON (for methodology recommendations): Think about what the
+     parameter controls and whether the recommended value ensures accuracy
+     in the region that matters for the target property. Consider whether
+     an alternative choice would be more physically consistent. Be wary
+     of parameter choices that match literature values without demonstrating
+     convergence — accidental error cancellation can masquerade as agreement.
+
      CONFIRM (fallback): Only if the finding is tool-specific (e.g.,
      YAML serialization quirks) where no external literature applies,
      or if you genuinely cannot find relevant sources after searching.
