@@ -457,14 +457,21 @@ class KnowledgeStore:
             "new_status": verdict,
         }
 
-        # If superseded_by given, confirm (or verify) the replacement
+        # If superseded_by given, confirm (or verify) the replacement — never downgrade
+        _STATUS_RANK = {"deprecated": 0, "under_review": 1, "confirmed": 2, "verified": 3}
         if superseded_by:
             new_row = conn.execute(
-                "SELECT metadata FROM insights WHERE id = ?", (superseded_by,)
+                "SELECT status, metadata FROM insights WHERE id = ?", (superseded_by,)
             ).fetchone()
             if new_row is None:
                 raise ValueError(f"Superseding insight {superseded_by} not found in local.db")
-            new_status = "verified" if citation_url else "confirmed"
+            candidate_status = "verified" if citation_url else "confirmed"
+            current_status = new_row["status"]
+            # Only upgrade, never downgrade
+            if _STATUS_RANK.get(current_status, 0) >= _STATUS_RANK.get(candidate_status, 0):
+                new_status = current_status
+            else:
+                new_status = candidate_status
             new_meta = json.loads(new_row["metadata"] or "{}")
             new_review: dict = {
                 "verdict": new_status,

@@ -198,3 +198,16 @@ Run_06 revealed the review agent "verified" findings by citing papers from memor
 - `tests/mcp/test_knowledge_review.py`: 33 passed
 - `tests/mcp/` (full): 792 passed, 0 failed
 - `tests/` (full): 6903 passed, 4 skipped, 1 pre-existing error (QMCPACK integration)
+
+### Phase 7: superseded_by must not downgrade verified status
+
+Run_07 bug: insight already `verified` was overwritten to `confirmed` by a superseded_by auto-confirm. Fix: compare status ranks before setting, only upgrade never downgrade.
+
+- **store.py** `update_status()`: Added `_STATUS_RANK` dict and rank comparison before setting replacement status. If current status outranks candidate, keep current.
+- **spec**: Added "Never downgrade" note to §3.2.
+- **test_knowledge_review.py**: +1 test (34 total) — `test_superseded_by_does_not_downgrade_verified`
+
+### Phase 7 Test Results
+
+- `tests/mcp/test_knowledge_review.py`: 34 passed
+- `tests/` (full): 6904 passed, 4 skipped, 1 pre-existing error (QMCPACK integration)

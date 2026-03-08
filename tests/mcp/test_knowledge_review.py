@@ -271,6 +271,44 @@ class TestReviewInsight:
         meta = json.loads(new_row["metadata"])
         assert "citation_url" not in meta.get("review", {})
 
+    def test_superseded_by_does_not_downgrade_verified(self):
+        """Auto-confirm must not downgrade a verified replacement to confirmed."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        # Create replacement and verify it first
+        r_new = record_insight.fn(content="Already verified replacement", grade="finding")
+        new_id = r_new["data"]["insight_id"]
+        review_insight.fn(
+            insight_id=new_id,
+            verdict="verified",
+            reasoning="Literature confirms this",
+            citation_url="https://example.com/proof",
+            citation_excerpt="This is a sufficiently long verbatim excerpt from the source document for validation",
+        )
+        row = self._store.local_conn.execute(
+            "SELECT status FROM insights WHERE id = ?", (new_id,)
+        ).fetchone()
+        assert row["status"] == "verified"
+
+        # Now deprecate an old insight with superseded_by pointing to the verified one (no citation)
+        r_old = record_insight.fn(content="Old finding to deprecate", grade="finding")
+        old_id = r_old["data"]["insight_id"]
+        result = review_insight.fn(
+            insight_id=old_id,
+            verdict="deprecated",
+            reasoning="Replaced by better version",
+            superseded_by=new_id,
+        )
+        assert result["status"] == "success"
+        assert result["data"]["superseded_by_status"] == "verified"
+
+        # Replacement must still be verified, not downgraded to confirmed
+        row = self._store.local_conn.execute(
+            "SELECT status FROM insights WHERE id = ?", (new_id,)
+        ).fetchone()
+        assert row["status"] == "verified"
+
     def test_confirm_with_superseded_by(self):
         """Confirm with superseded_by → both confirmed."""
         from qmatsuite.mcp.tools.review_insight import review_insight

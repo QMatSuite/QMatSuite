@@ -62,7 +62,7 @@ review_insight(
 | deprecated | has ULID, no citation | → `deprecated`, write `deprecated_reason` + `superseded_by` | → `confirmed` |
 | deprecated | has ULID, citation given | → `deprecated`, write `deprecated_reason` + `superseded_by` | → `verified` (citation inherited) |
 
-Note: When `superseded_by` is given with a citation (url+excerpt), the citation proves both that the old insight is wrong and that the replacement is correct — so the replacement is auto-verified with the same citation. Without a citation, the replacement gets `confirmed`.
+Note: When `superseded_by` is given with a citation (url+excerpt), the citation proves both that the old insight is wrong and that the replacement is correct — so the replacement is auto-verified with the same citation. Without a citation, the replacement gets `confirmed`. **Never downgrade**: if the replacement already has a higher status (e.g., `verified`), it keeps that status.
 
 ### 3.3 Columns Written
 
