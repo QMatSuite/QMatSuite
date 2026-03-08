@@ -247,7 +247,18 @@ Restructured the review flow: disentangle parts first (data vs conclusions), the
 
 - 138 passed (34 review + 104 write), 0 failed
 
-### Complete Final Preamble (as of Phase 10)
+### Phase 11: Search recommendations directly
+
+Updated the conclusions/recommendations bullet to instruct the agent to search for claims directly ("best practice is X" → search whether X is actually established practice) and test falsifiable claims against external sources rather than just reasoning about them.
+
+- **app.py**: Updated bullet point in KNOWLEDGE REVIEW MODE
+- **spec**: Updated §7 with same text
+
+### Phase 11 Test Results
+
+- 138 passed (34 review + 104 write), 0 failed
+
+### Complete Final Preamble (as of Phase 11)
 
 ```
 CALCULATION MODE — when asked to compute properties:
@@ -282,10 +293,14 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
      - For numerical data: ignore the literature value and ask where
        results converge. An outlier that matches a reference is not
        convergence.
-     - For each conclusion or recommendation: does it follow from the
-       data? Does it hold up against literature, documentation, or
-       other reputable sources? Each claim may need its own web search.
-       Do NOT cite from memory — read the actual source with web_fetch.
+     - For each conclusion or recommendation: search for it directly.
+       If a finding says "best practice is X", search whether X is
+       actually established practice. Falsifiable claims should be
+       tested against external sources, not just reasoned about.
+       Does the recommendation follow from the data? Does it hold up
+       against literature and documentation? Each claim may need its
+       own web search. Do NOT cite from memory — read the actual
+       source with web_fetch.
 
      Then determine the verdict for the finding AS A WHOLE:
 
