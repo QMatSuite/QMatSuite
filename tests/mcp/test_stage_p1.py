@@ -200,8 +200,8 @@ class TestContextHints:
             tools = loop.run_until_complete(mcp.get_tools())
         finally:
             loop.close()
-        assert len(tools) == 41, (
-            f"Expected 41 tools, got {len(tools)}: {sorted(tools.keys())}"
+        assert len(tools) == 42, (
+            f"Expected 42 tools, got {len(tools)}: {sorted(tools.keys())}"
         )
 
         # Verify the P1 tools exist

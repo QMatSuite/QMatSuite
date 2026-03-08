@@ -173,7 +173,7 @@ class TestM4bNoUnderReviewPrefix:
                 "M4BTEST01", "finding", "*", "*", "*", "*",
                 "GaAs lattice constant is 5.743 angstrom",
                 "medium", "local", "agent", "[]",
-                "active", _CONTRADICTION_THRESHOLD, now, now,
+                "confirmed", _CONTRADICTION_THRESHOLD, now, now,
             ),
         )
         self._store.local_conn.commit()

@@ -51,6 +51,7 @@ def _register_tools() -> None:
     import qmatsuite.mcp.tools.record_insight  # noqa: F401
     import qmatsuite.mcp.tools.record_intent  # noqa: F401
     import qmatsuite.mcp.tools.list_insights  # noqa: F401
+    import qmatsuite.mcp.tools.review_insight  # noqa: F401
 
     # Stage 7: structure tools
     import qmatsuite.mcp.tools.list_structures  # noqa: F401

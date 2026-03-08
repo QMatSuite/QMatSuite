@@ -67,14 +67,13 @@ def search_knowledge(
             "confidence": r["confidence"],
             "tags": json.loads(r["tags"]) if r.get("tags") else [],
             "source_type": r["source_type"],
+            "status": r.get("status", "confirmed"),
             "upvotes": r.get("upvotes", 0),
             "downvotes": r.get("downvotes", 0),
+            "contradiction_count": r.get("contradiction_count", 0),
             "metadata": meta,
             "source_calculation": meta.get("source_calculation"),
         }
-        cc = r.get("contradiction_count", 0)
-        if cc > 0:
-            item["contradiction_count"] = cc
         items.append(item)
 
     if items:

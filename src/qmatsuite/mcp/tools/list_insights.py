@@ -14,6 +14,7 @@ def list_insights(
     limit: int = 20,
     compound: str = "",
     mode: str = "pending",
+    status: str = "",
 ) -> dict:
     """List insights by grade for review or synthesis.
 
@@ -28,6 +29,8 @@ def list_insights(
         limit: Max results (default 20, max 100).
         compound: Optional compound filter (matches tags).
         mode: 'pending' (default) or 'recent'.
+        status: Optional comma-separated status filter (e.g. 'under_review'
+            or 'confirmed,under_review'). If empty, returns all non-deprecated.
     """
     allowed = {"finding", "pattern", "principle"}
     if grade not in allowed:
@@ -44,12 +47,17 @@ def list_insights(
             context_hint="Use mode='pending' for unsynthesized insights, or mode='recent' for all.",
         )
 
+    # Parse status filter
+    statuses = None
+    if status and status.strip():
+        statuses = [s.strip() for s in status.split(",") if s.strip()]
+
     from qmatsuite.mcp.knowledge import get_knowledge_store
 
     store = get_knowledge_store()
 
     if mode == "recent":
-        data = store.list_by_grade(grade, limit=limit, compound=compound)
+        data = store.list_by_grade(grade, limit=limit, compound=compound, statuses=statuses)
         # Enrich with parsed metadata
         items = []
         for r in data["insights"]:
@@ -60,6 +68,8 @@ def list_insights(
                 "content": r["content"],
                 "tags": json.loads(r["tags"]) if r.get("tags") else [],
                 "created_at": r["created_at"],
+                "status": r.get("status", "confirmed"),
+                "contradiction_count": r.get("contradiction_count", 0),
                 "upvotes": r.get("upvotes", 0),
                 "downvotes": r.get("downvotes", 0),
                 "metadata": meta,
@@ -84,7 +94,7 @@ def list_insights(
         )
     else:
         # pending mode (default)
-        data = store.list_pending(grade, limit=limit, compound=compound)
+        data = store.list_pending(grade, limit=limit, compound=compound, statuses=statuses)
         items = []
         for r in data["insights"]:
             meta = json.loads(r["metadata"]) if r.get("metadata") else {}
@@ -94,6 +104,8 @@ def list_insights(
                 "content": r["content"],
                 "tags": json.loads(r["tags"]) if r.get("tags") else [],
                 "created_at": r["created_at"],
+                "status": r.get("status", "confirmed"),
+                "contradiction_count": r.get("contradiction_count", 0),
                 "upvotes": r.get("upvotes", 0),
                 "downvotes": r.get("downvotes", 0),
                 "metadata": meta,

@@ -72,7 +72,7 @@ def build_builtin_db(output_path: Path | None = None) -> Path:
                     created_by, tags,
                     status, last_validated, contradiction_count,
                     upvotes, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, 0, 0, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, 0, 0, ?, ?)
                 """,
                 (
                     ulid,

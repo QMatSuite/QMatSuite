@@ -53,8 +53,11 @@ TRUST_WEIGHTS = {
 }
 _DEFAULT_TRUST = 0.5
 
-# Contradiction threshold: entries reaching this count are set to "under_review".
+# Contradiction threshold: informational signal for review agent.
 _CONTRADICTION_THRESHOLD = 3
+
+# Status-based ranking weights for search results.
+_STATUS_WEIGHT = {"confirmed": 1.0, "under_review": 0.8, "deprecated": 0.3}
 
 # Scope fields used for contradiction matching.
 _SCOPE_FIELDS = ("scope_engine", "scope_workflow", "scope_system_type", "scope_method")
@@ -163,9 +166,9 @@ class KnowledgeStore:
     # -- public API -----------------------------------------------------------
 
     def count(self) -> int:
-        """Return total number of active insights in builtin DB."""
+        """Return total number of confirmed insights in builtin DB."""
         row = self.conn.execute(
-            "SELECT COUNT(*) FROM insights WHERE status = 'active'"
+            "SELECT COUNT(*) FROM insights WHERE status = 'confirmed'"
         ).fetchone()
         return row[0] if row else 0
 
@@ -226,6 +229,12 @@ class KnowledgeStore:
 
         tags_json = json.dumps(record.tags) if record.tags else "[]"
 
+        # Grade-based auto status (spec §2)
+        if record.grade in ("pattern", "principle"):
+            status = "confirmed"
+        else:
+            status = "under_review"
+
         # Build provenance metadata
         metadata = {
             "agent_model": os.environ.get("QMS_AGENT_MODEL", "unknown"),
@@ -250,7 +259,7 @@ class KnowledgeStore:
                 created_by, tags,
                 status, contradiction_count, upvotes, metadata,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, 0, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?)
             """,
             (
                 insight_id,
@@ -266,6 +275,7 @@ class KnowledgeStore:
                 None,
                 record.created_by,
                 tags_json,
+                status,
                 metadata_json,
                 now,
                 now,
@@ -284,12 +294,21 @@ class KnowledgeStore:
             "contradictions": contradictions,
         }
 
-    def list_by_grade(self, grade: str, limit: int = 20, compound: str = "") -> dict:
+    def list_by_grade(
+        self,
+        grade: str,
+        limit: int = 20,
+        compound: str = "",
+        statuses: Optional[list[str]] = None,
+    ) -> dict:
         """List insights from local.db by grade, ordered by created_at DESC."""
         if not self._has_local_db():
             return {"grade": grade, "total": 0, "insights": []}
-        sql = "SELECT * FROM insights WHERE grade = ? AND status IN ('active', 'under_review')"
-        params: list = [grade]
+        if statuses is None:
+            statuses = ["confirmed", "under_review"]
+        placeholders = ", ".join("?" for _ in statuses)
+        sql = f"SELECT * FROM insights WHERE grade = ? AND status IN ({placeholders})"
+        params: list = [grade, *statuses]
         if compound:
             sql += " AND tags LIKE ?"
             params.append(f"%{compound}%")
@@ -359,6 +378,98 @@ class KnowledgeStore:
             self.local_conn.commit()
         return {"applied_up": applied_up, "applied_down": applied_down, "skipped": skipped}
 
+    def update_status(
+        self,
+        insight_id: str,
+        verdict: str,
+        reasoning: str,
+        superseded_by: str = "",
+    ) -> dict:
+        """Update insight status via review verdict.
+
+        Parameters
+        ----------
+        insight_id : str
+            Full ULID of the insight to review.
+        verdict : str
+            ``"confirmed"`` or ``"deprecated"``.
+        reasoning : str
+            Why this verdict was given.
+        superseded_by : str
+            Optional ULID of a replacement insight.
+
+        Returns
+        -------
+        dict with keys: insight_id, verdict, new_status, superseded_by, superseded_by_status.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        conn = self.local_conn
+
+        row = conn.execute(
+            "SELECT status, metadata FROM insights WHERE id = ?", (insight_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Insight {insight_id} not found in local.db")
+
+        if row["status"] == "deprecated":
+            raise ValueError("Insight already deprecated")
+
+        meta = json.loads(row["metadata"] or "{}")
+        meta["review"] = {
+            "verdict": verdict,
+            "reasoning": reasoning,
+            "reviewed_at": now,
+        }
+        meta_json = json.dumps(meta)
+
+        if verdict == "confirmed":
+            conn.execute(
+                "UPDATE insights SET status = 'confirmed', last_validated = ?, "
+                "metadata = ?, updated_at = ? WHERE id = ?",
+                (now, meta_json, now, insight_id),
+            )
+        elif verdict == "deprecated":
+            conn.execute(
+                "UPDATE insights SET status = 'deprecated', deprecated_reason = ?, "
+                "metadata = ?, updated_at = ? WHERE id = ?",
+                (reasoning, meta_json, now, insight_id),
+            )
+            if superseded_by:
+                conn.execute(
+                    "UPDATE insights SET superseded_by = ? WHERE id = ?",
+                    (superseded_by, insight_id),
+                )
+
+        result = {
+            "insight_id": insight_id,
+            "verdict": verdict,
+            "new_status": verdict,
+        }
+
+        # If superseded_by given, also confirm the replacement
+        if superseded_by:
+            new_row = conn.execute(
+                "SELECT metadata FROM insights WHERE id = ?", (superseded_by,)
+            ).fetchone()
+            if new_row is None:
+                raise ValueError(f"Superseding insight {superseded_by} not found in local.db")
+            new_meta = json.loads(new_row["metadata"] or "{}")
+            new_meta["review"] = {
+                "verdict": "confirmed",
+                "reasoning": f"Confirmed as replacement for {insight_id}",
+                "reviewed_at": now,
+            }
+            conn.execute(
+                "UPDATE insights SET status = 'confirmed', last_validated = ?, "
+                "metadata = ?, updated_at = ? WHERE id = ?",
+                (now, json.dumps(new_meta), now, superseded_by),
+            )
+            result["superseded_by"] = superseded_by
+            result["superseded_by_status"] = "confirmed"
+
+        conn.commit()
+        return result
+
     def search(
         self,
         query_text: str = "",
@@ -420,10 +531,18 @@ class KnowledgeStore:
 
         return results
 
-    def list_pending(self, grade: str, limit: int = 20, compound: str = "") -> dict:
+    def list_pending(
+        self,
+        grade: str,
+        limit: int = 20,
+        compound: str = "",
+        statuses: Optional[list[str]] = None,
+    ) -> dict:
         """List insights of `grade` since last higher-grade synthesis."""
         if not self._has_local_db():
             return {"grade": grade, "total_pending": 0, "since": None, "insights": []}
+        if statuses is None:
+            statuses = ["confirmed", "under_review"]
         higher = {"finding": "pattern", "pattern": "principle"}
         higher_grade = higher.get(grade)
         # Get timestamp of last higher-grade synthesis
@@ -434,8 +553,9 @@ class KnowledgeStore:
                 (higher_grade,),
             ).fetchone()
             last_higher = row[0] if row and row[0] else None
-        sql = "SELECT * FROM insights WHERE grade = ?"
-        params: list = [grade]
+        placeholders = ", ".join("?" for _ in statuses)
+        sql = f"SELECT * FROM insights WHERE grade = ? AND status IN ({placeholders})"
+        params: list = [grade, *statuses]
         if last_higher:
             sql += " AND created_at > ?"
             params.append(last_higher)
@@ -481,7 +601,7 @@ class KnowledgeStore:
         for db_conn, db_name in self._active_dbs():
             # Build query: find active entries where the matching scope fields
             # are also non-wildcard AND equal to the new entry's values.
-            where_parts = ["status = 'active'", "id != ?"]
+            where_parts = ["status IN ('confirmed', 'under_review')", "id != ?"]
             params: list = [new_id]
 
             for field, value in non_wildcard.items():
@@ -498,10 +618,7 @@ class KnowledgeStore:
 
                 update_sql = "UPDATE insights SET contradiction_count = ?"
                 update_params: list = [new_count]
-
-                if new_count >= _CONTRADICTION_THRESHOLD:
-                    update_sql += ", status = 'under_review'"
-
+                # Status changes handled exclusively by review_insight
                 update_sql += " WHERE id = ?"
                 update_params.append(entry_id)
 
@@ -549,7 +666,7 @@ class KnowledgeStore:
             FROM insights_fts f
             JOIN insights i ON i.rowid = f.rowid
             WHERE insights_fts MATCH ?
-              AND i.status IN ('active', 'under_review')
+              AND i.status IN ('confirmed', 'under_review', 'deprecated')
         """
         params: list = [safe_query]
 
@@ -583,7 +700,7 @@ class KnowledgeStore:
         limit: int,
     ) -> list[dict]:
         """Non-FTS search using only scope filters on a single connection."""
-        sql = "SELECT i.* FROM insights i WHERE i.status IN ('active', 'under_review')"
+        sql = "SELECT i.* FROM insights i WHERE i.status IN ('confirmed', 'under_review', 'deprecated')"
         params: list = []
 
         sql, params = self._add_scope_filters(
@@ -604,7 +721,8 @@ class KnowledgeStore:
             cw = _CONFIDENCE_WEIGHT.get(r.get("confidence", "medium"), 2.0)
             raw_rank = r.pop("_raw_rank", abs(r.get("rank", 0)))
             tw = TRUST_WEIGHTS.get(r.get("source_type", "local"), _DEFAULT_TRUST)
-            r["_score"] = cw * raw_rank * tw
+            sw = _STATUS_WEIGHT.get(r.get("status", "confirmed"), 0.5)
+            r["_score"] = cw * raw_rank * tw * sw
 
         results.sort(
             key=lambda r: (r["_score"], _GRADE_ORDER.get(r.get("grade", ""), 0)),

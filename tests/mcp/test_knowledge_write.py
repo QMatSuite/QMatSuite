@@ -58,7 +58,7 @@ def _insert_entry(
     source_type: str = "builtin",
     confidence: str = "medium",
     contradiction_count: int = 0,
-    status: str = "active",
+    status: str = "confirmed",
 ):
     """Insert a test entry directly into a DB connection."""
     now = datetime.now(timezone.utc).isoformat()
@@ -316,8 +316,8 @@ class TestContradictionDetection:
         ).fetchone()
         assert row[0] == 1
 
-    def test_contradiction_threshold_flags_review(self, store):
-        """Reaching the contradiction threshold sets status to under_review."""
+    def test_contradiction_threshold_increments_count_only(self, store):
+        """Reaching the contradiction threshold increments count but does NOT change status."""
         _insert_entry(
             store.conn,
             content="QE SCF tip that will be flagged for contradiction review",
@@ -333,7 +333,7 @@ class TestContradictionDetection:
         row = store.conn.execute(
             "SELECT status, contradiction_count FROM insights WHERE id = 'REVIEW001'"
         ).fetchone()
-        assert row[0] == "under_review"
+        assert row[0] == "confirmed"  # status NOT changed by contradiction
         assert row[1] == _CONTRADICTION_THRESHOLD
 
     def test_no_contradiction_for_different_scope(self, store):
@@ -389,7 +389,7 @@ class TestContradictionDetection:
             content="Entry that is under review for contradictions",
             entry_id="UR001",
             contradiction_count=_CONTRADICTION_THRESHOLD,
-            status="active",
+            status="confirmed",
         )
         results = store.search("under review contradictions")
         matched = [r for r in results if "UR001" == r.get("id")]
@@ -869,10 +869,15 @@ class TestPatternGrade:
             ))
             assert result["promoted"] is True
         assert local_db_path.exists()
-        count = store.local_conn.execute(
-            "SELECT COUNT(*) FROM insights WHERE status = 'active'"
+        # finding → under_review, pattern/principle → confirmed
+        ur_count = store.local_conn.execute(
+            "SELECT COUNT(*) FROM insights WHERE status = 'under_review'"
         ).fetchone()[0]
-        assert count == 3
+        conf_count = store.local_conn.execute(
+            "SELECT COUNT(*) FROM insights WHERE status = 'confirmed'"
+        ).fetchone()[0]
+        assert ur_count == 1  # finding
+        assert conf_count == 2  # pattern + principle
 
 
 # ===========================================================================
@@ -1100,14 +1105,16 @@ class TestMCPInstructions:
             assert grade in text, f"Missing grade: {grade}"
 
     def test_instructions_workflow(self):
-        """Preamble describes both calculation and synthesis modes."""
+        """Preamble describes calculation, review, and synthesis modes."""
         from qmatsuite.mcp.app import mcp
 
         text = mcp.instructions
         assert "CALCULATION MODE" in text
+        assert "KNOWLEDGE REVIEW MODE" in text
         assert "KNOWLEDGE SYNTHESIS MODE" in text
         assert "search_knowledge" in text
         assert "record_insight" in text
+        assert "review_insight" in text
 
     def test_instructions_citation_semantics(self):
         """Preamble explains record vs report guidance."""
@@ -1116,12 +1123,13 @@ class TestMCPInstructions:
         text = mcp.instructions
         assert "WHEN TO RECORD" in text
 
-    def test_instructions_upvotes_downvotes(self):
-        """Preamble mentions vote mechanism for knowledge evolution."""
+    def test_instructions_status_semantics(self):
+        """Preamble explains auto-status by grade."""
         from qmatsuite.mcp.app import mcp
 
         text = mcp.instructions
-        assert "vote entries up or down" in text
+        assert "under_review" in text
+        assert "confirmed" in text
 
 
 # ===========================================================================

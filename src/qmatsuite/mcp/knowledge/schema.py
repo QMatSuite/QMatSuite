@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS insights (
     provenance_ref TEXT,
     created_by TEXT NOT NULL,
     tags TEXT,
-    status TEXT DEFAULT 'active',
+    status TEXT DEFAULT 'under_review',
     superseded_by TEXT,
     deprecated_reason TEXT,
     merged_into TEXT,
@@ -87,6 +87,14 @@ def _migrate_downvotes_column(conn: sqlite3.Connection) -> None:
         conn.commit()
 
 
+def _migrate_active_to_confirmed(conn: sqlite3.Connection) -> None:
+    """One-time: rename status ``active`` → ``confirmed`` for existing entries."""
+    cur = conn.execute("SELECT COUNT(*) FROM insights WHERE status = 'active'")
+    if cur.fetchone()[0] > 0:
+        conn.execute("UPDATE insights SET status = 'confirmed' WHERE status = 'active'")
+        conn.commit()
+
+
 def _migrate_stale_schema(conn: sqlite3.Connection) -> None:
     """Drop and recreate insights if it uses the old prototype schema.
 
@@ -135,4 +143,5 @@ def init_db(db_path: Path) -> sqlite3.Connection:
     conn.commit()
     _migrate_metadata_column(conn)
     _migrate_downvotes_column(conn)
+    _migrate_active_to_confirmed(conn)
     return conn
