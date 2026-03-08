@@ -236,7 +236,18 @@ Replaced methodology-specific REASON with a general "disentangle parts" instruct
 
 - 138 passed (34 review + 104 write), 0 failed
 
-### Complete Final Preamble (as of Phase 9)
+### Phase 10: Final KNOWLEDGE REVIEW MODE preamble
+
+Restructured the review flow: disentangle parts first (data vs conclusions), then determine verdict for the finding as a whole. Merged VERIFY/REASON/CONFIRM/DEPRECATE into a unified flow. Added explicit "partially correct → deprecate + rewrite + verify" workflow.
+
+- **app.py**: Replaced entire KNOWLEDGE REVIEW MODE section
+- **spec**: Updated §7 with same text
+
+### Phase 10 Test Results
+
+- 138 passed (34 review + 104 write), 0 failed
+
+### Complete Final Preamble (as of Phase 10)
 
 ```
 CALCULATION MODE — when asked to compute properties:
@@ -260,34 +271,38 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
 
   Your primary task is ensuring correctness. Incorrect knowledge that
   persists will mislead future sessions, waste compute, and produce
-  wrong results. Take the time to verify thoroughly.
+  wrong results. Take the time to verify thoroughly. Whenever possible,
+  search the web to verify claims against documentation, tutorials,
+  papers, or other reputable sources.
 
   1. list_insights(status='under_review') — see unreviewed findings
-  2. For each finding:
+  2. For each finding, disentangle its parts — data, conclusions, and
+     recommendations may be independently correct or wrong:
 
-     VERIFY (preferred): Search the web for relevant documentation,
-     tutorials, or papers. Read the actual source with web_fetch.
-     If the source supports the finding, use verdict='verified' with
-     the URL and a verbatim excerpt (50+ chars). If the source
-     contradicts the finding, deprecate or revise it.
-     Do NOT cite from memory — citations must come from sources you
-     read in this session.
+     - For numerical data: ignore the literature value and ask where
+       results converge. An outlier that matches a reference is not
+       convergence.
+     - For each conclusion or recommendation: does it follow from the
+       data? Does it hold up against literature, documentation, or
+       other reputable sources? Each claim may need its own web search.
+       Do NOT cite from memory — read the actual source with web_fetch.
 
-     REASON (for every finding — disentangle its parts):
-     A finding may contain data, conclusions, and recommendations that
-     are independently correct or wrong. Separate them. For numerical
-     data: ignore the literature value and ask where results converge —
-     an outlier that matches a reference is not convergence. For each
-     conclusion: does it follow from the data? Does it hold up against
-     literature? Each part may need its own search.
+     Then determine the verdict for the finding AS A WHOLE:
 
-     CONFIRM (fallback): Only if the finding is tool-specific (e.g.,
-     YAML serialization quirks) where no external literature applies,
-     or if you genuinely cannot find relevant sources after searching.
+     VERIFY (preferred): If all parts hold up and you found supporting
+     documentation, use verdict='verified' with the URL and a verbatim
+     excerpt (50+ chars).
 
-     DEPRECATE: If the finding is incorrect, outdated, or superseded.
-     To revise: record_insight(corrected content) then
-     review_insight(old_id, verdict='deprecated', superseded_by=new_id)
+     CONFIRM (fallback): Only if the finding is purely tool-specific
+     (e.g., YAML serialization quirks) or you genuinely cannot find
+     relevant sources after searching.
+
+     DEPRECATE: If any part is incorrect, outdated, or superseded —
+     deprecate the whole finding. If partially correct, write a
+     corrected version and verify it:
+       record_insight(corrected content) →
+       review_insight(old_id, verdict='deprecated', superseded_by=new_id) →
+       review_insight(new_id, verdict='verified', citation_url=..., citation_excerpt=...)
 
   3. Record any patterns that emerge from verified/confirmed findings
 
