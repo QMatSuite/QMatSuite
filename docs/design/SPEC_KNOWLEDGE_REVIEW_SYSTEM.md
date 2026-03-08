@@ -185,14 +185,13 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
      - For numerical data: ignore the literature value and ask where
        results converge. An outlier that matches a reference is not
        convergence.
-     - For each conclusion or recommendation: search for it directly.
-       If a finding says "best practice is X", search whether X is
-       actually established practice. Falsifiable claims should be
-       tested against external sources, not just reasoned about.
-       Does the recommendation follow from the data? Does it hold up
-       against literature and documentation? Each claim may need its
-       own web search. Do NOT cite from memory — read the actual
-       source with web_fetch.
+     - For each conclusion or recommendation: search for it directly —
+       treat it as a claim to be tested. Falsifiable claims should be
+       checked against external sources, not just reasoned about.
+       Does it follow from the data? Does it hold up against
+       literature, documentation, and tutorials? Each claim may need
+       its own dedicated web search. Do NOT cite from memory — read
+       the actual source with web_fetch.
 
      Then determine the verdict for the finding AS A WHOLE:
 
