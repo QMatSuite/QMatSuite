@@ -71,6 +71,7 @@ def search_knowledge(
             "upvotes": r.get("upvotes", 0),
             "downvotes": r.get("downvotes", 0),
             "contradiction_count": r.get("contradiction_count", 0),
+            "superseded_by": r.get("superseded_by", ""),
             "metadata": meta,
             "source_calculation": meta.get("source_calculation"),
         }
@@ -81,6 +82,21 @@ def search_knowledge(
             f"Found {len(items)} insight(s). "
             "Use these insights to inform your parameter choices with set_parameters or apply_preset."
         )
+        # Warn about deprecated findings with replacements
+        warnings = []
+        for item in items:
+            if item.get("status") == "deprecated" and item.get("superseded_by"):
+                sup_id = item["superseded_by"]
+                warnings.append(
+                    f"Finding {item['id'][:12]}... was deprecated — "
+                    f"replaced by {sup_id[:12]}..."
+                )
+        if warnings:
+            hint += (
+                " \u26a0\ufe0f "
+                + " | ".join(warnings)
+                + " Read replacement findings before choosing parameters."
+            )
     else:
         hint = "No matching knowledge found. Try broader search terms or remove filters."
 

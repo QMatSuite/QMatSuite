@@ -846,3 +846,64 @@ class TestVerifiedStatus:
         # Verified should come first (higher weight)
         assert matched[0]["status"] == "verified"
         assert matched[1]["status"] == "confirmed"
+
+
+# ===========================================================================
+# search_knowledge context_hint — deprecated/replacement warnings
+# ===========================================================================
+
+class TestSearchDeprecatedWarnings:
+    @pytest.fixture(autouse=True)
+    def _patch_deps(self, store, tmp_path, monkeypatch):
+        import qmatsuite.mcp.knowledge as knowledge_mod
+        monkeypatch.setattr(knowledge_mod, "_store", store)
+        from qmatsuite.core.journal import Journal, set_journal, reset_journal
+        journal = Journal(journal_dir=tmp_path / "journal_search_warn")
+        set_journal(journal)
+        self._store = store
+        yield
+        monkeypatch.setattr(knowledge_mod, "_store", None)
+        reset_journal()
+
+    def test_search_warns_about_deprecated_with_replacement(self):
+        """context_hint warns when deprecated findings with replacements are returned."""
+        from qmatsuite.mcp.tools.record_insight import record_insight
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
+
+        r_old = record_insight.fn(
+            content="Zirconium deprecated search warn test old finding",
+            grade="finding",
+        )
+        old_id = r_old["data"]["insight_id"]
+        r_new = record_insight.fn(
+            content="Zirconium deprecated search warn test corrected replacement",
+            grade="finding",
+        )
+        new_id = r_new["data"]["insight_id"]
+        review_insight.fn(
+            insight_id=old_id,
+            verdict="deprecated",
+            reasoning="Replaced by corrected version",
+            superseded_by=new_id,
+        )
+
+        result = search_knowledge.fn(query="zirconium deprecated search warn test")
+        hint = result["context_hint"]
+        assert "was deprecated" in hint
+        assert "replaced by" in hint
+        assert "Read replacement findings before choosing parameters" in hint
+
+    def test_search_no_warning_when_no_deprecated(self):
+        """context_hint does NOT contain deprecated warning for active-only results."""
+        from qmatsuite.mcp.tools.record_insight import record_insight
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
+
+        record_insight.fn(
+            content="Hafnium active search no warn test finding",
+            grade="finding",
+        )
+
+        result = search_knowledge.fn(query="hafnium active search no warn test")
+        hint = result["context_hint"]
+        assert "deprecated" not in hint
