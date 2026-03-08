@@ -14,7 +14,7 @@ Four values. Replace `active` everywhere in code.
 |---|---|---|
 | `under_review` | New finding, not yet reviewed | `record_insight` (auto for grade=finding) |
 | `confirmed` | Reviewed and validated by expertise | `review_insight`, `record_insight` (auto for grade≥pattern) |
-| `verified` | Reviewed with external citation (URL, DOI, paper) | `review_insight` only (requires citation >10 chars) |
+| `verified` | Reviewed with external citation (URL + verbatim excerpt) | `review_insight` only (requires `citation_url` + `citation_excerpt` ≥50 chars) |
 | `deprecated` | Rejected or superseded | `review_insight` only |
 
 **No other code path may change status.** `review_insight` is the sole authority for status transitions.
@@ -44,7 +44,8 @@ review_insight(
     insight_id: str,            # Full ULID of insight to review
     verdict: str,               # "confirmed" | "verified" | "deprecated"
     reasoning: str,             # Required. Why this verdict.
-    citation: str = "",         # Required if verdict='verified' (>10 chars)
+    citation_url: str = "",     # Must start with http:// or https://
+    citation_excerpt: str = "", # 50+ chars verbatim from the source
     superseded_by: str = "",    # Optional: ULID of replacement insight
 )
 ```
@@ -55,13 +56,13 @@ review_insight(
 |---|---|---|---|
 | confirmed | empty | → `confirmed`, update `last_validated` | — |
 | confirmed | has ULID | → `confirmed`, update `last_validated` | → `confirmed` |
-| verified | empty | → `verified`, update `last_validated`, store citation | — |
-| verified | has ULID | → `verified`, update `last_validated`, store citation | → `confirmed` |
+| verified | empty | → `verified`, update `last_validated`, store url+excerpt | — |
+| verified | has ULID | → `verified`, update `last_validated`, store url+excerpt | → `confirmed` |
 | deprecated | empty | → `deprecated`, write `deprecated_reason` | — |
 | deprecated | has ULID, no citation | → `deprecated`, write `deprecated_reason` + `superseded_by` | → `confirmed` |
 | deprecated | has ULID, citation given | → `deprecated`, write `deprecated_reason` + `superseded_by` | → `verified` (citation inherited) |
 
-Note: When `superseded_by` is given with a citation, the citation proves both that the old insight is wrong and that the replacement is correct — so the replacement is auto-verified with the same citation. Without a citation, the replacement gets `confirmed`.
+Note: When `superseded_by` is given with a citation (url+excerpt), the citation proves both that the old insight is wrong and that the replacement is correct — so the replacement is auto-verified with the same citation. Without a citation, the replacement gets `confirmed`.
 
 ### 3.3 Columns Written
 
@@ -72,17 +73,17 @@ All existing columns, no schema change:
 - `superseded_by` — ULID of replacement (on deprecate with superseded_by)
 - `last_validated` — ISO timestamp (on confirm/verify)
 - `updated_at` — always updated
-- `metadata.review` — `{"verdict": "...", "reasoning": "...", "reviewed_at": "...", "citation": "..."}`
+- `metadata.review` — `{"verdict": "...", "reasoning": "...", "reviewed_at": "...", "citation_url": "...", "citation_excerpt": "..."}`
 
-When `superseded_by` is given with a citation, the citation propagates to the replacement insight's `metadata.review.citation`.
+When `superseded_by` is given with a citation, both `citation_url` and `citation_excerpt` propagate to the replacement insight's `metadata.review`.
 
 ### 3.4 Validation
 
 - `insight_id` must exist in local.db (not builtin.db)
 - `verdict` must be `"confirmed"`, `"verified"`, or `"deprecated"`
 - `reasoning` must be non-empty
-- If `verdict='verified'`: `citation` must be non-empty and >10 characters — **hard error** otherwise
-- If `verdict='confirmed'` or `'deprecated'`: `citation` is optional (stored if given)
+- If `verdict='verified'`: `citation_url` must be non-empty and start with `http://` or `https://`, `citation_excerpt` must be non-empty and ≥50 characters — **hard error** otherwise
+- If `verdict='confirmed'` or `'deprecated'`: `citation_url` and `citation_excerpt` are optional (stored if given)
 - If `superseded_by` is given, it must exist in local.db — **hard error** if not found, no changes made
 - If insight is already `deprecated`, return error "insight already deprecated"
 
@@ -170,12 +171,31 @@ CALCULATION MODE — when asked to compute properties:
         for EACH error you encountered and resolved this session
 
 KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
+
+  Your primary task is ensuring correctness. Incorrect knowledge that
+  persists will mislead future sessions, waste compute, and produce
+  wrong results. Take the time to verify thoroughly.
+
   1. list_insights(status='under_review') — see unreviewed findings
-  2. For each finding, determine your verdict:
-     Default: verify against literature → verdict='verified' with citation
-     Fallback: tool-specific or no literature → verdict='confirmed'
-     Deprecate if incorrect, outdated, or superseded
-  3. Record patterns from confirmed/verified findings
+  2. For each finding:
+
+     VERIFY (preferred): Search the web for relevant documentation,
+     tutorials, or papers. Read the actual source with web_fetch.
+     If the source supports the finding, use verdict='verified' with
+     the URL and a verbatim excerpt (50+ chars). If the source
+     contradicts the finding, deprecate or revise it.
+     Do NOT cite from memory — citations must come from sources you
+     read in this session.
+
+     CONFIRM (fallback): Only if the finding is tool-specific (e.g.,
+     YAML serialization quirks) where no external literature applies,
+     or if you genuinely cannot find relevant sources after searching.
+
+     DEPRECATE: If the finding is incorrect, outdated, or superseded.
+     To revise: record_insight(corrected content) then
+     review_insight(old_id, verdict='deprecated', superseded_by=new_id)
+
+  3. Record any patterns that emerge from verified/confirmed findings
 
 KNOWLEDGE SYNTHESIS MODE — when asked to review or summarize findings:
   list_insights(grade='finding', status='confirmed') → identify trends →

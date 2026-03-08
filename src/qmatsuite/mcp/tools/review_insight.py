@@ -13,7 +13,8 @@ def review_insight(
     insight_id: str,
     verdict: str,
     reasoning: str,
-    citation: str = "",
+    citation_url: str = "",
+    citation_excerpt: str = "",
     superseded_by: str = "",
 ) -> dict:
     """Review an insight: verify, confirm, or deprecate it.
@@ -31,12 +32,13 @@ def review_insight(
         verdict: 'verified' (literature-backed), 'confirmed' (validated by
             expertise), or 'deprecated' (rejected/outdated).
         reasoning: Required. Why this verdict was given.
-        citation: External reference (URL, DOI, or bibliographic ref).
-            Required for verdict='verified' (must be >10 characters).
-            Optional for other verdicts.
+        citation_url: URL of the source (must start with http:// or https://).
+            Required for verdict='verified'. Optional for other verdicts.
+        citation_excerpt: Verbatim excerpt from the source (>=50 characters).
+            Required for verdict='verified'. Optional for other verdicts.
         superseded_by: Optional ULID of a replacement insight. When given
             with verdict='deprecated', the old insight is deprecated and the
-            replacement is auto-confirmed.
+            replacement is auto-confirmed (or auto-verified if citation given).
     """
     # --- Validation (all checks before any writes) ---
 
@@ -44,7 +46,7 @@ def review_insight(
         return make_error(
             error_type="VALIDATION_ERROR",
             message=f"Invalid verdict {verdict!r}; must be one of {sorted(_VALID_VERDICTS)}.",
-            context_hint="Use verdict='verified' with citation, 'confirmed' without, or 'deprecated' to reject.",
+            context_hint="Use verdict='verified' with citation_url+citation_excerpt, 'confirmed' without, or 'deprecated' to reject.",
         )
 
     if not reasoning or not reasoning.strip():
@@ -54,12 +56,21 @@ def review_insight(
             context_hint="Explain why this verdict is appropriate.",
         )
 
-    if verdict == "verified" and (not citation or len(citation.strip()) <= 10):
-        return make_error(
-            error_type="VALIDATION_ERROR",
-            message="verdict 'verified' requires a citation longer than 10 characters (URL, DOI, or reference).",
-            context_hint="Provide a URL, DOI, or bibliographic reference in the 'citation' parameter.",
-        )
+    if verdict == "verified":
+        url = (citation_url or "").strip()
+        if not url or not (url.startswith("http://") or url.startswith("https://")):
+            return make_error(
+                error_type="VALIDATION_ERROR",
+                message="verdict 'verified' requires citation_url starting with http:// or https://",
+                context_hint="Provide the URL of the source you read. Do not cite from memory.",
+            )
+        excerpt = (citation_excerpt or "").strip()
+        if not excerpt or len(excerpt) < 50:
+            return make_error(
+                error_type="VALIDATION_ERROR",
+                message="verdict 'verified' requires citation_excerpt of at least 50 characters (verbatim text from the source)",
+                context_hint="Copy a verbatim passage from the source that supports the finding.",
+            )
 
     from qmatsuite.mcp.knowledge import get_knowledge_store
 
@@ -124,7 +135,8 @@ def review_insight(
             verdict=verdict,
             reasoning=reasoning,
             superseded_by=superseded_by,
-            citation=citation.strip() if citation else "",
+            citation_url=citation_url.strip() if citation_url else "",
+            citation_excerpt=citation_excerpt.strip() if citation_excerpt else "",
         )
     except ValueError as exc:
         return make_error(

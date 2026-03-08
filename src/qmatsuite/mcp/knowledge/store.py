@@ -384,7 +384,8 @@ class KnowledgeStore:
         verdict: str,
         reasoning: str,
         superseded_by: str = "",
-        citation: str = "",
+        citation_url: str = "",
+        citation_excerpt: str = "",
     ) -> dict:
         """Update insight status via review verdict.
 
@@ -398,8 +399,10 @@ class KnowledgeStore:
             Why this verdict was given.
         superseded_by : str
             Optional ULID of a replacement insight.
-        citation : str
-            External reference (URL, DOI). Required for ``"verified"``.
+        citation_url : str
+            URL of the source. Required for ``"verified"``.
+        citation_excerpt : str
+            Verbatim excerpt from the source (>=50 chars). Required for ``"verified"``.
 
         Returns
         -------
@@ -423,8 +426,10 @@ class KnowledgeStore:
             "reasoning": reasoning,
             "reviewed_at": now,
         }
-        if citation:
-            review_meta["citation"] = citation
+        if citation_url:
+            review_meta["citation_url"] = citation_url
+        if citation_excerpt:
+            review_meta["citation_excerpt"] = citation_excerpt
         meta["review"] = review_meta
         meta_json = json.dumps(meta)
 
@@ -459,15 +464,17 @@ class KnowledgeStore:
             ).fetchone()
             if new_row is None:
                 raise ValueError(f"Superseding insight {superseded_by} not found in local.db")
-            new_status = "verified" if citation else "confirmed"
+            new_status = "verified" if citation_url else "confirmed"
             new_meta = json.loads(new_row["metadata"] or "{}")
             new_review: dict = {
                 "verdict": new_status,
                 "reasoning": f"{new_status.title()} as replacement for {insight_id}",
                 "reviewed_at": now,
             }
-            if citation:
-                new_review["citation"] = citation
+            if citation_url:
+                new_review["citation_url"] = citation_url
+            if citation_excerpt:
+                new_review["citation_excerpt"] = citation_excerpt
             new_meta["review"] = new_review
             conn.execute(
                 "UPDATE insights SET status = ?, last_validated = ?, "

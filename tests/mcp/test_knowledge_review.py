@@ -210,7 +210,7 @@ class TestReviewInsight:
         assert new_row["status"] == "confirmed"
 
     def test_superseded_by_with_citation_auto_verifies(self):
-        """Deprecate with superseded_by + citation → old deprecated, new verified with citation."""
+        """Deprecate with superseded_by + url+excerpt → old deprecated, new verified."""
         from qmatsuite.mcp.tools.review_insight import review_insight
         from qmatsuite.mcp.tools.record_insight import record_insight
 
@@ -219,13 +219,15 @@ class TestReviewInsight:
         old_id = r_old["data"]["insight_id"]
         new_id = r_new["data"]["insight_id"]
 
-        citation = "https://example.com/valid-ref"
+        url = "https://example.com/valid-ref"
+        excerpt = "This is a verbatim excerpt from the source that is long enough to pass validation"
         result = review_insight.fn(
             insight_id=old_id,
             verdict="deprecated",
             reasoning="Literature contradicts this",
             superseded_by=new_id,
-            citation=citation,
+            citation_url=url,
+            citation_excerpt=excerpt,
         )
         assert result["status"] == "success"
         assert result["data"]["superseded_by_status"] == "verified"
@@ -240,7 +242,8 @@ class TestReviewInsight:
         ).fetchone()
         assert new_row["status"] == "verified"
         meta = json.loads(new_row["metadata"])
-        assert meta["review"]["citation"] == citation
+        assert meta["review"]["citation_url"] == url
+        assert meta["review"]["citation_excerpt"] == excerpt
 
     def test_superseded_by_without_citation_stays_confirmed(self):
         """Deprecate with superseded_by, no citation → new confirmed (no citation)."""
@@ -266,7 +269,7 @@ class TestReviewInsight:
         ).fetchone()
         assert new_row["status"] == "confirmed"
         meta = json.loads(new_row["metadata"])
-        assert "citation" not in meta.get("review", {})
+        assert "citation_url" not in meta.get("review", {})
 
     def test_confirm_with_superseded_by(self):
         """Confirm with superseded_by → both confirmed."""
@@ -615,8 +618,14 @@ class TestVerifiedStatus:
         monkeypatch.setattr(knowledge_mod, "_store", None)
         reset_journal()
 
+    _SAMPLE_URL = "https://www.quantum-espresso.org/Doc/INPUT_PW.html"
+    _SAMPLE_EXCERPT = (
+        "ecutwfc: kinetic energy cutoff (Ry) for wavefunctions. "
+        "This is the main convergence parameter."
+    )
+
     def test_verified_sets_status_and_citation(self):
-        """review(verdict='verified', citation=...) → status='verified', citation in metadata."""
+        """review(verdict='verified', url+excerpt) → status='verified', both in metadata."""
         from qmatsuite.mcp.tools.review_insight import review_insight
         from qmatsuite.mcp.tools.record_insight import record_insight
 
@@ -627,7 +636,8 @@ class TestVerifiedStatus:
             insight_id=iid,
             verdict="verified",
             reasoning="Matches QE documentation",
-            citation="https://www.quantum-espresso.org/Doc/INPUT_PW.html",
+            citation_url=self._SAMPLE_URL,
+            citation_excerpt=self._SAMPLE_EXCERPT,
         )
         assert result["status"] == "success"
         assert result["data"]["new_status"] == "verified"
@@ -638,38 +648,74 @@ class TestVerifiedStatus:
         assert row["status"] == "verified"
         assert row["last_validated"] is not None
         meta = json.loads(row["metadata"])
-        assert meta["review"]["citation"] == "https://www.quantum-espresso.org/Doc/INPUT_PW.html"
+        assert meta["review"]["citation_url"] == self._SAMPLE_URL
+        assert meta["review"]["citation_excerpt"] == self._SAMPLE_EXCERPT
 
-    def test_verified_requires_citation(self):
-        """review(verdict='verified', citation='') → error."""
+    def test_verified_requires_url_nonempty(self):
+        """review(verdict='verified', citation_url='') → error."""
         from qmatsuite.mcp.tools.review_insight import review_insight
         from qmatsuite.mcp.tools.record_insight import record_insight
 
-        r = record_insight.fn(content="Finding no citation", grade="finding")
+        r = record_insight.fn(content="Finding no url", grade="finding")
         iid = r["data"]["insight_id"]
 
         result = review_insight.fn(
-            insight_id=iid, verdict="verified", reasoning="Trust me"
+            insight_id=iid, verdict="verified", reasoning="Trust me",
+            citation_excerpt=self._SAMPLE_EXCERPT,
         )
         assert result["status"] == "error"
-        assert "citation" in result["message"].lower()
+        assert "citation_url" in result["message"]
 
-    def test_verified_requires_citation_min_length(self):
-        """review(verdict='verified', citation='short') → error (<=10 chars)."""
+    def test_verified_requires_url_format(self):
+        """review(verdict='verified', citation_url='not a url') → error."""
         from qmatsuite.mcp.tools.review_insight import review_insight
         from qmatsuite.mcp.tools.record_insight import record_insight
 
-        r = record_insight.fn(content="Finding short cit", grade="finding")
+        r = record_insight.fn(content="Finding bad url", grade="finding")
         iid = r["data"]["insight_id"]
 
         result = review_insight.fn(
-            insight_id=iid, verdict="verified", reasoning="Short ref", citation="short"
+            insight_id=iid, verdict="verified", reasoning="Bad URL",
+            citation_url="not a url",
+            citation_excerpt=self._SAMPLE_EXCERPT,
         )
         assert result["status"] == "error"
-        assert "citation" in result["message"].lower()
+        assert "http" in result["message"].lower()
 
-    def test_confirmed_citation_optional(self):
-        """review(verdict='confirmed', citation='') → success."""
+    def test_verified_requires_excerpt_nonempty(self):
+        """review(verdict='verified', citation_excerpt='') → error."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        r = record_insight.fn(content="Finding no excerpt", grade="finding")
+        iid = r["data"]["insight_id"]
+
+        result = review_insight.fn(
+            insight_id=iid, verdict="verified", reasoning="No excerpt",
+            citation_url=self._SAMPLE_URL,
+            citation_excerpt="",
+        )
+        assert result["status"] == "error"
+        assert "citation_excerpt" in result["message"]
+
+    def test_verified_requires_excerpt_min_length(self):
+        """review(verdict='verified', citation_excerpt='short') → error (<50 chars)."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        r = record_insight.fn(content="Finding short excerpt", grade="finding")
+        iid = r["data"]["insight_id"]
+
+        result = review_insight.fn(
+            insight_id=iid, verdict="verified", reasoning="Short excerpt",
+            citation_url=self._SAMPLE_URL,
+            citation_excerpt="too short to be a real excerpt",
+        )
+        assert result["status"] == "error"
+        assert "50" in result["message"]
+
+    def test_confirmed_accepts_empty_citation(self):
+        """review(verdict='confirmed', no url/excerpt) → success."""
         from qmatsuite.mcp.tools.review_insight import review_insight
         from qmatsuite.mcp.tools.record_insight import record_insight
 
@@ -682,7 +728,7 @@ class TestVerifiedStatus:
         assert result["status"] == "success"
 
     def test_confirmed_stores_citation_if_given(self):
-        """review(verdict='confirmed', citation=...) → citation in metadata."""
+        """review(verdict='confirmed', url+excerpt given) → stored in metadata."""
         from qmatsuite.mcp.tools.review_insight import review_insight
         from qmatsuite.mcp.tools.record_insight import record_insight
 
@@ -693,7 +739,8 @@ class TestVerifiedStatus:
             insight_id=iid,
             verdict="confirmed",
             reasoning="Confirmed with ref",
-            citation="https://example.com/optional-reference",
+            citation_url="https://example.com/optional-reference",
+            citation_excerpt="This optional excerpt is long enough to store but not required for confirmed",
         )
         assert result["status"] == "success"
 
@@ -701,7 +748,39 @@ class TestVerifiedStatus:
             "SELECT metadata FROM insights WHERE id = ?", (iid,)
         ).fetchone()
         meta = json.loads(row[0])
-        assert meta["review"]["citation"] == "https://example.com/optional-reference"
+        assert meta["review"]["citation_url"] == "https://example.com/optional-reference"
+        assert "citation_excerpt" in meta["review"]
+
+    def test_superseded_inherits_both_url_and_excerpt(self):
+        """deprecated with superseded_by + url + excerpt → new has both in metadata."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        r_old = record_insight.fn(content="Old finding inherit test", grade="finding")
+        r_new = record_insight.fn(content="New replacement inherit test", grade="finding")
+        old_id = r_old["data"]["insight_id"]
+        new_id = r_new["data"]["insight_id"]
+
+        url = "https://example.com/inheritance-source"
+        excerpt = "This verbatim excerpt should propagate to the replacement insight metadata"
+        result = review_insight.fn(
+            insight_id=old_id,
+            verdict="deprecated",
+            reasoning="Superseded with citation",
+            superseded_by=new_id,
+            citation_url=url,
+            citation_excerpt=excerpt,
+        )
+        assert result["status"] == "success"
+        assert result["data"]["superseded_by_status"] == "verified"
+
+        new_row = self._store.local_conn.execute(
+            "SELECT status, metadata FROM insights WHERE id = ?", (new_id,)
+        ).fetchone()
+        assert new_row["status"] == "verified"
+        meta = json.loads(new_row["metadata"])
+        assert meta["review"]["citation_url"] == url
+        assert meta["review"]["citation_excerpt"] == excerpt
 
     def test_verified_in_search_ranking(self):
         """Verified insight ranks above confirmed with same content."""
@@ -716,8 +795,11 @@ class TestVerifiedStatus:
             grade="finding",
         ))
         # Make one verified, one confirmed
-        store.update_status(r1["insight_id"], "verified", "Verified",
-                            citation="https://example.com/long-enough-ref")
+        store.update_status(
+            r1["insight_id"], "verified", "Verified",
+            citation_url="https://example.com/long-enough-ref",
+            citation_excerpt="A sufficiently long excerpt for the ranking test to pass validation",
+        )
         store.update_status(r2["insight_id"], "confirmed", "Confirmed")
 
         results = store.search("quasar ranking test alpha beta gamma")

@@ -182,3 +182,19 @@ Asymmetry audit (confirmed without verified):
 
 - `tests/mcp/test_knowledge_review.py`: 30 passed
 - `tests/` (full): 6900 passed, 4 skipped, 1 pre-existing error (QMCPACK integration)
+
+### Phase 6: Split citation into url+excerpt — prevent hallucinated citations
+
+Run_06 revealed the review agent "verified" findings by citing papers from memory without actually searching or reading them. Fix: require a real URL + verbatim 50+ char excerpt from the source.
+
+- **review_insight.py**: Replaced `citation: str` with `citation_url: str` + `citation_excerpt: str`. Validation for `verdict='verified'`: URL must start with `http://`/`https://`, excerpt must be ≥50 chars. Both optional for `confirmed`/`deprecated`.
+- **store.py** `update_status()`: `citation` parameter split into `citation_url` + `citation_excerpt`. Both stored in `metadata.review`. superseded_by inheritance passes both fields.
+- **app.py**: Rewrote KNOWLEDGE REVIEW MODE preamble — "Do NOT cite from memory", web_search+web_fetch required, verify-first with fallback to confirm.
+- **spec**: Updated §3.1 (signature), §3.2 (behavior matrix), §3.3 (metadata format), §3.4 (validation), §7 (preamble).
+- **test_knowledge_review.py**: Replaced 6 old citation tests with 10 new url+excerpt tests (33 total): url format, url nonempty, excerpt nonempty, excerpt min length, confirmed empty/given, superseded inherits both, ranking.
+
+### Phase 6 Test Results
+
+- `tests/mcp/test_knowledge_review.py`: 33 passed
+- `tests/mcp/` (full): 792 passed, 0 failed
+- `tests/` (full): 6903 passed, 4 skipped, 1 pre-existing error (QMCPACK integration)

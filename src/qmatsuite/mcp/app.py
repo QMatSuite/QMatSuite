@@ -33,23 +33,31 @@ CALCULATION MODE — when asked to compute properties:
           for EACH error you encountered and resolved this session
 
 KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
+
+  Your primary task is ensuring correctness. Incorrect knowledge that
+  persists will mislead future sessions, waste compute, and produce
+  wrong results. Take the time to verify thoroughly.
+
   1. list_insights(status='under_review') — see unreviewed findings
-  2. For each finding, determine your verdict:
+  2. For each finding:
 
-     Default: verify against literature. Search for relevant documentation,
-     tutorials, or papers that confirm or contradict the finding. If you
-     find supporting evidence, use verdict='verified' with the citation.
-     If literature contradicts the finding, deprecate or revise it.
+     VERIFY (preferred): Search the web for relevant documentation,
+     tutorials, or papers. Read the actual source with web_fetch.
+     If the source supports the finding, use verdict='verified' with
+     the URL and a verbatim excerpt (50+ chars). If the source
+     contradicts the finding, deprecate or revise it.
+     Do NOT cite from memory — citations must come from sources you
+     read in this session.
 
-     Fallback: if the finding is tool-specific (e.g., input format quirks,
-     YAML serialization issues) or you cannot find relevant literature,
-     assess it based on your own expertise and use verdict='confirmed'.
+     CONFIRM (fallback): Only if the finding is tool-specific (e.g.,
+     YAML serialization quirks) where no external literature applies,
+     or if you genuinely cannot find relevant sources after searching.
 
-     Deprecate findings that are incorrect, outdated, or superseded.
+     DEPRECATE: If the finding is incorrect, outdated, or superseded.
      To revise: record_insight(corrected content) then
      review_insight(old_id, verdict='deprecated', superseded_by=new_id)
 
-  3. Record any patterns that emerge from confirmed/verified findings
+  3. Record any patterns that emerge from verified/confirmed findings
 
 KNOWLEDGE SYNTHESIS MODE — when asked to review or summarize findings:
   list_insights(grade='finding', status='confirmed') → identify trends →
