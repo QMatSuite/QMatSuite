@@ -57,7 +57,7 @@ _DEFAULT_TRUST = 0.5
 _CONTRADICTION_THRESHOLD = 3
 
 # Status-based ranking weights for search results.
-_STATUS_WEIGHT = {"confirmed": 1.0, "under_review": 0.8, "deprecated": 0.3}
+_STATUS_WEIGHT = {"verified": 1.0, "confirmed": 0.85, "under_review": 0.65, "deprecated": 0.3}
 
 # Scope fields used for contradiction matching.
 _SCOPE_FIELDS = ("scope_engine", "scope_workflow", "scope_system_type", "scope_method")
@@ -305,7 +305,7 @@ class KnowledgeStore:
         if not self._has_local_db():
             return {"grade": grade, "total": 0, "insights": []}
         if statuses is None:
-            statuses = ["confirmed", "under_review"]
+            statuses = ["verified", "confirmed", "under_review"]
         placeholders = ", ".join("?" for _ in statuses)
         sql = f"SELECT * FROM insights WHERE grade = ? AND status IN ({placeholders})"
         params: list = [grade, *statuses]
@@ -384,6 +384,7 @@ class KnowledgeStore:
         verdict: str,
         reasoning: str,
         superseded_by: str = "",
+        citation: str = "",
     ) -> dict:
         """Update insight status via review verdict.
 
@@ -392,11 +393,13 @@ class KnowledgeStore:
         insight_id : str
             Full ULID of the insight to review.
         verdict : str
-            ``"confirmed"`` or ``"deprecated"``.
+            ``"confirmed"``, ``"verified"``, or ``"deprecated"``.
         reasoning : str
             Why this verdict was given.
         superseded_by : str
             Optional ULID of a replacement insight.
+        citation : str
+            External reference (URL, DOI). Required for ``"verified"``.
 
         Returns
         -------
@@ -415,18 +418,21 @@ class KnowledgeStore:
             raise ValueError("Insight already deprecated")
 
         meta = json.loads(row["metadata"] or "{}")
-        meta["review"] = {
+        review_meta: dict = {
             "verdict": verdict,
             "reasoning": reasoning,
             "reviewed_at": now,
         }
+        if citation:
+            review_meta["citation"] = citation
+        meta["review"] = review_meta
         meta_json = json.dumps(meta)
 
-        if verdict == "confirmed":
+        if verdict in ("confirmed", "verified"):
             conn.execute(
-                "UPDATE insights SET status = 'confirmed', last_validated = ?, "
+                "UPDATE insights SET status = ?, last_validated = ?, "
                 "metadata = ?, updated_at = ? WHERE id = ?",
-                (now, meta_json, now, insight_id),
+                (verdict, now, meta_json, now, insight_id),
             )
         elif verdict == "deprecated":
             conn.execute(
@@ -542,7 +548,7 @@ class KnowledgeStore:
         if not self._has_local_db():
             return {"grade": grade, "total_pending": 0, "since": None, "insights": []}
         if statuses is None:
-            statuses = ["confirmed", "under_review"]
+            statuses = ["verified", "confirmed", "under_review"]
         higher = {"finding": "pattern", "pattern": "principle"}
         higher_grade = higher.get(grade)
         # Get timestamp of last higher-grade synthesis
@@ -601,7 +607,7 @@ class KnowledgeStore:
         for db_conn, db_name in self._active_dbs():
             # Build query: find active entries where the matching scope fields
             # are also non-wildcard AND equal to the new entry's values.
-            where_parts = ["status IN ('confirmed', 'under_review')", "id != ?"]
+            where_parts = ["status IN ('verified', 'confirmed', 'under_review')", "id != ?"]
             params: list = [new_id]
 
             for field, value in non_wildcard.items():
@@ -666,7 +672,7 @@ class KnowledgeStore:
             FROM insights_fts f
             JOIN insights i ON i.rowid = f.rowid
             WHERE insights_fts MATCH ?
-              AND i.status IN ('confirmed', 'under_review', 'deprecated')
+              AND i.status IN ('verified', 'confirmed', 'under_review', 'deprecated')
         """
         params: list = [safe_query]
 
@@ -700,7 +706,7 @@ class KnowledgeStore:
         limit: int,
     ) -> list[dict]:
         """Non-FTS search using only scope filters on a single connection."""
-        sql = "SELECT i.* FROM insights i WHERE i.status IN ('confirmed', 'under_review', 'deprecated')"
+        sql = "SELECT i.* FROM insights i WHERE i.status IN ('verified', 'confirmed', 'under_review', 'deprecated')"
         params: list = []
 
         sql, params = self._add_scope_filters(

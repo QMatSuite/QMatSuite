@@ -1,11 +1,11 @@
-"""review_insight tool — review, confirm, or deprecate knowledge entries."""
+"""review_insight tool — review, confirm, verify, or deprecate knowledge entries."""
 
 from __future__ import annotations
 
 from qmatsuite.mcp.app import mcp
 from qmatsuite.mcp.envelope import make_response, make_error
 
-_VALID_VERDICTS = {"confirmed", "deprecated"}
+_VALID_VERDICTS = {"confirmed", "verified", "deprecated"}
 
 
 @mcp.tool
@@ -13,17 +13,27 @@ def review_insight(
     insight_id: str,
     verdict: str,
     reasoning: str,
+    citation: str = "",
     superseded_by: str = "",
 ) -> dict:
-    """Review an insight: confirm it as validated or deprecate it.
+    """Review an insight: verify, confirm, or deprecate it.
 
     The sole mechanism for explicit status changes. Used during knowledge
     review sessions to audit agent-recorded findings.
 
+    Prefer verdict='verified' for physics and methodology findings that can
+    be backed by literature (documentation, papers, tutorials). Use
+    verdict='confirmed' for tool-specific findings where no external
+    reference applies.
+
     Args:
         insight_id: Full ULID of the insight to review (must be in local.db).
-        verdict: 'confirmed' (validated) or 'deprecated' (rejected/outdated).
+        verdict: 'verified' (literature-backed), 'confirmed' (validated by
+            expertise), or 'deprecated' (rejected/outdated).
         reasoning: Required. Why this verdict was given.
+        citation: External reference (URL, DOI, or bibliographic ref).
+            Required for verdict='verified' (must be >10 characters).
+            Optional for other verdicts.
         superseded_by: Optional ULID of a replacement insight. When given
             with verdict='deprecated', the old insight is deprecated and the
             replacement is auto-confirmed.
@@ -34,7 +44,7 @@ def review_insight(
         return make_error(
             error_type="VALIDATION_ERROR",
             message=f"Invalid verdict {verdict!r}; must be one of {sorted(_VALID_VERDICTS)}.",
-            context_hint="Use verdict='confirmed' to validate or verdict='deprecated' to reject.",
+            context_hint="Use verdict='verified' with citation, 'confirmed' without, or 'deprecated' to reject.",
         )
 
     if not reasoning or not reasoning.strip():
@@ -42,6 +52,13 @@ def review_insight(
             error_type="VALIDATION_ERROR",
             message="Reasoning must be non-empty.",
             context_hint="Explain why this verdict is appropriate.",
+        )
+
+    if verdict == "verified" and (not citation or len(citation.strip()) <= 10):
+        return make_error(
+            error_type="VALIDATION_ERROR",
+            message="verdict 'verified' requires a citation longer than 10 characters (URL, DOI, or reference).",
+            context_hint="Provide a URL, DOI, or bibliographic reference in the 'citation' parameter.",
         )
 
     from qmatsuite.mcp.knowledge import get_knowledge_store
@@ -107,6 +124,7 @@ def review_insight(
             verdict=verdict,
             reasoning=reasoning,
             superseded_by=superseded_by,
+            citation=citation.strip() if citation else "",
         )
     except ValueError as exc:
         return make_error(

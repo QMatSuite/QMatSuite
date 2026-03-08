@@ -1,19 +1,20 @@
 # Knowledge Status & Review System Spec
 
 **Date**: 2026-03-08
-**Status**: Approved for implementation
+**Status**: Implemented
 **Constraint**: Zero schema migration. All changes use existing columns.
 
 ---
 
 ## 1. Status Values
 
-Three values. Replace `active` everywhere in code.
+Four values. Replace `active` everywhere in code.
 
 | Status | Meaning | Set by |
 |---|---|---|
 | `under_review` | New finding, not yet reviewed | `record_insight` (auto for grade=finding) |
-| `confirmed` | Reviewed and validated | `review_insight`, `record_insight` (auto for grade≥pattern) |
+| `confirmed` | Reviewed and validated by expertise | `review_insight`, `record_insight` (auto for grade≥pattern) |
+| `verified` | Reviewed with external citation (URL, DOI, paper) | `review_insight` only (requires citation >10 chars) |
 | `deprecated` | Rejected or superseded | `review_insight` only |
 
 **No other code path may change status.** `review_insight` is the sole authority for status transitions.
@@ -30,7 +31,7 @@ grade = pattern       → status = 'confirmed'
 grade = principle     → status = 'confirmed'
 ```
 
-Rationale: findings come from calculation sessions (unreviewed). Patterns and principles come from dedicated synthesis/review sessions where the agent has already assessed the evidence — the synthesis IS the review.
+Rationale: findings come from calculation sessions (unreviewed). Patterns and principles come from dedicated synthesis/review sessions where the agent has already assessed the evidence — the synthesis IS the review. No auto-status produces `verified` — that requires an explicit citation via `review_insight`.
 
 ---
 
@@ -41,8 +42,9 @@ Rationale: findings come from calculation sessions (unreviewed). Patterns and pr
 ```python
 review_insight(
     insight_id: str,            # Full ULID of insight to review
-    verdict: str,               # "confirmed" | "deprecated"
+    verdict: str,               # "confirmed" | "verified" | "deprecated"
     reasoning: str,             # Required. Why this verdict.
+    citation: str = "",         # Required if verdict='verified' (>10 chars)
     superseded_by: str = "",    # Optional: ULID of replacement insight
 )
 ```
@@ -53,25 +55,31 @@ review_insight(
 |---|---|---|---|
 | confirmed | empty | → `confirmed`, update `last_validated` | — |
 | confirmed | has ULID | → `confirmed`, update `last_validated` | → `confirmed` |
+| verified | empty | → `verified`, update `last_validated`, store citation | — |
+| verified | has ULID | → `verified`, update `last_validated`, store citation | → `confirmed` |
 | deprecated | empty | → `deprecated`, write `deprecated_reason` | — |
 | deprecated | has ULID | → `deprecated`, write `deprecated_reason` + `superseded_by` | → `confirmed` |
+
+Note: `superseded_by` always sets the replacement to `confirmed`, never `verified`. Verification requires an explicit `review_insight(verdict='verified', citation=...)` call on the replacement.
 
 ### 3.3 Columns Written
 
 All existing columns, no schema change:
 
-- `status` — set to `confirmed` or `deprecated`
+- `status` — set to `confirmed`, `verified`, or `deprecated`
 - `deprecated_reason` — reasoning text (on deprecate)
 - `superseded_by` — ULID of replacement (on deprecate with superseded_by)
-- `last_validated` — ISO timestamp (on confirm)
+- `last_validated` — ISO timestamp (on confirm/verify)
 - `updated_at` — always updated
-- `metadata.review` — `{"verdict": "...", "reasoning": "...", "reviewed_at": "...", "reviewed_by": "..."}`
+- `metadata.review` — `{"verdict": "...", "reasoning": "...", "reviewed_at": "...", "citation": "..."}`
 
 ### 3.4 Validation
 
 - `insight_id` must exist in local.db (not builtin.db)
-- `verdict` must be `"confirmed"` or `"deprecated"`
+- `verdict` must be `"confirmed"`, `"verified"`, or `"deprecated"`
 - `reasoning` must be non-empty
+- If `verdict='verified'`: `citation` must be non-empty and >10 characters — **hard error** otherwise
+- If `verdict='confirmed'` or `'deprecated'`: `citation` is optional (stored if given)
 - If `superseded_by` is given, it must exist in local.db — **hard error** if not found, no changes made
 - If insight is already `deprecated`, return error "insight already deprecated"
 
@@ -81,7 +89,7 @@ All existing columns, no schema change:
 Step 1: record_insight(content='corrected version', grade='finding', ...)
         → new insight, status = under_review
 
-Step 2: review_insight(insight_id=old_id, verdict='deprecated', 
+Step 2: review_insight(insight_id=old_id, verdict='deprecated',
                        superseded_by=new_id, reasoning='...')
         → old: deprecated + superseded_by=new_id
         → new: confirmed (automatically, because superseded_by given)
@@ -95,14 +103,6 @@ Step 2: review_insight(insight_id=old_id, verdict='deprecated',
 
 Remove auto-status-change. Keep counting as informational signal.
 
-**Before** (store.py:499-503):
-```python
-update_sql = "UPDATE insights SET contradiction_count = ?"
-if new_count >= _CONTRADICTION_THRESHOLD:
-    update_sql += ", status = 'under_review'"
-```
-
-**After**:
 ```python
 update_sql = "UPDATE insights SET contradiction_count = ?"
 # Status changes handled exclusively by review_insight
@@ -112,15 +112,13 @@ update_sql = "UPDATE insights SET contradiction_count = ?"
 
 Match all non-deprecated entries:
 ```sql
-WHERE status IN ('under_review', 'confirmed')
+WHERE status IN ('verified', 'confirmed', 'under_review')
 ```
-
-Previously matched `status = 'active'` only. Update to include both non-deprecated statuses.
 
 ### 4.3 Contradiction Count
 
 Remains monotonically increasing. Never reset by contradiction detection.
-`review_insight(action='confirm')` does NOT reset contradiction_count — it's a historical signal.
+`review_insight(verdict='confirmed')` does NOT reset contradiction_count — it's a historical signal.
 
 ---
 
@@ -128,22 +126,21 @@ Remains monotonically increasing. Never reset by contradiction detection.
 
 ### 5.1 search_knowledge
 
-- Return **all statuses** by default (confirmed + under_review + deprecated)
-- Ranking: `confirmed` (1.0) > `under_review` (0.8) > `deprecated` (0.3)
+- Return **all statuses** by default (verified + confirmed + under_review + deprecated)
+- Ranking: `verified` (1.0) > `confirmed` (0.85) > `under_review` (0.65) > `deprecated` (0.3)
 - `status` field returned in every result item
 - Status-based multiplier added to trust-weighted BM25 score
 
 ### 5.2 list_insights
 
-- Return **all statuses** by default
+- Default: return `verified`, `confirmed`, `under_review` (exclude deprecated)
 - Add optional `status` parameter: e.g., `status='under_review'` or `status='under_review,confirmed'`
 - `status` and `contradiction_count` returned in every item
-- Default (no filter): return all
 
 ### 5.3 list_pending (synthesis mode)
 
 Finds findings since last pattern — temporal window, not status-based.
-Include both `under_review` and `confirmed` findings in the window.
+Include `verified`, `confirmed`, and `under_review` findings in the window.
 Exclude `deprecated`.
 
 ---
@@ -153,7 +150,6 @@ Exclude `deprecated`.
 - `upvotes`/`downvotes` via citations: keep as-is
 - Votes never change status
 - Votes are informational for review agent
-- Optional: mild ranking adjustment in search (`1.0 + 0.1 * (upvotes - downvotes)`)
 
 ---
 
@@ -169,19 +165,19 @@ CALCULATION MODE — when asked to compute properties:
       record_insight(grade='finding', tags='error-recovery')  [auto: under_review]
         for EACH error you encountered and resolved this session
 
+KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
+  1. list_insights(status='under_review') — see unreviewed findings
+  2. For each finding, determine your verdict:
+     Default: verify against literature → verdict='verified' with citation
+     Fallback: tool-specific or no literature → verdict='confirmed'
+     Deprecate if incorrect, outdated, or superseded
+  3. Record patterns from confirmed/verified findings
+
 KNOWLEDGE SYNTHESIS MODE — when asked to review or summarize findings:
-  list_insights(grade='finding') → identify trends across compounds →
+  list_insights(grade='finding', status='confirmed') → identify trends →
     record_insight(grade='pattern', references=[...finding IDs])  [auto: confirmed]
   list_insights(grade='pattern') → identify unifying mechanisms →
     record_insight(grade='principle', references=[...pattern IDs]) [auto: confirmed]
-
-KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
-  list_insights(status='under_review') → for each insight:
-    assess: is the conclusion supported by converged data? is the physics sound?
-    review_insight(verdict='confirmed', reasoning='...')  → insight becomes confirmed
-    OR review_insight(verdict='deprecated', reasoning='...')  → insight removed from active use
-    to revise: record_insight(corrected content) then
-      review_insight(old_id, verdict='deprecated', superseded_by=new_id) → old deprecated, new confirmed
 ```
 
 ---
@@ -199,18 +195,14 @@ Every occurrence of `'active'` in store.py, schema.py, build_builtin.py, search_
 
 **Builtin.db**: Rebuild with `confirmed` status (build_builtin.py already recreates from scratch).
 
-**local.db (exp2 run4 db)**: 
+**local.db**: `_migrate_active_to_confirmed()` runs on `init_db()`:
 ```sql
-UPDATE insights SET status = 'under_review' WHERE status = 'active';
-UPDATE insights SET status = 'under_review' WHERE status = 'under_review';  -- no-op but safe
+UPDATE insights SET status = 'confirmed' WHERE status = 'active';
 ```
-All insights become `under_review`, ready for review session.
-
-**Prior experiment dbs (Chain A etc.)**: Not touched unless explicitly used.
 
 ### 8.3 Schema Migration Helper
 
-Add to `schema.py` a migration function:
+In `schema.py`:
 ```python
 def _migrate_active_to_confirmed(conn):
     """One-time: rename 'active' to 'confirmed' for existing entries."""
@@ -218,7 +210,7 @@ def _migrate_active_to_confirmed(conn):
     conn.commit()
 ```
 
-Call this in `_migrate_stale_schema()` if old status values detected.
+Called in `init_db()` after other column migrations.
 
 ---
 
@@ -226,13 +218,13 @@ Call this in `_migrate_stale_schema()` if old status values detected.
 
 | File | Change |
 |---|---|
-| `src/qmatsuite/mcp/tools/review_insight.py` | **NEW** — ~80 lines |
+| `src/qmatsuite/mcp/tools/review_insight.py` | **NEW** — review tool with confirmed/verified/deprecated verdicts |
 | `src/qmatsuite/mcp/tools/record_insight.py` | Grade-based auto status |
 | `src/qmatsuite/mcp/tools/list_insights.py` | Return status, add status filter |
 | `src/qmatsuite/mcp/tools/search_knowledge.py` | Return status, ranking by status |
 | `src/qmatsuite/mcp/knowledge/store.py` | `update_status()` method, contradiction simplification, status rename, list_pending fix |
 | `src/qmatsuite/mcp/knowledge/schema.py` | Migration helper |
 | `src/qmatsuite/mcp/knowledge/build_builtin.py` | Write `confirmed` not `active` |
-| `src/qmatsuite/mcp/app.py` | Three-mode preamble |
-| `tests/mcp/test_knowledge_review.py` | **NEW** — ~15 tests |
+| `src/qmatsuite/mcp/app.py` | Three-mode preamble with review guidance |
+| `tests/mcp/test_knowledge_review.py` | **NEW** — 28 tests |
 | `tests/mcp/test_knowledge_write.py` | Update status assertions |

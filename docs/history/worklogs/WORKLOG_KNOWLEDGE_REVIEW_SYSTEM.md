@@ -148,3 +148,26 @@ Implement the knowledge status & review system per spec. Three status values (`c
 - `tests/mcp/test_knowledge_write.py`: 100 passed
 - `tests/mcp/` (full): 781 passed, 0 failed
 - `tests/` (full): 6892 passed, 4 skipped, 1 pre-existing error (QMCPACK integration)
+
+### Phase 4: `verified` status with mandatory citation
+
+- **review_insight.py**: Added `verified` verdict + `citation` parameter. Citation required (>10 chars) for `verified`, optional for others.
+- **store.py**:
+  - `_STATUS_WEIGHT`: verified=1.0, confirmed=0.85, under_review=0.65, deprecated=0.3
+  - `update_status()`: handles `verified` verdict, stores citation in `metadata.review.citation`
+  - All SQL status filters include `'verified'` alongside `'confirmed'`
+  - `list_by_grade`/`list_pending` defaults: `['verified', 'confirmed', 'under_review']`
+  - `_detect_contradictions`: matches `IN ('verified', 'confirmed', 'under_review')`
+- **app.py**: KNOWLEDGE REVIEW MODE updated with verify-first guidance
+- **spec**: Updated with 4-status model, citation field, new ranking weights
+- **test_knowledge_review.py**: +6 tests (28 total) — verified status, citation validation, ranking
+
+Asymmetry audit (confirmed without verified):
+- `count()`: builtin-only, always `confirmed` — correct
+- `add()` auto-status: new entries can't be `verified` without citation — correct
+- `superseded_by` replacement: auto-confirms, doesn't auto-verify — correct (per spec)
+
+### Phase 4 Test Results
+
+- `tests/mcp/test_knowledge_review.py`: 28 passed
+- `tests/mcp/` (full): 787 passed, 0 failed

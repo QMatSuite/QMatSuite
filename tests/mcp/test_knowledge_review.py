@@ -537,3 +537,133 @@ class TestReviewMetadata:
         assert meta["review"]["verdict"] == "confirmed"
         assert meta["review"]["reasoning"] == "Looks good"
         assert "reviewed_at" in meta["review"]
+
+
+# ===========================================================================
+# Verified Status
+# ===========================================================================
+
+class TestVerifiedStatus:
+    @pytest.fixture(autouse=True)
+    def _patch_deps(self, store, tmp_path, monkeypatch):
+        import qmatsuite.mcp.knowledge as knowledge_mod
+        monkeypatch.setattr(knowledge_mod, "_store", store)
+        from qmatsuite.core.journal import Journal, set_journal, reset_journal
+        journal = Journal(journal_dir=tmp_path / "journal_verified")
+        set_journal(journal)
+        self._store = store
+        yield
+        monkeypatch.setattr(knowledge_mod, "_store", None)
+        reset_journal()
+
+    def test_verified_sets_status_and_citation(self):
+        """review(verdict='verified', citation=...) → status='verified', citation in metadata."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        r = record_insight.fn(content="Finding to verify", grade="finding")
+        iid = r["data"]["insight_id"]
+
+        result = review_insight.fn(
+            insight_id=iid,
+            verdict="verified",
+            reasoning="Matches QE documentation",
+            citation="https://www.quantum-espresso.org/Doc/INPUT_PW.html",
+        )
+        assert result["status"] == "success"
+        assert result["data"]["new_status"] == "verified"
+
+        row = self._store.local_conn.execute(
+            "SELECT status, last_validated, metadata FROM insights WHERE id = ?", (iid,)
+        ).fetchone()
+        assert row["status"] == "verified"
+        assert row["last_validated"] is not None
+        meta = json.loads(row["metadata"])
+        assert meta["review"]["citation"] == "https://www.quantum-espresso.org/Doc/INPUT_PW.html"
+
+    def test_verified_requires_citation(self):
+        """review(verdict='verified', citation='') → error."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        r = record_insight.fn(content="Finding no citation", grade="finding")
+        iid = r["data"]["insight_id"]
+
+        result = review_insight.fn(
+            insight_id=iid, verdict="verified", reasoning="Trust me"
+        )
+        assert result["status"] == "error"
+        assert "citation" in result["message"].lower()
+
+    def test_verified_requires_citation_min_length(self):
+        """review(verdict='verified', citation='short') → error (<=10 chars)."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        r = record_insight.fn(content="Finding short cit", grade="finding")
+        iid = r["data"]["insight_id"]
+
+        result = review_insight.fn(
+            insight_id=iid, verdict="verified", reasoning="Short ref", citation="short"
+        )
+        assert result["status"] == "error"
+        assert "citation" in result["message"].lower()
+
+    def test_confirmed_citation_optional(self):
+        """review(verdict='confirmed', citation='') → success."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        r = record_insight.fn(content="Finding no cit ok", grade="finding")
+        iid = r["data"]["insight_id"]
+
+        result = review_insight.fn(
+            insight_id=iid, verdict="confirmed", reasoning="Looks correct"
+        )
+        assert result["status"] == "success"
+
+    def test_confirmed_stores_citation_if_given(self):
+        """review(verdict='confirmed', citation=...) → citation in metadata."""
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.record_insight import record_insight
+
+        r = record_insight.fn(content="Finding with optional cit", grade="finding")
+        iid = r["data"]["insight_id"]
+
+        result = review_insight.fn(
+            insight_id=iid,
+            verdict="confirmed",
+            reasoning="Confirmed with ref",
+            citation="https://example.com/optional-reference",
+        )
+        assert result["status"] == "success"
+
+        row = self._store.local_conn.execute(
+            "SELECT metadata FROM insights WHERE id = ?", (iid,)
+        ).fetchone()
+        meta = json.loads(row[0])
+        assert meta["review"]["citation"] == "https://example.com/optional-reference"
+
+    def test_verified_in_search_ranking(self):
+        """Verified insight ranks above confirmed with same content."""
+        store = self._store
+        # Add two insights with same content
+        r1 = store.add(_make_record(
+            content="Unique quasar ranking test alpha beta gamma",
+            grade="finding",
+        ))
+        r2 = store.add(_make_record(
+            content="Unique quasar ranking test alpha beta gamma",
+            grade="finding",
+        ))
+        # Make one verified, one confirmed
+        store.update_status(r1["insight_id"], "verified", "Verified",
+                            citation="https://example.com/long-enough-ref")
+        store.update_status(r2["insight_id"], "confirmed", "Confirmed")
+
+        results = store.search("quasar ranking test alpha beta gamma")
+        matched = [r for r in results if r["id"] in (r1["insight_id"], r2["insight_id"])]
+        assert len(matched) == 2
+        # Verified should come first (higher weight)
+        assert matched[0]["status"] == "verified"
+        assert matched[1]["status"] == "confirmed"
