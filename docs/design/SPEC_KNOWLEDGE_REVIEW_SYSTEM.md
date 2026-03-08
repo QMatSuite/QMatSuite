@@ -184,10 +184,13 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
      material, or same computational method. Try your very best to
      locate and scrape the actual input files (typically on GitHub,
      in supplementary data, or in example directories — not just
-     documentation prose). Download and inspect parameter values.
-     These serve as ground truth for reviewing parameter
-     recommendations. When citing input files, quote a relevant
-     block of parameters as the excerpt.
+     documentation prose). Download and inspect parameter values —
+     pay attention to units (eV, Ry, Ha, Bohr, Angstrom) and types
+     (integer, real, string); cross-reference with documentation
+     when the meaning isn't clear from the file alone. These serve
+     as ground truth for reviewing parameter recommendations. When
+     citing input files, quote a relevant block of parameters as
+     the excerpt.
 
   1. list_insights(status='under_review') — see unreviewed findings
   2. For each finding, disentangle its parts — data, conclusions, and
