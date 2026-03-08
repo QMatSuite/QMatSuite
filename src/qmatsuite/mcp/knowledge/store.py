@@ -480,14 +480,14 @@ class KnowledgeStore:
         method: str = "",
         grade_min: str = "",
         confidence_min: str = "",
-        limit: int = 10,
+        limit: int = 15,
     ) -> list[dict]:
         """Full-text + scope-filtered search with ranked results.
 
         Searches both builtin and local databases, merges results with
         trust-weighted ranking: ``confidence_weight * bm25_rank * trust_weight``.
         """
-        limit = max(1, min(limit, 50))
+        limit = max(1, min(limit, 80))
 
         kwargs = dict(
             engine=engine,

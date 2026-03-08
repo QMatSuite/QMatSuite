@@ -17,7 +17,7 @@ def search_knowledge(
     method: str = "",
     grade_min: str = "",
     confidence_min: str = "",
-    limit: int = 10,
+    limit: int = 15,
 ) -> dict:
     """Search the QMatSuite knowledge base for DFT best practices and error recovery.
 
@@ -36,7 +36,7 @@ def search_knowledge(
         grade_min: Minimum grade filter ('bookkeeping', 'observation',
             'finding', 'principle').
         confidence_min: Minimum confidence filter ('low', 'medium', 'high').
-        limit: Maximum number of results (default 10, max 50).
+        limit: Maximum number of results (default 15, max 80).
     """
     from qmatsuite.mcp.knowledge import get_knowledge_store
 
