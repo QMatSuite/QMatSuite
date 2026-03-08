@@ -752,7 +752,14 @@ class KnowledgeStore:
             raw_rank = r.pop("_raw_rank", abs(r.get("rank", 0)))
             tw = TRUST_WEIGHTS.get(r.get("source_type", "local"), _DEFAULT_TRUST)
             sw = _STATUS_WEIGHT.get(r.get("status", "confirmed"), 0.5)
-            r["_score"] = cw * raw_rank * tw * sw
+            # Boost replacement findings so corrections surface in top results
+            meta = json.loads(r.get("metadata") or "{}")
+            review_reasoning = meta.get("review", {}).get("reasoning", "").lower()
+            is_replacement = (
+                "replacement for" in review_reasoning or "replaces" in review_reasoning
+            )
+            rw = 2.0 if is_replacement else 1.0
+            r["_score"] = cw * raw_rank * tw * sw * rw
 
         results.sort(
             key=lambda r: (r["_score"], _GRADE_ORDER.get(r.get("grade", ""), 0)),

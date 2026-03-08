@@ -936,3 +936,48 @@ class TestSearchDeprecatedWarnings:
         replacement = [i for i in items if i["id"] == new_id]
         assert len(replacement) == 1
         assert replacement[0]["content"].startswith("\u26a0\ufe0f[CORRECTS DEPRECATED FINDING]")
+
+    def test_replacement_finding_ranks_above_normal_confirmed(self):
+        """Replacement findings get 2x rank boost, appearing in top 3."""
+        from qmatsuite.mcp.tools.record_insight import record_insight
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
+
+        # Create 5 confirmed findings about the same topic
+        for i in range(5):
+            r = record_insight.fn(
+                content=f"Osmium AHC rank boost test normal finding number {i}",
+                grade="finding",
+            )
+            review_insight.fn(
+                insight_id=r["data"]["insight_id"],
+                verdict="confirmed",
+                reasoning="Looks correct",
+            )
+
+        # Create old finding + replacement
+        r_old = record_insight.fn(
+            content="Osmium AHC rank boost test old wrong finding",
+            grade="finding",
+        )
+        old_id = r_old["data"]["insight_id"]
+        r_new = record_insight.fn(
+            content="Osmium AHC rank boost test corrected replacement",
+            grade="finding",
+        )
+        new_id = r_new["data"]["insight_id"]
+        review_insight.fn(
+            insight_id=old_id,
+            verdict="deprecated",
+            reasoning="Replaced by corrected version",
+            superseded_by=new_id,
+        )
+
+        result = search_knowledge.fn(query="osmium AHC rank boost test")
+        items = result["data"]["results"]
+        non_deprecated = [i for i in items if i["status"] != "deprecated"]
+        # Replacement should be in top 3 of non-deprecated results
+        top3_ids = [i["id"] for i in non_deprecated[:3]]
+        assert new_id in top3_ids, (
+            f"Replacement {new_id} not in top 3: {top3_ids}"
+        )
