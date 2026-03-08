@@ -907,3 +907,32 @@ class TestSearchDeprecatedWarnings:
         result = search_knowledge.fn(query="hafnium active search no warn test")
         hint = result["context_hint"]
         assert "deprecated" not in hint
+
+    def test_replacement_finding_has_prefix_in_search(self):
+        """Replacement findings are prefixed with [CORRECTS DEPRECATED FINDING]."""
+        from qmatsuite.mcp.tools.record_insight import record_insight
+        from qmatsuite.mcp.tools.review_insight import review_insight
+        from qmatsuite.mcp.tools.search_knowledge import search_knowledge
+
+        r_old = record_insight.fn(
+            content="Plutonium replacement prefix test old finding",
+            grade="finding",
+        )
+        old_id = r_old["data"]["insight_id"]
+        r_new = record_insight.fn(
+            content="Plutonium replacement prefix test corrected version",
+            grade="finding",
+        )
+        new_id = r_new["data"]["insight_id"]
+        review_insight.fn(
+            insight_id=old_id,
+            verdict="deprecated",
+            reasoning="Replaced by corrected version",
+            superseded_by=new_id,
+        )
+
+        result = search_knowledge.fn(query="plutonium replacement prefix test")
+        items = result["data"]["results"]
+        replacement = [i for i in items if i["id"] == new_id]
+        assert len(replacement) == 1
+        assert replacement[0]["content"].startswith("\u26a0\ufe0f[CORRECTS DEPRECATED FINDING]")

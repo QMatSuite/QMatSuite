@@ -75,6 +75,11 @@ def search_knowledge(
             "metadata": meta,
             "source_calculation": meta.get("source_calculation"),
         }
+        # Prefix replacement findings so the agent notices them
+        review = meta.get("review", {})
+        reasoning = review.get("reasoning", "").lower()
+        if "replacement for" in reasoning or "replaces" in reasoning:
+            item["content"] = "\u26a0\ufe0f[CORRECTS DEPRECATED FINDING] " + item["content"]
         items.append(item)
 
     if items:
