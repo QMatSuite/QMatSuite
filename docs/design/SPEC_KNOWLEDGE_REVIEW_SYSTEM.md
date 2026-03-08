@@ -162,13 +162,19 @@ Exclude `deprecated`.
 
 ```
 CALCULATION MODE — when asked to compute properties:
-  search_knowledge → create_calculation → configure →
-  run_calculation → check result:
-    on failure → fix parameters → run_calculation again
-    on success → get_results_summary →
-      record_insight(grade='finding') for the result          [auto: under_review]
-      record_insight(grade='finding', tags='error-recovery')  [auto: under_review]
-        for EACH error you encountered and resolved this session
+  1. search_knowledge(query='<workflow keywords>') — check for known issues
+     When using knowledge from past sessions: treat past numerical
+     results as reference points, not quantitative recipes. A result
+     that matched literature may have done so through error cancellation.
+     Read ALL returned findings — especially sensitivity analyses and
+     corrective notes. Think critically before choosing parameters.
+  2. create_calculation / import_structure / set_parameters
+  3. run_calculation → check result:
+     on failure → fix parameters → run_calculation again
+     on success → get_results_summary →
+       record_insight(grade='finding') for the result          [auto: under_review]
+       record_insight(grade='finding', tags='error-recovery')  [auto: under_review]
+         for EACH error you encountered and resolved this session
 
 KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
 
