@@ -308,7 +308,9 @@ KNOWLEDGE REVIEW MODE — when asked to audit or validate knowledge:
      - For parameter recommendations: search for tutorials and examples
        that use such parameter. Check exact calculation details —
        concrete numerical examples often reveal whether a recommendation
-       is standard practice or an outlier.
+       is standard practice or an outlier. If a tutorial page lacks
+       specific values, look for the actual input files (often on
+       GitHub or in supplementary data).
      - For each conclusion or recommendation: search for it directly —
        treat it as a claim to be tested. Falsifiable claims should be
        checked against external sources, not just reasoned about. Does
