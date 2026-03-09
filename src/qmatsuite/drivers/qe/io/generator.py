@@ -55,14 +55,21 @@ class QEInputGenerator:
         lines = []
         header = card.card_type.value
         if card.option:
-            if card.card_type == QECardType.K_POINTS:
+            if card.card_type in {QECardType.K_POINTS, QECardType.HUBBARD}:
                 header += f" {{{card.option}}}"
             else:
                 header += f" ({card.option})"
         lines.append(header)
 
         data = card.data
-        
+
+        # For K_POINTS {automatic}: data must be a single row of 6 integers
+        # (nx ny nz sx sy sz). If a flat list was provided, wrap it.
+        if card.card_type == QECardType.K_POINTS and card.option:
+            opt_lower_check = card.option.strip().lower()
+            if opt_lower_check == "automatic" and data and not isinstance(data[0], (list, tuple)):
+                data = [list(data)]
+
         # For QE list-style K_POINTS modes (all except automatic/gamma),
         # ensure the count line is present (first line should be a single integer).
         if card.card_type == QECardType.K_POINTS and card.option:
