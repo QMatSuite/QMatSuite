@@ -9,6 +9,7 @@ from qmatsuite.mcp.envelope import make_error, make_response
 _QE_CARD_KEYS = frozenset({
     "K_POINTS", "ATOMIC_SPECIES", "ATOMIC_POSITIONS",
     "CELL_PARAMETERS", "CONSTRAINTS", "OCCUPATIONS", "ATOMIC_FORCES",
+    "HUBBARD",
 })
 
 
