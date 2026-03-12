@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qmatsuite"
-version = "1.2.3"
+version = "1.2.4"
 description = "QMatSuite calculation backend and automation toolkit for Quantum ESPRESSO and related engines."
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
