@@ -173,6 +173,26 @@ class TestORCAInputCompiler:
 
         assert "%pal nprocs 4 end" in input_text
 
+    def test_relax_root_adds_opt_keyword_and_geom_block(self):
+        """A relax-root chain should compile as an optimization, not a single point."""
+        from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler
+        from qmatsuite.engine.qc_engine_base import QCChain
+
+        relax_step = MockStep(
+            ulid="s1",
+            step_type_gen="relax",
+            step_type_spec="orca_relax",
+            parameters={"functional": "B3LYP", "basis": "def2-SVP", "max_iter": 50},
+        )
+        chain = QCChain(scf_root=relax_step, downstream=[], key="chain01_relax")
+
+        compiler = ORCAInputCompiler()
+        input_text = compiler.compile(chain, MockMolecule())
+
+        assert "Opt" in input_text
+        assert "%geom" in input_text
+        assert "MaxIter 50" in input_text
+
     def test_chain_comment_header(self):
         """Input should have chain key in comment."""
         from qmatsuite.engines.orca.input_compiler import ORCAInputCompiler

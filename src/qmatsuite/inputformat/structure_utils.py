@@ -1,13 +1,20 @@
 """Structure conversion utilities for the input format system.
 
-Converts between pymatgen Structure objects and the StructureDoc dict
+Converts between pymatgen Structure/Molecule objects and the StructureDoc dict
 format used by write_engine_inputs.
 
-StructureDoc dict format:
+Periodic StructureDoc:
     {
         "lattice": [[3x3 floats]],   # Angstrom
         "species": ["Si", "Si"],
         "frac_coords": [[Nx3 floats]],
+        "comment": "optional string",
+    }
+
+Molecular StructureDoc:
+    {
+        "species": ["O", "H", "H"],
+        "cart_coords": [[Nx3 floats]],  # Angstrom
         "comment": "optional string",
     }
 """
@@ -22,14 +29,14 @@ def structure_to_dict(structure: Any) -> dict[str, Any]:
 
     Args:
         structure: A pymatgen Structure or Molecule object, or an object
-            with .lattice.matrix, .species, and .frac_coords attributes.
+            with either periodic (.lattice.matrix, .species, .frac_coords)
+            or molecular (.species, .cart_coords) attributes.
 
     Returns:
-        StructureDoc dict with lattice, species, frac_coords, comment.
+        StructureDoc dict with either lattice/species/frac_coords or
+        species/cart_coords plus comment.
     """
-    lattice = [list(row) for row in structure.lattice.matrix]
     species = [str(sp) for sp in structure.species]
-    frac_coords = [list(fc) for fc in structure.frac_coords]
 
     comment = ""
     if hasattr(structure, "comment"):
@@ -37,9 +44,17 @@ def structure_to_dict(structure: Any) -> dict[str, Any]:
     elif hasattr(structure, "formula"):
         comment = structure.formula
 
+    lattice = getattr(structure, "lattice", None)
+    if lattice is not None:
+        return {
+            "lattice": [list(row) for row in lattice.matrix],
+            "species": species,
+            "frac_coords": [list(fc) for fc in structure.frac_coords],
+            "comment": comment,
+        }
+
     return {
-        "lattice": lattice,
         "species": species,
-        "frac_coords": frac_coords,
+        "cart_coords": [list(cc) for cc in structure.cart_coords],
         "comment": comment,
     }

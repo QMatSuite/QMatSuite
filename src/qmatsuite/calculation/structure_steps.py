@@ -1438,17 +1438,14 @@ def materialize_step_spec(
                     if file_spec.content_role == "combined":
                         struct_dict = {}
                         try:
+                            from qmatsuite.inputformat.structure_utils import structure_to_dict
                             structure = _resolve_structure_for_spec(
                                 spec_obj, resolved_spec_path,
                                 calculation_dir=calculation_dir,
                                 project=project,
                                 project_root=project_root,
                             )
-                            struct_dict = {
-                                "lattice": structure.lattice.matrix.tolist(),
-                                "species": [str(site.specie) for site in structure],
-                                "frac_coords": structure.frac_coords.tolist(),
-                            }
+                            struct_dict = structure_to_dict(structure)
                         except Exception as struct_exc:
                             logger.debug(
                                 f"[MATERIALIZE_STEP_SPEC] Could not resolve structure "

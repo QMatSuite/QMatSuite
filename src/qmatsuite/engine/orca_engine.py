@@ -651,7 +651,7 @@ class ORCAEngine(Engine):
         # For ORCA, we detect chains from steps (SCF root + downstream)
         # detect_chains expects steps to have step_type_gen attribute
         # We need to add it from registry based on step_type_spec
-        from qmatsuite.workflow.registry import get_registry
+        from qmatsuite.workflow.registry import get_registry, normalize_step_type_to_gen
         registry = get_registry()
 
         # Add step_type_gen to steps for detect_chains
@@ -671,7 +671,7 @@ class ORCAEngine(Engine):
 
             if step_type:
                 spec = registry.get(step_type)
-                step_type_gen = spec.step_type_gen if spec else step_type
+                step_type_gen = spec.step_type_gen if spec else normalize_step_type_to_gen(step_type)
 
                 # Load parameters from step.yaml if not in step object
                 parameters = {}

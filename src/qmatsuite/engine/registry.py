@@ -4,6 +4,7 @@ Simple engine registry mapping names to engine instances.
 
 from __future__ import annotations
 
+import logging
 from typing import Dict, Optional
 
 from .base import Engine, EngineConfig
@@ -16,6 +17,9 @@ from .cp2k_engine import Cp2kEngine
 from .qmcpack_engine import QmcpackEngine
 from .psi4_engine import Psi4Engine
 from .gpaw_engine import GpawEngine
+
+
+logger = logging.getLogger(__name__)
 
 
 class EngineRegistry:
@@ -64,33 +68,39 @@ def create_default_registry(
         Binary resolution is deferred until execution.
     """
     registry = EngineRegistry()
-    registry.register(QeEngine(config))
-    registry.register(PySCFEngine())
+
+    def _try_register(factory, engine_name: str) -> None:
+        try:
+            registry.register(factory())
+        except Exception as exc:
+            logger.warning("Skipping engine registration for %s: %s", engine_name, exc)
+
+    _try_register(lambda: QeEngine(config), "qe")
+    _try_register(PySCFEngine, "pyscf")
 
     # Always register ORCA if requested (binary resolution is deferred)
     if include_orca:
         # Use defer_binary_resolution=True so capability queries work without binary
-        registry.register(ORCAEngine(defer_binary_resolution=True))
+        _try_register(lambda: ORCAEngine(defer_binary_resolution=True), "orca")
     
     # Always register VASP if requested (binary resolution is deferred)
     if include_vasp:
-        registry.register(VaspEngine())
+        _try_register(VaspEngine, "vasp")
     
     # Always register LAMMPS if requested (binary resolution is deferred)
     if include_lammps:
-        registry.register(LammpsEngine())
+        _try_register(LammpsEngine, "lammps")
     
     # Always register CP2K if requested (binary resolution is deferred)
-    registry.register(Cp2kEngine())
+    _try_register(Cp2kEngine, "cp2k")
 
     # Always register QMCPACK (binary resolution is deferred)
-    registry.register(QmcpackEngine())
+    _try_register(QmcpackEngine, "qmcpack")
 
     # Always register Psi4 (availability checked at execution time)
-    registry.register(Psi4Engine())
+    _try_register(Psi4Engine, "psi4")
 
     # Always register GPAW (availability checked at execution time)
-    registry.register(GpawEngine())
+    _try_register(GpawEngine, "gpaw")
 
     return registry
-

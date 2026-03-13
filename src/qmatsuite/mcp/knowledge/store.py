@@ -173,6 +173,8 @@ class KnowledgeStore:
 
     def count(self) -> int:
         """Return total number of confirmed insights in builtin DB."""
+        if not _builtin_enabled():
+            return 0
         row = self.conn.execute(
             "SELECT COUNT(*) FROM insights WHERE status = 'confirmed'"
         ).fetchone()
@@ -180,11 +182,12 @@ class KnowledgeStore:
 
     def get_by_id(self, insight_id: str) -> Optional[dict]:
         """Return a single insight by ID, or *None*."""
-        row = self.conn.execute(
-            "SELECT * FROM insights WHERE id = ?", (insight_id,)
-        ).fetchone()
-        if row is not None:
-            return dict(row)
+        if _builtin_enabled():
+            row = self.conn.execute(
+                "SELECT * FROM insights WHERE id = ?", (insight_id,)
+            ).fetchone()
+            if row is not None:
+                return dict(row)
         # Check local DB
         if self._has_local_db():
             local = self.local_conn.execute(
@@ -667,7 +670,9 @@ class KnowledgeStore:
 
     def _active_dbs(self) -> list[tuple[sqlite3.Connection, str]]:
         """Return list of (conn, name) for all active databases."""
-        dbs = [(self.conn, "builtin")]
+        dbs = []
+        if _builtin_enabled():
+            dbs.append((self.conn, "builtin"))
         if self._has_local_db():
             dbs.append((self.local_conn, "local"))
         return dbs
