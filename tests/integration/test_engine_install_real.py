@@ -10,6 +10,7 @@ import json
 import os
 import re
 import ssl
+import urllib.error
 import urllib.request
 
 import certifi
@@ -31,8 +32,11 @@ def test_toolchain_checksums_txt_format() -> None:
     from qmatsuite.core.engines.engine_installer import _parse_checksums_txt
 
     api_url = "https://api.github.com/repos/QMatSuite/qmatsuite-toolchain/releases?per_page=5"
-    with urllib.request.urlopen(api_url, context=_ssl_context(), timeout=30) as resp:
-        releases = json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(api_url, context=_ssl_context(), timeout=30) as resp:
+            releases = json.loads(resp.read().decode())
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
+        pytest.skip(f"GitHub API unavailable: {e}")
 
     assert isinstance(releases, list) and len(releases) > 0, "No releases found"
 
@@ -52,8 +56,11 @@ def test_toolchain_checksums_txt_format() -> None:
     if checksums_url is None:
         pytest.skip("No checksums.txt found in recent releases")
 
-    with urllib.request.urlopen(checksums_url, context=_ssl_context(), timeout=30) as resp:
-        text = resp.read().decode()
+    try:
+        with urllib.request.urlopen(checksums_url, context=_ssl_context(), timeout=30) as resp:
+            text = resp.read().decode()
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
+        pytest.skip(f"checksums.txt download failed: {e}")
 
     # Verify format: each non-empty line is "<64-hex>  <filename>"
     hex_re = re.compile(r"^[0-9a-fA-F]{64}$")

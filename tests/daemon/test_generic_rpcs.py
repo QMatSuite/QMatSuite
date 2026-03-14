@@ -12,9 +12,21 @@ import qmatsuite.drivers
 class TestListEngineFamilies:
     """Test list_engine_families RPC."""
 
+    EXPECTED_ENGINES = frozenset({
+        "abinit", "cp2k", "gaussian", "gpaw", "lammps", "mace",
+        "orca", "psi4", "pyscf", "qe", "qmcpack", "siesta",
+        "vasp", "w90", "xtb", "yambo",
+    })
+
     def test_returns_all_16_engines(self):
         engines = sorted(DriverRegistry.get_all_engines())
-        assert len(engines) == 16
+        actual = frozenset(engines)
+        missing = self.EXPECTED_ENGINES - actual
+        extra = actual - self.EXPECTED_ENGINES
+        assert actual == self.EXPECTED_ENGINES, (
+            f"Engine mismatch: missing={missing or 'none'}, extra={extra or 'none'}, "
+            f"got {len(engines)}: {engines}"
+        )
 
     def test_engine_has_required_fields(self):
         for family in DriverRegistry.get_all_engines():

@@ -28,14 +28,26 @@ def test_make_error_shape():
 # list_engines
 # ---------------------------------------------------------------------------
 
+EXPECTED_ENGINES = frozenset({
+    "abinit", "cp2k", "gaussian", "gpaw", "lammps", "mace",
+    "orca", "psi4", "pyscf", "qe", "qmcpack", "siesta",
+    "vasp", "w90", "xtb", "yambo",
+})
+
+
 def test_list_engines_returns_all_16():
     from qmatsuite.mcp.tools.list_engines import list_engines
 
     result = list_engines.fn()
     assert result["status"] == "success"
     data = result["data"]
-    assert data["total"] == 16
-    assert len(data["engines"]) == 16
+    actual = frozenset(e["engine"] for e in data["engines"])
+    missing = EXPECTED_ENGINES - actual
+    extra = actual - EXPECTED_ENGINES
+    assert actual == EXPECTED_ENGINES, (
+        f"Engine mismatch: missing={missing or 'none'}, extra={extra or 'none'}, "
+        f"got {data['total']}: {sorted(actual)}"
+    )
 
 
 def test_list_engines_entry_shape():

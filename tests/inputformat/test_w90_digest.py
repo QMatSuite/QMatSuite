@@ -274,10 +274,9 @@ class TestOutputParserClass:
 # Validation against real .wout reference (if available)
 # ──────────────────────────────────────────────────────────────────────────
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _REAL_WOUT = (
-    _PROJECT_ROOT / ".qmatsuite" / "engines" / "qe" / "q-e-qe-7.5"
-    / "PP" / "examples" / "WAN90_example" / "reference" / "diamond.sa.wout"
+    Path(__file__).resolve().parent.parent / "data" / "wannier90_examples"
+    / "reference" / "diamond.sa.wout"
 )
 
 

@@ -14,7 +14,7 @@ Test examples:
 - Example06 Copper: 7 MLWFs with disentanglement  
 - Example16 Silicon: 8 MLWFs with disentanglement
 
-Expected values from: .qmatsuite/engines/qe/q-e-qe-7.5/external/wannier90/doc/solution_booklet/
+Expected values from: Wannier90 solution booklet (examples staged in tests/data/wannier90_examples/)
 """
 
 from __future__ import annotations
@@ -35,8 +35,8 @@ from qmatsuite.core.paths import get_repo_root, tmp_runs_dir
 # Get repo root and paths
 REPO_ROOT = get_repo_root()
 QE_BIN_DIR = REPO_ROOT / ".qmatsuite" / "engines" / "qe" / "q-e-qe-7.5" / "bin"
-EXAMPLE_ROOT = REPO_ROOT / ".qmatsuite" / "engines" / "qe" / "q-e-qe-7.5" / "external" / "wannier90" / "examples"
-PSEUDO_SOURCE = REPO_ROOT / ".qmatsuite" / "engines" / "qe" / "q-e-qe-7.5" / "external" / "wannier90" / "pseudo"
+EXAMPLE_ROOT = Path(__file__).parent.parent / "data" / "wannier90_examples"
+PSEUDO_SOURCE = Path(__file__).parent.parent / "data" / "wannier90_examples" / "pseudo"
 
 
 def check_executable_exists(exe_name: str) -> bool:
@@ -521,7 +521,7 @@ class TestSiliconWannier90:
         """Set up Silicon project."""
         p = Wannier90ProjectTest(
             name="silicon",
-            example_dir="example16-withqe",
+            example_dir="example16",
             seedname="Si",
             prefix="si",
             pseudo_name="Si.pbe-n-van.UPF",

@@ -26,6 +26,7 @@ from qmatsuite.core.engines.discovery import is_engine_available
 def _find_qmcpack_asset(repo_root: Path, filename: str) -> Path | None:
     """Find a required QMCPACK test asset from known local locations."""
     candidates = [
+        repo_root / "tests" / "data" / "qmcpack_diamond" / filename,
         repo_root / ".qmatsuite" / "engines" / "qmcpack" / "qmcpack-4.1.0" / "tests" / "solids" / "diamondC_1x1x1_pp" / filename,
         repo_root / ".tmp" / "engine_research" / "qmcpack" / "extracted" / "tests_solids" / "diamondC_1x1x1_pp" / filename,
     ]

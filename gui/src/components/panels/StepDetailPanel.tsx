@@ -720,6 +720,22 @@ export function StepDetailPanel({
         }
       }
       
+      // For non-QE engines (W90, ORCA, etc.), flatten all namespace wrappers.
+      // The palette may assign QE namelists (e.g., SYSTEM) to companion engine
+      // params, but the backend expects flat params for these engines.
+      if (effectiveEngineFamily !== 'qe') {
+        const flatParams: Record<string, unknown> = {};
+        for (const [key, val] of Object.entries(paramUpdates)) {
+          if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+            Object.assign(flatParams, val as Record<string, unknown>);
+          } else {
+            flatParams[key] = val;
+          }
+        }
+        for (const k of Object.keys(paramUpdates)) delete paramUpdates[k];
+        Object.assign(paramUpdates, flatParams);
+      }
+
       // INSTRUMENTATION: Log paramUpdates construction
       console.log('[StepDetailPanel] handleSaveParams paramUpdates', {
         paramUpdates_keys: Object.keys(paramUpdates),

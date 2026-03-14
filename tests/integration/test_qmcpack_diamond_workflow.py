@@ -82,7 +82,11 @@ def _resolve_qmcpack_bin() -> Path | None:
 
 
 def _find_qmcpack_test_data() -> Path | None:
-    """Find QMCPACK test data directory (diamondC_1x1x1_pp)."""
+    """Find QMCPACK test data directory (diamondC_1x1x1_pp or staged data)."""
+    # Prefer staged test data (independent of engine installation)
+    staged = _REPO_ROOT / "tests" / "data" / "qmcpack_diamond"
+    if staged.is_dir():
+        return staged
     candidates = [
         Path.home() / ".qmatsuite" / "engines" / "qmcpack",
         _REPO_ROOT / ".qmatsuite" / "engines" / "qmcpack",

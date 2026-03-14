@@ -30,7 +30,7 @@ from qmatsuite.io.parser.qe_parser import QEInputParser
 @pytest.fixture
 def diamond_nscf_input():
     """Reference diamond.nscf input file."""
-    nscf_path = Path(__file__).parent.parent.parent / ".qmatsuite/engines/qe/q-e-qe-7.5/external/wannier90/examples/example05/diamond.nscf"
+    nscf_path = Path(__file__).parent.parent / "data" / "wannier90_examples" / "example05" / "diamond.nscf"
     if not nscf_path.exists():
         pytest.skip(f"Reference nscf file not found: {nscf_path}")
     return nscf_path

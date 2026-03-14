@@ -200,7 +200,7 @@ def test_w90_from_reference_file(tmp_path):
     """
     Test parsing and roundtrip of reference diamond.win file.
     """
-    ref_win = Path(__file__).parent.parent.parent / ".qmatsuite/engines/qe/q-e-qe-7.5/external/wannier90/examples/example05/diamond.win"
+    ref_win = Path(__file__).parent.parent / "data" / "wannier90_examples" / "example05" / "diamond.win"
     
     if not ref_win.exists():
         pytest.skip(f"Reference file not found: {ref_win}")

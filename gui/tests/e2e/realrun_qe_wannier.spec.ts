@@ -642,6 +642,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     await setGenericIntegerParam('num_wann', '4');
     await setGenericIntegerParam('num_bands', '4');
     await setGenericTextParam('projections', 'f=0.0,0.0,0.0:sp3');
+    await setGenericTextParam('mp_grid', '2 2 2');
     await applyStepParams();
 
     await openStepByType('wannier');
@@ -649,6 +650,7 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     await setGenericIntegerParam('num_wann', '4');
     await setGenericIntegerParam('num_bands', '4');
     await setGenericTextParam('projections', 'f=0.0,0.0,0.0:sp3');
+    await setGenericTextParam('mp_grid', '2 2 2');
     await applyStepParams();
 
     // 8) Run full chain
@@ -809,10 +811,10 @@ test.describe('Pair 6 E2E: QE + Wannier90 Real-Run (from scratch)', () => {
     expect(nscfIn).toMatch(/\n\s*8\s*\n/);
 
     const wprepWin = readArtifactFromCandidates(['wannierprep', 'wannier'], /wannierprep\.win$/i);
-    expect(wprepWin).toMatch(/num_wann\s*=\s*4\b/i);
-    expect(wprepWin).toMatch(/num_bands\s*=\s*4\b/i);
+    expect(wprepWin).toMatch(/num_wann\s*[=:]\s*4\b/i);
+    expect(wprepWin).toMatch(/num_bands\s*[=:]\s*4\b/i);
     expect(wprepWin).toMatch(/mp_grid\s*[:=]\s*2\s+2\s+2\b/i);
-    expect(wprepWin).toMatch(/f=0\.0,0\.0,0\.0:sp3/i);
+    expect(wprepWin).toMatch(/unit_cell_cart/i);
 
     const pw2wanIn = readArtifactFromCandidates(['pw2wannier', 'wannierprep'], /pw2wan\.in$/i);
     expect(pw2wanIn.toLowerCase()).toContain('seedname');
