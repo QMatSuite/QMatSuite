@@ -168,6 +168,7 @@ class TestDriverValidation:
             'qmatsuite.drivers.yambo',
             'qmatsuite.drivers.abinit',
             'qmatsuite.drivers.gaussian',
+            'qmatsuite.drivers.mace',
         ]
         for mod_name in modules_to_remove:
             if mod_name in sys.modules:
