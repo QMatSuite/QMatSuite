@@ -268,7 +268,11 @@ def _build_structure_info(detail: dict, svc: object) -> dict | None:
 
 
 def _build_structure_doc(detail: dict, svc: object) -> dict | None:
-    """Build a StructureDoc dict (lattice, species, frac_coords) for materialization."""
+    """Build a StructureDoc dict for materialization.
+
+    Periodic structures use ``frac_coords`` + ``lattice``.
+    Molecular structures use ``cart_coords`` with no lattice.
+    """
     structure_ulid = detail.get("structure_ulid")
     if not structure_ulid:
         return None
@@ -281,8 +285,15 @@ def _build_structure_doc(detail: dict, svc: object) -> dict | None:
         species = atoms.get("species", [])
         positions = atoms.get("positions", [])  # Cartesian, Angstrom
 
-        if lattice is None or not positions:
+        if not positions:
             return None
+
+        if lattice is None:
+            return {
+                "species": species,
+                "cart_coords": [list(pos) for pos in positions],
+                "comment": detail.get("name", ""),
+            }
 
         # Convert Cartesian → fractional: frac = cart @ inv(lattice)
         lat_matrix = np.array(lattice)

@@ -15,11 +15,15 @@ def get_knowledge_store():
     """
     global _store
     if _store is None:
-        from qmatsuite.mcp.knowledge.store import KnowledgeStore, _local_db_path
+        from qmatsuite.mcp.knowledge.store import (
+            KnowledgeStore,
+            _builtin_enabled,
+            _local_db_path,
+        )
         from qmatsuite.mcp.knowledge.build_builtin import build_builtin_db
 
         store = KnowledgeStore(local_db_path=_local_db_path())
-        if store.count() == 0:
+        if _builtin_enabled() and store.count() == 0:
             store.close()
             build_builtin_db()
             store = KnowledgeStore(local_db_path=_local_db_path())

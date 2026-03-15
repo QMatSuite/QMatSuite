@@ -1,7 +1,7 @@
 """ORCA input file compiler - single-job chain fusion."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Protocol, Set
+from typing import Any, Dict, List, Optional, Protocol
 
 
 # Canonical orbital file name for QC chains (immutable)
@@ -49,12 +49,15 @@ class ORCAInputCompiler:
         Returns:
             ORCA input file content as string
         """
-        keywords: Set[str] = set()
+        keywords: List[str] = []
         blocks: Dict[str, str] = {}
 
         # Process SCF root
         scf_params = chain.scf_root.parameters
         self._process_scf_step(chain.scf_root, keywords, blocks)
+        if chain.scf_root.step_type_gen == "relax":
+            self._append_keyword(keywords, "Opt")
+            self._process_relax_step(chain.scf_root, blocks)
 
         # Process downstream steps
         for step in chain.downstream:
@@ -62,7 +65,7 @@ class ORCAInputCompiler:
                 self._process_td_step(step, blocks)
             elif step.step_type_gen == "relax":
                 # Add Opt keyword for geometry optimization
-                keywords.add("Opt")
+                self._append_keyword(keywords, "Opt")
                 # Process relax-specific parameters (e.g., MaxIter, convergence)
                 self._process_relax_step(step, blocks)
             # Future: freq, nmr, mp2, etc.
@@ -70,13 +73,13 @@ class ORCAInputCompiler:
         # Add common keywords
         # SCF macro is handled in _process_scf_step
         if fresh:
-            keywords.add("NoAutoStart")
+            self._append_keyword(keywords, "NoAutoStart")
 
         # Handle MORead for wavefunction reuse
         # When moread_file is provided, add MORead keyword and %moinp block
         # This allows non-SCF subchains to reuse orbitals from a previous SCF
         if moread_file:
-            keywords.add("MORead")
+            self._append_keyword(keywords, "MORead")
             blocks["moinp"] = f'"{moread_file}"'
 
         # Handle nprocs
@@ -84,50 +87,63 @@ class ORCAInputCompiler:
         if effective_nprocs:
             blocks["pal"] = f"nprocs {effective_nprocs}"
 
+        charge = self._get_explicit_charge(chain)
+        multiplicity = self._get_explicit_multiplicity(chain)
+
         # Format final input
         return self._format_input(
             chain_key=chain.key,
             keywords=keywords,
             blocks=blocks,
             molecule=molecule,
+            charge=charge,
+            multiplicity=multiplicity,
         )
 
     def _process_scf_step(
         self,
         step: Any,
-        keywords: Set[str],
+        keywords: List[str],
         blocks: Dict[str, str],
     ) -> None:
         """Process SCF/HF step parameters into keywords and blocks."""
         params = step.parameters
 
+        explicit_keywords = params.get("keyword_line")
+        if explicit_keywords:
+            if isinstance(explicit_keywords, str):
+                explicit_keywords = explicit_keywords.split()
+            for keyword in explicit_keywords:
+                self._append_keyword(keywords, keyword)
+            return
+
         # Method/functional
         if step.step_type_gen == "hf":
-            keywords.add("HF")
+            self._append_keyword(keywords, "HF")
         else:
             # DFT functional
             functional = params.get("functional", "B3LYP")
-            keywords.add(functional)
+            self._append_keyword(keywords, functional)
 
         # Basis set
         basis = params.get("basis", "def2-SVP")
-        keywords.add(basis)
+        self._append_keyword(keywords, basis)
 
         # Additional SCF keywords
         if params.get("ri", False):
-            keywords.add("RI")
+            self._append_keyword(keywords, "RI")
         if params.get("rijcosx", False):
-            keywords.add("RIJCOSX")
+            self._append_keyword(keywords, "RIJCOSX")
 
         # Grid settings
         grid = params.get("grid")
         if grid:
-            keywords.add(grid)
+            self._append_keyword(keywords, grid)
 
         # Dispersion correction
         dispersion = params.get("dispersion")
         if dispersion:
-            keywords.add(dispersion)
+            self._append_keyword(keywords, dispersion)
 
         # ORCA SCF macro (from engine-specific preset patch)
         # Read from engine.orca.scf.macro in step parameters
@@ -135,7 +151,38 @@ class ORCAInputCompiler:
         if orca_macro:
             orca_keyword = self._map_macro_to_keyword(orca_macro)
             if orca_keyword:
-                keywords.add(orca_keyword)
+                self._append_keyword(keywords, orca_keyword)
+
+    def _append_keyword(self, keywords: List[str], keyword: Any) -> None:
+        """Append a keyword once while preserving user order."""
+        if keyword is None:
+            return
+        value = str(keyword).strip()
+        if not value:
+            return
+        value_folded = value.upper()
+        existing = {str(item).strip().upper() for item in keywords}
+        if value_folded in existing:
+            return
+        keywords.append(value)
+
+    def _get_explicit_charge(self, chain: Any) -> Optional[int]:
+        """Return the first explicit molecular charge override found in chain params."""
+        for step in [chain.scf_root, *chain.downstream]:
+            params = getattr(step, "parameters", {}) or {}
+            if "charge" in params and params["charge"] is not None:
+                return int(params["charge"])
+        return None
+
+    def _get_explicit_multiplicity(self, chain: Any) -> Optional[int]:
+        """Return the first explicit spin multiplicity override found in chain params."""
+        for step in [chain.scf_root, *chain.downstream]:
+            params = getattr(step, "parameters", {}) or {}
+            if "multiplicity" in params and params["multiplicity"] is not None:
+                return int(params["multiplicity"])
+            if "spin_multiplicity" in params and params["spin_multiplicity"] is not None:
+                return int(params["spin_multiplicity"])
+        return None
 
     def _get_orca_scf_macro(self, params: Dict[str, Any]) -> Optional[str]:
         """
@@ -268,9 +315,11 @@ class ORCAInputCompiler:
     def _format_input(
         self,
         chain_key: str,
-        keywords: Set[str],
+        keywords: List[str],
         blocks: Dict[str, str],
         molecule: MoleculeLike,
+        charge: Optional[int] = None,
+        multiplicity: Optional[int] = None,
     ) -> str:
         """Format final ORCA input string."""
         lines: List[str] = []
@@ -281,7 +330,7 @@ class ORCAInputCompiler:
         lines.append("")
 
         # Keywords line
-        keyword_str = " ".join(sorted(keywords))
+        keyword_str = " ".join(keywords)
         lines.append(f"! {keyword_str}")
         lines.append("")
 
@@ -306,7 +355,9 @@ class ORCAInputCompiler:
             lines.append("")
 
         # Coordinates
-        lines.append(f"* xyz {molecule.charge} {molecule.multiplicity}")
+        final_charge = molecule.charge if charge is None else charge
+        final_multiplicity = molecule.multiplicity if multiplicity is None else multiplicity
+        lines.append(f"* xyz {final_charge} {final_multiplicity}")
         lines.append(molecule.atoms)
         lines.append("*")
 
